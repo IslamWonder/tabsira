@@ -36,7 +36,7 @@ def test_a_valid_configuration_is_reported_without_secrets(monkeypatch, capsys):
     assert "ai provider: openai (api key set)" in out.out
     assert (
         "features on: admin, atlas, camera_discovery, canonical_verify, chat, "
-        "photo_storage, social, treasure, world"
+        "dev_inspector, photo_storage, social, treasure, world"
     ) in out.out
     assert "camera_anchor" not in out.out
     assert out.err == ""

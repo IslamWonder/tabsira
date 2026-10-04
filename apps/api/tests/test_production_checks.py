@@ -534,15 +534,17 @@ def production_env(monkeypatch, tmp_path):
         "S3_SECRET_ACCESS_KEY": "s3-secret-value",
         "S3_PUBLIC_BASE_URL": "https://media.tabsira.me",
         "SMTP_HOST": "smtp.example.com",
+        "GOOGLE_REDIRECT_URI": "https://api.tabsira.me/auth/google/callback",
         "API_WORKERS": "3",
     }
     path = tmp_path / "production.env"
     path.write_text("\n".join(f"{k}={v}" for k, v in lines.items()) + "\n", encoding="utf-8")
     monkeypatch.setattr(sys, "argv", ["check_config"])
-    # The suite's own ENVIRONMENT=test outranks the file; a deploy has no such variable.
-    monkeypatch.setenv("ENVIRONMENT", "production")
-    monkeypatch.setenv("DATABASE_URL", DATABASE_URL)
-    monkeypatch.setenv("SYNC_DATABASE_URL", SYNC_URL)
+    # The suite's own environment (ENVIRONMENT=test, development URLs) outranks the
+    # file; a deploy has no such variables, so the file's values are set over them.
+    for key, value in lines.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.delenv("LOCAL_MEDIA_DIR", raising=False)
     monkeypatch.setattr(check_config, "probe_storage", lambda _settings: None)
     return path
 
