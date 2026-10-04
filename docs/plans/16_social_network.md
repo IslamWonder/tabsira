@@ -1,15 +1,15 @@
 # 16 · Social network «تبصرة تواصل»
 
-**Phase:** 2 · **Priority:** Medium · **Status:** 🔄 · **Updated:** 2026-10-04 19:34 (Tunis)
+**Phase:** 2 · **Priority:** Medium · **Status:** 🔄 · **Updated:** 2026-10-04 19:43 (Tunis)
 
 Posts made from verified insights, follows, likes, comments, reports and moderation.
 
-| Step                                                               | Status | Notes                                                                           |
-| ------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------- |
-| Server side: profiles, posts, feeds, comments, reports, moderation | ✅     | Merged, switched off in production.                                             |
-| Screens                                                            | ✅     | Task 16.1, screenshots in docs/screenshots (community, post, profile, publish). |
-| Moderators' queue                                                  | ✅     | Admin queue for posts and comments (task 12.2) and map entries (task 17.2).     |
-| Privacy re-review                                                  | ⏸      |                                                                                 |
+| Step                                                               | Status | Notes                                                                                                                                                                    |
+| ------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Server side: profiles, posts, feeds, comments, reports, moderation | ✅     | Merged, switched off in production.                                                                                                                                      |
+| Screens                                                            | ✅     | Task 16.1, screenshots in docs/screenshots (community, post, profile, publish).                                                                                          |
+| Moderators' queue                                                  | ✅     | Admin queue for posts and comments (task 12.2) and map entries (task 17.2).                                                                                              |
+| Privacy re-review                                                  | ✅     | Passed for social on 2026-10-04 (`../tabsira-artifact/reviews/privacy-re-review-social-atlas-2026-10-04.md`); its atlas findings 2-7 are task 17.3, finding 1 task 17.2. |
 
 **How we check it**
 
