@@ -2,7 +2,7 @@
 
 The vectors the insight engine searches with (decision 41 for reranking, `docs/BENCHMARK.md` for the measurements). They are computed once, exported to one archive, and imported by every installation, so nobody pays to compute them again.
 
-The code lands with task 05.1 (branch `task/05.1-insight-engine` until it merges): `apps/api/src/retrieval/` (documents, embedding store), `apps/api/src/cli/embed_corpus.py`, `apps/api/src/models/retrieval.py`.
+The code (task 05.1): `apps/api/src/retrieval/` (documents, embedding store), `apps/api/src/cli/embed_corpus.py`, `apps/api/src/models/retrieval.py`.
 
 ## What is embedded
 
