@@ -969,3 +969,13 @@ def test_only_arabic_is_supported_and_the_default_must_be_supported(make_setting
     assert make_settings(supported_languages="ar, en").supported_languages == ("ar", "en")
     assert make_settings(supported_languages=("ar",)).supported_languages == ("ar",)
     assert "DEFAULT_LANGUAGE" in errors_of(default_language="en")
+
+
+def test_an_embedding_size_left_empty_keeps_the_model_size(make_settings):
+    empty = make_settings(ai_openai={"embedding_dimensions": ""})
+    sized = make_settings(ai_ovh={"embedding_dimensions": "1024"})
+
+    assert empty.ai_openai.embedding_dimensions is None
+    assert sized.ai_ovh.embedding_dimensions == 1024
+    with pytest.raises(ValidationError):
+        make_settings(ai_openai={"embedding_dimensions": 3072})
