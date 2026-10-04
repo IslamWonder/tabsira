@@ -106,8 +106,12 @@ def test_ai_defaults_are_what_the_benchmark_measured(make_settings):
     assert settings.ai_openai.model_for(AiStage.GUARD) == "omni-moderation-latest"
     assert settings.ai_openai.reasoning_effort == "none"
     assert settings.ai_openai.box_coordinates is BoxCoordinates.PIXELS
+    # Decision 46: the chat answers with the insight stages' model of the provider.
+    assert settings.ai_openai.model_for(AiStage.CHAT) == "gpt-5.4-mini-2026-03-17"
+    assert settings.ai_ovh.model_for(AiStage.CHAT) == "Qwen3.8-27B"
     measured = {(AiProvider.OVH, AiStage.VISION), (AiProvider.OPENAI, AiStage.VISION)}
-    measured.add((AiProvider.OPENAI, AiStage.GUARD))
+    measured |= {(AiProvider.OPENAI, AiStage.GUARD)}
+    measured |= {(AiProvider.OVH, AiStage.CHAT), (AiProvider.OPENAI, AiStage.CHAT)}
     for provider, block in (
         (AiProvider.OVH, settings.ai_ovh),
         (AiProvider.OPENAI, settings.ai_openai),

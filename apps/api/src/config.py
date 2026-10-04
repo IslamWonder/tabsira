@@ -277,6 +277,8 @@ class OvhSettings(ProviderSettings):
     # Measured by docs/BENCHMARK.md (4 October 2026): Qwen3.8-27B without thinking
     # (thinking added 36 s at p50 for no gain), boxes on its native 0-1000 grid.
     vision_model: str = "Qwen3.8-27B"
+    # Decision 46: the chat answers with the provider's insight-stage model.
+    chat_model: str = "Qwen3.8-27B"
     reasoning_effort: ReasoningEffort = "none"
     box_coordinates: BoxCoordinates = BoxCoordinates.THOUSANDTHS
     prices: dict[str, ModelPrice] = Field(default_factory=lambda: dict(OVH_PRICES))
@@ -289,6 +291,8 @@ class OpenAISettings(ProviderSettings):
     # Measured by docs/BENCHMARK.md (4 October 2026): gpt-5.4-mini without
     # reasoning, pixel boxes, and the free image moderation as the guard.
     vision_model: str = "gpt-5.4-mini-2026-03-17"
+    # Decision 46: the chat answers with gpt-5.4-mini, the insight stages' model.
+    chat_model: str = "gpt-5.4-mini-2026-03-17"
     reasoning_effort: ReasoningEffort = "none"
     guard_model: str = "omni-moderation-latest"
     prices: dict[str, ModelPrice] = Field(default_factory=lambda: dict(OPENAI_PRICES))
