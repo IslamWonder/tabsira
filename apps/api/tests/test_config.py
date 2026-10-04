@@ -14,6 +14,7 @@ from src.config import (
     ConfigError,
     Environment,
     ProviderSettings,
+    RerankerKind,
     ScanEngine,
     Settings,
     format_validation_error,
@@ -119,6 +120,10 @@ def test_ai_defaults_are_what_the_benchmark_measured(make_settings):
     assert settings.ai_openai.embedding_dimensions == 1536
     assert settings.ai_ovh.model_for(AiStage.EMBEDDING) == "bge-m3"
     assert settings.ai_ovh.embedding_dimensions is None
+    # Decision 41: the small text model reranks; OVH has none measured, so it reranks nothing.
+    assert settings.reranker is RerankerKind.LLM
+    assert settings.ai_openai.model_for(AiStage.RERANK) == "gpt-5.4-nano-2026-03-17"
+    assert settings.ai_ovh.model_for(AiStage.RERANK) == ""
     text_stages = (AiStage.PLANNER, AiStage.VERIFY, AiStage.COMPOSE)
     for block in (settings.ai_ovh, settings.ai_openai):
         assert {block.model_for(stage) for stage in text_stages} == {block.vision_model}
@@ -128,10 +133,10 @@ def test_ai_defaults_are_what_the_benchmark_measured(make_settings):
         (AiProvider.OPENAI, settings.ai_openai),
     ):
         for stage in AiStage:
-            if stage not in set_by_a_measure and (provider, stage) != (
-                AiProvider.OPENAI,
-                AiStage.GUARD,
-            ):
+            if stage not in set_by_a_measure and (provider, stage) not in {
+                (AiProvider.OPENAI, AiStage.GUARD),
+                (AiProvider.OPENAI, AiStage.RERANK),
+            }:
                 assert block.model_for(stage) == "", (provider, stage)
 
 
@@ -1177,6 +1182,9 @@ def test_an_embedding_size_left_empty_keeps_the_model_size(make_settings):
 
 
 def test_an_empty_reranker_url_switches_reranking_off(make_settings):
+    assert make_settings(reranker="cross_encoder").reranker is RerankerKind.CROSS_ENCODER
+    with pytest.raises(ValidationError):
+        make_settings(reranker="cohere")
     assert make_settings(reranker_url=" ").reranker_url == ""
     assert (
         make_settings(reranker_url="http://127.0.0.1:8101/").reranker_url == "http://127.0.0.1:8101"

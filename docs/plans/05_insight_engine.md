@@ -4,15 +4,15 @@
 
 Finds the verse and hadith that truly fit the scene, checks them, and writes the explanation. It cites texts by reference only.
 
-| Step                                             | Status | Notes                       |
-| ------------------------------------------------ | ------ | --------------------------- |
-| Search by full text, concepts and meaning, fused | ✅     | Built; merges after review. |
-| Re-ranking of the best candidates                | ✅     | bge-reranker; slow on CPU.  |
-| Evidence gate using editor rulings               | ✅     |                             |
-| Explanation, «لماذا ظهر هذا؟», small step        | ✅     |                             |
-| Evaluation on gold scenes (make eval)            | ✅     | 13/15 as expected, 0 leaks. |
-| Plug into the scan workflow and merge            | 🔄     |                             |
-| The twelve official cases                        | ⬜     |                             |
+| Step                                             | Status | Notes                        |
+| ------------------------------------------------ | ------ | ---------------------------- |
+| Search by full text, concepts and meaning, fused | ✅     | Built; merges after review.  |
+| Re-ranking of the best candidates                | ✅     | Small model (nano), at once. |
+| Evidence gate using editor rulings               | ✅     |                              |
+| Explanation, «لماذا ظهر هذا؟», small step        | ✅     |                              |
+| Evaluation on gold scenes (make eval)            | ✅     | 13/15 as expected, 0 leaks.  |
+| Plug into the scan workflow and merge            | 🔄     |                              |
+| The twelve official cases                        | ⬜     |                              |
 
 **How we check it**
 

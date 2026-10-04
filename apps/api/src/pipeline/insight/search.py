@@ -6,10 +6,12 @@ the candidate runs three searches: vector (the provider's embedding model),
 full text over the search copies, and the model-written concepts; the unit's
 anchors from the learning path join as a fourth list. Reciprocal Rank Fusion
 makes one list of them (docs/BENCHMARK.md measured the choices), and the
-cross-encoder of services/vision reorders its head. Each step that fails is
-skipped and recorded: no vectors when the embedding call fails, the fused
-order when the reranker does not answer. Nothing here is ever displayed; a
-result is ids, scores and the query that found them.
+reranker (decision 41: a small language model by default) reorders its head.
+Searching and reranking are two calls so a scan can rerank all its lists at
+once. Each step that fails is skipped and recorded: no vectors when the
+embedding call fails, the fused order when the reranker does not answer.
+Nothing here is ever displayed; a result is ids, scores and the query that
+found them.
 """
 
 from __future__ import annotations
@@ -27,12 +29,13 @@ from src.retrieval.documents import RetrievalDocument, hadith_documents, quran_d
 from src.retrieval.fusion import FusedHit, fuse
 from src.retrieval.lexical import Hit, search_lexical
 from src.retrieval.query import query_terms
-from src.retrieval.reranker import RerankerClient
+from src.retrieval.reranker import Reranker
 from src.retrieval.vector import nearest
 
-# Candidates each search returns, and the head of the fused list the cross-encoder reads:
-# eight, not thirty, because on a CPU it reads about 1.5 passages a second (docs/BENCHMARK.md)
-# and the verifier sees only the first four of each corpus.
+# Candidates each search returns, and the head of the fused list the reranker reads: eight,
+# not thirty, because the verifier sees only the first four of each corpus, a small model
+# answers faster about fewer passages, and a CPU cross-encoder reads about 1.5 a second
+# (docs/BENCHMARK.md).
 SEARCH_TOP = 30
 RERANK_TOP = 8
 QUERY_SEPARATOR = " ، "
@@ -107,7 +110,7 @@ class EvidenceSearch:
         self,
         *,
         embedding: Embedding | None,
-        reranker: RerankerClient | None,
+        reranker: Reranker | None,
         concepts: Mapping[EmbeddedCorpus, ConceptIndex],
         rerank_top: int = RERANK_TOP,
     ) -> None:
@@ -124,8 +127,8 @@ class EvidenceSearch:
         vectors: Mapping[str, list[float]],
         *,
         anchors: Sequence[int] = (),
-    ) -> SearchResult:
-        """Return the fused, reranked candidates of `queries` in `corpus`, best first."""
+    ) -> list[Found]:
+        """Return the fused candidates of `queries` in `corpus`, best first."""
         lists: dict[str, Sequence[Hit]] = {}
         for index, query in enumerate(queries):
             lists[f"fts:{index}"] = await search_lexical(
@@ -145,22 +148,24 @@ class EvidenceSearch:
             lists["anchors:path"] = [Hit(key, 1.0) for key in anchors]
         fused = fuse(lists)[:SEARCH_TOP]
         if not fused:
-            return SearchResult([])
+            return []
         documents = await _documents(
             session, corpus, [hit.key for hit in fused], self._concepts[corpus]
         )
-        found = [
+        return [
             Found(corpus, hit.key, hit.score, None, _matched_on(hit, queries), documents[hit.key])
             for hit in fused
             if hit.key in documents
         ]
-        return await self._reranked(QUERY_SEPARATOR.join(queries), found)
 
-    async def _reranked(self, query: str, found: list[Found]) -> SearchResult:
-        if self._reranker is None:
+    async def rerank(self, queries: Sequence[str], found: list[Found]) -> SearchResult:
+        """Reorder the head of `found` by the reranker; keep the fused order when it fails."""
+        if self._reranker is None or not found:
             return SearchResult(found)
         head, tail = found[: self._rerank_top], found[self._rerank_top :]
-        outcome = await self._reranker.rerank(query, [item.document.body for item in head])
+        outcome = await self._reranker.rerank(
+            QUERY_SEPARATOR.join(queries), [item.document.body for item in head]
+        )
         if outcome.scores is None:
             return SearchResult(found, outcome.error, outcome.latency_ms)
         scored = [
