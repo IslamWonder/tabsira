@@ -25,7 +25,7 @@ async def test_the_admin_is_mounted_at_admin_while_its_feature_is_on(admin_app):
     mounted = [route for route in admin_app.routes if getattr(route, "path", "") == "/admin"]
 
     assert len(mounted) == 1
-    async with client_for(admin_app) as http:
+    async with client_for(admin_app, "https://admin.tabsira.test") as http:
         assert (await http.get("/admin/login")).status_code == 200
     # It is not part of the API's published schema.
     assert not [path for path in admin_app.openapi()["paths"] if path.startswith("/admin")]

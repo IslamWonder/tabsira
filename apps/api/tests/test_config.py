@@ -30,6 +30,7 @@ PRODUCTION = {
     "database_url": DATABASE_URL,
     "site_url": "https://tabsira.me",
     "api_url": "https://api.tabsira.me",
+    "admin_url": "https://admin.tabsira.me",
     "cors_origins": "https://tabsira.me",
     "session_cookie_domain": ".tabsira.me",
     "hash_secret": "not-a-real-secret-but-long-enough-for-the-rule",
@@ -53,6 +54,8 @@ def test_development_defaults(make_settings):
     assert (settings.api_host, settings.api_port) == ("127.0.0.1", 8000)
     assert settings.site_url == "https://tabsira.test"
     assert settings.api_url == "https://api.tabsira.test"
+    assert settings.admin_url == "https://admin.tabsira.test"
+    assert settings.admin_host == "admin.tabsira.test"
     assert settings.cors_origins == ["https://tabsira.test"]
     assert settings.db_connect_timeout == 3.0
     assert settings.sync_database_url is None
@@ -340,9 +343,9 @@ def test_test_database_must_end_in_test(make_settings):
     ],
 )
 def test_public_urls_are_normalised(make_settings, value, expected):
-    settings = make_settings(site_url=value, api_url=value)
+    settings = make_settings(site_url=value, api_url=value, admin_url=value)
 
-    assert (settings.site_url, settings.api_url) == (expected, expected)
+    assert (settings.site_url, settings.api_url, settings.admin_url) == (expected,) * 3
 
 
 @pytest.mark.parametrize(
@@ -387,11 +390,17 @@ def test_a_correct_production_configuration_is_accepted(make_settings):
 
 def test_production_refuses_every_test_domain_url():
     message = errors_of(
-        **{**PRODUCTION, "site_url": "https://tabsira.test", "api_url": "https://api.tabsira.test"}
+        **{
+            **PRODUCTION,
+            "site_url": "https://tabsira.test",
+            "api_url": "https://api.tabsira.test",
+            "admin_url": "https://admin.tabsira.test",
+        }
     )
 
     assert "SITE_URL points at the development host https://tabsira.test" in message
     assert "API_URL points at the development host https://api.tabsira.test" in message
+    assert "ADMIN_URL points at the development host https://admin.tabsira.test" in message
 
 
 def test_production_refuses_a_test_domain_cors_origin():

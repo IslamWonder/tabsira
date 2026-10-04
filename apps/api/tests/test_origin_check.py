@@ -112,7 +112,7 @@ async def test_websocket_and_lifespan_scopes_pass_through(make_settings):
     async def app(scope, receive, send):
         seen.append(scope["type"])
 
-    middleware = OriginCheckMiddleware(app, ["https://tabsira.test"])
+    middleware = OriginCheckMiddleware(app, ["https://tabsira.test"], "https://admin.tabsira.test")
 
     await middleware({"type": "lifespan"}, None, None)
     await middleware({"type": "websocket", "method": "POST", "headers": []}, None, None)

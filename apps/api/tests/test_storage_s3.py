@@ -309,6 +309,7 @@ def test_production_refuses_the_local_store(make_settings):
         "environment": "production",
         "site_url": "https://tabsira.me",
         "api_url": "https://api.tabsira.me",
+        "admin_url": "https://admin.tabsira.me",
         "cors_origins": "https://tabsira.me",
         "session_cookie_domain": ".tabsira.me",
         "hash_secret": "not-a-real-secret-but-long-enough-for-the-rule",

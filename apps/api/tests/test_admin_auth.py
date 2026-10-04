@@ -74,7 +74,7 @@ async def test_a_right_password_opens_a_twelve_hour_strict_session_and_is_audite
     response = await sign_in(anon)
 
     assert response.status_code == 302
-    assert response.headers["location"] == "https://api.tabsira.test/admin/"
+    assert response.headers["location"] == "https://admin.tabsira.test/admin/"
     cookies = response.headers.get_list("set-cookie")
     session_cookie = next(c for c in cookies if c.startswith("__Secure-tabsira_admin="))
     assert "Max-Age=43200" in session_cookie

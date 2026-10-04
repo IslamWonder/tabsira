@@ -204,7 +204,7 @@ async def test_nothing_the_admin_serves_comes_from_another_host(admin):
 
     hosts = set(re.findall(r'(?:src|href)="(https?://[^/"]+)', page))
 
-    assert hosts <= {"https://api.tabsira.test"}
+    assert hosts <= {"https://admin.tabsira.test"}
 
 
 # ─── The helpers ───────────────────────────────────────────────────

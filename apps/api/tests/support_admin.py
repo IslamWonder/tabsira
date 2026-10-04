@@ -37,7 +37,7 @@ from src.models import (
 
 ADMIN_PASSWORD = "an admin passphrase"
 ADMIN_EMAIL = "admin@example.com"
-API_ORIGIN = "https://api.tabsira.test"
+ADMIN_ORIGIN = "https://admin.tabsira.test"
 TOKEN_FIELD = re.compile(r'name="csrf_token" value="([^"]*)"')
 META_TOKEN = re.compile(r'<meta name="csrf-token" content="([^"]*)"')
 
@@ -75,11 +75,11 @@ def admin_app(make_admin_app: Callable[..., FastAPI]) -> FastAPI:
 
 
 def browser(application: FastAPI) -> AsyncClient:
-    """A browser on the admin's own origin: HTTPS, the API's address, a cookie jar."""
+    """A browser on the admin's own origin: HTTPS, the admin host, a cookie jar."""
     return AsyncClient(
         transport=ASGITransport(app=application, raise_app_exceptions=False),
-        base_url=API_ORIGIN,
-        headers={"Origin": API_ORIGIN},
+        base_url=ADMIN_ORIGIN,
+        headers={"Origin": ADMIN_ORIGIN},
     )
 
 

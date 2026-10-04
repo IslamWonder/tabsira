@@ -137,7 +137,7 @@ async def test_the_banner_asks_for_the_second_factor_until_it_is_on(admin, movin
 
     before = await http.get("/admin/")
     assert "You have not turned on the second factor." in before.text
-    assert 'href="https://api.tabsira.test/admin/two-factor"' in before.text
+    assert 'href="https://admin.tabsira.test/admin/two-factor"' in before.text
 
     await enable_two_factor(http, moving_clock)
 

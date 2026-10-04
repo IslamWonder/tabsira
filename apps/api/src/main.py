@@ -6,13 +6,13 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from src.admin import install_admin
 from src.config import Settings, get_settings
 from src.database import dispose_engine
 from src.error_tracking import WebReporter, init_error_tracking, shutdown_error_tracking
 from src.errors import ErrorResponse, register_error_handlers
+from src.middleware.admin_scope import AdminHostMiddleware, NoCorsForAdminMiddleware
 from src.middleware.body_limit import BodyLimitMiddleware
 from src.middleware.no_store import NoStoreMiddleware
 from src.middleware.origin_check import OriginCheckMiddleware
@@ -102,13 +102,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "/consent": cookie_consent.MAX_BODY_BYTES,
         },
     )
-    app.add_middleware(OriginCheckMiddleware, allowed_origins=settings.allowed_origins)
+    app.add_middleware(
+        OriginCheckMiddleware,
+        allowed_origins=settings.allowed_origins,
+        admin_origin=settings.admin_url,
+    )
     app.add_middleware(NoStoreMiddleware)
     app.add_middleware(RequestIdMiddleware)
-    # Added last, so it is the outermost layer: a preflight is answered before
-    # anything else runs, and every response carries the CORS headers.
+    # Outermost but for the host gate: a preflight is answered before anything else runs and
+    # every response carries the CORS headers, except under /admin, which never does.
     app.add_middleware(
-        CORSMiddleware,
+        NoCorsForAdminMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
@@ -130,6 +134,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # The admin area is not mounted at all while its feature flag is off.
     if settings.feature_admin:
         install_admin(app, settings)
+        # Outside everything: a request for /admin on any host but the admin's is a plain 404
+        # before any other layer, the admin included, sees it.
+        app.add_middleware(AdminHostMiddleware, admin_host=settings.admin_host)
     return app
 
 

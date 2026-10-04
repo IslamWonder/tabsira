@@ -46,6 +46,7 @@ ENV_FILE_OVERRIDE = "TABSIRA_ENV_FILE"
 # Where the services run when nothing else is configured: local development only.
 DEV_SITE_URL = "https://tabsira.test"
 DEV_API_URL = "https://api.tabsira.test"
+DEV_ADMIN_URL = "https://admin.tabsira.test"
 
 # Accounts. The cookie domain lets the web app and the API, on sibling subdomains,
 # share the session; the .test value is development-only like the URLs above.
@@ -355,6 +356,10 @@ class Settings(BaseSettings):
     # are refused in production.
     site_url: str = DEV_SITE_URL
     api_url: str = DEV_API_URL
+    # Where the admin area (/admin) is served: its own host, reachable through the VPN only.
+    # The /admin mount answers requests for this host and no other, and its state-changing
+    # requests are accepted from this origin alone.
+    admin_url: str = DEV_ADMIN_URL
     # Browser origins allowed to call the API, comma separated in the environment.
     cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=lambda: [DEV_SITE_URL])
 
@@ -524,7 +529,7 @@ class Settings(BaseSettings):
     def _check_origins(cls, value: list[str]) -> list[str]:
         return [_origin(origin) for origin in value]
 
-    @field_validator("site_url", "api_url")
+    @field_validator("site_url", "api_url", "admin_url")
     @classmethod
     def _check_public_url(cls, value: str) -> str:
         return _origin(value)
@@ -704,6 +709,7 @@ class Settings(BaseSettings):
                 [
                     ("SITE_URL", self.site_url),
                     ("API_URL", self.api_url),
+                    ("ADMIN_URL", self.admin_url),
                     ("WEB_BASE_URL", self.web_base_url),
                     ("S3_PUBLIC_BASE_URL", self.s3_public_base_url),
                 ]
@@ -778,6 +784,11 @@ class Settings(BaseSettings):
     def mail_link_base(self) -> str:
         """Base of the links in mail: WEB_BASE_URL, else the web app's own address."""
         return self.web_base_url or self.site_url
+
+    @property
+    def admin_host(self) -> str:
+        """The host (lower case, with its port when ADMIN_URL has one) the admin area answers to."""
+        return urlsplit(self.admin_url).netloc.lower()
 
     @property
     def allowed_origins(self) -> frozenset[str]:
