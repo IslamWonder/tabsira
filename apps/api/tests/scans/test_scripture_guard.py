@@ -225,7 +225,7 @@ async def test_the_spans_are_rebuilt_when_a_verse_is_corrected(store):
     async with store() as db:
         await db.execute(text("REFRESH MATERIALIZED VIEW quran_verse_spans WITH NO DATA"))
         # The import corrects 30:50 to an earlier real encoding of it.
-        await store_quran(db, text_30_50=load_json("kfgqpc-v13-30-50.json")["text"])
+        await store_quran(db, earlier={(30, 50): load_json("kfgqpc-v13-30-50.json")["text"]})
 
         assert await overlap.repeats_store(db, [quoted])
 

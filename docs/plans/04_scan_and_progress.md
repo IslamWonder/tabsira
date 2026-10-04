@@ -1,6 +1,6 @@
 # 04 · Photo to scan, with honest progress
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 17:21 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 17:30 (Tunis)
 
 A person takes or uploads a photo. They see honest stages (understanding, searching, verifying, composing), can point at what matters and answer one question.
 
@@ -66,7 +66,7 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 
 ### 04.7 Refresh the verse spans once per Quran sync
 
-- **Status:** ⬜ open
+- **Status:** ✅ 2026-10-04 17:30
 - **Goal:** `refresh_verse_spans` runs once at the end of a correction batch (end of `reconcile_verses`, after the loop in `quran_sync._apply_rows`), or `REFRESH MATERIALIZED VIEW CONCURRENTLY`, instead of once per corrected verse.
 - **Depends on:** 04.1
 - **Touches:** apps/api/src/scripture/quran.py, quran_sync.py.

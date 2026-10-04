@@ -39,6 +39,7 @@ from src.scripture.quran import (
     load_json_file,
     parse_mushaf,
     reconcile_verses,
+    refresh_verse_spans,
 )
 from src.scripture.quranpedia import (
     API_URL,
@@ -109,6 +110,8 @@ async def collect_changes(
 async def _apply_rows(
     session: AsyncSession, client: QuranpediaClient, rows: list[ChangedAyah], report: SyncReport
 ) -> None:
+    """Refetch and apply every changed verse, then rebuild the verse spans once if any changed."""
+    corrected = 0
     for row in rows:
         fetched = await client.ayah(row)
         verse = await session.scalar(
@@ -125,8 +128,11 @@ async def _apply_rows(
             continue
         source = f"{API_URL}{row.refetch.removeprefix('/v1')} changed {row.changed_at}"
         await apply_correction(session, verse, fetched.text, change_tag(row.changed_at), source)
-        report.corrected += 1
+        corrected += 1
         report.corrections.append(f"{row.surah}:{row.ayah}")
+    if corrected:
+        await refresh_verse_spans(session)
+    report.corrected += corrected
 
 
 async def _apply_dump(

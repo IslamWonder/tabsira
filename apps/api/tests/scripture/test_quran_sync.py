@@ -6,18 +6,27 @@ from datetime import date
 
 import httpx
 import pytest
-from sqlalchemy import func, select, text
+from sqlalchemy import event, func, select, text
 
 from src.cli import sync_quran as sync_command
-from src.models import QuranVerse, QuranVerseHistory, ScriptureAudit, ScriptureSyncState
+from src.models import (
+    QuranVerse,
+    QuranVerseHistory,
+    QuranVerseSearch,
+    ScriptureAudit,
+    ScriptureSyncState,
+)
+from src.models.scripture import quran_verse_spans
 from src.scripture import quran, quran_sync
 from src.scripture.guard import WritePurpose, allow_scripture_writes
+from src.scripture.guard_fold import guard_fold
 from src.scripture.quran_sync import SyncError, collect_changes, sync_quran
 from src.scripture.text import sha256_hex
 from tests.scripture.fake_http import FakeQuranpedia, dump_routes, json_response
 from tests.scripture.fixtures import fixture_path, load_json, store_quran, verse_text
 
 EARLIER_30_50 = load_json("kfgqpc-v13-30-50.json")["text"]
+EARLIER_2_49 = load_json("kfgqpc-v13-2-49.json")["text"]
 UNTIL = "2026-10-05T03:00:00+00:00"
 
 
@@ -58,8 +67,13 @@ def _verse_answer(surah: int, ayah: int) -> httpx.Response:
     )
 
 
-async def _store(session, *, stale_30_50: bool = True) -> None:
-    await store_quran(session, text_30_50=EARLIER_30_50 if stale_30_50 else None)
+async def _store(session, *, stale_30_50: bool = True, stale_2_49: bool = False) -> None:
+    earlier = {}
+    if stale_30_50:
+        earlier[30, 50] = EARLIER_30_50
+    if stale_2_49:
+        earlier[2, 49] = EARLIER_2_49
+    await store_quran(session, earlier=earlier)
     await allow_scripture_writes(session, WritePurpose.SYNC)
 
 
@@ -174,6 +188,85 @@ async def test_the_dump_replaces_refetching_when_the_feed_cannot_be_read_whole_o
     assert state is not None
     assert state.dump_version == "2026-10-03"
     assert not any(r.url.path.startswith("/v1/mushafs") for r in fake.requests)
+
+
+class RefreshCounter:
+    """Counts the rebuilds of the verse spans the database is asked for."""
+
+    def __init__(self, engine) -> None:
+        self.engine = engine.sync_engine
+        self.count = 0
+
+    def __enter__(self):
+        event.listen(self.engine, "before_cursor_execute", self._seen)
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        event.remove(self.engine, "before_cursor_execute", self._seen)
+
+    def _seen(self, _conn, _cursor, statement, *_rest) -> None:
+        if statement.lstrip().startswith("REFRESH MATERIALIZED VIEW"):
+            self.count += 1
+
+
+async def _spans_follow_the_search_copies(session) -> None:
+    rows = (
+        await session.execute(
+            select(QuranVerseSearch.guard_text, quran_verse_spans.c.guard_text).join(
+                quran_verse_spans, quran_verse_spans.c.verse_id == QuranVerseSearch.verse_id
+            )
+        )
+    ).all()
+    assert len(rows) == 18
+    assert all(span == guard or span.startswith(f"{guard} ") for guard, span in rows)
+
+
+@pytest.mark.parametrize("via_dump", [False, True])
+async def test_several_corrections_rebuild_the_verse_spans_once(
+    db_session, engine, tmp_path, monkeypatch, via_dump
+):
+    await _store(db_session, stale_2_49=True)
+    # Emptied first, so only a real rebuild can fill it again.
+    await db_session.execute(text("REFRESH MATERIALIZED VIEW quran_verse_spans WITH NO DATA"))
+    if via_dump:
+        monkeypatch.setattr(quran, "COMPLETE_SURAHS", 4)
+        monkeypatch.setattr(quran, "COMPLETE_VERSES", 18)
+        monkeypatch.setattr(quran_sync, "MAX_REFETCH", 0)
+    routes = {
+        "/v1/changes": _feed([_row(2, 49), _row(30, 50)]),
+        "/v1/mushafs/2/2/49": _verse_answer(2, 49),
+        "/v1/mushafs/2/30/50": _verse_answer(30, 50),
+        **dump_routes(),
+    }
+
+    with RefreshCounter(engine) as refreshes:
+        report = await sync_quran(db_session, FakeQuranpedia(routes).client(), cache_dir=tmp_path)
+        rebuilt = refreshes.count
+        # Nothing left to correct: the spans are not rebuilt for nothing.
+        again = await sync_quran(db_session, FakeQuranpedia(routes).client(), cache_dir=tmp_path)
+
+    assert (report.corrected, again.corrected) == (2, 0)
+    assert (rebuilt, refreshes.count) == (1, 1)
+    corrected = {
+        verse.id: verse
+        for verse in await db_session.scalars(
+            select(QuranVerse).where(QuranVerse.surah.in_([2, 30]), QuranVerse.ayah.in_([49, 50]))
+        )
+    }
+    assert {(v.surah, v.ayah): v.text for v in corrected.values()} == {
+        (2, 49): verse_text(2, 49),
+        (30, 50): verse_text(30, 50),
+    }
+    spans = dict(
+        (
+            await db_session.execute(
+                select(quran_verse_spans.c.verse_id, quran_verse_spans.c.guard_text)
+            )
+        ).all()
+    )
+    for verse_id, verse in corrected.items():
+        assert spans[verse_id].startswith(guard_fold(verse.text))
+    await _spans_follow_the_search_copies(db_session)
 
 
 async def test_a_partial_dump_is_never_synced_from(db_session, tmp_path, monkeypatch):

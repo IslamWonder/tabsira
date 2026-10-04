@@ -8,8 +8,9 @@ Real rows copied from the downloaded sources, for the scripture tests. Nothing h
 - `quranpedia-surahs.json`: the same surahs from `surahs.json.gz`, five information fields kept.
 - `quranpedia-changes.json`: `GET /v1/changes?since=2026-08-08`, three ayah rows kept.
 - `quranpedia-ayah-2-30-50.json`: `GET /v1/mushafs/2/30/50`.
-- `kfgqpc-v13-30-50.json`: verse 30:50 of fawazahmed0 `ara-quranuthmanihaf` (King Fahd
-  Complex text, version 13), a real earlier encoding of the same verse.
+- `kfgqpc-v13-30-50.json`, `kfgqpc-v13-2-49.json`: verses 30:50 and 2:49 of fawazahmed0
+  `ara-quranuthmanihaf` (King Fahd Complex text, version 13), real earlier encodings of the
+  same verses.
 - `ara-bukhari.json`, `ara-muslim.json`, `ara-abudawud.json`: a few hadiths of the
   fawazahmed0 hadith-api editions (commit df57907b), metadata trimmed to their sections.
 - `musnad-ahmad.csv`, `sunan-al-darimi.csv`: the first two rows of the Open-Hadith-Data
@@ -23,6 +24,7 @@ from __future__ import annotations
 
 import copy
 import json
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -62,14 +64,15 @@ def hadith_text(book: str, number: float) -> str:
     raise KeyError((book, number))
 
 
-async def store_quran(session: AsyncSession, *, text_30_50: str | None = None) -> None:
-    """Import the fixture mushaf as the importer does, optionally with another real text of 30:50."""
+async def store_quran(
+    session: AsyncSession, *, earlier: Mapping[tuple[int, int], str] | None = None
+) -> None:
+    """Import the fixture mushaf as the importer does, some verses in another real encoding."""
     raw = copy.deepcopy(load_json("quranpedia-mushafs-2.json"))
-    if text_30_50 is not None:
-        for surah in raw["data"]["surahs"]:
-            for verse in surah["ayahs"]:
-                if (surah["id"], verse["number"]) == (30, 50):
-                    verse["text"] = text_30_50
+    for surah in raw["data"]["surahs"]:
+        for verse in surah["ayahs"]:
+            if (surah["id"], verse["number"]) in (earlier or {}):
+                verse["text"] = (earlier or {})[surah["id"], verse["number"]]
     await allow_scripture_writes(session, WritePurpose.IMPORT)
     await import_quran(
         session,

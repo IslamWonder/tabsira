@@ -8,8 +8,9 @@ from the feed that carries a different text replaces it through
 one is stored with its own hash and version, and an audit row records both
 hashes and where the new text came from. Nothing here edits a text.
 
-Whenever a search copy is added or replaced, the verse spans the leak guard
-reads across verses (`quran_verse_spans`) are rebuilt in the same transaction.
+The verse spans the leak guard reads across verses (`quran_verse_spans`) are
+rebuilt once at the end of a batch that added or replaced a search copy (an
+import, a sync run), in the same transaction, not once per verse.
 """
 
 from __future__ import annotations
@@ -177,7 +178,11 @@ def dump_tag(version: str) -> str:
 async def apply_correction(
     session: AsyncSession, verse: QuranVerse, text: str, version: str, source: str
 ) -> None:
-    """Replace the text of `verse`, keeping the previous one in history and auditing both hashes."""
+    """
+    Replace the text of `verse`, keeping the previous one in history and auditing both hashes.
+
+    The caller refreshes the verse spans once its batch of corrections is done.
+    """
     previous = verse.text_sha256
     session.add(
         QuranVerseHistory(
@@ -200,7 +205,6 @@ async def apply_correction(
         .where(QuranVerseSearch.verse_id == verse.id)
         .values(normalized_text=search_copy(text), guard_text=guard_fold(text))
     )
-    await refresh_verse_spans(session)
     session.add(
         ScriptureAudit(
             entity="quran_verse",
@@ -277,6 +281,7 @@ async def reconcile_verses(
     }
     tag = dump_tag(dump.version)
     new_rows: list[dict[str, Any]] = []
+    corrected = 0
     for ayah in dump.verses():
         verse = existing.get((ayah.surah, ayah.number))
         facts = {"quranpedia_ayah_id": ayah.id, "page": ayah.page_number, "juz": ayah.juz}
@@ -295,7 +300,7 @@ async def reconcile_verses(
             continue
         if verse.text_sha256 != sha256_hex(ayah.text):
             await apply_correction(session, verse, ayah.text, tag, source)
-            report.corrected += 1
+            corrected += 1
         elif any(getattr(verse, name) != value for name, value in facts.items()):
             report.metadata_updated += 1
         else:
@@ -318,12 +323,14 @@ async def reconcile_verses(
                 for verse_id, text in inserted
             ],
         )
+    if new_rows or corrected:
         await refresh_verse_spans(session)
+    report.corrected += corrected
     report.inserted = len(new_rows)
 
 
 async def refresh_verse_spans(session: AsyncSession) -> None:
-    """Rebuild the folded verse spans from the search copies (a few thousand short rows)."""
+    """Rebuild the folded verse spans from the search copies (a few thousand short rows), once a batch."""
     spans = f"{quran_verse_spans.schema}.{quran_verse_spans.name}"
     await session.execute(sa_text(f"REFRESH MATERIALIZED VIEW {spans}"))
 
