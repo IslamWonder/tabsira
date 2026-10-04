@@ -78,6 +78,15 @@ class Messages:
     # Rules that forbid an inference, stated for the prompts and for the person.
     rule_no_diagnosis: str
     rule_no_person_identity: str
+    # The insight engine: content level «د» (master prompt v2 §12) ends with this
+    # referral, and «لماذا ظهر هذا؟» says honestly what of the learner was used.
+    engine_referral: str
+    engine_reason_first_steps: str
+    engine_reason_next_step: str
+    # `{unit}` is the title of a learning unit the learner completed.
+    engine_reason_deeper: str
+    engine_reason_review: str
+    engine_reason_new_text: str
 
 
 ARABIC = Messages(
@@ -159,6 +168,14 @@ ARABIC = Messages(
     question_unknown_constraint="وضّح لنا ما تقصده في «{label}» حتى نكمل.",
     rule_no_diagnosis="لا يُستنتج أي تشخيص طبي أو نفسي أو صحي من الصورة.",
     rule_no_person_identity="لا تُستنتج هوية أي شخص ولا علاقته بغيره من الصورة.",
+    engine_referral="هذه معلومة عامة؛ أمّا حالتك الخاصة فاسأل عنها أهل العلم المؤهلين.",
+    engine_reason_first_steps="اخترنا مدخلًا قريبًا لأن هذه من أولى بصائرك.",
+    engine_reason_next_step="هذه خطوة تالية لما فتحته من قبل في مسارك.",
+    engine_reason_deeper="سبق أن أتممت «{unit}»، فهنا إضافة جديدة عليه.",
+    engine_reason_review="سبق أن رأيت هذا النص، ونعيده هنا مراجعةً لأنه الأقرب إلى المشهد.",
+    engine_reason_new_text=(
+        "اخترنا نصًا لم تره من قبل وصلته بالمشهد بالقوة نفسها، لتكتشف تنوع نصوص الوحي."
+    ),
 )
 
 CATALOGS: dict[str, Messages] = {ARABIC.language: ARABIC}
