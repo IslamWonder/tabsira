@@ -104,7 +104,9 @@ describe('the share card image', () => {
     expect(texts).toContain(insight.title);
     expect(texts).toContain('وسم للاختبار');
     expect(texts).toContain('ملاحظة للاختبار');
-    expect(texts).toContain(`${messages.shareCard.by} اسم للاختبار @tester`);
+    // The handle is isolated, so it keeps its own direction inside the right-to-left line.
+    expect(texts).toContain(messages.shareCard.author('اسم للاختبار', 'tester'));
+    expect(messages.shareCard.author('اسم للاختبار', 'tester')).toContain('\u2066@tester\u2069');
     expect(texts).toContain(messages.brand.name);
     expect(texts).toContain('tabsira.test');
     expect(texts).toContain(insight.disclosure);
@@ -147,6 +149,14 @@ describe('the share card image', () => {
     const sizes = specs.filter((spec) => spec.text === insight.title).map((spec) => spec.size);
     expect(sizes[0]).toBe(46);
     expect(sizes.length).toBeGreaterThan(1);
+  });
+
+  it('draws each piece of text once in a card, whatever candidates were tried', async () => {
+    const { specs } = await render(withLongScripture(publicInsightOut(), 40, 400));
+    const keys = specs.map((spec) =>
+      JSON.stringify([spec.text, spec.face.file, spec.weight, spec.size, spec.width, spec.align])
+    );
+    expect(new Set(keys).size).toBe(keys.length);
   });
 
   it('renders a typical insight in under one second', async () => {

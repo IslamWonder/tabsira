@@ -55,8 +55,10 @@ describe('ShareSheet', () => {
     const sheet = renderSheet();
     expect(sheet).toHaveAccessibleDescription('[العنوان]');
     const said = within(sheet).getByText(/عند النشر تصير البصيرة صفحةً عامة/);
-    expect(said).toHaveTextContent('ولا اسمك إلا إن اخترت اسمًا عامًّا');
+    expect(said).toHaveTextContent('صفحةً عامة وصورةَ مشاركة يراهما أي شخص');
+    expect(said).toHaveTextContent('ولا اسمك العام ومعرّفك إلا إن اخترتهما');
     expect(said).toHaveTextContent('لا تظهر فيها صورتك ولا موقعك ولا محادثتك');
+    expect(said).toHaveTextContent('إلا ما نسخه غيرك قبل ذلك');
     expect(within(sheet).getByRole('button', { name: 'انشر وشارك' })).toBeEnabled();
     expect(within(sheet).queryByRole('button', { name: 'اسحب النشر' })).toBeNull();
   });
@@ -114,12 +116,15 @@ describe('ShareSheet', () => {
     expect(within(sheet).getByText(URL_OF_PAGE)).toBeInTheDocument();
   });
 
-  it('uses the address of the insight when the API does not send a path', async () => {
+  it('treats a missing path in the answer as a failure, and builds no address itself', async () => {
     mockApi({ [`PUT /insights/${ID}/publication`]: { body: { ...PUBLISHED, path: null } } });
-    stubShare(vi.fn().mockResolvedValue(undefined));
+    const share = vi.fn();
+    stubShare(share);
     const sheet = renderSheet();
     await userEvent.click(within(sheet).getByRole('button', { name: 'انشر وشارك' }));
-    expect(await within(sheet).findByText(URL_OF_PAGE)).toBeInTheDocument();
+    expect(await within(sheet).findByRole('alert')).toHaveTextContent('حدث خطأ من جهتنا');
+    expect(share).not.toHaveBeenCalled();
+    expect(within(sheet).getByRole('button', { name: 'انشر وشارك' })).toBeEnabled();
   });
 
   it('says in Arabic why an insight cannot be published, and stays unpublished', async () => {
@@ -145,15 +150,18 @@ describe('ShareSheet', () => {
     );
   });
 
-  it('starts from the published state, and asks for the address again before sharing it', async () => {
-    const api = mockApi({ [`PUT /insights/${ID}/publication`]: { body: PUBLISHED } });
+  it('starts from the published state and shares the known address without publishing again', async () => {
+    const api = mockApi({});
     const share = vi.fn().mockResolvedValue(undefined);
     stubShare(share);
     const sheet = renderSheet({ published: true });
     expect(within(sheet).getByText(/هذه البصيرة منشورة الآن/)).toBeInTheDocument();
     await userEvent.click(within(sheet).getByRole('button', { name: 'شارك الرابط' }));
-    await waitFor(() => expect(share).toHaveBeenCalledOnce());
-    expect(api.requests).toHaveLength(1);
+    await waitFor(() =>
+      expect(share).toHaveBeenCalledWith({ title: '[العنوان]', url: URL_OF_PAGE })
+    );
+    expect(api.requests).toHaveLength(0);
+    expect(within(sheet).getByText(URL_OF_PAGE)).toBeInTheDocument();
   });
 
   it('withdraws, takes the address away and goes back to what publishing would make public', async () => {

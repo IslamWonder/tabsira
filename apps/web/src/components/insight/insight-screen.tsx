@@ -2,6 +2,7 @@
 
 import type { Route } from 'next';
 import { useState } from 'react';
+import { useSession } from '@/account/session';
 import { StatusScreen } from '@/components/app/status-screen';
 import { ReadingLayout } from '@/components/layout/layouts';
 import { Button, LinkButton } from '@/components/ui/button';
@@ -81,6 +82,7 @@ export function InsightScreen({ insightId }: { insightId: string }) {
   const [whyOpen, setWhyOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const session = useSession();
   const [invitationClosed, setInvitationClosed] = useState(false);
 
   if (load.phase === 'loading') {
@@ -114,6 +116,8 @@ export function InsightScreen({ insightId }: { insightId: string }) {
   const backHref = backTo(insight);
   const seen = insight.explanation.find((part) => part.section === 'seen');
   const { chat } = insight;
+  // The API publishes only a signed-in owner's insight from the real analysis; offer sharing only then.
+  const canShare = session.status === 'signed-in' && insight.engine === 'pipeline';
 
   return (
     <>
@@ -131,7 +135,7 @@ export function InsightScreen({ insightId }: { insightId: string }) {
               onDone={() => {
                 void controls.complete();
               }}
-              onShare={() => setShareOpen(true)}
+              onShare={canShare ? () => setShareOpen(true) : undefined}
             />
           </div>
         }
@@ -191,13 +195,15 @@ export function InsightScreen({ insightId }: { insightId: string }) {
       </ReadingLayout>
 
       <WhySheet open={whyOpen} onClose={() => setWhyOpen(false)} insight={insight} />
-      <ShareSheet
-        open={shareOpen}
-        onClose={() => setShareOpen(false)}
-        insightId={insight.id}
-        insightTitle={insight.title}
-        published={insight.published_at !== null}
-      />
+      {canShare ? (
+        <ShareSheet
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+          insightId={insight.id}
+          insightTitle={insight.title}
+          published={insight.published_at !== null}
+        />
+      ) : null}
       <ChatSheet
         open={chatOpen}
         onClose={() => setChatOpen(false)}

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Notice, type NoticeTone } from '@/components/ui/notice';
 import { Sheet } from '@/components/ui/sheet';
 import type { Failure } from '@/lib/api/result';
+import { publicInsightPath } from '@/lib/public-insight';
 import { journeyFailureMessage } from '@/lib/scan/failure';
 import { siteOrigin } from '@/lib/site';
 import { messages } from '@/messages';
@@ -24,6 +25,11 @@ export interface ShareSheetProps {
   insightTitle: string;
   /** Whether the insight is public when the screen loads: the owner's own `published_at`. */
   published: boolean;
+}
+
+/** The page's address on this site, from the path the API names or, for an insight already public, the known one. */
+function addressOf(path: string): string {
+  return new URL(path, siteOrigin()).toString();
 }
 
 function refusal(failure: Failure): string {
@@ -63,9 +69,17 @@ async function shareLink(title: string, url: string): Promise<Said | null> {
  */
 export function ShareSheet({ open, onClose, insightId, insightTitle, published }: ShareSheetProps) {
   const [isPublic, setIsPublic] = useState(published);
-  const [link, setLink] = useState<string | null>(null);
+  const [link, setLink] = useState<string | null>(
+    published ? addressOf(publicInsightPath(insightId)) : null
+  );
   const [working, setWorking] = useState(false);
   const [said, setSaid] = useState<Said | null>(null);
+
+  const shareKnown = async (address: string) => {
+    setWorking(true);
+    setSaid(await shareLink(insightTitle, address));
+    setWorking(false);
+  };
 
   const publishAndShare = async () => {
     setWorking(true);
@@ -76,7 +90,13 @@ export function ShareSheet({ open, onClose, insightId, insightTitle, published }
       setWorking(false);
       return;
     }
-    const address = new URL(result.data.path ?? `/insights/${insightId}`, siteOrigin()).toString();
+    // The API names the page's path; without it there is no address to hand out.
+    if (result.data.path === null) {
+      setSaid({ tone: 'error', text: messages.errors.server });
+      setWorking(false);
+      return;
+    }
+    const address = addressOf(result.data.path);
     setIsPublic(true);
     setLink(address);
     setSaid(await shareLink(insightTitle, address));
@@ -119,7 +139,17 @@ export function ShareSheet({ open, onClose, insightId, insightTitle, published }
         <div role="alert">
           {said?.tone === 'error' ? <Notice tone="error">{said.text}</Notice> : null}
         </div>
-        <Button onClick={publishAndShare} disabled={working} aria-busy={working}>
+        <Button
+          onClick={() => {
+            if (isPublic && link !== null) {
+              void shareKnown(link);
+            } else {
+              void publishAndShare();
+            }
+          }}
+          disabled={working}
+          aria-busy={working}
+        >
           {working ? T.working : isPublic ? T.share : T.publishAndShare}
         </Button>
         {isPublic ? (

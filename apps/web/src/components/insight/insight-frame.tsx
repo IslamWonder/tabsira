@@ -230,7 +230,8 @@ export function InsightTools({
 export interface InsightActionsProps {
   status?: DoneStatus;
   onDone: () => void;
-  onShare: () => void;
+  /** Left out when the insight cannot be shared: then there is no share button. */
+  onShare?: () => void;
 }
 
 /** the done button and sharing at the end of the reading column (Fitts: in the thumb zone on a phone). */
@@ -238,15 +239,17 @@ export function InsightActions({ status, onDone, onShare }: InsightActionsProps)
   return (
     <div className="flex items-center gap-2.5">
       <DoneButton status={status} onDone={onDone} className="flex-1" />
-      <Button
-        variant="secondary"
-        size="lg"
-        onClick={onShare}
-        className={cx('px-0 tablet:px-6', 'size-14 tablet:size-auto')}
-      >
-        <ShareIcon />
-        <span className="sr-only tablet:not-sr-only">{messages.insight.share}</span>
-      </Button>
+      {onShare === undefined ? null : (
+        <Button
+          variant="secondary"
+          size="lg"
+          onClick={onShare}
+          className={cx('px-0 tablet:px-6', 'size-14 tablet:size-auto')}
+        >
+          <ShareIcon />
+          <span className="sr-only tablet:not-sr-only">{messages.insight.share}</span>
+        </Button>
+      )}
     </div>
   );
 }

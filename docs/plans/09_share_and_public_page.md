@@ -1,6 +1,6 @@
 # 09 · Share card and public insight page
 
-**Phase:** 1 · **Priority:** High · **Status:** ✅ · **Updated:** 2026-10-04 18:48 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** ⬜ · **Updated:** 2026-10-04 17:59 (Tunis)
 
 A shareable image of an insight with real Arabic fonts, and a public page for it, with no private data.
 
@@ -39,3 +39,4 @@ A shareable image of an insight with real Arabic fonts, and a public page for it
 - **Depends on:** 09.1
 - **Touches:** apps/web one image route and the share sheet.
 - **Done when:** The image shows the stored text exactly; renders under 1 s.
+- **Notes:** outside the Touches list, the card route is metered in `nginx/production/tabsira.me.conf` (and mirrored in `nginx/local/tabsira.test.conf`): its own `limit_req` zone, 2 requests a second with a burst of 10, the security headers included in that location; the privacy text (`docs/PRIVACY.md`, the privacy and terms pages) was updated for the card in the same task.

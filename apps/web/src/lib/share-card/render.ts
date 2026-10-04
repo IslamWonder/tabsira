@@ -15,12 +15,40 @@ import { drawText, type TextImage, type TextSpec } from './text-image';
 
 const T = messages.shareCard;
 
+type DrawText = (spec: TextSpec) => Promise<TextImage>;
+
+/** The faces and a drawing function that remembers what it drew during one render. */
+type Ctx = CardFaces & { readonly draw: DrawText };
+
+function memoised(): DrawText {
+  const drawn = new Map<string, Promise<TextImage>>();
+  return (spec) => {
+    const key = JSON.stringify([
+      spec.text,
+      spec.face.file,
+      spec.weight,
+      spec.size,
+      spec.leading,
+      spec.width,
+      spec.align,
+      spec.colour,
+    ]);
+    const known = drawn.get(key);
+    if (known !== undefined) {
+      return known;
+    }
+    const started = drawText(spec);
+    drawn.set(key, started);
+    return started;
+  };
+}
+
 type Draw = (overrides: Partial<TextSpec> & Pick<TextSpec, 'text'>) => Promise<TextImage>;
 
 /** The spec shared by the text of the card; each piece overrides what differs. */
-function drawer(faces: CardFaces, width: number): Draw {
+function drawer(faces: Ctx, width: number): Draw {
   return (overrides) =>
-    drawText({
+    faces.draw({
       face: faces.text[0] as CardFaces['text'][number],
       size: 22,
       leading: 0.25,
@@ -32,7 +60,7 @@ function drawer(faces: CardFaces, width: number): Draw {
 }
 
 /** The texts that do not depend on the candidate: the header, the footer and the labels. */
-async function fixedParts(insight: PublicInsight, host: string, faces: CardFaces) {
+async function fixedParts(insight: PublicInsight, host: string, faces: Ctx) {
   const draw = drawer(faces, 1000);
   const small = { size: 20, colour: COLOUR.muted } as const;
   const { author } = insight;
@@ -43,13 +71,13 @@ async function fixedParts(insight: PublicInsight, host: string, faces: CardFaces
     draw({ text: insight.disclosure, ...small, width: 640 }),
     author === null
       ? null
-      : draw({ text: `${T.by} ${author.public_name} @${author.handle}`, ...small, width: 380 }),
+      : draw({ text: T.author(author.public_name, author.handle), ...small, width: 380 }),
   ]);
   return { brand, host: hostImage, label, disclosure, author: authorImage };
 }
 
 /** The label and the reference that go with a text, drawn once. */
-async function labels(insight: PublicInsight, faces: CardFaces) {
+async function labels(insight: PublicInsight, faces: Ctx) {
   const draw = drawer(faces, 600);
   const quran = insight.quran;
   const hadith = insight.hadith;
@@ -79,7 +107,7 @@ function hadithLabels(hadith: NonNullable<PublicInsight['hadith']>, draw: Draw) 
   ]);
 }
 
-async function titleFor(insight: PublicInsight, shape: CardShape, faces: CardFaces) {
+async function titleFor(insight: PublicInsight, shape: CardShape, faces: Ctx) {
   const draw = drawer(faces, columnWidth(shape));
   let drawn = await draw({
     text: insight.title,
@@ -109,7 +137,7 @@ type Pair = [TextImage, TextImage] | null;
 async function sources(
   candidate: Candidate,
   insight: PublicInsight,
-  faces: CardFaces,
+  faces: Ctx,
   pairs: [Pair, Pair]
 ): Promise<{ verse: Source | null; hadith: Source | null }> {
   const sizes = blockSizes(candidate);
@@ -119,7 +147,7 @@ async function sources(
   const [verse, hadith] = await Promise.all([
     verseText === undefined || pairs[0] === null
       ? null
-      : drawText({
+      : faces.draw({
           text: verseText,
           face: faces.quran,
           size: sizes.verse,
@@ -130,7 +158,7 @@ async function sources(
         }),
     hadithText === undefined || pairs[1] === null
       ? null
-      : drawText({
+      : faces.draw({
           text: hadithText,
           face: faces.text[0] as CardFaces['text'][number],
           size: sizes.hadith,
@@ -180,14 +208,20 @@ function register(faces: CardFaces): Promise<void> {
         colour: COLOUR.text,
       })
     )
-  ).then(() => undefined);
+  )
+    .then(() => undefined)
+    .catch((error: unknown) => {
+      // A failed registration is tried again on the next card, not kept for good.
+      registered = undefined;
+      throw error;
+    });
   return registered;
 }
 
 async function partsFor(
   candidate: Candidate,
   insight: PublicInsight,
-  faces: CardFaces,
+  faces: Ctx,
   shared: { fixed: Awaited<ReturnType<typeof fixedParts>>; pairs: [Pair, Pair]; title: TextImage }
 ): Promise<Parts> {
   const { shape } = candidate;
@@ -209,7 +243,7 @@ type Shared = Parameters<typeof partsFor>[3];
  * smallest size, on the tall card. When not, no candidate with it is worth
  * drawing, and a very long hadith is not drawn again and again to find out.
  */
-async function hadithCanFit(insight: PublicInsight, faces: CardFaces, shared: Shared) {
+async function hadithCanFit(insight: PublicInsight, faces: Ctx, shared: Shared) {
   const smallest = candidates(true)
     .filter((candidate) => candidate.hadith)
     .at(-1) as Candidate;
@@ -219,8 +253,9 @@ async function hadithCanFit(insight: PublicInsight, faces: CardFaces, shared: Sh
 
 /** The card as PNG bytes, with the fonts of this repository and no network. */
 export async function renderCard(insight: PublicInsight, host: string): Promise<Buffer> {
-  const faces = cardFaces();
-  await register(faces);
+  const base = cardFaces();
+  await register(base);
+  const faces: Ctx = { ...base, draw: memoised() };
   const fixed = await fixedParts(insight, host, faces);
   const pairs = await labels(insight, faces);
   const titles = new Map<CardShape, TextImage>();
