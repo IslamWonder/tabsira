@@ -24,7 +24,11 @@
 #   web goes back to its previous build. Migrations are not reverted.
 #
 # Usage (on the application host, as devops, from the clone):
-#   cd /opt/tabsira && ./deploy/deploy.sh [--dry-run]
+#   cd /opt/tabsira && ./deploy/deploy.sh [--dry-run] [api] [worker] [vision] [web]
+#   With no part named, all of them. `api` is the API, the migrations and the scan
+#   worker (they share the code); `worker` the scan worker alone; `vision` the
+#   detector (restarted); `web` the web build. `git pull && ./deploy/deploy.sh api web`
+#   works too: the pull inside is then a no-op.
 #   ./deploy/deploy.sh --rollback      back to the commit deployed before this one
 #   ./deploy/deploy.sh --check         read-only readiness check (deploy/check.sh)
 #
@@ -46,6 +50,7 @@ fi
 
 ORIGINAL_ARGS=("$@")
 ROLLBACK=false
+PARTS=""
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 	--dry-run)
@@ -63,9 +68,26 @@ while [[ $# -gt 0 ]]; do
 		sed -n '2,/^set -Eeuo/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//'
 		exit 0
 		;;
-	*) die "Unknown option: $1 (see --help)" ;;
+	api | worker | vision | web)
+		PARTS="$PARTS $1"
+		shift
+		;;
+	all)
+		PARTS="api worker vision web"
+		shift
+		;;
+	*) die "Unknown option: $1 (api, worker, vision, web, --dry-run, --rollback, --check; see --help)" ;;
 	esac
 done
+
+# No part named: deploy every part. `api` brings the scan worker, which runs the same code.
+PARTS="${PARTS:- api worker vision web}"
+[[ " $PARTS " != *" api "* || " $PARTS " == *" worker "* ]] || PARTS="$PARTS worker"
+wants() { [[ " $PARTS " == *" $1 "* ]]; }
+# Vision deployed implicitly is restarted only when its code changed; named, always.
+VISION_NAMED=false
+[[ " ${ORIGINAL_ARGS[*]-} " != *" vision "* ]] || VISION_NAMED=true
+wants vision || SKIP_VISION=true
 
 PRE_DEPLOY_BACKUP="${PRE_DEPLOY_BACKUP:-false}"
 SKIP_VISION="${SKIP_VISION:-false}"
@@ -97,16 +119,24 @@ take_lock() {
 
 # ─── Install, then roll every process onto the code in the clone ───
 install_dependencies() {
-	run_in "$REPO_DIR/apps/api" uv sync --frozen --no-dev
+	if wants worker; then
+		run_in "$REPO_DIR/apps/api" uv sync --frozen --no-dev
+	fi
 	if [[ "$SKIP_VISION" != "true" ]]; then
 		run_in "$REPO_DIR/services/vision" uv sync --frozen --no-dev
 	fi
-	run_in "$REPO_DIR" pnpm install --frozen-lockfile
+	if wants web; then
+		run_in "$REPO_DIR" pnpm install --frozen-lockfile
+	fi
 }
 
 roll_api_and_worker() {
-	bash "$DEPLOY_DIR/api-roll.sh" roll || sudo systemctl restart "$API_UNIT"
-	sudo systemctl restart "$WORKER_UNIT"
+	if wants api; then
+		bash "$DEPLOY_DIR/api-roll.sh" roll || sudo systemctl restart "$API_UNIT"
+	fi
+	if wants worker; then
+		sudo systemctl restart "$WORKER_UNIT"
+	fi
 }
 
 on_error() {
@@ -262,7 +292,7 @@ restart_vision_if_needed() {
 		echo "      would compare services/vision with the previous commit and run: sudo systemctl restart $VISION_UNIT"
 		return
 	fi
-	if ! systemctl is-active --quiet "$VISION_UNIT" ||
+	if $VISION_NAMED || ! systemctl is-active --quiet "$VISION_UNIT" ||
 		! git -C "$REPO_DIR" diff --quiet "$PREVIOUS_COMMIT" HEAD -- services/vision; then
 		sudo systemctl restart "$VISION_UNIT"
 		wait_until 180 curl -fsS --max-time 5 -o /dev/null "${DETECTOR_URL%/}/health" ||
@@ -287,6 +317,7 @@ health_gate() {
 		err "Last response: $(curl -sS --max-time 5 "$API_HEALTH_URL" 2>&1 | head -c 400)"
 		false
 	}
+	wants web || return 0
 	wait_until "$HEALTH_TIMEOUT" curl -fsS --max-time 5 -o /dev/null "http://127.0.0.1:${WEB_PORT}${WEB_HEALTH_PATH}"
 }
 
@@ -312,6 +343,7 @@ indexnow() {
 		return
 	fi
 	[[ "$ENVIRONMENT_NAME" == "production" ]] || return 0
+	wants web || return 0
 	# It warns and exits 0 on any failure, by design: the site is live either way.
 	(cd "$REPO_DIR" &&
 		SITE_URL="$(env_get "$ENV_FILE" SITE_URL)" \
@@ -355,6 +387,7 @@ if is_dry; then
 	log "web          127.0.0.1:${WEB_PORT}, ${WEB_INSTANCES} instance(s) (pm2 $PM2_APP), builds in $WEB_RELEASES_DIR"
 	log "vision       $DETECTOR_URL ($VISION_UNIT)"
 	log "scan worker  one process ($WORKER_UNIT), restarted after the API rolls"
+	log "parts        $PARTS"
 fi
 
 if $ROLLBACK; then
@@ -363,16 +396,27 @@ if $ROLLBACK; then
 fi
 
 preflight
+log "Deploying:$PARTS"
 backup
 pull
 install_and_build
-check_and_migrate
-build_web
+if wants worker; then
+	check_and_migrate
+fi
+if wants web; then
+	build_web
+fi
 PHASE="rolling"
-roll_api
-restart_worker
+if wants api; then
+	roll_api
+fi
+if wants worker; then
+	restart_worker
+fi
 restart_vision_if_needed
-roll_web
+if wants web; then
+	roll_web
+fi
 health_gate
 trap - ERR
 record_deployed
