@@ -33,6 +33,8 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 
+from src.geo.privacy import DEFAULT_CELL_METERS, MAX_CELL_METERS, MIN_CELL_METERS
+
 # Process variable that replaces the .env lookup: a path to read instead, or an
 # empty value to read no file at all. The test suite sets it so that a
 # developer's real .env, with its keys and URLs, can never reach a test.
@@ -298,6 +300,12 @@ class Settings(BaseSettings):
     feature_photo_storage: bool = True
     feature_canonical_verify: bool = True
     feature_admin: bool = True
+
+    # Side, in metres, of the grid cell a public location is rounded to (see
+    # src/geo/privacy.py). The limits are the ones that function enforces.
+    geo_approx_cell_meters: Annotated[float, Field(ge=MIN_CELL_METERS, le=MAX_CELL_METERS)] = (
+        DEFAULT_CELL_METERS
+    )
 
     # AI providers: one active provider, one settings block each. In the
     # environment the blocks are AI_OVH__API_KEY, AI_OPENAI__VISION_MODEL, ...
