@@ -30,6 +30,14 @@ export default function nextConfig(phase: string): NextConfig {
   return {
     output: 'standalone',
     outputFileTracingRoot: REPO_ROOT,
+    // The share card reads its fonts from disk at request time (src/lib/share-card/fonts.ts),
+    // a path the tracer cannot follow; name the files so a standalone build carries them.
+    outputFileTracingIncludes: {
+      '/insights/[id]/card': [
+        './src/fonts/UthmanicHafs_V22.ttf',
+        './node_modules/@fontsource/readex-pro/files/*-{arabic,latin}-{400,600}-normal.woff',
+      ],
+    },
     turbopack: { root: REPO_ROOT },
     poweredByHeader: false,
     // Our rules live in the root AGENTS.md; stop `next dev` writing its own copies.

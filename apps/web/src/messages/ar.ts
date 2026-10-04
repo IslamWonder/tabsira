@@ -1,4 +1,5 @@
 import { scanMessages } from './scan';
+import { shareMessages } from './share';
 
 /**
  * Every user-visible string of the web app (AGENTS.md: Arabic copy lives here,
@@ -1240,6 +1241,7 @@ export const ar = {
   },
 
   ...scanMessages,
+  ...shareMessages,
 } as const;
 
 export type Messages = typeof ar;
