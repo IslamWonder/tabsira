@@ -22,6 +22,7 @@ from src.routers import (
     auth,
     auth_email,
     client_errors,
+    cookie_consent,
     geo,
     google_auth,
     health,
@@ -38,6 +39,10 @@ OPENAPI_TAGS = [
         "description": "Sign up, sign in, sign out, Google, e-mail verification, password reset.",
     },
     {"name": "profile", "description": "The optional profile and the consent records."},
+    {
+        "name": "consent",
+        "description": "Cookie consent: the policy, the visitor's choice and the proof of it.",
+    },
     {"name": "account", "description": "Export and deletion of everything an account owns."},
     {"name": "geo", "description": "Place search, reverse lookup and countries from GeoNames."},
     {"name": "scripture", "description": "Quran verses and hadith, read-only, exactly as stored."},
@@ -87,7 +92,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     register_error_handlers(app)
 
     # Innermost of them, so a refusal still carries the request id and the CORS headers.
-    app.add_middleware(BodyLimitMiddleware, limits={"/client-errors": client_errors.MAX_BODY_BYTES})
+    app.add_middleware(
+        BodyLimitMiddleware,
+        limits={
+            "/client-errors": client_errors.MAX_BODY_BYTES,
+            "/consent": cookie_consent.MAX_BODY_BYTES,
+        },
+    )
     app.add_middleware(OriginCheckMiddleware, allowed_origins=settings.allowed_origins)
     app.add_middleware(NoStoreMiddleware)
     app.add_middleware(RequestIdMiddleware)
@@ -111,6 +122,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(geo.router)
     app.include_router(scripture.router)
     app.include_router(client_errors.router)
+    app.include_router(cookie_consent.router)
     return app
 
 

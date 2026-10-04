@@ -740,3 +740,24 @@ def test_production_refuses_a_development_error_tracker_host():
 
 def test_production_accepts_a_real_error_tracker_host(make_settings):
     assert make_settings(**PRODUCTION, glitchtip_dsn=DSN).glitchtip_configured
+
+
+# ─── Cookie consent ────────────────────────────────────────────────
+
+
+def test_cookie_consent_defaults_to_a_version_and_six_months(make_settings):
+    settings = make_settings()
+
+    assert settings.cookie_policy_version == "2026-10-04"
+    assert settings.consent_reask_days == 182
+    assert settings.consent_reask.days == 182
+
+
+@pytest.mark.parametrize("version", ["has space", "", "x" * 33, "bad/slash"])
+def test_the_cookie_policy_version_is_a_short_plain_token(version):
+    assert "COOKIE_POLICY_VERSION" in errors_of(cookie_policy_version=version)
+
+
+@pytest.mark.parametrize("days", [0, -1, 731])
+def test_the_reask_interval_is_between_a_day_and_two_years(days):
+    assert "CONSENT_REASK_DAYS" in errors_of(consent_reask_days=days)

@@ -33,3 +33,22 @@ QUESTION_UNKNOWN_CONSTRAINT = "وضّح لنا ما تقصده في «{label}» 
 
 RULE_NO_DIAGNOSIS = "لا يُستنتج أي تشخيص طبي أو نفسي أو صحي من الصورة."
 RULE_NO_PERSON_IDENTITY = "لا تُستنتج هوية أي شخص ولا علاقته بغيره من الصورة."
+
+# ─── Cookie consent: the categories a visitor chooses between (decision 32) ───
+
+CONSENT_NECESSARY_TITLE = "ضرورية"
+CONSENT_NECESSARY_DESCRIPTION = (
+    "تُبقيك مسجّلًا للدخول وتحمي حسابك وهذا الموقع. لا يعمل التطبيق من دونها،"
+    " ولذلك لا يمكن إيقافها، ولا تُستعمل في أي تحليل."
+)
+CONSENT_ANALYTICS_TITLE = "التحليلات"
+CONSENT_ANALYTICS_DESCRIPTION = (
+    "تساعدنا على فهم كيف يُستعمل تبصرة: أي الصفحات تُزار، وكم يدوم البقاء فيها،"
+    " وما الذي يُنقر عليه. تُستعمل لذلك خدمة Google Analytics. لا يُرسل إليها ملفك الشخصي،"
+    " ولا صورك، ولا ما تكتبه، ولا نص أي بصيرة أو آية، ولا موقعك، ولا بريدك الإلكتروني."
+)
+CONSENT_BEHAVIOUR_TITLE = "السلوك وخرائط التفاعل"
+CONSENT_BEHAVIOUR_DESCRIPTION = (
+    "تُسجَّل حركة المؤشر والتمرير والنقرات على صفحات تبصرة لنعرف أين يتعثّر الناس."
+    " تُستعمل لذلك خدمة Microsoft Clarity، وتُخفى فيها كل خانة كتابة وكل نص كتبه المستخدمون."
+)

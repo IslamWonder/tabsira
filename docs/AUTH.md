@@ -17,7 +17,7 @@ SameSite=Lax keeps the cookie off cross-site POSTs, but the web app and the API 
 - With no `Origin` but a `Sec-Fetch-Site` header, only `same-origin` and `none` pass.
 - With neither, the caller is not a browser (curl, a test, a server) and no cookie rides along on its own, so the request passes.
 
-A refusal is `403 {"error": "ORIGIN_NOT_ALLOWED"}`. Reads are never checked. Responses of `/auth`, `/profile`, `/consents` and `/account` carry `Cache-Control: no-store`.
+A refusal is `403 {"error": "ORIGIN_NOT_ALLOWED"}`. Reads are never checked. Responses of `/auth`, `/profile`, `/consents`, `/consent` (cookie consent, see `docs/PRIVACY.md`) and `/account` carry `Cache-Control: no-store`.
 
 ## Routes
 

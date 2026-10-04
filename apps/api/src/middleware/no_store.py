@@ -11,7 +11,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 # sign-in, the profile, the consents and the export. Their responses carry
 # `Cache-Control: no-store`, redirects and errors included, which is why this is
 # a middleware: a route that returns its own Response would escape a dependency.
-PRIVATE_PREFIXES = ("/auth", "/account", "/profile", "/consents")
+PRIVATE_PREFIXES = ("/auth", "/account", "/profile", "/consents", "/consent")
 
 
 class NoStoreMiddleware:

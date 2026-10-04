@@ -420,6 +420,12 @@ class Settings(BaseSettings):
     # Version part of the release name, for a checkout git cannot describe.
     glitchtip_release: Annotated[str, Field(pattern=r"^[A-Za-z0-9._+-]{0,100}$")] = ""
 
+    # Cookie consent (decision 32). The version names the current text of the cookie
+    # policy: raising it, because the text changed, asks every visitor again. A
+    # choice also lapses after CONSENT_REASK_DAYS (six months by default).
+    cookie_policy_version: Annotated[str, Field(pattern=r"^[A-Za-z0-9._-]{1,32}$")] = "2026-10-04"
+    consent_reask_days: Annotated[int, Field(ge=1, le=730)] = 182
+
     # AI providers: one active provider, one settings block each. In the
     # environment the blocks are AI_OVH__API_KEY, AI_OPENAI__VISION_MODEL, ...
     # OpenAI by measurement (docs/BENCHMARK.md): same quality as OVH's best on the
@@ -625,6 +631,11 @@ class Settings(BaseSettings):
     def glitchtip_web_dsn_value(self) -> str:
         """The DSN browser reports go to: the web project's, else the API project's; empty is off."""
         return self.glitchtip_web_dsn.get_secret_value() or self.glitchtip_dsn.get_secret_value()
+
+    @property
+    def consent_reask(self) -> timedelta:
+        """How long a cookie-consent choice stays in force."""
+        return timedelta(days=self.consent_reask_days)
 
     @property
     def session_ttl(self) -> timedelta:
