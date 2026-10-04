@@ -66,12 +66,15 @@ Verified 2026-10-04 16:37 (Tunis): the downloaded archive matches its SHA-256 an
 
 ## Import (development and production)
 
-1. The database has the scripture store (`make data`) and the three migration chains (`make migrate`), the last of which creates the `vectors` schema.
-2. In `../tabsira-data/vectors/` beside the checkout: `curl -fO https://s3-v2.riastorage.com/tabsira/vectors/tabsira-vectors-2026-10-04.tar.gz -fO https://s3-v2.riastorage.com/tabsira/vectors/tabsira-vectors-2026-10-04.tar.gz.sha256 && sha256sum -c tabsira-vectors-2026-10-04.tar.gz.sha256` (about 1 min 30 s from Tunis).
-3. `tar -xzf tabsira-vectors-2026-10-04.tar.gz`
-4. From the checkout: `DATABASE_URL=postgresql://user:password@127.0.0.1:5432/tabsira scripts/vectors/import.sh ../tabsira-data/vectors/tabsira-vectors-2026-10-04` (the SQLAlchemy `postgresql+asyncpg://` form is accepted too). Use the repository's script, not the archive's own `import.sh`: the 2026-10-04 archive was made before decision 48 and its copy writes to `app.*`.
+`make data` imports the archive by itself (`scripts/data.sh` runs `scripts/vectors/ensure.sh` before `embed_corpus`), on a laptop and on the production host alike (docs/OPERATIONS.md, provisioning step 5). The script:
 
-The import checks `SHA256SUMS`, then attaches each vector to its verse by (surah, ayah) and to its hadith by (collection, number), **only when the stored text's SHA-256 is the one it was computed from**; anything else is skipped and counted, never forced. Existing rows are kept. It prints a table per model: in the archive, imported, skipped because the text changed, skipped because the text is not in the store. Rehearsed on 2026-10-04: 2 min 40 s for the rows it had to restore, exact rows restored.
+1. checks the database: when one of the default embedding models (`text-embedding-3-large`, `bge-m3`) already covers every verse and every hadith, it does nothing;
+2. finds the archive: `VECTORS_ARCHIVE` (a local `.tar.gz` or its extracted folder), else `VECTORS_ARCHIVE_URL` (the address above by default), downloaded once into `VECTORS_DIR` (`../tabsira-data/vectors` beside the checkout) and checked against its `.sha256`; an empty URL means never download, and then only a warning is printed and `embed_corpus` computes (and pays for) the vectors;
+3. extracts it and runs `scripts/vectors/import.sh` on the folder. Use the repository's script, never the archive's own `import.sh`: the 2026-10-04 archive predates the `vectors` schema.
+
+By hand, the same: `curl -fO <archive> -fO <archive>.sha256 && sha256sum -c *.sha256 && tar -xzf *.tar.gz`, then `DATABASE_URL=postgresql://user:password@127.0.0.1:5432/tabsira scripts/vectors/import.sh <folder>` (the SQLAlchemy `postgresql+asyncpg://` form is accepted too).
+
+The import checks `SHA256SUMS`, then attaches each vector to its verse by (surah, ayah) and to its hadith by (collection, number), **only when the stored text's SHA-256 is the one it was computed from**; anything else is skipped and counted, never forced. Existing rows are kept. It prints a table per corpus and model: rows in the archive, imported now, skipped because the text changed, skipped because the text is not in the store. About three minutes on a laptop, longer on a loaded machine.
 
 After an import, `embed_corpus` computes only the vectors that are missing or whose document changed (a newer annotation import, a corrected verse).
 

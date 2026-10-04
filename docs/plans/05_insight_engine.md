@@ -1,6 +1,6 @@
 # 05 · Insight engine
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 18:48 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 19:22 (Tunis)
 
 Finds the verse and hadith that truly fit the scene, checks them, and writes the explanation. It cites texts by reference only.
 
@@ -55,11 +55,11 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 
 ### 05.4 Import the vector archive in setup and deploy
 
-- **Status:** ⬜ open, after 05.1
-- **Goal:** A fresh development machine or production server imports `tabsira-vectors-<date>.tar.gz` (docs/EMBEDDINGS.md) instead of computing vectors: `make data` imports it when `VECTORS_ARCHIVE` points at a local copy, before `embed_corpus` fills the gaps; the production provisioning and docs/OPERATIONS.md download it from the bucket (`vectors/` in the owners' S3), check its `.sha256`, and run its `import.sh`.
+- **Status:** ✅ 2026-10-04 19:22: `make data` imports the archive on laptops and on the production host (`scripts/vectors/ensure.sh`); run on the development database here
+- **Goal:** A fresh development machine or production server imports `tabsira-vectors-<date>.tar.gz` (docs/EMBEDDINGS.md) instead of computing vectors: `make data` imports it when `VECTORS_ARCHIVE` points at a local copy, else downloads it from the bucket (`VECTORS_ARCHIVE_URL`), checks its `.sha256`, and runs `scripts/vectors/import.sh`, before `embed_corpus` fills the gaps.
 - **Depends on:** 05.1 (the retrieval tables).
-- **Touches:** scripts/data.sh, scripts/vectors/, the typed settings and .env.example (`VECTORS_ARCHIVE`), deploy/provision-app.sh or a deploy step, docs/OPERATIONS.md, docs/EMBEDDINGS.md.
-- **Done when:** On an empty database, `make data` with `VECTORS_ARCHIVE` set imports 165,072 vectors and `embed_corpus` then reports nothing to send; no key or archive is committed.
+- **Touches:** scripts/data.sh, scripts/vectors/ensure.sh, the typed settings and .env.example (`VECTORS_ARCHIVE`, `VECTORS_ARCHIVE_URL`), deploy/env.production.example, docs/OPERATIONS.md, docs/EMBEDDINGS.md, docs/SETUP.md.
+- **Done when:** On an empty database, `make data` imports 165,072 vectors and `embed_corpus` then reports nothing to send; no key or archive is committed.
 
 ### 05.5 Verify the uploaded archive
 

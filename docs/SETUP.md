@@ -46,7 +46,7 @@ SELECT (SELECT count(*) FROM app.quran_verses)  AS verses,   -- 6236 when import
        (SELECT count(*) FROM app.hadiths)        AS hadiths;  -- 65712 when imported
 ```
 
-If both are full, skip. Otherwise `make data`. It is idempotent (downloads are cached in `data/cache/` and checked against their SHA-256, rows are matched by their hash), so running it again only costs a few minutes. Once the engine is merged, `make data` also runs `embed_corpus`; import the vectors (step 7) **before** giving it an API key, so it finds nothing to compute.
+If both are full, skip. Otherwise `make data`. It is idempotent (downloads are cached in `data/cache/` and checked against their SHA-256, rows are matched by their hash), so running it again only costs a few minutes. `make data` imports the vectors from the published archive before it runs `embed_corpus` (step 7), so nothing is computed.
 
 ### 6. GeoNames
 
@@ -61,7 +61,7 @@ pg_restore --no-owner --role=tabsira --clean --if-exists --schema=geodata -d "<y
 
 Or import from GeoNames itself: `bash scripts/seed-geonames.sh` (downloads about 600 MB from geonames.org into `data/cache/geonames`, reused afterwards, and imports several million rows; `--limit 50000` for a small, quick set). Note that `seed-geonames.sh` replaces the tables on every run: run it only when the check says the data is missing.
 
-### 7. Scripture vectors (after task 05.1 is merged)
+### 7. Scripture vectors
 
 Check first:
 
@@ -70,7 +70,7 @@ SELECT (SELECT count(*) FROM vectors.quran_verse_embeddings) AS verse_vectors,  
        (SELECT count(*) FROM vectors.hadith_embeddings)      AS hadith_vectors;  -- 146364
 ```
 
-If both are full, skip. Otherwise download, check and import as docs/EMBEDDINGS.md says (`curl`, `sha256sum -c`, `tar -xzf`, `import.sh`). The import only adds what is missing and skips any vector whose text changed.
+If both are full, skip. Otherwise `make data` does it: its vectors step (`scripts/vectors/ensure.sh`) makes the same check, downloads the archive named by `VECTORS_ARCHIVE_URL` into `../tabsira-data/vectors/` once (930 MB, verified against its `.sha256`), extracts it and runs `scripts/vectors/import.sh`; a copy you already have is used instead when `VECTORS_ARCHIVE` points at the `.tar.gz` or its extracted folder. Only then does `embed_corpus` run, and finds nothing to compute. Never run `embed_corpus` with an API key before this step: it would pay for vectors the archive holds (docs/EMBEDDINGS.md).
 
 ### 8. Run
 
