@@ -11,8 +11,9 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
+from src.ai.errors import AiErrorCode
 from src.config import AiProvider
 
 Ratio = Annotated[float, Field(ge=0, le=1)]
@@ -203,6 +204,28 @@ class SceneRelation(FrozenModel):
     evidence: str
 
 
+class ModerationStatus(StrEnum):
+    """Whether the provider's own image moderation looked at the photo."""
+
+    CHECKED = "checked"
+    # The provider has no image moderation (OVH): the vision model's flags decide alone.
+    NOT_AVAILABLE = "not_available"
+    FAILED = "failed"
+
+
+class SensitivityResult(FrozenModel):
+    """The guard's verdict: the union of what the vision model and the moderation saw."""
+
+    sensitive: bool
+    categories: list[SensitiveCategory]
+    scene_categories: list[SensitiveCategory]
+    moderation_categories: list[SensitiveCategory]
+    # The provider's own flagged category names, kept as given (sexual, violence/graphic ...).
+    moderation_flags: list[str]
+    moderation_status: ModerationStatus
+    moderation_error: AiErrorCode | None = None
+
+
 class SceneAnalysis(FrozenModel):
     """The verified structure of a scene (v2 §6)."""
 
@@ -222,3 +245,18 @@ class SceneAnalysis(FrozenModel):
     provider: AiProvider
     model: str
     prompt_version: str
+    # Set by the sensitivity stage. A sensitive scene's image is never shown back nor stored.
+    guard: SensitivityResult | None = None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def is_sensitive(self) -> bool:
+        """True when the vision model or the guard found a sensitive category."""
+        return bool(self.sensitive) or (self.guard is not None and self.guard.sensitive)
+
+
+class SensitivityRequest(FrozenModel):
+    """The photo the moderation may look at, and the scene whose flags it completes."""
+
+    image: EncodedImage
+    scene: SceneAnalysis
