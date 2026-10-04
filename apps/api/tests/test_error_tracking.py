@@ -159,7 +159,7 @@ def test_a_long_report_with_no_pairs_is_scrubbed_in_linear_time():
         ("https://tabsira.me/a/b?x=1#frag", "https://tabsira.me/a/b"),
         ("https://user:pass@tabsira.me:8443/p", "https://tabsira.me:8443/p"),
         ("/relative/path?token=abc", "/relative/path"),
-        ("http://[::1/never?x=1", "http://[::1/never"),
+        ("http://[bad/never?x=1", "http://[bad/never"),
         ("https://tabsira.me/u/محمد", f"https://tabsira.me/u/{ARABIC_FILTERED}"),
         ("", ""),
     ],
@@ -801,3 +801,22 @@ def test_a_frame_without_text_fields_and_a_value_without_a_stack_are_left_alone(
     error_tracking.scrub_event(event)
 
     assert event["exception"]["values"][0]["stacktrace"]["frames"] == [{"lineno": 1}, 7]
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("sent to ghazi@example.com now", "sent to [Email] now"),
+        ("from 203.0.113.5 port", "from [Address] port"),
+        ("from 2001:db8::1 port", "from [Address] port"),
+        ("from 2001:0db8:0000:0000:0000:0000:0000:0001.", "from [Address]."),
+        ("at 36.806389, 10.181667 here", "at [Coordinates] here"),
+        ("at -33.8688;151.2093", "at [Coordinates]"),
+        ("DETAIL:  Key (email)=(a@b.co) already exists.", "DETAIL: [Filtered]"),
+        ("first\nDETAIL: Key (x)=(1)\nlast", "first\nDETAIL: [Filtered]\nlast"),
+        ("app.js:10:20 and v1.2.3 and 12:30", "app.js:10:20 and v1.2.3 and 12:30"),
+        ("Foo::bar and std::", "Foo::bar and std::"),
+    ],
+)
+def test_personal_data_written_in_plain_text_is_masked(text, expected):
+    assert error_tracking.scrub_text(text) == expected

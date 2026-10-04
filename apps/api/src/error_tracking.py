@@ -92,6 +92,24 @@ ARABIC_RUN = re.compile(
 # `?name=value&...` up to the next space or quote: a query string, wherever it is
 # written (a URL, a path, a log line). Its names are not looked at; all of it goes.
 _QUERY_STRING = re.compile(r"\?[\w%.\-\[\]]+=[^\s\"'<>]*")
+# Personal data written in plain text. An e-mail address, an IPv4 or IPv6 address, a pair of
+# decimal coordinates, and the DETAIL line a database error adds (asyncpg writes the key
+# values of the failing row there, an e-mail address among them).
+# The lookbehind keeps a long run of word characters from being rescanned at every position.
+_EMAIL = re.compile(r"(?<![\w.+%-])[\w.+%-]+@[\w-]+(?:\.[\w-]+)+")
+_IPV4 = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.]*\w)")
+_HEX = r"[0-9a-fA-F]{1,4}"
+_IPV6 = re.compile(
+    rf"(?<![\w:])(?:(?:{_HEX}:){{7}}{_HEX}"
+    rf"|(?:{_HEX}(?::{_HEX}){{0,6}})::(?:{_HEX}(?::{_HEX}){{0,6}})?"
+    rf"|::{_HEX}(?::{_HEX}){{0,6}})(?![\w:])"
+)
+_COORDINATES = re.compile(r"-?\d{1,3}\.\d{3,}\s*[,;]\s*-?\d{1,3}\.\d{3,}")
+_DB_DETAIL = re.compile(r"DETAIL:[^\n]*")
+EMAIL_FILTERED = "[Email]"
+ADDRESS_FILTERED = "[Address]"
+COORDINATES_FILTERED = "[Coordinates]"
+DETAIL_FILTERED = "DETAIL: [Filtered]"
 # The `scheme://user:password@host:port` front of an address, and the part of it
 # that is only credentials.
 _ORIGIN = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://[^/]*")
@@ -189,7 +207,11 @@ def scrub_text(text: str) -> str:
     search or a verse reference in it says what a person did.
     """
     without_arabic = ARABIC_RUN.sub(ARABIC_FILTERED, text)
-    return _scrub_pairs(_QUERY_STRING.sub("", without_arabic))
+    without_detail = _DB_DETAIL.sub(DETAIL_FILTERED, without_arabic)
+    without_email = _EMAIL.sub(EMAIL_FILTERED, without_detail)
+    without_coordinates = _COORDINATES.sub(COORDINATES_FILTERED, without_email)
+    without_address = _IPV6.sub(ADDRESS_FILTERED, _IPV4.sub(ADDRESS_FILTERED, without_coordinates))
+    return _scrub_pairs(_QUERY_STRING.sub("", without_address))
 
 
 def scrub_url(url: str) -> str:
