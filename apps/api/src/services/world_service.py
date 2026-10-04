@@ -84,11 +84,10 @@ async def ensure_place(db: AsyncSession, owner: Owner, region: Region) -> tuple[
     return place, created is not None
 
 
-async def record_relations(db: AsyncSession, owner: Owner, insight: Insight) -> None:
-    """Record the threads this completion makes: same scene, and prerequisite units."""
-    place_id = insight.place_id
-    if place_id is None:
-        return
+async def record_relations(
+    db: AsyncSession, owner: Owner, insight: Insight, place_id: uuid.UUID
+) -> None:
+    """Record the threads this completion, in place `place_id`, makes: same scene, prerequisites."""
     others = (
         await db.scalars(
             select(Insight).where(
@@ -228,11 +227,12 @@ async def ready_treasures(
     ready: dict[uuid.UUID, Treasure] = {}
     for item in hidden:
         source = insights.get(item.insight_id)
+        concept = source.why.get("concept") if source is not None else None
         related = any(
             other.id != item.insight_id
             and other.completed_at is not None
             and other.completed_at > item.created_at
-            and _related(other, source, item)
+            and _related(other, item, concept)
             for other in completed
         )
         if item.place_id not in ready and treasure.treasure_ready(
@@ -246,13 +246,13 @@ async def ready_treasures(
     return ready
 
 
-def _related(other: Insight, source: Insight | None, item: Treasure) -> bool:
-    if other.place_id == item.place_id or other.learning_unit_id == item.learning_unit_id:
-        return True
-    if source is None:
-        return False
-    concept = source.why.get("concept")
-    return bool(concept) and other.why.get("concept") == concept
+def _related(other: Insight, item: Treasure, concept: str | None) -> bool:
+    """Tell whether a later insight is close to a treasure: same place, same unit or same concept."""
+    return (
+        other.place_id == item.place_id
+        or other.learning_unit_id == item.learning_unit_id
+        or (bool(concept) and other.why.get("concept") == concept)
+    )
 
 
 async def _places(db: AsyncSession, owner: Owner) -> list[WorldPlace]:
@@ -296,15 +296,12 @@ async def world(db: AsyncSession, settings: Settings, owner: Owner | None) -> Wo
     regions = load_regions()
     places = await _places(db, owner) if owner is not None else []
     by_region = {place.region_id: place for place in places}
-    titles = dict(
-        (
-            await db.execute(
-                select(LearningDomain.id, LearningDomain.title).where(
-                    LearningDomain.path_version == regions.path_version
-                )
-            )
-        ).tuples()
+    rows = await db.execute(
+        select(LearningDomain.id, LearningDomain.title).where(
+            LearningDomain.path_version == regions.path_version
+        )
     )
+    titles = {row.id: row.title for row in rows}
     treasures = await ready_treasures(db, settings, owner, places) if owner is not None else {}
     place_ids = [place.id for place in places]
     relations = (

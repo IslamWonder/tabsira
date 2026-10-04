@@ -41,6 +41,7 @@ from src.routers import (
     scripture,
     sitemap,
     support,
+    world,
 )
 from src.scans.queue import close_queue
 from src.services import social_sitemap  # noqa: F401 - registers the posts and profiles sitemaps
@@ -195,6 +196,7 @@ def create_app(
     app.include_router(support.router)
     app.include_router(scans.router)
     app.include_router(insights.router)
+    app.include_router(world.router)
     # The admin area is not mounted at all while its feature flag is off.
     if settings.feature_admin:
         install_admin(app, settings)

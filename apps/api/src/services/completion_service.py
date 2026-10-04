@@ -57,7 +57,7 @@ async def complete(
             place, place_created = await world_service.ensure_place(db, owner, region)
             insight.place_id = place.id
             await db.flush()
-            await world_service.record_relations(db, owner, insight)
+            await world_service.record_relations(db, owner, insight, place.id)
             if settings.feature_treasure:
                 treasure_prepared = await world_service.prepare_treasure(db, owner, insight, place)
         await db.commit()
