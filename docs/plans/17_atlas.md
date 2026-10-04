@@ -18,7 +18,7 @@ A real map of shared insights, at approximate locations only.
 
 ### 17.1 Map entries and the atlas map
 
-- **Status:** ⏸ phase 2
+- **Status:** 🔄 owners' Wave 4 agent
 - **Goal:** Publish and withdraw places at approximate locations; MapLibre map with clusters.
 - **Depends on:** Phase 2.
 - **Touches:** apps/api map entries, apps/web atlas.

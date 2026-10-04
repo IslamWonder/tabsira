@@ -19,7 +19,7 @@ Posts made from verified insights, follows, likes, comments, reports and moderat
 
 ### 16.1 Social screens
 
-- **Status:** ⏸ phase 2
+- **Status:** 🔄 owners' Wave 4 agent
 - **Goal:** Feeds, posts, profiles, comments, reports.
 - **Depends on:** Phase 2.
 - **Touches:** apps/web community routes.
