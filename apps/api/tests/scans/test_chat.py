@@ -274,7 +274,9 @@ async def test_an_answer_written_beside_a_hadith_since_ruled_out_is_hidden_and_n
         await db.commit()
 
     shown = (await browser.get(f"/insights/{insight_id}")).json()["chat"]
-    assert shown["messages"] == []
+    assert [(m["question"], m["answer"]) for m in shown["messages"]] == [
+        ("سؤال أول", messages_for().chat_answer_withdrawn)
+    ]
     assert (shown["used"], shown["remaining"]) == (1, 2)
     replay = await ask(browser, insight_id, message="سؤال أول", key="key-0001")
     assert replay.json()["message"]["answer"] == messages_for().chat_answer_withdrawn
@@ -283,6 +285,8 @@ async def test_an_answer_written_beside_a_hadith_since_ruled_out_is_hidden_and_n
     assert second.json()["message"]["answer"] == "جواب ثان."
     assert "جواب أول عن الحديث." not in model.calls[1]["user"]
     assert "سؤال أول" not in model.calls[1]["user"]
+    assert "1032" not in model.calls[1]["user"]
+    assert "no hadith is shown" in model.calls[1]["system"]
 
 
 async def test_an_answer_of_an_unknown_evidence_is_not_shown_and_one_still_shown_is(
@@ -290,7 +294,7 @@ async def test_an_answer_of_an_unknown_evidence_is_not_shown_and_one_still_shown
 ):
     insight_id = await an_insight(browser, store, flow_settings)
     async with store() as db:
-        for key, ids in (("old", None), ("kept", ["quran:30:50"])):
+        for key, ids in (("old-key1", None), ("kept", ["quran:30:50"])):
             db.add(
                 ChatMessage(
                     insight_id=int(insight_id),
@@ -308,5 +312,30 @@ async def test_an_answer_of_an_unknown_evidence_is_not_shown_and_one_still_shown
 
     shown = (await browser.get(f"/insights/{insight_id}")).json()["chat"]
 
-    assert [m["answer"] for m in shown["messages"]] == ["جواب kept"]
+    assert [m["answer"] for m in shown["messages"]] == [
+        messages_for().chat_answer_withdrawn,
+        "جواب kept",
+    ]
     assert shown["used"] == 2
+    model.answers.append(said())
+    await ask(browser, insight_id, message="سؤال جديد", key="key-0009")
+    assert "old-key1" not in model.calls[0]["user"]
+    assert "جواب kept" in model.calls[0]["user"]
+    replay = await ask(browser, insight_id, key="old-key1")
+    assert replay.json()["message"]["answer"] == messages_for().chat_answer_withdrawn
+
+
+@pytest.mark.parametrize("classification", [HadithClassification.SAHIH, HadithClassification.DAIF])
+async def test_an_answer_written_while_its_hadith_awaited_a_ruling_stays_shown(
+    browser, store, flow_settings, model, classification
+):
+    insight_id = await an_insight(browser, store, flow_settings)
+    model.answers.append(said(answer="جواب قبل الحكم."))
+    await ask(browser, insight_id)
+    async with store() as db:
+        await rule(db, "bukhari", "1032", classification)
+        await db.commit()
+
+    shown = (await browser.get(f"/insights/{insight_id}")).json()["chat"]
+
+    assert [m["answer"] for m in shown["messages"]] == ["جواب قبل الحكم."]

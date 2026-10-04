@@ -1981,6 +1981,10 @@ export interface components {
       answer: string | null;
       /** Level */
       level: string | null;
+      /** Evidence Ids */
+      evidence_ids: string[] | null;
+      /** Withdrawn */
+      withdrawn: boolean;
       /**
        * Created At
        * Format: date-time

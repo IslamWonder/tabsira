@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Sequence
+from typing import Any
 
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
@@ -13,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import clock
 from src.models.consent import Consent
 from src.models.learning import LearnerUnitState
-from src.models.scan import ChatMessage, Insight, Scan
+from src.models.scan import ChatMessage, ChatStatus, Insight, Scan
 from src.models.session import Session
 from src.models.timeseries import EvidenceExposure
 from src.models.user import OAuthAccount, User
@@ -23,8 +25,32 @@ from src.schemas.account import AccountExport, LearningExport
 from src.schemas.cookie_consent import CookieConsentExport
 from src.schemas.profile import ConsentOut, ProfileOut
 from src.services import atlas_service, cookie_consent_service, profile_service, social_export
+from src.services.insight_view import answer_is_shown, shown_evidence, shown_ids
 
 log = logging.getLogger("tabsira.account")
+
+
+async def _chat_export(
+    db: AsyncSession, insights: Sequence[Insight], rows: Sequence[ChatMessage]
+) -> list[dict[str, Any]]:
+    """Keep every answer's text, and say which ones are no longer shown (right of access)."""
+    shown: dict[int, set[str]] = {}
+    for insight in insights:
+        verse, hadith, _awaiting = await shown_evidence(db, insight)
+        shown[insight.id] = shown_ids(verse, hadith)
+    return [
+        {
+            "insight_id": row.insight_id,
+            "question": row.question,
+            "answer": row.answer,
+            "level": row.level,
+            "evidence_ids": row.evidence_ids,
+            "withdrawn": row.status is ChatStatus.ANSWERED
+            and not answer_is_shown(row, shown[row.insight_id]),
+            "created_at": row.created_at,
+        }
+        for row in rows
+    ]
 
 
 async def export_learning(db: AsyncSession, user_id: uuid.UUID) -> LearningExport:
@@ -76,7 +102,7 @@ async def export_learning(db: AsyncSession, user_id: uuid.UUID) -> LearningExpor
         {
             "scans": scans,
             "insights": insights,
-            "chat_messages": messages,
+            "chat_messages": await _chat_export(db, insights, messages),
             "places": places,
             "treasures": treasures,
             "learner_units": units,

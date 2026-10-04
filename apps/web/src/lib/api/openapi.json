@@ -4536,6 +4536,24 @@
             ],
             "title": "Level"
           },
+          "evidence_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Ids"
+          },
+          "withdrawn": {
+            "type": "boolean",
+            "title": "Withdrawn"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -4543,7 +4561,15 @@
           }
         },
         "type": "object",
-        "required": ["insight_id", "question", "answer", "level", "created_at"],
+        "required": [
+          "insight_id",
+          "question",
+          "answer",
+          "level",
+          "evidence_ids",
+          "withdrawn",
+          "created_at"
+        ],
         "title": "ChatMessageExport"
       },
       "ChatMessageOut": {

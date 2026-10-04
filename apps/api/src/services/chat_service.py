@@ -40,7 +40,7 @@ from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverl
 from src.pipeline.prompt import load_prompt
 from src.routers.scripture import HadithOut, QuranVerseOut
 from src.scans.workflow import call_rows
-from src.schemas.insight import ChatMessageOut, ChatReply
+from src.schemas.insight import ChatReply
 from src.scripture.overlap import repeats_store
 from src.services.insight_view import (
     answer_is_shown,
@@ -212,22 +212,14 @@ async def answer(
         await _answer(db, settings, insight, row, client_factory)
     used = await _used(db, insight)
     limit = settings.max_chat_user_messages
+    verse, hadith, _awaiting = await shown_evidence(db, insight)
     return ChatReply(
-        message=await _replayed(db, insight, row),
+        message=message_out(row, shown_ids(verse, hadith)),
         used=used,
         limit=limit,
         remaining=max(limit - used, 0),
         disclosure=messages_for().ai_disclosure,
     )
-
-
-async def _replayed(db: AsyncSession, insight: Insight, row: ChatMessage) -> ChatMessageOut:
-    """Return the message, its answer replaced when a text it rests on is no longer shown."""
-    verse, hadith, _awaiting = await shown_evidence(db, insight)
-    out = message_out(row)
-    if answer_is_shown(row, shown_ids(verse, hadith)):
-        return out
-    return out.model_copy(update={"answer": messages_for().chat_answer_withdrawn})
 
 
 async def _used(db: AsyncSession, insight: Insight) -> int:

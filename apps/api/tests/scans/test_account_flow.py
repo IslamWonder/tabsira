@@ -5,7 +5,8 @@ from __future__ import annotations
 from redis.exceptions import RedisError
 from sqlalchemy import select
 
-from src.models import EvidenceExposure, Guest, Insight, Scan, User
+from src import clock
+from src.models import ChatMessage, ChatStatus, EvidenceExposure, Guest, Insight, Scan, User
 from src.scans import buffer
 from tests.scans.conftest import make_account, photo, sign_in
 
@@ -61,6 +62,9 @@ async def test_the_export_holds_everything_the_learner_saved_and_never_a_photo(
     assert "image" not in learning["scans"][0]
     assert [insight["tutorial_slug"] for insight in learning["insights"]] == ["drop"]
     assert [message["answer"] for message in learning["chat_messages"]] == ["جواب قصير."]
+    assert [(m["evidence_ids"], m["withdrawn"]) for m in learning["chat_messages"]] == [
+        (["quran:30:50"], False)
+    ]
     assert [place["region_id"] for place in learning["places"]] == ["T01"]
     assert [unit["unit_id"] for unit in learning["learner_units"]] == ["T01_06"]
     assert [exposure["quran_surah"] for exposure in learning["exposures"]] == [30]
@@ -104,3 +108,35 @@ async def test_a_redis_that_is_down_does_not_stop_a_deletion(browser, store, red
     assert response.status_code == 204
     async with store() as db:
         assert (await db.scalars(select(Scan))).all() == []
+
+
+async def test_the_export_keeps_a_withdrawn_answer_and_says_it_is_withdrawn(browser, store):
+    await make_account(store)
+    await sign_in(browser)
+    kept = (await browser.post("/tutorial/rain/insights/drop")).json()
+    async with store() as db:
+        for key, ids, status in (
+            ("old", None, ChatStatus.ANSWERED),
+            ("ruled", ["hadith:bukhari:1032", "quran:30:50"], ChatStatus.ANSWERED),
+            ("wait", None, ChatStatus.PENDING),
+        ):
+            db.add(
+                ChatMessage(
+                    insight_id=int(kept["id"]),
+                    idempotency_key=key,
+                    status=status,
+                    question="؟",
+                    answer=f"جواب {key}" if status is ChatStatus.ANSWERED else None,
+                    evidence_ids=ids,
+                    created_at=clock.utcnow(),
+                )
+            )
+        await db.commit()
+
+    learning = (await browser.get("/account/export")).json()["learning"]
+
+    assert [(m["answer"], m["withdrawn"]) for m in learning["chat_messages"]] == [
+        ("جواب old", True),
+        ("جواب ruled", True),
+        (None, False),
+    ]

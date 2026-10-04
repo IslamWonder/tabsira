@@ -110,6 +110,9 @@ class ChatMessageExport(BaseModel):
     question: str
     answer: str | None
     level: str | None
+    # What was shown when the answer was written, and whether it is no longer shown.
+    evidence_ids: list[str] | None
+    withdrawn: bool
     created_at: datetime
 
 

@@ -195,8 +195,13 @@ def answer_is_shown(row: ChatMessage, shown: set[str]) -> bool:
     return row.evidence_ids is not None and set(row.evidence_ids) <= shown
 
 
-async def chat_of(db: AsyncSession, settings: Settings, insight: Insight) -> ChatOut:
-    verse, hadith, _awaiting = await shown_evidence(db, insight)
+async def chat_of(
+    db: AsyncSession,
+    settings: Settings,
+    insight: Insight,
+    verse: QuranVerseOut | None,
+    hadith: HadithOut | None,
+) -> ChatOut:
     shown = shown_ids(verse, hadith)
     rows = (
         await db.scalars(
@@ -211,15 +216,18 @@ async def chat_of(db: AsyncSession, settings: Settings, insight: Insight) -> Cha
         used=len(rows),
         limit=limit,
         remaining=max(limit - len(rows), 0),
-        messages=[message_out(row) for row in rows if answer_is_shown(row, shown)],
+        messages=[message_out(row, shown) for row in rows],
     )
 
 
-def message_out(row: ChatMessage) -> ChatMessageOut:
+def message_out(row: ChatMessage, shown: set[str]) -> ChatMessageOut:
+    """Return the message; a note stands in place of an answer no longer shown."""
     return ChatMessageOut.model_validate(
         {
             "question": row.question,
-            "answer": row.answer,
+            "answer": row.answer
+            if answer_is_shown(row, shown)
+            else messages_for().chat_answer_withdrawn,
             "level": row.level,
             "kind": row.kind,
             "answered_at": row.answered_at,
@@ -312,7 +320,7 @@ async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> In
             at=insight.action_at,
             means=action_means(insight.action_state.value) if insight.action_state else None,
         ),
-        chat=await chat_of(db, settings, insight),
+        chat=await chat_of(db, settings, insight, verse, hadith),
         image=InsightImageOut(
             sensitive=sensitive,
             url=f"/scans/{scan.id}/image" if scan is not None and not sensitive else None,
