@@ -334,6 +334,16 @@ async def test_the_command_writes_results_and_report_and_fails_on_a_leak(maker, 
 
     assert (clean, dirty) == (0, 1)
     assert "# Evaluation: the insight engine" in (tmp_path / "EVALUATION.md").read_text()
+    kept = "<!-- section:notes -->\nnotes\n<!-- /section:notes -->\n"
+    (tmp_path / "EVALUATION.md").write_text(f"old\n{kept}")
+    again = await command.run(
+        arguments,
+        sessionmaker=maker,
+        factory=factory_for([scene_answer()], ok),
+        http=httpx.AsyncClient(transport=httpx.MockTransport(lambda _r: httpx.Response(503))),
+    )
+    assert again == 0
+    assert (tmp_path / "EVALUATION.md").read_text().endswith(kept)
     saved = json.loads(next((tmp_path / "results").glob("evaluation-*.json")).read_text())
     assert saved["runs"][0]["scene"] == "rain"
     out = capsys.readouterr().out
