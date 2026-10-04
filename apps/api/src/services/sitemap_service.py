@@ -127,10 +127,8 @@ class StaticPage:
 # The legal pages carry the revision of their text. The home page is the product's own page.
 STATIC_PAGES: tuple[StaticPage, ...] = (
     StaticPage("/", date(2026, 10, 4)),
-    StaticPage("/about", date(2026, 10, 4)),
     StaticPage("/terms", date(2026, 10, 4)),
     StaticPage("/privacy", date(2026, 10, 4)),
-    StaticPage("/cookies", date(2026, 10, 4)),
     StaticPage("/support", date(2026, 10, 4)),
 )
 
@@ -140,7 +138,7 @@ def _midnight_utc(day: date) -> datetime:
 
 
 class StaticProvider:
-    """The pages that belong to no user: home, about, terms, privacy and cookies."""
+    """The pages that belong to no user: home, terms, privacy and support."""
 
     section = Section.STATIC
 

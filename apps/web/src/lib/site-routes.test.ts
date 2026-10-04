@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -20,5 +21,16 @@ describe('the routes of the SEO check scripts', () => {
     expect(copy.UNLISTED_ROUTES).toEqual([...UNLISTED_ROUTES]);
     expect(copy.PRIVATE_PATHS).toEqual([...PRIVATE_PATHS]);
     expect(copy.AI_AGENTS).toEqual([...AI_AGENTS]);
+  });
+});
+
+/** The API lists the pages of its `static` section; each must exist here, and none may be missing. */
+describe('the static sitemap section of the API', () => {
+  it('lists the indexed routes of the app, no page that does not exist', () => {
+    const file = path.resolve(__dirname, '../../../api/src/services/sitemap_service.py');
+    const listed = [...readFileSync(file, 'utf8').matchAll(/StaticPage\("([^"]+)"/g)].map(
+      (match) => match[1]
+    );
+    expect(listed).toEqual([...INDEXED_ROUTES]);
   });
 });
