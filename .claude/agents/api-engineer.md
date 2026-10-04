@@ -13,5 +13,5 @@ Read `AGENTS.md` and `docs/spec/DECISIONS.md` before you start, then the code ar
 - Every new setting goes into `src/config.py` and `.env.example` in the same change.
 - Routes check session, ownership and visibility; knowing an id grants nothing.
 - Tests never call the network or a model; database tests use `tabsira_test`. Keep 100 % line and branch coverage for what you touch.
-- Port patterns from `the reference project/apps/api` when the task says so; rename every the reference project identifier.
+- Port patterns from the reference paths the task gives you; rename every identifier you take from them.
 - Do not commit unless the prompt tells you to. Report the files you changed and the commands you ran with their result.

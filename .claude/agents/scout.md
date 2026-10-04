@@ -1,6 +1,6 @@
 ---
 name: scout
-description: Fast read-only lookups — find files, symbols, configs or patterns in this repo, in the reference project or ~/workspace/the earlier prototype, and check the latest version of a package on npm or PyPI. Use for search and inventory, never for writing code.
+description: Fast read-only lookups — find files, symbols, configs or patterns in this repo or in the reference paths the task gives you, and check the latest version of a package on npm or PyPI. Use for search and inventory, never for writing code.
 tools: Read, Grep, Glob, Bash, WebFetch
 model: haiku
 effort: low
