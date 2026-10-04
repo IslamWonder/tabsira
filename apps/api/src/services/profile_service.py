@@ -22,6 +22,7 @@ from src.errors import AppError, ErrorCode
 from src.models.consent import Consent, ConsentKind
 from src.models.profile import AgeRange, Profile
 from src.schemas.profile import ProfilePatch
+from src.services import legal_service
 
 # The version recorded when the profile itself withdraws a consent and no
 # version of the text is known to it.
@@ -43,6 +44,13 @@ async def record_consent(
     A user who declared they are under 13 cannot consent to photo storage
     (master prompt v2, section 5): their photos are never kept on the server.
     """
+    if kind in legal_service.LEGAL_KINDS:
+        raise AppError(
+            ErrorCode.CONSENT_NOT_ALLOWED,
+            "The terms and the privacy policy are accepted at sign-up or through "
+            "POST /auth/legal/accept, not as a consent switch.",
+            status_code=403,
+        )
     profile = await ensure_profile(db, user_id)
     if kind == ConsentKind.PHOTO_STORAGE and granted and profile.age_range == AgeRange.UNDER_13:
         raise AppError(

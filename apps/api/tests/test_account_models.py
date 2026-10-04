@@ -261,6 +261,7 @@ async def test_login_attempts_and_oauth_states_store_only_hashes_and_known_kinds
         "google_start",
         "resend_verification",
         "forgot_password",
+        "support",
         "email_token",
     }
     with pytest.raises(IntegrityError, match="ck_login_attempts_kind"):
