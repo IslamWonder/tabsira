@@ -5,8 +5,9 @@ from __future__ import annotations
 from fastapi import APIRouter, status
 
 from src.deps import CurrentUser, DbDep
+from src.errors import AppError, ErrorCode
 from src.schemas.profile import ConsentIn, ConsentOut, ProfileOut, ProfilePatch
-from src.services import profile_service
+from src.services import legal_service, profile_service
 
 router = APIRouter(tags=["profile"])
 
@@ -49,6 +50,13 @@ async def post_consent(body: ConsentIn, user: CurrentUser, db: DbDep) -> Consent
     A consent is withdrawn by recording the same kind with `granted` false. The
     history is never edited.
     """
+    if body.kind in legal_service.LEGAL_KINDS:
+        raise AppError(
+            ErrorCode.CONSENT_NOT_ALLOWED,
+            "The terms and the privacy policy are accepted at sign-up or through "
+            "POST /auth/legal/accept, not here.",
+            status_code=403,
+        )
     consent = await profile_service.record_consent(
         db, user.id, body.kind, body.version, granted=body.granted
     )

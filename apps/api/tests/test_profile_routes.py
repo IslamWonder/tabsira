@@ -6,9 +6,12 @@ import pytest
 from sqlalchemy import select, text
 
 from src.models import Consent, Profile
+from src.models.consent import ConsentKind
 from tests.conftest import PASSPHRASE
 
 LOGIN = {"email": "reader@example.com", "password": PASSPHRASE}
+# The acceptance of the terms and the privacy policy is made at sign-up, not by these routes.
+LEGAL = (ConsentKind.TERMS, ConsentKind.PRIVACY)
 PRIVATE_VALUES = ("muslim", "non_muslim", "woman", "man", "25_39", "under_13")
 
 
@@ -215,7 +218,7 @@ async def test_the_private_fields_never_appear_outside_the_profile_and_the_expor
         ("post", "/auth/login", {"json": LOGIN}),
         ("get", "/health", {}),
         ("get", "/health/ready", {}),
-        ("post", "/consents", {"json": {"kind": "terms", "version": "v1", "granted": True}}),
+        ("post", "/consents", {"json": {"kind": "memory", "version": "v1", "granted": True}}),
     ):
         response = await getattr(web, method)(path, **kwargs)
         for private in ("muslim", "woman", "25_39", "religious_background", "gender", "age_range"):
@@ -277,7 +280,10 @@ async def test_a_consent_is_recorded_and_the_matching_switch_follows(web, reader
     assert body["created_at"]
     profile = (await web.get("/profile")).json()
     assert (profile["photo_storage_consent"], profile["consent_version"]) == (True, "2026-10-04")
-    assert len((await db_session.scalars(select(Consent))).all()) == 1
+    assert (
+        len((await db_session.scalars(select(Consent).where(Consent.kind.not_in(LEGAL)))).all())
+        == 1
+    )
 
 
 async def test_withdrawing_is_a_new_record_and_the_history_is_kept(web, reader, db_session):
@@ -285,7 +291,11 @@ async def test_withdrawing_is_a_new_record_and_the_history_is_kept(web, reader, 
     await web.post("/consents", json={"kind": "photo_storage", "version": "v2", "granted": False})
 
     profile = (await web.get("/profile")).json()
-    rows = (await db_session.scalars(select(Consent).order_by(Consent.version))).all()
+    rows = (
+        await db_session.scalars(
+            select(Consent).where(Consent.kind.not_in(LEGAL)).order_by(Consent.version)
+        )
+    ).all()
     assert (profile["photo_storage_consent"], profile["consent_version"]) == (False, "v2")
     assert [(row.version, row.granted) for row in rows] == [("v1", True), ("v2", False)]
 
@@ -304,16 +314,19 @@ async def test_the_personalization_and_memory_switches_follow_their_consents(
     assert (await web.get("/profile")).json()[switch] is True
 
 
-async def test_agreeing_to_the_terms_is_recorded_without_touching_a_switch(web, reader):
+@pytest.mark.parametrize("kind", ["terms", "privacy"])
+async def test_the_terms_and_the_privacy_policy_cannot_be_accepted_through_consents(
+    web, reader, db_session, kind
+):
     before = (await web.get("/profile")).json()
 
-    await web.post("/consents", json={"kind": "terms", "version": "v3", "granted": True})
+    response = await web.post("/consents", json={"kind": kind, "version": "v3", "granted": True})
 
-    after = (await web.get("/profile")).json()
-    assert after["consent_version"] == "v3"
-    assert {k: v for k, v in after.items() if k not in {"consent_version", "updated_at"}} == {
-        k: v for k, v in before.items() if k not in {"consent_version", "updated_at"}
-    }
+    assert response.status_code == 403
+    assert response.json()["error"] == "CONSENT_NOT_ALLOWED"
+    assert (await web.get("/profile")).json() == before
+    rows = (await db_session.scalars(select(Consent).where(Consent.version == "v3"))).all()
+    assert rows == []
 
 
 @pytest.mark.parametrize(
@@ -342,7 +355,7 @@ async def test_someone_under_13_cannot_consent_to_photo_storage(web, reader, db_
     assert response.status_code == 403
     assert response.json()["error"] == "CONSENT_NOT_ALLOWED"
     assert (await web.get("/profile")).json()["photo_storage_consent"] is False
-    assert (await db_session.scalars(select(Consent))).all() == []
+    assert (await db_session.scalars(select(Consent).where(Consent.kind.not_in(LEGAL)))).all() == []
     # Other consents and withdrawing are unaffected.
     assert (
         await web.post("/consents", json={"kind": "memory", "version": "v1", "granted": True})
@@ -363,7 +376,11 @@ async def test_declaring_under_13_withdraws_a_photo_consent_already_given_and_re
 
     assert response.json()["photo_storage_consent"] is False
     rows = (
-        await db_session.scalars(select(Consent).order_by(Consent.created_at, Consent.granted))
+        await db_session.scalars(
+            select(Consent)
+            .where(Consent.kind.not_in(LEGAL))
+            .order_by(Consent.created_at, Consent.granted)
+        )
     ).all()
     assert sorted((row.granted, row.version) for row in rows) == [(False, "v7"), (True, "v7")]
 
@@ -371,7 +388,7 @@ async def test_declaring_under_13_withdraws_a_photo_consent_already_given_and_re
 async def test_declaring_under_13_without_a_consent_records_nothing(web, reader, db_session):
     await web.patch("/profile", json={"age_range": "under_13"})
 
-    assert (await db_session.scalars(select(Consent))).all() == []
+    assert (await db_session.scalars(select(Consent).where(Consent.kind.not_in(LEGAL)))).all() == []
 
 
 async def test_the_withdrawal_names_an_unversioned_text_when_none_was_ever_answered(
@@ -381,5 +398,5 @@ async def test_the_withdrawal_names_an_unversioned_text_when_none_was_ever_answe
 
     await web.patch("/profile", json={"age_range": "under_13"})
 
-    (row,) = (await db_session.scalars(select(Consent))).all()
+    (row,) = (await db_session.scalars(select(Consent).where(Consent.kind.not_in(LEGAL)))).all()
     assert (row.kind.value, row.version, row.granted) == ("photo_storage", "unversioned", False)

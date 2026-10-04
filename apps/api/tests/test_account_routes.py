@@ -70,7 +70,8 @@ async def test_the_export_holds_everything_the_account_owns_as_a_download(web, r
     assert len(body["sessions"]) == 1
     assert body["profile"]["goals"] == ["curiosity"]
     assert (body["profile"]["age_range"], body["profile"]["gender"]) == ("18_24", "woman")
-    assert [(c["version"], c["granted"]) for c in body["consents"]] == [("v1", True), ("v2", False)]
+    photo = [c for c in body["consents"] if c["kind"] == "photo_storage"]
+    assert [(c["version"], c["granted"]) for c in photo] == [("v1", True), ("v2", False)]
 
 
 async def test_the_export_leaves_out_every_credential(web, reader, db_session):
@@ -159,10 +160,10 @@ async def test_deleting_the_account_removes_everything_the_user_owns_sessions_in
 ):
     from src.services import email_token_service
 
-    survivor = await make_user("survivor@example.com")
+    survivor = await make_user("survivor@example.com", accepted=False)
     db_session.add(OAuthAccount(user_id=reader.id, provider="google", subject="sub-1"))
     await web.patch("/profile", json={"gender": "woman"})
-    await web.post("/consents", json={"kind": "terms", "version": "v1", "granted": True})
+    await web.post("/consents", json={"kind": "memory", "version": "v1", "granted": True})
     await email_token_service.issue(
         db_session, web._transport.app.state.settings, reader, TokenPurpose.PASSWORD_RESET
     )
