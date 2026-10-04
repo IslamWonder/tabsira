@@ -85,6 +85,7 @@ export const ENTRY: AtlasEntry = {
     },
   ],
   post_id: '7345678901234567890',
+  photo_url: null,
   published_on: '2026-10-04',
 };
 

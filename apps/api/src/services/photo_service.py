@@ -140,6 +140,32 @@ async def sync_public_copy(db: AsyncSession, store: PhotoStore, insight_id: int 
     await db.flush()
 
 
+def public_url(store: PhotoStore, public_key: str | None) -> str | None:
+    """
+    Return the address anyone can read the public copy at, or None when there is no copy.
+
+    Built from the store alone (`S3_PUBLIC_BASE_URL`, or the API's own `/media` route for the
+    local disk): the address names the public key, which says nothing about the private one.
+    """
+    return None if public_key is None else store.storage.public_url(public_key)
+
+
+async def public_urls(db: AsyncSession, store: PhotoStore, insight_ids: set[int]) -> dict[int, str]:
+    """Return the public copies' addresses of the insights that have one, by insight id, in one query."""
+    if not insight_ids:
+        return {}
+    rows = await db.execute(
+        select(Insight.id, Insight.photo_public_key).where(
+            Insight.id.in_(insight_ids), Insight.photo_public_key.is_not(None)
+        )
+    )
+    return {
+        insight_id: url
+        for insight_id, key in rows.all()
+        if (url := public_url(store, key)) is not None
+    }
+
+
 async def remove_all(db: AsyncSession, store: PhotoStore, user_id: uuid.UUID) -> int:
     """
     Delete both copies of every photo the account kept and forget their keys.

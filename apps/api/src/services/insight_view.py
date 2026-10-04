@@ -414,6 +414,7 @@ async def describe(
         image=InsightImageOut(
             sensitive=sensitive,
             url=f"/scans/{scan.id}/image" if scan is not None and not sensitive else None,
+            has_photo=insight.photo_key is not None,
         ),
         completed_at=insight.completed_at,
         place_id=insight.place_id,

@@ -63,7 +63,11 @@ async def test_an_insight_shows_its_verse_exactly_as_stored_and_waits_for_its_ha
     assert body["label"] is None
     assert body["chat"] == {"enabled": True, "used": 0, "limit": 3, "remaining": 3, "messages": []}
     assert body["learning_unit"]["domain_id"] == "T01"
-    assert body["image"] == {"sensitive": False, "url": f"/scans/{body['scan_id']}/image"}
+    assert body["image"] == {
+        "sensitive": False,
+        "url": f"/scans/{body['scan_id']}/image",
+        "has_photo": False,
+    }
     assert body["disclosure"].startswith("تبصرة أداة مدعومة")
     for private in ("religious_background", "gender", "age_range", "goals"):
         assert private not in response.text
@@ -209,7 +213,7 @@ async def test_an_insight_of_a_sensitive_scene_has_no_photo_and_one_without_sour
     second = (await browser.get(f"/insights/{bare}")).json()
     third = (await browser.get(f"/insights/{other_path}")).json()
 
-    assert first["image"] == {"sensitive": True, "url": None}
+    assert first["image"] == {"sensitive": True, "url": None, "has_photo": False}
     assert (second["quran"], second["hadith"], second["small_step"]) == (None, None, None)
     assert second["anchor"] == {"x": 0.1, "y": 0.1, "width": 0.2, "height": 0.2}
     assert second["learning_unit"] is None

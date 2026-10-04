@@ -155,6 +155,10 @@ class AtlasEntryOut(BaseModel):
     post_id: PublicId | None = Field(
         description="The public post of the same insight, if one is published"
     )
+    photo_url: str | None = Field(
+        description="The address of the photo's public copy, only when the owner chose to show "
+        "it with the entry and the copy exists; null otherwise. Never a storage key."
+    )
     published_on: date
 
 

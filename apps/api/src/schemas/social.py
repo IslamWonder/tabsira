@@ -136,8 +136,10 @@ class InsightOut(BaseModel):
     concepts: list[str]
     explanation: str = Field(description="The app's explanation, shortened; written by the app")
     step: str | None = Field(description="The small step the insight suggests")
-    has_photo: bool = Field(
-        description="The owner chose to show a photo with it; no address is served yet"
+    has_photo: bool = Field(description="The owner chose to show a photo with it")
+    photo_url: str | None = Field(
+        description="The address of the photo's public copy, only on a published public post "
+        "while the copy exists; null otherwise. Never a storage key."
     )
     insight_version: int
     quran: list[QuranEvidenceOut]

@@ -633,8 +633,19 @@ async def test_a_published_post_is_public_to_a_guest_without_the_authors_private
     assert (body["like_count"], body["comment_count"]) == (0, 0)
     assert (body["status_reason"], body["status_message"], body["why"]) == (None, None, None)
     assert body["status"] == "published"
+    assert body["insight"]["photo_url"] is None
     for private in ("Secret Real Name", "author@example.com", str(author.user.id)):
         assert private not in response.text
+
+
+def test_public_social_schemas_have_no_field_for_a_photo_s_storage_key():
+    """A public copy is named by `photo_url` alone; a key of either copy never has a field."""
+    from src.schemas import social
+
+    for schema in (social.PostOut, social.InsightOut, social.FeedPage, social.MyPostsPage):
+        assert not (set(schema.model_fields) & {"photo_key", "photo_public_key", "photo_ref"}), (
+            schema.__name__
+        )
 
 
 async def test_a_followers_only_post_is_for_its_author_and_followers_and_otherwise_a_404(

@@ -496,9 +496,14 @@ async def published_entry(db: AsyncSession, entry_id: int, viewer: User | None =
 
 
 async def entry_detail(
-    db: AsyncSession, entry_id: int, viewer: User | None = None
+    db: AsyncSession, entry_id: int, viewer: User | None = None, *, photos: PhotoStore
 ) -> AtlasEntryOut:
-    """Return an entry's page: the insight by reference, its scripture from the store, the public point."""
+    """
+    Return an entry's page: the insight by reference, its scripture from the store, the public point.
+
+    The photo's public address comes only when the owner chose to show it with the entry and the
+    copy exists now (v2 §19); the keys never leave the server.
+    """
     entry = await published_entry(db, entry_id, viewer)
     insight = await db.get(Insight, entry.insight_id)
     author = await db.get(User, entry.user_id)
@@ -546,6 +551,9 @@ async def entry_detail(
         quran=[evidence.quran[key] for key in quran if key in evidence.quran],
         hadith=[evidence.hadith[key] for key in hadith if key in evidence.hadith],
         post_id=post_id,
+        photo_url=(
+            photo_service.public_url(photos, insight.photo_public_key) if entry.with_photo else None
+        ),
         published_on=_published_on(entry),
     )
 

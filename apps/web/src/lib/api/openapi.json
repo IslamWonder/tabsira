@@ -3736,6 +3736,44 @@
         }
       }
     },
+    "/media/public/{name}": {
+      "get": {
+        "tags": ["media"],
+        "summary": "A photo's public copy (local disk only)",
+        "description": "Return the published copy under `public/<name>`; 404 when the store is S3 or there is none.",
+        "operationId": "public_photo_media_public__name__get",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}\\.jpg$",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/tutorial/rain": {
       "get": {
         "tags": ["tutorial"],
@@ -4115,6 +4153,18 @@
             "title": "Post Id",
             "description": "The public post of the same insight, if one is published"
           },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url",
+            "description": "The address of the photo's public copy, only when the owner chose to show it with the entry and the copy exists; null otherwise. Never a storage key."
+          },
           "published_on": {
             "type": "string",
             "format": "date",
@@ -4136,6 +4186,7 @@
           "quran",
           "hadith",
           "post_id",
+          "photo_url",
           "published_on"
         ],
         "title": "AtlasEntryOut",
@@ -6802,10 +6853,15 @@
               }
             ],
             "title": "Url"
+          },
+          "has_photo": {
+            "type": "boolean",
+            "title": "Has Photo",
+            "description": "The owner's own copy was kept at «تمّ» (v2 §19), so a publication may offer to show it; the key itself is never served"
           }
         },
         "type": "object",
-        "required": ["sensitive", "url"],
+        "required": ["sensitive", "url", "has_photo"],
         "title": "InsightImageOut",
         "description": "Whether the photo of the insight's scan may be shown; never for a sensitive scene."
       },
@@ -6855,7 +6911,19 @@
           "has_photo": {
             "type": "boolean",
             "title": "Has Photo",
-            "description": "The owner chose to show a photo with it; no address is served yet"
+            "description": "The owner chose to show a photo with it"
+          },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url",
+            "description": "The address of the photo's public copy, only on a published public post while the copy exists; null otherwise. Never a storage key."
           },
           "insight_version": {
             "type": "integer",
@@ -6885,6 +6953,7 @@
           "explanation",
           "step",
           "has_photo",
+          "photo_url",
           "insight_version",
           "quran",
           "hadith"

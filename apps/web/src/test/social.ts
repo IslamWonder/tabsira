@@ -31,6 +31,7 @@ export const POST: Post = {
     explanation: '[شرح تبصرة من الخادم]',
     step: '[خطوة صغيرة من الخادم]',
     has_photo: false,
+    photo_url: null,
     insight_version: 1,
     quran: [
       {

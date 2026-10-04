@@ -1656,6 +1656,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/media/public/{name}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * A photo's public copy (local disk only)
+     * @description Return the published copy under `public/<name>`; 404 when the store is S3 or there is none.
+     */
+    get: operations['public_photo_media_public__name__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/tutorial/rain': {
     parameters: {
       query?: never;
@@ -1838,6 +1858,11 @@ export interface components {
        * @description The public post of the same insight, if one is published
        */
       post_id: string | null;
+      /**
+       * Photo Url
+       * @description The address of the photo's public copy, only when the owner chose to show it with the entry and the copy exists; null otherwise. Never a storage key.
+       */
+      photo_url: string | null;
       /**
        * Published On
        * Format: date
@@ -2973,6 +2998,11 @@ export interface components {
       sensitive: boolean;
       /** Url */
       url: string | null;
+      /**
+       * Has Photo
+       * @description The owner's own copy was kept at «تمّ» (v2 §19), so a publication may offer to show it; the key itself is never served
+       */
+      has_photo: boolean;
     };
     /**
      * InsightOrigin
@@ -3004,9 +3034,14 @@ export interface components {
       step: string | null;
       /**
        * Has Photo
-       * @description The owner chose to show a photo with it; no address is served yet
+       * @description The owner chose to show a photo with it
        */
       has_photo: boolean;
+      /**
+       * Photo Url
+       * @description The address of the photo's public copy, only on a published public post while the copy exists; null otherwise. Never a storage key.
+       */
+      photo_url: string | null;
       /** Insight Version */
       insight_version: number;
       /** Quran */
@@ -7420,6 +7455,37 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['AtlasPlaceOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  public_photo_media_public__name__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'image/jpeg': unknown;
         };
       };
       /** @description An error */

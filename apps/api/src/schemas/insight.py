@@ -119,6 +119,10 @@ class InsightImageOut(BaseModel):
 
     sensitive: bool
     url: str | None
+    has_photo: bool = Field(
+        description="The owner's own copy was kept at «تمّ» (v2 §19), so a publication may "
+        "offer to show it; the key itself is never served"
+    )
 
 
 class InsightDetailOut(BaseModel):

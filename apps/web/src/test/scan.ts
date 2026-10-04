@@ -186,7 +186,7 @@ export function insightOut(overrides: Partial<Insight> = {}): Insight {
     learning_unit: { id: 'T01_06', title: 'وحدة', domain_id: 'T01', path_version: 'v1' },
     action: { state: null, at: null, means: null },
     chat: { enabled: true, used: 0, limit: 3, remaining: 3, messages: [] },
-    image: { sensitive: false, url: '/scans/110000000000000001/image' },
+    image: { sensitive: false, url: '/scans/110000000000000001/image', has_photo: false },
     completed_at: null,
     place_id: null,
     published_at: null,

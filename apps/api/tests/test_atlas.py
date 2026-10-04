@@ -33,7 +33,8 @@ from tests.support_social import Member
 EXACT = (36.806512, 10.181534)
 CELL_M = 1000
 # No private field, and no timestamp: an insight id or a time to the second would say when the
-# photo was taken or when its owner was there.
+# photo was taken or when its owner was there. A photo's storage keys stay on the server: the
+# public copy is named by `photo_url` alone.
 PRIVATE_KEYS = {
     "latitude",
     "longitude",
@@ -44,6 +45,9 @@ PRIVATE_KEYS = {
     "insight_id",
     "published_at",
     "created_at",
+    "photo_key",
+    "photo_public_key",
+    "photo_ref",
 }
 
 

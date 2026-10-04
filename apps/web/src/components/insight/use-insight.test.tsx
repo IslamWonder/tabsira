@@ -50,7 +50,7 @@ describe('useInsight: reading', () => {
   });
 
   it('never fetches the photo of a sensitive scene', async () => {
-    const api = routes({}, insightOut({ image: { sensitive: true, url: null } }));
+    const api = routes({}, insightOut({ image: { sensitive: true, url: null, has_photo: false } }));
     const { result } = renderHook(() => useInsight(ID));
     await waitFor(() => expect(result.current.photo).toEqual({ kind: 'sensitive' }));
     expect(api.requests.some((request) => request.url.includes('/scans/'))).toBe(false);
@@ -59,7 +59,7 @@ describe('useInsight: reading', () => {
   it('says there is no photo when there is no scan, no address, or the scan cannot be read', async () => {
     for (const insight of [
       insightOut({ scan_id: null }),
-      insightOut({ image: { sensitive: false, url: null } }),
+      insightOut({ image: { sensitive: false, url: null, has_photo: false } }),
     ]) {
       routes({}, insight);
       const { result, unmount } = renderHook(() => useInsight(ID));

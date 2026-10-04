@@ -36,6 +36,7 @@ from src.routers import (
     insights,
     legal,
     me,
+    media,
     members,
     posts,
     profile,
@@ -254,6 +255,7 @@ def create_app(
     app.include_router(world.router)
     app.include_router(me.router)
     app.include_router(atlas.router)
+    app.include_router(media.router)
     app.include_router(tutorial.router)
     app.include_router(sounds.router)
     # The admin area is not mounted at all while its feature flag is off.

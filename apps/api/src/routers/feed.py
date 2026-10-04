@@ -12,12 +12,13 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 
-from src.deps import CurrentUser, DbDep, OptionalUser, require_social
+from src.deps import CurrentUser, DbDep, OptionalUser, PhotoStoreDep, require_social
 from src.models.user import User
 from src.schemas.social import FeedPage
 from src.services import cursor as cursors
 from src.services import feed_service, member_service, post_view
 from src.services.feed_service import Page
+from src.storage.photos import PhotoStore
 
 router = APIRouter(tags=["feed"], dependencies=[Depends(require_social)])
 
@@ -33,16 +34,21 @@ async def _page(
     page: Page,
     viewer: User | None,
     cursor: str | None,
+    photos: PhotoStore,
     empty_reason: EmptyReason = "no_posts",
 ) -> FeedPage:
-    items = await post_view.build_posts(db, page.rows, viewer, why=page.why or None)
+    items = await post_view.build_posts(db, page.rows, viewer, photos=photos, why=page.why or None)
     reason = empty_reason if cursor is None and not items else None
     return FeedPage(items=items, next_cursor=page.next_cursor, empty_reason=reason)
 
 
 @router.get("/feed/following", summary="«أتابع»: the posts of the members the caller follows")
 async def feed_following(
-    user: CurrentUser, db: DbDep, cursor: str | None = None, limit: int = Limit
+    user: CurrentUser,
+    db: DbDep,
+    photos: PhotoStoreDep,
+    cursor: str | None = None,
+    limit: int = Limit,
 ) -> FeedPage:
     """
     Return the posts of the members the caller follows, newest first.
@@ -54,12 +60,16 @@ async def feed_following(
     reason: EmptyReason = "no_posts"
     if not page.rows and cursor is None and not await feed_service.follows_anyone(db, user):
         reason = "follows_nobody"
-    return await _page(db, page, user, cursor, reason)
+    return await _page(db, page, user, cursor, photos, reason)
 
 
 @router.get("/feed/for-you", summary="«لك»: a ranked feed with the reason for each post")
 async def feed_for_you(
-    viewer: OptionalUser, db: DbDep, cursor: str | None = None, limit: int = Limit
+    viewer: OptionalUser,
+    db: DbDep,
+    photos: PhotoStoreDep,
+    cursor: str | None = None,
+    limit: int = Limit,
 ) -> FeedPage:
     """
     Return the newest readable posts, ranked, each with `why` («لماذا أرى هذا؟»).
@@ -71,21 +81,30 @@ async def feed_for_you(
     same list.
     """
     page = await feed_service.for_you(db, viewer, cursors.decode(cursor), limit)
-    return await _page(db, page, viewer, cursor)
+    return await _page(db, page, viewer, cursor, photos)
 
 
 @router.get("/feed/latest", summary="Every public post, newest first")
 async def feed_latest(
-    viewer: OptionalUser, db: DbDep, cursor: str | None = None, limit: int = Limit
+    viewer: OptionalUser,
+    db: DbDep,
+    photos: PhotoStoreDep,
+    cursor: str | None = None,
+    limit: int = Limit,
 ) -> FeedPage:
     """Return the public posts in the order they were published; no ranking, no personalisation."""
     page = await feed_service.latest(db, viewer, cursors.decode(cursor), limit)
-    return await _page(db, page, viewer, cursor)
+    return await _page(db, page, viewer, cursor, photos)
 
 
 @router.get("/u/{handle}/posts", summary="A member's published posts")
 async def member_posts(
-    handle: str, viewer: OptionalUser, db: DbDep, cursor: str | None = None, limit: int = Limit
+    handle: str,
+    viewer: OptionalUser,
+    db: DbDep,
+    photos: PhotoStoreDep,
+    cursor: str | None = None,
+    limit: int = Limit,
 ) -> FeedPage:
     """
     Return a member's published posts that the caller may read, newest first.
@@ -94,4 +113,4 @@ async def member_posts(
     """
     member = await member_service.visible_member(db, handle, viewer)
     page = await feed_service.by_member(db, member, viewer, cursors.decode(cursor), limit)
-    return await _page(db, page, viewer, cursor)
+    return await _page(db, page, viewer, cursor, photos)

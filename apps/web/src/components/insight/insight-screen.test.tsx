@@ -118,7 +118,7 @@ describe('InsightScreen: the page', () => {
   });
 
   it('never shows the photo of a sensitive scene, and says so', async () => {
-    await open(insightOut({ image: { sensitive: true, url: null } }));
+    await open(insightOut({ image: { sensitive: true, url: null, has_photo: false } }));
     expect(await screen.findByText('لا نعرض صورة هذا المشهد ولا نحفظها.')).toBeInTheDocument();
     expect(screen.queryByRole('img', { name: 'صورة المشهد' })).toBeNull();
   });

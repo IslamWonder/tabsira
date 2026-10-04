@@ -34,6 +34,7 @@ from src.services import cursor as cursors
 from src.services import post_service, post_view, publication_service
 from src.services.post_service import PostRow
 from src.services.social_limits import WriteKind
+from src.storage.photos import PhotoStore
 
 router = APIRouter(tags=["posts"], dependencies=[Depends(require_social)])
 
@@ -42,8 +43,8 @@ PAGE_MAX = 50
 Limit = Annotated[int, Query(ge=1, le=PAGE_MAX)]
 
 
-async def _one(db: DbDep, row: PostRow, viewer: User | None) -> PostOut:
-    return (await post_view.build_posts(db, [row], viewer))[0]
+async def _one(db: DbDep, row: PostRow, viewer: User | None, photos: PhotoStore) -> PostOut:
+    return (await post_view.build_posts(db, [row], viewer, photos=photos))[0]
 
 
 @router.post(
@@ -58,6 +59,7 @@ async def create_post(
     db: DbDep,
     source: InsightSourceDep,
     settings: SettingsDep,
+    photos: PhotoStoreDep,
 ) -> PostOut:
     """
     Copy one of the caller's verified insights into a publication and open a draft on it.
@@ -73,11 +75,13 @@ async def create_post(
     post = post_service.create_draft(db, user, publication, body.reflection, body.visibility)
     await db.flush()
     await db.commit()
-    return await _one(db, PostRow(post, publication, user), user)
+    return await _one(db, PostRow(post, publication, user), user, photos)
 
 
 @router.get("/posts/{post_id}", summary="One post")
-async def get_post(post_id: PostIdPath, viewer: OptionalUser, db: DbDep) -> PostOut:
+async def get_post(
+    post_id: PostIdPath, viewer: OptionalUser, db: DbDep, photos: PhotoStoreDep
+) -> PostOut:
     """
     Return a post the caller may read.
 
@@ -86,7 +90,7 @@ async def get_post(post_id: PostIdPath, viewer: OptionalUser, db: DbDep) -> Post
     one that was withdrawn or removed.
     """
     row = await post_service.get_readable(db, post_id, viewer)
-    return await _one(db, row, viewer)
+    return await _one(db, row, viewer, photos)
 
 
 @router.patch(
@@ -95,7 +99,7 @@ async def get_post(post_id: PostIdPath, viewer: OptionalUser, db: DbDep) -> Post
     dependencies=[limited(WriteKind.POST)],
 )
 async def patch_post(
-    post_id: PostIdPath, body: PostPatch, user: PublicMember, db: DbDep
+    post_id: PostIdPath, body: PostPatch, user: PublicMember, db: DbDep, photos: PhotoStoreDep
 ) -> PostOut:
     """Change a draft's reflection or audience; a refused post becomes a draft again."""
     row = await post_service.get_owned(db, post_id, user)
@@ -106,7 +110,7 @@ async def patch_post(
         reflection_given="reflection" in body.model_fields_set,
     )
     await db.commit()
-    return await _one(db, row, user)
+    return await _one(db, row, user, photos)
 
 
 @router.post(
@@ -127,7 +131,7 @@ async def submit_post(
     row = await post_service.get_owned(db, post_id, user)
     post = await post_service.submit(db, row, guard, photos=photos)
     await db.commit()
-    return await _one(db, PostRow(post, row.publication, user), user)
+    return await _one(db, PostRow(post, row.publication, user), user, photos)
 
 
 @router.delete(
@@ -156,6 +160,7 @@ async def delete_post(
 async def my_posts(
     user: CurrentUser,
     db: DbDep,
+    photos: PhotoStoreDep,
     cursor: str | None = None,
     limit: Limit = PAGE_DEFAULT,
 ) -> MyPostsPage:
@@ -180,7 +185,7 @@ async def my_posts(
     rows = (await db.execute(statement)).all()
     page = rows[:limit]
     items = await post_view.build_posts(
-        db, [PostRow(post, publication, user) for post, publication in page], user
+        db, [PostRow(post, publication, user) for post, publication in page], user, photos=photos
     )
     last = page[-1][0] if len(rows) > limit else None
     return MyPostsPage(

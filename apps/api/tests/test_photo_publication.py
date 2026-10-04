@@ -2,14 +2,17 @@
 The public copy of a kept photo exists exactly while a post or a map entry shows it (v2 §19).
 
 Made when the owner publishes with the photo chosen and the rules still allow it, deleted when
-the last publication showing it is withdrawn or removed; no response ever carries a key.
+the last publication showing it is withdrawn or removed; no response ever carries a key. Its
+address (`photo_url`) is given only by a published public post or a published entry that shows
+it, and the local `/media` route serves the public prefix alone.
 """
 
 from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+from urllib.parse import urlsplit
 
 import pytest
 from sqlalchemy import select
@@ -20,7 +23,13 @@ from src.models import Insight, InsightPublication, MapEntry, Post, PostStatus
 from src.owner import Owner
 from src.services import moderation_service
 from src.services.insight_table_source import InsightTableSource
-from src.storage.base import ObjectNotFoundError, StorageUnavailableError, new_private_key
+from src.storage.base import (
+    ObjectNotFoundError,
+    Storage,
+    StorageUnavailableError,
+    new_private_key,
+    new_public_key,
+)
 from src.storage.local import LocalStorage
 from src.storage.photos import PhotoStore
 from tests import geo_dataset as world_data
@@ -129,6 +138,18 @@ async def place_with_photo(member: Member, insight: Insight, *, photo: bool = Tr
     return response
 
 
+def address_of(photos: PhotoStore, public_key: str) -> str:
+    """The address a reader is given, and the only way the public copy is ever named."""
+    url = photos.storage.public_url(public_key)
+    assert url == f"https://api.tabsira.test/media/{public_key}"
+    return url
+
+
+def names_no_key(photos: PhotoStore, text: str, *, private: str, public: str) -> bool:
+    """The private key is nowhere; the public one appears inside its address and nowhere else."""
+    return private not in text and public not in text.replace(address_of(photos, public), "")
+
+
 # ─── Posts ───
 
 
@@ -156,13 +177,42 @@ async def test_a_post_publishes_the_photo_the_owner_chose_and_withdrawing_remove
     assert submitted.json()["insight"]["has_photo"] is True
     read = await author.http.get(f"/posts/{post_id}")
     for text in (submitted.text, read.text):
-        assert private not in text and public not in text
-    assert photos.storage.public_url(public).endswith(public)
+        assert names_no_key(photos, text, private=private, public=public)
+    # The address names the public copy alone, and the feeds give the same one.
+    assert submitted.json()["insight"]["photo_url"] == address_of(photos, public)
+    assert read.json()["insight"]["photo_url"] == address_of(photos, public)
+    latest = await author.http.get("/feed/latest")
+    assert [item["insight"]["photo_url"] for item in latest.json()["items"]] == [
+        address_of(photos, public)
+    ]
+    mine = await author.http.get("/me/posts")
+    assert mine.json()["items"][0]["insight"]["photo_url"] == address_of(photos, public)
 
     assert (await author.http.delete(f"/posts/{post_id}")).status_code == 204
     assert await keys_of(db_session, insight) == (private, None)
     # The owner's private copy stays; only the public one went.
     assert objects(media) == [private]
+
+
+async def test_a_draft_names_no_address_and_the_owner_s_view_says_a_photo_is_kept(
+    db_session, make_member, photos, media, world
+):
+    author = await make_member("author")
+    await consent(author)
+    kept = await kept_insight(db_session, author, photos)
+    bare = await kept_insight(db_session, author, photos, with_photo=False)
+
+    post_id = await post_with_photo(author, kept)
+    draft = await author.http.get(f"/posts/{post_id}")
+    assert draft.json()["status"] == "draft"
+    assert (
+        draft.json()["insight"] | {"has_photo": True, "photo_url": None} == draft.json()["insight"]
+    )
+    own = await author.http.get(f"/insights/{kept.id}")
+    assert own.status_code == 200, own.text
+    assert own.json()["image"]["has_photo"] is True
+    assert kept.photo_key not in own.text
+    assert (await author.http.get(f"/insights/{bare.id}")).json()["image"]["has_photo"] is False
 
 
 async def test_without_the_choice_or_a_kept_photo_a_post_shows_none(
@@ -179,6 +229,7 @@ async def test_without_the_choice_or_a_kept_photo_a_post_shows_none(
         response = await author.http.post(f"/posts/{post_id}/submit")
         assert response.json()["status"] == "published"
         assert response.json()["insight"]["has_photo"] is False
+        assert response.json()["insight"]["photo_url"] is None
 
     assert objects(media) == [kept.photo_key]
     assert await keys_of(db_session, kept) == (kept.photo_key, None)
@@ -200,8 +251,31 @@ async def test_a_post_for_followers_only_makes_no_public_copy(
     # The owner's choice is recorded, but the `public/` prefix is for public posts alone.
     assert response.json()["status"] == "published"
     assert response.json()["insight"]["has_photo"] is True
+    assert response.json()["insight"]["photo_url"] is None
     assert await keys_of(db_session, insight) == (insight.photo_key, None)
     assert objects(media) == [insight.photo_key]
+
+
+async def test_a_followers_only_post_never_names_the_copy_a_map_entry_made(
+    db_session, make_member, photos, media, world
+):
+    """The copy exists for the entry; a post for followers still gives nobody its address."""
+    author = await make_member("author")
+    await consent(author)
+    insight = await kept_insight(db_session, author, photos)
+    await place_with_photo(author, insight)
+    assert (await author.http.post(f"/insights/{insight.id}/map/publish")).status_code == 200
+    _, public = await keys_of(db_session, insight)
+    assert public is not None
+    draft = await author.http.post(
+        "/posts", json={"insight_id": str(insight.id), "photo": True, "visibility": "followers"}
+    )
+
+    response = await author.http.post(f"/posts/{draft.json()['id']}/submit")
+
+    assert response.json()["status"] == "published"
+    assert response.json()["insight"]["photo_url"] is None
+    assert public not in response.text
 
 
 async def test_the_rules_are_checked_again_when_the_copy_would_be_made(
@@ -277,7 +351,15 @@ async def test_a_map_entry_shows_the_photo_while_published_and_shares_the_copy_w
         assert private not in text and public not in text
     entry_id = published.json()["id"]
     public_page = await author.http.get(f"/atlas/entries/{entry_id}")
-    assert public_page.status_code == 200 and public not in public_page.text
+    assert public_page.status_code == 200
+    assert names_no_key(photos, public_page.text, private=private, public=public)
+    assert public_page.json()["photo_url"] == address_of(photos, public)
+    # Anyone with the address reads the copy; the private copy has no public address at all.
+    served = await author.http.get(urlsplit(address_of(photos, public)).path)
+    assert (served.status_code, served.headers["content-type"]) == (200, "image/jpeg")
+    assert served.headers["cache-control"] == "public, max-age=300"
+    assert served.content == await photos.storage.get(public)
+    assert (await author.http.get(f"/media/{private}")).status_code == 404
 
     # A post shows the same photo: one copy serves both, and it goes with the last of them.
     post_id = await post_with_photo(author, insight)
@@ -299,7 +381,10 @@ async def test_a_map_entry_placed_without_the_choice_makes_no_copy(
 
     placed = await place_with_photo(author, insight, photo=False)
     assert placed.json()["photo"] is False
-    assert (await author.http.post(f"/insights/{insight.id}/map/publish")).status_code == 200
+    published = await author.http.post(f"/insights/{insight.id}/map/publish")
+    assert published.status_code == 200
+    page = await author.http.get(f"/atlas/entries/{published.json()['id']}")
+    assert page.json()["photo_url"] is None
     assert (await author.http.delete(f"/insights/{insight.id}/map")).status_code == 204
 
     assert await keys_of(db_session, insight) == (insight.photo_key, None)
@@ -409,3 +494,25 @@ async def test_a_moderator_s_removal_of_a_map_entry_deletes_the_copy(
 
     assert await keys_of(db_session, insight) == (insight.photo_key, None)
     assert objects(media) == [insight.photo_key]
+
+
+# ─── The local media route ───
+
+
+async def test_the_media_route_serves_the_public_prefix_alone_and_only_from_the_local_disk(
+    db_session, make_member, photos, media, world, account_app
+):
+    reader = await make_member(signed_in=False)
+    public = new_public_key()
+    await photos.storage.put(public, jpeg_of(pixels()))
+
+    assert (await reader.http.get(f"/media/{public}")).status_code == 200
+    # A name that is not a key never reaches the disk; an absent copy is simply not found.
+    assert (await reader.http.get("/media/public/../../etc/passwd")).status_code in (404, 422)
+    assert (await reader.http.get("/media/public/not-a-key.jpg")).status_code == 422
+    assert (await reader.http.get(f"/media/{new_public_key()}")).status_code == 404
+    assert (await reader.http.get(f"/media/{new_private_key()}")).status_code == 404
+
+    # With S3 the copies are read from `S3_PUBLIC_BASE_URL`, never through the API.
+    account_app.state.photo_store = PhotoStore(cast("Storage", object()), photos.settings)
+    assert (await reader.http.get(f"/media/{public}")).status_code == 404

@@ -142,9 +142,11 @@ async def entries_in_window(
 
 
 @router.get("/atlas/entries/{entry_id}", summary="One published entry")
-async def entry(entry_id: PublicIdPath, db: DbDep, viewer: OptionalUser) -> AtlasEntryOut:
+async def entry(
+    entry_id: PublicIdPath, db: DbDep, viewer: OptionalUser, photos: PhotoStoreDep
+) -> AtlasEntryOut:
     """Return the entry's page: the insight with its scripture from the store, the public point and its place; 410 once withdrawn."""
-    return await atlas_service.entry_detail(db, entry_id, viewer)
+    return await atlas_service.entry_detail(db, entry_id, viewer, photos=photos)
 
 
 @router.get("/atlas/places/{geoname_id}", summary="A place and the entries labelled with it")
