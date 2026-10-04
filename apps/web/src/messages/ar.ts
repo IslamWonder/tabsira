@@ -396,7 +396,7 @@ export const ar = {
 
   step: {
     title: 'خطوة صغيرة',
-    defer: 'أجّل الآن',
+    defer: 'سأفعله لاحقًا',
     saving: 'أحفظ ما صرّحت به…',
     saved: 'سُجّل ما صرّحت به.',
     deferred: 'أجّلت الخطوة، وستجدها هنا حين تعود.',
@@ -769,7 +769,7 @@ export const ar = {
     samples: {
       primary: 'تمّ',
       secondary: 'افتح المصدر',
-      ghost: 'أجّل الآن',
+      ghost: 'سأفعله لاحقًا',
       disabled: 'غير متاح',
       share: 'شارك البصيرة',
       openSheet: 'افتح اللوح',

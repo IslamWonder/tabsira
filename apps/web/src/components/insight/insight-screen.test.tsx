@@ -202,7 +202,7 @@ describe('InsightScreen: why, the chat and the step', () => {
       [`POST /insights/${ID}/action`]: { body: { state: 'later', at: null, means: '[حُفظ]' } },
     });
     const step = screen.getByRole('region', { name: /خطوة صغيرة/ });
-    await userEvent.click(within(step).getByRole('button', { name: 'أجّل الآن' }));
+    await userEvent.click(within(step).getByRole('button', { name: 'سأفعله لاحقًا' }));
     await waitFor(() => expect(within(step).getByRole('status')).toHaveTextContent('[حُفظ]'));
     expect(
       within(step)

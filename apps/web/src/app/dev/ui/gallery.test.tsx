@@ -125,7 +125,7 @@ describe('the development gallery', () => {
     expect(step.getByRole('status')).toHaveTextContent('سُجّل');
     const stepSection = within(half.getByRole('region', { name: 'الخطوة الصغيرة' }));
     await userEvent.click(stepSection.getByRole('button', { name: 'أعد الضبط' }));
-    await userEvent.click(step.getByRole('button', { name: 'أجّل الآن' }));
+    await userEvent.click(step.getByRole('button', { name: 'سأفعله لاحقًا' }));
     expect(step.getByRole('status')).toHaveTextContent('أجّلت');
 
     const doneSection = within(half.getByRole('region', { name: 'زر «تمّ»' }));
@@ -177,7 +177,7 @@ describe('the development gallery', () => {
     const frame = previews('phone').find((element) =>
       element.querySelector('article')
     ) as HTMLElement;
-    fireEvent.click(within(frame).getByRole('button', { name: 'أجّل الآن', hidden: true }));
+    fireEvent.click(within(frame).getByRole('button', { name: 'سأفعله لاحقًا', hidden: true }));
     expect(within(frame).getByText(/أجّلت الخطوة/)).toBeInTheDocument();
   });
 });

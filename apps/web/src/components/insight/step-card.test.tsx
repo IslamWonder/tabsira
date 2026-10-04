@@ -26,7 +26,7 @@ describe('StepCard', () => {
     expect(section).toHaveClass('extra');
     expect(screen.getAllByRole('button')).toHaveLength(2);
     await userEvent.click(screen.getByRole('button', { name: '[الإقرار]' }));
-    await userEvent.click(screen.getByRole('button', { name: 'أجّل الآن' }));
+    await userEvent.click(screen.getByRole('button', { name: 'سأفعله لاحقًا' }));
     expect(onConfirm).toHaveBeenCalledOnce();
     expect(onDefer).toHaveBeenCalledOnce();
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
