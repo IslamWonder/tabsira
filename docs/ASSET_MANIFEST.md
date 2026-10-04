@@ -52,7 +52,7 @@ Required by v2 §3 and decisions 6, 16 and 17. One row per asset: status, where 
 - **Verse link.** `https://quranpedia.net/surah/2/{surah}#verse-{quranpedia ayah id}`. The surah page of mushaf 2 has the canonical URL `/surah/2/{surah}`, and the first line of each verse carries `id="verse-{id}"` (checked on `/surah/2/30`, 4 October 2026). The per-verse page `/ayahs/{surah}/{ayah}` redirects to `/tafsir/{slug}/{ayah}`, a tafsir page that does not show mushaf 2's text, so it is not used.
 - **Corrections.** `GET https://api.quranpedia.net/v1/changes?since=YYYY-MM-DD` (a date, not a time; verse tracking since 2026-08-07; each list capped at 1,000 rows sorted by `changed_at`, flagged `truncated`; a `refetch` path per row). On 4 October 2026 the feed held no change to mushaf 2: since 2026-08-08 it listed 1,000 rows (mushaf 4 ×1, mushaf 6 ×999, truncated on 2026-08-25) and nothing since 2026-08-26. `uv run python -m src.cli.sync_quran` applies the changes daily (see `src/scripture/quran_sync.py`).
 - **Usage policy** (`https://quranpedia.net/api-docs#usage-policy`): dumps instead of crawling the API, at most 120 requests a minute. The client spaces its requests 0.6 s apart and sends `User-Agent: tabsira/0.1 (+https://tabsira.me)`. Importing used three requests (manifest and two files); a sync uses one plus one per changed verse of mushaf 2.
-- The questions of §2.5 are settled by decision 16: the displayed text is quranpedia's, and the annotated corpus is joined by surah and verse for retrieval only (6,236 of 6,236 verses join; its `text_ar` is never read into the database).
+- The questions of §2.5 are settled by decision 16: the displayed text is quranpedia's, and the annotated corpus is joined by surah and verse for retrieval only (6,236 of 6,236 verses join). Its `text_ar` is never stored: the importer reads it only to leave out every annotation string that repeats the verse, folded (514 strings of the seven kept keys: 513 repeat the corpus' verse, one more repeats the stored quranpedia text only).
 
 ### 2.1 Structure
 
@@ -282,7 +282,7 @@ Downloaded on 4 October 2026. Tanzil served the file without accepting its downl
 | `app.quran_verses`              |      6,236 | quranpedia dump 2026-10-03, every hash checked by the database                                    |
 | `app.quran_verse_search`        |      6,236 | folded copies, search only                                                                        |
 | `app.quran_verse_history`       |          0 | no correction applied yet                                                                         |
-| `app.quran_annotations`         |      6,236 | seven annotation keys per verse; `text_ar` not read                                               |
+| `app.quran_annotations`         |      6,236 | seven annotation keys per verse; 514 strings repeating the verse left out; `text_ar` not stored   |
 | `app.hadith_collections`        |          9 |                                                                                                   |
 | `app.hadiths`                   |     65,712 | §3.5                                                                                              |
 | `app.hadith_search`             |     65,712 | folded copies, search only                                                                        |

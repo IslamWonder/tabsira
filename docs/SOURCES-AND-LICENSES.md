@@ -44,7 +44,7 @@ dorar.net («الدرر السنية») is never called from the server: it bloc
 
 ## Retrieval aids, never displayed as scripture
 
-- **Annotated Quran corpus** (`final_complete_verses_20251202_194512.json`, Firas Ben Sassi). The project's own: annotations written by gpt-4o-mini, used to find verses. Its verse text (Tanzil-derived) and its English translation (source and licence unknown) are not imported.
+- **Annotated Quran corpus** (`final_complete_verses_20251202_194512.json`, Firas Ben Sassi). The project's own: annotations written by gpt-4o-mini, used to find verses. Its verse text (Tanzil-derived) is not stored: it is read only to leave out the annotation strings that repeat the verse (514 of them). Its English translation (source and licence unknown) is not imported.
 - **Enriched Sunnah file** (`processed_sunnah_data.json`). The project's own enrichment, written by gpt-5-mini, of a hadith compilation that is not identified. Its fields are ranking signals; its abridged narrations are not stored, and its summaries and paraphrases are stored as model-written and never shown as hadith.
 
 ## Not used
