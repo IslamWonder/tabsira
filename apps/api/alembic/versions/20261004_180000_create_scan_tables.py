@@ -59,7 +59,7 @@ def upgrade() -> None:
         sa.Column(
             "id",
             sa.BigInteger(),
-            server_default=sa.text("app.timestamp_id('scans')"),
+            server_default=sa.text("app.timestamp_id('scans'::text)"),
             nullable=False,
         ),
         sa.Column("user_id", sa.Uuid(), nullable=True),
@@ -155,7 +155,7 @@ def upgrade() -> None:
         sa.Column(
             "id",
             sa.BigInteger(),
-            server_default=sa.text("app.timestamp_id('world_places')"),
+            server_default=sa.text("app.timestamp_id('world_places'::text)"),
             nullable=False,
         ),
         sa.Column("user_id", sa.Uuid(), nullable=True),
@@ -208,7 +208,7 @@ def upgrade() -> None:
         sa.Column(
             "id",
             sa.BigInteger(),
-            server_default=sa.text("app.timestamp_id('insights')"),
+            server_default=sa.text("app.timestamp_id('insights'::text)"),
             nullable=False,
         ),
         sa.Column("user_id", sa.Uuid(), nullable=True),
@@ -398,7 +398,7 @@ def upgrade() -> None:
         sa.Column(
             "id",
             sa.BigInteger(),
-            server_default=sa.text("app.timestamp_id('treasures')"),
+            server_default=sa.text("app.timestamp_id('treasures'::text)"),
             nullable=False,
         ),
         sa.Column("insight_id", sa.BigInteger(), nullable=False),
