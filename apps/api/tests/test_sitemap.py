@@ -110,13 +110,13 @@ async def test_the_answers_may_be_cached_for_a_few_minutes(client):
 # ─── The static section ───────────────────────────────────────────────────────
 
 
-async def test_the_static_section_lists_the_five_public_pages_in_order(client):
+async def test_the_static_section_lists_the_six_public_pages_in_order(client):
     response = await client.get("/sitemap/static")
 
     assert response.status_code == 200
     assert response.json() == [
         {"path": path, "lastmod": STATIC_LASTMOD, "images": []}
-        for path in ("/", "/about", "/terms", "/privacy", "/cookies")
+        for path in ("/", "/about", "/terms", "/privacy", "/cookies", "/support")
     ]
 
 
@@ -146,7 +146,7 @@ async def test_a_smaller_page_size_cuts_the_static_pages(client_with):
     assert index["page_size"] == 2
     assert [p["page"] for p in index["sections"]["static"]] == [0, 1, 2]
     assert first == ["/", "/about"]
-    assert last == ["/cookies"]
+    assert last == ["/cookies", "/support"]
     assert past == []
 
 
