@@ -207,7 +207,7 @@ def _place_fields(row: RowMapping) -> dict[str, Any]:
         "latitude": row["latitude"],
         "longitude": row["longitude"],
         # GeoJSON order: longitude first.
-        "location": GeoJsonPoint(coordinates=(row["longitude"], row["latitude"])),
+        "location": GeoJsonPoint(coordinates=[row["longitude"], row["latitude"]]),
     }
 
 

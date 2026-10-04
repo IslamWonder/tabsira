@@ -10,7 +10,7 @@ Point, whose coordinates are [longitude, latitude].
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -19,7 +19,9 @@ class GeoJsonPoint(BaseModel):
     """A GeoJSON Point (RFC 7946): `coordinates` is [longitude, latitude]."""
 
     type: Literal["Point"] = "Point"
-    coordinates: tuple[float, float] = Field(description="[longitude, latitude]")
+    coordinates: Annotated[list[float], Field(min_length=2, max_length=2)] = Field(
+        description="[longitude, latitude]"
+    )
 
 
 class AdminArea(BaseModel):
