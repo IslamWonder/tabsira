@@ -341,17 +341,32 @@ async def test_the_block_list_names_only_handles_and_public_names(make_member):
     ]
 
 
-async def test_nobody_blocks_themselves_or_someone_who_does_not_exist_and_a_session_is_needed(
-    make_member,
-):
+async def test_nobody_blocks_themselves_and_a_session_is_needed(make_member):
     ann = await make_member("ann")
     guest = await make_member(signed_in=False)
 
     assert (await ann.http.put("/blocks/ann")).json()["error"] == "BAD_REQUEST"
-    assert (await ann.http.put("/blocks/nobody")).status_code == 404
-    assert (await ann.http.delete("/blocks/nobody")).status_code == 404
     assert (await guest.http.get("/blocks")).status_code == 401
     assert (await guest.http.put("/blocks/ann")).status_code == 401
+
+
+async def test_blocking_an_unknown_handle_answers_like_blocking_someone_who_blocked_you(
+    make_member, db_session
+):
+    """A 404 for the unknown handle alone would confirm that the other handle blocked the caller."""
+    ann = await make_member("ann")
+    bob = await make_member("bob")
+    await bob.http.put("/blocks/ann")
+
+    unknown = await ann.http.put("/blocks/nobody")
+    blocker = await ann.http.put("/blocks/bob")
+
+    assert (unknown.status_code, blocker.status_code) == (204, 204)
+    assert (unknown.content, blocker.content) == (b"", b"")
+    assert await db_session.scalar(select(func.count()).select_from(Block)) == 2
+    assert (await ann.http.delete("/blocks/nobody")).status_code == 204
+    assert (await ann.http.delete("/blocks/bob")).status_code == 204
+    assert await db_session.scalar(select(func.count()).select_from(Block)) == 1
 
 
 # ─── Limits and the feature flag ──────────────────────────────────────────────

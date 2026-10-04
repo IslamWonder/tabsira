@@ -765,13 +765,15 @@ export interface paths {
      * @description Block a member.
      *
      *     Each of the two stops seeing the other everywhere, and the follows between them, in
-     *     both directions, end. Blocking again changes nothing. 400 for oneself.
+     *     both directions, end. Blocking again changes nothing. 400 for oneself. A handle nobody
+     *     holds answers 204 like any other: a 404 here would tell the caller that a handle they can
+     *     no longer see (`/u/{handle}` says 404 for a block too) does exist and has blocked them.
      */
     put: operations['block_member_blocks__handle__put'];
     post?: never;
     /**
      * Lift a block
-     * @description Lift the caller's own block; safe to repeat.
+     * @description Lift the caller's own block; safe to repeat, and 204 for a handle nobody holds too.
      */
     delete: operations['unblock_member_blocks__handle__delete'];
     options?: never;

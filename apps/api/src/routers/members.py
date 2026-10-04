@@ -125,11 +125,13 @@ async def block_member(handle: str, user: CurrentUser, db: DbDep) -> Response:
     Block a member.
 
     Each of the two stops seeing the other everywhere, and the follows between them, in
-    both directions, end. Blocking again changes nothing. 400 for oneself.
+    both directions, end. Blocking again changes nothing. 400 for oneself. A handle nobody
+    holds answers 204 like any other: a 404 here would tell the caller that a handle they can
+    no longer see (`/u/{handle}` says 404 for a block too) does exist and has blocked them.
     """
     target = await public_identity.find_member(db, handle)
     if target is None:
-        raise member_service.not_found()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     if target.id == user.id:
         raise AppError(ErrorCode.BAD_REQUEST, "You cannot block yourself.", status_code=400)
     await block_service.block(db, user, target)
@@ -144,10 +146,10 @@ async def block_member(handle: str, user: CurrentUser, db: DbDep) -> Response:
     dependencies=[*_social, limited(WriteKind.BLOCK)],
 )
 async def unblock_member(handle: str, user: CurrentUser, db: DbDep) -> Response:
-    """Lift the caller's own block; safe to repeat."""
+    """Lift the caller's own block; safe to repeat, and 204 for a handle nobody holds too."""
     target = await public_identity.find_member(db, handle)
     if target is None:
-        raise member_service.not_found()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     await block_service.unblock(db, user, target)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
