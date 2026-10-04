@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from src import clock, messages
+from src import clock
+from src.messages import messages_for
 from src.models import ActionState, ChatMessage, ChatStatus, InsightOrigin, ScanOutcome, Treasure
 from src.owner import Owner
 from tests.scans.builders import insight_row, scan_row
@@ -31,7 +32,7 @@ async def test_a_newcomer_starts_at_the_first_rank_with_every_badge_locked(brows
     assert body["sky"] == {"count": 0, "stars": []}
     assert len(body["badges"]) == 12
     assert not any(badge["earned"] for badge in body["badges"])
-    assert body["disclaimer"] == messages.PRACTICE_DISCLAIMER
+    assert body["disclaimer"] == messages_for().practice_disclaimer
     for forbidden in ("leaderboard", "rank_among", "percentile", "iman", "hasanat"):
         assert forbidden not in response.text
 

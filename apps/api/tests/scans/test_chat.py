@@ -9,9 +9,10 @@ import pytest
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from src import clock, messages
+from src import clock
 from src.ai.errors import AiCallError, AiErrorCode
 from src.errors import AppError
+from src.messages import messages_for
 from src.models import AiCall, ChatMessage, ChatStatus, Guest
 from src.owner import Owner
 from src.services import chat_service
@@ -62,7 +63,7 @@ async def test_a_question_is_answered_grounded_counted_and_disclosed(
     assert body["message"]["answer"] == "تدعو الآية إلى التأمل في أثر الرحمة."
     assert (body["message"]["level"], body["message"]["kind"]) == ("b", "answer")
     assert (body["used"], body["limit"], body["remaining"]) == (1, 3, 2)
-    assert body["disclosure"] == messages.AI_DISCLOSURE
+    assert body["disclosure"] == messages_for().ai_disclosure
     call = model.calls[0]
     assert call["stage"].value == "chat"
     assert "ما معنى الإحياء هنا؟" in call["user"]
@@ -99,7 +100,7 @@ async def test_the_fourth_message_is_refused(browser, store, flow_settings, mode
 
     assert [answer.json()["remaining"] for answer in answers] == [2, 1, 0]
     assert (fourth.status_code, fourth.json()["error"]) == (409, "CHAT_LIMIT_REACHED")
-    assert fourth.json()["detail"] == messages.CHAT_LIMIT_REACHED
+    assert fourth.json()["detail"] == messages_for().chat_limit_reached
     assert "Q: ما معنى الإحياء هنا؟" in model.calls[2]["user"]
 
 
@@ -170,15 +171,18 @@ async def test_a_request_for_another_text_needs_a_new_search(browser, store, flo
 
     body = (await ask(browser, insight_id, "أعطني حديثًا آخر عن المطر")).json()
 
-    assert body["message"]["answer"] == messages.CHAT_NEEDS_NEW_SEARCH
+    assert body["message"]["answer"] == messages_for().chat_needs_new_search
     assert body["message"]["kind"] == "new_search"
 
 
 @pytest.mark.parametrize(
     ("answer", "expected"),
     [
-        ("الزواج عقد له أركان معروفة.", "الزواج عقد له أركان معروفة.\n\n" + messages.CHAT_REFERRAL),
-        ("", messages.CHAT_REFERRAL),
+        (
+            "الزواج عقد له أركان معروفة.",
+            "الزواج عقد له أركان معروفة.\n\n" + messages_for().chat_referral,
+        ),
+        ("", messages_for().chat_referral),
     ],
 )
 async def test_a_personal_case_gets_general_information_and_a_referral(

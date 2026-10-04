@@ -27,11 +27,12 @@ from sse_starlette import EventSourceResponse
 from starlette.datastructures import UploadFile
 from starlette.formparsers import MultiPartException, MultiPartParser
 
-from src import clock, messages
+from src import clock
 from src.config import Settings
 from src.database import get_db
 from src.deps import DbDep, SettingsDep
 from src.errors import AppError, ErrorCode
+from src.messages import messages_for
 from src.models import Insight, Scan, ScanOutcome, ScanSource, ScanStatus
 from src.owner import SCAN, OptionalOwner, Owner, WritingOwner, not_found
 from src.pipeline.engine import RelationType
@@ -223,7 +224,7 @@ async def describe(db: AsyncSession, scan: Scan, redis: RedisDep) -> ScanOut:
         error_code=scan.error_code,
         run=scan.run,
         engine=scan.engine,
-        engine_label=messages.DEMO_ENGINE if scan.engine == "demo" else None,
+        engine_label=messages_for().demo_engine if scan.engine == "demo" else None,
         source=scan.source,
         sensitive=scan.sensitive,
         image=ScanImageOut(
@@ -251,7 +252,7 @@ async def describe(db: AsyncSession, scan: Scan, redis: RedisDep) -> ScanOut:
                 glimpse=insight.glimpse,
                 anchor=BBox.model_validate(insight.anchor) if insight.anchor else None,
                 relation=RelationType(insight.relation),
-                relation_label=messages.RELATION_LABELS[insight.relation],
+                relation_label=messages_for().relation_labels[insight.relation],
                 completed=insight.completed_at is not None,
             )
             for insight in insights
@@ -260,7 +261,7 @@ async def describe(db: AsyncSession, scan: Scan, redis: RedisDep) -> ScanOut:
         events_url=f"/scans/{scan.id}/events",
         created_at=scan.created_at,
         finished_at=scan.finished_at,
-        disclosure=messages.AI_DISCLOSURE,
+        disclosure=messages_for().ai_disclosure,
     )
 
 

@@ -28,12 +28,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import clock, messages
+from src import clock
 from src.ai.client import ModelClient
 from src.ai.errors import AiCallError
 from src.ai.records import CallLog
 from src.config import AiStage, Settings
 from src.errors import AppError, ErrorCode
+from src.messages import messages_for
 from src.models import ChatMessage, ChatStatus, Hadith, Insight, QuranVerse
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
 from src.pipeline.prompt import load_prompt
@@ -103,7 +104,7 @@ async def _reserve(
     )
     if int(held or 0) >= settings.max_chat_user_messages:
         await db.commit()
-        raise _refused(ErrorCode.CHAT_LIMIT_REACHED, messages.CHAT_LIMIT_REACHED, 409)
+        raise _refused(ErrorCode.CHAT_LIMIT_REACHED, messages_for().chat_limit_reached, 409)
     row = ChatMessage(
         insight_id=insight.id,
         idempotency_key=key,
@@ -207,7 +208,7 @@ async def answer(
         used=used,
         limit=limit,
         remaining=max(limit - used, 0),
-        disclosure=messages.AI_DISCLOSURE,
+        disclosure=messages_for().ai_disclosure,
     )
 
 
@@ -279,10 +280,12 @@ async def _answer(
 def _compose(output: ChatModelOutput) -> tuple[str, str]:
     """Return the text shown and its kind: the app's own words for a new text, a referral for د."""
     if output.asks_for_new_text:
-        return messages.CHAT_NEEDS_NEW_SEARCH, "new_search"
+        return messages_for().chat_needs_new_search, "new_search"
     if output.level == "d":
         general = output.answer.strip()
-        parts = [general, messages.CHAT_REFERRAL] if general else [messages.CHAT_REFERRAL]
+        parts = (
+            [general, messages_for().chat_referral] if general else [messages_for().chat_referral]
+        )
         return "\n\n".join(parts), "referral"
     return output.answer.strip(), "answer"
 

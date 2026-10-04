@@ -15,8 +15,9 @@ from __future__ import annotations
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import clock, messages
+from src import clock
 from src.config import Settings
+from src.messages import messages_for
 from src.models import Insight, Treasure, WorldPlace
 from src.owner import Owner
 from src.pipeline.engine import HadithRef, QuranRef
@@ -26,11 +27,15 @@ from src.services.content import load_regions
 from src.services.insight_view import shown_evidence
 from src.services.practice import UTC_ZONE, badges
 
-OPTIONS = [
-    AfterOption(id="open_world", label=messages.OPTION_OPEN_WORLD),
-    AfterOption(id="new_scan", label=messages.OPTION_NEW_SCAN),
-    AfterOption(id="share", label=messages.OPTION_SHARE),
-]
+
+def options() -> list[AfterOption]:
+    """Return what the learner may do after «تمّ», in the order shown."""
+    texts = messages_for()
+    return [
+        AfterOption(id="open_world", label=texts.option_open_world),
+        AfterOption(id="new_scan", label=texts.option_new_scan),
+        AfterOption(id="share", label=texts.option_share),
+    ]
 
 
 async def complete(
@@ -72,11 +77,11 @@ async def complete(
         place=await _place(db, insight, created=place_created),
         treasure_prepared=treasure_prepared,
         badges_earned=sorted(await _earned(db, owner) - earned_before) if first else [],
-        options=OPTIONS,
-        suggest_account=messages.SUGGEST_ACCOUNT
+        options=options(),
+        suggest_account=messages_for().suggest_account
         if first and owner.is_guest and await _completed_count(db, owner) == 1
         else None,
-        disclosure=messages.AI_DISCLOSURE,
+        disclosure=messages_for().ai_disclosure,
     )
 
 

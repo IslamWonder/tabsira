@@ -7,7 +7,8 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import clock, messages
+from src import clock
+from src.messages import messages_for
 from src.models import (
     ActionState,
     ChatMessage,
@@ -145,15 +146,15 @@ def describe(log: PracticeLog, zone: ZoneInfo) -> ProgressOut:
             ],
         ),
         daily_quest=QuestOut(
-            title=messages.DAILY_QUEST_TITLE,
+            title=messages_for().daily_quest_title,
             day=today,
             steps=[
                 QuestStepOut(
-                    id="look", label=messages.DAILY_QUEST_STEPS["look"], done=looked_today
+                    id="look", label=messages_for().daily_quest_steps["look"], done=looked_today
                 ),
                 QuestStepOut(
                     id="complete",
-                    label=messages.DAILY_QUEST_STEPS["complete"],
+                    label=messages_for().daily_quest_steps["complete"],
                     done=completed_today,
                 ),
             ],
@@ -176,8 +177,8 @@ def describe(log: PracticeLog, zone: ZoneInfo) -> ProgressOut:
         badges=[
             BadgeOut(
                 id=badge_id,
-                title=messages.BADGES[badge_id][0],
-                description=messages.BADGES[badge_id][1],
+                title=messages_for().badges[badge_id][0],
+                description=messages_for().badges[badge_id][1],
                 earned=moment is not None,
                 earned_at=moment,
             )
@@ -191,5 +192,5 @@ def describe(log: PracticeLog, zone: ZoneInfo) -> ProgressOut:
             treasures=len(log.treasures),
             questions=len(log.questions),
         ),
-        disclaimer=messages.PRACTICE_DISCLAIMER,
+        disclaimer=messages_for().practice_disclaimer,
     )

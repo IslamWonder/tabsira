@@ -5,7 +5,8 @@ Error details stay in English: they are for developers and the web app maps the
 error code to its own Arabic message. What reaches a person directly lives here:
 the subject lines of the mail (the body of each mail lives in its template under
 src/templates/email/<language>), the questions the pipeline puts to the person who took the
-photo, and the statements of rules that forbid an inference.
+photo, the statements of rules that forbid an inference, and the words shown
+with every scan, insight, chat answer, world and practice page.
 
 A text with `{label}` takes the Arabic label of the entity it is about.
 
@@ -78,6 +79,51 @@ class Messages:
     # Rules that forbid an inference, stated for the prompts and for the person.
     rule_no_diagnosis: str
     rule_no_person_identity: str
+    # Insights: labels, disclosure and statuses shown with every result. The AI
+    # disclosure (v2 §12) is on every result and in the chat; the prepared label (v2 §4,
+    # tajriba §2) on every reviewed example; the demo label on the development simulation;
+    # the notice (decision 18) when a hadith has no editor's ruling yet.
+    ai_disclosure: str
+    prepared_example: str
+    demo_engine: str
+    hadith_awaits_verification: str
+    relation_labels: dict[str, str]
+    explanation_labels: dict[str, str]
+    # The fixed tags that keep quotation apart from the platform's words (v2 §12).
+    quran_tag: str
+    sunnah_tag: str
+    explanation_tag: str
+    # v2 §14: a step is «من السنة» only with a direct grounding; otherwise it is a suggestion.
+    step_from_sunnah: str
+    step_suggestion: str
+    stage_labels: dict[str, str]
+    # The small step: a declaration, never a proof or a reward (tajriba §9).
+    action_done: str
+    action_later: str
+    action_done_means: str
+    action_later_means: str
+    # «تمّ» and what follows it (v2 §4 and §15).
+    option_open_world: str
+    option_new_scan: str
+    option_share: str
+    suggest_account: str
+    continue_as_guest: str
+    # Chat (v2 §14); level د gives general information first, then the referral.
+    chat_limit_reached: str
+    chat_needs_new_search: str
+    chat_referral: str
+    # The world and its treasures (v2 §16 and §17).
+    treasure_kind_labels: dict[str, str]
+    relation_thread_question: str
+    world_relation_reasons: dict[str, str]
+    # Practice, never piety (decision 27): ranks as (id, title, hint), lowest first, their
+    # thresholds in src/services/practice.py; badges as id: (title, description), their
+    # rules there too.
+    practice_disclaimer: str
+    practice_ranks: tuple[tuple[str, str, str], ...]
+    daily_quest_title: str
+    daily_quest_steps: dict[str, str]
+    badges: dict[str, tuple[str, str]]
 
 
 ARABIC = Messages(
@@ -159,6 +205,92 @@ ARABIC = Messages(
     question_unknown_constraint="وضّح لنا ما تقصده في «{label}» حتى نكمل.",
     rule_no_diagnosis="لا يُستنتج أي تشخيص طبي أو نفسي أو صحي من الصورة.",
     rule_no_person_identity="لا تُستنتج هوية أي شخص ولا علاقته بغيره من الصورة.",
+    ai_disclosure="تبصرة أداة مدعومة بالذكاء الاصطناعي، وليست مفتيًا ولا عالمًا",
+    prepared_example="مثال موثّق مُعدّ",
+    demo_engine="محاكاة معلنة للتطوير: ليست تحليلًا حيًا لصورتك",
+    hadith_awaits_verification=(
+        "الحديث المرتبط بهذه البصيرة بانتظار التحقق من حكمه في الدرر؛ تُعرض الآية وحدها حتى يُسجَّل الحكم."
+    ),
+    relation_labels={
+        "direct": "صلة مباشرة",
+        "action_based": "صلة بالفعل",
+        "close_conceptual": "صلة مفهومية",
+        "opposite": "من المعنى المقابل",
+        "thematic_reminder": "تذكير عام",
+    },
+    explanation_labels={
+        "seen": "ما ظهر",
+        "value": "القيمة",
+        "quran": "ماذا تضيف الآية",
+        "sunnah": "ماذا يضيف الحديث",
+        "life": "كيف يتصل بالحياة",
+    },
+    quran_tag="القرآن",
+    sunnah_tag="السنة",
+    explanation_tag="شرح تبصرة",
+    step_from_sunnah="من السنة",
+    step_suggestion="اقتراح عملي",
+    stage_labels={
+        "understanding": "أفهم المشهد",
+        "searching": "أبحث عن الأدلة",
+        "verifying": "أتحقق من المصادر",
+        "composing": "أعدّ بصيرتك",
+    },
+    action_done="نفّذته",
+    action_later="سأفعله لاحقًا",
+    action_done_means="تصريح منك بما فعلت؛ لا تتحقق منه تبصرة ولا تحتسب له أجرًا.",
+    action_later_means="حُفظ تأجيلك؛ لا يُحتسب إنجازًا ولا يُنقص من شيء.",
+    option_open_world="افتح عالمي",
+    option_new_scan="صوّر مشهدًا آخر",
+    option_share="شارك البصيرة",
+    suggest_account="هل تحفظ ما تعلّمته لنواصل من هنا؟",
+    continue_as_guest="أتابع كضيف",
+    chat_limit_reached="اكتمل النقاش حول هذه البصيرة",
+    chat_needs_new_search=(
+        "طلب نص آخر يحتاج بحثًا جديدًا في المصادر وتحققًا منها، ولا أذكر نصًا من الذاكرة."
+        " صوّر المشهد من جديد أو وضّح ما تقصد لنبحث لك."
+    ),
+    chat_referral=(
+        "هذه مسألة تخصّ حالتك، والحكم فيها لمن يعرف تفاصيلها:"
+        " اسأل أهل العلم المؤهلين أو جهة الفتوى المعتمدة في بلدك."
+    ),
+    treasure_kind_labels={
+        "alternative": "نص آخر متحقَّق بالوزن نفسه",
+        "deeper": "معنى أعمق في الطريق نفسه",
+    },
+    relation_thread_question="كيف ترتبطان؟",
+    world_relation_reasons={
+        "same_scene": "من المشهد نفسه",
+        "prerequisite": "خطوة تمهّد للأخرى في المسار",
+    },
+    practice_disclaimer=(
+        "هذه علامات على التمرين والمواظبة لا على الإيمان ولا على القبول؛ تُحتسب من أفعالك المسجلة فقط."
+    ),
+    practice_ranks=(
+        ("nazir", "ناظر", "بدأت تنظر."),
+        ("mutaammil", "متأمّل", "ثلاثة مشاهد فأكثر."),
+        ("mustabsir", "مستبصر", "عشرة مشاهد فأكثر."),
+        ("basir", "بصير بالتمرين", "ثلاثون مشهدًا فأكثر."),
+    ),
+    daily_quest_title="بصيرة اليوم",
+    daily_quest_steps={
+        "look": "انظر في مشهد واحد اليوم",
+        "complete": "أتمّ بصيرة واحدة اليوم",
+    },
+    badges={
+        "first-look": ("أول نظرة", "أكملت أول مشهد عبر تبصرة."),
+        "seven-looks": ("سبع نظرات", "سبعة مشاهد اكتملت حتى آخر مرحلة."),
+        "thirty-looks": ("ثلاثون نظرة", "ثلاثون مشهدًا؛ صار النظر عادة."),
+        "both-insights": ("البصيرتان", "أتممت بصيرتي المطر والغرس معًا."),
+        "first-action": ("فعل صغير", "أقررت بفعل صغير بعد بصيرة."),
+        "first-place": ("أول بقعة", "انقشع الضباب عن أول موضع في عالمك."),
+        "first-treasure": ("أول كنز", "كشفت أول كنز مخبوء في عالمك."),
+        "ten-concepts": ("عشرة معانٍ", "عشرة معانٍ مختلفة أضاءت في سمائك."),
+        "asked": ("سائل", "سألت عمّا أمامك في الحوار."),
+        "streak-3": ("ثلاثة أيام", "نظرت ثلاثة أيام متتالية."),
+        "streak-7": ("أسبوع من النظر", "سبعة أيام متتالية من النظر."),
+        "daily-quest": ("مهمة اليوم", "أتممت بصيرة اليوم."),
+    },
 )
 
 CATALOGS: dict[str, Messages] = {ARABIC.language: ARABIC}
@@ -175,119 +307,3 @@ def messages_for(language: str | None = None, *, settings: Settings | None = Non
     settings = settings or get_settings()
     wanted = language if language in settings.supported_languages else settings.default_language
     return CATALOGS.get(wanted, ARABIC)
-
-
-# ─── Insights: labels, disclosure and statuses shown with every result ───
-
-# v2 §12: shown in the chat and on every result.
-AI_DISCLOSURE = "تبصرة أداة مدعومة بالذكاء الاصطناعي، وليست مفتيًا ولا عالمًا"
-# v2 §4 and tajriba §2: on every prepared, reviewed example.
-PREPARED_EXAMPLE = "مثال موثّق مُعدّ"
-# On every insight of the development simulation (SCAN_ENGINE=demo).
-DEMO_ENGINE = "محاكاة معلنة للتطوير: ليست تحليلًا حيًا لصورتك"
-# Decision 18: a hadith without an editor's ruling is not shown.
-HADITH_AWAITS_VERIFICATION = (
-    "الحديث المرتبط بهذه البصيرة بانتظار التحقق من حكمه في الدرر؛ تُعرض الآية وحدها حتى يُسجَّل الحكم."
-)
-
-RELATION_LABELS = {
-    "direct": "صلة مباشرة",
-    "action_based": "صلة بالفعل",
-    "close_conceptual": "صلة مفهومية",
-    "opposite": "من المعنى المقابل",
-    "thematic_reminder": "تذكير عام",
-}
-EXPLANATION_LABELS = {
-    "seen": "ما ظهر",
-    "value": "القيمة",
-    "quran": "ماذا تضيف الآية",
-    "sunnah": "ماذا يضيف الحديث",
-    "life": "كيف يتصل بالحياة",
-}
-# The fixed tags that keep quotation apart from the platform's words (v2 §12).
-QURAN_TAG = "القرآن"
-SUNNAH_TAG = "السنة"
-EXPLANATION_TAG = "شرح تبصرة"
-# v2 §14: a step is «من السنة» only with a direct grounding; otherwise it is a suggestion.
-STEP_FROM_SUNNAH = "من السنة"
-STEP_SUGGESTION = "اقتراح عملي"
-
-STAGE_LABELS = {
-    "understanding": "أفهم المشهد",
-    "searching": "أبحث عن الأدلة",
-    "verifying": "أتحقق من المصادر",
-    "composing": "أعدّ بصيرتك",
-}
-
-# ─── The small step: a declaration, never a proof or a reward (tajriba §9) ───
-
-ACTION_DONE = "نفّذته"
-ACTION_LATER = "سأفعله لاحقًا"
-ACTION_DONE_MEANS = "تصريح منك بما فعلت؛ لا تتحقق منه تبصرة ولا تحتسب له أجرًا."
-ACTION_LATER_MEANS = "حُفظ تأجيلك؛ لا يُحتسب إنجازًا ولا يُنقص من شيء."
-
-# ─── «تمّ» and what follows it (v2 §4 and §15) ───
-
-OPTION_OPEN_WORLD = "افتح عالمي"
-OPTION_NEW_SCAN = "صوّر مشهدًا آخر"
-OPTION_SHARE = "شارك البصيرة"
-SUGGEST_ACCOUNT = "هل تحفظ ما تعلّمته لنواصل من هنا؟"
-CONTINUE_AS_GUEST = "أتابع كضيف"
-
-# ─── Chat (v2 §14) ───
-
-CHAT_LIMIT_REACHED = "اكتمل النقاش حول هذه البصيرة"
-CHAT_NEEDS_NEW_SEARCH = (
-    "طلب نص آخر يحتاج بحثًا جديدًا في المصادر وتحققًا منها، ولا أذكر نصًا من الذاكرة."
-    " صوّر المشهد من جديد أو وضّح ما تقصد لنبحث لك."
-)
-# Level د: general information first (the answer), then this referral.
-CHAT_REFERRAL = (
-    "هذه مسألة تخصّ حالتك، والحكم فيها لمن يعرف تفاصيلها:"
-    " اسأل أهل العلم المؤهلين أو جهة الفتوى المعتمدة في بلدك."
-)
-
-# ─── The world and its treasures (v2 §16 and §17) ───
-
-TREASURE_KIND_LABELS = {
-    "alternative": "نص آخر متحقَّق بالوزن نفسه",
-    "deeper": "معنى أعمق في الطريق نفسه",
-}
-RELATION_THREAD_QUESTION = "كيف ترتبطان؟"
-WORLD_RELATION_REASONS = {
-    "same_scene": "من المشهد نفسه",
-    "prerequisite": "خطوة تمهّد للأخرى في المسار",
-}
-
-# ─── Practice, never piety (decision 27) ───
-
-PRACTICE_DISCLAIMER = (
-    "هذه علامات على التمرين والمواظبة لا على الإيمان ولا على القبول؛ تُحتسب من أفعالك المسجلة فقط."
-)
-# (id, title, hint), lowest first; the thresholds live in src/services/practice.py.
-PRACTICE_RANKS = (
-    ("nazir", "ناظر", "بدأت تنظر."),
-    ("mutaammil", "متأمّل", "ثلاثة مشاهد فأكثر."),
-    ("mustabsir", "مستبصر", "عشرة مشاهد فأكثر."),
-    ("basir", "بصير بالتمرين", "ثلاثون مشهدًا فأكثر."),
-)
-DAILY_QUEST_TITLE = "بصيرة اليوم"
-DAILY_QUEST_STEPS = {
-    "look": "انظر في مشهد واحد اليوم",
-    "complete": "أتمّ بصيرة واحدة اليوم",
-}
-# id: (title, description); the rules live in src/services/practice.py.
-BADGES = {
-    "first-look": ("أول نظرة", "أكملت أول مشهد عبر تبصرة."),
-    "seven-looks": ("سبع نظرات", "سبعة مشاهد اكتملت حتى آخر مرحلة."),
-    "thirty-looks": ("ثلاثون نظرة", "ثلاثون مشهدًا؛ صار النظر عادة."),
-    "both-insights": ("البصيرتان", "أتممت بصيرتي المطر والغرس معًا."),
-    "first-action": ("فعل صغير", "أقررت بفعل صغير بعد بصيرة."),
-    "first-place": ("أول بقعة", "انقشع الضباب عن أول موضع في عالمك."),
-    "first-treasure": ("أول كنز", "كشفت أول كنز مخبوء في عالمك."),
-    "ten-concepts": ("عشرة معانٍ", "عشرة معانٍ مختلفة أضاءت في سمائك."),
-    "asked": ("سائل", "سألت عمّا أمامك في الحوار."),
-    "streak-3": ("ثلاثة أيام", "نظرت ثلاثة أيام متتالية."),
-    "streak-7": ("أسبوع من النظر", "سبعة أيام متتالية من النظر."),
-    "daily-quest": ("مهمة اليوم", "أتممت بصيرة اليوم."),
-}

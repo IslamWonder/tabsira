@@ -22,9 +22,10 @@ from sqlalchemy import or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import clock, messages
+from src import clock
 from src.config import Settings
 from src.errors import AppError, ErrorCode
+from src.messages import messages_for
 from src.models import (
     Insight,
     InsightOrigin,
@@ -346,8 +347,8 @@ async def world(db: AsyncSession, settings: Settings, owner: Owner | None) -> Wo
                 place_a_id=relation.place_a_id,
                 place_b_id=relation.place_b_id,
                 reason=relation.reason,
-                reason_label=messages.WORLD_RELATION_REASONS[relation.reason.value],
-                question=messages.RELATION_THREAD_QUESTION,
+                reason_label=messages_for().world_relation_reasons[relation.reason.value],
+                question=messages_for().relation_thread_question,
                 insight_ids=[relation.insight_a_id, relation.insight_b_id],
             )
             for relation in relations
@@ -446,12 +447,14 @@ async def treasure_out(
     return TreasureOut(
         id=item.id,
         kind=item.kind,
-        kind_label=messages.TREASURE_KIND_LABELS[item.kind.value],
+        kind_label=messages_for().treasure_kind_labels[item.kind.value],
         insight_id=item.insight_id,
         place_id=item.place_id,
-        quran=InsightQuran(tag=messages.QURAN_TAG, verse=verse, why=None) if verse else None,
-        hadith=InsightHadith(tag=messages.SUNNAH_TAG, hadith=hadith, why=None) if hadith else None,
+        quran=InsightQuran(tag=messages_for().quran_tag, verse=verse, why=None) if verse else None,
+        hadith=InsightHadith(tag=messages_for().sunnah_tag, hadith=hadith, why=None)
+        if hadith
+        else None,
         learning_unit=TreasureUnitOut(id=unit.id, title=unit.title) if unit else None,
         revealed_at=item.revealed_at,
-        disclosure=messages.AI_DISCLOSURE,
+        disclosure=messages_for().ai_disclosure,
     )

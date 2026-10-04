@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from src import messages
+from src.messages import messages_for
 
 RANK_THRESHOLDS = (0, 3, 10, 30)
 UTC_ZONE = ZoneInfo("UTC")
@@ -57,21 +57,24 @@ class Rank:
     minimum: int
 
 
-RANKS = tuple(
-    Rank(rank_id, title, hint, minimum)
-    for (rank_id, title, hint), minimum in zip(
-        messages.PRACTICE_RANKS, RANK_THRESHOLDS, strict=True
+def ranks() -> tuple[Rank, ...]:
+    """Return the practice ranks, lowest first, named by the language catalogue."""
+    return tuple(
+        Rank(rank_id, title, hint, minimum)
+        for (rank_id, title, hint), minimum in zip(
+            messages_for().practice_ranks, RANK_THRESHOLDS, strict=True
+        )
     )
-)
 
 
 def rank_for(looks: int) -> tuple[Rank, Rank | None, float]:
     """Return the rank of a number of looks, the next one, and the way to it (0 to 1)."""
-    current = RANKS[0]
-    for rank in RANKS:
+    ladder = ranks()
+    current = ladder[0]
+    for rank in ladder:
         if looks >= rank.minimum:
             current = rank
-    following = next((rank for rank in RANKS if rank.minimum > looks), None)
+    following = next((rank for rank in ladder if rank.minimum > looks), None)
     if following is None:
         return current, None, 1.0
     progress = (looks - current.minimum) / (following.minimum - current.minimum)

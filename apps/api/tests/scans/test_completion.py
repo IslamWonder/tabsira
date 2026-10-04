@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-from src import messages
+from src.messages import messages_for
 from src.models import (
     EvidenceExposure,
     Insight,
@@ -70,9 +70,9 @@ async def test_the_first_tamm_saves_once_lifts_the_fog_and_suggests_an_account(
     assert first["treasure_prepared"] is False
     assert "first-place" in first["badges_earned"]
     assert [option["id"] for option in first["options"]] == ["open_world", "new_scan", "share"]
-    assert first["options"][0]["label"] == messages.OPTION_OPEN_WORLD
-    assert first["suggest_account"] == messages.SUGGEST_ACCOUNT
-    assert first["disclosure"] == messages.AI_DISCLOSURE
+    assert first["options"][0]["label"] == messages_for().option_open_world
+    assert first["suggest_account"] == messages_for().suggest_account
+    assert first["disclosure"] == messages_for().ai_disclosure
     assert (again["first_time"], again["completed_at"]) == (False, first["completed_at"])
     assert (again["place"]["id"], again["place"]["created"]) == (first["place"]["id"], False)
     assert (again["badges_earned"], again["suggest_account"]) == ([], None)

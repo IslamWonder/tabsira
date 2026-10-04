@@ -129,7 +129,7 @@ async def declare_action(
     return ActionOut(
         state=insight.action_state,
         at=insight.action_at,
-        means=insight_view.ACTION_MEANS[body.choice.value],
+        means=insight_view.action_means(body.choice.value),
     )
 
 

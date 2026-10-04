@@ -1,6 +1,6 @@
 # 04 · Photo to scan, with honest progress
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 17:30 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 17:35 (Tunis)
 
 A person takes or uploads a photo. They see honest stages (understanding, searching, verifying, composing), can point at what matters and answer one question.
 
@@ -74,7 +74,7 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 
 ### 04.8 Scan texts in the language catalogue
 
-- **Status:** ⬜ open
+- **Status:** ✅ 2026-10-04 17:35
 - **Goal:** Move the scan workflow's Arabic constants in `apps/api/src/messages.py` (about 32: the AI disclosure, labels, ranks, badges) into the per-language catalogue read through `messages_for()` (decision 36).
 - **Depends on:** 04.1
 - **Touches:** apps/api/src/messages.py and the modules that import those constants.

@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from src import messages
+from src.messages import messages_for
 from src.services import practice
 from src.services.practice import PracticeLog
 
@@ -40,8 +40,8 @@ def test_ranks_count_looks_only(looks, rank, following, progress):
 
 
 def test_the_ranks_carry_their_arabic_names():
-    assert [rank.title for rank in practice.RANKS] == ["ناظر", "متأمّل", "مستبصر", "بصير بالتمرين"]
-    assert [rank.minimum for rank in practice.RANKS] == [0, 3, 10, 30]
+    assert [rank.title for rank in practice.ranks()] == ["ناظر", "متأمّل", "مستبصر", "بصير بالتمرين"]
+    assert [rank.minimum for rank in practice.ranks()] == [0, 3, 10, 30]
 
 
 def test_a_missed_day_resets_the_current_run_never_the_best():
@@ -98,7 +98,7 @@ def test_the_daily_quest_is_a_look_and_a_completion_on_the_same_day():
 
 def test_a_new_learner_holds_no_badge():
     assert set(practice.badges(PracticeLog(), UTC_ZONE).values()) == {None}
-    assert set(practice.BADGE_RULES) == set(messages.BADGES)
+    assert set(practice.BADGE_RULES) == set(messages_for().badges)
 
 
 def test_each_badge_records_when_its_rule_first_held():

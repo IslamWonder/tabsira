@@ -9,7 +9,7 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy import select
 
-from src import messages
+from src.messages import messages_for
 from src.models import HadithClassification, WorldRelation
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
 from src.scripture.overlap import repeats_store
@@ -51,7 +51,7 @@ async def test_the_rain_scene_is_a_prepared_example_with_its_verses_from_the_sto
         assert hashlib.sha256(verse["text"].encode()).hexdigest() == verse["sha256"]
         assert insight["hadith"] is None
         assert insight["hadith_status"] == "awaiting_verification"
-        assert insight["notice"] == messages.HADITH_AWAITS_VERIFICATION
+        assert insight["notice"] == messages_for().hadith_awaits_verification
     # The rain step rests on its hadith, which waits for its ruling; planting is a suggestion.
     assert drop["small_step"] is None
     assert planting["small_step"]["label"] == "اقتراح عملي"

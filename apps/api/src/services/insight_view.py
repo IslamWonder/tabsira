@@ -18,8 +18,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import messages
 from src.config import Settings
+from src.messages import messages_for
 from src.models import ChatMessage, ChatStatus, Insight, LearningUnit, Scan
 from src.pipeline.engine import RelationType
 from src.pipeline.schemas import BBox
@@ -39,7 +39,11 @@ from src.schemas.insight import (
     StepOut,
 )
 
-ACTION_MEANS = {"done": messages.ACTION_DONE_MEANS, "later": messages.ACTION_LATER_MEANS}
+
+def action_means(state: str) -> str:
+    """Return what the learner's answer to the small step means: a declaration, never a proof."""
+    texts = messages_for()
+    return {"done": texts.action_done_means, "later": texts.action_later_means}[state]
 
 
 def evidence_why(evidence: dict[str, Any] | None) -> EvidenceWhy | None:
@@ -48,7 +52,7 @@ def evidence_why(evidence: dict[str, Any] | None) -> EvidenceWhy | None:
     relation = RelationType(evidence["relation"])
     return EvidenceWhy(
         relation=relation,
-        relation_label=messages.RELATION_LABELS[relation.value],
+        relation_label=messages_for().relation_labels[relation.value],
         matched_on=str(evidence.get("matched_on", "")),
     )
 
@@ -120,7 +124,7 @@ def explanation_out(
     return [
         ExplanationOut(
             section=part["section"],
-            label=messages.EXPLANATION_LABELS[part["section"]],
+            label=messages_for().explanation_labels[part["section"]],
             text=part["text"],
         )
         for part in parts
@@ -151,7 +155,7 @@ def step_out(
     return StepOut(
         text=str(step["text"]),
         kind=step["kind"],
-        label=messages.STEP_FROM_SUNNAH if from_sunnah else messages.STEP_SUGGESTION,
+        label=messages_for().step_from_sunnah if from_sunnah else messages_for().step_suggestion,
     )
 
 
@@ -198,9 +202,9 @@ def message_out(row: ChatMessage) -> ChatMessageOut:
 
 def _label(insight: Insight) -> str | None:
     if insight.engine == "prepared":
-        return messages.PREPARED_EXAMPLE
+        return messages_for().prepared_example
     if insight.engine == "demo":
-        return messages.DEMO_ENGINE
+        return messages_for().demo_engine
     return None
 
 
@@ -219,21 +223,21 @@ async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> In
         glimpse=insight.glimpse,
         anchor=BBox.model_validate(insight.anchor) if insight.anchor else None,
         relation=RelationType(insight.relation),
-        relation_label=messages.RELATION_LABELS[insight.relation],
+        relation_label=messages_for().relation_labels[insight.relation],
         quran=InsightQuran(
-            tag=messages.QURAN_TAG, verse=verse, why=evidence_why(insight.quran_evidence)
+            tag=messages_for().quran_tag, verse=verse, why=evidence_why(insight.quran_evidence)
         )
         if verse
         else None,
         hadith=InsightHadith(
-            tag=messages.SUNNAH_TAG, hadith=hadith, why=evidence_why(insight.hadith_evidence)
+            tag=messages_for().sunnah_tag, hadith=hadith, why=evidence_why(insight.hadith_evidence)
         )
         if hadith
         else None,
         hadith_status="shown" if hadith else "awaiting_verification" if awaiting else "none",
-        notice=messages.HADITH_AWAITS_VERIFICATION if awaiting else None,
+        notice=messages_for().hadith_awaits_verification if awaiting else None,
         pair_complete=verse is not None and hadith is not None,
-        explanation_tag=messages.EXPLANATION_TAG,
+        explanation_tag=messages_for().explanation_tag,
         explanation=explanation_out(insight.explanation, verse, hadith),
         why=InsightWhyOut(
             visible_clues=list(insight.why.get("visible_clues", [])),
@@ -246,7 +250,7 @@ async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> In
         action=ActionOut(
             state=insight.action_state,
             at=insight.action_at,
-            means=ACTION_MEANS[insight.action_state.value] if insight.action_state else None,
+            means=action_means(insight.action_state.value) if insight.action_state else None,
         ),
         chat=await chat_of(db, settings, insight),
         image=InsightImageOut(
@@ -256,5 +260,5 @@ async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> In
         completed_at=insight.completed_at,
         place_id=insight.place_id,
         created_at=insight.created_at,
-        disclosure=messages.AI_DISCLOSURE,
+        disclosure=messages_for().ai_disclosure,
     )

@@ -18,8 +18,8 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import messages
 from src.errors import AppError, ErrorCode
+from src.messages import messages_for
 from src.models import Insight, InsightOrigin
 from src.owner import Owner
 from src.schemas.insight import InsightHadith, InsightQuran, InsightWhyOut
@@ -36,11 +36,11 @@ async def describe(db: AsyncSession, tutorial: Tutorial) -> TutorialOut:
         scene=tutorial.scene,
         version=tutorial.version,
         title=tutorial.title,
-        label=messages.PREPARED_EXAMPLE,
+        label=messages_for().prepared_example,
         status="prepared",
         image=TutorialImageOut.model_validate(tutorial.image.model_dump()),
         insights=[await _insight(db, insight) for insight in tutorial.insights],
-        disclosure=messages.AI_DISCLOSURE,
+        disclosure=messages_for().ai_disclosure,
     )
 
 
@@ -67,15 +67,17 @@ async def _insight(db: AsyncSession, insight: TutorialInsight) -> TutorialInsigh
         glimpse=insight.glimpse,
         anchor=insight.anchor,
         relation=insight.relation,
-        relation_label=messages.RELATION_LABELS[insight.relation.value],
-        quran=InsightQuran(tag=messages.QURAN_TAG, verse=verse, why=evidence_why(quran_why)),
-        hadith=InsightHadith(tag=messages.SUNNAH_TAG, hadith=hadith, why=evidence_why(hadith_why))
+        relation_label=messages_for().relation_labels[insight.relation.value],
+        quran=InsightQuran(tag=messages_for().quran_tag, verse=verse, why=evidence_why(quran_why)),
+        hadith=InsightHadith(
+            tag=messages_for().sunnah_tag, hadith=hadith, why=evidence_why(hadith_why)
+        )
         if hadith
         else None,
         hadith_status="shown" if hadith else "awaiting_verification" if awaiting else "none",
-        notice=messages.HADITH_AWAITS_VERIFICATION if awaiting else None,
+        notice=messages_for().hadith_awaits_verification if awaiting else None,
         pair_complete=hadith is not None,
-        explanation_tag=messages.EXPLANATION_TAG,
+        explanation_tag=messages_for().explanation_tag,
         explanation=explanation_out(
             [part.model_dump(mode="json") for part in insight.explanation], verse, hadith
         ),
