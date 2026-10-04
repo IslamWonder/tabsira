@@ -84,7 +84,8 @@ def _write_json(parsed: ParsedOntology, path: Path) -> None:
     started = time.perf_counter()
     path.parent.mkdir(parents=True, exist_ok=True)
     text = export_json(parsed)
-    path.write_text(text, encoding="utf-8")
+    # LF on every system: the file is tracked, and Windows would write CRLF.
+    path.write_text(text, encoding="utf-8", newline="\n")
     seconds = time.perf_counter() - started
     _say(f"  json: wrote {path} ({len(text.encode()) / 1024:.0f} KiB, {seconds:.2f} s)")
 

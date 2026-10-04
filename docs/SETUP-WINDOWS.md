@@ -44,7 +44,16 @@ scripts\windows\dev.ps1          # nginx + api + worker + web (+ vision), Ctrl-C
 scripts\windows\dev.ps1 -Stop    # from another window: stop a running dev.ps1
 ```
 
-Steps 4 to 7 of [docs/SETUP.md](SETUP.md) (corpora, scripture store, GeoNames, vectors) are the same here; run their shell scripts from Git bash (`bash scripts/data.sh`), or the `uv run python -m src.cli...` commands they wrap from PowerShell in `apps\api`. `psql` and `pg_restore` are in `..\tabsira-tools\PostgreSQL\18\bin`.
+Steps 4 to 7 of [docs/SETUP.md](SETUP.md) (corpora, scripture store, GeoNames, vectors) and the ontology and learning path are one script here, run after `migrate.ps1`. What it needs comes from the owners' bucket (`https://s3-v2.riastorage.com/tabsira`): the two corpora from `corpus/` when `data\corpus` lacks them, the owners' copies of the source downloads from `cache/` into `data\cache`, the GeoNames export from `geodata/` and the vectors from `vectors/` into `..\tabsira-data`.
+
+```powershell
+scripts\windows\data.ps1                        # every step: geodata, scripture, ontology, masar, vectors
+scripts\windows\data.ps1 -Only ontology,masar   # some steps only
+scripts\windows\data.ps1 -Only scripture -Force # import again on purpose
+scripts\windows\data.ps1 -FromGeoNames          # import GeoNames from geonames.org instead of the export
+```
+
+Each step checks the database first and does nothing when its data is there, so a second run by mistake changes nothing; `-Force` imports again. A failed step does not stop the others (the vectors wait for the scripture store), and the summary lists each step's outcome. Every download is checked: the corpora and the GeoNames export against their SHA-256 files, the source downloads by the importer against their sources' manifests. `-FromGeoNames` and the vector import run the repository's own `scripts/seed-geonames.sh` and `scripts/vectors/import.sh` with Git's bash. `psql` and `pg_restore` are in `..\tabsira-tools\PostgreSQL\18\bin`.
 
 `dev.ps1` starts nginx when it is not running and stops it at the end; every service's output is prefixed with its name and kept in `..\tabsira-tools\logs\<name>.log`. `-NoVision`, `-NoWorker` and `-NoNginx` leave a service out. Then open `http://tabsira.test` (API: `http://api.tabsira.test`, admin: `http://admin.tabsira.test`).
 
@@ -54,6 +63,7 @@ Steps 4 to 7 of [docs/SETUP.md](SETUP.md) (corpora, scripture store, GeoNames, v
 | ------------------ | ---------------------------------------------------------------------- |
 | `make install`     | `scripts\windows\install.ps1`                                          |
 | `make migrate`     | `scripts\windows\migrate.ps1`                                          |
+| `make data`        | `scripts\windows\data.ps1` (GeoNames included)                         |
 | `make dev`         | `scripts\windows\dev.ps1`                                              |
 | `make test`        | `pnpm test` and, in `apps\api`, `uv run pytest -n 2`                   |
 | `make lint`        | `pnpm lint` and, in `apps\api`, `uv run ruff check . && uv run mypy .` |
