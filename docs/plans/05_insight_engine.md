@@ -1,6 +1,6 @@
 # 05 · Insight engine
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 14:51 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 16:09 (Tunis)
 
 Finds the verse and hadith that truly fit the scene, checks them, and writes the explanation. It cites texts by reference only.
 
@@ -22,7 +22,7 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 
 ### 05.1 Insight engine: merge and plug into the scans
 
-- **Status:** 🔄 main machine
+- **Status:** 🔄 branch task/05.1-insight-engine: rebase, re-chain, wire, shared guards, review, merge (see its brief)
 - **Goal:** Merge the engine and register it as the scan workflow's real engine.
 - **Depends on:** 04.1
 - **Touches:** apps/api pipeline, retrieval, vision /rerank.

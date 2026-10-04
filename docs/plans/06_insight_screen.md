@@ -1,6 +1,6 @@
 # 06 · Insight screen
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 14:51 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 16:09 (Tunis)
 
 Shows the insight: title, the verse and the hadith with their source and grade, the explanation, «لماذا ظهر هذا؟», a small step, a short chat, and «تمّ».
 
@@ -20,7 +20,7 @@ Shows the insight: title, the verse and the hadith with their source and grade, 
 
 ### 06.1 Insight screen
 
-- **Status:** 🔄 main machine
+- **Status:** ✅ 2026-10-04 16:09
 - **Goal:** Verse, hadith, explanation, «لماذا ظهر هذا؟», small step, chat, «تمّ».
 - **Depends on:** 04.1
 - **Touches:** apps/web insight components and route.

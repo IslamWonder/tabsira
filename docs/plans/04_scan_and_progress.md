@@ -1,6 +1,6 @@
 # 04 · Photo to scan, with honest progress
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 14:51 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 16:09 (Tunis)
 
 A person takes or uploads a photo. They see honest stages (understanding, searching, verifying, composing), can point at what matters and answer one question.
 
@@ -25,7 +25,7 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 
 ### 04.1 Scan workflow: scripture fixes and merge
 
-- **Status:** 🔄 main machine
+- **Status:** ✅ 2026-10-04 16:09
 - **Goal:** Close the scripture review findings, then merge.
 - **Depends on:** —
 - **Touches:** apps/api scans, insights, world, me, tutorial.
@@ -33,7 +33,7 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 
 ### 04.2 Scan screens: capture, progress, focus, question
 
-- **Status:** 🔄 main machine
+- **Status:** ✅ 2026-10-04 16:09
 - **Goal:** Web screens for 04, built on the workflow API.
 - **Depends on:** 04.1
 - **Touches:** apps/web scan and insight components.
@@ -54,3 +54,27 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 - **Depends on:** 04.1
 - **Touches:** apps/api chat service and insight view, one migration.
 - **Done when:** A test rules a cited hadith ineligible after a chat answer and the answer no longer shows or reaches the model; scripture review passes.
+
+### 04.6 Catch short verses quoted whole
+
+- **Status:** ⬜ open
+- **Goal:** Refuse model text that contains a whole stored verse of 3 to 6 guard words even without an introducer (for example «قل هو الله أحد» unmarked). Use a computed `guard_words` column with an index on `quran_verse_search` and a bounded check in `repeats_store` (padded guard text contains a short verse's padded `guard_text`); about 1,709 verses qualify.
+- **Depends on:** 04.1
+- **Touches:** apps/api scripture overlap and search models, one migration.
+- **Done when:** Tests built from stored text (112:1, 94:6 added to the test extras from a `make data` store, bukhari 1) are refused in insights, chat and scene texts; the guard stays under 0.5 s per insight; scripture review passes.
+
+### 04.7 Refresh the verse spans once per Quran sync
+
+- **Status:** ⬜ open
+- **Goal:** `refresh_verse_spans` runs once at the end of a correction batch (end of `reconcile_verses`, after the loop in `quran_sync._apply_rows`), or `REFRESH MATERIALIZED VIEW CONCURRENTLY`, instead of once per corrected verse.
+- **Depends on:** 04.1
+- **Touches:** apps/api/src/scripture/quran.py, quran_sync.py.
+- **Done when:** A test applies several corrections and the view is refreshed once and is correct.
+
+### 04.8 Scan texts in the language catalogue
+
+- **Status:** ⬜ open
+- **Goal:** Move the scan workflow's Arabic constants in `apps/api/src/messages.py` (about 32: the AI disclosure, labels, ranks, badges) into the per-language catalogue read through `messages_for()` (decision 36).
+- **Depends on:** 04.1
+- **Touches:** apps/api/src/messages.py and the modules that import those constants.
+- **Done when:** No user-visible scan text is a module constant; tests pass.
