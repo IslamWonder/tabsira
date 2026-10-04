@@ -3,7 +3,7 @@ Google sign-in: `GET /auth/google/start`, then Google, then `GET /auth/google/ca
 
 Both are browser navigations, not API calls, so they answer with redirects.
 Success lands on the web app (the `next` path given to `start`, or `/`); every
-failure lands on `{SITE_URL}/login?error=<code>` with one of:
+failure lands on `{SITE_URL}/signin?error=<code>` with one of:
 
 - `google_state`: the sign-in is unknown, expired, used already, or was not
   started by this browser.
@@ -52,7 +52,7 @@ def _require_configured(settings: Settings) -> None:
 
 def _failure(settings: Settings, code: str) -> RedirectResponse:
     redirect = RedirectResponse(
-        f"{settings.site_url}/login?error={code}", status_code=status.HTTP_302_FOUND
+        f"{settings.site_url}/signin?error={code}", status_code=status.HTTP_302_FOUND
     )
     _clear_binder(redirect)
     return redirect

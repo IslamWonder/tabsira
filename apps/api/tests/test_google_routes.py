@@ -272,7 +272,7 @@ async def test_signing_in_replaces_the_session_the_browser_held(web, google, mak
 def fails_with(response, code):
     return (
         response.status_code == 302
-        and response.headers["location"] == f"https://tabsira.test/login?error={code}"
+        and response.headers["location"] == f"https://tabsira.test/signin?error={code}"
     )
 
 

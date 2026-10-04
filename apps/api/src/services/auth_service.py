@@ -31,7 +31,7 @@ from src.services.google_oidc import GoogleIdentity
 
 EMAIL_HASH_PURPOSE = "email"
 IP_HASH_PURPOSE = "ip"
-# What the web app is told when a Google sign-in is refused (`/login?error=<code>`).
+# What the web app is told when a Google sign-in is refused (`/signin?error=<code>`).
 WEB_ACCOUNT_DISABLED = "account_disabled"
 WEB_GOOGLE_FAILED = "google_failed"
 

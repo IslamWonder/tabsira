@@ -47,7 +47,7 @@ The goals are stored as `discover_islam`, `reflection`, `learn_quran_sunnah`, `l
 
 OpenID Connect, authorization code flow with PKCE (S256). `start` stores a state, a code verifier and a nonce on the server for `GOOGLE_STATE_TTL_SECONDS` and sets a short-lived cookie that ties the flow to the browser, so a callback link handed to someone else is refused. The callback exchanges the code, checks the ID token's signature against Google's published keys (cached), its issuer, audience, expiry and nonce, and requires a verified address. With `GOOGLE_CLIENT_ID` empty both routes answer `503 GOOGLE_NOT_CONFIGURED` and `/auth/providers` reports Google unavailable.
 
-Every outcome is a redirect. Success lands on `SITE_URL` plus the `next` path (default `/`). A failure lands on `SITE_URL/login?error=<code>`:
+Every outcome is a redirect. Success lands on `SITE_URL` plus the `next` path (default `/`). A failure lands on `SITE_URL/signin?error=<code>`:
 
 | Code               | Meaning                                                                          |
 | ------------------ | -------------------------------------------------------------------------------- |
