@@ -19,7 +19,7 @@ Every change is tested; nothing merges below 100 % coverage.
 
 ### 15.1 HTTP smoke test
 
-- **Status:** ⬜ open
+- **Status:** 🔄 main machine
 - **Goal:** `make smoke` checks the main pages and API routes of a running app, locally and against tabsira.me.
 - **Depends on:** 04.1
 - **Touches:** scripts/smoke (new), Makefile.

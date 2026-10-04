@@ -25,7 +25,7 @@ Google Analytics and heatmaps only after consent; pages that search engines and 
 
 ### 11.1 Serve /sitemap.xml from the web app
 
-- **Status:** ⬜ open
+- **Status:** 🔄 main machine
 - **Goal:** The web app serves the sitemap index and sections from the API; the static list drops pages that do not exist (/about, /cookies) or they get pages.
 - **Depends on:** —
 - **Touches:** apps/web sitemap route, apps/api sitemap static list.
@@ -33,7 +33,7 @@ Google Analytics and heatmaps only after consent; pages that search engines and 
 
 ### 11.2 Accessibility check in CI
 
-- **Status:** ⬜ open
+- **Status:** 🔄 main machine
 - **Goal:** Run check:a11y in Jenkins with Chromium and sample API answers.
 - **Depends on:** —
 - **Touches:** Jenkinsfile, apps/web scripts.

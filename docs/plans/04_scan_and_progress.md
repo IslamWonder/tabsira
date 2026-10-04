@@ -39,7 +39,7 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 
 ### 04.3 Run the scan worker in production
 
-- **Status:** ⬜ open
+- **Status:** 🔄 main machine
 - **Goal:** A systemd unit for the single scan worker, enabled by provisioning, restarted gracefully by the deploy; Redis persistence off for the scan database.
 - **Depends on:** 04.1
 - **Touches:** deploy/systemd/tabsira-worker.service, deploy/provision-app.sh, deploy/deploy.sh, deploy/provision-redis.sh, docs/OPERATIONS.md.
