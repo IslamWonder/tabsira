@@ -102,5 +102,6 @@ cat <<EOF
 
   A 502 Bad Gateway is expected until the apps run: make dev
   Plain HTTP on port 80: no certificate to trust. A browser that remembers an
-  earlier HTTPS setup of these names may need its HSTS entry for them cleared.
+  earlier HTTPS setup of these names may need its HSTS entry for them cleared,
+  and a mkcert authority that setup installed can go: mkcert -uninstall.
 EOF

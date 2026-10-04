@@ -51,7 +51,7 @@ Every change is tested; nothing merges below 100 % coverage.
 
 ### 15.5 Local development over plain HTTP on port 80
 
-- **Status:** ✅ 2026-10-04 18:19
+- **Status:** ✅ 2026-10-04 18:34
 - **Goal:** Serve `tabsira.test`, `api.tabsira.test` and `admin.tabsira.test` from nginx on port 80 without TLS (decision 49): cookies lose the Secure flag and the `__Secure-` prefix only where `SITE_URL` is http, production refuses http addresses, the setup script drops mkcert, the smoke test and the docs follow.
 - **Depends on:** —
 - **Touches:** nginx/local, scripts/setup-nginx-local.sh, scripts/smoke.sh, scripts/dev.sh, scripts/provision-dev.sh, .env.example, apps/api config and cookie services, docs.

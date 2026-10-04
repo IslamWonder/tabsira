@@ -163,7 +163,8 @@ def test_the_cookie_is_http_only_secure_same_site_lax_on_the_shared_domain(setti
     cookie = response.headers["set-cookie"]
     assert cookie.startswith("__Secure-tabsira_session=tok;")
     assert "HttpOnly" in cookie
-    assert "Secure" in cookie
+    # The attribute, not the name: `__Secure-` already contains the word.
+    assert "; Secure" in cookie
     assert "SameSite=lax" in cookie
     assert "Domain=.tabsira.test" in cookie
     assert "Max-Age=604800" in cookie
@@ -184,7 +185,7 @@ def test_over_plain_http_the_cookie_loses_its_secure_prefix_and_flag(make_settin
 
     cookie = response.headers["set-cookie"]
     assert cookie.startswith("tabsira_session=tok;")
-    assert "Secure" not in cookie
+    assert "; Secure" not in cookie
     assert "HttpOnly" in cookie
     assert "Domain=.tabsira.test" in cookie
     assert session_service.cookie_token(request_with("tabsira_session=abc"), settings) == "abc"
@@ -202,7 +203,7 @@ def test_clearing_the_cookie_expires_it_on_the_same_domain_and_path(settings):
     assert cookie.startswith('__Secure-tabsira_session="";')
     assert "Max-Age=0" in cookie
     assert "Domain=.tabsira.test" in cookie
-    assert "Secure" in cookie
+    assert "; Secure" in cookie
 
 
 def test_an_empty_domain_makes_a_host_only_cookie(make_settings):

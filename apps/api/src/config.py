@@ -1043,11 +1043,25 @@ class Settings(BaseSettings):
         problems.extend(
             f"{name} must use https in production, not {url}"
             for name, url in (
-                ("SITE_URL", self.site_url),
-                ("API_URL", self.api_url),
-                ("ADMIN_URL", self.admin_url),
+                [
+                    ("SITE_URL", self.site_url),
+                    ("API_URL", self.api_url),
+                    ("ADMIN_URL", self.admin_url),
+                    ("WEB_BASE_URL", self.web_base_url),
+                    ("GOOGLE_REDIRECT_URI", self.google_redirect_uri),
+                ]
+                + [("CORS_ORIGINS", origin) for origin in self.cors_origins]
             )
-            if urlsplit(url).scheme != "https"
+            if url and urlsplit(url).scheme != "https"
+        )
+        # Over https the `__Secure-` prefix is a promise browsers enforce; production keeps it.
+        problems.extend(
+            f"{name} must start with __Secure- in production, not {value}"
+            for name, value in (
+                ("SESSION_COOKIE_NAME", self.session_cookie_name),
+                ("GUEST_COOKIE_NAME", self.guest_cookie_name),
+            )
+            if not value.startswith("__Secure-")
         )
         problems.extend(self._storage_problems())
         if not self.ai.api_key.get_secret_value():

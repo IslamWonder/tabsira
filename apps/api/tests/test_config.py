@@ -1216,3 +1216,24 @@ def test_production_refuses_a_public_address_over_plain_http(name):
     message = errors_of(**{**PRODUCTION, name: "http://tabsira.me"})
 
     assert f"{name.upper()} must use https in production, not http://tabsira.me" in message
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("cors_origins", "https://tabsira.me,http://www.tabsira.me"),
+        ("web_base_url", "http://tabsira.me"),
+        ("google_redirect_uri", "http://api.tabsira.me/auth/google/callback"),
+    ],
+)
+def test_production_refuses_every_other_public_address_over_plain_http(name, value):
+    message = errors_of(**{**PRODUCTION, name: value})
+
+    assert f"{name.upper()} must use https in production, not http://" in message
+
+
+@pytest.mark.parametrize("name", ["session_cookie_name", "guest_cookie_name"])
+def test_production_keeps_the_secure_prefix_on_the_cookie_names(name):
+    message = errors_of(**{**PRODUCTION, name: "tabsira_plain"})
+
+    assert f"{name.upper()} must start with __Secure- in production, not tabsira_plain" in message

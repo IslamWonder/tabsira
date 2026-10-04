@@ -139,7 +139,7 @@ def test_the_cookie_is_httponly_secure_strict_and_confined_to_the_admin_path(set
     assert header.startswith("__Secure-tabsira_admin=the-token;")
     assert "Max-Age=43200" in header
     assert "Path=/admin" in header
-    for flag in ("HttpOnly", "Secure", "SameSite=strict"):
+    for flag in ("HttpOnly", "; Secure", "SameSite=strict"):
         assert flag in header
     assert "Domain" not in header
 
@@ -179,7 +179,7 @@ def test_over_plain_http_the_cookie_loses_its_secure_prefix_and_flag(make_settin
 
     header = response.headers["set-cookie"]
     assert header.startswith("tabsira_admin=the-token;")
-    assert "Secure" not in header
+    assert "; Secure" not in header
     assert "HttpOnly" in header
     assert "SameSite=strict" in header
     assert service.cookie_token(request_with("tabsira_admin=abc"), settings) == "abc"
