@@ -5325,7 +5325,7 @@ export interface operations {
       header?: never;
       path: {
         /** @description The post's public id */
-        post_id: number;
+        post_id: string;
       };
       cookie?: never;
     };
@@ -5357,7 +5357,7 @@ export interface operations {
       header?: never;
       path: {
         /** @description The post's public id */
-        post_id: number;
+        post_id: string;
       };
       cookie?: never;
     };
@@ -5387,7 +5387,7 @@ export interface operations {
       header?: never;
       path: {
         /** @description The post's public id */
-        post_id: number;
+        post_id: string;
       };
       cookie?: never;
     };
@@ -5423,7 +5423,7 @@ export interface operations {
       header?: never;
       path: {
         /** @description The post's public id */
-        post_id: number;
+        post_id: string;
       };
       cookie?: never;
     };
@@ -5487,7 +5487,7 @@ export interface operations {
       header?: never;
       path: {
         /** @description The post's public id */
-        post_id: number;
+        post_id: string;
       };
       cookie?: never;
     };
@@ -5519,7 +5519,7 @@ export interface operations {
       header?: never;
       path: {
         /** @description The post's public id */
-        post_id: number;
+        post_id: string;
       };
       cookie?: never;
     };
@@ -5551,7 +5551,7 @@ export interface operations {
       header?: never;
       path: {
         /** @description The post's public id */
-        post_id: number;
+        post_id: string;
       };
       cookie?: never;
     };
@@ -5581,7 +5581,7 @@ export interface operations {
       header?: never;
       path: {
         /** @description The post's public id */
-        post_id: number;
+        post_id: string;
       };
       cookie?: never;
     };
@@ -5646,7 +5646,7 @@ export interface operations {
       header?: never;
       path: {
         /** @description The post's public id */
-        post_id: number;
+        post_id: string;
       };
       cookie?: never;
     };
@@ -5678,7 +5678,7 @@ export interface operations {
       header?: never;
       path: {
         /** @description The post's public id */
-        post_id: number;
+        post_id: string;
       };
       cookie?: never;
     };
@@ -5714,9 +5714,9 @@ export interface operations {
       header?: never;
       path: {
         /** @description The post's public id */
-        post_id: number;
+        post_id: string;
         /** @description The comment's public id */
-        comment_id: number;
+        comment_id: string;
       };
       cookie?: never;
     };

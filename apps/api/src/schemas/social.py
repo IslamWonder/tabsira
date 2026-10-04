@@ -27,12 +27,14 @@ from src.models.social import (
     ReportReason,
     ReportTarget,
 )
-from src.schemas.public_id import MAX_PUBLIC_ID, PublicId
+from src.schemas.public_id import PublicId
 from src.services import public_identity
 
-# The id of a post in a path: a positive 64-bit number, so a larger one is a 422, not a database error.
-PostIdPath = Annotated[int, Path(ge=1, le=MAX_PUBLIC_ID, description="The post's public id")]
-CommentIdPath = Annotated[int, Path(ge=1, le=MAX_PUBLIC_ID, description="The comment's public id")]
+# The id of a post in a path: a positive 64-bit number, so a larger one is a 422, not a database
+# error. Documented as the decimal string responses send (decision 37), since it may exceed the
+# 2^53 a JavaScript number holds; parsed to an int here.
+PostIdPath = Annotated[PublicId, Path(description="The post's public id")]
+CommentIdPath = Annotated[PublicId, Path(description="The comment's public id")]
 
 
 class PublicIdentityIn(BaseModel):

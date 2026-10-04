@@ -1551,10 +1551,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": 1,
-              "description": "The post's public id",
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
               "title": "Post Id"
             },
             "description": "The post's public id"
@@ -1594,10 +1592,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": 1,
-              "description": "The post's public id",
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
               "title": "Post Id"
             },
             "description": "The post's public id"
@@ -1647,10 +1643,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": 1,
-              "description": "The post's public id",
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
               "title": "Post Id"
             },
             "description": "The post's public id"
@@ -1685,10 +1679,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": 1,
-              "description": "The post's public id",
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
               "title": "Post Id"
             },
             "description": "The post's public id"
@@ -1790,10 +1782,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": 1,
-              "description": "The post's public id",
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
               "title": "Post Id"
             },
             "description": "The post's public id"
@@ -1833,10 +1823,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": 1,
-              "description": "The post's public id",
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
               "title": "Post Id"
             },
             "description": "The post's public id"
@@ -1878,10 +1866,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": 1,
-              "description": "The post's public id",
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
               "title": "Post Id"
             },
             "description": "The post's public id"
@@ -1914,10 +1900,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": 1,
-              "description": "The post's public id",
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
               "title": "Post Id"
             },
             "description": "The post's public id"
@@ -2012,10 +1996,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": 1,
-              "description": "The post's public id",
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
               "title": "Post Id"
             },
             "description": "The post's public id"
@@ -2083,10 +2065,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": 1,
-              "description": "The post's public id",
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
               "title": "Post Id"
             },
             "description": "The post's public id"
@@ -2138,10 +2118,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": 1,
-              "description": "The post's public id",
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
               "title": "Post Id"
             },
             "description": "The post's public id"
@@ -2151,10 +2129,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 9223372036854775807,
-              "minimum": 1,
-              "description": "The comment's public id",
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
               "title": "Comment Id"
             },
             "description": "The comment's public id"
