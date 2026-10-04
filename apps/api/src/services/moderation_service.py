@@ -1,0 +1,220 @@
+"""
+What happens to a post or a comment after it is written, and the log that says so.
+
+Two kinds of decision reach here. The automatic guard's verdict settles an item the moment it
+is submitted: published, refused with a reason, or held for a person. A moderator's decision
+(from the admin area, which calls these functions) approves a held or refused item, refuses a
+held one, or removes a published one. Every decision is one row in the moderation log, with
+its source and a reason code, and any open reports on the item are closed with it. The author
+is told the outcome by the status and reason their own copy of the item carries.
+
+A moderator never edits an author's words and never touches scripture; the only things that
+change are the item's state and the log.
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src import clock
+from src.models.moderation import (
+    ModerationAction,
+    ModerationActionKind,
+    ModerationSource,
+    ModerationTarget,
+)
+from src.models.social import (
+    Comment,
+    CommentStatus,
+    Post,
+    PostStatus,
+    RemovalSource,
+    Report,
+    ReportStatus,
+    ReportTarget,
+)
+from src.services.moderation_guard import GuardVerdict, Outcome
+
+type Item = Post | Comment
+
+HELD_BY_REPORTS = "reported"
+
+
+def _target(item: Item) -> ModerationTarget:
+    return ModerationTarget.POST if isinstance(item, Post) else ModerationTarget.COMMENT
+
+
+def log_action(
+    db: AsyncSession,
+    item: Item,
+    action: ModerationActionKind,
+    source: ModerationSource,
+    *,
+    actor_id: uuid.UUID | None = None,
+    reason: str | None = None,
+    details: dict[str, Any] | None = None,
+) -> None:
+    """Add one row to the moderation log; the caller's transaction decides when it lands."""
+    db.add(
+        ModerationAction(
+            target_type=_target(item),
+            target_id=item.id,
+            action=action,
+            source=source,
+            actor_id=actor_id,
+            reason=reason,
+            details=details or None,
+        )
+    )
+
+
+def _set_state(
+    item: Item, status: PostStatus | CommentStatus, reason: str | None, now: datetime
+) -> None:
+    # Post and comment states share the five values they use, so one assignment serves both.
+    item.status = status
+    item.status_reason = reason
+    item.reviewed_at = now
+
+
+async def _close_reports(
+    db: AsyncSession, item: Item, status: ReportStatus, actor_id: uuid.UUID | None
+) -> None:
+    """Close the open reports of an item with the decision that answers them."""
+    await db.execute(
+        update(Report)
+        .where(
+            Report.target_type == ReportTarget(_target(item).value),
+            Report.target_id == item.id,
+            Report.status == ReportStatus.OPEN,
+        )
+        .values(status=status, handled_at=clock.utcnow(), handled_by=actor_id)
+    )
+
+
+# ─── The guard's verdict ───────────────────────────────────────────────────────
+
+
+def settle(db: AsyncSession, item: Item, verdict: GuardVerdict) -> None:
+    """Apply the guard's verdict to a freshly submitted post or comment, and log it."""
+    now = clock.utcnow()
+    published = PostStatus.PUBLISHED if isinstance(item, Post) else CommentStatus.PUBLISHED
+    held = PostStatus.PENDING_REVIEW if isinstance(item, Post) else CommentStatus.PENDING_REVIEW
+    refused = PostStatus.REJECTED if isinstance(item, Post) else CommentStatus.REJECTED
+    if verdict.outcome is Outcome.ALLOW:
+        _set_state(item, published, None, now)
+        if isinstance(item, Post):
+            item.published_at = now
+        action = ModerationActionKind.PUBLISHED
+    elif verdict.outcome is Outcome.REVIEW:
+        _set_state(item, held, verdict.reason, now)
+        action = ModerationActionKind.HELD
+    else:
+        _set_state(item, refused, verdict.reason, now)
+        action = ModerationActionKind.REJECTED
+    log_action(
+        db, item, action, ModerationSource.GUARD, reason=verdict.reason, details=verdict.details
+    )
+
+
+# ─── A moderator's decisions ───────────────────────────────────────────────────
+
+
+async def approve(db: AsyncSession, item: Item, actor_id: uuid.UUID) -> None:
+    """Publish a held or refused item, or restore a removed one."""
+    was = item.status
+    now = clock.utcnow()
+    is_post = isinstance(item, Post)
+    _set_state(item, PostStatus.PUBLISHED if is_post else CommentStatus.PUBLISHED, None, now)
+    item.reviewed_by = actor_id
+    if isinstance(item, Post):
+        item.published_at = item.published_at or now
+        item.removed_at = None
+        item.removal_source = None
+    restored = was in {PostStatus.REMOVED.value, PostStatus.REJECTED.value}
+    action = ModerationActionKind.RESTORED if restored else ModerationActionKind.PUBLISHED
+    log_action(db, item, action, ModerationSource.MODERATOR, actor_id=actor_id)
+    await _close_reports(db, item, ReportStatus.DISMISSED, actor_id)
+
+
+async def reject(db: AsyncSession, item: Item, actor_id: uuid.UUID, reason: str) -> None:
+    """Refuse a held item; its author is told why."""
+    _set_state(
+        item,
+        PostStatus.REJECTED if isinstance(item, Post) else CommentStatus.REJECTED,
+        reason,
+        clock.utcnow(),
+    )
+    item.reviewed_by = actor_id
+    log_action(
+        db,
+        item,
+        ModerationActionKind.REJECTED,
+        ModerationSource.MODERATOR,
+        actor_id=actor_id,
+        reason=reason,
+    )
+    await _close_reports(db, item, ReportStatus.ACTIONED, actor_id)
+
+
+async def remove(db: AsyncSession, item: Item, actor_id: uuid.UUID, reason: str) -> None:
+    """Take a published item down; everyone but the moderators stops seeing it at once."""
+    now = clock.utcnow()
+    _set_state(
+        item, PostStatus.REMOVED if isinstance(item, Post) else CommentStatus.REMOVED, reason, now
+    )
+    item.reviewed_by = actor_id
+    if isinstance(item, Post):
+        item.removed_at = now
+        item.removal_source = RemovalSource.MODERATOR
+    log_action(
+        db,
+        item,
+        ModerationActionKind.REMOVED,
+        ModerationSource.MODERATOR,
+        actor_id=actor_id,
+        reason=reason,
+    )
+    await _close_reports(db, item, ReportStatus.ACTIONED, actor_id)
+
+
+# ─── Reports moving a published item back to the queue ─────────────────────────
+
+
+async def hold_if_reported(db: AsyncSession, item: Item, threshold: int) -> bool:
+    """
+    Send a published item back to the queue once enough different people have reported it.
+
+    It is hidden until a moderator decides, which a brigade of reports could abuse, so the
+    number is a setting and 0 turns this off. Returns whether the item was held.
+    """
+    published = (
+        PostStatus.PUBLISHED.value if isinstance(item, Post) else CommentStatus.PUBLISHED.value
+    )
+    if threshold <= 0 or item.status != published:
+        return False
+    reporters = await db.scalar(
+        select(func.count(func.distinct(Report.reporter_id))).where(
+            Report.target_type == ReportTarget(_target(item).value),
+            Report.target_id == item.id,
+            Report.status == ReportStatus.OPEN,
+        )
+    )
+    if (reporters or 0) < threshold:
+        return False
+    held = PostStatus.PENDING_REVIEW if isinstance(item, Post) else CommentStatus.PENDING_REVIEW
+    _set_state(item, held, HELD_BY_REPORTS, clock.utcnow())
+    log_action(
+        db,
+        item,
+        ModerationActionKind.HELD,
+        ModerationSource.REPORTS,
+        reason=HELD_BY_REPORTS,
+        details={"reporters": reporters},
+    )
+    return True

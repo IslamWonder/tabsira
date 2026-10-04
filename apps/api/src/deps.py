@@ -14,6 +14,7 @@ from src.models.user import User
 from src.services import auth_service, session_service
 from src.services.google_oidc import GoogleOidc
 from src.services.insight_source import InsightSource
+from src.services.moderation_guard import OpenAiTextGuard, TextGuard
 from src.services.social_limits import WriteKind, get_social_limits
 from src.services.window_limiter import too_many_requests
 
@@ -145,6 +146,20 @@ def get_insight_source(request: Request) -> InsightSource:
 
 
 InsightSourceDep = Annotated[InsightSource, Depends(get_insight_source)]
+
+
+def get_text_guard(request: Request, settings: SettingsDep) -> TextGuard:
+    """
+    Return the guard every post and comment passes first.
+
+    The OpenAI guard unless `app.state.text_guard` holds another (tests, or a later swap of
+    provider); with no key it cannot judge anything, and so holds everything for a person.
+    """
+    guard: TextGuard | None = getattr(request.app.state, "text_guard", None)
+    return guard if guard is not None else OpenAiTextGuard(settings)
+
+
+TextGuardDep = Annotated[TextGuard, Depends(get_text_guard)]
 
 
 def limited(kind: WriteKind) -> Any:
