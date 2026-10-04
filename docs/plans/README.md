@@ -16,7 +16,7 @@ One short file per feature: what it is, where it stands, what is waiting on the 
 | 08  | [Practice progress](08_practice_progress.md)                      | 1     | High     | 🔄     |
 | 09  | [Share card and public insight page](09_share_and_public_page.md) | 1     | High     | ⬜     |
 | 10  | [Design, logo and app](10_design_brand_app.md)                    | 1     | High     | ✅     |
-| 11  | [Analytics and search engines](11_analytics_seo.md)               | 1     | Medium   | 🔄     |
+| 11  | [Analytics and search engines](11_analytics_seo.md)               | 1     | Medium   | ✅     |
 | 12  | [Admin area](12_admin.md)                                         | 1     | Medium   | ✅     |
 | 13  | [Scripture, privacy and security reviews](13_reviews.md)          | 1     | Critical | 🔄     |
 | 14  | [Deployment and operations](14_deployment.md)                     | 1     | High     | 🔄     |
