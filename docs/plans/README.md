@@ -7,7 +7,7 @@ One short file per feature: what it is, where it stands, what is waiting on the 
 | #   | Feature                                                           | Phase | Priority | Status |
 | --- | ----------------------------------------------------------------- | ----- | -------- | ------ |
 | 01  | [Accounts and sign-in](01_accounts.md)                            | 1     | High     | ✅     |
-| 02  | [Legal pages, consent and support](02_legal_consent_support.md)   | 1     | High     | 🔄     |
+| 02  | [Legal pages, consent and support](02_legal_consent_support.md)   | 1     | High     | ✅     |
 | 03  | [Quran and hadith sources](03_scripture_store.md)                 | 1     | Critical | ✅     |
 | 04  | [Photo to scan, with honest progress](04_scan_and_progress.md)    | 1     | Critical | 🔄     |
 | 05  | [Insight engine](05_insight_engine.md)                            | 1     | Critical | 🔄     |
