@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Run the API, the web app and (when present) the vision service with reload,
+# Run the API, the scan worker, the web app and (when present) the vision service,
 # behind https://tabsira.test (nginx and mkcert: scripts/setup-nginx-local.sh).
 #
 #   api     scripts/dev-api.sh             127.0.0.1:8000
+#   worker  scripts/dev-worker.sh          the scan jobs, from Redis
 #   web     pnpm dev in apps/web           127.0.0.1:3000
 #   vision  scripts/dev-vision.sh          when that script exists
 #
@@ -58,6 +59,12 @@ if [[ -f apps/api/pyproject.toml && -f scripts/dev-api.sh ]]; then
 	start api bash scripts/dev-api.sh
 else
 	skip "api: apps/api/pyproject.toml or scripts/dev-api.sh is missing"
+fi
+
+if [[ -f apps/api/pyproject.toml && -f scripts/dev-worker.sh ]]; then
+	start worker bash scripts/dev-worker.sh
+else
+	skip "worker: apps/api/pyproject.toml or scripts/dev-worker.sh is missing"
 fi
 
 if [[ -f apps/web/package.json ]]; then
