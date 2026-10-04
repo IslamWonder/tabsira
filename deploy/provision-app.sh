@@ -84,6 +84,9 @@ ip -4 addr show dev "${VPN_IFACE:-wt0}" >/dev/null 2>&1 ||
 
 as_user() { sudo -u "$APP_USER" -H "$@"; }
 
+# Production runs on UTC: logs, timers and the database agree whatever the admins' own zone.
+[[ "$(timedatectl show -p Timezone --value 2>/dev/null || true)" == UTC ]] || timedatectl set-timezone UTC || true
+
 # ─── 1. Packages ────────────────────────────────────────────────────
 log "Installing packages"
 apt-get update -qq
