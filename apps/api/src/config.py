@@ -641,6 +641,15 @@ class Settings(BaseSettings):
     # Wait before the first retry; doubled for each later one.
     ai_retry_backoff_seconds: Annotated[float, Field(ge=0)] = 1.0
 
+    # The scripture vectors a new installation imports instead of computing (task 05.4,
+    # docs/EMBEDDINGS.md): a local archive or extracted folder, else the archive in the
+    # owners' bucket, downloaded once by scripts/vectors/ensure.sh; an empty URL means
+    # "never download". Read by the data scripts, kept here so every key is typed.
+    vectors_archive: str = ""
+    vectors_archive_url: str = (
+        "https://s3-v2.riastorage.com/tabsira/vectors/tabsira-vectors-2026-10-04.tar.gz"
+    )
+
     # The object detector (services/vision), reached over HTTP only. A detector
     # that does not answer in time is skipped and the scan goes on without boxes.
     detector_url: str = "http://127.0.0.1:8100"
@@ -843,6 +852,20 @@ class Settings(BaseSettings):
     @classmethod
     def _check_detector_url(cls, value: str) -> str:
         return _origin(value)
+
+    @field_validator("vectors_archive")
+    @classmethod
+    def _strip_vectors_archive(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("vectors_archive_url")
+    @classmethod
+    def _check_vectors_archive_url(cls, value: str) -> str:
+        value = value.strip()
+        if value and not value.startswith("https://"):
+            message = "VECTORS_ARCHIVE_URL must be an https address, or empty to never download"
+            raise ValueError(message)
+        return value
 
     @field_validator("reranker_url")
     @classmethod

@@ -1237,3 +1237,16 @@ def test_production_keeps_the_secure_prefix_on_the_cookie_names(name):
     message = errors_of(**{**PRODUCTION, name: "tabsira_plain"})
 
     assert f"{name.upper()} must start with __Secure- in production, not tabsira_plain" in message
+
+
+def test_the_vector_archive_keys_are_typed_and_the_url_is_https(make_settings):
+    settings = make_settings()
+    local = make_settings(
+        vectors_archive=" ../tabsira-data/vectors/x.tar.gz ", vectors_archive_url=" "
+    )
+
+    assert settings.vectors_archive == ""
+    assert settings.vectors_archive_url.startswith("https://s3-v2.riastorage.com/tabsira/vectors/")
+    assert local.vectors_archive == "../tabsira-data/vectors/x.tar.gz"
+    assert local.vectors_archive_url == ""
+    assert "VECTORS_ARCHIVE_URL" in errors_of(vectors_archive_url="http://example.org/v.tar.gz")

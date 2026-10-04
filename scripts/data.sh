@@ -42,6 +42,8 @@ ok "Scripture store imported in $((SECONDS - started)) s"
 # API key the step says so and is skipped (search then uses its lexical half).
 banner "Scripture vectors"
 started=$SECONDS
+# The published archive first (docs/EMBEDDINGS.md), so embed_corpus finds nothing to compute.
+bash "$REPO_ROOT/scripts/vectors/ensure.sh"
 (cd "$REPO_ROOT/apps/api" && uv run --quiet python -m src.cli.embed_corpus)
 ok "Scripture vectors checked in $((SECONDS - started)) s"
 
