@@ -3,12 +3,22 @@ import { describe, expect, it } from 'vitest';
 import * as icons from './icons';
 
 describe('icons', () => {
-  it.each(Object.entries(icons))('%s is decorative and drawn in currentColor', (_name, Icon) => {
+  const lineIcons = Object.entries(icons).filter(([name]) => name !== 'GoogleIcon');
+
+  it.each(lineIcons)('%s is decorative and drawn in currentColor', (_name, Icon) => {
     const { container } = render(<Icon />);
     const svg = container.querySelector('svg');
     expect(svg).toHaveAttribute('aria-hidden', 'true');
     expect(svg).toHaveAttribute('focusable', 'false');
     expect(svg).toHaveAttribute('stroke', 'currentColor');
+  });
+
+  it("draws Google's mark in its own colours, still decorative", () => {
+    const { container } = render(<icons.GoogleIcon />);
+    const svg = container.querySelector('svg');
+    expect(svg).toHaveAttribute('aria-hidden', 'true');
+    expect(svg).toHaveAttribute('focusable', 'false');
+    expect(container.querySelectorAll('path[fill^="#"]')).toHaveLength(4);
   });
 
   it('lets the caller resize an icon', () => {
