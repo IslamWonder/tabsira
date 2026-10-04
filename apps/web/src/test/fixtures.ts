@@ -13,6 +13,7 @@ export const USER: User = {
   has_password: true,
   providers: ['password'],
   created_at: '2026-10-04T08:00:00Z',
+  legal_acceptance_required: false,
 };
 
 export const PROFILE: Profile = {

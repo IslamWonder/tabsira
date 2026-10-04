@@ -132,7 +132,8 @@ export const ar = {
         granted: 'وافقت',
         withdrawn: 'سحبت الموافقة',
         kinds: {
-          terms: 'الشروط والخصوصية',
+          terms: 'شروط الاستعمال',
+          privacy: 'سياسة الخصوصية',
           photo_storage: 'حفظ صوري',
           personalization: 'التخصيص',
           memory: 'الذاكرة',
