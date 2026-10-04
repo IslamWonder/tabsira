@@ -349,8 +349,9 @@ async def test_every_foreign_key_to_users_cascades_so_deleting_an_account_leaves
     assert {row.confdeltype for row in rows} == {"c"}
 
 
-def test_every_account_table_lives_in_the_app_schema():
+def test_every_table_lives_in_the_app_schema():
     tables = {
+        # Accounts
         "users",
         "oauth_accounts",
         "sessions",
@@ -359,6 +360,13 @@ def test_every_account_table_lives_in_the_app_schema():
         "consents",
         "email_tokens",
         "login_attempts",
+        # The world ontology and the learning path
+        "ontology_entities",
+        "ontology_candidates",
+        "learning_path_versions",
+        "learning_domains",
+        "learning_units",
+        "learner_unit_states",
     }
 
     assert {name.removeprefix(f"{APP_SCHEMA}.") for name in Base.metadata.tables} == tables
