@@ -42,6 +42,8 @@ dependencies = [
   # one last released in October 2025 and pins an old aiobotocore, while boto3 ships almost
   # daily and moto (the tests' fake S3) can only intercept botocore.
   "boto3>=1.43.108",
+  # Reads a photo's EXIF, then re-encodes it with no metadata (decision 8, section 19).
+  "pillow>=12.3.0",
 ]
 
 [dependency-groups]
