@@ -9,8 +9,14 @@ Strategy:
   TEST_DATABASE_URL (in the root .env, written by scripts/setup-db.sh). It
   must end in `_test`; the suite refuses to run against anything else.
 - Each test gets its own session in a transaction that is rolled back.
-- With pytest-xdist every worker gets its own database, copied from a template
-  that exactly one worker builds.
+- With pytest-xdist every worker gets its own database, copied from the
+  server-wide `tabsira_template` database (TEST_TEMPLATE_DATABASE) that
+  scripts/setup-db.sh provisions with both schemas and every extension but no
+  tables; the worker then builds the tables in its copy. The test role is not a
+  superuser, so it could not create PostGIS or TimescaleDB itself, and the suite
+  makes no template of its own: TimescaleDB attaches a background session to
+  every database that accepts connections, within seconds, and PostgreSQL
+  refuses to copy a database somebody is connected to.
 """
 
 from __future__ import annotations
@@ -45,7 +51,9 @@ from tests.helpers import client_for
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 SEARCH_PATH = "app,geodata,public"
-# A fixed key: every worker takes the same advisory lock around the template build.
+# Provisioned by scripts/setup-db.sh: both schemas and every extension, no tables.
+DEFAULT_BASE_TEMPLATE = "tabsira_template"
+# A fixed key: workers take the same advisory lock around copying the template.
 TEMPLATE_LOCK_KEY = 7_424_011
 
 
@@ -55,6 +63,15 @@ def _configured_test_url() -> str | None:
         os.environ.get("TEST_DATABASE_URL")
         or dotenv_values(REPO_ROOT / ".env").get("TEST_DATABASE_URL")
         or None
+    )
+
+
+def _configured_base_template() -> str:
+    """Return the database the test template is copied from: TEST_TEMPLATE_DATABASE or the default."""
+    return (
+        os.environ.get("TEST_TEMPLATE_DATABASE")
+        or dotenv_values(REPO_ROOT / ".env").get("TEST_TEMPLATE_DATABASE")
+        or DEFAULT_BASE_TEMPLATE
     )
 
 
@@ -68,6 +85,7 @@ def _scrub_environment() -> None:
 
 
 _BASE_URL = _configured_test_url()
+_BASE_TEMPLATE = _configured_base_template()
 # When no URL is configured the suite still has to import: the settings need a
 # database URL. Database tests then fail with a clear message instead.
 _PLACEHOLDER_URL = "postgresql+asyncpg://tabsira:unset@127.0.0.1:5432/tabsira_test"
@@ -89,7 +107,6 @@ os.environ["DATABASE_URL"] = _WORKER_URL.render_as_string(hide_password=False)
 
 from src.database import dispose_engine  # noqa: E402
 from src.main import create_app  # noqa: E402
-from src.models import Base, GeoBase  # noqa: E402
 from tests.dbschema import create_schema  # noqa: E402
 
 
@@ -103,19 +120,6 @@ async def _admin_connection() -> asyncpg.Connection:
     return await asyncpg.connect(_dsn(_TEST_URL.set(database="postgres")))
 
 
-def _schema_signature() -> str:
-    """A short hash of the mapped schema; it names the template, so a model change makes a new one."""
-    import hashlib
-
-    parts = sorted(
-        f"{table.schema}.{table.name}.{column.name}:{column.type}"
-        for metadata in (Base.metadata, GeoBase.metadata)
-        for table in metadata.tables.values()
-        for column in table.columns
-    )
-    return hashlib.sha256("|".join(parts).encode()).hexdigest()[:12]
-
-
 def _engine_for(url: URL) -> AsyncEngine:
     return create_async_engine(
         url,
@@ -124,61 +128,27 @@ def _engine_for(url: URL) -> AsyncEngine:
     )
 
 
-async def _build_template(template: str) -> None:
-    """Build the schema once, in a database every worker then copies."""
-    admin = await _admin_connection()
-    try:
-        await admin.execute(f'DROP DATABASE IF EXISTS "{template}" WITH (FORCE)')
-        await admin.execute(f'CREATE DATABASE "{template}"')
-    finally:
-        await admin.close()
-
-    engine = _engine_for(_TEST_URL.set(database=template))
-    try:
-        async with engine.begin() as connection:
-            await create_schema(connection)
-    finally:
-        # PostgreSQL refuses to copy a template that still has a connection open.
-        await engine.dispose()
-
-    admin = await _admin_connection()
-    try:
-        # The comment marks the template as complete, so a build that died
-        # halfway is not mistaken for a finished one.
-        await admin.execute(f"COMMENT ON DATABASE \"{template}\" IS 'tabsira template complete'")
-        stale = await admin.fetch(
-            "SELECT datname FROM pg_database WHERE datname LIKE $1 AND datname <> $2",
-            f"{_BASE_DATABASE}\\_tmpl\\_%",
-            template,
-        )
-        for row in stale:
-            await admin.execute(f'DROP DATABASE IF EXISTS "{row["datname"]}" WITH (FORCE)')
-    finally:
-        await admin.close()
-
-
 async def _ensure_worker_database() -> None:
-    """Give this xdist worker a database copied from the shared template; a serial run needs none."""
+    """Give this xdist worker its own empty database, copied from the provisioned template."""
     if not _XDIST_WORKER:
         return
 
-    template = f"{_BASE_DATABASE}_tmpl_{_schema_signature()}"
     admin = await _admin_connection()
     try:
-        # Held across the check and the build, so exactly one worker builds.
+        # One copy at a time: a copy is quick, and PostgreSQL is happier alone with it.
         await admin.execute("SELECT pg_advisory_lock($1)", TEMPLATE_LOCK_KEY)
-        complete = await admin.fetchval(
-            "SELECT shobj_description(oid, 'pg_database') = 'tabsira template complete' "
-            "FROM pg_database WHERE datname = $1",
-            template,
-        )
-        if not complete:
-            await _build_template(template)
-        await admin.execute("SELECT pg_advisory_unlock($1)", TEMPLATE_LOCK_KEY)
-
         database = _WORKER_URL.database
         await admin.execute(f'DROP DATABASE IF EXISTS "{database}" WITH (FORCE)')
-        await admin.execute(f'CREATE DATABASE "{database}" TEMPLATE "{template}"')
+        # The test role cannot create PostGIS, pgvector or TimescaleDB, so the copy
+        # starts from the provisioned database that already has them. Where there is
+        # none (a CI role that may create extensions) the plain default template is
+        # used and `create_schema` creates the extensions itself.
+        provisioned = await admin.fetchval(
+            "SELECT 1 FROM pg_database WHERE datname = $1", _BASE_TEMPLATE
+        )
+        source = f' TEMPLATE "{_BASE_TEMPLATE}"' if provisioned else ""
+        await admin.execute(f'CREATE DATABASE "{database}"{source}')
+        await admin.execute("SELECT pg_advisory_unlock($1)", TEMPLATE_LOCK_KEY)
     finally:
         await admin.close()
 
@@ -219,9 +189,8 @@ async def engine() -> AsyncIterator[AsyncEngine]:
             pytrace=False,
         )
     engine = _engine_for(_WORKER_URL)
-    if not _XDIST_WORKER:
-        async with engine.begin() as connection:
-            await create_schema(connection)
+    async with engine.begin() as connection:
+        await create_schema(connection)
     try:
         yield engine
     finally:
