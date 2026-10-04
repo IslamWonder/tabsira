@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { featureCameraDiscovery, featureFlag } from './server-env';
+import { adminInspectorUrl, featureCameraDiscovery, featureFlag } from './server-env';
 
 describe('the feature flags the web server reads', () => {
   it('are on unless the environment file says otherwise, read as the API reads them', () => {
@@ -17,5 +17,26 @@ describe('the feature flags the web server reads', () => {
     expect(featureCameraDiscovery({ FEATURE_CAMERA_DISCOVERY: 'false' })).toBe(false);
     expect(featureCameraDiscovery({ FEATURE_CAMERA_DISCOVERY: 'true' })).toBe(true);
     expect(featureCameraDiscovery()).toBe(true);
+  });
+});
+
+describe('the address of the scan inspector', () => {
+  it('points at the admin area named by ADMIN_URL, under /admin/inspect', () => {
+    expect(adminInspectorUrl('42', { ADMIN_URL: 'https://admin.tabsira.me' })).toBe(
+      'https://admin.tabsira.me/admin/inspect/42'
+    );
+  });
+
+  it('falls back to the development admin host when ADMIN_URL is unset or blank', () => {
+    expect(adminInspectorUrl('42', {})).toBe('http://admin.tabsira.test/admin/inspect/42');
+    expect(adminInspectorUrl('42', { ADMIN_URL: '  ' })).toBe(
+      'http://admin.tabsira.test/admin/inspect/42'
+    );
+  });
+
+  it('names nothing for what is not a public id', () => {
+    for (const bad of ['', '0', 'abc', '-1', '1'.repeat(20), '42/..', '42?x=1']) {
+      expect(adminInspectorUrl(bad, {})).toBeNull();
+    }
   });
 });

@@ -578,6 +578,8 @@ class Settings(BaseSettings):
     feature_photo_storage: bool = True
     feature_canonical_verify: bool = True
     feature_admin: bool = True
+    # The developer panel of v2 §23 (the scan inspector in the admin area); off in production.
+    feature_dev_inspector: bool = True
 
     # Side, in metres, of the grid cell a public location is rounded to (see
     # src/geo/privacy.py). The limits are the ones that function enforces.

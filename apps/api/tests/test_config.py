@@ -86,6 +86,7 @@ def test_feature_flags_default_and_can_be_switched(make_settings, monkeypatch):
         "feature_photo_storage",
         "feature_canonical_verify",
         "feature_admin",
+        "feature_dev_inspector",
     }
     # Anchoring stays off until it is proven on devices; everything else is on.
     assert [name for name, on in flags.items() if not on] == ["feature_camera_anchor"]

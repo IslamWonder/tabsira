@@ -80,3 +80,23 @@ export function featureFlag(name: string, env: Env = process.env): boolean {
 export function featureCameraDiscovery(env: Env = process.env): boolean {
   return featureFlag('CAMERA_DISCOVERY', env);
 }
+
+/** The admin area of `make dev`; production names its own in ADMIN_URL (docs/ADMIN.md). */
+export const DEVELOPMENT_ADMIN_URL = 'http://admin.tabsira.test';
+
+// A public id as the API writes it: a positive decimal that fits 64 bits.
+const SCAN_ID = /^[1-9][0-9]{0,18}$/;
+
+/**
+ * Where the developer panel of a scan lives (v2 §23): the scan inspector of the
+ * admin area, on the admin host, behind an admin session. The web app's own
+ * `/dev/inspect/{scanId}` only hands over to it, because an admin session exists
+ * on that host alone. Null when the id is not one.
+ */
+export function adminInspectorUrl(scanId: string, env: Env = process.env): string | null {
+  if (!SCAN_ID.test(scanId)) {
+    return null;
+  }
+  const base = env.ADMIN_URL?.trim() || DEVELOPMENT_ADMIN_URL;
+  return new URL(`/admin/inspect/${scanId}`, base).toString();
+}
