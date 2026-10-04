@@ -2,7 +2,7 @@
 The queue the API puts scan jobs on.
 
 Jobs travel on a Redis stream read by one worker process (`src/worker.py`,
-run with `taskiq worker src.worker:broker --workers 1`). A job is acknowledged
+run with `python -m src.cli.scan_worker`). A job is acknowledged
 once it has run; one left unacknowledged by a worker that died is handed out
 again after ten minutes, and the job itself makes a second run harmless
 (`src/scans/workflow.py`). The routes depend on `ScanQueue`, so a test puts its

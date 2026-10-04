@@ -1,7 +1,7 @@
 """
 The scan worker: one process that runs scan jobs from the Redis queue.
 
-    uv run taskiq worker src.worker:broker --workers 1
+    uv run python -m src.cli.scan_worker
 
 One process is enough and keeps scheduled work in one place (AGENTS.md); it
 runs several scans at once on its event loop. It shares nothing with the API
