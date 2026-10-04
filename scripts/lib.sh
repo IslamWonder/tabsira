@@ -198,6 +198,23 @@ load_env() {
 	fi
 }
 
+# load_env_keeping KEY...: load_env, but a KEY the caller already set (even to
+# empty) keeps its value: the environment first, the root .env after it, so a
+# caller can point a data script at another database or archive.
+load_env_keeping() {
+	local key
+	local -a kept=()
+	for key in "$@"; do
+		if [[ -n "${!key+x}" ]]; then
+			kept+=("$key=${!key}")
+		fi
+	done
+	load_env
+	for key in "${kept[@]+"${kept[@]}"}"; do
+		export "${key?}"
+	done
+}
+
 # KEY from an env file: the last assignment wins, surrounding quotes dropped.
 # Prints nothing when the file or the key is missing.
 env_value() {

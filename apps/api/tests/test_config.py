@@ -13,6 +13,7 @@ from src.config import (
     BoxCoordinates,
     ConfigError,
     Environment,
+    GeonamesSource,
     ProviderSettings,
     RerankerKind,
     ScanEngine,
@@ -1301,3 +1302,39 @@ def test_the_vector_archive_keys_are_typed_and_the_url_is_https(make_settings):
     assert local.vectors_archive == "../tabsira-data/vectors/x.tar.gz"
     assert local.vectors_archive_url == ""
     assert "VECTORS_ARCHIVE_URL" in errors_of(vectors_archive_url="http://example.org/v.tar.gz")
+
+
+def test_the_corpus_archive_keys_are_typed_and_the_url_is_https(make_settings):
+    settings = make_settings()
+    local = make_settings(corpus_archive=" ../c.tar.gz ", corpus_archive_url=" ")
+
+    assert settings.corpus_archive == ""
+    assert settings.corpus_archive_url.startswith("https://s3-v2.riastorage.com/tabsira/corpus/")
+    assert local.corpus_archive == "../c.tar.gz"
+    assert local.corpus_archive_url == ""
+    assert "CORPUS_ARCHIVE_URL must be an https address" in errors_of(
+        corpus_archive_url="http://example.org/c.tar.gz"
+    )
+
+
+def test_geonames_installs_from_a_dump_only_when_one_is_named(make_settings):
+    settings = make_settings()
+    named = make_settings(
+        geodata_dump=" ../g.dump ",
+        geodata_dump_url=" https://s3-v2.riastorage.com/tabsira/geodata/g.dump ",
+    )
+
+    assert (settings.geodata_dump, settings.geodata_dump_url) == ("", "")
+    assert named.geodata_dump == "../g.dump"
+    assert named.geodata_dump_url == "https://s3-v2.riastorage.com/tabsira/geodata/g.dump"
+    assert "GEODATA_DUMP_URL must be an https address" in errors_of(
+        geodata_dump_url="ftp://example.org/g.dump"
+    )
+
+
+def test_geonames_comes_from_the_dump_unless_the_original_import_is_chosen(make_settings):
+    assert make_settings().geonames_source is GeonamesSource.DUMP
+    assert make_settings(geonames_source="geonames").geonames_source is GeonamesSource.GEONAMES
+    assert "GEONAMES_SOURCE: Input should be 'dump' or 'geonames'" in errors_of(
+        geonames_source="osm"
+    )
