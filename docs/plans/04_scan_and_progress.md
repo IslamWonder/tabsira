@@ -1,6 +1,6 @@
 # 04 · Photo to scan, with honest progress
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 17:42 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 20:37 (Tunis)
 
 A person takes or uploads a photo. They see honest stages (understanding, searching, verifying, composing), can point at what matters and answer one question.
 
@@ -16,6 +16,7 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 | Scripture review fixes, then merge                                               | 🔄     | In progress.                       |
 | Screens: capture, progress, focus, question                                      | 🔄     | In progress.                       |
 | Chat answers tied to the texts shown when written                                | ✅     | Hidden once a text is not shown.   |
+| Optional questions after the first insight, share option after saving, §8 labels | ✅     | Core audit wave 3, task 04.11.     |
 
 **How we check it**
 
@@ -96,3 +97,20 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 - **Depends on:** 04.6
 - **Touches:** apps/api/src/scripture/guard_fold.py, tests/scripture/test_guard_fold.py, tests/scans/test_spelling_guard.py.
 - **Done when:** Tests built from stored text with these characters inserted are refused by `repeats_store`; scripture review passes.
+
+### 04.11 Core audit wave 3: the journey after the first insight
+
+- **Status:** ✅ 2026-10-04 20:37
+- **Goal:** Close four gaps of the wave 3 compliance audit against master prompt v2. (1) The three optional questions (§5, §4.7, §4.9) are offered in the journey after «تمّ» on a first insight, one at a time, each with «تخطَّ» and «تخطَّ الأسئلة كلها»; skipping keeps every field `unknown`. An account records that they were asked (`profiles.questions_asked`, migration `20261004_205000`; `PATCH /profile` sets it on any answer, on a skip to `unknown`, or on `{"questions_asked": true}` alone) and is never asked again; a guest keeps the answers and the flag on the device (`tabsira.profile-answers`) and the first sign-in moves them into the account. (2) `PROFILE_QUESTIONS_MAX` (0 to 3) is a typed API setting, listed in `.env.example`, read by the web build from the shared `.env` and inlined as `NEXT_PUBLIC_PROFILE_QUESTIONS_MAX`. (3) After saving, the third option «شارك البصيرة» (§4.8) is rendered under the API's label when the API lists it and the owner may publish; otherwise one line says why (sign in to share; a prepared example is not shared; not available). (4) The refusal (§8) offers «وضّح ما تقصد» and «جرّب مشهدًا آخر».
+- **Depends on:** 04.2, 05.1
+- **Touches:** apps/api/src/{config.py,models/profile.py,schemas/profile.py,services/profile_service.py}, one app migration, apps/web/src/{account/device-answers.ts,components/account/first-insight-questions.tsx,components/insight/completion-panel.tsx,components/insight/insight-screen.tsx,config/public-env.ts,lib/site.ts,messages/scan.ts,messages/legal.ts,preferences/account-sync.ts}, .env.example, the generated web client, their tests.
+- **Done when:** Lint passes; the profile, config, migration and the touched web tests pass; a guest and an account are each asked once and never again.
+- **Numbering:** the audit named this task 04.10; 04.10 was already taken by the guard fold follow-up above, so it is 04.11 here and the branch kept its name `task/04.10-core-audit-web`.
+
+### 04.12 Draw a box to point at what matters
+
+- **Status:** ⬜ open
+- **Goal:** Master prompt v2 §6 resolves an ambiguity with one short question **or a manual selection of the place in the photo**; the API already accepts `FocusIn.box` (ratios 0 to 1), but the web focus picker (`apps/web/src/components/scan/focus-picker.tsx`) offers the server's entities only (audit wave 3, gap 8). Add a draw-a-box mode to the picker: a touch or pointer drag on the photo draws one rectangle, clamped to the image, shown with the same glass label; «انظر إلى هذا» calls `focus` with `box` instead of an entity id; a keyboard path moves and resizes the box with the arrow keys from a real `<button>`; the mode is offered when the picker has no entities («لم نتعرف على شيء يمكن اختياره هنا») and beside the list when it has some. No hover motion; reduced motion respected; targets at least 48 px.
+- **Depends on:** 04.2
+- **Touches:** apps/web/src/components/scan/focus-picker.tsx, apps/web/src/lib/scan/use-scan.ts, apps/web/src/messages/scan.ts, their tests.
+- **Done when:** A test draws a box and the request carries `box` with ratios inside 0 to 1 and no entity id; the picker with no entities offers the box; accessibility check clean.
