@@ -282,4 +282,32 @@ describe('what a card leaves out', () => {
     expect(screen.queryByRole('region', { name: 'كلمات الكاتب' })).toBeNull();
     expect(screen.queryByText(/خطوة/)).toBeNull();
   });
+
+  it('shows the public photo on the full card only, from the address the API gave', () => {
+    guest();
+    const url = 'https://media.tabsira.test/public/0123456789abcdef0123456789abcdef.jpg';
+    const withPhoto = { ...POST, insight: { ...POST.insight, has_photo: true, photo_url: url } };
+    const { unmount } = render(<PostCard post={withPhoto} onChange={vi.fn()} variant="full" />);
+    const photo = screen.getByRole('img', {
+      name: 'صورة المشهد الذي وُلدت منه البصيرة «[عنوان البصيرة]»',
+    });
+    expect(photo).toHaveAttribute('src', url);
+    expect(photo).toHaveAttribute('loading', 'lazy');
+    unmount();
+
+    render(<PostCard post={withPhoto} onChange={vi.fn()} />);
+    expect(screen.queryByTestId('public-photo')).toBeNull();
+  });
+
+  it('shows no photo without an address, whatever the owner chose', () => {
+    guest();
+    render(
+      <PostCard
+        post={{ ...POST, insight: { ...POST.insight, has_photo: true, photo_url: null } }}
+        onChange={vi.fn()}
+        variant="full"
+      />
+    );
+    expect(screen.queryByTestId('public-photo')).toBeNull();
+  });
 });

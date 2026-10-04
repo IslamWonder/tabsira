@@ -825,6 +825,7 @@ export const ar = {
       explanation: 'شرح تبصرة',
       step: 'خطوة صغيرة',
       sameMeaning: 'بصائر بالمعنى نفسه على الخريطة',
+      photoAlt: (title: string) => `صورة المشهد الذي وُلدت منه البصيرة «${title}»`,
     },
     /** The share line of a place page. */
     placeDescription: (label: string) => `البصائر التي نشرها الناس في ${label} على أطلس تبصرة.`,
@@ -1049,6 +1050,7 @@ export const ar = {
       statusHint: 'لا يرى هذه الحالة غيرك.',
       publishedAt: (when: string) => `نُشر في ${when}`,
       createdAt: (when: string) => `أُنشئ في ${when}`,
+      photoAlt: (title: string) => `صورة المشهد الذي وُلدت منه البصيرة «${title}»`,
       authorLink: (name: string) => `صفحة ${name}`,
       quranReference: (surahName: string, ayah: number) => `سورة ${surahName} · ${ayah}`,
       hadithReference: (collectionName: string, number: string) => `${collectionName} · ${number}`,
