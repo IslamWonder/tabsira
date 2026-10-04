@@ -2,7 +2,6 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { SiteFooter } from '@/components/app/site-footer';
-import { writeConsentId } from '@/consent/cookie';
 import { readConsent, type ServerConsent } from '@/consent/store';
 import { apiError, mockApi, type Route } from '@/test/api';
 import { POLICY, RECORD } from '@/test/fixtures';
