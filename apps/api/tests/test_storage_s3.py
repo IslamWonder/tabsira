@@ -321,3 +321,7 @@ def test_production_refuses_the_local_store(make_settings):
         build_storage(make_settings(**production))
 
     assert isinstance(build_storage(make_settings(**production, **S3_SETTINGS)), S3Storage)
+
+
+def test_a_public_object_is_cached_for_five_minutes_and_never_immutable():
+    assert PUBLIC_CACHE_CONTROL == "public, max-age=300"

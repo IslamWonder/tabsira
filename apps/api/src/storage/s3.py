@@ -37,9 +37,10 @@ from src.storage.base import (
 log = logging.getLogger("tabsira.storage")
 
 # An owner's copy must never be cached by anything between the bucket and the owner; a published
-# copy never changes under its key, so it may be cached for as long as anyone likes.
+# copy is deleted when it is withdrawn, so it is cached for five minutes at most and is never
+# marked immutable: that is how long a withdrawn photo can linger, as the privacy text says.
 PRIVATE_CACHE_CONTROL = "private, no-store"
-PUBLIC_CACHE_CONTROL = "public, max-age=31536000, immutable"
+PUBLIC_CACHE_CONTROL = "public, max-age=300"
 _NOT_FOUND_CODES = frozenset({"NoSuchKey", "NotFound", "404"})
 
 
