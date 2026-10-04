@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 from PIL import ExifTags, Image
 
+from src.config import Settings
 from src.models.profile import AgeRange
 from src.services.image_service import ProcessedPhoto, process_photo
 from src.storage.base import InvalidKeyError, ObjectNotFoundError, new_private_key, new_public_key
@@ -311,3 +312,23 @@ def test_the_store_is_built_from_the_settings(make_settings):
 
     assert isinstance(store, PhotoStore)
     assert isinstance(store.storage, LocalStorage)
+
+
+def test_an_age_range_given_as_a_plain_string_still_refuses_an_under_13_account():
+    refused = facts(age_range="under_13").refusal(
+        Settings(_env_file=None, feature_photo_storage=True)
+    )
+
+    assert refused is PhotoRefusal.UNDER_13
+
+
+def test_an_age_range_that_is_not_one_is_refused():
+    with pytest.raises(ValueError, match="age_range"):
+        facts(age_range="about forty")
+
+
+@pytest.mark.parametrize("flag", ["sensitive_scene", "photo_storage_consent"])
+@pytest.mark.parametrize("value", ["false", 0, 1, None])
+def test_a_flag_that_is_not_a_real_bool_is_refused(flag, value):
+    with pytest.raises(TypeError, match=flag):
+        facts(**{flag: value})

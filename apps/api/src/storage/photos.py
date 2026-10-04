@@ -80,6 +80,19 @@ class PhotoFacts:
     sensitive_scene: bool
     photo_storage_consent: bool
 
+    def __post_init__(self) -> None:
+        """Refuse a fact of the wrong kind: `"under_13"` as a plain string must still count."""
+        try:
+            age_range = AgeRange(self.age_range)
+        except ValueError as error:
+            message = f"age_range is not a known age range: {self.age_range!r}"
+            raise ValueError(message) from error
+        object.__setattr__(self, "age_range", age_range)
+        for name in ("sensitive_scene", "photo_storage_consent"):
+            if not isinstance(getattr(self, name), bool):
+                message = f"{name} must be a bool"
+                raise TypeError(message)
+
     def refusal(self, settings: Settings) -> PhotoRefusal | None:
         """Return the first reason the photo may not be kept, or None when it may."""
         if not settings.feature_photo_storage:
