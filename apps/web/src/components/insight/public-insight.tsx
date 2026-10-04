@@ -43,7 +43,7 @@ function Invitation() {
       aria-labelledby="public-insight-call"
       className="glass flex flex-col gap-3 rounded-[var(--radius-panel)] p-5"
     >
-      <h2 id="public-insight-call" className="m-0 font-display font-bold text-[1.375rem] text-fg">
+      <h2 id="public-insight-call" className="m-0 font-bold text-[1.375rem] text-fg">
         {T.callTitle}
       </h2>
       <p className="m-0 text-fg-soft leading-[1.9]">{T.callBody}</p>
