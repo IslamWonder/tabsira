@@ -13,6 +13,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.config import AiProvider
+
 Ratio = Annotated[float, Field(ge=0, le=1)]
 
 
@@ -122,3 +124,101 @@ class DetectorResult(FrozenModel):
     latency_ms: int
     # Set when the detector was skipped: timeout, unreachable, http_503, invalid_response.
     error: str | None = None
+
+
+# ─── Scene ─────────────────────────────────────────────────────────
+
+
+class EvidenceStatus(StrEnum):
+    """How an understanding is known (v2 §0, rule 3)."""
+
+    OBSERVED = "observed"
+    INFERRED = "inferred"
+    USER_CONFIRMED = "user_confirmed"
+    UNKNOWN = "unknown"
+
+
+class EntityOrigin(StrEnum):
+    """Where an entity's box comes from."""
+
+    DETECTOR = "detector"
+    VLM = "vlm"
+    USER_SELECTION = "user_selection"
+
+
+class SensitiveCategory(StrEnum):
+    """Scenes whose image is never shown back nor stored (v2 §6)."""
+
+    NUDITY = "nudity"
+    ALCOHOL = "alcohol"
+    DRUGS = "drugs"
+    GAMBLING = "gambling"
+    VIOLENCE = "violence"
+
+
+class SceneRequest(FrozenModel):
+    """
+    What the scene analyzer receives: the model copy of the photo and the detector's boxes.
+
+    Nothing about the user is here, by design: the religion and gender profile
+    is added after this stage, when meanings are chosen (v2 §6).
+    """
+
+    image: EncodedImage
+    detector: DetectorResult
+
+
+class SceneEntity(FrozenModel):
+    """A thing in the scene."""
+
+    id: str
+    label: str
+    label_arabic: str
+    # The box the scene keeps: the detector's when the model matched one, else the model's.
+    bbox: BBox | None
+    origin: EntityOrigin
+    status: EvidenceStatus
+    detector_id: str | None = None
+    # The model's own box, converted, kept even when the detector's wins (for measuring).
+    model_bbox: BBox | None = None
+
+
+class SceneAction(FrozenModel):
+    """Something happening, with the visible clues that show it."""
+
+    id: str
+    label: str
+    actor_ids: list[str]
+    target_ids: list[str]
+    visible_evidence: Annotated[list[str], Field(min_length=1)]
+    status: EvidenceStatus
+
+
+class SceneRelation(FrozenModel):
+    """How two entities relate, and what in the image shows it."""
+
+    subject_id: str
+    predicate: str
+    object_id: str
+    evidence: str
+
+
+class SceneAnalysis(FrozenModel):
+    """The verified structure of a scene (v2 §6)."""
+
+    description: str
+    entities: list[SceneEntity]
+    actions: list[SceneAction]
+    relations: list[SceneRelation]
+    ambiguities: list[str]
+    clarification_question: str | None
+    # Categories the vision model saw; the guard's verdict is added by the sensitivity stage.
+    sensitive: list[SensitiveCategory]
+    detector_available: bool
+    # Detections no entity confirmed: the detector may be wrong, so they are not entities.
+    unconfirmed_detection_ids: list[str]
+    # What the server refused in the model's answer, and why.
+    rejected: list[str]
+    provider: AiProvider
+    model: str
+    prompt_version: str

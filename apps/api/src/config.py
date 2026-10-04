@@ -102,6 +102,19 @@ class AiStage(StrEnum):
     GUARD = "guard"
 
 
+class BoxCoordinates(StrEnum):
+    """
+    How a provider's vision model writes the corners of a box.
+
+    The prompt states the system and the server converts the answer to 0-1
+    ratios. Qwen-VL models are trained on a 0-1000 grid and drift back to it
+    even when asked for pixels; docs/BENCHMARK.md has the measurement.
+    """
+
+    PIXELS = "pixels"
+    THOUSANDTHS = "thousandths"
+
+
 class ConfigError(RuntimeError):
     """The configuration is missing a key or holds an invalid one."""
 
@@ -174,6 +187,8 @@ class ProviderSettings(BaseModel):
     guard_model: str = ""
     # Sent as `reasoning_effort` when set; empty leaves the provider's default.
     reasoning_effort: Annotated[str, Field(pattern=r"^(|none|minimal|low|medium|high|xhigh)$")] = ""
+    # The coordinate system the vision prompt asks for and the server converts from.
+    box_coordinates: BoxCoordinates = BoxCoordinates.PIXELS
     # Price of each model, keyed by model id; a model without a price is recorded with no cost.
     prices: dict[str, ModelPrice] = Field(default_factory=dict)
 

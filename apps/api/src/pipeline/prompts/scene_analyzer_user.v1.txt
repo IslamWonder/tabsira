@@ -1,0 +1,7 @@
+The photo is $width pixels wide and $height pixels high.
+
+Coordinate system of every box, the detector's below and yours: $coordinates
+
+Detector: $detector
+
+Describe the scene following the schema.

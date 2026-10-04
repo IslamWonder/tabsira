@@ -20,6 +20,7 @@ import asyncio
 import base64
 import re
 import time
+from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -94,7 +95,53 @@ class ModerationResult:
 type Parser[R] = Callable[[Mapping[str, Any]], R]
 
 
-class ProviderClient:
+class ModelClient(ABC):
+    """What a pipeline stage may ask of a provider; stages depend on this, tests fake it."""
+
+    @property
+    @abstractmethod
+    def provider(self) -> AiProvider:
+        """The provider that serves the calls."""
+
+    @property
+    @abstractmethod
+    def settings(self) -> ProviderSettings:
+        """The provider's settings block."""
+
+    @abstractmethod
+    async def chat_json[T: BaseModel](
+        self,
+        schema: type[T],
+        *,
+        stage: AiStage,
+        system: str,
+        user: str,
+        images: Sequence[ModelImage] = (),
+        model: str | None = None,
+        max_output_tokens: int = 4096,
+        temperature: float | None = None,
+        reasoning_effort: str | None = None,
+    ) -> ChatResult[T]:
+        """Ask for an answer that matches `schema`."""
+
+    @abstractmethod
+    async def embed(
+        self,
+        texts: Sequence[str],
+        *,
+        model: str | None = None,
+        dimensions: int | None = None,
+    ) -> EmbeddingResult:
+        """Embed one batch of texts."""
+
+    @abstractmethod
+    async def moderate_image(
+        self, image: ModelImage, *, model: str | None = None
+    ) -> ModerationResult:
+        """Run the provider's image moderation."""
+
+
+class ProviderClient(ModelClient):
     """Calls one provider's models for the pipeline stages."""
 
     def __init__(

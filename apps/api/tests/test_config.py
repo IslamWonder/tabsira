@@ -9,6 +9,7 @@ from src import config
 from src.config import (
     AiProvider,
     AiStage,
+    BoxCoordinates,
     ConfigError,
     Environment,
     Settings,
@@ -166,6 +167,15 @@ def test_gpt_oss_models_are_refused_everywhere(values):
     message = errors_of(**values)
 
     assert "is a gpt-oss model, which this project never uses" in message
+
+
+def test_box_coordinates_are_pixels_unless_a_provider_says_otherwise(make_settings, monkeypatch):
+    assert make_settings().ai_openai.box_coordinates is BoxCoordinates.PIXELS
+
+    monkeypatch.setenv("AI_OVH__BOX_COORDINATES", "thousandths")
+
+    assert make_settings().ai_ovh.box_coordinates is BoxCoordinates.THOUSANDTHS
+    assert "AI_OVH__BOX_COORDINATES" in errors_of(ai_ovh={"box_coordinates": "inches"})
 
 
 def test_reasoning_effort_accepts_only_the_known_levels(make_settings):
