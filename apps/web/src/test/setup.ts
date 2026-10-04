@@ -5,6 +5,7 @@ import { forgetLegal } from '@/account/legal';
 import { forgetProviders } from '@/account/providers';
 import { forgetSession } from '@/account/session';
 import { forgetConsent } from '@/consent/store';
+import { forgetIdentity } from '@/social/identity-store';
 import { NEVER_ANSWERS } from './api';
 import { stubMatchMedia } from './media';
 
@@ -35,6 +36,7 @@ afterEach(() => {
   forgetProviders();
   forgetLegal();
   forgetConsent();
+  forgetIdentity();
   // Files that run in the node environment (server rendering) have no DOM to reset.
   if (typeof window === 'undefined') {
     return;

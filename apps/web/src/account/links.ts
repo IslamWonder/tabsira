@@ -49,3 +49,8 @@ export function googleStartUrl(next: Route): string {
   url.searchParams.set('next', next);
   return url.href;
 }
+
+/** The sign-in page, coming back to `path` afterwards. */
+export function signInHref(path: string): Route {
+  return `/signin?next=${encodeURIComponent(safeNextPath(path))}` as Route;
+}

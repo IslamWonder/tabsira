@@ -24,8 +24,10 @@ export interface QuranEvidenceProps extends EvidenceBase {
   variant: 'quran';
 }
 
-export interface SunnahEvidenceProps extends EvidenceBase {
+export interface SunnahEvidenceProps extends Omit<EvidenceBase, 'sourceHref'> {
   variant: 'sunnah';
+  /** The hadith on its source site; left out when the API gives the dorar link alone. */
+  sourceHref?: string;
   /** Presentation spans over `text`; see hadith-segments.ts. */
   spans?: readonly HadithSpan[];
   /** The hadith's ruling on dorar.net, opened by the reader (DECISIONS.md 18). */
@@ -141,7 +143,9 @@ export function EvidenceCard(props: EvidenceCardProps) {
               )}
             </div>
           )}
-          <ExternalLink href={props.sourceHref}>{messages.evidence.openSource}</ExternalLink>
+          {props.sourceHref === undefined ? null : (
+            <ExternalLink href={props.sourceHref}>{messages.evidence.openSource}</ExternalLink>
+          )}
         </footer>
       ) : null}
     </article>

@@ -1,0 +1,38 @@
+{
+  "exact": [
+    "admin",
+    "administrator",
+    "tabsira",
+    "support",
+    "moderator",
+    "mod",
+    "staff",
+    "help",
+    "root",
+    "system",
+    "api",
+    "www",
+    "official",
+    "me",
+    "تبصرة",
+    "ادارة",
+    "الادارة",
+    "الإدارة",
+    "إدارة",
+    "مشرف",
+    "دعم",
+    "الدعم"
+  ],
+  "prefixes": [
+    "tabsira",
+    "admin",
+    "support",
+    "moderator",
+    "تبصر",
+    "مشرف",
+    "ادارة",
+    "إدارة",
+    "الإدارة",
+    "الادارة"
+  ]
+}
