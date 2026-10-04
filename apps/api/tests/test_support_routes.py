@@ -1,4 +1,4 @@
-"""POST /support: it mails the team and stores nothing; mail is replaced at the SMTP boundary."""
+"""POST /support: it mails the team and keeps only keyed hashes; SMTP is replaced at its boundary."""
 
 from __future__ import annotations
 
@@ -10,8 +10,7 @@ from sqlalchemy import func, select
 
 from src.models import Consent, LoginAttempt, User
 from src.services import email_service
-from src.services.window_limiter import AddressLimits
-from tests.test_auth_routes import LOGIN, SIGNUP
+from tests.test_auth_routes import SIGNUP
 
 BODY = {
     "email": "visitor@example.com",
@@ -79,8 +78,13 @@ async def test_nothing_is_stored_and_nothing_is_logged(web, mailbox, db_session,
 
     await web.post("/support", json=BODY)
 
-    for table in (User, Consent, LoginAttempt):
+    for table in (User, Consent):
         assert await db_session.scalar(select(func.count()).select_from(table)) == 0
+    # The one thing kept: the counter row, with keyed hashes and no address.
+    (attempt,) = (await db_session.scalars(select(LoginAttempt))).all()
+    assert attempt.kind.value == "support"
+    assert "visitor" not in f"{attempt.ip_hash}{attempt.email_hash}"
+    assert len(attempt.ip_hash) == len(attempt.email_hash) == 64
     assert "visitor@example.com" not in caplog.text
     assert "الصفحة" not in caplog.text
 
@@ -155,37 +159,89 @@ async def test_a_failed_send_is_a_503_that_logs_only_the_kind_of_error(web, monk
     assert "no such user" not in caplog.text
 
 
-async def test_the_limit_per_address_and_overall_answer_429(account_app, web, mailbox):
-    account_app.state.support_limits = AddressLimits(2, 3, 3600)
-
-    statuses = [(await web.post("/support", json=BODY)).status_code for _ in range(3)]
-
-    assert statuses == [202, 202, 429]
-    assert (await web.post("/support", json=BODY)).headers["retry-after"]
-    assert len(mailbox) == 2
-
-
-async def test_the_limits_come_from_the_settings(make_settings, db_session, mailbox):
+async def build_with(make_settings, db_session, **values):
     from src.database import get_db
     from src.main import create_app
-    from tests.conftest import browser_for
 
-    application = create_app(
-        make_settings(smtp_host="smtp.example.com", support_max_per_address_per_hour=1)
-    )
+    application = create_app(make_settings(smtp_host="smtp.example.com", **values))
 
     async def use_the_test_session():
         yield db_session
 
     application.dependency_overrides[get_db] = use_the_test_session
-    async with browser_for(application) as http:
-        first = await http.post("/support", json=BODY)
-        second = await http.post("/support", json=BODY)
+    return application
+
+
+async def post_as(application, body, host):
+    from httpx import ASGITransport, AsyncClient
+
+    transport = ASGITransport(app=application, raise_app_exceptions=False, client=(host, 1234))
+    async with AsyncClient(transport=transport, base_url="https://api.tabsira.test") as http:
+        return await http.post("/support", json=body)
+
+
+async def test_one_address_is_limited_whatever_the_ip(make_settings, db_session, mailbox):
+    application = await build_with(make_settings, db_session, support_max_per_address_per_hour=2)
+
+    statuses = [(await post_as(application, BODY, f"203.0.113.{n}")).status_code for n in range(3)]
+
+    assert statuses == [202, 202, 429]
+    assert len(mailbox) == 2
+
+
+async def test_one_ip_is_limited_whatever_the_address(make_settings, db_session, mailbox):
+    application = await build_with(make_settings, db_session, support_max_per_ip_per_hour=2)
+
+    statuses = [
+        (
+            await post_as(application, {**BODY, "email": f"v{n}@example.com"}, "203.0.113.7")
+        ).status_code
+        for n in range(3)
+    ]
+
+    assert statuses == [202, 202, 429]
+
+
+async def test_an_ipv6_site_is_one_ip_for_the_limit(make_settings, db_session, mailbox):
+    application = await build_with(make_settings, db_session, support_max_per_ip_per_hour=1)
+
+    first = await post_as(application, {**BODY, "email": "a@example.com"}, "2001:db8:1:1::1")
+    second = await post_as(application, {**BODY, "email": "b@example.com"}, "2001:db8:1:2::1")
 
     assert (first.status_code, second.status_code) == (202, 429)
-    assert second.json()["error"] == "RATE_LIMITED"
 
 
-async def test_a_login_cookie_is_not_needed_and_login_fixture_unused(web, mailbox):
-    assert LOGIN  # the route answers a guest; this keeps the import honest
-    assert (await web.post("/support", json=BODY)).status_code == 202
+async def test_the_overall_ceiling_answers_429_with_a_retry_after(
+    make_settings, db_session, mailbox
+):
+    application = await build_with(make_settings, db_session, support_max_per_hour=1)
+
+    await post_as(application, BODY, "203.0.113.1")
+    refused = await post_as(application, {**BODY, "email": "z@example.com"}, "203.0.113.2")
+
+    assert refused.status_code == 429
+    assert refused.json()["error"] == "RATE_LIMITED"
+    assert refused.headers["retry-after"] == "3600"
+
+
+async def test_a_failed_send_still_counts_so_a_broken_mailer_cannot_be_hammered(
+    make_settings, db_session, monkeypatch
+):
+    def refuse(_settings, _message):
+        raise smtplib.SMTPServerDisconnected("down")
+
+    monkeypatch.setattr(email_service, "deliver", refuse)
+    application = await build_with(make_settings, db_session, support_max_per_address_per_hour=1)
+
+    first = await post_as(application, BODY, "203.0.113.1")
+    second = await post_as(application, BODY, "203.0.113.1")
+
+    assert (first.status_code, second.status_code) == (503, 429)
+
+
+async def test_a_bot_that_fills_the_honeypot_is_not_counted(make_settings, db_session, mailbox):
+    application = await build_with(make_settings, db_session)
+
+    await post_as(application, {**BODY, "website": "x"}, "203.0.113.1")
+
+    assert await db_session.scalar(select(func.count()).select_from(LoginAttempt)) == 0

@@ -10,9 +10,9 @@ when it is older than AUTH_ATTEMPT_WINDOW_SECONDS and is deleted soon after.
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -24,6 +24,8 @@ from src.models.login_attempt import AttemptKind, LoginAttempt
 # Only a sign-in that fails is held against the caller: an address that signs in
 # with the right password must not be locked out by its own sessions. Everything
 # else (sign-up, the mail-sending routes, the link redemptions) counts every attempt.
+# The support form's window, an hour: longer than the sign-in one, so purged by its own cutoff.
+SUPPORT_WINDOW_SECONDS = 3600
 COUNTS_ONLY_FAILURES = frozenset({AttemptKind.LOGIN})
 
 
@@ -148,11 +150,69 @@ async def _add(
 ) -> int:
     """Delete the attempts too old to count, add one, flush, and return its id."""
     now = clock.utcnow()
-    cutoff = now - timedelta(seconds=settings.auth_attempt_window_seconds)
-    await db.execute(delete(LoginAttempt).where(LoginAttempt.created_at < cutoff))
+    await _purge(db, settings, now)
     attempt = LoginAttempt(
         kind=kind, ip_hash=ip_hash, email_hash=email_hash, succeeded=succeeded, created_at=now
     )
     db.add(attempt)
     await db.flush()
     return attempt.id
+
+
+def _purge_condition(settings: Settings, now: datetime) -> ColumnElement[bool]:
+    """Rows older than the window of their own kind: the sign-in one, or the support one."""
+    auth_cutoff = now - timedelta(seconds=settings.auth_attempt_window_seconds)
+    support_cutoff = now - timedelta(seconds=SUPPORT_WINDOW_SECONDS)
+    return or_(
+        and_(LoginAttempt.kind != AttemptKind.SUPPORT, LoginAttempt.created_at < auth_cutoff),
+        and_(LoginAttempt.kind == AttemptKind.SUPPORT, LoginAttempt.created_at < support_cutoff),
+    )
+
+
+async def _purge(db: AsyncSession, settings: Settings, now: datetime) -> None:
+    await db.execute(delete(LoginAttempt).where(_purge_condition(settings, now)))
+
+
+async def reserve_budgets(
+    db: AsyncSession,
+    settings: Settings,
+    kind: AttemptKind,
+    *,
+    ip_hash: str,
+    email_hash: str,
+    per_ip: int,
+    per_email: int,
+    overall: int,
+    window_seconds: int,
+) -> None:
+    """
+    Count one attempt before the work is done, or raise a 429 when a limit is used up.
+
+    For routes whose work costs something (a mail to the team): the attempt is counted
+    whether or not the work then succeeds, so a failing mail server cannot be used to
+    send without limit. Three budgets over `window_seconds`: this IP, this address, and
+    everyone together as a ceiling. It flushes; the caller commits before doing the work.
+    Two requests in the same instant can both pass the count: a spam bound, not a quota.
+    """
+    now = clock.utcnow()
+    await _purge(db, settings, now)
+    since = now - timedelta(seconds=window_seconds)
+    budgets: list[tuple[ColumnElement[bool], int]] = [
+        (LoginAttempt.ip_hash == ip_hash, per_ip),
+        (LoginAttempt.email_hash == email_hash, per_email),
+        (LoginAttempt.ip_hash.is_not(None), overall),
+    ]
+    for match, limit in budgets:
+        if await _count(db, kind, match, since) >= limit:
+            raise AppError(
+                ErrorCode.RATE_LIMITED,
+                "Too many messages. Try again later.",
+                status_code=429,
+                headers={"Retry-After": str(window_seconds)},
+            )
+    db.add(
+        LoginAttempt(
+            kind=kind, ip_hash=ip_hash, email_hash=email_hash, succeeded=True, created_at=now
+        )
+    )
+    await db.flush()

@@ -451,8 +451,10 @@ class Settings(BaseSettings):
     # account to accept again (decision 35).
     terms_version: Annotated[str, Field(min_length=1, max_length=32)] = DEFAULT_LEGAL_VERSION
     privacy_version: Annotated[str, Field(min_length=1, max_length=32)] = DEFAULT_LEGAL_VERSION
-    # Limits of the support form, per hashed address and over all addresses, in each worker.
-    support_max_per_address_per_hour: Annotated[int, Field(ge=1)] = 5
+    # Limits of the support form, shared by every worker through PostgreSQL: per client IP
+    # (IPv6 grouped by /48), per reply-to address, and over everyone as a ceiling.
+    support_max_per_ip_per_hour: Annotated[int, Field(ge=1)] = 5
+    support_max_per_address_per_hour: Annotated[int, Field(ge=1)] = 3
     support_max_per_hour: Annotated[int, Field(ge=1)] = 200
     # Language readiness (decision 36): Arabic only today; every text is keyed by language.
     default_language: str = DEFAULT_LANGUAGE

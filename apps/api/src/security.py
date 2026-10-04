@@ -51,12 +51,13 @@ def keyed_hash(key: bytes, purpose: str, value: str) -> str:
     return hmac.new(key, f"{purpose}:{value}".encode(), hashlib.sha256).hexdigest()
 
 
-def normalize_client_ip(host: str | None) -> str:
+def normalize_client_ip(host: str | None, ipv6_prefix: int = 64) -> str:
     """
     Return the address a rate limit should count.
 
-    An IPv6 address is cut to its /64: one subscriber holds a whole /64, so
-    counting full addresses would let a single machine rotate through billions.
+    An IPv6 address is cut to its /64 (or to `ipv6_prefix`): one subscriber holds a
+    whole /64, so counting full addresses would let a single machine rotate through
+    billions. A route that sends mail to the team groups by /48, a whole site.
     """
     if not host:
         return UNKNOWN_IP
@@ -67,7 +68,7 @@ def normalize_client_ip(host: str | None) -> str:
     if isinstance(address, ipaddress.IPv6Address):
         if address.ipv4_mapped is not None:
             return str(address.ipv4_mapped)
-        return str(ipaddress.ip_network(f"{address}/64", strict=False))
+        return str(ipaddress.ip_network(f"{address}/{ipv6_prefix}", strict=False))
     return str(address)
 
 

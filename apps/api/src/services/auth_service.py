@@ -46,10 +46,10 @@ def hash_email(settings: Settings, email: str) -> str:
     return security.keyed_hash(settings.hash_key, EMAIL_HASH_PURPOSE, normalize_email(email))
 
 
-def hash_ip(settings: Settings, host: str | None) -> str:
-    """Return the keyed hash of a client address, after cutting IPv6 to its /64."""
+def hash_ip(settings: Settings, host: str | None, ipv6_prefix: int = 64) -> str:
+    """Return the keyed hash of a client address, after cutting IPv6 to its /64 (or `ipv6_prefix`)."""
     return security.keyed_hash(
-        settings.hash_key, IP_HASH_PURPOSE, security.normalize_client_ip(host)
+        settings.hash_key, IP_HASH_PURPOSE, security.normalize_client_ip(host, ipv6_prefix)
     )
 
 

@@ -17,6 +17,7 @@ class AttemptKind(StrEnum):
     GOOGLE_START = "google_start"
     RESEND_VERIFICATION = "resend_verification"
     PASSWORD_FORGOT = "forgot_password"  # noqa: S105 - an attempt kind, not a password  # nosec B105
+    SUPPORT = "support"
     EMAIL_TOKEN = "email_token"  # noqa: S105 - redeeming a verification or reset link  # nosec B105
 
 
