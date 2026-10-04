@@ -30,6 +30,7 @@
     "includes": [
       "**",
       "!**/node_modules",
+      "!.claude/worktrees",
       "!**/.pnpm-store",
       "!**/.next",
       "!**/out",

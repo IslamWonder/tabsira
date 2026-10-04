@@ -12,3 +12,4 @@ docs/spec
 
 # Corpora and caches (README and LICENSE files of downloaded datasets).
 data
+.claude/worktrees/

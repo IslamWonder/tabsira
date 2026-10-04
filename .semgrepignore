@@ -57,3 +57,4 @@ package-lock.json
 *.pt
 *.onnx
 services/vision/weights/
+.claude/worktrees/

@@ -19,3 +19,4 @@ docs/spec
 
 # Corpora and caches: Quran and hadith text is never rewritten by a tool.
 data
+.claude/worktrees/

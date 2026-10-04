@@ -12,6 +12,7 @@ description = "Generated, dependency, cache and local-only paths"
 # keeps out of the repository. These paths hold no source of ours; the history
 # scan still catches a secret that was ever committed under any of them.
 paths = [
+  '^\.claude/worktrees/',
   '''(^|/)\.git/''',
   '''(^|/)node_modules/''',
   '''(^|/)\.venv/''',
