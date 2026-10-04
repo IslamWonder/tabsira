@@ -5,6 +5,7 @@ import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import AtlasPage, { metadata as atlasMetadata } from './atlas/page';
 import CommunityPage, { metadata as communityMetadata } from './community/page';
+import CommunityPublishPage from './community/publish/page';
 import ErrorPage from './error';
 import manifest from './manifest';
 import MePage, { metadata as meMetadata } from './me/page';
@@ -17,6 +18,10 @@ import WorldPage, { metadata as worldMetadata } from './world/page';
 vi.mock('next/navigation', () => ({
   usePathname: () => '/',
   useRouter: () => ({ push: vi.fn() }),
+  useSearchParams: () => ({ get: () => null }),
+  notFound: () => {
+    throw new Error('NEXT_NOT_FOUND');
+  },
 }));
 
 describe('placeholder routes', () => {
@@ -142,5 +147,19 @@ describe('manifest', () => {
     });
     expect(app).not.toHaveProperty('orientation');
     expect(app.icons?.map((icon) => icon.purpose)).toEqual(['any', 'any', 'maskable']);
+  });
+});
+
+describe('the network pages (FEATURE_SOCIAL)', () => {
+  it('do not exist while the flag is off: the feeds and the publish screen are 404s (decision 1)', () => {
+    vi.stubEnv('FEATURE_SOCIAL', 'false');
+    expect(() => render(<CommunityPage />)).toThrow('NEXT_NOT_FOUND');
+    expect(() => render(<CommunityPublishPage />)).toThrow('NEXT_NOT_FOUND');
+  });
+
+  it('open the publish screen while the flag is on', () => {
+    vi.stubEnv('FEATURE_SOCIAL', 'true');
+    render(<CommunityPublishPage />);
+    expect(screen.getByRole('heading', { level: 1, name: 'اختر بصيرة أولًا' })).toBeInTheDocument();
   });
 });

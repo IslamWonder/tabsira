@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { adminInspectorUrl, featureCameraDiscovery, featureFlag } from './server-env';
+import {
+  adminInspectorUrl,
+  featureAtlas,
+  featureCameraDiscovery,
+  featureFlag,
+  featureSocial,
+} from './server-env';
 
 describe('the feature flags the web server reads', () => {
   it('are on unless the environment file says otherwise, read as the API reads them', () => {
@@ -11,6 +17,15 @@ describe('the feature flags the web server reads', () => {
     for (const no of ['false', 'False', '0', 'no', 'off', 'nonsense']) {
       expect(featureFlag('ATLAS', { FEATURE_ATLAS: no })).toBe(false);
     }
+  });
+
+  it('name the atlas and the network flags', () => {
+    expect(featureAtlas({ FEATURE_ATLAS: 'false' })).toBe(false);
+    expect(featureAtlas({ FEATURE_ATLAS: 'true' })).toBe(true);
+    expect(featureAtlas()).toBe(true);
+    expect(featureSocial({ FEATURE_SOCIAL: 'false' })).toBe(false);
+    expect(featureSocial({ FEATURE_SOCIAL: 'true' })).toBe(true);
+    expect(featureSocial()).toBe(true);
   });
 
   it('name the camera discovery flag', () => {

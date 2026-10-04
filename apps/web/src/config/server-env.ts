@@ -100,3 +100,13 @@ export function adminInspectorUrl(scanId: string, env: Env = process.env): strin
   const base = env.ADMIN_URL?.trim() || DEVELOPMENT_ADMIN_URL;
   return new URL(`/admin/inspect/${scanId}`, base).toString();
 }
+
+/** «أطلس بصائر العالم»: while it is off, its pages do not exist (decision 1), as the API's routes do not. */
+export function featureAtlas(env: Env = process.env): boolean {
+  return featureFlag('ATLAS', env);
+}
+
+/** «تبصرة تواصل»: while it is off, its pages do not exist (decision 1), as the API's routes do not. */
+export function featureSocial(env: Env = process.env): boolean {
+  return featureFlag('SOCIAL', env);
+}

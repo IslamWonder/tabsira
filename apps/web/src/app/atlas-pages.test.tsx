@@ -6,10 +6,12 @@ import AtlasCameraPage, { metadata as cameraMetadata } from './atlas/camera/page
 import AtlasEntryPage, { generateMetadata as entryMetadata } from './atlas/entries/[id]/page';
 import AtlasPage from './atlas/page';
 import AtlasPlacePage, { generateMetadata as placeMetadata } from './atlas/places/[id]/page';
+import AtlasPublishPage from './atlas/publish/page';
 
 vi.mock('maplibre-gl', () => import('@/test/maplibre'));
 vi.mock('next/navigation', () => ({
   usePathname: () => '/',
+  useSearchParams: () => ({ get: () => null }),
   notFound: () => {
     throw new Error('NEXT_NOT_FOUND');
   },
@@ -104,5 +106,26 @@ describe('the camera discovery page (FEATURE_CAMERA_DISCOVERY)', () => {
       'href',
       '/atlas/camera'
     );
+  });
+});
+
+describe('the atlas pages (FEATURE_ATLAS)', () => {
+  it('do not exist while the flag is off: the map and the placing screen are 404s (decision 1)', () => {
+    vi.stubEnv('FEATURE_ATLAS', 'false');
+    mockApi({});
+    expect(() => render(<AtlasPage />)).toThrow('NEXT_NOT_FOUND');
+    expect(() => render(<AtlasPublishPage />)).toThrow('NEXT_NOT_FOUND');
+  });
+
+  it('open while the flag is on', () => {
+    vi.stubEnv('FEATURE_ATLAS', 'true');
+    mockApi({});
+    render(<AtlasPage />);
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'أطلس بصائر العالم' })
+    ).toBeInTheDocument();
+    cleanup();
+    render(<AtlasPublishPage />);
+    expect(screen.getByRole('heading', { level: 1, name: 'اختر بصيرة أولًا' })).toBeInTheDocument();
   });
 });
