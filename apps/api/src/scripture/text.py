@@ -73,6 +73,7 @@ _TABLE: dict[int, int | str | None] = {
     **_FOLDED,
     _HONORIFIC: f" {_HONORIFIC_WORDS} ",
 }
+_MARKS_TABLE: dict[int, None] = dict.fromkeys(_DROPPED)
 # The Uthmani script writes a madda alif as hamza then alif.
 _UTHMANI_MADDA = chr(HAMZA) + chr(ALEF)
 # Anything that is not an Arabic letter, a digit or a Latin letter separates words.
@@ -95,6 +96,15 @@ def search_copy(text: str) -> str:
     """
     folded = text.translate(_TABLE).replace(_UTHMANI_MADDA, chr(ALEF))
     return _SEPARATORS.sub(" ", folded).strip()
+
+
+def without_marks(text: str) -> str:
+    """
+    Return `text` with diacritics, Quranic marks and direction controls removed, letters kept.
+
+    For building a query for another site's search, never for display.
+    """
+    return text.translate(_MARKS_TABLE)
 
 
 def folded_with_positions(text: str) -> tuple[str, list[int]]:

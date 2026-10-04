@@ -7,7 +7,7 @@ from collections.abc import AsyncIterator
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from tests.scripture.fixtures import store_quran
+from tests.scripture.fixtures import store_hadiths, store_quran
 
 
 @pytest_asyncio.fixture
@@ -33,4 +33,11 @@ async def scripture_maker(engine: AsyncEngine) -> AsyncIterator[async_sessionmak
 async def quran_session(db_session: AsyncSession) -> AsyncSession:
     """A session holding the fixture verses of quranpedia mushaf 2, imported as the importer does."""
     await store_quran(db_session)
+    return db_session
+
+
+@pytest_asyncio.fixture
+async def hadith_session(db_session: AsyncSession) -> AsyncSession:
+    """A session holding the fixture hadiths of five books, imported as the importer does."""
+    await store_hadiths(db_session)
     return db_session

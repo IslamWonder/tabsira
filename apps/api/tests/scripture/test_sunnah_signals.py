@@ -10,8 +10,6 @@ from sqlalchemy import func, select
 from src.cli import import_scripture
 from src.models import Hadith, HadithSignal
 from src.scripture.files import file_sha256
-from src.scripture.guard import WritePurpose, allow_scripture_writes
-from src.scripture.hadith import import_collection, parse_source
 from src.scripture.sunnah import (
     SunnahImportError,
     TrigramMatcher,
@@ -23,23 +21,16 @@ from src.scripture.sunnah import (
     require_round_trip,
 )
 from tests.scripture.fixtures import (
-    HADITH_FIXTURES,
     cache_hadith_fixtures,
     fixture_path,
     fixture_sources,
     load_json,
+    store_hadiths,
 )
 
 
 def _records() -> list[dict]:
     return repair(load_json("sunnah-enriched.json")["results"])
-
-
-async def _store_books(session) -> None:
-    await allow_scripture_writes(session, WritePurpose.IMPORT)
-    for source in fixture_sources():
-        data = fixture_path(HADITH_FIXTURES[source.slug]).read_bytes()
-        await import_collection(session, source, parse_source(source, data))
 
 
 def test_the_cp720_repair_is_lossless_for_every_string():
@@ -126,7 +117,7 @@ def test_the_matcher_weighs_rare_grams_and_ignores_common_ones_for_candidates(mo
 
 
 async def test_records_are_linked_to_the_hadith_their_text_matches(db_session):
-    await _store_books(db_session)
+    await store_hadiths(db_session)
 
     report = await import_signals(db_session, _records(), model="m", source_sha256="b" * 64)
 
@@ -145,7 +136,7 @@ async def test_records_are_linked_to_the_hadith_their_text_matches(db_session):
 
 
 async def test_signals_keep_what_the_model_wrote_under_names_that_say_so(db_session):
-    await _store_books(db_session)
+    await store_hadiths(db_session)
     records = {record["id"]: record for record in _records()}
 
     await import_signals(db_session, list(records.values()), model="m", source_sha256="b" * 64)
@@ -167,7 +158,7 @@ async def test_signals_keep_what_the_model_wrote_under_names_that_say_so(db_sess
 
 
 async def test_importing_again_replaces_the_signals_and_a_repeated_id_is_refused(db_session):
-    await _store_books(db_session)
+    await store_hadiths(db_session)
     await import_signals(db_session, _records(), model="m", source_sha256="b" * 64)
     await import_signals(db_session, _records(), model="m", source_sha256="b" * 64)
 

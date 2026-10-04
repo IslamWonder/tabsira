@@ -229,7 +229,7 @@ def upgrade() -> None:
             name=op.f("ck_hadith_rulings_classification"),
         ),
         sa.CheckConstraint(
-            "dorar_url LIKE 'https://dorar.net/%'", name=op.f("ck_hadith_rulings_dorar_url")
+            r"dorar_url ~ '^https://(www\.)?dorar\.net/'", name=op.f("ck_hadith_rulings_dorar_url")
         ),
         sa.CheckConstraint(
             "editor_name <> ''", name=op.f("ck_hadith_rulings_editor_name_not_empty")

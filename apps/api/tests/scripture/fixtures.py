@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.scripture.files import bytes_sha256
 from src.scripture.guard import WritePurpose, allow_scripture_writes
-from src.scripture.hadith import COLLECTIONS, CollectionSource
+from src.scripture.hadith import COLLECTIONS, CollectionSource, import_collection, parse_source
 from src.scripture.quran import import_quran, parse_mushaf, parse_surahs
 
 FIXTURES = Path(__file__).resolve().parent / "data"
@@ -112,3 +112,11 @@ def cache_hadith_fixtures(cache_dir: Path) -> None:
         path = source.cache_path(cache_dir)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(fixture_path(HADITH_FIXTURES[source.slug]).read_bytes())
+
+
+async def store_hadiths(session: AsyncSession) -> None:
+    """Import every fixture book as the importer does."""
+    await allow_scripture_writes(session, WritePurpose.IMPORT)
+    for source in fixture_sources():
+        data = fixture_path(HADITH_FIXTURES[source.slug]).read_bytes()
+        await import_collection(session, source, parse_source(source, data))

@@ -296,7 +296,7 @@ class HadithRuling(Base):
     __tablename__ = "hadith_rulings"
     __table_args__ = (
         Index("ix_hadith_rulings_hadith_id_recorded_at", "hadith_id", "recorded_at"),
-        CheckConstraint("dorar_url LIKE 'https://dorar.net/%'", name="dorar_url"),
+        CheckConstraint(r"dorar_url ~ '^https://(www\.)?dorar\.net/'", name="dorar_url"),
         CheckConstraint("ruling_text <> ''", name="ruling_text_not_empty"),
         CheckConstraint("editor_name <> ''", name="editor_name_not_empty"),
     )
