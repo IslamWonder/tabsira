@@ -1,6 +1,6 @@
 # 05 · Insight engine
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 17:51 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 18:31 (Tunis)
 
 Finds the verse and hadith that truly fit the scene, checks them, and writes the explanation. It cites texts by reference only.
 
@@ -12,7 +12,7 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 | Explanation, «لماذا ظهر هذا؟», small step        | ✅     |                              |
 | Evaluation on gold scenes (make eval)            | ✅     | 13/15 as expected, 0 leaks.  |
 | Plug into the scan workflow and merge            | ✅     | 2026-10-04 17:51             |
-| The twelve official cases                        | ⬜     |                              |
+| The twelve official cases                        | ✅     | 4 official, 8 derived.       |
 
 **How we check it**
 
@@ -37,11 +37,12 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 
 ### 05.2 The twelve official test cases
 
-- **Status:** ⬜ open
+- **Status:** ✅ 2026-10-04 17:42: 9 of 12 as expected on the first run, no scripture shown (docs/EVALUATION.md, «The twelve chat cases»)
 - **Goal:** Add the challenge's twelve official cases (master prompt v2, sections 12 and 27) to `make eval`, with their expected outcomes.
 - **Depends on:** 05.1
-- **Touches:** apps/api/tests/evaluation (data and scoring), docs/BENCHMARK.md.
-- **Done when:** `make eval` reports each case; results written in docs/BENCHMARK.md.
+- **Touches:** apps/api/src/evaluation (chat cases and their report), src/cli/evaluate.py, apps/api/tests/evaluation/chat, scripts/eval.sh, docs/EVALUATION.md.
+- **Done when:** `make eval` reports each case; results written in docs/EVALUATION.md.
+- **Waiting on the owners:** the challenge package's own list of twelve. The spec quotes four (`official`); the other eight are ours (`derived`, from v2 §0, §10, §12, §14) and are replaced when the list arrives.
 
 ### 05.3 Insight quality tuning
 
