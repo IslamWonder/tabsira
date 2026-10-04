@@ -45,9 +45,10 @@ from src.pipeline.insight.planner import learner_payload
 from src.pipeline.leak_guard import LeakGuard
 from src.pipeline.prompt import load_prompt
 from src.pipeline.schemas import BBox, SceneAnalysis
-from src.retrieval.refs import hadith_key
 
 SYSTEM_PROMPT = "insight_composer_system.v1"
+# A part's sources name the insight's own texts (quran:S:A, hadith:C:N) or its unit.
+UNIT_PREFIX = "masar:"
 MAX_OUTPUT_TOKENS = 6000
 
 
@@ -148,14 +149,40 @@ def _reference(chosen: Chosen | None, ref: QuranRef | HadithRef | None) -> Evide
     )
 
 
+def citation(ref: QuranRef | HadithRef) -> str:
+    """Return the reference a part or a step cites a text by: quran:S:A or hadith:C:N."""
+    if isinstance(ref, QuranRef):
+        return f"quran:{ref.surah}:{ref.ayah}"
+    return f"hadith:{ref.collection}:{ref.number}"
+
+
+def unit_citation(unit_id: str) -> str:
+    return f"{UNIT_PREFIX}{unit_id}"
+
+
+def allowed_references(insight: ProposedInsight) -> frozenset[str]:
+    """Return what an insight may cite: its own texts and its own learning unit."""
+    texts = {citation(e.ref) for e in (insight.quran, insight.hadith) if e is not None}
+    unit = {unit_citation(insight.learning_unit_id)} if insight.learning_unit_id else set()
+    return frozenset(texts | unit)
+
+
+def cites_only_its_own(insight: ProposedInsight) -> bool:
+    """Whether every source and grounding names the insight's own texts or unit, nothing else."""
+    allowed = allowed_references(insight)
+    sources = {source for part in insight.explanation for source in part.sources}
+    grounded = set(insight.small_step.grounded_in) if insight.small_step else set()
+    texts = {ref for ref in allowed if not ref.startswith(UNIT_PREFIX)}
+    return sources <= allowed and grounded <= texts
+
+
 def _step(item: ComposedInsight, result: GateResult) -> SmallStep | None:
     step = item.small_step
     if step is None or not step.text.strip():
         return None
     ref = result.hadith_ref
     if step.kind == "text_grounded" and step.from_hadith and ref is not None:
-        reference = hadith_key(ref.collection, ref.number)
-        return SmallStep(text=step.text.strip(), kind="text_grounded", grounded_in=[reference])
+        return SmallStep(text=step.text.strip(), kind="text_grounded", grounded_in=[citation(ref)])
     kind = "reflection" if step.kind == "reflection" else "ethical_application"
     return SmallStep(text=step.text.strip(), kind=kind)
 
@@ -174,19 +201,18 @@ def build_insight(
     life = item.life.strip()
     if candidate.content_level == "d":
         life = f"{life} {messages_for().engine_referral}".strip()
+    unit = [unit_citation(candidate.unit.unit.unit_id)] if candidate.unit else []
     parts = [
-        ExplanationPart(section="seen", text=item.seen.strip()),
-        ExplanationPart(section="value", text=item.value.strip()),
+        ExplanationPart(section="seen", text=item.seen.strip(), sources=unit),
+        ExplanationPart(section="value", text=item.value.strip(), sources=unit),
     ]
     if quran is not None and item.quran:
-        parts.append(ExplanationPart(section="quran", text=item.quran.strip()))
+        sources = [citation(quran.ref), *unit]
+        parts.append(ExplanationPart(section="quran", text=item.quran.strip(), sources=sources))
     if hadith is not None and item.sunnah:
-        parts.append(ExplanationPart(section="sunnah", text=item.sunnah.strip()))
-    parts.append(ExplanationPart(section="life", text=life))
-    if candidate.unit is not None:
-        parts = [
-            part.model_copy(update={"sources": [candidate.unit.unit.unit_id]}) for part in parts
-        ]
+        sources = [citation(hadith.ref), *unit]
+        parts.append(ExplanationPart(section="sunnah", text=item.sunnah.strip(), sources=sources))
+    parts.append(ExplanationPart(section="life", text=life, sources=unit))
     boxes = {entity.id: entity.bbox for entity in scene.entities}
     anchor: BBox | None = next(
         (boxes[e] for e in candidate.entity_ids if boxes.get(e) is not None), None
@@ -252,10 +278,12 @@ class InsightComposer:
                     clean[item.insight] = item
             if len(clean) == len(results):
                 break
-        insights = [
-            build_insight(clean[index], result, scene, learner, path_version)
+        built = {
+            index: build_insight(clean[index], result, scene, learner, path_version)
             for index, result in enumerate(results)
             if index in clean
-        ]
+        }
+        # Refused before returning: a part or a step citing anything but its own texts.
+        insights = [insight for insight in built.values() if cites_only_its_own(insight)]
         leaked = [index for index in range(len(results)) if index not in clean]
         return Composition(insights, leaked, system.version)
