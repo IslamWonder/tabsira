@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Path
+from fastapi import APIRouter, Depends, Path
 
 from src.deps import DbDep, SettingsDep
 from src.owner import WritingOwner
+from src.scans.deps import KEEP_LIMITS, address_limit
 from src.schemas.insight import InsightOut
 from src.schemas.tutorial import TutorialOut
 from src.services import insight_view, tutorial_service
@@ -30,6 +31,7 @@ async def rain(db: DbDep) -> TutorialOut:
 @router.post(
     "/rain/insights/{slug}",
     summary="Keep a copy of a tutorial insight, to complete it and ask about it",
+    dependencies=[Depends(address_limit(KEEP_LIMITS, "Too many requests. Try again later."))],
 )
 async def keep_rain_insight(
     slug: Annotated[str, Path(pattern=r"^[a-z][a-z0-9-]{1,63}$")],

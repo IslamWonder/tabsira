@@ -24,7 +24,7 @@ from src.deps import DbDep, SettingsDep
 from src.errors import AppError, ErrorCode
 from src.models import Insight
 from src.owner import INSIGHT, OptionalOwner, Owner, not_found
-from src.scans.deps import PublicIdPath, feature
+from src.scans.deps import CHAT_LIMITS, PublicIdPath, address_limit, feature
 from src.schemas.insight import (
     ActionIn,
     ActionOut,
@@ -86,7 +86,10 @@ async def get_insight(
 @router.post(
     "/{insight_id}/chat",
     summary="Ask one question about the insight (three at most)",
-    dependencies=[Depends(feature("chat"))],
+    dependencies=[
+        Depends(feature("chat")),
+        Depends(address_limit(CHAT_LIMITS, "Too many questions. Try again later.")),
+    ],
 )
 async def chat(
     insight_id: PublicIdPath,

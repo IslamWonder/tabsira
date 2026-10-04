@@ -38,7 +38,14 @@ from src.pipeline.engine import RelationType
 from src.pipeline.image_validator import ImageRejectedCode, ImageRejectedError, validate_image
 from src.pipeline.schemas import BBox, ImageUpload, SceneAnalysis, ValidatedImage
 from src.scans import buffer, progress
-from src.scans.deps import FetcherDep, PublicIdPath, QueueDep, RedisDep
+from src.scans.deps import (
+    SCAN_LIMITS,
+    FetcherDep,
+    PublicIdPath,
+    QueueDep,
+    RedisDep,
+    address_limit,
+)
 from src.scans.fetch import FetchError, FetchRefusal
 from src.scans.queue import QueueUnavailableError, ScanQueue
 from src.schemas.scan import (
@@ -277,6 +284,7 @@ async def _queue(
     status_code=status.HTTP_202_ACCEPTED,
     summary="Start a scan of a photo or of a photo's address",
     openapi_extra=UPLOAD_BODY,
+    dependencies=[Depends(address_limit(SCAN_LIMITS, "Too many scans. Try again later."))],
 )
 async def create_scan(
     request: Request,
@@ -440,6 +448,7 @@ async def _rerun(
     "/{scan_id}/focus",
     status_code=status.HTTP_202_ACCEPTED,
     summary="Point at one thing in the scene and look again",
+    dependencies=[Depends(address_limit(SCAN_LIMITS, "Too many scans. Try again later."))],
 )
 async def focus_scan(
     scan_id: PublicIdPath,
@@ -469,6 +478,7 @@ async def focus_scan(
     "/{scan_id}/clarify",
     status_code=status.HTTP_202_ACCEPTED,
     summary="Answer the one question the scan asked",
+    dependencies=[Depends(address_limit(SCAN_LIMITS, "Too many scans. Try again later."))],
 )
 async def clarify_scan(
     scan_id: PublicIdPath,
