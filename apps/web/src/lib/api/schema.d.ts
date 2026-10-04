@@ -658,6 +658,472 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/me/public-identity': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The caller's handle and public name
+     * @description Return the identity the caller appears under, or nulls until they choose one.
+     */
+    get: operations['get_public_identity_me_public_identity_get'];
+    /**
+     * Choose or change the handle and public name
+     * @description Set the handle (`/u/<handle>`) and the name every public page shows for the caller.
+     *
+     *     Needs a verified e-mail address. The handle is unique whatever its case: 409
+     *     `HANDLE_TAKEN` when somebody else holds it. The account's own name is never used.
+     */
+    put: operations['put_public_identity_me_public_identity_put'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/u/{handle}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * A public profile
+     * @description Return a member's public profile: handle, public name, month joined and three counts.
+     *
+     *     404 for a handle nobody holds, and for one that a block stands in front of, in either
+     *     direction. Nothing from the member's private profile, and no e-mail address, ever.
+     */
+    get: operations['get_profile_u__handle__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/u/{handle}/follow': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Follow a member
+     * @description Follow a member; following again changes nothing. 400 for oneself.
+     */
+    put: operations['follow_member_u__handle__follow_put'];
+    post?: never;
+    /**
+     * Stop following a member
+     * @description Stop following a member; safe to repeat.
+     */
+    delete: operations['unfollow_member_u__handle__follow_delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/blocks': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The members the caller has blocked
+     * @description List the members the caller blocked, newest first, by handle and public name only.
+     */
+    get: operations['list_blocks_blocks_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/blocks/{handle}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Block a member
+     * @description Block a member.
+     *
+     *     Each of the two stops seeing the other everywhere, and the follows between them, in
+     *     both directions, end. Blocking again changes nothing. 400 for oneself.
+     */
+    put: operations['block_member_blocks__handle__put'];
+    post?: never;
+    /**
+     * Lift a block
+     * @description Lift the caller's own block; safe to repeat.
+     */
+    delete: operations['unblock_member_blocks__handle__delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/posts': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Start a draft from a verified insight
+     * @description Copy one of the caller's verified insights into a publication and open a draft on it.
+     *
+     *     The copy is what is previewed and what is published; it is never edited afterwards. The
+     *     caller's own words go in `reflection`, apart from the insight. 409 `INSIGHT_NOT_PUBLISHABLE`
+     *     says why an insight cannot be published; 409 `PUBLIC_IDENTITY_REQUIRED` that the caller
+     *     has no handle yet. Nothing is visible to anyone else until the draft is submitted.
+     */
+    post: operations['create_post_posts_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/posts/{post_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * One post
+     * @description Return a post the caller may read.
+     *
+     *     404 for one that does not exist or that the caller may not see (a draft, a post held or
+     *     refused, one for followers the caller does not follow, one behind a block); 410 Gone for
+     *     one that was withdrawn or removed.
+     */
+    get: operations['get_post_posts__post_id__get'];
+    put?: never;
+    post?: never;
+    /**
+     * Withdraw a post
+     * @description Withdraw a post, a draft or a published one.
+     *
+     *     Its reflection, its comments, its likes and its saves are erased at once, it leaves every
+     *     feed and every profile, and its address answers 410 Gone from then on (this route too).
+     */
+    delete: operations['delete_post_posts__post_id__delete'];
+    options?: never;
+    head?: never;
+    /**
+     * Edit a draft
+     * @description Change a draft's reflection or audience; a refused post becomes a draft again.
+     */
+    patch: operations['patch_post_posts__post_id__patch'];
+    trace?: never;
+  };
+  '/posts/{post_id}/submit': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Submit a draft for publication
+     * @description Run a draft through the guard.
+     *
+     *     The answer says what happened: `published`, `rejected` with its reason, or
+     *     `pending_review` while a moderator looks. A failed guard holds the post, never
+     *     publishes it. 409 for a post that is not a draft.
+     */
+    post: operations['submit_post_posts__post_id__submit_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/me/posts': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The caller's own posts, in every state
+     * @description List the caller's posts, newest first, with what happened to each.
+     *
+     *     Withdrawn posts are gone and are not listed; one a moderator removed is, with its reason.
+     */
+    get: operations['my_posts_me_posts_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/posts/{post_id}/like': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Like a post («أثر»)
+     * @description Like a published post the caller may read; liking again changes nothing.
+     */
+    put: operations['like_post_posts__post_id__like_put'];
+    post?: never;
+    /**
+     * Take back a like
+     * @description Take back the caller's like; safe to repeat.
+     */
+    delete: operations['unlike_post_posts__post_id__like_delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/posts/{post_id}/bookmark': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Save a post
+     * @description Save a published post the caller may read; saving again changes nothing.
+     */
+    put: operations['bookmark_post_posts__post_id__bookmark_put'];
+    post?: never;
+    /**
+     * Unsave a post
+     * @description Unsave a post; safe to repeat. A post that is gone is already gone from the list.
+     */
+    delete: operations['unbookmark_post_posts__post_id__bookmark_delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/me/bookmarks': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The posts the caller saved
+     * @description List what the caller saved, the latest save first, and only what they may still read.
+     *
+     *     A post that was withdrawn, removed or hidden by a block is no longer listed.
+     */
+    get: operations['my_bookmarks_me_bookmarks_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/posts/{post_id}/comments': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * A post's comments
+     * @description List a post's comments oldest first, each with its replies.
+     *
+     *     Only published comments, and the caller's own in any state. A comment by someone the caller
+     *     blocked, or who blocked the caller, or whom the post's author blocked, is not listed.
+     */
+    get: operations['list_comments_posts__post_id__comments_get'];
+    put?: never;
+    /**
+     * Comment on a post, or reply to a comment
+     * @description Add a comment, or a reply (`parent_id`) to a comment that is not itself a reply.
+     *
+     *     The answer says what the guard decided: `published`, `rejected` with its reason, or
+     *     `pending_review` while a moderator looks; until it is published only its author sees it.
+     */
+    post: operations['create_comment_posts__post_id__comments_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/posts/{post_id}/comments/{comment_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete the caller's own comment
+     * @description Delete one's own comment, whatever its state and whatever the caller can still read.
+     *
+     *     Its replies go with it. Someone else's comment is a 404, as is one that does not exist.
+     */
+    delete: operations['delete_comment_posts__post_id__comments__comment_id__delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/reports': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Report a post or a comment
+     * @description Tell the moderators about something the caller may read.
+     *
+     *     The reasons include a false attribution of a religious claim, a photo published without
+     *     permission, a place that is not right and a location or photo that gives away private
+     *     information. 404 for what the caller may not read, 400 for their own words. Reporting the
+     *     same thing twice answers with the first report. Enough different reporters send a published
+     *     item back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`).
+     */
+    post: operations['report_reports_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/feed/following': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * «أتابع»: the posts of the members the caller follows
+     * @description Return the posts of the members the caller follows, newest first.
+     *
+     *     Followers-only posts of those members are included. `empty_reason` is `follows_nobody` when
+     *     the caller follows no one and `no_posts` when those they follow have published nothing.
+     */
+    get: operations['feed_following_feed_following_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/feed/for-you': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * «لك»: a ranked feed with the reason for each post
+     * @description Return the newest readable posts, ranked, each with `why` («لماذا أرى هذا؟»).
+     *
+     *     The ranking uses freshness, the members the caller follows, variety of topics and what the
+     *     caller has already liked, saved or commented on. It never uses religion or any personal
+     *     detail, and the caller can switch personalisation off, which leaves freshness and variety.
+     *     The first request pins the moment of ranking in `next_cursor`, so the next pages continue the
+     *     same list.
+     */
+    get: operations['feed_for_you_feed_for_you_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/feed/latest': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Every public post, newest first
+     * @description Return the public posts in the order they were published; no ranking, no personalisation.
+     */
+    get: operations['feed_latest_feed_latest_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/u/{handle}/posts': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * A member's published posts
+     * @description Return a member's published posts that the caller may read, newest first.
+     *
+     *     404 when no such member exists or a block stands between the two.
+     */
+    get: operations['member_posts_u__handle__posts_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/legal': {
     parameters: {
       query?: never;
@@ -730,6 +1196,7 @@ export interface components {
       consents: components['schemas']['ConsentOut'][];
       /** Cookie Consents */
       cookie_consents: components['schemas']['CookieConsentExport'][];
+      social: components['schemas']['SocialExport'];
     };
     /**
      * AdminArea
@@ -842,6 +1309,64 @@ export interface components {
       /** Version */
       version: string;
     };
+    /** CommentCreateIn */
+    CommentCreateIn: {
+      /** Body */
+      body: string;
+      /** Parent Id */
+      parent_id?: string | null;
+    };
+    /** CommentExport */
+    CommentExport: {
+      /** Id */
+      id: string;
+      /** Post Id */
+      post_id: string;
+      /** Parent Id */
+      parent_id: string | null;
+      /** Body */
+      body: string;
+      status: components['schemas']['CommentStatus'];
+      /** Status Reason */
+      status_reason: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** CommentOut */
+    CommentOut: {
+      /** Id */
+      id: string;
+      author: components['schemas']['MemberOut'];
+      /** Body */
+      body: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      status: components['schemas']['CommentStatus'];
+      /** Status Message */
+      status_message: string | null;
+      /** Is Mine */
+      is_mine: boolean;
+      /** Replies */
+      replies: components['schemas']['CommentOut'][];
+    };
+    /** CommentPage */
+    CommentPage: {
+      /** Items */
+      items: components['schemas']['CommentOut'][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
+    /**
+     * CommentStatus
+     * @enum {string}
+     */
+    CommentStatus: 'pending_review' | 'published' | 'rejected' | 'removed';
     /**
      * ConsentCategories
      * @description Each category and whether it is on. The necessary one always is.
@@ -1066,6 +1591,11 @@ export interface components {
       | 'ORIGIN_NOT_ALLOWED'
       | 'CONSENT_NOT_ALLOWED'
       | 'GOOGLE_NOT_CONFIGURED'
+      | 'HANDLE_TAKEN'
+      | 'PUBLIC_IDENTITY_REQUIRED'
+      | 'INSIGHT_NOT_PUBLISHABLE'
+      | 'INVALID_CURSOR'
+      | 'GONE'
       | 'legal_acceptance_required'
       | 'mail_unavailable';
     /**
@@ -1082,6 +1612,24 @@ export interface components {
       terms_version?: string | null;
       /** Privacy Version */
       privacy_version?: string | null;
+    };
+    /**
+     * FeedPage
+     * @description A page of a feed, and how to ask for the next one.
+     */
+    FeedPage: {
+      /** Items */
+      items: components['schemas']['PostOut'][];
+      /**
+       * Next Cursor
+       * @description Pass as `cursor`; null on the last page
+       */
+      next_cursor: string | null;
+      /**
+       * Empty Reason
+       * @description Why the first page has nothing, so the client can say so; never invented posts
+       */
+      empty_reason: ('follows_nobody' | 'no_posts') | null;
     };
     /**
      * FieldError
@@ -1143,6 +1691,40 @@ export interface components {
      * @enum {string}
      */
     HadithClassification: 'صحيح' | 'حسن' | 'ضعيف' | 'موضوع' | 'مختلف_فيه';
+    /**
+     * HadithEvidenceOut
+     * @description A hadith read from the scripture store, shown only while its ruling is صحيح or حسن.
+     */
+    HadithEvidenceOut: {
+      /** Collection */
+      collection: string;
+      /** Collection Name */
+      collection_name: string;
+      /** Number */
+      number: string;
+      /**
+       * Text
+       * @description Exactly as stored; never normalised
+       */
+      text: string;
+      /**
+       * Sha256
+       * @description SHA-256 of the UTF-8 bytes of `text`
+       */
+      sha256: string;
+      classification: components['schemas']['HadithClassification'];
+      /**
+       * Verification Url
+       * @description A dorar.net search the reader opens («تحقق في الدرر»)
+       */
+      verification_url: string;
+      /**
+       * Verified
+       * @default true
+       * @constant
+       */
+      verified: true;
+    };
     /** HadithLinks */
     HadithLinks: {
       /**
@@ -1198,6 +1780,54 @@ export interface components {
       status: 'local_corpus';
     };
     /**
+     * HandleExport
+     * @description Someone the account follows or blocked, by the handle they chose, and since when.
+     */
+    HandleExport: {
+      /** Handle */
+      handle: string;
+      /**
+       * Since
+       * Format: date-time
+       */
+      since: string;
+    };
+    /**
+     * InsightOut
+     * @description What a post publishes: the platform's insight, never the author's words.
+     */
+    InsightOut: {
+      /** Title */
+      title: string;
+      /** Glimpse */
+      glimpse: string;
+      /** Relation Type */
+      relation_type: string;
+      /** Concepts */
+      concepts: string[];
+      /**
+       * Explanation
+       * @description The app's explanation, shortened; written by the app
+       */
+      explanation: string;
+      /**
+       * Step
+       * @description The small step the insight suggests
+       */
+      step: string | null;
+      /**
+       * Has Photo
+       * @description The owner agreed to publish a photo with it; its address is not here yet
+       */
+      has_photo: boolean;
+      /** Insight Version */
+      insight_version: number;
+      /** Quran */
+      quran: components['schemas']['QuranEvidenceOut'][];
+      /** Hadith */
+      hadith: components['schemas']['HadithEvidenceOut'][];
+    };
+    /**
      * KnowledgeLevel
      * @enum {string}
      */
@@ -1243,6 +1873,49 @@ export interface components {
       email: string;
       /** Password */
       password: string;
+    };
+    /**
+     * MemberOut
+     * @description A person as the network shows them: the two things they chose, and nothing else.
+     */
+    MemberOut: {
+      /** Handle */
+      handle: string;
+      /** Public Name */
+      public_name: string;
+    };
+    /**
+     * MemberProfileOut
+     * @description A public profile: who, since when, and three counts read from the rows they count.
+     */
+    MemberProfileOut: {
+      /** Handle */
+      handle: string;
+      /** Public Name */
+      public_name: string;
+      /**
+       * Joined Month
+       * @description `YYYY-MM`, in UTC
+       */
+      joined_month: string;
+      /**
+       * Posts Count
+       * @description Published public posts
+       */
+      posts_count: number;
+      /** Followers Count */
+      followers_count: number;
+      /** Following Count */
+      following_count: number;
+      /** @description Null for a guest */
+      viewer: components['schemas']['ViewerRelationOut'] | null;
+    };
+    /** MyPostsPage */
+    MyPostsPage: {
+      /** Items */
+      items: components['schemas']['PostOut'][];
+      /** Next Cursor */
+      next_cursor: string | null;
     };
     /**
      * NearbyPlace
@@ -1313,6 +1986,107 @@ export interface components {
       admin_area: components['schemas']['AdminArea'] | null;
       country: components['schemas']['CountryRef'] | null;
     };
+    /**
+     * PostCreateIn
+     * @description Start a draft from a verified insight.
+     */
+    PostCreateIn: {
+      /** Insight Id */
+      insight_id: string;
+      /** Reflection */
+      reflection?: string | null;
+      /** @default public */
+      visibility: components['schemas']['PostVisibility'];
+    };
+    /** PostExport */
+    PostExport: {
+      /** Id */
+      id: string;
+      status: components['schemas']['PostStatus'];
+      /** Status Reason */
+      status_reason: string | null;
+      visibility: components['schemas']['PostVisibility'];
+      /** Reflection */
+      reflection: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Submitted At */
+      submitted_at: string | null;
+      /** Published At */
+      published_at: string | null;
+      /** Removed At */
+      removed_at: string | null;
+      removal_source: components['schemas']['RemovalSource'] | null;
+      publication: components['schemas']['PublicationExport'] | null;
+    };
+    /**
+     * PostMarkExport
+     * @description A post the account liked or saved.
+     */
+    PostMarkExport: {
+      /** Post Id */
+      post_id: string;
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+    };
+    /** PostOut */
+    PostOut: {
+      /** Id */
+      id: string;
+      author: components['schemas']['MemberOut'];
+      insight: components['schemas']['InsightOut'];
+      reflection: components['schemas']['ReflectionOut'] | null;
+      visibility: components['schemas']['PostVisibility'];
+      status: components['schemas']['PostStatus'];
+      /** Status Reason */
+      status_reason: string | null;
+      /**
+       * Status Message
+       * @description What happened to it, in Arabic, for its author
+       */
+      status_message: string | null;
+      /** Published At */
+      published_at: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Like Count */
+      like_count: number;
+      /** Comment Count */
+      comment_count: number;
+      /** @description Null for a guest */
+      viewer: components['schemas']['ViewerPostOut'] | null;
+      /** @description Only in the «لك» feed */
+      why: components['schemas']['WhyOut'] | null;
+    };
+    /**
+     * PostPatch
+     * @description Change a draft, or a rejected post, which becomes a draft again.
+     */
+    PostPatch: {
+      /** Reflection */
+      reflection?: string | null;
+      visibility?: components['schemas']['PostVisibility'] | null;
+    };
+    /**
+     * PostStatus
+     * @description Where a post is in its life; the five states of decision 2.
+     * @enum {string}
+     */
+    PostStatus: 'draft' | 'pending_review' | 'published' | 'rejected' | 'removed';
+    /**
+     * PostVisibility
+     * @enum {string}
+     */
+    PostVisibility: 'public' | 'followers';
     /** ProfileOut */
     ProfileOut: {
       /** Goals */
@@ -1375,6 +2149,98 @@ export interface components {
     ProvidersOut: {
       /** Providers */
       providers: components['schemas']['ProviderOut'][];
+    };
+    /**
+     * PublicIdentityIn
+     * @description The handle and public name an account chooses to appear under.
+     */
+    PublicIdentityIn: {
+      /** Handle */
+      handle: string;
+      /** Public Name */
+      public_name: string;
+    };
+    /**
+     * PublicIdentityOut
+     * @description The caller's own handle and public name; both null until they have chosen.
+     */
+    PublicIdentityOut: {
+      /** Handle */
+      handle: string | null;
+      /** Public Name */
+      public_name: string | null;
+    };
+    /**
+     * PublicationExport
+     * @description The copy of an insight a post published: references to the evidence, never scripture.
+     */
+    PublicationExport: {
+      /** Id */
+      id: string;
+      /** Insight Id */
+      insight_id: string;
+      /** Insight Version */
+      insight_version: number;
+      /** Title */
+      title: string;
+      /** Glimpse */
+      glimpse: string;
+      /** Relation Type */
+      relation_type: string;
+      /** Concepts */
+      concepts: string[];
+      /** Quran Refs */
+      quran_refs: {
+        [key: string]: unknown;
+      }[];
+      /** Hadith Refs */
+      hadith_refs: {
+        [key: string]: unknown;
+      }[];
+      /** Explanation Excerpt */
+      explanation_excerpt: string;
+      /** Step Text */
+      step_text: string | null;
+      /** Photo Ref */
+      photo_ref: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /**
+     * QuranEvidenceOut
+     * @description A verse read from the scripture store by its reference, exactly as stored.
+     */
+    QuranEvidenceOut: {
+      /** Surah */
+      surah: number;
+      /** Ayah */
+      ayah: number;
+      /** Surah Name */
+      surah_name: string;
+      /**
+       * Text
+       * @description Exactly as stored; never normalised
+       */
+      text: string;
+      /**
+       * Sha256
+       * @description SHA-256 of the UTF-8 bytes of `text`
+       */
+      sha256: string;
+      /**
+       * Source Url
+       * @description The quranpedia page of the verse
+       */
+      source_url: string;
+      /**
+       * Verified
+       * @default true
+       * @constant
+       */
+      verified: true;
     };
     /** QuranLinks */
     QuranLinks: {
@@ -1447,6 +2313,13 @@ export interface components {
        */
       status: 'local_corpus';
     };
+    /** ReactionOut */
+    ReactionOut: {
+      /** Liked */
+      liked: boolean;
+      /** Like Count */
+      like_count: number;
+    };
     /** Readiness */
     Readiness: {
       /**
@@ -1460,10 +2333,97 @@ export interface components {
       };
     };
     /**
+     * ReflectionOut
+     * @description The author's own words.
+     *
+     *     They are labelled as the user's text and never carry the verified badge, whatever they say.
+     */
+    ReflectionOut: {
+      /** Text */
+      text: string;
+      /**
+       * Source
+       * @default user
+       * @constant
+       */
+      source: 'user';
+      /**
+       * Verified
+       * @default false
+       * @constant
+       */
+      verified: false;
+      /**
+       * Looks Like Scripture
+       * @description The text reads like Quran or hadith; it is still only the author's own
+       */
+      looks_like_scripture: boolean;
+    };
+    /**
      * ReligiousBackground
      * @enum {string}
      */
     ReligiousBackground: 'muslim' | 'non_muslim' | 'unknown';
+    /**
+     * RemovalSource
+     * @description Who took a post down: its author (the content is erased) or a moderator (it is kept).
+     * @enum {string}
+     */
+    RemovalSource: 'owner' | 'moderator';
+    /** ReportExport */
+    ReportExport: {
+      /** Id */
+      id: string;
+      target_type: components['schemas']['ReportTarget'];
+      /** Target Id */
+      target_id: string;
+      reason: components['schemas']['ReportReason'];
+      /** Details */
+      details: string | null;
+      status: components['schemas']['ReportStatus'];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** ReportIn */
+    ReportIn: {
+      target_type: components['schemas']['ReportTarget'];
+      /** Target Id */
+      target_id: string;
+      reason: components['schemas']['ReportReason'];
+      /** Details */
+      details?: string | null;
+    };
+    /** ReportOut */
+    ReportOut: {
+      /** Id */
+      id: string;
+    };
+    /**
+     * ReportReason
+     * @description Why something was reported. The two place reasons are for the atlas, and kept here ready.
+     * @enum {string}
+     */
+    ReportReason:
+      | 'abuse'
+      | 'spam'
+      | 'false_religious_claim'
+      | 'unauthorised_photo'
+      | 'wrong_place'
+      | 'private_information'
+      | 'other';
+    /**
+     * ReportStatus
+     * @enum {string}
+     */
+    ReportStatus: 'open' | 'actioned' | 'dismissed';
+    /**
+     * ReportTarget
+     * @enum {string}
+     */
+    ReportTarget: 'post' | 'comment';
     /** ResetPasswordIn */
     ResetPasswordIn: {
       /** Token */
@@ -1585,6 +2545,23 @@ export interface components {
       /** Lastmod */
       lastmod?: string | null;
     };
+    /** SocialExport */
+    SocialExport: {
+      /** Posts */
+      posts: components['schemas']['PostExport'][];
+      /** Comments */
+      comments: components['schemas']['CommentExport'][];
+      /** Following */
+      following: components['schemas']['HandleExport'][];
+      /** Blocked */
+      blocked: components['schemas']['HandleExport'][];
+      /** Likes */
+      likes: components['schemas']['PostMarkExport'][];
+      /** Bookmarks */
+      bookmarks: components['schemas']['PostMarkExport'][];
+      /** Reports */
+      reports: components['schemas']['ReportExport'][];
+    };
     /** SpanOut */
     SpanOut: {
       /** Start */
@@ -1645,6 +2622,10 @@ export interface components {
       email: string;
       /** Display Name */
       display_name: string;
+      /** Handle */
+      handle: string | null;
+      /** Public Name */
+      public_name: string | null;
       /** Is Admin */
       is_admin: boolean;
       /** Is Active */
@@ -1696,6 +2677,38 @@ export interface components {
     VerifyEmailIn: {
       /** Token */
       token: string;
+    };
+    /** ViewerPostOut */
+    ViewerPostOut: {
+      /** Liked */
+      liked: boolean;
+      /** Bookmarked */
+      bookmarked: boolean;
+      /** Is Author */
+      is_author: boolean;
+    };
+    /**
+     * ViewerRelationOut
+     * @description How the signed-in viewer stands to a profile.
+     */
+    ViewerRelationOut: {
+      /** Follows */
+      follows: boolean;
+      /** Is Self */
+      is_self: boolean;
+    };
+    /**
+     * WhyOut
+     * @description «لماذا أرى هذا؟»: the one reason a feed item is where it is.
+     */
+    WhyOut: {
+      /**
+       * Code
+       * @enum {string}
+       */
+      code: 'followed_author' | 'fresh' | 'new_topic' | 'community';
+      /** Text */
+      text: string;
     };
   };
   responses: never;
@@ -2636,6 +3649,865 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['SitemapEntry'][];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  get_public_identity_me_public_identity_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PublicIdentityOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  put_public_identity_me_public_identity_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PublicIdentityIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PublicIdentityOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  get_profile_u__handle__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        handle: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MemberProfileOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  follow_member_u__handle__follow_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        handle: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  unfollow_member_u__handle__follow_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        handle: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  list_blocks_blocks_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MemberOut'][];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  block_member_blocks__handle__put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        handle: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  unblock_member_blocks__handle__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        handle: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  create_post_posts_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PostCreateIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PostOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  get_post_posts__post_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The post's public id */
+        post_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PostOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  delete_post_posts__post_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The post's public id */
+        post_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  patch_post_posts__post_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The post's public id */
+        post_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PostPatch'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PostOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  submit_post_posts__post_id__submit_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The post's public id */
+        post_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PostOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  my_posts_me_posts_get: {
+    parameters: {
+      query?: {
+        cursor?: string | null;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MyPostsPage'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  like_post_posts__post_id__like_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The post's public id */
+        post_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ReactionOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  unlike_post_posts__post_id__like_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The post's public id */
+        post_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ReactionOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  bookmark_post_posts__post_id__bookmark_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The post's public id */
+        post_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  unbookmark_post_posts__post_id__bookmark_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The post's public id */
+        post_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  my_bookmarks_me_bookmarks_get: {
+    parameters: {
+      query?: {
+        cursor?: string | null;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeedPage'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  list_comments_posts__post_id__comments_get: {
+    parameters: {
+      query?: {
+        cursor?: string | null;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        /** @description The post's public id */
+        post_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CommentPage'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  create_comment_posts__post_id__comments_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The post's public id */
+        post_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CommentCreateIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CommentOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  delete_comment_posts__post_id__comments__comment_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The post's public id */
+        post_id: number;
+        /** @description The comment's public id */
+        comment_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  report_reports_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReportIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ReportOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  feed_following_feed_following_get: {
+    parameters: {
+      query?: {
+        cursor?: string | null;
+        /** @description Posts in the page */
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeedPage'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  feed_for_you_feed_for_you_get: {
+    parameters: {
+      query?: {
+        cursor?: string | null;
+        /** @description Posts in the page */
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeedPage'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  feed_latest_feed_latest_get: {
+    parameters: {
+      query?: {
+        cursor?: string | null;
+        /** @description Posts in the page */
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeedPage'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  member_posts_u__handle__posts_get: {
+    parameters: {
+      query?: {
+        cursor?: string | null;
+        /** @description Posts in the page */
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        handle: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeedPage'];
         };
       };
       /** @description An error */

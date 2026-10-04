@@ -1224,6 +1224,1256 @@
         }
       }
     },
+    "/me/public-identity": {
+      "get": {
+        "tags": ["members"],
+        "summary": "The caller's handle and public name",
+        "description": "Return the identity the caller appears under, or nulls until they choose one.",
+        "operationId": "get_public_identity_me_public_identity_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicIdentityOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["members"],
+        "summary": "Choose or change the handle and public name",
+        "description": "Set the handle (`/u/<handle>`) and the name every public page shows for the caller.\n\nNeeds a verified e-mail address. The handle is unique whatever its case: 409\n`HANDLE_TAKEN` when somebody else holds it. The account's own name is never used.",
+        "operationId": "put_public_identity_me_public_identity_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicIdentityIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicIdentityOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/u/{handle}": {
+      "get": {
+        "tags": ["members"],
+        "summary": "A public profile",
+        "description": "Return a member's public profile: handle, public name, month joined and three counts.\n\n404 for a handle nobody holds, and for one that a block stands in front of, in either\ndirection. Nothing from the member's private profile, and no e-mail address, ever.",
+        "operationId": "get_profile_u__handle__get",
+        "parameters": [
+          {
+            "name": "handle",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Handle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberProfileOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/u/{handle}/follow": {
+      "put": {
+        "tags": ["members"],
+        "summary": "Follow a member",
+        "description": "Follow a member; following again changes nothing. 400 for oneself.",
+        "operationId": "follow_member_u__handle__follow_put",
+        "parameters": [
+          {
+            "name": "handle",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Handle"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["members"],
+        "summary": "Stop following a member",
+        "description": "Stop following a member; safe to repeat.",
+        "operationId": "unfollow_member_u__handle__follow_delete",
+        "parameters": [
+          {
+            "name": "handle",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Handle"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/blocks": {
+      "get": {
+        "tags": ["members"],
+        "summary": "The members the caller has blocked",
+        "description": "List the members the caller blocked, newest first, by handle and public name only.",
+        "operationId": "list_blocks_blocks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MemberOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Blocks Blocks Get"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/blocks/{handle}": {
+      "put": {
+        "tags": ["members"],
+        "summary": "Block a member",
+        "description": "Block a member.\n\nEach of the two stops seeing the other everywhere, and the follows between them, in\nboth directions, end. Blocking again changes nothing. 400 for oneself.",
+        "operationId": "block_member_blocks__handle__put",
+        "parameters": [
+          {
+            "name": "handle",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Handle"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["members"],
+        "summary": "Lift a block",
+        "description": "Lift the caller's own block; safe to repeat.",
+        "operationId": "unblock_member_blocks__handle__delete",
+        "parameters": [
+          {
+            "name": "handle",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Handle"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/posts": {
+      "post": {
+        "tags": ["posts"],
+        "summary": "Start a draft from a verified insight",
+        "description": "Copy one of the caller's verified insights into a publication and open a draft on it.\n\nThe copy is what is previewed and what is published; it is never edited afterwards. The\ncaller's own words go in `reflection`, apart from the insight. 409 `INSIGHT_NOT_PUBLISHABLE`\nsays why an insight cannot be published; 409 `PUBLIC_IDENTITY_REQUIRED` that the caller\nhas no handle yet. Nothing is visible to anyone else until the draft is submitted.",
+        "operationId": "create_post_posts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostCreateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/posts/{post_id}": {
+      "get": {
+        "tags": ["posts"],
+        "summary": "One post",
+        "description": "Return a post the caller may read.\n\n404 for one that does not exist or that the caller may not see (a draft, a post held or\nrefused, one for followers the caller does not follow, one behind a block); 410 Gone for\none that was withdrawn or removed.",
+        "operationId": "get_post_posts__post_id__get",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "The post's public id",
+              "title": "Post Id"
+            },
+            "description": "The post's public id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["posts"],
+        "summary": "Edit a draft",
+        "description": "Change a draft's reflection or audience; a refused post becomes a draft again.",
+        "operationId": "patch_post_posts__post_id__patch",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "The post's public id",
+              "title": "Post Id"
+            },
+            "description": "The post's public id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["posts"],
+        "summary": "Withdraw a post",
+        "description": "Withdraw a post, a draft or a published one.\n\nIts reflection, its comments, its likes and its saves are erased at once, it leaves every\nfeed and every profile, and its address answers 410 Gone from then on (this route too).",
+        "operationId": "delete_post_posts__post_id__delete",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "The post's public id",
+              "title": "Post Id"
+            },
+            "description": "The post's public id"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/posts/{post_id}/submit": {
+      "post": {
+        "tags": ["posts"],
+        "summary": "Submit a draft for publication",
+        "description": "Run a draft through the guard.\n\nThe answer says what happened: `published`, `rejected` with its reason, or\n`pending_review` while a moderator looks. A failed guard holds the post, never\npublishes it. 409 for a post that is not a draft.",
+        "operationId": "submit_post_posts__post_id__submit_post",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "The post's public id",
+              "title": "Post Id"
+            },
+            "description": "The post's public id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/posts": {
+      "get": {
+        "tags": ["posts"],
+        "summary": "The caller's own posts, in every state",
+        "description": "List the caller's posts, newest first, with what happened to each.\n\nWithdrawn posts are gone and are not listed; one a moderator removed is, with its reason.",
+        "operationId": "my_posts_me_posts_get",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPostsPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/posts/{post_id}/like": {
+      "put": {
+        "tags": ["reactions"],
+        "summary": "Like a post («أثر»)",
+        "description": "Like a published post the caller may read; liking again changes nothing.",
+        "operationId": "like_post_posts__post_id__like_put",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "The post's public id",
+              "title": "Post Id"
+            },
+            "description": "The post's public id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReactionOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["reactions"],
+        "summary": "Take back a like",
+        "description": "Take back the caller's like; safe to repeat.",
+        "operationId": "unlike_post_posts__post_id__like_delete",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "The post's public id",
+              "title": "Post Id"
+            },
+            "description": "The post's public id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReactionOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/posts/{post_id}/bookmark": {
+      "put": {
+        "tags": ["reactions"],
+        "summary": "Save a post",
+        "description": "Save a published post the caller may read; saving again changes nothing.",
+        "operationId": "bookmark_post_posts__post_id__bookmark_put",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "The post's public id",
+              "title": "Post Id"
+            },
+            "description": "The post's public id"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["reactions"],
+        "summary": "Unsave a post",
+        "description": "Unsave a post; safe to repeat. A post that is gone is already gone from the list.",
+        "operationId": "unbookmark_post_posts__post_id__bookmark_delete",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "The post's public id",
+              "title": "Post Id"
+            },
+            "description": "The post's public id"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/bookmarks": {
+      "get": {
+        "tags": ["reactions"],
+        "summary": "The posts the caller saved",
+        "description": "List what the caller saved, the latest save first, and only what they may still read.\n\nA post that was withdrawn, removed or hidden by a block is no longer listed.",
+        "operationId": "my_bookmarks_me_bookmarks_get",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/posts/{post_id}/comments": {
+      "get": {
+        "tags": ["comments"],
+        "summary": "A post's comments",
+        "description": "List a post's comments oldest first, each with its replies.\n\nOnly published comments, and the caller's own in any state. A comment by someone the caller\nblocked, or who blocked the caller, or whom the post's author blocked, is not listed.",
+        "operationId": "list_comments_posts__post_id__comments_get",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "The post's public id",
+              "title": "Post Id"
+            },
+            "description": "The post's public id"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["comments"],
+        "summary": "Comment on a post, or reply to a comment",
+        "description": "Add a comment, or a reply (`parent_id`) to a comment that is not itself a reply.\n\nThe answer says what the guard decided: `published`, `rejected` with its reason, or\n`pending_review` while a moderator looks; until it is published only its author sees it.",
+        "operationId": "create_comment_posts__post_id__comments_post",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "The post's public id",
+              "title": "Post Id"
+            },
+            "description": "The post's public id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentCreateIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/posts/{post_id}/comments/{comment_id}": {
+      "delete": {
+        "tags": ["comments"],
+        "summary": "Delete the caller's own comment",
+        "description": "Delete one's own comment, whatever its state and whatever the caller can still read.\n\nIts replies go with it. Someone else's comment is a 404, as is one that does not exist.",
+        "operationId": "delete_comment_posts__post_id__comments__comment_id__delete",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "The post's public id",
+              "title": "Post Id"
+            },
+            "description": "The post's public id"
+          },
+          {
+            "name": "comment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "The comment's public id",
+              "title": "Comment Id"
+            },
+            "description": "The comment's public id"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports": {
+      "post": {
+        "tags": ["reports"],
+        "summary": "Report a post or a comment",
+        "description": "Tell the moderators about something the caller may read.\n\nThe reasons include a false attribution of a religious claim, a photo published without\npermission, a place that is not right and a location or photo that gives away private\ninformation. 404 for what the caller may not read, 400 for their own words. Reporting the\nsame thing twice answers with the first report. Enough different reporters send a published\nitem back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`).",
+        "operationId": "report_reports_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feed/following": {
+      "get": {
+        "tags": ["feed"],
+        "summary": "«أتابع»: the posts of the members the caller follows",
+        "description": "Return the posts of the members the caller follows, newest first.\n\nFollowers-only posts of those members are included. `empty_reason` is `follows_nobody` when\nthe caller follows no one and `no_posts` when those they follow have published nothing.",
+        "operationId": "feed_following_feed_following_get",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "description": "Posts in the page",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "Posts in the page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feed/for-you": {
+      "get": {
+        "tags": ["feed"],
+        "summary": "«لك»: a ranked feed with the reason for each post",
+        "description": "Return the newest readable posts, ranked, each with `why` («لماذا أرى هذا؟»).\n\nThe ranking uses freshness, the members the caller follows, variety of topics and what the\ncaller has already liked, saved or commented on. It never uses religion or any personal\ndetail, and the caller can switch personalisation off, which leaves freshness and variety.\nThe first request pins the moment of ranking in `next_cursor`, so the next pages continue the\nsame list.",
+        "operationId": "feed_for_you_feed_for_you_get",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "description": "Posts in the page",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "Posts in the page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feed/latest": {
+      "get": {
+        "tags": ["feed"],
+        "summary": "Every public post, newest first",
+        "description": "Return the public posts in the order they were published; no ranking, no personalisation.",
+        "operationId": "feed_latest_feed_latest_get",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "description": "Posts in the page",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "Posts in the page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/u/{handle}/posts": {
+      "get": {
+        "tags": ["feed"],
+        "summary": "A member's published posts",
+        "description": "Return a member's published posts that the caller may read, newest first.\n\n404 when no such member exists or a block stands between the two.",
+        "operationId": "member_posts_u__handle__posts_get",
+        "parameters": [
+          {
+            "name": "handle",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Handle"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "description": "Posts in the page",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "Posts in the page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/legal": {
       "get": {
         "tags": ["legal"],
@@ -1337,6 +2587,9 @@
             },
             "type": "array",
             "title": "Cookie Consents"
+          },
+          "social": {
+            "$ref": "#/components/schemas/SocialExport"
           }
         },
         "type": "object",
@@ -1347,7 +2600,8 @@
           "sessions",
           "profile",
           "consents",
-          "cookie_consents"
+          "cookie_consents",
+          "social"
         ],
         "title": "AccountExport",
         "description": "Everything the account owns so far, for its owner.\n\nA table that gets a user id later must be added here and to the deletion in\n`account_service`; a test fails when a table references `users` without a cascade."
@@ -1631,6 +2885,171 @@
         "type": "object",
         "required": ["slug", "name_ar", "source_dataset", "source_url", "licence", "version"],
         "title": "CollectionOut"
+      },
+      "CommentCreateIn": {
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Body"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["body"],
+        "title": "CommentCreateIn"
+      },
+      "CommentExport": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "post_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Post Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CommentStatus"
+          },
+          "status_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Reason"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": ["id", "post_id", "parent_id", "body", "status", "status_reason", "created_at"],
+        "title": "CommentExport"
+      },
+      "CommentOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "author": {
+            "$ref": "#/components/schemas/MemberOut"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CommentStatus"
+          },
+          "status_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Message"
+          },
+          "is_mine": {
+            "type": "boolean",
+            "title": "Is Mine"
+          },
+          "replies": {
+            "items": {
+              "$ref": "#/components/schemas/CommentOut"
+            },
+            "type": "array",
+            "title": "Replies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "author",
+          "body",
+          "created_at",
+          "status",
+          "status_message",
+          "is_mine",
+          "replies"
+        ],
+        "title": "CommentOut"
+      },
+      "CommentPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CommentOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "required": ["items", "next_cursor"],
+        "title": "CommentPage"
+      },
+      "CommentStatus": {
+        "type": "string",
+        "enum": ["pending_review", "published", "rejected", "removed"],
+        "title": "CommentStatus"
       },
       "ConsentCategories": {
         "properties": {
@@ -2047,6 +3466,11 @@
           "ORIGIN_NOT_ALLOWED",
           "CONSENT_NOT_ALLOWED",
           "GOOGLE_NOT_CONFIGURED",
+          "HANDLE_TAKEN",
+          "PUBLIC_IDENTITY_REQUIRED",
+          "INSIGHT_NOT_PUBLISHABLE",
+          "INVALID_CURSOR",
+          "GONE",
           "legal_acceptance_required",
           "mail_unavailable"
         ],
@@ -2103,6 +3527,46 @@
         "required": ["error", "detail"],
         "title": "ErrorResponse",
         "description": "The body of every error response."
+      },
+      "FeedPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PostOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor",
+            "description": "Pass as `cursor`; null on the last page"
+          },
+          "empty_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["follows_nobody", "no_posts"]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empty Reason",
+            "description": "Why the first page has nothing, so the client can say so; never invented posts"
+          }
+        },
+        "type": "object",
+        "required": ["items", "next_cursor", "empty_reason"],
+        "title": "FeedPage",
+        "description": "A page of a feed, and how to ask for the next one."
       },
       "FieldError": {
         "properties": {
@@ -2202,6 +3666,58 @@
         "enum": ["صحيح", "حسن", "ضعيف", "موضوع", "مختلف_فيه"],
         "title": "HadithClassification",
         "description": "An editor's reading of a dorar.net ruling; only the first two make a hadith evidence."
+      },
+      "HadithEvidenceOut": {
+        "properties": {
+          "collection": {
+            "type": "string",
+            "title": "Collection"
+          },
+          "collection_name": {
+            "type": "string",
+            "title": "Collection Name"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Exactly as stored; never normalised"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256",
+            "description": "SHA-256 of the UTF-8 bytes of `text`"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/HadithClassification"
+          },
+          "verification_url": {
+            "type": "string",
+            "title": "Verification Url",
+            "description": "A dorar.net search the reader opens («تحقق في الدرر»)"
+          },
+          "verified": {
+            "type": "boolean",
+            "const": true,
+            "title": "Verified",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "collection",
+          "collection_name",
+          "number",
+          "text",
+          "sha256",
+          "classification",
+          "verification_url"
+        ],
+        "title": "HadithEvidenceOut",
+        "description": "A hadith read from the scripture store, shown only while its ruling is صحيح or حسن."
       },
       "HadithLinks": {
         "properties": {
@@ -2321,6 +3837,101 @@
         ],
         "title": "HadithOut"
       },
+      "HandleExport": {
+        "properties": {
+          "handle": {
+            "type": "string",
+            "title": "Handle"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Since"
+          }
+        },
+        "type": "object",
+        "required": ["handle", "since"],
+        "title": "HandleExport",
+        "description": "Someone the account follows or blocked, by the handle they chose, and since when."
+      },
+      "InsightOut": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "glimpse": {
+            "type": "string",
+            "title": "Glimpse"
+          },
+          "relation_type": {
+            "type": "string",
+            "title": "Relation Type"
+          },
+          "concepts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Concepts"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation",
+            "description": "The app's explanation, shortened; written by the app"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step",
+            "description": "The small step the insight suggests"
+          },
+          "has_photo": {
+            "type": "boolean",
+            "title": "Has Photo",
+            "description": "The owner agreed to publish a photo with it; its address is not here yet"
+          },
+          "insight_version": {
+            "type": "integer",
+            "title": "Insight Version"
+          },
+          "quran": {
+            "items": {
+              "$ref": "#/components/schemas/QuranEvidenceOut"
+            },
+            "type": "array",
+            "title": "Quran"
+          },
+          "hadith": {
+            "items": {
+              "$ref": "#/components/schemas/HadithEvidenceOut"
+            },
+            "type": "array",
+            "title": "Hadith"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "glimpse",
+          "relation_type",
+          "concepts",
+          "explanation",
+          "step",
+          "has_photo",
+          "insight_version",
+          "quran",
+          "hadith"
+        ],
+        "title": "InsightOut",
+        "description": "What a post publishes: the platform's insight, never the author's words."
+      },
       "KnowledgeLevel": {
         "type": "string",
         "enum": ["new", "general", "advanced", "specialist", "unknown"],
@@ -2401,6 +4012,100 @@
         "type": "object",
         "required": ["email", "password"],
         "title": "LoginIn"
+      },
+      "MemberOut": {
+        "properties": {
+          "handle": {
+            "type": "string",
+            "title": "Handle"
+          },
+          "public_name": {
+            "type": "string",
+            "title": "Public Name"
+          }
+        },
+        "type": "object",
+        "required": ["handle", "public_name"],
+        "title": "MemberOut",
+        "description": "A person as the network shows them: the two things they chose, and nothing else."
+      },
+      "MemberProfileOut": {
+        "properties": {
+          "handle": {
+            "type": "string",
+            "title": "Handle"
+          },
+          "public_name": {
+            "type": "string",
+            "title": "Public Name"
+          },
+          "joined_month": {
+            "type": "string",
+            "title": "Joined Month",
+            "description": "`YYYY-MM`, in UTC"
+          },
+          "posts_count": {
+            "type": "integer",
+            "title": "Posts Count",
+            "description": "Published public posts"
+          },
+          "followers_count": {
+            "type": "integer",
+            "title": "Followers Count"
+          },
+          "following_count": {
+            "type": "integer",
+            "title": "Following Count"
+          },
+          "viewer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ViewerRelationOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for a guest"
+          }
+        },
+        "type": "object",
+        "required": [
+          "handle",
+          "public_name",
+          "joined_month",
+          "posts_count",
+          "followers_count",
+          "following_count",
+          "viewer"
+        ],
+        "title": "MemberProfileOut",
+        "description": "A public profile: who, since when, and three counts read from the rows they count."
+      },
+      "MyPostsPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PostOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "required": ["items", "next_cursor"],
+        "title": "MyPostsPage"
       },
       "NearbyPlace": {
         "properties": {
@@ -2622,6 +4327,327 @@
         "title": "PlaceHit",
         "description": "A place that matched a search, with its region and country to tell namesakes apart."
       },
+      "PostCreateIn": {
+        "properties": {
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id"
+          },
+          "reflection": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1600
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reflection"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/PostVisibility",
+            "default": "public"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["insight_id"],
+        "title": "PostCreateIn",
+        "description": "Start a draft from a verified insight."
+      },
+      "PostExport": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PostStatus"
+          },
+          "status_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Reason"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/PostVisibility"
+          },
+          "reflection": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reflection"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "removed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed At"
+          },
+          "removal_source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemovalSource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "publication": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicationExport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "status_reason",
+          "visibility",
+          "reflection",
+          "created_at",
+          "submitted_at",
+          "published_at",
+          "removed_at",
+          "removal_source",
+          "publication"
+        ],
+        "title": "PostExport"
+      },
+      "PostMarkExport": {
+        "properties": {
+          "post_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Post Id"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "required": ["post_id", "at"],
+        "title": "PostMarkExport",
+        "description": "A post the account liked or saved."
+      },
+      "PostOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "author": {
+            "$ref": "#/components/schemas/MemberOut"
+          },
+          "insight": {
+            "$ref": "#/components/schemas/InsightOut"
+          },
+          "reflection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReflectionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/PostVisibility"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PostStatus"
+          },
+          "status_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Reason"
+          },
+          "status_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Message",
+            "description": "What happened to it, in Arabic, for its author"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "like_count": {
+            "type": "integer",
+            "title": "Like Count"
+          },
+          "comment_count": {
+            "type": "integer",
+            "title": "Comment Count"
+          },
+          "viewer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ViewerPostOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for a guest"
+          },
+          "why": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WhyOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only in the «لك» feed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "author",
+          "insight",
+          "reflection",
+          "visibility",
+          "status",
+          "status_reason",
+          "status_message",
+          "published_at",
+          "created_at",
+          "like_count",
+          "comment_count",
+          "viewer",
+          "why"
+        ],
+        "title": "PostOut"
+      },
+      "PostPatch": {
+        "properties": {
+          "reflection": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1600
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reflection"
+          },
+          "visibility": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PostVisibility"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PostPatch",
+        "description": "Change a draft, or a rejected post, which becomes a draft again."
+      },
+      "PostStatus": {
+        "type": "string",
+        "enum": ["draft", "pending_review", "published", "rejected", "removed"],
+        "title": "PostStatus",
+        "description": "Where a post is in its life; the five states of decision 2."
+      },
+      "PostVisibility": {
+        "type": "string",
+        "enum": ["public", "followers"],
+        "title": "PostVisibility"
+      },
       "ProfileOut": {
         "properties": {
           "goals": {
@@ -2827,6 +4853,200 @@
         "required": ["providers"],
         "title": "ProvidersOut"
       },
+      "PublicIdentityIn": {
+        "properties": {
+          "handle": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Handle"
+          },
+          "public_name": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Public Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["handle", "public_name"],
+        "title": "PublicIdentityIn",
+        "description": "The handle and public name an account chooses to appear under."
+      },
+      "PublicIdentityOut": {
+        "properties": {
+          "handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handle"
+          },
+          "public_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Name"
+          }
+        },
+        "type": "object",
+        "required": ["handle", "public_name"],
+        "title": "PublicIdentityOut",
+        "description": "The caller's own handle and public name; both null until they have chosen."
+      },
+      "PublicationExport": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id"
+          },
+          "insight_version": {
+            "type": "integer",
+            "title": "Insight Version"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "glimpse": {
+            "type": "string",
+            "title": "Glimpse"
+          },
+          "relation_type": {
+            "type": "string",
+            "title": "Relation Type"
+          },
+          "concepts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Concepts"
+          },
+          "quran_refs": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Quran Refs"
+          },
+          "hadith_refs": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Hadith Refs"
+          },
+          "explanation_excerpt": {
+            "type": "string",
+            "title": "Explanation Excerpt"
+          },
+          "step_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Text"
+          },
+          "photo_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Ref"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "insight_id",
+          "insight_version",
+          "title",
+          "glimpse",
+          "relation_type",
+          "concepts",
+          "quran_refs",
+          "hadith_refs",
+          "explanation_excerpt",
+          "step_text",
+          "photo_ref",
+          "created_at"
+        ],
+        "title": "PublicationExport",
+        "description": "The copy of an insight a post published: references to the evidence, never scripture."
+      },
+      "QuranEvidenceOut": {
+        "properties": {
+          "surah": {
+            "type": "integer",
+            "title": "Surah"
+          },
+          "ayah": {
+            "type": "integer",
+            "title": "Ayah"
+          },
+          "surah_name": {
+            "type": "string",
+            "title": "Surah Name"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Exactly as stored; never normalised"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256",
+            "description": "SHA-256 of the UTF-8 bytes of `text`"
+          },
+          "source_url": {
+            "type": "string",
+            "title": "Source Url",
+            "description": "The quranpedia page of the verse"
+          },
+          "verified": {
+            "type": "boolean",
+            "const": true,
+            "title": "Verified",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": ["surah", "ayah", "surah_name", "text", "sha256", "source_url"],
+        "title": "QuranEvidenceOut",
+        "description": "A verse read from the scripture store by its reference, exactly as stored."
+      },
       "QuranLinks": {
         "properties": {
           "quranpedia": {
@@ -2957,6 +5177,21 @@
         ],
         "title": "QuranVerseOut"
       },
+      "ReactionOut": {
+        "properties": {
+          "liked": {
+            "type": "boolean",
+            "title": "Liked"
+          },
+          "like_count": {
+            "type": "integer",
+            "title": "Like Count"
+          }
+        },
+        "type": "object",
+        "required": ["liked", "like_count"],
+        "title": "ReactionOut"
+      },
       "Readiness": {
         "properties": {
           "status": {
@@ -2977,10 +5212,154 @@
         "required": ["status", "checks"],
         "title": "Readiness"
       },
+      "ReflectionOut": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "source": {
+            "type": "string",
+            "const": "user",
+            "title": "Source",
+            "default": "user"
+          },
+          "verified": {
+            "type": "boolean",
+            "const": false,
+            "title": "Verified",
+            "default": false
+          },
+          "looks_like_scripture": {
+            "type": "boolean",
+            "title": "Looks Like Scripture",
+            "description": "The text reads like Quran or hadith; it is still only the author's own"
+          }
+        },
+        "type": "object",
+        "required": ["text", "looks_like_scripture"],
+        "title": "ReflectionOut",
+        "description": "The author's own words.\n\nThey are labelled as the user's text and never carry the verified badge, whatever they say."
+      },
       "ReligiousBackground": {
         "type": "string",
         "enum": ["muslim", "non_muslim", "unknown"],
         "title": "ReligiousBackground"
+      },
+      "RemovalSource": {
+        "type": "string",
+        "enum": ["owner", "moderator"],
+        "title": "RemovalSource",
+        "description": "Who took a post down: its author (the content is erased) or a moderator (it is kept)."
+      },
+      "ReportExport": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/ReportTarget"
+          },
+          "target_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Target Id"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReportReason"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReportStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": ["id", "target_type", "target_id", "reason", "details", "status", "created_at"],
+        "title": "ReportExport"
+      },
+      "ReportIn": {
+        "properties": {
+          "target_type": {
+            "$ref": "#/components/schemas/ReportTarget"
+          },
+          "target_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Target Id"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReportReason"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["target_type", "target_id", "reason"],
+        "title": "ReportIn"
+      },
+      "ReportOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": ["id"],
+        "title": "ReportOut"
+      },
+      "ReportReason": {
+        "type": "string",
+        "enum": [
+          "abuse",
+          "spam",
+          "false_religious_claim",
+          "unauthorised_photo",
+          "wrong_place",
+          "private_information",
+          "other"
+        ],
+        "title": "ReportReason",
+        "description": "Why something was reported. The two place reasons are for the atlas, and kept here ready."
+      },
+      "ReportStatus": {
+        "type": "string",
+        "enum": ["open", "actioned", "dismissed"],
+        "title": "ReportStatus"
+      },
+      "ReportTarget": {
+        "type": "string",
+        "enum": ["post", "comment"],
+        "title": "ReportTarget"
       },
       "ResetPasswordIn": {
         "properties": {
@@ -3254,6 +5633,62 @@
         "title": "SitemapPage",
         "description": "One page of a section: its number from 0, and the newest `lastmod` it holds."
       },
+      "SocialExport": {
+        "properties": {
+          "posts": {
+            "items": {
+              "$ref": "#/components/schemas/PostExport"
+            },
+            "type": "array",
+            "title": "Posts"
+          },
+          "comments": {
+            "items": {
+              "$ref": "#/components/schemas/CommentExport"
+            },
+            "type": "array",
+            "title": "Comments"
+          },
+          "following": {
+            "items": {
+              "$ref": "#/components/schemas/HandleExport"
+            },
+            "type": "array",
+            "title": "Following"
+          },
+          "blocked": {
+            "items": {
+              "$ref": "#/components/schemas/HandleExport"
+            },
+            "type": "array",
+            "title": "Blocked"
+          },
+          "likes": {
+            "items": {
+              "$ref": "#/components/schemas/PostMarkExport"
+            },
+            "type": "array",
+            "title": "Likes"
+          },
+          "bookmarks": {
+            "items": {
+              "$ref": "#/components/schemas/PostMarkExport"
+            },
+            "type": "array",
+            "title": "Bookmarks"
+          },
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/ReportExport"
+            },
+            "type": "array",
+            "title": "Reports"
+          }
+        },
+        "type": "object",
+        "required": ["posts", "comments", "following", "blocked", "likes", "bookmarks", "reports"],
+        "title": "SocialExport"
+      },
       "SpanOut": {
         "properties": {
           "start": {
@@ -3361,6 +5796,28 @@
             "type": "string",
             "title": "Display Name"
           },
+          "handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handle"
+          },
+          "public_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Name"
+          },
           "is_admin": {
             "type": "boolean",
             "title": "Is Admin"
@@ -3397,6 +5854,8 @@
           "id",
           "email",
           "display_name",
+          "handle",
+          "public_name",
           "is_admin",
           "is_active",
           "email_verified_at",
@@ -3477,6 +5936,58 @@
         "type": "object",
         "required": ["token"],
         "title": "VerifyEmailIn"
+      },
+      "ViewerPostOut": {
+        "properties": {
+          "liked": {
+            "type": "boolean",
+            "title": "Liked"
+          },
+          "bookmarked": {
+            "type": "boolean",
+            "title": "Bookmarked"
+          },
+          "is_author": {
+            "type": "boolean",
+            "title": "Is Author"
+          }
+        },
+        "type": "object",
+        "required": ["liked", "bookmarked", "is_author"],
+        "title": "ViewerPostOut"
+      },
+      "ViewerRelationOut": {
+        "properties": {
+          "follows": {
+            "type": "boolean",
+            "title": "Follows"
+          },
+          "is_self": {
+            "type": "boolean",
+            "title": "Is Self"
+          }
+        },
+        "type": "object",
+        "required": ["follows", "is_self"],
+        "title": "ViewerRelationOut",
+        "description": "How the signed-in viewer stands to a profile."
+      },
+      "WhyOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": ["followed_author", "fresh", "new_topic", "community"],
+            "title": "Code"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": ["code", "text"],
+        "title": "WhyOut",
+        "description": "«لماذا أرى هذا؟»: the one reason a feed item is where it is."
       }
     }
   },
@@ -3516,6 +6027,30 @@
     {
       "name": "support",
       "description": "The support form: an e-mail to the team, nothing stored."
+    },
+    {
+      "name": "posts",
+      "description": "Posts made from verified insights: drafts, submission, withdrawal."
+    },
+    {
+      "name": "reactions",
+      "description": "Likes and bookmarks."
+    },
+    {
+      "name": "comments",
+      "description": "Comments on a post and replies to them."
+    },
+    {
+      "name": "reports",
+      "description": "Reports of posts and comments, with a reason."
+    },
+    {
+      "name": "feed",
+      "description": "«أتابع», «لك» and the latest, and a member's posts."
+    },
+    {
+      "name": "members",
+      "description": "The public handle and name, public profiles, follows and blocks."
     },
     {
       "name": "legal",
