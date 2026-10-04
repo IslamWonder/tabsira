@@ -1,0 +1,42 @@
+"""The rain tutorial (v2 §4): «مثال موثّق مُعدّ», read from the store, never waiting on a provider."""
+
+from __future__ import annotations
+
+from typing import Annotated
+
+from fastapi import APIRouter, Path
+
+from src.deps import DbDep, SettingsDep
+from src.owner import WritingOwner
+from src.schemas.insight import InsightOut
+from src.schemas.tutorial import TutorialOut
+from src.services import insight_view, tutorial_service
+from src.services.content import load_tutorial
+
+router = APIRouter(prefix="/tutorial", tags=["tutorial"])
+
+
+@router.get("/rain", summary="The prepared rain scene and its two insights")
+async def rain(db: DbDep) -> TutorialOut:
+    """
+    Return the rain scene with «الحياة في قطرة» and «الغرس الذي يتعدّاك».
+
+    The verses come from the store; each hadith shows once an editor has
+    recorded its dorar.net ruling, and until then the insight says so.
+    """
+    return await tutorial_service.describe(db, load_tutorial())
+
+
+@router.post(
+    "/rain/insights/{slug}",
+    summary="Keep a copy of a tutorial insight, to complete it and ask about it",
+)
+async def keep_rain_insight(
+    slug: Annotated[str, Path(pattern=r"^[a-z][a-z0-9-]{1,63}$")],
+    db: DbDep,
+    settings: SettingsDep,
+    owner: WritingOwner,
+) -> InsightOut:
+    """Return the caller's copy of the insight (made once), labelled «مثال موثّق مُعدّ»."""
+    kept = await tutorial_service.keep(db, owner, load_tutorial(), slug)
+    return await insight_view.describe(db, settings, kept)

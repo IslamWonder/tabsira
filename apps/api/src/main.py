@@ -42,6 +42,7 @@ from src.routers import (
     scripture,
     sitemap,
     support,
+    tutorial,
     world,
 )
 from src.scans.queue import close_queue
@@ -199,6 +200,7 @@ def create_app(
     app.include_router(insights.router)
     app.include_router(world.router)
     app.include_router(me.router)
+    app.include_router(tutorial.router)
     # The admin area is not mounted at all while its feature flag is off.
     if settings.feature_admin:
         install_admin(app, settings)

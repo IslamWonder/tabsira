@@ -1,0 +1,120 @@
+{
+  "scene": "rain",
+  "version": "1.0",
+  "description": "The prepared rain scene (v2 §4, tajriba §2 and §6). Scripture is cited by reference only and read from the store; the explanations are the platform's own words, reviewed. The two hadith show only once an editor has recorded their dorar.net ruling (decision 18).",
+  "title": "مطر ينزل على نبتة زيتون صغيرة",
+  "image": {
+    "path": "/scene/rain-olive.jpg",
+    "width": 768,
+    "height": 1344,
+    "alt": "نبتة زيتون صغيرة تتلقى قطرات المطر"
+  },
+  "insights": [
+    {
+      "slug": "drop",
+      "title": "الحياة في قطرة",
+      "glimpse": "كيف تُحيا الأرض بعد موتها",
+      "anchor": { "x": 0.06, "y": 0.525, "width": 0.36, "height": 0.06 },
+      "relation": "direct",
+      "quran": {
+        "surah": 30,
+        "ayah": 50,
+        "relation": "direct",
+        "matched_on": "أثر المطر في الأرض والنبات"
+      },
+      "hadith": {
+        "collection": "bukhari",
+        "number": "1032",
+        "relation": "action_based",
+        "matched_on": "رؤية المطر"
+      },
+      "explanation": [
+        { "section": "seen", "text": "قطرات مطر على أوراق نبتة زيتون صغيرة، وتربة رطبة حولها." },
+        {
+          "section": "value",
+          "text": "الماء سبب جعله الله للحياة، والمطر نعمة تُرى آثارها في الأرض والنبات."
+        },
+        {
+          "section": "quran",
+          "text": "تدعو الآية إلى النظر في آثار الرحمة: أرض هامدة تحيا بالمطر، وتجعل ذلك دليلًا على قدرة الله على البعث."
+        },
+        {
+          "section": "sunnah",
+          "text": "يعلّم الحديث ما يقوله المسلم حين يرى المطر: دعاءً بأن يكون مطرًا نافعًا."
+        },
+        {
+          "section": "life",
+          "text": "حين ترى المطر بعد اليوم، تذكّر أثر الرحمة في الأرض، وادعُ بالدعاء الوارد في الحديث."
+        }
+      ],
+      "why": {
+        "visible_clues": ["قطرات ماء على الأوراق", "تربة رطبة"],
+        "concept": "الإحياء بالماء",
+        "limits": [
+          "الصورة الواحدة لا تثبت أن هذه الأرض كانت هامدة ثم أُحييت؛ هذا معنى يدعو النص إلى التأمل فيه.",
+          "الدعاء يُقال عند رؤية المطر فعلًا، ولا يُنسب إليك دعاء عند مطر لم تره."
+        ]
+      },
+      "small_step": {
+        "text": "احفظ الدعاء الوارد في الحديث لتقوله حين ترى المطر.",
+        "kind": "text_grounded",
+        "grounded_in": ["hadith:bukhari:1032"]
+      },
+      "learning_unit_id": "T01_06",
+      "learning_path_version": "tabsira-masar-1.0"
+    },
+    {
+      "slug": "planting",
+      "title": "الغرس الذي يتعدّاك",
+      "glimpse": "نفعٌ يبقى لمن يأتي بعدك",
+      "anchor": { "x": 0.44, "y": 0.55, "width": 0.12, "height": 0.22 },
+      "relation": "close_conceptual",
+      "quran": {
+        "surah": 6,
+        "ayah": 99,
+        "relation": "close_conceptual",
+        "matched_on": "الماء سبب خروج النبات"
+      },
+      "hadith": {
+        "collection": "bukhari",
+        "number": "2320",
+        "relation": "close_conceptual",
+        "matched_on": "الغرس ونفعه لغير صاحبه"
+      },
+      "explanation": [
+        { "section": "seen", "text": "نبتة صغيرة ثابتة في التراب، يصل إليها ماء المطر." },
+        {
+          "section": "value",
+          "text": "الغرس عمل صغير يتعدّى نفعه صاحبه إلى غيره من الناس والطير والدواب."
+        },
+        {
+          "section": "quran",
+          "text": "تبيّن الآية أن الماء النازل من السماء سبب لخروج النبات على تنوّعه، من الحب إلى الثمر."
+        },
+        {
+          "section": "sunnah",
+          "text": "يجعل الحديث ما يغرسه المسلم صدقةً له كلما انتفع به كائن حي، إنسانًا كان أو حيوانًا."
+        },
+        {
+          "section": "life",
+          "text": "اسقِ نبتة أو اغرس بذرة؛ عمل صغير قد ينفع من يأتي بعدك."
+        }
+      ],
+      "why": {
+        "visible_clues": ["نبتة صغيرة في التراب", "ماء يصل إلى النبتة"],
+        "concept": "الغرس والنفع المتعدي",
+        "limits": [
+          "لا يُنسب إليك فعل غرس لم تفعله.",
+          "فضل الغرس في الحديث لمن غرس فانتفع بغرسه غيره؛ الصورة لا تثبت ذلك لأحد."
+        ]
+      },
+      "small_step": {
+        "text": "اسقِ نبتة أو اغرس بذرة اليوم.",
+        "kind": "ethical_application",
+        "grounded_in": []
+      },
+      "learning_unit_id": "T12_02",
+      "learning_path_version": "tabsira-masar-1.0"
+    }
+  ]
+}
