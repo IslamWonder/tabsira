@@ -130,6 +130,80 @@ describe('CommunityScreen for a member', () => {
   });
 });
 
+describe('CommunityScreen and what a card changes in the feed', () => {
+  it('keeps a liked post in place with its new count, and hides a blocked author everywhere', async () => {
+    const byOther = {
+      ...SECOND,
+      author: { handle: 'other_one', public_name: '[عضو آخر]' },
+    };
+    member({
+      'GET /feed/for-you': { body: page([POST, byOther, { ...POST, id: '7345678901234567898' }]) },
+      'PUT /posts/7345678901234567890/like': { body: { liked: true, like_count: 3 } },
+      'PUT /blocks/rain_reader': { status: 204 },
+    });
+    render(<CommunityScreen />);
+    const likes = await screen.findAllByRole('button', { name: /^أثر/ });
+    await waitFor(() => expect(screen.getAllByRole('tab')).toHaveLength(5));
+    await userEvent.click(likes[0] as HTMLElement);
+    expect(await screen.findByText('3 آثار')).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(3);
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'المزيد' })[0] as HTMLElement);
+    await userEvent.click(screen.getByRole('button', { name: 'احجب [اسم عام]' }));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'احجب' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { level: 2, name: '[عنوان البصيرة]' })).toBeNull()
+    );
+    expect(screen.getByRole('heading', { level: 2, name: '[بصيرة ثانية]' })).toBeInTheDocument();
+  });
+
+  it('retries the next page from where it stopped when it fails', async () => {
+    let calls = 0;
+    guest({
+      'GET /feed/for-you': (request) => {
+        calls += 1;
+        if (new URL(request.url).searchParams.get('cursor') === null) {
+          return { body: page([POST], 'c1') };
+        }
+        return calls === 2 ? apiError(503, 'SERVICE_UNAVAILABLE') : { body: page([SECOND]) };
+      },
+    });
+    render(<CommunityScreen />);
+    await userEvent.click(await screen.findByRole('button', { name: 'اعرض المزيد' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: '[عنوان البصيرة]' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'أعد المحاولة' }));
+    expect(
+      await screen.findByRole('heading', { level: 2, name: '[بصيرة ثانية]' })
+    ).toBeInTheDocument();
+    expect(calls).toBe(3);
+  });
+
+  it('gates a private tab a guest reaches by its address, and «لك» clears the fragment', async () => {
+    window.history.replaceState(null, '', '/community#mine');
+    guest();
+    render(<CommunityScreen />);
+    expect(await screen.findByText(/لم تنشر بصيرة بعد/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'ادخل' })).toHaveAttribute(
+      'href',
+      '/signin?next=%2Fcommunity'
+    );
+    await userEvent.click(screen.getByRole('tab', { name: 'الأحدث' }));
+    expect(window.location.hash).toBe('#latest');
+    await userEvent.click(screen.getByRole('tab', { name: 'لك' }));
+    expect(window.location.hash).toBe('');
+    expect(window.location.pathname).toBe('/community');
+  });
+
+  it('gates «أتابع» without a sign-in link while the session cannot be known', async () => {
+    window.history.replaceState(null, '', '/community#following');
+    mockApi({ 'GET /auth/me': 'network-error' });
+    render(<CommunityScreen />);
+    expect(await screen.findByText('ادخل لترى بصائر من تتابعهم.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'ادخل' })).toBeNull();
+  });
+});
+
 describe('tabFromHash', () => {
   it('names a tab from the fragment and falls back to «لك»', () => {
     expect(tabFromHash('#latest')).toBe('latest');
