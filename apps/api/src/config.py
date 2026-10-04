@@ -299,6 +299,13 @@ class OvhSettings(ProviderSettings):
     vision_model: str = "Qwen3.8-27B"
     # Decision 46: the chat answers with the provider's insight-stage model.
     chat_model: str = "Qwen3.8-27B"
+    # The text stages use the vision stage's model, without thinking: not measured
+    # apart; docs/EVALUATION.md measures them on the OpenAI defaults.
+    planner_model: str = "Qwen3.8-27B"
+    verify_model: str = "Qwen3.8-27B"
+    compose_model: str = "Qwen3.8-27B"
+    # docs/BENCHMARK.md, retrieval: bge-m3 is OVH's best embedding for Arabic queries.
+    embedding_model: str = "bge-m3"
     reasoning_effort: ReasoningEffort = "none"
     box_coordinates: BoxCoordinates = BoxCoordinates.THOUSANDTHS
     prices: dict[str, ModelPrice] = Field(default_factory=lambda: dict(OVH_PRICES))
@@ -313,6 +320,14 @@ class OpenAISettings(ProviderSettings):
     vision_model: str = "gpt-5.4-mini-2026-03-17"
     # Decision 46: the chat answers with gpt-5.4-mini, the insight stages' model.
     chat_model: str = "gpt-5.4-mini-2026-03-17"
+    # The text stages use the vision stage's model (docs/EVALUATION.md measures them).
+    planner_model: str = "gpt-5.4-mini-2026-03-17"
+    verify_model: str = "gpt-5.4-mini-2026-03-17"
+    compose_model: str = "gpt-5.4-mini-2026-03-17"
+    # docs/BENCHMARK.md, retrieval: the best recall and MRR of the three measured,
+    # at 1,536 dimensions so pgvector can index it with HNSW.
+    embedding_model: str = "text-embedding-3-large"
+    embedding_dimensions: Annotated[int, Field(ge=1, le=2000)] | None = 1536
     reasoning_effort: ReasoningEffort = "none"
     guard_model: str = "omni-moderation-latest"
     prices: dict[str, ModelPrice] = Field(default_factory=lambda: dict(OPENAI_PRICES))
