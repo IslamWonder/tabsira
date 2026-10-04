@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setSignedIn } from '@/account/session';
 import { messages } from '@/messages';
 import { apiError, mockApi, type Reply, type Route } from '@/test/api';
-import { FEATURE, OWNER_ENTRY, SECOND_FEATURE } from '@/test/atlas';
+import { FEATURE, OWNER_ENTRY, PLACE, SECOND_FEATURE } from '@/test/atlas';
 import { USER } from '@/test/fixtures';
 import { forgetMaps, loadedMap } from '@/test/maplibre';
 
@@ -383,7 +383,7 @@ describe('AtlasScreen', () => {
       ...SECOND_FEATURE,
       properties: {
         ...SECOND_FEATURE.properties,
-        place: { ...SECOND_FEATURE.properties.place, country_label: null },
+        place: { ...PLACE, geoname_id: 104515, country_iso2: 'SA', country_label: null },
       },
     };
     const api = guest({ 'GET /atlas/entries': collection([FEATURE, unlabelled]) });
