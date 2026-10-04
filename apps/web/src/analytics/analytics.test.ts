@@ -70,9 +70,13 @@ describe('the pages where no tool runs', () => {
 
 describe('deleting the cookies of a tool', () => {
   it('tries the host and every parent domain, and not an address', () => {
-    expect(domainsOf('a.tabsira.me')).toEqual([null, '.a.tabsira.me', '.tabsira.me']);
-    expect(domainsOf('127.0.0.1')).toEqual([null]);
-    expect(domainsOf('localhost')).toEqual([null]);
+    expect(domainsOf('a.tabsira.me')).toEqual([
+      '',
+      '; Domain=.a.tabsira.me',
+      '; Domain=.tabsira.me',
+    ]);
+    expect(domainsOf('127.0.0.1')).toEqual(['']);
+    expect(domainsOf('localhost')).toEqual(['']);
   });
 
   it('removes the matching cookies and keeps the others', () => {
