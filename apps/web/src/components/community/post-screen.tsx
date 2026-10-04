@@ -51,7 +51,9 @@ export function PostScreen({ postId }: { postId: string }) {
   // Counts the retries: each one asks the API again.
   const [attempt, setAttempt] = useState(0);
 
-  // Asked again when the session changes: what the viewer may see depends on who they are.
+  // Asked again when the session changes (what the viewer may see depends on who they are)
+  // and on every retry.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` counts the retries; each one asks again.
   useEffect(() => {
     if (sessionStatus === 'unknown') {
       return;
