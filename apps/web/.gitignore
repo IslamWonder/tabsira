@@ -1,0 +1,5 @@
+# Next.js writes these on every run.
+.next/
+next-env.d.ts
+coverage/
+*.tsbuildinfo
