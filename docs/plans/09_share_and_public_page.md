@@ -1,6 +1,6 @@
 # 09 · Share card and public insight page
 
-**Phase:** 1 · **Priority:** High · **Status:** ⬜ · **Updated:** 2026-10-04 17:59 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** ✅ · **Updated:** 2026-10-04 20:45 (Tunis)
 
 A shareable image of an insight with real Arabic fonts, and a public page for it, with no private data.
 
@@ -9,6 +9,7 @@ A shareable image of an insight with real Arabic fonts, and a public page for it
 | Publish an insight (server)              | ✅     | Done 2026-10-04 17:51.          |
 | Share card image                         | ✅     | Done 2026-10-04 18:26. Card OK. |
 | Public insight page with search metadata | ✅     | Done 2026-10-04 17:59.          |
+| Share download, card size, inspector     | ✅     | Done 2026-10-04 20:45.          |
 
 **How we check it**
 
@@ -40,3 +41,12 @@ A shareable image of an insight with real Arabic fonts, and a public page for it
 - **Touches:** apps/web one image route and the share sheet.
 - **Done when:** The image shows the stored text exactly; renders under 1 s.
 - **Notes:** outside the Touches list, the card route is metered in `nginx/production/tabsira.me.conf` (and mirrored in `nginx/local/tabsira.test.conf`): its own `limit_req` zone, 2 requests a second with a burst of 10, the security headers included in that location; the privacy text (`docs/PRIVACY.md`, the privacy and terms pages) was updated for the card in the same task.
+
+### 09.4 Share download, card size and the developer panel
+
+- **Status:** ✅ done 2026-10-04 20:45
+- **Goal:** Close three gaps of the wave 5 compliance audit: the share sheet offers «تنزيل» of the card image (v2 §18); the card is tested to stay under 300 KB (v2 §25) and is encoded as a palette PNG to stay there; the developer panel `/dev/inspect/{scanId}` of v2 §23 exists, behind an admin session.
+- **Depends on:** 09.3, 12.1
+- **Touches:** apps/web share sheet, share-card compose and its tests, `app/dev/inspect/[scanId]` (development only), `config/server-env.ts`; apps/api `admin/views/inspector.py` and its template, `FEATURE_DEV_INSPECTOR` in config and both environment templates; docs/ADMIN.md.
+- **Done when:** The download link appears for a public insight only; every card fixture, the longest verse included, is under 300 KB; the inspector shows status, stages with times, model names and costs, entities and the insights' references, never the photo or the person; it is audited, gone when the flag is off, and the web route redirects to it.
+- **Notes:** The web `/dev/inspect/{scanId}` redirects to `ADMIN_URL/admin/inspect/{scanId}` rather than rendering, because the admin session cookie lives on the admin host alone (`Path=/admin`, no `Domain`); the panel is a sqladmin view so the host check, the second factor, CSRF and the audit log apply unchanged. Production sets `FEATURE_DEV_INSPECTOR=false` (v2 §23: off in production).
