@@ -85,7 +85,7 @@ Before you say a task is done: `make lint && make coverage` pass, and `make smok
 - Infer religion, age, gender, health, identity or intent from a photo, a name, a place or behaviour.
 - Publish a precise location the owner did not choose, or derive one from a model's answer. Approximate locations are computed on the server; the exact point never reaches a public API.
 - Lower a coverage threshold, delete a failing test, or mark a test skipped to get green.
-- Add analytics, trackers, CDN assets or any third-party request from the visitor's browser. The documented exceptions: map tiles (decision 9) and Google Analytics only when `GA_MEASUREMENT_ID` is set and only after consent (decision 28).
+- Add analytics, trackers, CDN assets or any third-party request from the visitor's browser. The documented exceptions: map tiles (decision 9), Google Analytics only when `GA_MEASUREMENT_ID` is set and only after consent (decision 28), and Cloudflare Turnstile on the sign-up, sign-in, account-mail and support forms only (decision 56).
 - Use gpt-oss models.
 - Add any payment, paid plan, subscription, premium feature or advertising. TABSIRA is free (decision 43).
 - Name any other project of the owners in code, comments, docs, data or commit messages. Say "the earlier prototype" for the earlier version of this product; describe anything else by what it does. On the main machine a commit hook refuses such names.
