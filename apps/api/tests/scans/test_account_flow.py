@@ -58,8 +58,11 @@ async def test_the_export_holds_everything_the_learner_saved_and_never_a_photo(
         "treasures",
         "learner_units",
         "exposures",
+        "photos",
     }
     assert [scan["source"] for scan in learning["scans"]] == ["upload"]
+    # The export says which insights have a kept photo; this account kept none.
+    assert learning["photos"] == []
     assert "image" not in learning["scans"][0]
     assert [insight["tutorial_slug"] for insight in learning["insights"]] == ["drop"]
     assert [message["answer"] for message in learning["chat_messages"]] == ["جواب قصير."]
