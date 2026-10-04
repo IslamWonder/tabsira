@@ -207,7 +207,7 @@ fi
 systemctl daemon-reload
 sysctl -q -p "$NONLOCAL_BIND_SYSCTL" >/dev/null
 systemctl enable tabsira-api.service tabsira-vision.service tabsira-worker.service >/dev/null
-systemctl enable --now tabsira-sync-quran.timer tabsira-audit-retention.timer >/dev/null
+systemctl enable --now tabsira-sync-quran.timer tabsira-audit-retention.timer tabsira-reconcile-photos.timer >/dev/null
 log "Reloading nginx (graceful; started when it is not running yet)"
 systemctl enable nginx >/dev/null 2>&1 || true
 systemctl reload-or-restart nginx

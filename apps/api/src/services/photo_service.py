@@ -13,16 +13,20 @@ refuses before the storage is asked for anything.
 A photo is a secondary effect of the owner's act. When Redis or the storage cannot be reached,
 the act itself («تمّ», a publication, a withdrawal) still goes through and the photo part is
 logged as a warning, with the insight's id and never a key or a reason that names the person.
+A public copy the store failed to delete is not forgotten: the failure asks the worker to
+reconcile (`photo_reconcile`), and an hourly timer reconciles anyway, so what the terms promise
+("the public copy is deleted") comes true as soon as the store is back.
 """
 
 from __future__ import annotations
 
 import logging
 import uuid
+from dataclasses import dataclass
 
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
-from sqlalchemy import Select, exists, or_, select
+from sqlalchemy import Select, exists, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.atlas import MapEntry, MapEntryStatus
@@ -30,11 +34,15 @@ from src.models.profile import AgeRange, Profile
 from src.models.scan import Insight, Scan
 from src.models.social import InsightPublication, Post, PostStatus, PostVisibility
 from src.scans import buffer
+from src.services import photo_reconcile
 from src.services.image_service import ImageRejectedError, process_photo_in_thread
 from src.storage.base import StorageError
 from src.storage.photos import PhotoFacts, PhotoStore
 
 log = logging.getLogger("tabsira.photos")
+
+# Any fixed number shared by every process that reconciles; two reconciles never run at once.
+RECONCILE_LOCK_KEY = 7_424_019
 
 
 async def facts_for(db: AsyncSession, insight: Insight, scan: Scan | None) -> PhotoFacts:
@@ -108,7 +116,9 @@ def _shown_by_a_live_publication(insight_id: int) -> Select[tuple[bool]]:
     return select(or_(post_shows, entry_shows))
 
 
-async def sync_public_copy(db: AsyncSession, store: PhotoStore, insight_id: int | None) -> None:
+async def sync_public_copy(
+    db: AsyncSession, store: PhotoStore, insight_id: int | None, *, retry: bool = True
+) -> bool:
     """
     Make the one public copy exist exactly while a live publication shows the photo.
 
@@ -116,12 +126,15 @@ async def sync_public_copy(db: AsyncSession, store: PhotoStore, insight_id: int 
     only when a published post or entry of the insight asked for the photo and the rules still
     allow it at this moment; otherwise an existing copy is deleted, so a consent withdrawn or
     an age declared since takes the photo down with the next change of state.
+
+    Returns False when the store failed; the keys are then left as they were, and with `retry`
+    the worker is asked to reconcile the public copies once the store answers again.
     """
     if insight_id is None:
-        return
+        return True
     insight = await db.get(Insight, insight_id)
     if insight is None or insight.photo_key is None:
-        return
+        return True
     scan = await db.get(Scan, insight.scan_id) if insight.scan_id is not None else None
     facts = await facts_for(db, insight, scan)
     wanted = (
@@ -136,8 +149,52 @@ async def sync_public_copy(db: AsyncSession, store: PhotoStore, insight_id: int 
             insight.photo_public_key = None
     except StorageError:
         log.warning("public copy of insight %s not updated: the photo store failed", insight.id)
-        return
+        if retry:
+            await photo_reconcile.request_retry()
+        return False
     await db.flush()
+    return True
+
+
+@dataclass
+class ReconcileReport:
+    """What one reconcile of the public copies did."""
+
+    checked: int = 0
+    deleted: int = 0
+    failed: int = 0
+    skipped: bool = False
+
+
+async def reconcile_public_copies(db: AsyncSession, store: PhotoStore) -> ReconcileReport:
+    """
+    Delete every public copy that nothing shows any more.
+
+    Every insight that has a public copy is checked against what is live now; a copy a
+    withdrawal, a removal or a lost consent should have deleted, but the store failed to, goes.
+    Runs in one process at a time: a transaction-level advisory lock makes a second run step
+    aside. The caller's transaction decides when the forgotten keys land.
+    """
+    report = ReconcileReport()
+    locked = await db.scalar(
+        text("SELECT pg_try_advisory_xact_lock(:key)"), {"key": RECONCILE_LOCK_KEY}
+    )
+    if not locked:
+        report.skipped = True
+        return report
+    shown = (
+        await db.scalars(
+            select(Insight).where(Insight.photo_public_key.is_not(None)).order_by(Insight.id)
+        )
+    ).all()
+    for insight in shown:
+        report.checked += 1
+        # The sync works on this same row, so its key says what happened.
+        if not await sync_public_copy(db, store, insight.id, retry=False):
+            report.failed += 1
+        elif insight.photo_public_key is None:
+            report.deleted += 1
+    return report
 
 
 def public_url(store: PhotoStore, public_key: str | None) -> str | None:

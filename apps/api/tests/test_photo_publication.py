@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy import text as sql
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import clock
@@ -30,7 +31,7 @@ from src.models import (
     ReportTarget,
 )
 from src.owner import Owner
-from src.services import moderation_service
+from src.services import moderation_service, photo_service
 from src.services.insight_table_source import InsightTableSource
 from src.storage.base import (
     ObjectNotFoundError,
@@ -308,7 +309,7 @@ async def test_the_rules_are_checked_again_when_the_copy_would_be_made(
 
 
 async def test_a_store_that_fails_does_not_stop_the_publication(
-    db_session, make_member, photos, media, world, account_app, caplog
+    db_session, make_member, photos, media, world, account_app, caplog, retry_requests
 ):
     class Failing(LocalStorage):
         async def copy(self, source: str, destination: str) -> None:
@@ -336,6 +337,8 @@ async def test_a_store_that_fails_does_not_stop_the_publication(
     assert [record.getMessage() for record in caplog.records] == [
         f"public copy of insight {insight.id} not updated: the photo store failed"
     ]
+    # The worker is asked to reconcile once the store answers again.
+    assert retry_requests.requests == 1
 
 
 # ─── Map entries, and both at once ───
@@ -614,3 +617,70 @@ async def test_reports_that_hold_a_post_and_an_entry_take_their_copies_down_unti
     assert await keys_of(db_session, posted) == (posted.photo_key, None)
     assert await keys_of(db_session, placed) == (placed.photo_key, None)
     assert objects(media) == sorted([posted.photo_key, placed.photo_key])
+
+
+# ─── A store that failed a deletion: the reconcile ───
+
+
+def failing_store(media: Path, settings: Any) -> PhotoStore:
+    class Down(LocalStorage):
+        async def delete(self, key: str) -> None:
+            raise StorageUnavailableError("down")
+
+    return PhotoStore(
+        Down(
+            media,
+            base_url="https://api.tabsira.test",
+            signing_key=b"k" * 32,
+            default_ttl_seconds=300,
+        ),
+        settings,
+    )
+
+
+async def test_a_copy_the_store_failed_to_delete_goes_with_the_reconcile(
+    db_session, make_member, photos, media, world, account_app, caplog, retry_requests, engine
+):
+    author = await make_member("author")
+    await consent(author)
+    withdrawn = await kept_insight(db_session, author, photos)
+    still_shown = await kept_insight(db_session, author, photos)
+    posts = []
+    for insight in (withdrawn, still_shown):
+        posts.append(await post_with_photo(author, insight))
+        assert (await author.http.post(f"/posts/{posts[-1]}/submit")).json()[
+            "status"
+        ] == "published"
+    _, orphan = await keys_of(db_session, withdrawn)
+    _, live = await keys_of(db_session, still_shown)
+    account_app.state.photo_store = failing_store(media, photos.settings)
+
+    with caplog.at_level(logging.WARNING, logger="tabsira.photos"):
+        response = await author.http.delete(f"/posts/{posts[0]}")
+    # The withdrawal of the first post: the person is answered, the copy stays, a retry is asked.
+    assert response.status_code == 204
+    assert await keys_of(db_session, withdrawn) == (withdrawn.photo_key, orphan)
+    assert retry_requests.requests == 1
+    assert caplog.records[0].getMessage() == (
+        f"public copy of insight {withdrawn.id} not updated: the photo store failed"
+    )
+
+    # Another run holds the lock: this one steps aside and touches nothing.
+    async with engine.connect() as other, other.begin():
+        await other.execute(
+            sql("SELECT pg_advisory_xact_lock(:key)"), {"key": photo_service.RECONCILE_LOCK_KEY}
+        )
+        aside = await photo_service.reconcile_public_copies(db_session, photos)
+    assert (aside.checked, aside.skipped) == (0, True)
+
+    # The store still down: the reconcile counts the failure and asks for no second retry.
+    failed = await photo_service.reconcile_public_copies(db_session, account_app.state.photo_store)
+    assert (failed.checked, failed.deleted, failed.failed, failed.skipped) == (2, 0, 1, False)
+    assert retry_requests.requests == 1
+
+    # The store is back: the orphan goes, the copy a live post shows stays.
+    report = await photo_service.reconcile_public_copies(db_session, photos)
+    assert (report.checked, report.deleted, report.failed, report.skipped) == (2, 1, 0, False)
+    assert await keys_of(db_session, withdrawn) == (withdrawn.photo_key, None)
+    assert await keys_of(db_session, still_shown) == (still_shown.photo_key, live)
+    assert objects(media) == sorted([withdrawn.photo_key, still_shown.photo_key, live])

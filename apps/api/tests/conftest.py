@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import os
 import tempfile
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -181,6 +181,27 @@ async def _drop_worker_database() -> None:
         await admin.execute(f'DROP DATABASE IF EXISTS "{_WORKER_URL.database}" WITH (FORCE)')
     finally:
         await admin.close()
+
+
+class RecordedRetries:
+    """The retry queue of the tests: counts the reconcile requests instead of kicking the worker."""
+
+    def __init__(self) -> None:
+        self.requests = 0
+
+    async def request(self) -> None:
+        self.requests += 1
+
+
+@pytest.fixture(autouse=True)
+def retry_requests() -> Iterator[RecordedRetries]:
+    """No test asks the real worker to reconcile the photo copies; the requests are counted."""
+    from src.services import photo_reconcile
+
+    recorded = RecordedRetries()
+    photo_reconcile.use_retry_queue(recorded)
+    yield recorded
+    photo_reconcile.use_retry_queue(None)
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)

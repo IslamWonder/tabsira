@@ -12,7 +12,7 @@ Internet ──► app host (public)                         data host (no publi
              pm2  web   127.0.0.1:3000                   Redis          :6379 ┘ app host's VPN address only
              gunicorn   127.0.0.1:8000  ── Netbird VPN (wt0) ──►
              vision     127.0.0.1:8100
-             timers     sync-quran, audit-retention
+             timers     sync-quran, audit-retention, reconcile-photos
 Admins ──► Netbird DNS ──► app host VPN address :443  admin.tabsira.me (VPN only)
 ```
 
@@ -24,6 +24,7 @@ Admins ──► Netbird DNS ──► app host VPN address :443  admin.tabsira.
 | scan worker (`apps/api`)   | `current/apps/api`, `tabsira-worker.service`  | systemd, exactly one process, no port |
 | daily Quran sync           | `tabsira-sync-quran.timer`                    | systemd, 02:30 UTC, one process       |
 | audit retention policy     | `tabsira-audit-retention.timer`               | systemd, 03:40 UTC, one process       |
+| public photo copies        | `tabsira-reconcile-photos.timer`              | systemd, hourly, one process          |
 | database dumps             | `tabsira-pg-backup.timer` on the data host    | systemd, 03:15 UTC                    |
 | IndexNow                   | last step of `deploy.sh`, production only     | the deploy, never a timer             |
 | error tracking             | GlitchTip, only when `GLITCHTIP_DSN` is set   | the API (decision 24)                 |
@@ -171,6 +172,7 @@ Decision 44. Production keeps consented photos in a private S3-compatible bucket
 - **Start-up check.** The API will not start in production when it cannot use the bucket. At boot it probes with a 5-second timeout: a HeadBucket, then a put and delete of a small probe object under `private/` with a random name, which proves the keys can write. A failure names the bucket and the endpoint host (never a key); the uvicorn worker exits with gunicorn's boot-error status and the master halts. `deploy/api-roll.sh smoke` boots the new release once on a spare port before any live worker is touched: it sees the master die, prints the last lines of its log and aborts with "Pre-flight failed; no live worker was touched", so a wrong key, a missing bucket or an unreachable endpoint stops the deploy there. The probe runs again whenever a worker is added or replaced (a roll, `max_requests` recycling): a storage outage at that moment makes the new worker fail to boot and halts the master, and systemd restarts it (`Restart=on-failure`) until the bucket is back, so the API is down while the storage is.
 - **Check by hand.** `python -m src.cli.check_config` runs the same probe and prints `storage: ok` or `storage: FAILED, <reason>` (exit 1 in production); run it with the production environment file after changing any `S3_*` key.
 - **Development and test.** With no `S3_BUCKET`, photos go to `LOCAL_MEDIA_DIR` (`data/media` of the checkout by default) and the API logs "No S3 bucket: photos go to `<dir>`; production requires S3". A failing probe is a warning there, never a refusal, so `make dev` works offline.
+- **A deletion the store refused.** A withdrawal or a moderator's removal answers the person even when the store fails; the public copy it should have deleted is then reconciled: the API asks the scan worker (`photos.reconcile`, run 30 s later in that one process), and `tabsira-reconcile-photos.timer` runs `python -m src.cli.reconcile_photos` every hour, which deletes every public copy nothing shows any more and exits 1 while the store still refuses one. Two runs never overlap (an advisory lock). Run one now: `systemctl start tabsira-reconcile-photos.service`.
 - **Serving.** No route serves stored photos yet, so nginx has no location for them. Published copies are served from `S3_PUBLIC_BASE_URL` with `Cache-Control: public, max-age=300`; private photos only through signed links.
 - **Sound effects.** The 1,000 MP3 files of the ontology (one per entity, `E001.mp3` to `E1000.mp3`) are static files, not photos. Upload them once to the same bucket under `static/ontology/audio/`, for example `aws s3 sync out/ontology/audio/ s3://<bucket>/static/ontology/audio/ --content-type audio/mpeg`. The API reads them with the bucket's own keys and serves them at `GET /sounds/ontology/<id>` with `Cache-Control: public, max-age=86400`, so the bucket stays private and the browser talks to the API only. Nothing under `static/` is ever a photo. With no bucket, the same path under `LOCAL_MEDIA_DIR` is read (`data/media/static/ontology/audio/` by default). A missing file is a 404 and the page plays nothing.
 

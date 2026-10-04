@@ -8,9 +8,14 @@ runs several scans at once on its event loop. It shares nothing with the API
 processes but the database and Redis. The services a job needs (database,
 Redis, HTTP, the provider client, the detector, the engine) are built on the
 first job and closed when the worker stops.
+
+It also runs the one other queued job: reconciling the public photo copies
+after the photo store failed an API request (`services/photo_reconcile.py`).
 """
 
 from __future__ import annotations
+
+import asyncio
 
 import httpx
 from taskiq import TaskiqEvents, TaskiqState
@@ -24,6 +29,8 @@ from src.pipeline.detector import DetectorClient
 from src.redis_client import close_redis, get_redis
 from src.scans.engines import engine_factory
 from src.scans.workflow import ScanServices, run_scan
+from src.services import photo_service
+from src.storage.photos import build_photo_store
 
 QUEUE = "tabsira:scans"
 CONSUMER_GROUP = "tabsira-scan-workers"
@@ -31,6 +38,9 @@ CONSUMER_GROUP = "tabsira-scan-workers"
 IDLE_TIMEOUT_MS = 600_000
 # Above the slowest model call, so a stuck connection is noticed.
 HTTP_TIMEOUT_SECONDS = 120.0
+# A store that just failed a request is given this long before it is asked again; the API
+# request that asked has committed its state by then, so the reconcile sees it.
+RECONCILE_DELAY_SECONDS = 30.0
 
 _settings = get_settings()
 broker = RedisStreamBroker(
@@ -77,6 +87,22 @@ def services() -> ScanServices:
 async def run_scan_task(scan_id: int, run: int) -> None:
     """Run one run of a scan."""
     await run_scan(services(), scan_id, run)
+
+
+@broker.task(task_name="photos.reconcile")
+async def reconcile_photos_task() -> None:
+    """Delete the public photo copies nothing shows, a little after a store failure."""
+    await asyncio.sleep(RECONCILE_DELAY_SECONDS)
+    shared = services()
+    async with shared.sessionmaker() as db, db.begin():
+        report = await photo_service.reconcile_public_copies(db, build_photo_store(shared.settings))
+    photo_service.log.info(
+        "public photo copies reconciled: %d checked, %d deleted, %d failed%s",
+        report.checked,
+        report.deleted,
+        report.failed,
+        " (skipped: another run holds the lock)" if report.skipped else "",
+    )
 
 
 @broker.on_event(TaskiqEvents.WORKER_SHUTDOWN)

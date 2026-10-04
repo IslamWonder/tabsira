@@ -1,0 +1,17 @@
+# Delete the public photo copies nothing shows any more. One process, started by tabsira-reconcile-photos.timer, never by a worker.
+# Installed by deploy/apply-config.sh.
+[Unit]
+Description=TABSIRA: Reconcile the public photo copies with what is published
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=@APP_USER@
+Group=@APP_GROUP@
+WorkingDirectory=@APP_ROOT@/current/apps/api
+Environment=UV_PYTHON_PREFERENCE=only-managed
+Environment=ENV_FILE=@APP_ROOT@/shared/.env
+ExecStart=@APP_HOME@/.local/bin/uv run --no-sync python -m src.cli.reconcile_photos
+TimeoutStartSec=30min
+NoNewPrivileges=true
+PrivateTmp=true
