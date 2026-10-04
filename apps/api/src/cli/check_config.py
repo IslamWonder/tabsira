@@ -1,11 +1,17 @@
 """
 Validate the configuration without starting the API.
 
-    uv run python -m src.cli.check_config [--live]
+    uv run python -m src.cli.check_config [--live] [--env-file PATH]
 
 Exits 0 when the settings are valid, 1 when a key is missing or invalid. With
 `--live` it also opens a connection to the database and runs `SELECT 1`.
 Secrets are never printed: the report says whether a key is set, not its value.
+
+With ENVIRONMENT=production it goes on to the production checklist
+(src/cli/production_checks.py): every setting an operator reads before a
+deploy, as ok / fix / check / off, and with `--live` each service tried for
+real. A `fix` line stops the deploy: deploy/deploy.sh runs this before it
+migrates.
 """
 
 from __future__ import annotations
@@ -13,11 +19,22 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
 import psycopg
+from dotenv import dotenv_values
+from pydantic import ValidationError
 from sqlalchemy.engine import make_url
 
-from src.config import ConfigError, Environment, Settings, load_settings
+from src.cli import production_checks
+from src.config import (
+    ConfigError,
+    Environment,
+    Settings,
+    checkout_root,
+    format_validation_error,
+    load_settings,
+)
 from src.storage.notice import storage_notice
 from src.storage.probe import StorageProbeError, probe_storage
 
@@ -87,14 +104,36 @@ def storage_report(settings: Settings) -> tuple[str, bool]:
     return "storage: ok", True
 
 
+def _load(env_file: Path | None) -> Settings:
+    """Read the settings, from `env_file` when one is named; raise `ConfigError` naming bad keys."""
+    if env_file is None:
+        return load_settings()
+    try:
+        return Settings(_env_file=env_file)
+    except ValidationError as error:
+        raise ConfigError(format_validation_error(error)) from None
+
+
+def production_report(settings: Settings, env_file: Path | None, *, live: bool) -> bool:
+    """Print the production checklist; return whether every required line passed."""
+    path = env_file or checkout_root() / ".env"
+    env = {k: v or "" for k, v in dotenv_values(path).items()} if path.is_file() else {}
+    checks = production_checks.run_checks(settings, env)
+    if live:
+        checks += production_checks.live_checks(settings, env)
+    sys.stdout.write("\n".join(production_checks.report_lines(checks)) + "\n")
+    return not production_checks.has_failures(checks)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Check the configuration; return the process exit code."""
     parser = argparse.ArgumentParser(description="Validate the TABSIRA API configuration.")
-    parser.add_argument("--live", action="store_true", help="also query the database")
+    parser.add_argument("--live", action="store_true", help="also try the services for real")
+    parser.add_argument("--env-file", type=Path, default=None, help="the environment file to check")
     args = parser.parse_args(argv)
 
     try:
-        settings = load_settings()
+        settings = _load(args.env_file)
     except ConfigError as error:
         sys.stderr.write(f"{error}\n")
         return 1
@@ -115,6 +154,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stderr.write(f"Database check failed: {problem}\n")
             return 1
         sys.stdout.write("  database: reachable\n")
+    if settings.environment == Environment.PRODUCTION and not production_report(
+        settings, args.env_file, live=args.live
+    ):
+        return 1
     return 0
 
 

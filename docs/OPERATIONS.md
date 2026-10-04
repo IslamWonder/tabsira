@@ -72,6 +72,16 @@ Order matters: the data host first, because the first deploy migrates the databa
 4. Fill `/srv/tabsira/shared/.env` (every `CHANGE_ME`, the S3 keys of [Photos](#photos), `REDIS_PASSWORD`). Then check the data host from the application host before the first deploy: `psql "<the DATABASE_URL without +asyncpg>" -c 'select current_user'` must answer (the data host cannot test this login itself, `pg_hba` admits the application host only), and Redis must refuse a client without the password. Then `tabsira-deploy --dry-run` and `tabsira-deploy` as the app user. The first deploy builds the web app, installs the Python environments and downloads the detector weights (about 630 MB, once; written from the scripts, not exercised in the rehearsal); the first build takes a few minutes.
 5. After the first deploy, as the app user: the data imports are run from the release. The two corpus files are not in git, so copy them to `/srv/tabsira/shared/corpus/` first (`docs/ASSET_MANIFEST.md` has their SHA-256), then `cd /srv/tabsira/current && CORPUS_DIR=/srv/tabsira/shared/corpus bash scripts/data.sh` (`data.sh` sets `UV_NO_SYNC=1` itself when `ENVIRONMENT=production`; the scripture store, then the scripture vectors downloaded from the owners' bucket and verified, docs/EMBEDDINGS.md, so no vector is ever computed on the server; `VECTORS_ARCHIVE` in `.env` may name a copy already on the host), and `cd /srv/tabsira/current/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.make_admin <email>` makes an existing account the first admin (`docs/ADMIN.md`). Keep `UV_NO_SYNC=1` on every other `uv run` in a release: without it uv installs the development dependencies into the production environment.
 
+## Checking the environment file
+
+`python -m src.cli.check_config` loads the settings (which already refuse a development host, an empty key or a short secret in production) and, when `ENVIRONMENT=production`, prints the production checklist: every setting an operator reads before a deploy, grouped by what it is for, each line `ok`, `fix` (required: the exit status is 1 and the deploy stops), `check` (recommended) or `off` (optional). Secrets are never printed. It covers, among others: no `CHANGE_ME` or address placeholder left, one domain for the site, the API and the admin host, `CORS_ORIGINS` and the cookie domain, `SYNC_DATABASE_URL` naming the same database, password lengths, `API_WORKERS` against the connection budget, a model for every AI stage of the active provider (a blank `AI_*__PLANNER_MODEL=` line overrides the default with nothing), the mail server, the Google callback, the baked `NEXT_PUBLIC_*` addresses and the pm2 settings.
+
+`--live` also tries the services: the database, Redis (the password, and that it keeps nothing on disk), the AI provider's key (a listing of its models: no tokens spent), the detector, the mail server (a login, never a message) and that this host resolves the site and the API names. `--env-file PATH` checks another file. The deploy runs it in a new release before the migrations; run it by hand from any release:
+
+```bash
+cd /srv/tabsira/releases/<id>/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.check_config --live
+```
+
 ## Deploying
 
 ```bash
@@ -86,7 +96,7 @@ tabsira-deploy --rollback           # back to the previous release, no rebuild
 1. Take the lock; check the host and that `.env` says `ENVIRONMENT=production` and names no development address.
 2. Optional dump (`PRE_DEPLOY_BACKUP=true`).
 3. Cut `releases/<id>` with `git archive`, `uv sync --frozen --no-dev` for the API and vision, `pnpm install --frozen-lockfile`, build the web app (`NEXT_PUBLIC_*` are baked here from `.env`; the build refuses a development address), assemble `web/` and copy its static files to the shared static folder.
-4. `check_config --live`, then the migrations: the `geodata` chain, then the `app` chain (`scripts/migrate.sh`), then the audit policy.
+4. `check_config --live`: the production checklist of the environment file, and each service tried for real (see [Checking the environment file](#checking-the-environment-file)); a `fix` line stops the deploy here, before anything is migrated or switched. Then the migrations: the `geodata` chain, then the `app` chain (`scripts/migrate.sh`), then the audit policy.
 5. Pre-flight: boot the new API and the new web build on spare ports (18000, 3100) and wait until they answer. A release that cannot start is removed and the live one was never touched.
 6. Switch `current` with one atomic rename.
 7. Roll the API, restart the scan worker, roll the web, then restart vision when `services/vision` changed.
