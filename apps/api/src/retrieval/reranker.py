@@ -1,30 +1,36 @@
 """
-Rerank the fused candidates: the cross-encoder of services/vision, or a language model.
+Rerank the fused candidates: a small language model, or the cross-encoder of services/vision.
+
+Both are a `Reranker`: scores in passage order, or None with the reason there
+are none. A scan never waits on either: one that fails, is slow, or answers
+nonsense is skipped, and the caller keeps the fused order and records why.
+
+`LlmReranker` is the default (decision 41): the provider's small text model
+scores each numbered passage from 0 to 10. Its answer is a strict schema of
+integers, numbers and scores, closed to any other field, so no text the model
+writes can come back through it (the leak guard has nothing to read).
 
 `RerankerClient` calls `POST /rerank` on the vision service, which reads the
 query and each candidate's document together and scores how well they match
-(master prompt v2 §9). A scan never waits on it: a service that is down, slow,
-or answers nonsense is skipped, and the outcome says so (`scores` None with
-the reason); the caller then keeps the fused order and records why.
-
-`llm_rerank` asks a chat model to score the same pairs. It is the baseline the
-retrieval benchmark measures the cross-encoder against (an LLM rerank was the
-slowest stage of the earlier build); the pipeline does not use it.
+(master prompt v2 §9). It is for a host with a GPU: on a CPU it reads about
+1.5 passages a second (docs/BENCHMARK.md).
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, Protocol
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from src.ai.client import ModelClient
+from src.ai.errors import AiCallError
 from src.config import AiStage
 
 log = logging.getLogger("tabsira.retrieval.reranker")
@@ -42,6 +48,12 @@ class RerankOutcome:
     model: str | None
     latency_ms: int
     error: str | None = None
+
+
+class Reranker(Protocol):
+    """Scores passages against a query; never raises, says why when it has no scores."""
+
+    async def rerank(self, query: str, passages: Sequence[str]) -> RerankOutcome: ...
 
 
 class _Answer(BaseModel):
@@ -103,12 +115,17 @@ class RerankerClient:
 class _Judged(BaseModel):
     """The relevance of one numbered passage to the query, from 0 (none) to 10 (direct)."""
 
+    # Closed: an answer that adds a field (where a model could write text) is refused.
+    model_config = ConfigDict(extra="forbid")
+
     number: int
     relevance: Annotated[int, Field(ge=0, le=10)]
 
 
 class LlmRanking(BaseModel):
     """A relevance score for every numbered passage."""
+
+    model_config = ConfigDict(extra="forbid")
 
     passages: list[_Judged]
 
@@ -143,3 +160,41 @@ async def llm_rerank(
         if 1 <= judged.number <= len(passages):
             scores[judged.number - 1] = judged.relevance / 10
     return scores
+
+
+class LlmReranker:
+    """Reranks with the provider's small text model (`llm_rerank`), within a time limit."""
+
+    def __init__(
+        self,
+        client: ModelClient,
+        *,
+        model: str,
+        timeout_seconds: float,
+        clock: Callable[[], float] = time.perf_counter,
+    ) -> None:
+        self._client = client
+        self._model = model
+        self._timeout = timeout_seconds
+        self._clock = clock
+
+    async def rerank(self, query: str, passages: Sequence[str]) -> RerankOutcome:
+        started = self._clock()
+        if not passages:
+            return RerankOutcome([], None, 0)
+        sent = [passage[:MAX_PASSAGE_CHARS] for passage in passages[:MAX_PASSAGES]]
+        try:
+            scores = await asyncio.wait_for(
+                llm_rerank(self._client, query, sent, model=self._model), self._timeout
+            )
+        except TimeoutError:
+            reason = "timeout"
+        except AiCallError as error:
+            reason = error.code.value
+        else:
+            return RerankOutcome(scores, self._model, self._elapsed(started))
+        log.warning("reranker skipped: %s", reason)
+        return RerankOutcome(None, None, self._elapsed(started), reason)
+
+    def _elapsed(self, started: float) -> int:
+        return round((self._clock() - started) * 1000)

@@ -175,6 +175,21 @@ class ScanEngine(StrEnum):
     DEMO = "demo"
 
 
+class RerankerKind(StrEnum):
+    """
+    What reorders the head of the fused evidence candidates (decision 41).
+
+    `llm` asks the provider's small text model (its rerank model) for a score per
+    numbered candidate; a provider without one reranks nothing. `cross_encoder`
+    calls services/vision at RERANKER_URL, for a host with a GPU. `off` keeps the
+    fused order.
+    """
+
+    LLM = "llm"
+    CROSS_ENCODER = "cross_encoder"
+    OFF = "off"
+
+
 class ConfigError(RuntimeError):
     """The configuration is missing a key or holds an invalid one."""
 
@@ -304,6 +319,8 @@ class OvhSettings(ProviderSettings):
     planner_model: str = "Qwen3.8-27B"
     verify_model: str = "Qwen3.8-27B"
     compose_model: str = "Qwen3.8-27B"
+    # No rerank model: OVH's smallest text model (Qwen3.5-9B) was measured on the
+    # vision stage only, so with RERANKER=llm an OVH scan keeps the fused order.
     # docs/BENCHMARK.md, retrieval: bge-m3 is OVH's best embedding for Arabic queries.
     embedding_model: str = "bge-m3"
     reasoning_effort: ReasoningEffort = "none"
@@ -324,6 +341,8 @@ class OpenAISettings(ProviderSettings):
     planner_model: str = "gpt-5.4-mini-2026-03-17"
     verify_model: str = "gpt-5.4-mini-2026-03-17"
     compose_model: str = "gpt-5.4-mini-2026-03-17"
+    # docs/BENCHMARK.md, retrieval: the best reranker measured (MRR 0.770, about 3 s).
+    rerank_model: str = "gpt-5.4-nano-2026-03-17"
     # docs/BENCHMARK.md, retrieval: the best recall and MRR of the three measured,
     # at 1,536 dimensions so pgvector can index it with HNSW.
     embedding_model: str = "text-embedding-3-large"
@@ -623,11 +642,14 @@ class Settings(BaseSettings):
     # that does not answer in time is skipped and the scan goes on without boxes.
     detector_url: str = "http://127.0.0.1:8100"
     detector_timeout_seconds: Annotated[float, Field(gt=0)] = 30.0
-    # The cross-encoder that reranks evidence candidates, served by services/vision
-    # (POST /rerank). One that does not answer in time is skipped: the fused order is kept.
-    # Empty switches reranking off (docs/BENCHMARK.md: about 19 s per 30 passages on a CPU).
+    # What reranks the evidence candidates (decision 41): the provider's small text
+    # model by default. A reranker that fails or does not answer in time is skipped
+    # and the fused order is kept.
+    reranker: RerankerKind = RerankerKind.LLM
+    # The cross-encoder of services/vision (POST /rerank), used when RERANKER=cross_encoder;
+    # empty switches it off (docs/BENCHMARK.md: about 19 s per 30 passages on a CPU).
     reranker_url: str = "http://127.0.0.1:8100"
-    reranker_timeout_seconds: Annotated[float, Field(gt=0)] = 15.0
+    reranker_timeout_seconds: Annotated[float, Field(gt=0)] = 8.0
 
     # Photos received for a scan: largest upload, and largest decoded size
     # (checked from the header, before decoding: a small file can expand a lot).

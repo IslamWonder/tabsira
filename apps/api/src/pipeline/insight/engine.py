@@ -5,7 +5,8 @@ UNDERSTANDING   the ontology resolves the scene and applies its constraints (a
                 block stops a scan focused on it; a question waits for its
                 answer); the learning path offers the units that fit; the
                 planner proposes up to three candidates with concept queries.
-SEARCHING       hybrid search and the cross-encoder, Quran and hadith apart.
+SEARCHING       hybrid search, Quran and hadith apart, then the reranker
+                (decision 41) over every list at once.
 VERIFYING       the verifier judges every shortlisted text; the gate keeps the
                 eligible and relevant ones (decision 18 for hadith), queues a
                 wanted hadith without a ruling, prefers a text the learner has
@@ -38,7 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from src.ai.client import ModelClient, client_for
 from src.ai.errors import AiCallError
 from src.ai.records import CallLog
-from src.config import Settings
+from src.config import RerankerKind, Settings
 from src.models import EmbeddedCorpus
 from src.pipeline.engine import (
     EngineRequest,
@@ -76,11 +77,11 @@ from src.pipeline.insight.planner import (
     PlannedCandidate,
     PlannerLeakError,
 )
-from src.pipeline.insight.search import Embedding, EvidenceSearch, SearchResult, embed_queries
+from src.pipeline.insight.search import Embedding, EvidenceSearch, Found, embed_queries
 from src.pipeline.leak_guard import LeakDetector
 from src.retrieval.concepts import ConceptIndex, load_concept_index
 from src.retrieval.refs import Numbering, is_quran, resolve_hadiths, resolve_verses
-from src.retrieval.reranker import RerankerClient
+from src.retrieval.reranker import LlmReranker, Reranker, RerankerClient
 from src.services.ontology_candidates import (
     SOURCE_PLANNER,
     SOURCE_VISION_MODEL,
@@ -175,7 +176,7 @@ class PipelineInsightEngine:
         client: ModelClient,
         *,
         embedding: Embedding | None,
-        reranker: RerankerClient | None,
+        reranker: Reranker | None,
         refinement_rounds: int = REFINEMENT_ROUNDS,
         resources: ResourceCache | None = None,
         clock: Callable[[], float] = time.perf_counter,
@@ -360,38 +361,31 @@ class PipelineInsightEngine:
         vectors, embed_error = await embed_queries(self._embedding, queries)
         if embed_error:
             log.warning("query embedding skipped: %s; searching without vectors", embed_error)
-        shortlists = []
+        # A session reads one query at a time, so the lists are searched in turn; the
+        # reranker calls do not touch it and run together: one wait, not one per list.
+        searched: list[tuple[Sequence[str], list[Found]]] = []
         for candidate in candidates:
             verse_anchors, hadith_anchors = await self._anchors(session, candidate)
-            # A corpus the planner asked nothing of is not searched: no half is filled
-            # with a text found by the other half's queries.
-            quran = (
-                await search.search(
-                    session,
-                    EmbeddedCorpus.QURAN,
-                    candidate.quran_queries,
-                    vectors,
-                    anchors=verse_anchors,
+            for corpus, corpus_queries, anchors in (
+                (EmbeddedCorpus.QURAN, candidate.quran_queries, verse_anchors),
+                (EmbeddedCorpus.HADITH, candidate.hadith_queries, hadith_anchors),
+            ):
+                # A corpus the planner asked nothing of is not searched: no half is filled
+                # with a text found by the other half's queries.
+                found = (
+                    await search.search(session, corpus, corpus_queries, vectors, anchors=anchors)
+                    if corpus_queries
+                    else []
                 )
-                if candidate.quran_queries
-                else SearchResult([])
-            )
-            hadith = (
-                await search.search(
-                    session,
-                    EmbeddedCorpus.HADITH,
-                    candidate.hadith_queries,
-                    vectors,
-                    anchors=hadith_anchors,
-                )
-                if candidate.hadith_queries
-                else SearchResult([])
-            )
-            for result in (quran, hadith):
-                if result.rerank_error:
-                    log.warning("reranker skipped: %s; fused order kept", result.rerank_error)
-            shortlists.append(shortlist_of(candidate, quran.found, hadith.found))
-        return shortlists
+                searched.append((corpus_queries, found))
+        results = await asyncio.gather(*(search.rerank(q, found) for q, found in searched))
+        for result in results:
+            if result.rerank_error:
+                log.warning("reranker skipped: %s; fused order kept", result.rerank_error)
+        return [
+            shortlist_of(candidate, results[2 * index].found, results[2 * index + 1].found)
+            for index, candidate in enumerate(candidates)
+        ]
 
     @staticmethod
     async def _anchors(
@@ -466,17 +460,22 @@ def build_engine(
         if block.embedding_model
         else None
     )
-    reranker = (
-        RerankerClient(
-            settings.reranker_url, http, timeout_seconds=settings.reranker_timeout_seconds
-        )
-        if settings.reranker_url
-        else None
-    )
     return PipelineInsightEngine(
         sessionmaker,
         client,
         embedding=embedding,
-        reranker=reranker,
+        reranker=build_reranker(settings, http, client),
         resources=resources or SHARED_RESOURCES,
     )
+
+
+def build_reranker(
+    settings: Settings, http: httpx.AsyncClient, client: ModelClient
+) -> Reranker | None:
+    """Return the reranker RERANKER names, or None when it is off or has nothing to call."""
+    timeout = settings.reranker_timeout_seconds
+    if settings.reranker is RerankerKind.LLM and settings.ai.rerank_model:
+        return LlmReranker(client, model=settings.ai.rerank_model, timeout_seconds=timeout)
+    if settings.reranker is RerankerKind.CROSS_ENCODER and settings.reranker_url:
+        return RerankerClient(settings.reranker_url, http, timeout_seconds=timeout)
+    return None
