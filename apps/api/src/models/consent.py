@@ -13,7 +13,8 @@ from src.models.base import Base, created_at_column, string_enum, uuid_pk
 
 
 class ConsentKind(StrEnum):
-    TERMS = "terms"  # the terms and privacy text
+    TERMS = "terms"  # the terms of use
+    PRIVACY = "privacy"  # the privacy policy
     PHOTO_STORAGE = "photo_storage"  # keep my photos on the server
     PERSONALIZATION = "personalization"  # tailor the explanations to my choices
     MEMORY = "memory"  # remember my earlier insights
