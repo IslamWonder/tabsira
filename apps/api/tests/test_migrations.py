@@ -179,6 +179,16 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
                 )
             ).scalars()
         )
+        views = set(
+            (
+                await connection.execute(
+                    text(
+                        "SELECT schemaname || '.' || matviewname || ' ' || ispopulated "
+                        "FROM pg_matviews WHERE schemaname IN ('app', 'geodata')"
+                    )
+                )
+            ).scalars()
+        )
         triggers = set(
             (
                 await connection.execute(
@@ -203,7 +213,9 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
         *(f"app.{table}" for table in APP_TABLES),
     } == tables
     assert set(EXTENSIONS) <= extensions
-    assert versions == {"app": "20261004_180500", "geodata": "20261004_130000"}
+    assert versions == {"app": "20261004_181000", "geodata": "20261004_130000"}
+    # alembic check cannot see a materialized view either.
+    assert views == {"app.quran_verse_spans true"}
     # The models and the migrations describe the same database.
     assert {"ix_geonames_name_trgm", "ix_geonames_location_geom", "pk_geonames"} <= indexes
     # The scripture write guard exists after the migrations too, not only in a schema built

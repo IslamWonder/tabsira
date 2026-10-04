@@ -7,6 +7,9 @@ from the feed that carries a different text replaces it through
 `apply_correction`: the previous text goes to `quran_verse_history`, the new
 one is stored with its own hash and version, and an audit row records both
 hashes and where the new text came from. Nothing here edits a text.
+
+Whenever a search copy is added or replaced, the verse spans the leak guard
+reads across verses (`quran_verse_spans`) are rebuilt in the same transaction.
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, insert, select, update
+from sqlalchemy import text as sa_text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,6 +35,7 @@ from src.models import (
     ScriptureAudit,
     ScriptureSyncState,
 )
+from src.models.scripture import quran_verse_spans
 from src.scripture.errors import ScriptureError
 from src.scripture.quranpedia import MUSHAF_ID
 from src.scripture.text import search_copy, sha256_hex
@@ -194,6 +199,7 @@ async def apply_correction(
         .where(QuranVerseSearch.verse_id == verse.id)
         .values(normalized_text=search_copy(text))
     )
+    await refresh_verse_spans(session)
     session.add(
         ScriptureAudit(
             entity="quran_verse",
@@ -307,7 +313,14 @@ async def reconcile_verses(
                 for verse_id, text in inserted
             ],
         )
+        await refresh_verse_spans(session)
     report.inserted = len(new_rows)
+
+
+async def refresh_verse_spans(session: AsyncSession) -> None:
+    """Rebuild the folded verse spans from the search copies (a few thousand short rows)."""
+    spans = f"{quran_verse_spans.schema}.{quran_verse_spans.name}"
+    await session.execute(sa_text(f"REFRESH MATERIALIZED VIEW {spans}"))
 
 
 async def import_quran(

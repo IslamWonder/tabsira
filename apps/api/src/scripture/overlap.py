@@ -30,11 +30,17 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import HadithSearch, QuranVerseSearch
+from src.models.scripture import quran_verse_spans
 from src.scripture.text import search_copy
 
 WINDOW = 7
-# The folded columns compared, each with a trigram index.
-COLUMNS = (QuranVerseSearch.normalized_text, HadithSearch.normalized_text)
+# The folded columns compared, each with a trigram index: each verse, each verse with
+# the six words after it in its surah (a quotation across short verses), each hadith.
+COLUMNS = (
+    QuranVerseSearch.normalized_text,
+    quran_verse_spans.c.normalized_text,
+    HadithSearch.normalized_text,
+)
 
 
 def patterns(texts: Iterable[str], window: int = WINDOW) -> list[str]:

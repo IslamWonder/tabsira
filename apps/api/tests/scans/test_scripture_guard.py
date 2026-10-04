@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 import pytest
 from sqlalchemy import text
 from sqlalchemy.dialects import postgresql
 
 from src.models import HadithClassification
+from src.models import scripture as scripture_models
 from src.pipeline.engine import ExplanationPart, SmallStep
 from src.scans.accept import accept
 from src.scripture import overlap
@@ -14,10 +18,12 @@ from src.scripture.text import search_copy
 from tests.scans.builders import hadith, insight_row, proposed, scan_row, scene
 from tests.scans.conftest import as_guest, rule
 from tests.scans.test_chat import an_insight, ask, said
-from tests.scripture.fixtures import hadith_text, verse_text
+from tests.scripture.fixtures import hadith_text, load_json, store_quran, verse_text
 
+API_DIR = Path(__file__).resolve().parents[2]
 TRIGRAM_INDEXES = (
     "ix_quran_verse_search_normalized_text_trgm",
+    "ix_quran_verse_spans_normalized_text_trgm",
     "ix_hadith_search_normalized_text_trgm",
 )
 
@@ -124,9 +130,43 @@ async def test_the_store_check_is_served_by_the_trigram_indexes(store):
             )
             plans.append("\n".join((await db.scalars(text(f"EXPLAIN {compiled}"))).all()))
 
-    assert [any(index in plan for index in TRIGRAM_INDEXES) for plan in plans] == [True] * len(
-        plans
-    )
+    assert [[index for index in TRIGRAM_INDEXES if index in plan] for plan in plans] == [
+        [index] for index in TRIGRAM_INDEXES
+    ]
+
+
+@pytest.mark.parametrize(("surah", "ayahs"), [(112, range(1, 5)), (1, range(1, 7))])
+async def test_a_quotation_of_short_verses_one_after_another_is_found(store, surah, ayahs):
+    quoted = " ".join(words_of(verse_text(surah, ayah), 0, 99) for ayah in ayahs)
+    async with store() as db:
+        found = await overlap.repeats_store(db, [f"وكما قيل {quoted} في ذلك"])
+        # No verse of these alone holds seven words of the quotation in a row.
+        by_verse = await db.scalar(overlap.statements(overlap.patterns([quoted]))[0])
+
+    assert found
+    assert by_verse is None
+
+
+async def test_the_spans_are_rebuilt_when_a_verse_is_corrected(store):
+    quoted = " ".join(words_of(verse_text(112, ayah), 0, 99) for ayah in range(1, 5))
+    async with store() as db:
+        await db.execute(text("REFRESH MATERIALIZED VIEW quran_verse_spans WITH NO DATA"))
+        # The import corrects 30:50 to an earlier real encoding of it.
+        await store_quran(db, text_30_50=load_json("kfgqpc-v13-30-50.json")["text"])
+
+        assert await overlap.repeats_store(db, [quoted])
+
+
+def test_the_migration_writes_the_spans_the_models_write():
+    path = API_DIR / "alembic" / "versions" / "20261004_181000_create_quran_verse_spans.py"
+    spec = importlib.util.spec_from_file_location(path.stem, path)
+    assert spec is not None
+    assert spec.loader is not None
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+
+    assert migration.VERSE_SPAN_STATEMENTS == scripture_models.VERSE_SPAN_STATEMENTS
+    assert migration.DROP_VERSE_SPANS == scripture_models.DROP_VERSE_SPANS
 
 
 async def test_a_chat_answer_that_copies_any_stored_text_is_refused(

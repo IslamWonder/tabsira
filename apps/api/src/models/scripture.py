@@ -38,8 +38,10 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    column,
     event,
     func,
+    table,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -150,6 +152,56 @@ class QuranVerseSearch(Base):
         BigInteger, ForeignKey("quran_verses.id", ondelete="CASCADE"), primary_key=True
     )
     normalized_text: Mapped[str] = mapped_column(Text)
+
+
+# The folded text of each verse followed by the next six words of its surah,
+# whatever the verses they come from: a run of seven words that crosses from one
+# verse to the next (short verses quoted one after another) lies whole in one span.
+# A materialized view of the search copies, rebuilt by the importer and the
+# correction sync (`refresh_verse_spans`), never shown. The migration that creates
+# it writes the same statements out; a test keeps the two identical.
+VERSE_SPAN_STATEMENTS = (
+    """
+    CREATE MATERIALIZED VIEW app.quran_verse_spans AS
+    SELECT s.verse_id,
+           concat_ws(
+               ' ',
+               s.normalized_text,
+               array_to_string(
+                   (string_to_array(string_agg(s.normalized_text, ' ') OVER following, ' '))[1:6],
+                   ' '
+               )
+           ) AS normalized_text
+    FROM app.quran_verse_search AS s
+    JOIN app.quran_verses AS v ON v.id = s.verse_id
+    WINDOW following AS (
+        PARTITION BY v.surah ORDER BY v.ayah ROWS BETWEEN 1 FOLLOWING AND 6 FOLLOWING
+    )
+    """,
+    "CREATE UNIQUE INDEX ix_quran_verse_spans_verse_id ON app.quran_verse_spans (verse_id)",
+    """
+    CREATE INDEX ix_quran_verse_spans_normalized_text_trgm
+    ON app.quran_verse_spans USING gin (normalized_text gin_trgm_ops)
+    """,
+)
+DROP_VERSE_SPANS = "DROP MATERIALIZED VIEW IF EXISTS app.quran_verse_spans"
+
+quran_verse_spans = table(
+    "quran_verse_spans",
+    column("verse_id", BigInteger),
+    column("normalized_text", Text),
+    schema="app",
+)
+
+for _statement in VERSE_SPAN_STATEMENTS:
+    # SQLAlchemy ships DDL without type hints.
+    _ddl = DDL(_statement)  # type: ignore[no-untyped-call]
+    event.listen(QuranVerseSearch.__table__, "after_create", _ddl.execute_if(dialect="postgresql"))
+event.listen(
+    QuranVerseSearch.__table__,
+    "before_drop",
+    DDL(DROP_VERSE_SPANS).execute_if(dialect="postgresql"),  # type: ignore[no-untyped-call]
+)
 
 
 class QuranAnnotation(Base):
