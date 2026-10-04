@@ -79,6 +79,16 @@ def test_a_sequence_belongs_to_a_plain_table_name():
         public_id_pk("bad name")
 
 
+def test_the_column_is_a_bigint_key_the_function_fills_and_marks_for_its_sequence():
+    column = public_id_pk("posts").column
+
+    assert isinstance(column.type, BigInteger)
+    assert column.primary_key is True
+    assert column.autoincrement is False
+    assert str(column.server_default.arg) == "app.timestamp_id('posts')"
+    assert column.info == {PUBLIC_ID_INFO: True}
+
+
 # ─── In the database ───────────────────────────────────────────────
 
 
