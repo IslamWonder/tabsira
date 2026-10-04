@@ -105,7 +105,7 @@ Before you say a task is done: `make lint && make coverage` pass, and `make smok
 
 - **Phase mode (owners' decision 42).** During a build phase a branch merges when `make lint` passes and the existing tests of the areas it touches pass (`uv run pytest -n 2 tests/<area>`, `vitest related`); new code may land without its tests and the full coverage gate is not run per merge. Each phase ends with a test task that writes the missing tests and brings `make coverage` back to 100 % before release. Exception: code that decides or displays Quran or hadith text, the scripture guards, authentication, sessions, privacy and photo or location handling keep their tests in the same commit and their review before merge.
 - 100 % line, branch and function coverage in `apps/web`, `apps/api` and `services/vision` at the end of every phase. An exclusion needs a written reason in the coverage config.
-- Unit tests never touch the network, a model or a real external service. Mock at the provider boundary. Database tests use `tabsira_test` only.
+- Unit tests never touch the network, a model or a real external service. Mock at the provider boundary. Database tests use a test database only: `tabsira_test` when one agent works on the machine; when several do, each worktree points `TEST_DATABASE_URL` at its own copy of `tabsira_template` (for example `tabsira_<task>_test`), since parallel runs on the same names break each other.
 - A bug fix starts with a test that fails.
 - Compare displayed scripture with its stored hash in tests.
 
