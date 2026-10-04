@@ -7,6 +7,7 @@ export const INDEXED_ROUTES = ['/', '/terms', '/privacy', '/support'];
 export const UNLISTED_ROUTES = [
   '/world',
   '/community',
+  '/community/publish',
   '/atlas',
   '/me',
   '/offline',

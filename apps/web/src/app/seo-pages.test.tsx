@@ -3,6 +3,7 @@ import { INDEXED_ROUTES, UNLISTED_ROUTES } from '@/lib/seo';
 import { messages } from '@/messages';
 import { metadata as atlas } from './atlas/page';
 import { metadata as community } from './community/page';
+import { metadata as publish } from './community/publish/page';
 import { metadata as forgot } from './forgot-password/page';
 import { metadata as me } from './me/page';
 import { metadata as offline } from './offline/page';
@@ -22,6 +23,7 @@ const INDEXED = { '/': home, '/terms': terms, '/privacy': privacy, '/support': s
 const UNLISTED = {
   '/world': world,
   '/community': community,
+  '/community/publish': publish,
   '/atlas': atlas,
   '/me': me,
   '/offline': offline,

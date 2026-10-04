@@ -17,6 +17,8 @@ function signedIn(extra: Record<string, Route> = {}, user = USER): Record<string
     'GET /auth/me': { body: user },
     'GET /profile': { body: PROFILE },
     'GET /consent/policy': { body: POLICY },
+    'GET /me/public-identity': { body: { handle: null, public_name: null } },
+    'GET /blocks': { body: [] },
     ...extra,
   };
 }
@@ -71,7 +73,7 @@ describe('MeScreen signed in', () => {
       within(nav)
         .getAllByRole('link')
         .map((link) => link.getAttribute('href'))
-    ).toEqual(['#account', '#about', '#settings', '#practice', '#data', '#cookies']);
+    ).toEqual(['#account', '#about', '#identity', '#settings', '#practice', '#data', '#cookies']);
     await userEvent.click(screen.getByRole('button', { name: 'اخرج' }));
     expect(await screen.findByText('خرجت من حسابك على هذا الجهاز.')).toBeInTheDocument();
     expect(readSession()).toEqual({ status: 'guest' });

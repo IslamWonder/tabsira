@@ -1,30 +1,15 @@
 import type { Metadata } from 'next';
-import { ComingSoon } from '@/components/app/coming-soon';
-import { CommunityIcon } from '@/components/icons';
-import { FeedLayout } from '@/components/layout/layouts';
+import { CommunityScreen } from '@/components/community/community-screen';
 import { unlistedMetadata } from '@/lib/seo';
 import { messages } from '@/messages';
 
-// Outside the sitemap until there are public posts to list (docs/SEO.md §1).
+// The feeds change by the minute; the sitemap lists the posts themselves (docs/SEO.md §1).
 export const metadata: Metadata = unlistedMetadata({
   path: '/community',
-  title: messages.nav.community,
+  title: messages.community.title,
+  description: messages.community.lead,
 });
 
-/** The feed column, centred; its tabs and filters will take the side column. */
 export default function CommunityPage() {
-  return (
-    <FeedLayout
-      aside={null}
-      feed={
-        <ComingSoon
-          icon={<CommunityIcon width="28" height="28" />}
-          title={messages.pages.community.title}
-          description={messages.pages.community.description}
-          className="py-10 tablet:py-16"
-        />
-      }
-      className="pb-4 tablet:pb-8"
-    />
-  );
+  return <CommunityScreen />;
 }

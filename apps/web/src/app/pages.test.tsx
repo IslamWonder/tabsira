@@ -21,7 +21,6 @@ vi.mock('next/navigation', () => ({
 
 describe('placeholder routes', () => {
   it.each<[string, () => ReactElement, Metadata, string, string]>([
-    ['/community', CommunityPage, communityMetadata, 'تبصرة تواصل', '/community'],
     ['/atlas', AtlasPage, atlasMetadata, 'أطلس بصائر العالم', '/atlas'],
   ])(
     '%s says «قريبًا» honestly and has its canonical address',
@@ -32,6 +31,18 @@ describe('placeholder routes', () => {
       expect(metadata.alternates?.canonical).toBe(canonical);
     }
   );
+
+  it('opens «تبصرة تواصل» on its feeds, outside the sitemap', () => {
+    render(<CommunityPage />);
+    expect(screen.getByRole('heading', { level: 1, name: 'تبصرة تواصل' })).toBeInTheDocument();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'لك',
+      'أتابع',
+      'الأحدث',
+    ]);
+    expect(communityMetadata.alternates?.canonical).toBe('/community');
+    expect(communityMetadata.robots).toEqual({ index: false, follow: false });
+  });
 
   it('keeps the personal spaces out of search engines', () => {
     expect(worldMetadata.robots).toEqual({ index: false, follow: false });

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useSession } from '@/account/session';
+import { IdentitySection } from '@/components/community/identity-section';
 import { SettingsLayout } from '@/components/layout/layouts';
 import { messages } from '@/messages';
 import { AboutSection } from './about-section';
@@ -27,7 +28,7 @@ export function MeScreen() {
   const editor = useProfile(signedIn);
   const [notice, setNotice] = useState<string | null>(null);
   const sections: SectionId[] = signedIn
-    ? ['account', 'about', 'settings', 'practice', 'data', 'cookies']
+    ? ['account', 'about', 'identity', 'settings', 'practice', 'data', 'cookies']
     : ['account', 'settings', 'practice', 'cookies'];
 
   return (
@@ -59,6 +60,7 @@ export function MeScreen() {
       {signedIn && editor.load.status === 'ready' ? (
         <AboutSection profile={editor.load.profile} save={editor.save} />
       ) : null}
+      <IdentitySection />
       <SettingsSection editor={editor} signedIn={signedIn} />
       <PracticeSection />
       {signedIn ? (

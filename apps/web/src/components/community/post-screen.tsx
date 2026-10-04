@@ -1,0 +1,132 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useSession } from '@/account/session';
+import { StatusScreen } from '@/components/app/status-screen';
+import { CommunityIcon } from '@/components/icons';
+import { PageContainer } from '@/components/layout/layouts';
+import { Button, LinkButton } from '@/components/ui/button';
+import { Notice } from '@/components/ui/notice';
+import { failureMessage } from '@/lib/api/failure-message';
+import type { Failure } from '@/lib/api/result';
+import { messages } from '@/messages';
+import { getPost } from '@/social/api';
+import type { Post } from '@/social/types';
+import { Comments } from './comments';
+import { PostCard } from './post-card';
+
+const C = messages.community;
+
+type Load =
+  | { kind: 'loading' }
+  | { kind: 'ready'; post: Post }
+  | { kind: 'gone' }
+  | { kind: 'missing' }
+  | { kind: 'withdrawn' }
+  | { kind: 'failed'; failure: Failure };
+
+function BackLink() {
+  return (
+    <Link
+      href="/community"
+      className="inline-flex min-h-10 items-center text-link underline-offset-4 hover:underline"
+    >
+      {C.back}
+    </Link>
+  );
+}
+
+/**
+ * One post on its own page: the card with its evidence shown, then the
+ * comments. 404 and 410 are told apart (a post that is gone says so; one the
+ * viewer may not see is simply not found, so an id reveals nothing). The post
+ * is asked for again when the session changes, since what the viewer may see
+ * depends on who they are.
+ */
+export function PostScreen({ postId }: { postId: string }) {
+  const session = useSession();
+  const [load, setLoad] = useState<Load>({ kind: 'loading' });
+  const sessionStatus = session.status;
+  // Counts the retries: each one asks the API again.
+  const [attempt, setAttempt] = useState(0);
+
+  // Asked again when the session changes: what the viewer may see depends on who they are.
+  useEffect(() => {
+    if (sessionStatus === 'unknown') {
+      return;
+    }
+    let current = true;
+    setLoad({ kind: 'loading' });
+    void getPost(postId).then((result) => {
+      if (!current) {
+        return;
+      }
+      if (result.ok) {
+        setLoad({ kind: 'ready', post: result.data });
+      } else if (result.status === 410) {
+        setLoad({ kind: 'gone' });
+      } else if (result.status === 404) {
+        setLoad({ kind: 'missing' });
+      } else {
+        setLoad({ kind: 'failed', failure: result });
+      }
+    });
+    return () => {
+      current = false;
+    };
+  }, [postId, sessionStatus, attempt]);
+
+  return (
+    <PageContainer className="flex max-w-[48rem] flex-col gap-8 pt-[max(28px,env(safe-area-inset-top))] pb-6 tablet:pb-10">
+      <BackLink />
+      {load.kind === 'loading' ? (
+        <p role="status" className="m-0 py-8 text-center text-fg-muted">
+          {C.loading}
+        </p>
+      ) : null}
+      {load.kind === 'ready' ? (
+        <>
+          <PostCard
+            post={load.post}
+            variant="full"
+            headingLevel={1}
+            onChange={(post) => setLoad({ kind: 'ready', post })}
+            onRemoved={(reason) =>
+              setLoad({ kind: reason === 'withdrawn' ? 'withdrawn' : 'missing' })
+            }
+          />
+          {load.post.status === 'published' ? <Comments postId={load.post.id} /> : null}
+        </>
+      ) : null}
+      {load.kind === 'withdrawn' ? (
+        <div role="status" className="flex flex-col items-start gap-4">
+          <Notice tone="success">{C.publish.withdrawn}</Notice>
+          <LinkButton href="/community" variant="secondary">
+            {C.back}
+          </LinkButton>
+        </div>
+      ) : null}
+      {load.kind === 'gone' || load.kind === 'missing' ? (
+        <StatusScreen
+          icon={<CommunityIcon width="28" height="28" />}
+          title={load.kind === 'gone' ? C.gone.title : C.notFound.title}
+          description={load.kind === 'gone' ? C.gone.description : C.notFound.description}
+          className="py-10"
+        >
+          <LinkButton href="/community" variant="secondary">
+            {C.back}
+          </LinkButton>
+        </StatusScreen>
+      ) : null}
+      {load.kind === 'failed' ? (
+        <div role="alert" className="flex flex-col items-start gap-3">
+          <Notice tone="error">{failureMessage(load.failure)}</Notice>
+          <Button variant="ghost" onClick={() => setAttempt((count) => count + 1)}>
+            {C.retry}
+          </Button>
+        </div>
+      ) : null}
+    </PageContainer>
+  );
+}
