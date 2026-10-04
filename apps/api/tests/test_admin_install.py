@@ -38,6 +38,8 @@ def test_the_menu_lists_the_views_in_order_with_their_identities(admin_app):
         ("user", "Accounts"),
         ("session", "Accounts"),
         ("consent", "Accounts"),
+        ("rulings-queue", "Scripture"),
+        ("hadith-ruling", "Scripture"),
         ("ontology-candidate", "Ontology"),
         ("ontology-entity", "Ontology"),
         ("learning-path-version", "Learning path"),

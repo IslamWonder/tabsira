@@ -1,6 +1,6 @@
 # 12 · Admin area
 
-**Phase:** 1 · **Priority:** Medium · **Status:** ✅ · **Updated:** 2026-10-04 15:38 (Tunis)
+**Phase:** 1 · **Priority:** Medium · **Status:** ✅ · **Updated:** 2026-10-04 15:52 (Tunis)
 
 A private area for the team at admin.tabsira.me, reachable only over the VPN.
 
@@ -9,7 +9,7 @@ A private area for the team at admin.tabsira.me, reachable only over the VPN.
 | Sign-in, optional two-factor, audit log                   | ✅     | Two-factor off by default. |
 | Accounts, consents, ontology terms, learning path, places | ✅     |                            |
 | Only on its own host, never from the public site          | ✅     |                            |
-| Rulings queue (unblocks hadith in insights)               | ⏸      | Later admin work.          |
+| Rulings queue (unblocks hadith in insights)               | ✅     | Task 12.1, 2026-10-04.     |
 
 **Waiting on the owners**
 
@@ -23,7 +23,7 @@ A private area for the team at admin.tabsira.me, reachable only over the VPN.
 
 ### 12.1 Rulings queue for editors
 
-- **Status:** 🔄 owners' agent (in parallel)
+- **Status:** ✅ 2026-10-04 (main machine). Ready now, high priority: no hadith can show in an insight until an editor records its ruling.
 - **Goal:** An admin screen that lists the hadith waiting for a ruling (the queue the engine and `python -m src.cli.record_ruling` already use), shows each hadith's stored text read-only with its source, gives the editor the dorar.net search link to open in their own browser, and records the editor's ruling (grade, grader, dorar page link, note) through the same service the command line uses. Rulings are append-only and every action is in the audit log.
 - **Depends on:** — (the queue and the ruling service are on main: `apps/api/src/cli/record_ruling.py` and the scripture rulings service it calls).
 - **Touches:** `apps/api/src/admin/views/` (one new view), `apps/api/src/admin/registry.py`, `apps/api/src/admin/templates/` if needed, `docs/ADMIN.md`.

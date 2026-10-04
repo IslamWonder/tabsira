@@ -1,0 +1,115 @@
+{#
+  One hadith: its stored text byte for byte with its hash and source, the rulings already
+  recorded, and the form that records one more. The text is never a field. The editor copies
+  the ruling from the dorar.net page they opened themselves; the server never calls dorar.net.
+#}
+{% extends "sqladmin/layout.html" %}
+
+{% block content %}
+{% if missing %}
+<div class="col-12">
+  <div class="alert alert-warning" role="alert">{{ subtitle }}</div>
+</div>
+{% else %}
+<div class="col-12 col-lg-7">
+  {% if error %}
+  <div class="alert alert-danger" role="alert">{{ error }}</div>
+  {% endif %}
+  <div class="card mb-3">
+    <div class="card-header">
+      <h3 class="card-title">{{ hadith.collection }} {{ hadith.number }}</h3>
+      <div class="card-actions">
+        <a class="btn btn-outline-primary" href="{{ dorar_search }}" target="_blank" rel="noopener noreferrer external">Search dorar.net</a>
+      </div>
+    </div>
+    <div class="card-body">
+      <p class="hadith-text fs-3" id="hadith-text" dir="rtl" lang="ar">{{ hadith.text }}</p>
+      <dl class="row mb-0">
+        <dt class="col-4">Hash (SHA-256)</dt><dd class="col-8"><code id="hadith-hash">{{ hadith.text_sha256 }}</code></dd>
+        <dt class="col-4">Source</dt><dd class="col-8">{{ hadith.source_dataset }} {{ hadith.source_version }}</dd>
+        {% if hadith.book_name %}<dt class="col-4">Book</dt><dd class="col-8" dir="rtl" lang="ar">{{ hadith.book_name }}</dd>{% endif %}
+        <dt class="col-4">In the queue</dt>
+        <dd class="col-8">{% if queued %}wanted {{ queued.demand_count }} times, first {{ queued.first_requested_at.strftime('%Y-%m-%d %H:%M') }}{% else %}no{% endif %}</dd>
+        <dt class="col-4">Eligible as evidence</dt><dd class="col-8">{{ 'yes' if eligible else 'no' }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Rulings recorded</h3></div>
+    {% if history %}
+    <div class="table-responsive">
+      <table class="table card-table table-vcenter">
+        <thead><tr><th>Recorded</th><th>Classification</th><th>Scholar</th><th>Source</th><th>Editor</th></tr></thead>
+        <tbody>
+          {% for ruling in history %}
+          <tr>
+            <td class="text-nowrap"><a href="{{ url_for('admin:details', identity='hadith-ruling', pk=ruling.id) }}">{{ ruling.recorded_at.strftime('%Y-%m-%d %H:%M') }}</a></td>
+            <td dir="rtl" lang="ar">{{ ruling.classification.value }}</td>
+            <td dir="rtl" lang="ar">{{ ruling.scholar }}</td>
+            <td dir="rtl" lang="ar">{{ ruling.source_book }} {{ ruling.page }}</td>
+            <td>{{ ruling.editor_name }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card-body">None yet. Until one reads صحيح or حسن, insights show the verse alone.</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="col-12 col-lg-5">
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">Record a ruling</h3></div>
+    <div class="card-body">
+      <p class="text-secondary">Open the dorar.net page in your browser and copy what it says, exactly. The latest ruling is the one in force; a ruling is never edited, a new one is recorded instead.</p>
+      <form action="{{ url_for('admin:view-rulings-queue-record', hadith_id=hadith.id) }}" method="POST" autocomplete="off">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="mb-3">
+          <label class="form-label" for="ruling-text">Ruling, exactly as dorar gives it</label>
+          <textarea id="ruling-text" name="ruling_text" class="form-control" rows="4" dir="rtl" lang="ar" required>{{ values.ruling_text }}</textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="ruling-scholar">Scholar (المحدّث)</label>
+          <input id="ruling-scholar" name="scholar" class="form-control" dir="rtl" lang="ar" value="{{ values.scholar }}" required>
+        </div>
+        <div class="row">
+          <div class="col-8 mb-3">
+            <label class="form-label" for="ruling-source">Source book (المصدر)</label>
+            <input id="ruling-source" name="source_book" class="form-control" dir="rtl" lang="ar" value="{{ values.source_book }}" required>
+          </div>
+          <div class="col-4 mb-3">
+            <label class="form-label" for="ruling-page">Page or number</label>
+            <input id="ruling-page" name="page" class="form-control" value="{{ values.page }}" required>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="ruling-url">The dorar.net page you read</label>
+          <input id="ruling-url" name="dorar_url" class="form-control" type="url" inputmode="url" placeholder="https://dorar.net/h/..." value="{{ values.dorar_url }}" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="ruling-classification">Your reading of it</label>
+          <select id="ruling-classification" name="classification" class="form-select" required>
+            <option value="">Choose</option>
+            {% for item in classifications %}
+            <option value="{{ item.value }}" {% if values.classification == item.value %}selected{% endif %}>{{ item.value }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-hint">Only صحيح and حسن make the hadith eligible as evidence.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="ruling-editor">Editor</label>
+          <input id="ruling-editor" name="editor_name" class="form-control" value="{{ values.editor_name }}" required>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Record</button>
+          <a class="btn" href="{{ queue_url }}">Back to the queue</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

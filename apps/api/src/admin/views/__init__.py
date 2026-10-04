@@ -11,6 +11,7 @@ from src.admin.views.learning import (
 )
 from src.admin.views.ontology import OntologyCandidateAdmin, OntologyEntityAdmin
 from src.admin.views.places import GeoNameAdmin
+from src.admin.views.rulings import HadithRulingAdmin, RulingsQueueView
 from src.admin.views.security import AdminAuditLogAdmin, TwoFactorView
 
 # sqladmin lists views in the order they are added, so this is the sidebar.
@@ -18,6 +19,8 @@ BUILT_IN_VIEWS: tuple[ViewClass, ...] = (
     UserAdmin,
     SessionAdmin,
     ConsentAdmin,
+    RulingsQueueView,
+    HadithRulingAdmin,
     OntologyCandidateAdmin,
     OntologyEntityAdmin,
     LearningPathVersionAdmin,
