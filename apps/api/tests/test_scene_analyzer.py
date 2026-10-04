@@ -211,6 +211,67 @@ def test_a_matched_detection_keeps_its_box_and_takes_the_models_label():
     assert scene.ambiguities == ["لا يظهر ما يُستعمل له الهاتف"]
 
 
+def test_a_person_named_by_gender_age_or_religion_becomes_a_person_and_is_recorded():
+    """v2 §0.6, §6: no inference of religion, age or gender about anyone in the photo."""
+    scene = build(
+        output(
+            description="امرأة محجبة تحمل طفلًا بجانب رجل عجوز، وقطة على السجادة.",
+            entities=[
+                entity("e1", label="muslim woman", label_arabic="امرأة محجبة"),
+                entity("e2", label="old man", label_arabic="رجل عجوز"),
+                entity("e3", label="cat", label_arabic="قطة"),
+                entity("e4", label="prayer rug", label_arabic="سجادة"),
+            ],
+            actions=[
+                action("a1", label="تحمل الطفل", visible_evidence=["يد المرأة حول الرضيع"]),
+            ],
+            relations=[
+                {
+                    "subject_id": "e1",
+                    "predicate": "بجانب الرجل",
+                    "object_id": "e2",
+                    "evidence": "الشيخ واقف",
+                }
+            ],
+            ambiguities=["لا يظهر إن كان الولد نائمًا", "لا يظهر ما على السجادة"],
+            clarification_question="هل الطفل يبكي؟",
+        )
+    )
+
+    assert scene.description == "شخص شخص تحمل شخص بجانب شخص شخص، وقطة على السجادة."
+    assert [(e.label, e.label_arabic) for e in scene.entities] == [
+        ("person", "شخص"),
+        ("person", "شخص"),
+        ("cat", "قطة"),
+        ("prayer rug", "سجادة"),
+    ]
+    (action_kept,) = scene.actions
+    assert (action_kept.label, action_kept.visible_evidence) == (
+        "تحمل الشخص",
+        ["يد الشخص حول الشخص"],
+    )
+    (relation,) = scene.relations
+    assert (relation.predicate, relation.evidence) == ("بجانب الشخص", "الشخص واقف")
+    assert scene.ambiguities == ["لا يظهر إن كان الشخص نائمًا", "لا يظهر ما على السجادة"]
+    assert scene.clarification_question == "هل الشخص يبكي؟"
+    assert scene.rejected == [
+        "entity e1 label: person descriptor replaced by 'person': muslim, woman",
+        "entity e1 label_arabic: person descriptor replaced by «شخص»: امرأة, محجبة",
+        "entity e2 label: person descriptor replaced by 'person': old, man",
+        "entity e2 label_arabic: person descriptor replaced by «شخص»: رجل, عجوز",
+        "action a1 label: person descriptor replaced by «شخص»: الطفل",
+        "action a1 evidence: person descriptor replaced by «شخص»: المرأة, الرضيع",
+        "relation e1-e2 predicate: person descriptor replaced by «شخص»: الرجل",
+        "relation e1-e2 evidence: person descriptor replaced by «شخص»: الشيخ",
+        "description: person descriptor replaced by «شخص»: امرأة, محجبة, طفلا, رجل, عجوز",
+        "ambiguities.0: person descriptor replaced by «شخص»: الولد",
+        "clarification_question: person descriptor replaced by «شخص»: الطفل",
+    ]
+    # No descriptor is left in any text the later stages read.
+    for text in scene_texts(scene).values():
+        assert not {"امرأة", "محجبة", "طفل", "رجل", "عجوز", "الشيخ", "الولد"} & set(text.split())
+
+
 def test_an_entity_the_detector_missed_keeps_the_models_converted_box():
     scene = build(output(entities=[entity("e1", box=[0, 384, 672, 768], status="inferred")]))
 

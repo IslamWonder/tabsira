@@ -14,6 +14,9 @@ The server does not take the answer on trust:
   the model's label; one detection matches one entity at most;
 - an action or relation that points to an unknown id, or an action without a
   visible clue, is refused, and the refusal is recorded in `rejected`;
+- a word that names a person by religion, age or gender (v2 §0.6, §6) is replaced
+  by «شخص» in every text, labels included, and the replacement is recorded in
+  `rejected` (`src.pipeline.person_words`);
 - every text field goes through the leak guard.
 
 The user's profile is not an input: `SceneRequest` has no field for it.
@@ -31,6 +34,11 @@ from pydantic import BaseModel, Field
 from src.ai.client import ModelClient, ModelImage
 from src.config import AiProvider, AiStage, BoxCoordinates
 from src.pipeline.leak_guard import LeakGuard
+from src.pipeline.person_words import (
+    neutralise_arabic,
+    neutralise_arabic_label,
+    neutralise_english_label,
+)
 from src.pipeline.prompt import load_prompt
 from src.pipeline.schemas import (
     BBox,
@@ -253,12 +261,17 @@ def build_scene(
     relations = _relations(output, known, rejected)
     question = (output.clarification_question or "").strip() or None
     return SceneAnalysis(
-        description=output.description.strip(),
+        description=_neutral(output.description.strip(), "description", rejected),
         entities=entities,
         actions=actions,
         relations=relations,
-        ambiguities=[text.strip() for text in output.ambiguities if text.strip()],
-        clarification_question=question,
+        ambiguities=[
+            _neutral(text.strip(), f"ambiguities.{index}", rejected)
+            for index, text in enumerate(text for text in output.ambiguities if text.strip())
+        ],
+        clarification_question=_neutral(question, "clarification_question", rejected)
+        if question
+        else None,
         sensitive=[category for category in SensitiveCategory if category in output.sensitive],
         detector_available=request.detector.available,
         unconfirmed_detection_ids=[
@@ -269,6 +282,25 @@ def build_scene(
         model=model,
         prompt_version=prompt_version,
     )
+
+
+def _neutral(text: str, where: str, rejected: list[str], *, label: bool = False) -> str:
+    """Return `text` with its person descriptors replaced, recording each replacement."""
+    result = neutralise_arabic_label(text) if label else neutralise_arabic(text)
+    if result.changed:
+        words = ", ".join(result.replaced)
+        rejected.append(f"{where}: person descriptor replaced by «شخص»: {words}")
+    return result.text
+
+
+def _neutral_label(label: str, where: str, rejected: list[str]) -> str:
+    """Return the English label, or "person" when it names one by a descriptor."""
+    result = neutralise_english_label(label)
+    if result.changed:
+        rejected.append(
+            f"{where}: person descriptor replaced by 'person': {', '.join(result.replaced)}"
+        )
+    return result.text
 
 
 def _entities(
@@ -302,8 +334,15 @@ def _entities(
         entities.append(
             SceneEntity(
                 id=entity_id,
-                label=item.label.strip().lower(),
-                label_arabic=item.label_arabic.strip(),
+                label=_neutral_label(
+                    item.label.strip().lower(), f"entity {entity_id} label", rejected
+                ),
+                label_arabic=_neutral(
+                    item.label_arabic.strip(),
+                    f"entity {entity_id} label_arabic",
+                    rejected,
+                    label=True,
+                ),
                 bbox=detection.bbox if detection else model_bbox,
                 origin=EntityOrigin.DETECTOR if detection else EntityOrigin.VLM,
                 status=EvidenceStatus(item.status),
@@ -331,10 +370,12 @@ def _actions(output: SceneModelOutput, known: set[str], rejected: list[str]) -> 
             actions.append(
                 SceneAction(
                     id=item.id,
-                    label=item.label.strip(),
+                    label=_neutral(item.label.strip(), f"action {item.id} label", rejected),
                     actor_ids=item.actor_ids,
                     target_ids=item.target_ids,
-                    visible_evidence=evidence,
+                    visible_evidence=[
+                        _neutral(text, f"action {item.id} evidence", rejected) for text in evidence
+                    ],
                     status=EvidenceStatus(item.status),
                 )
             )
@@ -354,12 +395,13 @@ def _relations(
         elif not item.predicate.strip():
             rejected.append(f"relation {item.subject_id}-{item.object_id}: empty predicate")
         else:
+            where = f"relation {item.subject_id}-{item.object_id}"
             relations.append(
                 SceneRelation(
                     subject_id=item.subject_id,
-                    predicate=item.predicate.strip(),
+                    predicate=_neutral(item.predicate.strip(), f"{where} predicate", rejected),
                     object_id=item.object_id,
-                    evidence=item.evidence.strip(),
+                    evidence=_neutral(item.evidence.strip(), f"{where} evidence", rejected),
                 )
             )
     return relations
