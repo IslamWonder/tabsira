@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import httpx
 import pytest
 
 from src import main
@@ -146,6 +147,21 @@ async def test_the_lifespan_also_flushes_the_forwarder_of_browser_reports(
         pass
 
     assert flushed == ["web"]
+
+
+async def test_the_lifespan_closes_the_shared_http_client(make_settings, monkeypatch):
+    application = main.create_app(make_settings())
+    http = httpx.AsyncClient()
+    application.state.http = http
+
+    async def fake_dispose() -> None:
+        return None
+
+    monkeypatch.setattr(main, "dispose_engine", fake_dispose)
+    async with application.router.lifespan_context(application):
+        assert not http.is_closed
+
+    assert http.is_closed
 
 
 def test_the_application_starts_error_tracking_before_it_is_built(make_settings, monkeypatch):

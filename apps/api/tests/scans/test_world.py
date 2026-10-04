@@ -123,6 +123,21 @@ async def test_a_treasure_waits_for_a_return_then_shows_its_verified_text(
     assert kinds == ["completed", "treasure"]
 
 
+async def test_an_insight_resting_on_one_text_also_hides_a_treasure(browser, store, flow_settings):
+    owner = await as_guest(browser, store, flow_settings)
+    no_hadith = {"hadith_collection": None, "hadith_number": None, "hadith_evidence": None}
+    no_verse = {"quran_surah": None, "quran_ayah": None, "quran_evidence": None}
+    verse_only = await kept(store, owner, **DEEPER, **no_hadith, small_step=None)
+    hadith_only = await kept(store, owner, **(DEEPER | no_verse))
+
+    completed = [
+        (await browser.post(f"/insights/{insight_id}/complete")).json()
+        for insight_id in (verse_only, hadith_only)
+    ]
+
+    assert [body["treasure_prepared"] for body in completed] == [True, True]
+
+
 async def test_a_treasure_also_shows_after_days_or_after_a_related_insight(
     browser, store, flow_settings, moving_clock
 ):
