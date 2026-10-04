@@ -343,6 +343,7 @@ async def test_every_foreign_key_to_users_cascades_so_deleting_an_account_leaves
         "sessions",
         "profiles",
         "consents",
+        "cookie_consents",
         "email_tokens",
         "learner_unit_states",
     }
@@ -358,6 +359,7 @@ def test_every_table_lives_in_the_app_schema():
         "oauth_states",
         "profiles",
         "consents",
+        "cookie_consents",
         "email_tokens",
         "login_attempts",
         # The world ontology and the learning path

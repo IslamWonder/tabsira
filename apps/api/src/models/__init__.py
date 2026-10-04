@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from src.models.base import Base
 from src.models.consent import Consent, ConsentKind
+from src.models.cookie_consent import CookieConsent
 from src.models.email_token import EmailToken, TokenPurpose
 from src.models.geo_base import GeoBase
 from src.models.geonames import (
@@ -57,6 +58,7 @@ __all__ = [
     "CandidateStatus",
     "Consent",
     "ConsentKind",
+    "CookieConsent",
     "EmailToken",
     "Gender",
     "GeoAlternateName",

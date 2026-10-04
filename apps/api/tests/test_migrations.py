@@ -31,6 +31,7 @@ APP_TABLES = {
     "sessions",
     "profiles",
     "consents",
+    "cookie_consents",
     "email_tokens",
     "login_attempts",
     "oauth_states",
@@ -180,7 +181,7 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
         *(f"app.{table}" for table in APP_TABLES),
     } == tables
     assert set(EXTENSIONS) <= extensions
-    assert versions == {"app": "20261004_121500", "geodata": "20261004_130000"}
+    assert versions == {"app": "20261004_123000", "geodata": "20261004_130000"}
     # The models and the migrations describe the same database.
     assert {"ix_geonames_name_trgm", "ix_geonames_location_geom", "pk_geonames"} <= indexes
     # The scripture write guard exists after the migrations too, not only in a schema built
@@ -189,6 +190,11 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
         f"{table}.{table}_{kind}_guard"
         for table in GUARDED_TABLES
         for kind in ("write", "truncate")
+    } <= triggers
+    # So does the cookie-consent guard.
+    assert {
+        "cookie_consents.cookie_consents_row_guard",
+        "cookie_consents.cookie_consents_truncate_guard",
     } <= triggers
     for config in (GEODATA_CONFIG, APP_CONFIG):
         check = alembic(config, "check")
@@ -290,3 +296,52 @@ async def test_the_migration_builds_the_trigram_index_the_resolver_relies_on(mig
         ).scalar_one()
 
     assert "USING gin (search_text gin_trgm_ops)" in definition
+
+
+async def test_the_app_chain_builds_the_cookie_consent_guard_and_removes_it_again(migrated):
+    assert alembic(APP_CONFIG, "upgrade", "head").returncode == 0
+    async with migrated.begin() as connection:
+        user_id = (
+            await connection.execute(
+                text(
+                    "INSERT INTO app.users (email, display_name) "
+                    "VALUES ('a@example.com', 'A') RETURNING id"
+                )
+            )
+        ).scalar_one()
+        for owner in (user_id, None):
+            await connection.execute(
+                text(
+                    "INSERT INTO app.cookie_consents "
+                    "(consent_id, policy_version, analytics, behaviour, user_agent_family, user_id) "
+                    "VALUES (gen_random_uuid(), 'v1', true, false, 'firefox', :owner)"
+                ),
+                {"owner": owner},
+            )
+
+    for statement in (
+        "UPDATE app.cookie_consents SET analytics = false",
+        "DELETE FROM app.cookie_consents",
+    ):
+        with pytest.raises(Exception, match="append-only"):
+            async with migrated.begin() as connection:
+                await connection.execute(text(statement))
+    # The account's own deletion takes its rows with it, and leaves the anonymous one.
+    async with migrated.begin() as connection:
+        await connection.execute(text("DELETE FROM app.users WHERE id = :id"), {"id": user_id})
+        left = (await connection.execute(text("SELECT user_id FROM app.cookie_consents"))).all()
+    assert [row.user_id for row in left] == [None]
+
+    assert alembic(APP_CONFIG, "downgrade", "-1").returncode == 0
+    async with migrated.connect() as connection:
+        functions = (
+            await connection.execute(
+                text("SELECT count(*) FROM pg_proc WHERE proname = 'cookie_consents_guard'")
+            )
+        ).scalar_one()
+        tables = (
+            await connection.execute(
+                text("SELECT count(*) FROM pg_tables WHERE tablename = 'cookie_consents'")
+            )
+        ).scalar_one()
+    assert (functions, tables) == (0, 0)
