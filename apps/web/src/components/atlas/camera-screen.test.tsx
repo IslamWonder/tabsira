@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AtlasFeature } from '@/atlas/types';
 import { zoomForRadius } from '@/atlas/view-state';
-import { apiError, mockApi, type Route } from '@/test/api';
+import { messages } from '@/messages';
+import { apiError, mockApi, type Reply, type Route } from '@/test/api';
 import { FEATURE, SECOND_FEATURE } from '@/test/atlas';
 import {
   forgetDevice,
@@ -291,5 +292,81 @@ describe('CameraScreen', () => {
     expect(within(list).getAllByRole('link')).toHaveLength(7);
     await userEvent.click(screen.getByRole('button', { name: 'اعرض الأقرب فقط' }));
     expect(within(list).getAllByRole('link')).toHaveLength(5);
+  });
+
+  it('rounds a distance to metres under a kilometre and to whole kilometres when it is one', async () => {
+    // A fine cell 500 m east of the device, and a coarse one about 2 km east.
+    const close: AtlasFeature = {
+      ...FEATURE,
+      id: '7400000000000000004',
+      geometry: { type: 'Point', coordinates: [10.19561, 36.81] },
+      properties: {
+        ...FEATURE.properties,
+        id: '7400000000000000004',
+        title: '[بصيرة قريبة]',
+        cell_m: 100,
+        place: null,
+      },
+    };
+    const twoKm: AtlasFeature = {
+      ...FEATURE,
+      id: '7400000000000000005',
+      geometry: { type: 'Point', coordinates: [10.2124, 36.81] },
+      properties: { ...FEATURE.properties, id: '7400000000000000005', title: '[بصيرة كيلومترين]' },
+    };
+    const { geolocation } = await startExploring();
+    guest({
+      'GET /atlas/entries': {
+        body: { type: 'FeatureCollection', features: [close, twoKm], truncated: true },
+      },
+    });
+    geolocation.fix(DEVICE);
+    const list = await screen.findByRole('region', { name: 'قائمة البصائر القريبة' });
+    const near = await within(list).findByRole('link', { name: /\[بصيرة قريبة\]/ });
+    expect(within(near).getByText('نحو 500 م')).toBeInTheDocument();
+    expect(within(near).getByText('[موقع تقريبي ضمن نحو 1000 م]')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'وسّع المنطقة' }));
+    const far = await within(list).findByRole('link', { name: /\[بصيرة كيلومترين\]/ });
+    expect(within(far).getByText('نحو 2 كم')).toBeInTheDocument();
+    expect(screen.getByText(messages.atlas.truncated)).toBeInTheDocument();
+  });
+
+  it('keeps the answer of the last window only when the device moved meanwhile', async () => {
+    const waiting: ((reply: Reply) => void)[] = [];
+    const { geolocation } = await startExploring();
+    const api = guest({
+      'GET /atlas/entries': () => new Promise<Reply>((resolve) => waiting.push(resolve)),
+    });
+    geolocation.fix(DEVICE);
+    await waitFor(() => expect(windows(api)).toHaveLength(1));
+    geolocation.fix([10.3, 36.81]);
+    await waitFor(() => expect(windows(api)).toHaveLength(2));
+    waiting[0]?.(collection([FEATURE]));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByText('[عنوان البصيرة]')).toBeNull();
+    waiting[1]?.(collection([]));
+    expect(await screen.findByText(/لا توجد بصائر منشورة قريبة بعد/)).toBeInTheDocument();
+  });
+
+  it('says when the device cannot locate itself, and offers a region instead', async () => {
+    const { geolocation } = await startExploring();
+    geolocation.fail(2);
+    expect(screen.getByRole('status', { name: 'حالة الاستكشاف' })).toHaveTextContent(
+      messages.atlas.camera.locationUnavailable
+    );
+    expect(screen.getByLabelText('ابحث عن مدينة أو مكان')).toBeInTheDocument();
+  });
+
+  it('gives a direction to an entry that appears while the heading is already known', async () => {
+    stubOrientation();
+    const { geolocation } = await startExploring();
+    geolocation.fix(DEVICE);
+    const list = await screen.findByRole('region', { name: 'قائمة البصائر القريبة' });
+    await userEvent.click(screen.getByRole('button', { name: 'فعّل الاتجاه' }));
+    turnDevice({ alpha: 270 });
+    await userEvent.click(screen.getByRole('button', { name: 'وسّع المنطقة' }));
+    const far = await within(list).findByRole('link', { name: /\[بصيرة بعيدة\]/ });
+    expect(within(far).getByText('الاتجاه التقريبي: أمامك')).toBeInTheDocument();
+    expect(within(far).getByText('في اتجاه الكاميرا')).toBeInTheDocument();
   });
 });

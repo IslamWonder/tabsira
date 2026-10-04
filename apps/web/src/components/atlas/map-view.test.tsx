@@ -130,4 +130,30 @@ describe('MapView', () => {
     expect((await findByRole('status')).textContent).toBe(messages.atlas.mapUnsupported);
     expect(FakeMap.instances).toHaveLength(0);
   });
+
+  it('leaves the map alone when it finishes loading after the page left', async () => {
+    const { unmount } = render(<MapView features={[FEATURE]} />);
+    await vi.waitFor(() => expect(FakeMap.instances).toHaveLength(1));
+    const map = FakeMap.instances[0] as FakeMap;
+    act(() => unmount());
+    map.emit('load');
+    expect(map.layers).toEqual([]);
+    expect(map.remove).toHaveBeenCalled();
+  });
+
+  it('does not pick a point when the tap landed on an entry or a cluster', async () => {
+    const onPick = vi.fn();
+    render(<MapView features={[FEATURE]} onPick={onPick} />);
+    const map = await loadedMap();
+    map.queryRenderedFeatures.mockReturnValue([{ properties: { id: FEATURE.id } }]);
+    map.emit('click', { point: { x: 1, y: 1 }, lngLat: { lng: 10.5, lat: 36.5 } });
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  it('builds no map when the library arrives after the page left', async () => {
+    const { unmount } = render(<MapView features={[FEATURE]} />);
+    unmount();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(FakeMap.instances).toHaveLength(0);
+  });
 });

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { messages } from '@/messages';
 import { apiError, mockApi, type Route } from '@/test/api';
 import { OWNER_ENTRY } from '@/test/atlas';
 import { USER } from '@/test/fixtures';
@@ -202,5 +203,97 @@ describe('MapPublishScreen', () => {
     render(<MapPublishScreen />);
     await screen.findByText('لم تحدد موضعًا بعد.');
     expect(screen.queryByRole('checkbox', { name: 'أرفق الصورة' })).toBeNull();
+  });
+
+  it('asks an unverified account to confirm its address first', async () => {
+    mockApi({ 'GET /auth/me': { body: { ...USER, email_verified: false } } });
+    render(<MapPublishScreen />);
+    expect(await screen.findByText(messages.atlas.publish.verify)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'استعمل موضعي الآن' })).toBeNull();
+  });
+
+  it('says when the device cannot or may not give its position', async () => {
+    member();
+    vi.stubGlobal('navigator', { ...navigator, geolocation: undefined });
+    render(<MapPublishScreen />);
+    await screen.findByText('لم تحدد موضعًا بعد.');
+    await userEvent.click(screen.getByRole('button', { name: 'استعمل موضعي الآن' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(messages.atlas.nearMeUnavailable);
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      geolocation: { getCurrentPosition: (_ok: unknown, fail: () => void) => fail() },
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'استعمل موضعي الآن' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(messages.atlas.nearMeDenied);
+  });
+
+  it('searches from two characters only, and says when no place was found or the search failed', async () => {
+    const api = member({ 'GET /geo/search': apiError(500, 'INTERNAL') });
+    render(<MapPublishScreen />);
+    const field = await screen.findByLabelText('ابحث عن مكان');
+    await userEvent.type(field, 'm');
+    await userEvent.click(screen.getByRole('button', { name: 'ابحث عن مدينة أو مكان' }));
+    expect(api.requests.some((r) => r.url.includes('/geo/search'))).toBe(false);
+    await userEvent.type(field, 'ecca');
+    await userEvent.click(screen.getByRole('button', { name: 'ابحث عن مدينة أو مكان' }));
+    expect(await screen.findByText(messages.atlas.noPlaces)).toBeInTheDocument();
+  });
+
+  it('names the step still missing when the API refuses to place the insight', async () => {
+    member({ [`PUT /insights/${INSIGHT}/map`]: apiError(409, 'PUBLIC_IDENTITY_REQUIRED') });
+    render(<MapPublishScreen />);
+    await screen.findByText('لم تحدد موضعًا بعد.');
+    const map = await loadedMap();
+    map.emit('click', { point: { x: 1, y: 1 }, lngLat: { lng: 10.2, lat: 36.9 } });
+    await userEvent.click(await screen.findByRole('button', { name: 'احسب الموضع التقريبي' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      messages.atlas.publish.identityFirst
+    );
+    member({ [`PUT /insights/${INSIGHT}/map`]: 'network-error' });
+    await userEvent.click(screen.getByRole('button', { name: 'احسب الموضع التقريبي' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(messages.errors.network);
+  });
+
+  it("shows a hidden entry with the moderator's word and no publish button, and lets the owner start over", async () => {
+    member({
+      [`GET /insights/${INSIGHT}/map`]: {
+        body: {
+          ...OWNER_ENTRY,
+          status: 'pending_review',
+          status_message: '[كلمة المشرف]',
+          public: null,
+          place: null,
+        },
+      },
+    });
+    render(<MapPublishScreen />);
+    expect(await screen.findByText('مخفية حتى يراجعها مشرف')).toBeInTheDocument();
+    expect(screen.getByText('[كلمة المشرف]')).toBeInTheDocument();
+    expect(screen.getByText(messages.atlas.publish.noPlace)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'انشر على الأطلس' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'افتحها على الأطلس' })).toBeNull();
+    const map = await loadedMap();
+    expect(map.options).toMatchObject({ center: [30, 27] });
+    await userEvent.click(screen.getByRole('button', { name: 'أين التُقطت الصورة؟' }));
+    expect(screen.getByText('لم تحدد موضعًا بعد.')).toBeInTheDocument();
+  });
+
+  it('keeps the entry when the withdrawal is refused or given up', async () => {
+    member({
+      [`GET /insights/${INSIGHT}/map`]: { body: OWNER_ENTRY },
+      [`DELETE /insights/${INSIGHT}/map`]: 'network-error',
+    });
+    render(<MapPublishScreen />);
+    await screen.findByText('موضع محفوظ، لم يُنشر');
+    await userEvent.click(screen.getByRole('button', { name: 'اسحب من الأطلس' }));
+    await userEvent.click(screen.getByRole('button', { name: 'تراجع' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'اسحب من الأطلس' }));
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'اسحب من الأطلس' }));
+    await userEvent.click(screen.getByRole('button', { name: 'اسحب' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(messages.errors.network);
+    expect(screen.getByText('موضع محفوظ، لم يُنشر')).toBeInTheDocument();
   });
 });

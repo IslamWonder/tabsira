@@ -140,4 +140,42 @@ describe('EntryScreen', () => {
     await screen.findByRole('heading', { level: 1, name: '[عنوان البصيرة]' });
     expect(screen.queryByTestId('public-photo')).toBeNull();
   });
+
+  it('shows an entry without a place, a step or a post, and lets the report sheet close', async () => {
+    mockApi({
+      'GET /auth/me': { body: USER },
+      'GET /me/public-identity': { body: IDENTITY },
+      [`GET /atlas/entries/${ENTRY.id}`]: {
+        body: { ...ENTRY, place: null, step: null, post_id: null },
+      },
+    });
+    render(<EntryScreen entryId={ENTRY.id} />);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: '[عنوان البصيرة]' })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '[تونس]، [تونس البلد]' })).toBeNull();
+    expect(screen.queryByText('خطوة صغيرة')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'افتح المنشور في تواصل' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'بلّغ' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('forgets an answer that arrives after the page left', async () => {
+    let answer: (() => void) | null = null;
+    mockApi({
+      'GET /auth/me': apiError(401, 'UNAUTHORIZED'),
+      [`GET /atlas/entries/${ENTRY.id}`]: () =>
+        new Promise((resolve) => {
+          answer = () => resolve({ body: ENTRY });
+        }),
+    });
+    const { unmount } = render(<EntryScreen entryId={ENTRY.id} />);
+    await vi.waitFor(() => expect(answer).not.toBeNull());
+    unmount();
+    (answer as unknown as () => void)();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+  });
 });

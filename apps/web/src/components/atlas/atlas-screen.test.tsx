@@ -1,11 +1,22 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setSignedIn } from '@/account/session';
-import { apiError, mockApi, type Route } from '@/test/api';
+import { messages } from '@/messages';
+import { apiError, mockApi, type Reply, type Route } from '@/test/api';
 import { FEATURE, OWNER_ENTRY, SECOND_FEATURE } from '@/test/atlas';
 import { USER } from '@/test/fixtures';
 import { forgetMaps, loadedMap } from '@/test/maplibre';
+
+/** A route whose answers the test releases one by one, in the order they were asked. */
+function deferred(): { route: Route; answer: (reply: Reply) => void } {
+  const waiting: ((reply: Reply) => void)[] = [];
+  return {
+    route: () => new Promise<Reply>((resolve) => waiting.push(resolve)),
+    answer: (reply) => waiting.shift()?.(reply),
+  };
+}
+
 import { AtlasScreen } from './atlas-screen';
 
 vi.mock('maplibre-gl', () => import('@/test/maplibre'));
@@ -305,5 +316,137 @@ describe('AtlasScreen', () => {
     guest({ 'GET /me/map-entries': { body: [] } });
     await userEvent.click(within(mine).getByRole('button', { name: 'أعد المحاولة' }));
     expect(await within(mine).findByText(/لم تضع بصيرة على الأطلس بعد/)).toBeInTheDocument();
+  });
+
+  it('shows an entry without a place by its precision, closes its card from the panel and from the sheet', async () => {
+    const noPlace = {
+      ...FEATURE,
+      id: '7400000000000000009',
+      properties: { ...FEATURE.properties, id: '7400000000000000009', place: null },
+    };
+    guest({ 'GET /atlas/entries': collection([noPlace]) });
+    render(<AtlasScreen />);
+    await loadedMap();
+    const item = await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    expect(item).toHaveTextContent('[موقع تقريبي ضمن نحو 1000 م]');
+    await userEvent.click(item);
+    const cards = screen.getAllByRole('article', { name: '[عنوان البصيرة]' });
+    expect(cards).toHaveLength(2);
+    for (const card of cards) {
+      expect(within(card).queryByRole('link', { name: /\[تونس\]/ })).toBeNull();
+    }
+    const panelCard = cards.find((card) => within(card).queryByRole('button', { name: 'أغلق' }));
+    await userEvent.click(within(panelCard as HTMLElement).getByRole('button', { name: 'أغلق' }));
+    expect(screen.queryByRole('article')).toBeNull();
+    await userEvent.click(item);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('article')).toBeNull();
+  });
+
+  it('searches a place only from two characters, says when nothing or no answer came, and drops a late answer', async () => {
+    const search = deferred();
+    const api = guest({ 'GET /geo/search': search.route });
+    render(<AtlasScreen />);
+    await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    const field = screen.getByLabelText('ابحث عن مدينة أو مكان');
+    const form = screen.getByRole('form', { name: messages.atlas.searchForm });
+    await userEvent.type(field, 'm');
+    fireEvent.submit(form);
+    expect(api.requests.some((r) => r.url.includes('/geo/search'))).toBe(false);
+
+    await userEvent.type(field, 'ecca');
+    fireEvent.submit(form);
+    await waitFor(() =>
+      expect(api.requests.filter((r) => r.url.includes('/geo/search'))).toHaveLength(1)
+    );
+    fireEvent.submit(form);
+    await waitFor(() =>
+      expect(api.requests.filter((r) => r.url.includes('/geo/search'))).toHaveLength(2)
+    );
+    // The first answer arrives after the second question: it is not shown.
+    search.answer(apiError(500, 'INTERNAL'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByRole('alert')).toBeNull();
+    search.answer({ body: [] });
+    expect(await screen.findByRole('status')).toHaveTextContent(messages.atlas.noPlaces);
+
+    guest({ 'GET /geo/search': apiError(500, 'INTERNAL') });
+    fireEvent.submit(form);
+    expect(await screen.findByRole('alert')).toHaveTextContent(messages.errors.server);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('names a country by its code when it has no label, and lets the reader choose any country again', async () => {
+    const unlabelled = {
+      ...SECOND_FEATURE,
+      properties: {
+        ...SECOND_FEATURE.properties,
+        place: { ...SECOND_FEATURE.properties.place, country_label: null },
+      },
+    };
+    const api = guest({ 'GET /atlas/entries': collection([FEATURE, unlabelled]) });
+    render(<AtlasScreen />);
+    await loadedMap();
+    await screen.findByRole('button', { name: /^\[بصيرة ثانية\]/ });
+    expect(screen.getByRole('option', { name: 'SA' })).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText('البلد'), 'SA');
+    await waitFor(() =>
+      expect(new URL(api.requests.at(-1)?.url ?? '').searchParams.get('country')).toBe('SA')
+    );
+    await userEvent.selectOptions(screen.getByLabelText('البلد'), '');
+    await waitFor(() =>
+      expect(new URL(api.requests.at(-1)?.url ?? '').searchParams.get('country')).toBeNull()
+    );
+    expect(screen.queryByRole('button', { name: 'امسح المرشحات' })).toBeNull();
+  });
+
+  it('keeps the answer of the last question only, and asks nothing before the map has a window', async () => {
+    const entries = deferred();
+    const api = guest({ 'GET /atlas/entries': entries.route });
+    render(<AtlasScreen />);
+    await userEvent.click(screen.getByRole('button', { name: 'ابحث في هذه المنطقة' }));
+    expect(api.requests.filter((r) => r.url.includes('/atlas/entries'))).toHaveLength(0);
+    await loadedMap();
+    await waitFor(() =>
+      expect(api.requests.filter((r) => r.url.includes('/atlas/entries'))).toHaveLength(1)
+    );
+    await userEvent.click(screen.getByRole('radio', { name: 'آخر شهر' }));
+    await waitFor(() =>
+      expect(api.requests.filter((r) => r.url.includes('/atlas/entries'))).toHaveLength(2)
+    );
+    entries.answer(collection([FEATURE, SECOND_FEATURE]));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByRole('button', { name: /^\[عنوان البصيرة\]/ })).toBeNull();
+    entries.answer(collection([SECOND_FEATURE]));
+    expect(await screen.findByRole('button', { name: /^\[بصيرة ثانية\]/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^\[عنوان البصيرة\]/ })).toBeNull();
+  });
+
+  it('says when the device cannot locate itself at all', async () => {
+    guest();
+    render(<AtlasScreen />);
+    await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    vi.stubGlobal('navigator', { ...navigator, geolocation: undefined });
+    await userEvent.click(screen.getByRole('button', { name: 'قريب مني' }));
+    expect(screen.getByRole('status')).toHaveTextContent(messages.atlas.nearMeUnavailable);
+  });
+
+  it("forgets the owner's entries when they arrive after the list was closed", async () => {
+    setSignedIn(USER);
+    const mine = deferred();
+    guest({ 'GET /me/map-entries': mine.route });
+    render(<AtlasScreen />);
+    await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    await userEvent.click(screen.getByRole('radio', { name: 'بصائري المنشورة' }));
+    expect(await screen.findByRole('region', { name: 'بصائري على الأطلس' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: 'بصائر الناس' }));
+    mine.answer({ body: [OWNER_ENTRY] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByRole('region', { name: 'بصائري على الأطلس' })).toBeNull();
+    expect(screen.queryByText('[عنوان البصيرة]', { selector: 'h3' })).toBeNull();
   });
 });

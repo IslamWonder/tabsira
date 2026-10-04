@@ -63,4 +63,37 @@ describe('PlaceScreen', () => {
       await screen.findByRole('heading', { level: 1, name: 'ذاكرة المكان: [تونس]' })
     ).toBeInTheDocument();
   });
+
+  it('closes the opened card, keeps the list when the next page fails, and forgets an answer that came after it left', async () => {
+    let answer: (() => void) | null = null;
+    mockApi({
+      'GET /auth/me': apiError(401, 'UNAUTHORIZED'),
+      'GET /atlas/places/2464470': (request) =>
+        new URL(request.url).searchParams.get('cursor') === 'c1'
+          ? apiError(503, 'SERVICE_UNAVAILABLE')
+          : { body: { ...PLACE_PAGE, next_cursor: 'c1' } },
+    });
+    const first = render(<PlaceScreen geonameId={2464470} />);
+    await userEvent.click(await screen.findByRole('button', { name: /\[عنوان البصيرة\]/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'أغلق' }));
+    expect(screen.queryByRole('link', { name: 'افتح البصيرة' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'اعرض المزيد' }));
+    expect(await screen.findByRole('button', { name: 'اعرض المزيد' })).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    first.unmount();
+
+    mockApi({
+      'GET /auth/me': apiError(401, 'UNAUTHORIZED'),
+      'GET /atlas/places/999': () =>
+        new Promise((resolve) => {
+          answer = () => resolve({ body: PLACE_PAGE });
+        }),
+    });
+    const late = render(<PlaceScreen geonameId={999} />);
+    await vi.waitFor(() => expect(answer).not.toBeNull());
+    late.unmount();
+    (answer as unknown as () => void)();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+  });
 });

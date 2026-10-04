@@ -1,7 +1,9 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, render, renderHook, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   forgetDevice,
+  hidePage,
   stubCamera,
   stubGeolocation,
   stubOrientation,
@@ -22,7 +24,68 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+function CameraProbe() {
+  const camera = useCameraStream();
+  return (
+    <>
+      {/* biome-ignore lint/a11y/useMediaCaption: a live camera view has no captions to offer. */}
+      <video ref={camera.videoRef} data-testid="video" />
+      <p>{camera.state}</p>
+      <button type="button" onClick={() => void camera.start()}>
+        start
+      </button>
+      <button type="button" onClick={camera.stop}>
+        stop
+      </button>
+    </>
+  );
+}
+
 describe('useCameraStream', () => {
+  it('shows the stream in the video element it was given, and lets it go on stop', async () => {
+    const { track } = stubCamera('granted');
+    // Autoplay refused: the stream is still live, its first frame shows on a tap.
+    const play = vi
+      .spyOn(HTMLMediaElement.prototype, 'play')
+      .mockRejectedValue(new Error('NotAllowedError'));
+    render(<CameraProbe />);
+    await userEvent.click(screen.getByRole('button', { name: 'start' }));
+    const video = screen.getByTestId('video') as HTMLVideoElement;
+    expect(video.srcObject).not.toBeNull();
+    expect(play).toHaveBeenCalled();
+    expect(screen.getByText('live')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'stop' }));
+    expect(video.srcObject).toBeNull();
+    expect(track.stop).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('idle')).toBeInTheDocument();
+  });
+
+  it('is unavailable without a navigator, and reads a refusal that is not an Error as unavailable', async () => {
+    vi.stubGlobal('navigator', undefined);
+    const { result } = renderHook(() => useCameraStream());
+    await act(() => result.current.start());
+    expect(result.current.state).toBe('unavailable');
+    vi.unstubAllGlobals();
+
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: {
+        getUserMedia: async () => {
+          throw 'no camera';
+        },
+      },
+      configurable: true,
+    });
+    await act(() => result.current.start());
+    expect(result.current.state).toBe('unavailable');
+  });
+
+  it('does nothing when the page is hidden before the camera started', () => {
+    stubCamera('granted');
+    const { result } = renderHook(() => useCameraStream());
+    hidePage();
+    expect(result.current.state).toBe('idle');
+  });
+
   it('says when the browser has no camera API or the camera cannot be read', async () => {
     stubCamera('none');
     const { result } = renderHook(() => useCameraStream());
@@ -180,5 +243,58 @@ describe('useDeviceHeading', () => {
     expect(result.current.state).toBe('stale');
     expect(result.current.heading).toBeNull();
     unmount();
+  });
+
+  it('listens for readings anchored to north when the browser offers them as such', async () => {
+    stubOrientation();
+    Object.defineProperty(window, 'ondeviceorientationabsolute', {
+      value: null,
+      configurable: true,
+    });
+    const { result } = renderHook(() => useDeviceHeading());
+    await act(() => result.current.enable());
+    turnDevice({ alpha: 270 });
+    expect(result.current.state).toBe('waiting');
+    act(() => {
+      const event = new Event('deviceorientationabsolute');
+      Object.assign(event, { alpha: 270, beta: 90, gamma: 0, absolute: true });
+      window.dispatchEvent(event);
+    });
+    expect(result.current.state).toBe('ready');
+    expect(result.current.heading).toBeCloseTo(90);
+    Reflect.deleteProperty(window, 'ondeviceorientationabsolute');
+  });
+
+  it('drops a paced render that a clock set back would have shown after the heading went stale', async () => {
+    vi.useFakeTimers();
+    stubOrientation();
+    const { result } = renderHook(() => useDeviceHeading());
+    await act(() => result.current.enable());
+    turnDevice({ alpha: 270 });
+    expect(result.current.heading).toBeCloseTo(90);
+    // The clock jumps back: the next paced render would be due long after the heading is stale.
+    vi.setSystemTime(Date.now() - 2 * HEADING_STALE_MS);
+    turnDevice({ alpha: 250 });
+    act(() => {
+      vi.advanceTimersByTime(HEADING_STALE_MS);
+    });
+    expect(result.current.state).toBe('stale');
+    expect(result.current.heading).toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(2 * HEADING_STALE_MS);
+    });
+    expect(result.current.state).toBe('stale');
+    expect(result.current.heading).toBeNull();
+  });
+
+  it('cancels a pending paced render when the screen is left', async () => {
+    vi.useFakeTimers();
+    stubOrientation();
+    const { result, unmount } = renderHook(() => useDeviceHeading());
+    await act(() => result.current.enable());
+    turnDevice({ alpha: 270 });
+    turnDevice({ alpha: 250 });
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
