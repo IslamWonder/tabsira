@@ -29,3 +29,6 @@ td.hadith-preview {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
+.moderated-text {
+  white-space: pre-wrap;
+}

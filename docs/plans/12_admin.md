@@ -1,6 +1,6 @@
 # 12 · Admin area
 
-**Phase:** 1 · **Priority:** Medium · **Status:** ✅ · **Updated:** 2026-10-04 15:52 (Tunis)
+**Phase:** 1 · **Priority:** Medium · **Status:** ✅ · **Updated:** 2026-10-04 16:00 (Tunis)
 
 A private area for the team at admin.tabsira.me, reachable only over the VPN.
 
@@ -10,6 +10,7 @@ A private area for the team at admin.tabsira.me, reachable only over the VPN.
 | Accounts, consents, ontology terms, learning path, places | ✅     |                            |
 | Only on its own host, never from the public site          | ✅     |                            |
 | Rulings queue (unblocks hadith in insights)               | ✅     | Task 12.1, 2026-10-04.     |
+| Moderation queue (held and reported posts and comments)   | ✅     | Task 12.2, 2026-10-04.     |
 
 **Waiting on the owners**
 
@@ -31,7 +32,7 @@ A private area for the team at admin.tabsira.me, reachable only over the VPN.
 
 ### 12.2 Moderation queue for reported posts
 
-- **Status:** 🔄 main machine. Phase 2, started early: the social API is on main.
+- **Status:** ✅ 2026-10-04 (main machine). Phase 2, done early: the social API is on main.
 - **Goal:** An admin screen for held and reported posts and comments, using `moderation_service.approve`, `reject` and `remove`; a moderator's own words are never shown to the author.
 - **Depends on:** —
 - **Touches:** `apps/api/src/admin/views/` (one new view), `apps/api/src/admin/registry.py`, `docs/ADMIN.md`.

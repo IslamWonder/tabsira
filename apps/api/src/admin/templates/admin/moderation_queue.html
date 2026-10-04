@@ -1,0 +1,45 @@
+{#
+  The moderation queue: posts and comments held for a person, and published ones with open
+  reports, oldest first. Each row opens the item's page, where the decision is made.
+#}
+{% extends "sqladmin/layout.html" %}
+{% macro table(kind, rows) -%}
+<div class="card mb-3">
+  <div class="card-header">
+    <h3 class="card-title">{{ rows | length }} {{ kind }}{{ 's' if rows | length != 1 }}{% if rows | length == limit %} (the first {{ limit }}){% endif %}</h3>
+  </div>
+  {% if rows %}
+  <div class="table-responsive">
+    <table class="table card-table table-vcenter table-hover">
+      <thead>
+        <tr><th>Id</th><th>Status</th><th>Why</th><th>Open reports</th><th>Author</th><th>Written</th></tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="text-nowrap"><a href="{{ url_for('admin:view-moderation-queue-item', kind=row.kind, item_id=row.item.id) }}">{{ row.kind }} {{ row.item.id }}</a></td>
+          <td class="text-nowrap">{{ row.item.status.value if row.item.status.value is defined else row.item.status }}</td>
+          <td class="text-nowrap">{{ row.item.status_reason or '' }}</td>
+          <td class="text-nowrap">{{ row.open_reports }}</td>
+          <td class="text-nowrap"><code>{{ row.item.author_id }}</code></td>
+          <td class="text-nowrap">{{ row.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body">No {{ kind }} is waiting.</div>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{% block content %}
+<div class="col-12">
+  {% if decided %}
+  <div class="alert alert-success" role="alert">Decided: {{ decided }}. The moderation log has the row.</div>
+  {% endif %}
+  {{ table('post', posts) }}
+  {{ table('comment', comments) }}
+</div>
+{% endblock %}

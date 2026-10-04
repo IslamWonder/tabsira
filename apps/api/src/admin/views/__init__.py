@@ -9,6 +9,11 @@ from src.admin.views.learning import (
     LearningPathVersionAdmin,
     LearningUnitAdmin,
 )
+from src.admin.views.moderation import (
+    ModerationActionAdmin,
+    ModerationQueueView,
+    ReportAdmin,
+)
 from src.admin.views.ontology import OntologyCandidateAdmin, OntologyEntityAdmin
 from src.admin.views.places import GeoNameAdmin
 from src.admin.views.rulings import HadithRulingAdmin, RulingsQueueView
@@ -21,6 +26,9 @@ BUILT_IN_VIEWS: tuple[ViewClass, ...] = (
     ConsentAdmin,
     RulingsQueueView,
     HadithRulingAdmin,
+    ModerationQueueView,
+    ReportAdmin,
+    ModerationActionAdmin,
     OntologyCandidateAdmin,
     OntologyEntityAdmin,
     LearningPathVersionAdmin,

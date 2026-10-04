@@ -79,7 +79,8 @@ FORBIDDEN_TEXT = (
     "25_39",
     "learn_quran_sunnah",
     "specialist",
-    "religious",
+    # The column name, not the word: a report's reason code `false_religious_claim` is public.
+    "religious_background",
     "age_range",
     "gender",
 )
