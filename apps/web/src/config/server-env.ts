@@ -110,3 +110,17 @@ export function featureAtlas(env: Env = process.env): boolean {
 export function featureSocial(env: Env = process.env): boolean {
   return featureFlag('SOCIAL', env);
 }
+
+// A Turnstile site key: letters, digits, "_" and "-" (Cloudflare's own begin with "0x4" or "1x0").
+const TURNSTILE_KEY = /^[0-9A-Za-z_-]{8,64}$/;
+
+/**
+ * TURNSTILE_SITE_KEY, or an empty string when it is unset or malformed: then
+ * Turnstile is off, nothing is rendered or loaded and no header is sent
+ * (decision 56). Public by nature, but read here at request time, never baked
+ * into the build.
+ */
+export function turnstileSiteKey(env: Env = process.env): string {
+  const value = env.TURNSTILE_SITE_KEY?.trim() ?? '';
+  return TURNSTILE_KEY.test(value) ? value : '';
+}

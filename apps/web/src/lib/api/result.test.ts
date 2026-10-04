@@ -83,6 +83,14 @@ describe('failureMessage', () => {
     );
   });
 
+  it('reads the API code of a refused Turnstile token in any case', async () => {
+    const result = await attempt(outcome(403, { error: 'turnstile_failed', detail: 'x' }));
+    expect(result).toMatchObject({ ok: false, code: 'TURNSTILE_FAILED', status: 403 });
+    expect(failureMessage(failure('TURNSTILE_FAILED', { status: 403 }))).toBe(
+      messages.errors.turnstileFailed
+    );
+  });
+
   it('counts minutes the Arabic way', () => {
     expect([1, 2, 3, 10, 11, 15].map(messages.errors.minutes)).toEqual([
       'دقيقة',

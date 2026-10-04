@@ -465,6 +465,8 @@ export const ar = {
     validation: 'بعض الحقول تحتاج تصحيحًا.',
     legalStale: 'تغيّرت شروط الاستخدام أو سياسة الخصوصية للتو. راجعهما ثم وافق من جديد.',
     legalRequired: 'وافق على شروط الاستخدام وسياسة الخصوصية في نسختهما الحالية لتتابع.',
+    turnstileFailed:
+      'تعذّر إتمام التحقق من أنك لست برنامجًا آليًا. أعد المحاولة بعد اكتمال التحقق الجديد.',
     /** Minutes, with the Arabic counted noun: دقيقة، دقيقتين، ٣ إلى ١٠ دقائق، ١١ فأكثر دقيقة. */
     minutes: (count: number) => {
       if (count <= 1) {
@@ -478,6 +480,8 @@ export const ar = {
   },
 
   auth: {
+    /** Cloudflare Turnstile's check on the five forms bots abuse (decision 56). */
+    turnstile: { label: 'التحقق من أنك لست برنامجًا آليًا' },
     fields: {
       email: 'البريد الإلكتروني',
       password: 'كلمة المرور',

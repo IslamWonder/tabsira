@@ -2,6 +2,7 @@ import { JsonLd } from '@/components/legal/json-ld';
 import { RichText } from '@/components/legal/rich-text';
 import { SupportForm } from '@/components/legal/support-form';
 import { GlassPanel } from '@/components/ui/glass-panel';
+import { turnstileSiteKey } from '@/config/server-env';
 import { legalMetadata, webPageJsonLd } from '@/lib/legal-seo';
 import { breadcrumbJsonLd } from '@/lib/seo';
 import { legalMessages } from '@/messages/legal';
@@ -31,7 +32,7 @@ export default function SupportPage() {
           </p>
           <p className="m-0 text-fg-soft text-sm leading-[2]">{support.noStorage}</p>
         </header>
-        <SupportForm />
+        <SupportForm turnstileSiteKey={turnstileSiteKey()} />
       </GlassPanel>
     </div>
   );

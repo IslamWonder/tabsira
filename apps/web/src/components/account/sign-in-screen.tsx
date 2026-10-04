@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useRef, useState } from 'react';
 import { setSignedIn, useSession } from '@/account/session';
 import { emailProblem, passwordMissing } from '@/account/validation';
+import { useTurnstile } from '@/components/turnstile/use-turnstile';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { TextField } from '@/components/ui/text-field';
@@ -27,6 +28,8 @@ export interface SignInScreenProps {
   next: Route;
   /** A failed Google sign-in, as the API's callback reported it. */
   googleError?: GoogleErrorCode | null;
+  /** Cloudflare Turnstile's site key from the web server; empty means no check (decision 56). */
+  turnstileSiteKey?: string;
 }
 
 /**
@@ -35,7 +38,11 @@ export interface SignInScreenProps {
  * just below: a forgotten password, a new account, back to the scene. The
  * account is optional, and the screen says so.
  */
-export function SignInScreen({ next, googleError = null }: SignInScreenProps) {
+export function SignInScreen({
+  next,
+  googleError = null,
+  turnstileSiteKey = '',
+}: SignInScreenProps) {
   const router = useRouter();
   const session = useSession();
   const emailRef = useRef<HTMLInputElement>(null);
@@ -45,6 +52,7 @@ export function SignInScreen({ next, googleError = null }: SignInScreenProps) {
     googleError === null ? null : messages.auth.google.errors[googleError]
   );
   const [sending, setSending] = useState(false);
+  const turnstile = useTurnstile(turnstileSiteKey);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -59,7 +67,9 @@ export function SignInScreen({ next, googleError = null }: SignInScreenProps) {
       return;
     }
     setSending(true);
-    const result = await attempt(api.POST('/auth/login', { body: { email, password } }));
+    const headers = await turnstile.headers();
+    const result = await attempt(api.POST('/auth/login', { body: { email, password }, headers }));
+    turnstile.reset();
     setSending(false);
     if (result.ok) {
       setSignedIn(result.data);
@@ -128,6 +138,7 @@ export function SignInScreen({ next, googleError = null }: SignInScreenProps) {
             >
               {T.forgot}
             </Link>
+            {turnstile.widget}
             {failure === null ? null : (
               <div role="alert">
                 <Notice tone="error">{failure}</Notice>

@@ -26,6 +26,38 @@ describe('sendSupport', () => {
     expect(JSON.parse(String(init?.body))).toEqual(REQUEST);
   });
 
+  it('adds the headers it is given, such as the Turnstile token', async () => {
+    const spy = answer(202);
+    await sendSupport(REQUEST, { 'CF-Turnstile-Response': 'tok' });
+    expect(spy.mock.calls[0]?.[1]?.headers).toEqual({
+      'Content-Type': 'application/json',
+      'CF-Turnstile-Response': 'tok',
+    });
+  });
+
+  it('sends only the content type when it has no extra headers', async () => {
+    const spy = answer(202);
+    await sendSupport(REQUEST);
+    expect(spy.mock.calls[0]?.[1]?.headers).toEqual({ 'Content-Type': 'application/json' });
+  });
+
+  it.each([
+    ['a refused token', { error: 'turnstile_failed' }, 'turnstile_failed'],
+    ['another 403', { error: 'FORBIDDEN' }, 'failed'],
+    ['a text body', 'refused', 'failed'],
+    ['a null body', null, 'failed'],
+    ['a body without a code', { detail: 'x' }, 'failed'],
+    ['a code that is not text', { error: 7 }, 'failed'],
+  ])('reads a 403 with %s as %s', async (_name, body, outcome) => {
+    answer(403, body);
+    expect(await sendSupport(REQUEST)).toBe(outcome);
+  });
+
+  it('reads a 403 whose body is not JSON as failed', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('<html>', { status: 403 }));
+    expect(await sendSupport(REQUEST)).toBe('failed');
+  });
+
   it.each([
     [422, 'invalid'],
     [429, 'rate_limited'],

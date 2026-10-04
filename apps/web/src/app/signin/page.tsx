@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { safeNextPath } from '@/account/links';
 import { type GoogleErrorCode, SignInScreen } from '@/components/account/sign-in-screen';
+import { turnstileSiteKey } from '@/config/server-env';
 import { unlistedMetadata } from '@/lib/seo';
 import { messages } from '@/messages';
 
@@ -19,5 +20,11 @@ function googleError(value: string | string[] | undefined): GoogleErrorCode | nu
 /** `?next=` is where to land afterwards; `?error=` is a failed Google sign-in (docs/AUTH.md). */
 export default async function SignInPage({ searchParams }: PageProps<'/signin'>) {
   const query = await searchParams;
-  return <SignInScreen next={safeNextPath(query.next)} googleError={googleError(query.error)} />;
+  return (
+    <SignInScreen
+      next={safeNextPath(query.next)}
+      googleError={googleError(query.error)}
+      turnstileSiteKey={turnstileSiteKey()}
+    />
+  );
 }

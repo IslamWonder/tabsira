@@ -9,11 +9,11 @@ import { Gate } from './gate';
 
 const T = messages.auth.forgot;
 
-const requestReset = (email: string) =>
-  attempt(api.POST('/auth/forgot-password', { body: { email } }));
+const requestReset = (email: string, headers: Record<string, string>) =>
+  attempt(api.POST('/auth/forgot-password', { body: { email }, headers }));
 
 /** Ask for a password reset link; the answer never says whether the address has an account. */
-export function ForgotPasswordScreen() {
+export function ForgotPasswordScreen({ turnstileSiteKey = '' }: { turnstileSiteKey?: string }) {
   return (
     <Gate
       title={T.title}
@@ -29,6 +29,7 @@ export function ForgotPasswordScreen() {
         submitLabel={T.submit}
         busyLabel={T.submitting}
         acceptedMessage={T.sent}
+        turnstileSiteKey={turnstileSiteKey}
       />
     </Gate>
   );

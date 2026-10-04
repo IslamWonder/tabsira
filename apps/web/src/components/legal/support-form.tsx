@@ -1,6 +1,7 @@
 'use client';
 
 import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { useTurnstile } from '@/components/turnstile/use-turnstile';
 import { Button } from '@/components/ui/button';
 import {
   fetchAccountEmail,
@@ -45,6 +46,7 @@ const RESULT_TEXT: Record<SupportOutcome, string> = {
   invalid: T.result.invalid,
   rate_limited: T.result.rateLimited,
   mail_unavailable: T.result.mailUnavailable,
+  turnstile_failed: T.result.turnstileFailed,
   failed: T.result.failed,
 };
 
@@ -91,7 +93,8 @@ function FieldShell({ id, label, hint, error, optional, children }: FieldShellPr
  * when the mail was not sent. The result sits in a live region that exists
  * before it speaks, so a screen reader announces it.
  */
-export function SupportForm() {
+export function SupportForm({ turnstileSiteKey = '' }: { turnstileSiteKey?: string }) {
+  const turnstile = useTurnstile(turnstileSiteKey);
   const base = useId();
   const ids = {
     email: `${base}-email`,
@@ -139,13 +142,18 @@ export function SupportForm() {
       return;
     }
     setSending(true);
-    const result = await sendSupport({
-      email: email.trim(),
-      ...(name.trim() === '' ? {} : { name: name.trim() }),
-      topic: topic as SupportTopic,
-      message: message.trim(),
-      website,
-    });
+    const headers = await turnstile.headers();
+    const result = await sendSupport(
+      {
+        email: email.trim(),
+        ...(name.trim() === '' ? {} : { name: name.trim() }),
+        topic: topic as SupportTopic,
+        message: message.trim(),
+        website,
+      },
+      headers
+    );
+    turnstile.reset();
     setSending(false);
     setOutcome(result);
     if (result === 'sent') {
@@ -267,6 +275,8 @@ export function SupportForm() {
           />
         </label>
       </div>
+
+      {turnstile.widget}
 
       <div>
         <Button

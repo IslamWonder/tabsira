@@ -32,3 +32,11 @@ People can use TABSIRA as a guest, then create an account with e-mail or Google 
 - **Depends on:** —
 - **Touches:** apps/api profile settings (schema, one migration), apps/web «ملفي» settings and the theme provider.
 - **Done when:** Change it on one browser, see it on another after sign-in; guests keep the per-device choice; 100 % coverage.
+
+### 01.2 Cloudflare Turnstile on the five abused forms: web
+
+- **Status:** ✅ 2026-10-04 22:42
+- **Goal:** Sign-up, sign-in, forgot password, resend verification and the support form show a Turnstile check when `TURNSTILE_SITE_KEY` is set on the web server, and send its token in the `CF-Turnstile-Response` header (decision 56).
+- **Depends on:** The API side of decision 56 (verifies the token, answers 403 `turnstile_failed`), built in parallel against the same contract.
+- **Touches:** apps/web (widget and hook, script loader on demand, server-env key, the five forms, messages, privacy text), docs/PRIVACY.md, `.env.example`.
+- **Done when:** Key empty: nothing rendered or loaded, no header. Key set: the script loads once on those pages only, the header is attached, the widget resets after every submit, a 403 `turnstile_failed` shows an Arabic message; a blocked script leaves the forms working. Vitest at 100 % for the new code.

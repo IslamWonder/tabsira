@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { ForgotPasswordScreen } from '@/components/account/forgot-password-screen';
+import { turnstileSiteKey } from '@/config/server-env';
 import { unlistedMetadata } from '@/lib/seo';
 import { messages } from '@/messages';
 
@@ -10,5 +11,5 @@ export const metadata: Metadata = unlistedMetadata({
 });
 
 export default function ForgotPasswordPage() {
-  return <ForgotPasswordScreen />;
+  return <ForgotPasswordScreen turnstileSiteKey={turnstileSiteKey()} />;
 }

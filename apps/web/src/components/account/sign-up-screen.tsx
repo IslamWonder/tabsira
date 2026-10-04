@@ -19,6 +19,7 @@ import {
 } from '@/account/validation';
 import { track } from '@/analytics/events';
 import { MailIcon } from '@/components/icons';
+import { useTurnstile } from '@/components/turnstile/use-turnstile';
 import { Button, LinkButton } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { TextField } from '@/components/ui/text-field';
@@ -58,8 +59,16 @@ function refusedField(failure: Failure): [Field, string] | null {
  * is signed in at once; the address is confirmed by the mailed link, needed
  * only before publishing (owner decision 25).
  */
-export function SignUpScreen({ next }: { next: Route }) {
+export function SignUpScreen({
+  next,
+  turnstileSiteKey = '',
+}: {
+  next: Route;
+  /** Cloudflare Turnstile's site key from the web server; empty means no check (decision 56). */
+  turnstileSiteKey?: string;
+}) {
   const session = useSession();
+  const turnstile = useTurnstile(turnstileSiteKey);
   const refs = {
     displayName: useRef<HTMLInputElement>(null),
     email: useRef<HTMLInputElement>(null),
@@ -99,7 +108,9 @@ export function SignUpScreen({ next }: { next: Route }) {
       ...acceptanceOf(versions),
     };
     setSending(true);
-    const result = await attempt(api.POST('/auth/signup', { body }));
+    const headers = await turnstile.headers();
+    const result = await attempt(api.POST('/auth/signup', { body, headers }));
+    turnstile.reset();
     setSending(false);
     if (!result.ok && result.code === LEGAL_REFUSAL) {
       // The texts changed while the form was open: read them again, ask again.
@@ -210,6 +221,7 @@ export function SignUpScreen({ next }: { next: Route }) {
                 </Button>
               </div>
             ) : null}
+            {turnstile.widget}
             {failure === null ? null : (
               <div role="alert">
                 <Notice tone="error">{failure}</Notice>

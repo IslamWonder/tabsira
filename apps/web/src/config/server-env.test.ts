@@ -1,11 +1,33 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   adminInspectorUrl,
   featureAtlas,
   featureCameraDiscovery,
   featureFlag,
   featureSocial,
+  turnstileSiteKey,
 } from './server-env';
+
+describe('the Turnstile site key', () => {
+  it('is read from the environment at request time, trimmed', () => {
+    expect(turnstileSiteKey({ TURNSTILE_SITE_KEY: ' 0x4AAAAAAAbcdefgh ' })).toBe(
+      '0x4AAAAAAAbcdefgh'
+    );
+  });
+
+  it.each([
+    ['unset', {}],
+    ['empty', { TURNSTILE_SITE_KEY: '' }],
+    ['malformed', { TURNSTILE_SITE_KEY: 'not a key!' }],
+  ])('is empty, so Turnstile is off, when %s', (_name, env) => {
+    expect(turnstileSiteKey(env)).toBe('');
+  });
+
+  it('reads the process environment by default', () => {
+    vi.stubEnv('TURNSTILE_SITE_KEY', '1x00000000000000000000AA');
+    expect(turnstileSiteKey()).toBe('1x00000000000000000000AA');
+  });
+});
 
 describe('the feature flags the web server reads', () => {
   it('are on unless the environment file says otherwise, read as the API reads them', () => {

@@ -16,6 +16,7 @@ const BY_CODE: Partial<Record<FailureCode, string>> = {
   GOOGLE_NOT_CONFIGURED: E.googleNotConfigured,
   VALIDATION_ERROR: E.validation,
   LEGAL_ACCEPTANCE_REQUIRED: E.legalStale,
+  TURNSTILE_FAILED: E.turnstileFailed,
 };
 
 /**

@@ -19,8 +19,8 @@ type Outcome =
   | { kind: 'idle' | 'sending' | 'done' }
   | { kind: 'failed'; message: string; invalid: boolean };
 
-const resend = (email: string) =>
-  attempt(api.POST('/auth/resend-verification', { body: { email } }));
+const resend = (email: string, headers: Record<string, string>) =>
+  attempt(api.POST('/auth/resend-verification', { body: { email }, headers }));
 
 /**
  * The page a verification mail links to. The token is read from the
@@ -28,7 +28,7 @@ const resend = (email: string) =>
  * scanner that opens the link, even one that runs scripts, cannot use it up.
  * A bad or used link offers a new one at once (tajriba §3.5).
  */
-export function VerifyEmailScreen() {
+export function VerifyEmailScreen({ turnstileSiteKey = '' }: { turnstileSiteKey?: string }) {
   const link = useFragmentToken();
   const session = useSession();
   const [outcome, setOutcome] = useState<Outcome>({ kind: 'idle' });
@@ -95,6 +95,7 @@ export function VerifyEmailScreen() {
             busyLabel={T.resending}
             acceptedMessage={T.resent}
             defaultEmail={signedInEmail}
+            turnstileSiteKey={turnstileSiteKey}
           />
         </section>
       ) : null}
