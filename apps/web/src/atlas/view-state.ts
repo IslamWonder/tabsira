@@ -4,7 +4,7 @@ import { type AtlasFilters, EMPTY_FILTERS, type Period } from './types';
 /*
  * What the atlas is looking at, carried in the address's fragment: the centre
  * and zoom of the map, the selected entry and the filters (extension §4: the
- * camera's «اعرض على الخريطة» opens the same view; coming back restores it).
+ * camera's show-on-map link opens the same view; coming back restores it).
  * A fragment never leaves the browser, so a centre near a person stays on the
  * device; it is also rounded, since a map centre needs no finer than that.
  */
