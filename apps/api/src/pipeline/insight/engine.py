@@ -501,7 +501,8 @@ def build_reranker(
 ) -> Reranker | None:
     """Return the active reranker, or None when reranking is off."""
     timeout = settings.reranker_timeout_seconds
-    match active_reranker(settings):
+    # Every kind has its arm: the fall-through coverage sees cannot happen.
+    match active_reranker(settings):  # pragma: no branch
         case RerankerKind.LLM:
             return LlmReranker(client, model=settings.ai.rerank_model, timeout_seconds=timeout)
         case RerankerKind.CROSS_ENCODER:
