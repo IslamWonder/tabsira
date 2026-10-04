@@ -175,3 +175,119 @@ def messages_for(language: str | None = None, *, settings: Settings | None = Non
     settings = settings or get_settings()
     wanted = language if language in settings.supported_languages else settings.default_language
     return CATALOGS.get(wanted, ARABIC)
+
+
+# ─── Insights: labels, disclosure and statuses shown with every result ───
+
+# v2 §12: shown in the chat and on every result.
+AI_DISCLOSURE = "تبصرة أداة مدعومة بالذكاء الاصطناعي، وليست مفتيًا ولا عالمًا"
+# v2 §4 and tajriba §2: on every prepared, reviewed example.
+PREPARED_EXAMPLE = "مثال موثّق مُعدّ"
+# On every insight of the development simulation (SCAN_ENGINE=demo).
+DEMO_ENGINE = "محاكاة معلنة للتطوير: ليست تحليلًا حيًا لصورتك"
+# Decision 18: a hadith without an editor's ruling is not shown.
+HADITH_AWAITS_VERIFICATION = (
+    "الحديث المرتبط بهذه البصيرة بانتظار التحقق من حكمه في الدرر؛ تُعرض الآية وحدها حتى يُسجَّل الحكم."
+)
+
+RELATION_LABELS = {
+    "direct": "صلة مباشرة",
+    "action_based": "صلة بالفعل",
+    "close_conceptual": "صلة مفهومية",
+    "opposite": "من المعنى المقابل",
+    "thematic_reminder": "تذكير عام",
+}
+EXPLANATION_LABELS = {
+    "seen": "ما ظهر",
+    "value": "القيمة",
+    "quran": "ماذا تضيف الآية",
+    "sunnah": "ماذا يضيف الحديث",
+    "life": "كيف يتصل بالحياة",
+}
+# The fixed tags that keep quotation apart from the platform's words (v2 §12).
+QURAN_TAG = "القرآن"
+SUNNAH_TAG = "السنة"
+EXPLANATION_TAG = "شرح تبصرة"
+# v2 §14: a step is «من السنة» only with a direct grounding; otherwise it is a suggestion.
+STEP_FROM_SUNNAH = "من السنة"
+STEP_SUGGESTION = "اقتراح عملي"
+
+STAGE_LABELS = {
+    "understanding": "أفهم المشهد",
+    "searching": "أبحث عن الأدلة",
+    "verifying": "أتحقق من المصادر",
+    "composing": "أعدّ بصيرتك",
+}
+
+# ─── The small step: a declaration, never a proof or a reward (tajriba §9) ───
+
+ACTION_DONE = "نفّذته"
+ACTION_LATER = "سأفعله لاحقًا"
+ACTION_DONE_MEANS = "تصريح منك بما فعلت؛ لا تتحقق منه تبصرة ولا تحتسب له أجرًا."
+ACTION_LATER_MEANS = "حُفظ تأجيلك؛ لا يُحتسب إنجازًا ولا يُنقص من شيء."
+
+# ─── «تمّ» and what follows it (v2 §4 and §15) ───
+
+OPTION_OPEN_WORLD = "افتح عالمي"
+OPTION_NEW_SCAN = "صوّر مشهدًا آخر"
+OPTION_SHARE = "شارك البصيرة"
+SUGGEST_ACCOUNT = "هل تحفظ ما تعلّمته لنواصل من هنا؟"
+CONTINUE_AS_GUEST = "أتابع كضيف"
+
+# ─── Chat (v2 §14) ───
+
+CHAT_LIMIT_REACHED = "اكتمل النقاش حول هذه البصيرة"
+CHAT_NEEDS_NEW_SEARCH = (
+    "طلب نص آخر يحتاج بحثًا جديدًا في المصادر وتحققًا منها، ولا أذكر نصًا من الذاكرة."
+    " صوّر المشهد من جديد أو وضّح ما تقصد لنبحث لك."
+)
+# Level د: general information first (the answer), then this referral.
+CHAT_REFERRAL = (
+    "هذه مسألة تخصّ حالتك، والحكم فيها لمن يعرف تفاصيلها:"
+    " اسأل أهل العلم المؤهلين أو جهة الفتوى المعتمدة في بلدك."
+)
+
+# ─── The world and its treasures (v2 §16 and §17) ───
+
+TREASURE_KIND_LABELS = {
+    "alternative": "نص آخر متحقَّق بالوزن نفسه",
+    "deeper": "معنى أعمق في الطريق نفسه",
+}
+RELATION_THREAD_QUESTION = "كيف ترتبطان؟"
+WORLD_RELATION_REASONS = {
+    "same_scene": "من المشهد نفسه",
+    "prerequisite": "خطوة تمهّد للأخرى في المسار",
+}
+
+# ─── Practice, never piety (decision 27) ───
+
+PRACTICE_DISCLAIMER = (
+    "هذه علامات على التمرين والمواظبة لا على الإيمان ولا على القبول؛ تُحتسب من أفعالك المسجلة فقط."
+)
+# (id, title, hint), lowest first; the thresholds live in src/services/practice.py.
+PRACTICE_RANKS = (
+    ("nazir", "ناظر", "بدأت تنظر."),
+    ("mutaammil", "متأمّل", "ثلاثة مشاهد فأكثر."),
+    ("mustabsir", "مستبصر", "عشرة مشاهد فأكثر."),
+    ("basir", "بصير بالتمرين", "ثلاثون مشهدًا فأكثر."),
+)
+DAILY_QUEST_TITLE = "بصيرة اليوم"
+DAILY_QUEST_STEPS = {
+    "look": "انظر في مشهد واحد اليوم",
+    "complete": "أتمّ بصيرة واحدة اليوم",
+}
+# id: (title, description); the rules live in src/services/practice.py.
+BADGES = {
+    "first-look": ("أول نظرة", "أكملت أول مشهد عبر تبصرة."),
+    "seven-looks": ("سبع نظرات", "سبعة مشاهد اكتملت حتى آخر مرحلة."),
+    "thirty-looks": ("ثلاثون نظرة", "ثلاثون مشهدًا؛ صار النظر عادة."),
+    "both-insights": ("البصيرتان", "أتممت بصيرتي المطر والغرس معًا."),
+    "first-action": ("فعل صغير", "أقررت بفعل صغير بعد بصيرة."),
+    "first-place": ("أول بقعة", "انقشع الضباب عن أول موضع في عالمك."),
+    "first-treasure": ("أول كنز", "كشفت أول كنز مخبوء في عالمك."),
+    "ten-concepts": ("عشرة معانٍ", "عشرة معانٍ مختلفة أضاءت في سمائك."),
+    "asked": ("سائل", "سألت عمّا أمامك في الحوار."),
+    "streak-3": ("ثلاثة أيام", "نظرت ثلاثة أيام متتالية."),
+    "streak-7": ("أسبوع من النظر", "سبعة أيام متتالية من النظر."),
+    "daily-quest": ("مهمة اليوم", "أتممت بصيرة اليوم."),
+}

@@ -58,6 +58,35 @@ class ErrorCode(StrEnum):
     # The two codes below are lower case on purpose: they are the strings the web app matches.
     legal_acceptance_required = "legal_acceptance_required"
     mail_unavailable = "mail_unavailable"
+    UNSUPPORTED_MEDIA_TYPE = "UNSUPPORTED_MEDIA_TYPE"
+    FEATURE_DISABLED = "FEATURE_DISABLED"
+    # The scan workflow: the codes of master prompt v2 §26, then the ones it needs besides.
+    ASSET_MISSING = "ASSET_MISSING"
+    MODEL_UNAVAILABLE = "MODEL_UNAVAILABLE"
+    VISION_FAILED = "VISION_FAILED"
+    NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
+    NO_RELEVANT_EVIDENCE = "NO_RELEVANT_EVIDENCE"
+    SOURCE_UNAVAILABLE = "SOURCE_UNAVAILABLE"
+    PAIR_INCOMPLETE = "PAIR_INCOMPLETE"
+    CHAT_LIMIT_REACHED = "CHAT_LIMIT_REACHED"
+    SAVE_FAILED = "SAVE_FAILED"
+    PUBLISH_FAILED = "PUBLISH_FAILED"
+    STORAGE_UNAVAILABLE = "STORAGE_UNAVAILABLE"
+    IMAGE_EMPTY = "IMAGE_EMPTY"
+    IMAGE_TOO_LARGE = "IMAGE_TOO_LARGE"
+    IMAGE_TOO_SMALL = "IMAGE_TOO_SMALL"
+    IMAGE_UNSUPPORTED = "IMAGE_UNSUPPORTED"
+    IMAGE_INVALID = "IMAGE_INVALID"
+    # The address of a photo is refused before any request (not http(s), a port, a private address).
+    IMAGE_URL_REFUSED = "IMAGE_URL_REFUSED"
+    # The photo at an accepted address could not be fetched (time, status, type, size).
+    IMAGE_FETCH_FAILED = "IMAGE_FETCH_FAILED"
+    QUEUE_UNAVAILABLE = "QUEUE_UNAVAILABLE"
+    SCAN_BUSY = "SCAN_BUSY"
+    SCAN_TIMEOUT = "SCAN_TIMEOUT"
+    CHAT_IN_PROGRESS = "CHAT_IN_PROGRESS"
+    CHAT_ANSWER_REJECTED = "CHAT_ANSWER_REJECTED"
+    TREASURE_NOT_READY = "TREASURE_NOT_READY"
 
 
 _CODE_BY_STATUS: dict[int, ErrorCode] = {
