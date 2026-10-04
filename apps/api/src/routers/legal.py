@@ -14,9 +14,9 @@ from src.schemas.legal import LegalOut
 
 router = APIRouter(prefix="/legal", tags=["legal"])
 
-# Nothing in it is about a person, so it may be cached; five minutes keeps a new version
-# from waiting long to be asked for.
-CACHE_CONTROL = "public, max-age=300"
+# A browser or a proxy may keep it but must ask again before using it: a new version has to
+# reach the sign-up page at once, and a sign-up that carries an old one is refused.
+CACHE_CONTROL = "no-cache"
 
 
 @router.get("", summary="Current legal versions and contact addresses")
