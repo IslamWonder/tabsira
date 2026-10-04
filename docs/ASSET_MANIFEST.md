@@ -295,6 +295,7 @@ Downloaded on 4 October 2026. Tanzil served the file without accepting its downl
 Time: **72 s** for the first full run on an empty database, **38 s** for a second run, on a development machine under load (load average 12–14 on 8 cores, other test suites running). A second `make data` changes no verse and no hadith.
 
 The dorar.net search link of each hadith (`https://dorar.net/hadith/search?q=<words>&st=w`) was built from the dorar site search as open-source clients use it; dorar cannot be fetched from the server, so an owner must open a few of these links in a browser to confirm the format.
+
 ## 10. Gold scenes of the benchmark
 
 `apps/api/tests/evaluation/scenes/`: 15 images (1.6 MB) and `gold.json`, which records for each image its sha256, its source and how it was made, and what a correct scene analysis must and must not say. Copied on 4 October 2026 from the old demo (`the earlier prototype`); a test checks every hash.
