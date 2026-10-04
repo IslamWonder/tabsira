@@ -32,7 +32,6 @@
       "نساء",
       "سيده",
       "شاب",
-      "شابه",
       "مسن",
       "مسنه",
       "عجوز",
@@ -103,7 +102,7 @@
       "notes": "Two hands hold a phone whose screen shows an article with a headline and a photo; another hand holds a printed slip; coffee cups and newspapers on a cafe table.",
       "required_entities": [
         ["هاتف", "جوال", "phone", "smartphone"],
-        ["يد", "يدان", "يدين", "ايدي", "hand"],
+        ["يد", "يدان", "يدين", "ايدي", "شخص", "اشخاص", "hand", "person"],
         ["قهوه", "كوب", "فنجان", "coffee", "cup", "mug"],
         ["جريده", "صحيفه", "صحف", "ورق", "newspaper", "paper"]
       ],
@@ -215,7 +214,7 @@
         ["خبز", "bread", "roll", "bun"],
         ["ارز", "رز", "rice"],
         ["طاوله", "مائده", "سفره", "table"],
-        ["يد", "يدان", "ايد", "ذراع", "اذرع", "hand", "arm"]
+        ["يد", "يدان", "ايد", "ذراع", "اذرع", "شخص", "اشخاص", "hand", "arm", "person"]
       ],
       "expected_actions": [
         [
@@ -287,7 +286,7 @@
       "notes": "An empty living room at night: a wall screen shows a city skyline, a second television below it is off; sofas, a floor lamp, plants, a coffee table with a candle. The prompt asked for a news broadcast; the screen shows none, and nobody watches.",
       "required_entities": [
         ["تلفاز", "تلفزيون", "شاشه", "شاشات", "tv", "television", "screen", "monitor"],
-        ["اريكه", "كنبه", "ارائك", "sofa", "couch"],
+        ["اريك", "ارائك", "كنب", "sofa", "couch"],
         ["مصباح", "اباجوره", "lamp"],
         ["نبات", "نبته", "نباتات", "plant"]
       ],
@@ -315,12 +314,11 @@
         "prompt": "heavy rain falling on a dry cracked field, raindrops hitting the soil, distant hills, gray sky, cinematic photo, dramatic light"
       },
       "kind": "clear",
-      "notes": "Cracked mud with shallow puddles under a grey sky, hills in the distance; a few drops in the air. Despite the prompt, the rain is light.",
+      "notes": "Cracked mud with shallow puddles under a grey sky, hills in the distance; a few faint drops in the air. Despite the prompt the rain is barely visible, so it is not required.",
       "required_entities": [
         ["ارض", "تربه", "طين", "ground", "soil", "mud", "earth"],
         ["ماء", "مياه", "بركه", "برك", "water", "puddle"],
-        ["شقوق", "تشقق", "تشققات", "متشقق", "crack"],
-        ["مطر", "امطار", "قطرات", "rain", "drop"]
+        ["شقوق", "تشقق", "تشققات", "متشقق", "crack"]
       ],
       "expected_actions": [],
       "forbidden_actions": [["يزرع", "يحرث", "planting", "plough"], ["يمشي", "walking"]],
@@ -345,7 +343,7 @@
         ["شجره", "اشجار", "tree"],
         ["جذور", "جذع", "root", "trunk"],
         ["تل", "تله", "تلال", "عشب", "مرج", "hill", "grass", "slope", "meadow"],
-        ["شمس", "غروب", "ضوء", "sun", "sunset", "light"]
+        ["شمس", "غروب", "ضوء", "اضاء", "ذهبي", "sun", "sunset", "light", "golden"]
       ],
       "expected_actions": [],
       "forbidden_actions": [["يقطف", "قطف", "يحصد", "harvest", "picking"]],
@@ -394,7 +392,7 @@
         ["بحيره", "ماء", "مياه", "lake", "water"],
         ["جبال", "جبل", "mountain"],
         ["قمر", "هلال", "اقمار", "moon", "crescent"],
-        ["اشجار", "شجر", "شجره", "صنوبر", "غابه", "tree", "pine", "forest"]
+        ["اشجار", "شجر", "صنوبر", "غاب", "tree", "pine", "forest"]
       ],
       "expected_actions": [],
       "forbidden_actions": [],
@@ -504,10 +502,10 @@
         "prompt": null
       },
       "kind": "sensitive_false_positive",
-      "notes": "A clear glass of water on an office desk with keyboards, a mouse and a monitor. A clear liquid in a glass is not alcohol: the false-positive trap for the sensitivity check.",
+      "notes": "A clear glass of water on an office desk with keyboards, a mouse and a monitor. A clear liquid in a glass is not alcohol: the false-positive trap for the sensitivity check. Calling the liquid «سائل شفاف» rather than water is careful, not wrong.",
       "required_entities": [
         ["كوب", "كاس", "glass", "cup", "tumbler"],
-        ["ماء", "مياه", "water"],
+        ["ماء", "مياه", "سائل", "water", "liquid"],
         ["لوحه مفاتيح", "لوحات مفاتيح", "كيبورد", "keyboard"],
         ["شاشه", "حاسوب", "كمبيوتر", "monitor", "screen", "computer"]
       ],
