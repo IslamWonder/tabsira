@@ -89,9 +89,9 @@ export function SceneExperience() {
           >
             {/* The phone mockup: the name and the state on top, the hint and the way to a new scene below. */}
             <div className="absolute inset-x-0 top-0 flex items-center justify-between px-5 pt-[max(20px,env(safe-area-inset-top))] tablet:hidden">
-              <h1 className="m-0">
+              <div className="m-0">
                 <LogoMark title={messages.brand.name} className="h-14" />
-              </h1>
+              </div>
               <Chip tone="glass">{messages.scene.prepared}</Chip>
             </div>
             <div className="absolute inset-x-0 bottom-[calc(var(--nav-clearance)+4px)] flex flex-col items-center gap-0.5 px-5 text-center tablet:hidden">

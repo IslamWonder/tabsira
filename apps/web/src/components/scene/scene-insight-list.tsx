@@ -52,7 +52,10 @@ export function SceneInsightList({ points, selectedId, onSelect }: SceneInsightL
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="font-semibold text-fg text-lg">{point.title}</span>
                   {point.glimpse === undefined ? null : (
-                    <span className="text-fg-soft text-sm">{point.glimpse}</span>
+                    <>
+                      {' '}
+                      <span className="text-fg-soft text-sm">{point.glimpse}</span>
+                    </>
                   )}
                 </span>
               </button>

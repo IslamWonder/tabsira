@@ -130,7 +130,7 @@ export function ScenePhoto({
                 aria-current={point.id === selectedId ? 'true' : undefined}
                 className="flex min-h-12 w-full flex-col items-start justify-center rounded-[var(--radius-card)] px-3 text-start text-glass-fg hover:bg-surface"
               >
-                <span className="font-medium">{point.title}</span>
+                <span className="font-medium">{point.title}</span>{' '}
                 <span className="text-[0.8125rem] text-glass-fg-soft">
                   {point.glimpse === undefined
                     ? spoken(point)

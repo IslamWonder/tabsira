@@ -52,7 +52,7 @@ describe('SceneIntro and SceneInsightList', () => {
     const list = screen.getByRole('region', { name: 'المس البصيرة التي لفتتك' });
     const [first, second] = Array.from(list.querySelectorAll('button'));
     expect(second).toHaveAttribute('aria-current', 'true');
-    expect(first).toHaveTextContent('[أولى][لمحة]');
+    expect(first).toHaveTextContent('[أولى] [لمحة]');
     await userEvent.click(first as HTMLButtonElement);
     expect(onSelect).toHaveBeenCalledWith('a');
   });

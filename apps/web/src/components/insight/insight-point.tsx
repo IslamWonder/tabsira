@@ -139,11 +139,15 @@ export function InsightPoint({
         <span id={titleId} className="font-semibold text-[1.0625rem] text-glass-fg leading-snug">
           {title}
         </span>
+        {/* Real spaces between the lines: a text extractor ignores the block layout and would weld the words. */}
         {glimpse === undefined ? null : (
-          <span id={glimpseId} className="text-[0.8125rem] text-glass-fg-soft leading-snug">
-            {glimpse}
-          </span>
-        )}
+          <>
+            {' '}
+            <span id={glimpseId} className="text-[0.8125rem] text-glass-fg-soft leading-snug">
+              {glimpse}
+            </span>
+          </>
+        )}{' '}
         <span id={positionId} className="sr-only">
           {positionLabel}
         </span>

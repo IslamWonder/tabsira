@@ -3,6 +3,7 @@ import { SettingsLayout } from '@/components/layout/layouts';
 import { Chip } from '@/components/ui/chip';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { type LegalPageSeo, webPageJsonLd } from '@/lib/legal-seo';
+import { breadcrumbJsonLd } from '@/lib/seo';
 import { type LegalDocument, legalMessages } from '@/messages/legal';
 import { JsonLd } from './json-ld';
 import { RichText } from './rich-text';
@@ -46,6 +47,7 @@ export function LegalPage({ document, seo }: LegalPageProps) {
       nav={<TableOfContents document={document} />}
     >
       <JsonLd data={webPageJsonLd(seo, document.version)} />
+      <JsonLd data={breadcrumbJsonLd([{ name: seo.title, path: seo.path }])} />
       <GlassPanel
         as="article"
         ornate
@@ -58,7 +60,8 @@ export function LegalPage({ document, seo }: LegalPageProps) {
           <p className="m-0 flex flex-wrap items-center gap-2 text-fg-soft text-sm">
             <Chip tone="primary">
               {COMMON.version} {document.version}
-            </Chip>
+            </Chip>{' '}
+            {/* A real space: text extraction ignores the flex layout and would weld the date to the version. */}
             <span>
               {COMMON.updated}: <time dateTime={document.version}>{document.updated}</time>
             </span>
