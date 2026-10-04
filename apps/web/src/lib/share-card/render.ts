@@ -53,7 +53,7 @@ function drawer(faces: Ctx, width: number): Draw {
       size: 22,
       leading: 0.25,
       width,
-      align: 'right',
+      align: 'start',
       colour: COLOUR.soft,
       ...overrides,
     });
@@ -101,7 +101,14 @@ function hadithLabels(hadith: NonNullable<PublicInsight['hadith']>, draw: Draw) 
   return Promise.all([
     draw({ text: hadith.tag, weight: 600, colour: COLOUR.sunnah }),
     draw({
-      text: ruling === null ? reference : T.hadithWithRuling(reference, ruling.classification),
+      text:
+        ruling === null
+          ? reference
+          : T.hadithWithRuling(
+              reference,
+              messages.evidence.ruling(ruling.ruling_text),
+              messages.insightPage.rulingSource(ruling.scholar, ruling.source_book, ruling.page)
+            ),
       colour: COLOUR.muted,
     }),
   ]);
@@ -164,7 +171,7 @@ async function sources(
           size: sizes.hadith,
           leading: 0.45,
           width: inner,
-          align: 'right',
+          align: 'start',
           colour: COLOUR.text,
         }),
   ]);
@@ -204,7 +211,7 @@ function register(faces: CardFaces): Promise<void> {
         size: 12,
         leading: 0,
         width: 100,
-        align: 'right',
+        align: 'start',
         colour: COLOUR.text,
       })
     )

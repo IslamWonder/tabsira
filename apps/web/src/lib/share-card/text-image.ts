@@ -21,7 +21,8 @@ export interface TextSpec {
   readonly leading: number;
   /** The width the lines wrap at. */
   readonly width: number;
-  readonly align: 'right' | 'centre';
+  /** `start` is the start of a right-to-left line, which is the right edge. */
+  readonly align: 'start' | 'centre';
   readonly colour: string;
 }
 
@@ -48,6 +49,12 @@ export function markup({ text, colour, weight = 400 }: TextSpec): string {
   return `<span foreground="${colour}" weight="${weight}">${escapeMarkup(text)}</span>`;
 }
 
+/*
+ * Pango swaps left and right for a right-to-left paragraph: sharp's 'left' is
+ * the start of the line, so an Arabic paragraph set with 'left' is flush right
+ * and one set with 'right' is flush left with a ragged right edge.
+ */
+
 /** Draws the text; the height is the layout's own, never a guess. */
 export async function drawText(spec: TextSpec): Promise<TextImage> {
   const { data, info } = await sharp({
@@ -56,7 +63,7 @@ export async function drawText(spec: TextSpec): Promise<TextImage> {
       font: `${spec.face.family} ${spec.size}px`,
       fontfile: spec.face.file,
       width: spec.width,
-      align: spec.align,
+      align: spec.align === 'start' ? 'left' : spec.align,
       rgba: true,
       wrap: 'word',
       spacing: Math.round(spec.size * spec.leading),

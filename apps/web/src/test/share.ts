@@ -1,5 +1,5 @@
 import type { PublicInsight } from '@/lib/share-card/layout';
-import { insightOut } from './scan';
+import { insightOut, sha256 } from './scan';
 
 /**
  * A published insight as GET /public/insights/{id} returns it, built from the
@@ -42,15 +42,15 @@ export function withLongScripture(
   if (quran === null || hadith === null) {
     throw new Error('the fixture needs both a verse and a hadith');
   }
+  const verseText = Array(verseTimes).fill(quran.verse.text).join('');
+  const hadithText = Array(hadithTimes).fill(hadith.hadith.text).join(' ');
+  // The hash follows the lengthened text, so it still says what the stored text hashes to.
   return {
     ...insight,
-    quran: {
-      ...quran,
-      verse: { ...quran.verse, text: Array(verseTimes).fill(quran.verse.text).join('') },
-    },
+    quran: { ...quran, verse: { ...quran.verse, text: verseText, sha256: sha256(verseText) } },
     hadith: {
       ...hadith,
-      hadith: { ...hadith.hadith, text: Array(hadithTimes).fill(hadith.hadith.text).join(' ') },
+      hadith: { ...hadith.hadith, text: hadithText, sha256: sha256(hadithText) },
     },
   };
 }

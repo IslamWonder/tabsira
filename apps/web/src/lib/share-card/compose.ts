@@ -224,7 +224,10 @@ function stack(shape: CardShape, parts: Parts): Stack {
 /** Places a fixed-height card, or answers null when the measured texts do not fit it. */
 export function placeFixed(shape: CardShape, parts: Parts): Placed | null {
   const placed = stack(shape, parts);
-  if (placed.frame + placed.wanted > shape.height) {
+  // A word wider than the column makes a text wider than its panel; the composite would clip it silently.
+  const inner = shape.width - 2 * shape.padding - 2 * PANEL_PADDING - PANEL_EDGE;
+  const widest = Math.max(parts.verse?.text.width ?? 0, parts.hadith?.text.width ?? 0);
+  if (placed.frame + placed.wanted > shape.height || widest > inner) {
     return null;
   }
   return { width: shape.width, height: shape.height, layers: placed.layers(shape.height) };

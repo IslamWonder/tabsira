@@ -54,6 +54,12 @@ describe('placing the pieces of a card', () => {
     expect(placed?.layers[1]?.left).toBe(44);
   });
 
+  it('answers null when a text is wider than its column, which the composite would clip', () => {
+    const wide: Source = { ...source(80), text: image(1200, 80) };
+    expect(placeFixed(WIDE, parts({ verse: wide }))).toBeNull();
+    expect(placeFixed(WIDE, parts({ hadith: wide }))).toBeNull();
+  });
+
   it('answers null when a closed candidate does not hold the measured texts', () => {
     expect(placeFixed(WIDE, parts({ verse: source(900) }))).toBeNull();
   });

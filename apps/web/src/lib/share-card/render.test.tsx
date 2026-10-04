@@ -54,6 +54,30 @@ describe('the share card image', () => {
     expect(others.some((text) => text.includes(VERSE_TEXT.trim()))).toBe(false);
   });
 
+  it("draws the source's own words on the ruling, never the editor's bucket alone", async () => {
+    const insight = publicInsightOut();
+    const ruling = insight.hadith?.hadith.ruling;
+    if (ruling === null || ruling === undefined) {
+      throw new Error('the fixture has a ruling');
+    }
+    expect(ruling.ruling_text).not.toBe(ruling.classification);
+    const { specs } = await render(insight);
+    const texts = specs.map((spec) => spec.text);
+    const label = texts.find((text) => text.includes(ruling.ruling_text)) ?? '';
+    expect(label).toContain(messages.evidence.ruling(ruling.ruling_text));
+    expect(label).toContain(
+      messages.insightPage.rulingSource(ruling.scholar, ruling.source_book, ruling.page)
+    );
+    expect(texts).not.toContain(ruling.classification);
+    expect(label.split('\n')).not.toContain(ruling.classification);
+  });
+
+  it('keeps the stored hashes of a lengthened verse and hadith', () => {
+    const insight = withLongScripture(publicInsightOut(), 3, 3);
+    expect(sha256(insight.quran?.verse.text ?? '')).toBe(insight.quran?.verse.sha256);
+    expect(sha256(insight.hadith?.hadith.text ?? '')).toBe(insight.hadith?.hadith.sha256);
+  });
+
   it('uses the Quran face for the verse alone and Readex Pro for the rest', async () => {
     const { specs } = await render();
     expect(verseSpec(specs).length).toBeGreaterThan(0);
@@ -71,6 +95,12 @@ describe('the share card image', () => {
     const texts = specs.map((spec) => spec.text);
     expect(texts).toContain(insight.quran?.verse.text);
     expect(texts).toContain(insight.hadith?.hadith.text);
+    expect(sha256(texts.find((text) => text === insight.quran?.verse.text) ?? '')).toBe(
+      insight.quran?.verse.sha256
+    );
+    expect(sha256(texts.find((text) => text === insight.hadith?.hadith.text) ?? '')).toBe(
+      insight.hadith?.hadith.sha256
+    );
   });
 
   it('leaves a hadith that cannot fit whole to the public page and says so', async () => {

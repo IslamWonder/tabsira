@@ -25,15 +25,16 @@ export const shareMessages = {
     copied: 'نُسخ الرابط.',
     withdrawn: 'سُحبت البصيرة، ولم تعد صفحتها متاحة لأحد.',
     notPublishable:
-      'لا يمكن نشر هذه البصيرة. لا تُنشر إلا البصائر التي جاءت من تحليل حقيقي لصورتك ولم يُبنَ شيء منها على ما في ملفك، وكان في كل منها ما يُعرض من القرآن أو السنة من مصدرهما المعتمد، وليس مشهدها حساسًا.',
+      'لا يمكن نشر هذه البصيرة. لا تُنشر إلا البصائر التي جاءت من تحليل حقيقي لصورتك ولم يُبنَ شيء منها على ما في ملفك، وكان في كل منها ما يُعرض من القرآن أو السنة من مصدرهما المعتمد، وليس مشهدها حساسًا، ولم يظهر في نصوص المنصة ما يشبه آيةً أو حديثًا.',
     copyFailed: 'تعذّر النسخ. انسخ الرابط المعروض يدويًا.',
   },
 
   shareCard: {
     /** Under the verse when the hadith is too long to fit whole on the card. */
     hadithOnPage: 'الحديث كاملًا في صفحة البصيرة',
-    /** The hadith's reference followed by the ruling, as recorded. */
-    hadithWithRuling: (reference: string, ruling: string) => `${reference}، ${ruling}`,
+    /** The hadith's reference, then the source's own words on its ruling and who gave it, each on its own line. */
+    hadithWithRuling: (reference: string, ruling: string, source: string) =>
+      `${reference}\n${ruling}\n${source}`,
     /** The author's public name and handle; the handle is isolated so it keeps its own direction in the right-to-left line. */
     author: (name: string, handle: string) => `نشرها ${name} \u2066@${handle}\u2069`,
   },
