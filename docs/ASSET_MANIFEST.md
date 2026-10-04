@@ -304,3 +304,17 @@ The dorar.net search link of each hadith (`https://dorar.net/hadith/search?q=<wo
 - `glass-of-water.jpg` (the demo's `public/tabsira/test-glass-of-water.jpg`) and `sensitive-alcohol.jpg` (the demo's `tests/fixtures/`) have no generation record; their 1344×768 JFIF files without camera EXIF match the generated set, so they are most likely generated too.
 - Generated images can differ from their prompt: the market has no scale, the television shows a city rather than news, the rain is light. The expectations describe the image, not the prompt.
 - Licence: Freepik's terms for AI-generated content, not verified. No person in them can be identified; none is a user photo.
+
+## 11. Scripture vectors and reranker weights (4 October 2026)
+
+`python -m src.cli.embed_corpus` (a step of `make data`) embeds the retrieval document of every verse and hadith: the folded search copy (a hadith without its chain) followed by its model-written annotation or signal concepts, never the displayed text. The vectors live in `app.quran_verse_embeddings` and `app.hadith_embeddings`, keyed by model and size; every run is recorded in `app.embedding_runs` with its tokens and cost.
+
+| Model                    | Size | Verses | Hadiths |     Tokens |    Cost | Use                                                         |
+| ------------------------ | ---: | -----: | ------: | ---------: | ------: | ----------------------------------------------------------- |
+| `text-embedding-3-large` | 1536 |  6,236 |  65,712 | 14,355,603 | $1.8662 | OpenAI default (HNSW index)                                 |
+| `bge-m3` (OVH)           | 1024 |  6,236 |  65,712 |  6,718,795 | $0.0672 | OVH default (HNSW index)                                    |
+| `text-embedding-3-small` | 1536 |  6,236 |  14,940 |  4,863,402 | $0.0973 | benchmark only (Bukhari and Muslim), searched by exact scan |
+
+Total: **$2.03**, measured by the runs themselves. One run interrupted by a machine restart is still recorded as `running` with nothing embedded; the next run found every vector of it missing and embedded them.
+
+The cross-encoders compared by the retrieval benchmark are fetched by `services/vision/scripts/fetch-weights.sh` into `services/vision/weights/rerankers/` (ignored by git): `BAAI/bge-reranker-v2-m3` (Apache-2.0, 2.27 GB, model.safetensors and its tokenizer) and `amberoad/bert-multilingual-passage-reranking-msmarco` (Apache-2.0, served by the hub as `amber-tech/...`).
