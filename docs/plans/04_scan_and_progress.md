@@ -15,6 +15,7 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 | Scan worker unit, graceful restart, Redis persistence off                        | ✅     | Dry-run only; no server touched.   |
 | Scripture review fixes, then merge                                               | 🔄     | In progress.                       |
 | Screens: capture, progress, focus, question                                      | 🔄     | In progress.                       |
+| Chat answers tied to the texts shown when written                                | ✅     | Hidden once a text is not shown.   |
 
 **How we check it**
 
@@ -49,7 +50,7 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 
 ### 04.4 Tie chat answers to the texts shown when they were written
 
-- **Status:** ⬜ open, after 04.1
+- **Status:** ✅ 2026-10-04 17:37
 - **Goal:** Each chat answer records the evidence ids shown when it was written; an answer whose texts are no longer all shown (a hadith since ruled out) is hidden or annotated and left out of the chat history sent to the model.
 - **Depends on:** 04.1
 - **Touches:** apps/api chat service and insight view, one migration.

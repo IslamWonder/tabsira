@@ -115,6 +115,8 @@ class Messages:
     chat_limit_reached: str
     chat_needs_new_search: str
     chat_referral: str
+    # Said in place of an answer that is no longer shown.
+    chat_answer_withdrawn: str
     # The world and its treasures (v2 §16 and §17).
     treasure_kind_labels: dict[str, str]
     relation_thread_question: str
@@ -271,6 +273,7 @@ ARABIC = Messages(
         "هذه مسألة تخصّ حالتك، والحكم فيها لمن يعرف تفاصيلها:"
         " اسأل أهل العلم المؤهلين أو جهة الفتوى المعتمدة في بلدك."
     ),
+    chat_answer_withdrawn="لم يعد هذا الجواب معروضًا.",
     treasure_kind_labels={
         "alternative": "نص آخر متحقَّق بالوزن نفسه",
         "deeper": "معنى أعمق في الطريق نفسه",

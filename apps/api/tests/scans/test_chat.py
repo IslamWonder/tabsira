@@ -13,7 +13,7 @@ from src import clock
 from src.ai.errors import AiCallError, AiErrorCode
 from src.errors import AppError
 from src.messages import messages_for
-from src.models import AiCall, ChatMessage, ChatStatus, Guest
+from src.models import AiCall, ChatMessage, ChatStatus, Guest, HadithClassification
 from src.owner import Owner
 from src.services import chat_service
 from tests.fakes import FakeModelClient
@@ -253,3 +253,60 @@ async def test_concurrent_messages_are_counted_one_after_the_other(engine, make_
 
     assert sorted(map(str, results)) == ["1", "CHAT_LIMIT_REACHED"]
     assert len(model.calls) == 1
+
+
+async def test_an_answer_written_beside_a_hadith_since_ruled_out_is_hidden_and_never_sent_again(
+    browser, store, flow_settings, model
+):
+    insight_id = await an_insight(browser, store, flow_settings)
+    async with store() as db:
+        await rule(db, "bukhari", "1032")
+        await db.commit()
+    model.answers.extend([said(answer="جواب أول عن الحديث."), said(answer="جواب ثان.")])
+    await ask(browser, insight_id, message="سؤال أول", key="key-0001")
+    async with store() as db:
+        row = await db.scalar(select(ChatMessage))
+        assert row is not None
+        assert row.evidence_ids == ["hadith:bukhari:1032", "quran:30:50"]
+
+    async with store() as db:
+        await rule(db, "bukhari", "1032", HadithClassification.DAIF)
+        await db.commit()
+
+    shown = (await browser.get(f"/insights/{insight_id}")).json()["chat"]
+    assert shown["messages"] == []
+    assert (shown["used"], shown["remaining"]) == (1, 2)
+    replay = await ask(browser, insight_id, message="سؤال أول", key="key-0001")
+    assert replay.json()["message"]["answer"] == messages_for().chat_answer_withdrawn
+    assert "جواب أول عن الحديث." not in replay.text
+    second = await ask(browser, insight_id, message="سؤال ثان", key="key-0002")
+    assert second.json()["message"]["answer"] == "جواب ثان."
+    assert "جواب أول عن الحديث." not in model.calls[1]["user"]
+    assert "سؤال أول" not in model.calls[1]["user"]
+
+
+async def test_an_answer_of_an_unknown_evidence_is_not_shown_and_one_still_shown_is(
+    browser, store, flow_settings, model
+):
+    insight_id = await an_insight(browser, store, flow_settings)
+    async with store() as db:
+        for key, ids in (("old", None), ("kept", ["quran:30:50"])):
+            db.add(
+                ChatMessage(
+                    insight_id=int(insight_id),
+                    idempotency_key=key,
+                    status=ChatStatus.ANSWERED,
+                    question=f"سؤال {key}",
+                    answer=f"جواب {key}",
+                    level="a",
+                    kind="answer",
+                    evidence_ids=ids,
+                    answered_at=clock.utcnow(),
+                )
+            )
+        await db.commit()
+
+    shown = (await browser.get(f"/insights/{insight_id}")).json()["chat"]
+
+    assert [m["answer"] for m in shown["messages"]] == ["جواب kept"]
+    assert shown["used"] == 2

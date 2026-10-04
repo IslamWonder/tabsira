@@ -292,5 +292,8 @@ class ChatMessage(Base):
     level: Mapped[str | None] = mapped_column(String(1))
     # `answer`, `referral` (level d) or `new_search` (a new text was asked for).
     kind: Mapped[str | None] = mapped_column(String(16))
+    # The evidence ids (`quran:30:50`, `hadith:bukhari:1032`) shown when the answer was written;
+    # null on an answer written before they were kept, which is never shown again.
+    evidence_ids: Mapped[list[str] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = created_at_column()
     answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

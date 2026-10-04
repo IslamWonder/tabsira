@@ -190,7 +190,14 @@ async def _unit(db: AsyncSession, insight: Insight) -> LearningUnitOut | None:
     )
 
 
+def answer_is_shown(row: ChatMessage, shown: set[str]) -> bool:
+    """Tell whether every text an answer was written beside is still shown; unknown is not."""
+    return row.evidence_ids is not None and set(row.evidence_ids) <= shown
+
+
 async def chat_of(db: AsyncSession, settings: Settings, insight: Insight) -> ChatOut:
+    verse, hadith, _awaiting = await shown_evidence(db, insight)
+    shown = shown_ids(verse, hadith)
     rows = (
         await db.scalars(
             select(ChatMessage)
@@ -204,7 +211,7 @@ async def chat_of(db: AsyncSession, settings: Settings, insight: Insight) -> Cha
         used=len(rows),
         limit=limit,
         remaining=max(limit - len(rows), 0),
-        messages=[message_out(row) for row in rows],
+        messages=[message_out(row) for row in rows if answer_is_shown(row, shown)],
     )
 
 

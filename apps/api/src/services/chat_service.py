@@ -40,9 +40,16 @@ from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverl
 from src.pipeline.prompt import load_prompt
 from src.routers.scripture import HadithOut, QuranVerseOut
 from src.scans.workflow import call_rows
-from src.schemas.insight import ChatReply
+from src.schemas.insight import ChatMessageOut, ChatReply
 from src.scripture.overlap import repeats_store
-from src.services.insight_view import explanation_out, message_out, shown_evidence, step_out
+from src.services.insight_view import (
+    answer_is_shown,
+    explanation_out,
+    message_out,
+    shown_evidence,
+    shown_ids,
+    step_out,
+)
 
 SYSTEM_PROMPT = "insight_chat_system.v2"
 USER_PROMPT = "insight_chat_user.v2"
@@ -117,7 +124,8 @@ async def _reserve(
     return row
 
 
-async def _history(db: AsyncSession, insight: Insight) -> str:
+async def _history(db: AsyncSession, insight: Insight, shown: set[str]) -> str:
+    """Return the answers whose texts are all still shown; the others never reach the model."""
     rows = (
         await db.scalars(
             select(ChatMessage)
@@ -125,9 +133,10 @@ async def _history(db: AsyncSession, insight: Insight) -> str:
             .order_by(ChatMessage.id)
         )
     ).all()
-    if not rows:
+    kept = [row for row in rows if answer_is_shown(row, shown)]
+    if not kept:
         return "(none)"
-    return "\n".join(f"- Q: {row.question}\n  A: {row.answer}" for row in rows)
+    return "\n".join(f"- Q: {row.question}\n  A: {row.answer}" for row in kept)
 
 
 async def _cited_texts(db: AsyncSession, insight: Insight) -> list[str]:
@@ -204,12 +213,21 @@ async def answer(
     used = await _used(db, insight)
     limit = settings.max_chat_user_messages
     return ChatReply(
-        message=message_out(row),
+        message=await _replayed(db, insight, row),
         used=used,
         limit=limit,
         remaining=max(limit - used, 0),
         disclosure=messages_for().ai_disclosure,
     )
+
+
+async def _replayed(db: AsyncSession, insight: Insight, row: ChatMessage) -> ChatMessageOut:
+    """Return the message, its answer replaced when a text it rests on is no longer shown."""
+    verse, hadith, _awaiting = await shown_evidence(db, insight)
+    out = message_out(row)
+    if answer_is_shown(row, shown_ids(verse, hadith)):
+        return out
+    return out.model_copy(update={"answer": messages_for().chat_answer_withdrawn})
 
 
 async def _used(db: AsyncSession, insight: Insight) -> int:
@@ -243,7 +261,7 @@ async def _answer(
         explanation=_explanation(verse, hadith, insight),
         why=_why(insight),
         step=_step(verse, hadith, insight),
-        history=await _history(db, insight),
+        history=await _history(db, insight, shown_ids(verse, hadith)),
         question=row.question,
     )
     log = CallLog()
@@ -272,6 +290,7 @@ async def _answer(
     row.answer = text
     row.level = output.level
     row.kind = kind
+    row.evidence_ids = sorted(shown_ids(verse, hadith))
     row.answered_at = clock.utcnow()
     db.add_all(call_rows(log.records, insight_id=insight.id))
     await db.commit()
