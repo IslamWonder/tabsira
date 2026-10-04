@@ -22,9 +22,9 @@ from src.models import (
 from src.models import scripture as scripture_models
 from src.scripture.guard import WritePurpose, allow_scripture_writes
 from src.scripture.text import search_copy, sha256_hex
-from tests.scripture_fixtures import hadith_text, load_json, verse_text
+from tests.scripture.fixtures import hadith_text, load_json, verse_text
 
-API_DIR = Path(__file__).resolve().parents[1]
+API_DIR = Path(__file__).resolve().parents[2]
 # Alif forms, alif maqsura, teh marbuta, hamza seats, tatweel, RLM, quotes and Arabic comma.
 FOLDED_AWAY = (
     0x0623,

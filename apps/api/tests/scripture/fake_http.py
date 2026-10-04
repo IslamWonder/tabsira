@@ -11,7 +11,7 @@ import httpx
 
 from src.scripture.files import bytes_sha256
 from src.scripture.quranpedia import QuranpediaClient
-from tests.scripture_fixtures import fixture_path
+from tests.scripture.fixtures import fixture_path
 
 Answer = httpx.Response | Callable[[httpx.Request], httpx.Response]
 

@@ -20,8 +20,8 @@ from src.scripture.quranpedia import (
     fetch_dump_files,
     new_http_client,
 )
-from tests.scripture_fixtures import fixture_path, load_json
-from tests.scripture_http import FakeQuranpedia, dump_routes, json_response, manifest_for
+from tests.scripture.fake_http import FakeQuranpedia, dump_routes, json_response, manifest_for
+from tests.scripture.fixtures import fixture_path, load_json
 
 
 def _row(surah: int = 30, ayah: int = 50, refetch: str | None = None) -> ChangedAyah:

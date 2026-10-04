@@ -1,7 +1,7 @@
 """
 Real rows copied from the downloaded sources, for the scripture tests. Nothing here is typed by hand.
 
-`tests/fixtures/scripture/` holds:
+`tests/scripture/data/` holds:
 
 - `quranpedia-mushafs-2.json`: quranpedia dump `mushafs-2.json.gz` (version 2026-10-03) with
   surahs 1 and 112 whole and a few verses of surahs 2 and 30, every field as in the dump.
@@ -25,7 +25,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-FIXTURES = Path(__file__).resolve().parent / "fixtures" / "scripture"
+FIXTURES = Path(__file__).resolve().parent / "data"
 
 
 def fixture_path(name: str) -> Path:
