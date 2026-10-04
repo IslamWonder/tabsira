@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict
 
 from src.schemas.cookie_consent import CookieConsentExport
 from src.schemas.profile import ConsentOut, ProfileOut
+from src.schemas.social_export import SocialExport
 
 
 class UserExport(BaseModel):
@@ -17,6 +18,9 @@ class UserExport(BaseModel):
     id: uuid.UUID
     email: str
     display_name: str
+    # The public identity chosen for the social network, when there is one.
+    handle: str | None
+    public_name: str | None
     is_admin: bool
     is_active: bool
     email_verified_at: datetime | None
@@ -60,3 +64,5 @@ class AccountExport(BaseModel):
     consents: list[ConsentOut]
     # The cookie choices made while signed in, never the anonymous ones of the same browser.
     cookie_consents: list[CookieConsentExport]
+    # What the account wrote and did on the social network.
+    social: SocialExport

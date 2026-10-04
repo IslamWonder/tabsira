@@ -12,7 +12,7 @@ from src.models.user import OAuthAccount, User
 from src.schemas.account import AccountExport
 from src.schemas.cookie_consent import CookieConsentExport
 from src.schemas.profile import ConsentOut, ProfileOut
-from src.services import cookie_consent_service, profile_service
+from src.services import cookie_consent_service, profile_service, social_export
 
 
 async def export_account(db: AsyncSession, user: User) -> AccountExport:
@@ -45,6 +45,7 @@ async def export_account(db: AsyncSession, user: User) -> AccountExport:
                 CookieConsentExport.model_validate(choice)
                 for choice in await cookie_consent_service.choices_of(db, user)
             ],
+            "social": await social_export.collect(db, user),
         },
         from_attributes=True,
     )
@@ -55,7 +56,9 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     Delete the user and, by ON DELETE CASCADE, everything that references them.
 
     Sessions, linked identities, the profile, the consent history, the cookie
-    choices made while signed in and the mailed tokens all go with the row. The
+    choices made while signed in, the mailed tokens and everything on the social
+    network (posts with their publications, comments, follows, blocks, likes,
+    bookmarks and reports) all go with the row. The
     cookie-consent table is append-only, and its guard lets exactly this cascade
     through. Anything a later feature stores outside the database (photos in
     object storage) must be removed here before the row.
