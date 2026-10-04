@@ -59,4 +59,5 @@ These decisions resolve the conflicts between the specification documents. This 
     - **Nothing loads before consent:** Consent Mode v2 defaults are all denied; GA and the heatmap tool are injected only after their category is accepted; advertising storage, ad user data and ad personalisation stay denied.
     - **Never sent to any analytics tool:** profile fields, photos, typed text, insight or scripture text, locations, query strings, email addresses or user ids. Heatmap recordings mask every text input and every user-generated text.
     - **Heatmaps** use Microsoft Clarity (free, Consent Mode aware) configured by `CLARITY_PROJECT_ID`, unless the owners choose another tool; empty means off.
+33. **OpenAI is the default AI provider, switchable.** Measured in `docs/BENCHMARK.md`: `gpt-5.4-mini-2026-03-17` (reasoning off) scored 0.98 with a p95 of 5.7 s against Qwen3.8-27B's 0.97 at 27 s. `AI_PROVIDER=ovh` switches every stage to OVH with no code change; both stay wired and benchmarked.
 
