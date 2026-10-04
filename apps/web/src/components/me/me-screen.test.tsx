@@ -42,6 +42,10 @@ describe('MeScreen for a guest', () => {
     expect(screen.queryByRole('switch', { name: 'التخصيص' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'بياناتك' })).toBeNull();
     expect(screen.getByText(/هذه علامات على التمرين والمواظبة لا على الإيمان/)).toBeInTheDocument();
+    expect(within(section('تمرينك')).getByRole('link', { name: 'افتح تمرينك' })).toHaveAttribute(
+      'href',
+      '/me/practice'
+    );
     expect(within(section('ملفات تعريف الارتباط')).getByText('لم تختر بعد.')).toBeInTheDocument();
   });
 

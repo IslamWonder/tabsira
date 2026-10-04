@@ -8,6 +8,7 @@ import CommunityPage, { metadata as communityMetadata } from './community/page';
 import ErrorPage from './error';
 import manifest from './manifest';
 import MePage, { metadata as meMetadata } from './me/page';
+import PracticePage, { metadata as practiceMetadata } from './me/practice/page';
 import NotFound, { metadata as notFoundMetadata } from './not-found';
 import OfflinePage, { metadata as offlineMetadata } from './offline/page';
 import ScenePage, { metadata as sceneMetadata } from './page';
@@ -19,7 +20,6 @@ describe('placeholder routes', () => {
   it.each<[string, () => ReactElement, Metadata, string, string]>([
     ['/community', CommunityPage, communityMetadata, 'تبصرة تواصل', '/community'],
     ['/atlas', AtlasPage, atlasMetadata, 'أطلس بصائر العالم', '/atlas'],
-    ['/me', MePage, meMetadata, 'ملفي', '/me'],
   ])(
     '%s says «قريبًا» honestly and has its canonical address',
     (_route, Page, metadata, title, canonical) => {
@@ -30,17 +30,25 @@ describe('placeholder routes', () => {
     }
   );
 
-  it('/world is a real screen with its canonical address', () => {
-    render(<WorldPage />);
-    expect(screen.getByRole('heading', { level: 1, name: 'عالمي' })).toBeInTheDocument();
-    expect(screen.queryByText('قريبًا')).toBeNull();
-    expect(worldMetadata.alternates?.canonical).toBe('/world');
-  });
-
   it('keeps the personal spaces out of search engines', () => {
     expect(worldMetadata.robots).toEqual({ index: false, follow: false });
     expect(meMetadata.robots).toEqual({ index: false, follow: false });
+    expect(practiceMetadata.robots).toEqual({ index: false, follow: false });
   });
+
+  it.each<[string, () => ReactElement, Metadata, string, string]>([
+    ['/world', WorldPage, worldMetadata, 'عالمي', '/world'],
+    ['/me/practice', PracticePage, practiceMetadata, 'تمرينك', '/me/practice'],
+    ['/me', MePage, meMetadata, 'ملفي', '/me'],
+  ])(
+    '%s is a real screen with its canonical address',
+    (_route, Page, metadata, title, canonical) => {
+      render(<Page />);
+      expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument();
+      expect(screen.queryByText('قريبًا')).toBeNull();
+      expect(metadata.alternates?.canonical).toBe(canonical);
+    }
+  );
 
   it('lets «ملفي» choose the theme and the decorative motion already', () => {
     render(<MePage />);

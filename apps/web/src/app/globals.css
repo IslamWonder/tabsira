@@ -107,7 +107,17 @@
   --animate-orbit: orbit 48s linear infinite;
   --animate-pulse-soft: pulse-soft 1.8s ease-in-out infinite;
   --animate-draw: draw 600ms var(--ease-out-soft) both;
+  --animate-grow: grow 900ms var(--ease-out-soft) 150ms both;
 
+  /* A bar fills from its start edge: transform only, in either reading direction. */
+  @keyframes grow {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
   @keyframes breathe {
     0%,
     100% {
