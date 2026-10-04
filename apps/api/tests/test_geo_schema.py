@@ -72,6 +72,21 @@ async def test_the_folded_name_is_computed_by_the_database_on_every_write(db_ses
     assert alternate.name_norm == "tunis"
 
 
+async def test_the_geonames_name_is_folded_by_the_database_on_every_write(db_session):
+    place = GeoName(geoname_id=1, name="Sidi Bou Saïd")
+    db_session.add(place)
+    await db_session.flush()
+    await db_session.refresh(place)
+
+    assert place.name_norm == "sidi bou said"
+
+    place.name = "Hammam-Lif"
+    await db_session.flush()
+    await db_session.refresh(place)
+
+    assert place.name_norm == "hammam lif"
+
+
 async def test_the_migration_and_the_models_define_the_same_folding():
     spec = importlib.util.spec_from_file_location("add_search_columns", MIGRATION)
     assert spec is not None
@@ -111,6 +126,16 @@ async def test_distance_queries_in_metres_can_use_the_geography_index(db_session
     )
 
     assert "ix_geonames_location_geog" in plan
+
+
+async def test_places_are_found_by_the_start_of_their_folded_name_in_index_order(db_session):
+    plan = await explain(
+        db_session,
+        "SELECT geoname_id FROM geodata.geonames "
+        "WHERE name_norm ~>=~ 'san' AND name_norm ~<~ 'sao' ORDER BY population DESC LIMIT 100",
+    )
+
+    assert "ix_geonames_name_norm_prefix" in plan
 
 
 async def test_a_region_is_found_through_the_partial_index_on_adm1_rows(db_session):

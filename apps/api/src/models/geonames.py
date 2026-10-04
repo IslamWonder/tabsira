@@ -68,6 +68,12 @@ class GeoName(GeoBase):
             postgresql_ops={"name": "gin_trgm_ops"},
         ),
         Index("ix_geonames_location_geom", "location_geom", postgresql_using="gist"),
+        # Search by the folded name: exact and prefix, in index order.
+        Index(
+            "ix_geonames_name_norm_prefix",
+            "name_norm",
+            postgresql_ops={"name_norm": "text_pattern_ops"},
+        ),
         # A place finds its administrative area by (country, admin1 code); the
         # partial index holds only the few thousand ADM1 rows, so the lookup
         # never scans the places that share the code.
@@ -98,6 +104,9 @@ class GeoName(GeoBase):
     # The preferred Arabic name, chosen from the Arabic alternate names by the
     # import scripts: the label shown to the user when there is one.
     ar_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The name as `geodata.normalize_name` folds it, computed by the database.
+    # Written without the schema for the reason given on the alternate names.
+    name_norm: Mapped[str] = mapped_column(Text, Computed("normalize_name(name)", persisted=True))
 
     # Soft-delete flag (GeoNames monthly reconciliation uses this, never hard-delete)
     is_active: Mapped[bool] = mapped_column(
