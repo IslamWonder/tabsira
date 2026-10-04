@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
-# Provision the production APPLICATION host (Ubuntu 24.04 or 26.04): the user,
-# Node and pnpm and pm2, uv and Python 3.12, nginx with HTTPS from certbot, the
-# systemd units, log rotation and the layout deploy/deploy.sh expects.
-# No Docker.
+# Provision the production APPLICATION host (Ubuntu 24.04 or 26.04): the account the
+# application runs as (devops), nvm with Node, pnpm and pm2, uv and Python, nginx
+# with HTTPS from certbot, the systemd units, log rotation and the layout
+# deploy/deploy.sh expects under /opt/tabsira. No Docker.
 #
 # What it does, in order:
 #   1. apt packages: nginx, certbot (and its DNS plugin), git, curl,
 #      postgresql-client-18 from PGDG (psql and pg_dump for migrations and dumps).
 #   2. The application user (no login password) and the layout under APP_ROOT:
 #      repo, releases, shared (.env, state, cache), static; /var/log/tabsira.
-#   3. Node (the latest 24.x from nodejs.org, checksum verified) with corepack
-#      for pnpm and pm2 globally; pm2 starts at boot for the application user.
-#   4. uv for the application user, and the Python that apps/api/.python-version
-#      names, as uv builds it (never the system Python).
+#   3. The toolchain, in the application user's home (deploy/install-toolchain.sh):
+#      nvm with the Node of .nvmrc, the pnpm package.json pins, pm2, uv and the
+#      Python apps/api/.python-version names as uv builds it (never the system
+#      Python); pm2 starts at boot for the application user.
 #   5. The production environment file from deploy/env.production.example, only
 #      when none exists (mode 0600); HASH_SECRET is generated when still a
 #      placeholder. Every other CHANGE_ME stays for the owners.
-#   6. TLS: certbot issues the certificate of tabsira.me, www and api by HTTP
-#      (webroot, behind a bootstrap server block), and the one of
-#      admin.tabsira.me by a DNS-01 challenge (the admin host has no public
-#      address), with a renewal hook that runs `nginx -t` before it reloads.
+#   6. TLS: one certbot lineage per name (tabsira.me with www, api.tabsira.me,
+#      admin.tabsira.me), each by an HTTP challenge through the webroot; existing
+#      lineages are kept and moved to webroot renewal; a renewal hook runs
+#      `nginx -t` before it reloads.
 #   7. deploy/apply-config.sh: the nginx site and snippets, the systemd units
 #      and timers, log rotation.
 #   8. A narrow sudoers file and /usr/local/bin/tabsira-deploy, the launcher
@@ -27,15 +27,14 @@
 #
 # Usage (as root, from a checkout of the repository, on the application host):
 #   APP_HOST_VPN_IP=<this host's Netbird address> CERTBOT_EMAIL=<address> \
-#     CERTBOT_DNS_PLUGIN=<provider> CERTBOT_DNS_CREDENTIALS=<file> \
-#     deploy/provision-app.sh [--dry-run] [--skip-tls]
+#     deploy/provision-app.sh [--dry-run | --check] [--skip-tls]
 #
 # Environment: APP_HOST_VPN_IP (required), CERTBOT_EMAIL (required for TLS),
-# CERTBOT_DNS_PLUGIN (the certbot DNS plugin of the DNS provider, for example
-# the provider's name; required for the admin certificate),
-# CERTBOT_DNS_CREDENTIALS (its credentials file, mode 0600, supplied by the
-# owners, never in git), APP_USER (the account that ran sudo, else devops; created when missing), APP_ROOT (/opt/tabsira), APP_REPO
-# (git URL to clone on the first run), VPN_SUBNET, PG_CLIENT_VERSION (18).
+# CERTBOT_DNS_PLUGIN and CERTBOT_DNS_CREDENTIALS (optional: issue the admin
+# certificate by DNS-01 instead of HTTP; the credentials file is mode 0600, supplied
+# by the owners, never in git), APP_USER (the account that ran sudo, else devops;
+# created when missing), APP_ROOT (/opt/tabsira), APP_REPO (git URL to clone on the
+# first run), VPN_SUBNET, PG_CLIENT_VERSION (18).
 
 set -Eeuo pipefail
 # shellcheck disable=SC1091
@@ -46,9 +45,9 @@ source "$DEPLOY_DIR/net-lib.sh"
 SKIP_TLS=false
 for arg in "$@"; do
 	case "$arg" in
-	--dry-run) set_dry_run ;;
+	--dry-run | --check) set_dry_run ;;
 	--skip-tls) SKIP_TLS=true ;;
-	*) die "usage: provision-app.sh [--dry-run] [--skip-tls]" ;;
+	*) die "usage: provision-app.sh [--dry-run | --check] [--skip-tls]" ;;
 	esac
 done
 
@@ -60,18 +59,18 @@ PG_CLIENT_VERSION="${PG_CLIENT_VERSION:-18}"
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-}"
 CERTBOT_DNS_PLUGIN="${CERTBOT_DNS_PLUGIN:-}"
 CERTBOT_DNS_CREDENTIALS="${CERTBOT_DNS_CREDENTIALS:-}"
-TLS_NAMES=(tabsira.me www.tabsira.me api.tabsira.me)
-ADMIN_NAME="admin.tabsira.me"
+WEB_NAME="${TLS_NAME:-tabsira.me}"
+API_NAME="${API_TLS_NAME:-api.tabsira.me}"
+ADMIN_NAME="${ADMIN_TLS_NAME:-admin.tabsira.me}"
 require_app_host
 
 if is_dry; then
 	banner "DRY RUN: application host"
 	log "user          $APP_USER; layout $APP_ROOT/{repo,releases,shared,static}; logs /var/log/tabsira"
 	log "packages      nginx certbot${CERTBOT_DNS_PLUGIN:+ python3-certbot-dns-$CERTBOT_DNS_PLUGIN} git curl postgresql-client-$PG_CLIENT_VERSION"
-	log "node          latest 24.x from nodejs.org (sha256 verified), corepack pnpm, pm2, pm2 at boot for $APP_USER"
-	log "uv, python    uv for $APP_USER; Python from apps/api/.python-version, uv-managed"
+	log "toolchain     deploy/install-toolchain.sh as $APP_USER: nvm, Node (.nvmrc), pnpm (package.json), pm2, uv, Python (apps/api/.python-version); pm2 at boot"
 	log "env file      $APP_ROOT/shared/.env from deploy/env.production.example when missing (0600)"
-	log "tls           ${TLS_NAMES[*]} by HTTP (webroot); $ADMIN_NAME by DNS-01 (plugin: ${CERTBOT_DNS_PLUGIN:-NOT SET})"
+	log "tls           one certbot lineage each: $WEB_NAME (+www), $API_NAME, $ADMIN_NAME, by HTTP through the webroot${CERTBOT_DNS_PLUGIN:+ ($ADMIN_NAME by DNS-01, plugin $CERTBOT_DNS_PLUGIN)}; existing lineages kept, nginx-plugin renewals moved to the webroot"
 	log "config        deploy/apply-config.sh: nginx (nginx -t, restore on failure), systemd units (api, vision, scan worker) and timers, logrotate"
 	log "sudoers       $APP_USER may restart tabsira-api, tabsira-vision and tabsira-worker, nothing else; launcher /usr/local/bin/tabsira-deploy"
 	ok "Dry run complete: nothing was changed."
@@ -127,41 +126,15 @@ APP_USER=$APP_USER
 EOF
 chmod 0644 /etc/tabsira/deploy.env
 
-# ─── 3. Node, pnpm, pm2 ─────────────────────────────────────────────
-if ! have node || [[ "$(node -p 'process.versions.node.split(".")[0]')" -lt 24 ]]; then
-	case "$(uname -m)" in
-	x86_64 | amd64) NODE_ARCH=x64 ;;
-	aarch64 | arm64) NODE_ARCH=arm64 ;;
-	*) die "unsupported CPU: $(uname -m)" ;;
-	esac
-	NODE_BASE="https://nodejs.org/dist/latest-v24.x"
-	SUMS="$(curl -fsSL "$NODE_BASE/SHASUMS256.txt")"
-	NODE_FILE="$(awk -v a="linux-$NODE_ARCH.tar.xz" '$2 ~ a { print $2; exit }' <<<"$SUMS")"
-	[[ -n "$NODE_FILE" ]] || die "No Node 24 build for linux-$NODE_ARCH on nodejs.org."
-	log "Installing $NODE_FILE"
-	TMP_NODE="$(mktemp -d)"
-	curl -fsSL -o "$TMP_NODE/$NODE_FILE" "$NODE_BASE/$NODE_FILE"
-	(cd "$TMP_NODE" && grep " $NODE_FILE\$" <<<"$SUMS" | sha256sum -c -) || die "Checksum of $NODE_FILE does not match."
-	rm -rf /opt/node-24
-	mkdir -p /opt/node-24
-	tar -xJf "$TMP_NODE/$NODE_FILE" -C /opt/node-24 --strip-components=1
-	rm -rf "$TMP_NODE"
-	for bin in node npm npx corepack; do ln -sf "/opt/node-24/bin/$bin" "/usr/local/bin/$bin"; done
-fi
-corepack enable --install-directory /usr/local/bin
-/opt/node-24/bin/npm install -g pm2 >/dev/null
-ln -sf /opt/node-24/bin/pm2 /usr/local/bin/pm2
-ok "node $(node -v), pm2 $(pm2 -v)"
-env PATH="$PATH:/opt/node-24/bin" pm2 startup systemd -u "$APP_USER" --hp "$APP_HOME" >/dev/null
+# ─── 3. Toolchain: nvm, Node, pnpm, pm2, uv, Python ─────────────────
+# Installed in the application user's home by deploy/install-toolchain.sh (pinned
+# versions, no rc file edited), then pm2 is registered with systemd for that user.
+as_user bash "$DEPLOY_DIR/install-toolchain.sh"
+# shellcheck disable=SC2016  # expanded by the application user's shell
+NODE_BIN="$(as_user bash -c 'export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh" --no-use; nvm use --silent default; dirname "$(command -v node)"')"
+[[ -x "$NODE_BIN/pm2" ]] || die "pm2 is not in $NODE_BIN."
+env PATH="$PATH:$NODE_BIN" "$NODE_BIN/pm2" startup systemd -u "$APP_USER" --hp "$APP_HOME" >/dev/null
 ok "pm2 starts at boot (pm2-$APP_USER.service)"
-
-# ─── 4. uv and Python ───────────────────────────────────────────────
-if ! as_user test -x "$APP_HOME/.local/bin/uv"; then
-	log "Installing uv for $APP_USER"
-	as_user env UV_NO_MODIFY_PATH=1 sh -c 'curl -LsSf https://astral.sh/uv/install.sh | sh'
-fi
-as_user env UV_PYTHON_PREFERENCE=only-managed "$APP_HOME/.local/bin/uv" python install "$(tr -d '[:space:]' <"$REPO_ROOT/apps/api/.python-version")"
-ok "$(as_user "$APP_HOME/.local/bin/uv" --version)"
 
 # ─── 5. Environment file ────────────────────────────────────────────
 ENV_TARGET="$APP_ROOT/shared/.env"
@@ -176,42 +149,64 @@ if grep -q '^HASH_SECRET=CHANGE_ME' "$ENV_TARGET"; then
 fi
 
 # ─── 6. TLS ─────────────────────────────────────────────────────────
+# One certbot lineage per name: tabsira.me (with www), api.tabsira.me and
+# admin.tabsira.me, each by an HTTP challenge through the webroot, so renewals need
+# no nginx plugin and no DNS credential. A lineage that already exists is left alone
+# (but moved to webroot renewal when certbot --nginx made it). The admin name needs
+# a public A record for the challenge; nginx still serves the admin area on the VPN
+# address only. CERTBOT_DNS_PLUGIN and CERTBOT_DNS_CREDENTIALS issue the admin
+# certificate by DNS-01 instead, for a host with no public record.
+issue_lineage() {
+	local name="$1"
+	shift
+	[[ ! -s "/etc/letsencrypt/live/$name/fullchain.pem" ]] || return 0
+	log "Issuing the certificate of $name"
+	certbot certonly --cert-name "$name" "$@" --email "$CERTBOT_EMAIL" --agree-tos --non-interactive --no-eff-email ||
+		die "certbot could not issue the certificate of $name. Its names must resolve to this host's public address."
+}
+
 issue_tls() {
 	[[ -n "$CERTBOT_EMAIL" ]] || die "Set CERTBOT_EMAIL (or pass --skip-tls)."
-	local domains=() name
-	for name in "${TLS_NAMES[@]}"; do domains+=(-d "$name"); done
 	# Reload only a configuration that passes nginx -t.
 	install -D -m 0755 /dev/stdin /etc/letsencrypt/renewal-hooks/deploy/tabsira-nginx-reload.sh <<'HOOK'
 #!/bin/sh
 nginx -t && systemctl reload nginx
 HOOK
-	if [[ ! -s "/etc/letsencrypt/live/${TLS_NAMES[0]}/fullchain.pem" ]]; then
-		log "Issuing the certificate of ${TLS_NAMES[*]} (HTTP challenge, behind a bootstrap block)"
+	local webroot=(--webroot -w /var/www/certbot) name
+	if [[ ! -s "/etc/letsencrypt/live/$WEB_NAME/fullchain.pem" || ! -s "/etc/letsencrypt/live/$API_NAME/fullchain.pem" ||
+		(-z "$CERTBOT_DNS_PLUGIN" && ! -s "/etc/letsencrypt/live/$ADMIN_NAME/fullchain.pem") ]]; then
+		# Nothing else answers port 80 yet: a bootstrap block serves the challenge files.
 		cat >/etc/nginx/conf.d/tabsira-bootstrap.conf <<EOF
 server {
     listen 80;
     listen [::]:80;
-    server_name ${TLS_NAMES[*]};
+    server_name $WEB_NAME www.$WEB_NAME $API_NAME $ADMIN_NAME;
     location /.well-known/acme-challenge/ { root /var/www/certbot; }
     location / { return 404; }
 }
 EOF
 		nginx -t && systemctl reload nginx
-		certbot certonly --webroot -w /var/www/certbot "${domains[@]}" \
-			--email "$CERTBOT_EMAIL" --agree-tos --non-interactive --no-eff-email || {
-			rm -f /etc/nginx/conf.d/tabsira-bootstrap.conf
-			die "certbot could not issue the certificate. The names must resolve to this host's public address."
-		}
-		rm -f /etc/nginx/conf.d/tabsira-bootstrap.conf
+		trap 'rm -f /etc/nginx/conf.d/tabsira-bootstrap.conf' RETURN
+		issue_lineage "$WEB_NAME" "${webroot[@]}" -d "$WEB_NAME" -d "www.$WEB_NAME"
+		issue_lineage "$API_NAME" "${webroot[@]}" -d "$API_NAME"
+		if [[ -z "$CERTBOT_DNS_PLUGIN" ]]; then
+			issue_lineage "$ADMIN_NAME" "${webroot[@]}" -d "$ADMIN_NAME"
+		fi
 	fi
-	if [[ ! -s "/etc/letsencrypt/live/$ADMIN_NAME/fullchain.pem" ]]; then
-		[[ -n "$CERTBOT_DNS_PLUGIN" && -f "$CERTBOT_DNS_CREDENTIALS" ]] ||
-			die "The admin certificate needs a DNS challenge: set CERTBOT_DNS_PLUGIN and CERTBOT_DNS_CREDENTIALS (a 0600 file the owners supply)."
+	if [[ -n "$CERTBOT_DNS_PLUGIN" ]]; then
+		[[ -f "$CERTBOT_DNS_CREDENTIALS" ]] || die "CERTBOT_DNS_PLUGIN is set: give CERTBOT_DNS_CREDENTIALS, a 0600 file the owners supply."
 		chmod 0600 "$CERTBOT_DNS_CREDENTIALS"
-		log "Issuing the certificate of $ADMIN_NAME (DNS-01, plugin $CERTBOT_DNS_PLUGIN)"
-		certbot certonly "--dns-$CERTBOT_DNS_PLUGIN" "--dns-$CERTBOT_DNS_PLUGIN-credentials" "$CERTBOT_DNS_CREDENTIALS" \
-			-d "$ADMIN_NAME" --email "$CERTBOT_EMAIL" --agree-tos --non-interactive --no-eff-email
+		issue_lineage "$ADMIN_NAME" "--dns-$CERTBOT_DNS_PLUGIN" "--dns-$CERTBOT_DNS_PLUGIN-credentials" "$CERTBOT_DNS_CREDENTIALS" -d "$ADMIN_NAME"
 	fi
+	# Lineages made with `certbot --nginx` renew through the nginx plugin, which edits the live
+	# configuration and cannot find the admin name. Renew them through the webroot instead.
+	for name in "$WEB_NAME" "$API_NAME" "$ADMIN_NAME"; do
+		if grep -q '^authenticator = nginx' "/etc/letsencrypt/renewal/$name.conf" 2>/dev/null; then
+			log "Moving the renewal of $name to the webroot"
+			certbot reconfigure --cert-name "$name" --authenticator webroot --webroot-path /var/www/certbot \
+				--installer none --non-interactive >/dev/null
+		fi
+	done
 	systemctl enable --now certbot.timer >/dev/null 2>&1 || true
 }
 if $SKIP_TLS; then
