@@ -131,7 +131,7 @@ def test_no_view_exports_or_imports_and_none_has_a_create_or_delete_form_but_the
     editable = sorted(view.identity for view in model_views(admin_app) if view.can_edit)
 
     assert creatable == []
-    assert editable == ["user"]
+    assert editable == ["ontology-candidate", "user"]
 
 
 async def seed_everything(db_session, make_user):
