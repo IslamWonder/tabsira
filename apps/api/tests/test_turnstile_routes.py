@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Iterator
 from typing import Any
 
 import pytest
 from fastapi import FastAPI
+from fastapi.routing import APIRoute
 from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,7 @@ from starlette.requests import Request
 
 from src.config import Settings
 from src.database import get_db
+from src.deps import require_human
 from src.main import create_app
 from src.models import LoginAttempt, User
 from src.services import turnstile_service
@@ -163,7 +165,36 @@ async def test_off_every_route_passes_without_a_token(unguarded, verifier, path,
     assert verifier.asked == []
 
 
-async def test_other_routes_do_not_ask_for_a_token(guarded, verifier):
+def api_routes(routes) -> Iterator[APIRoute]:
+    """Every route, looking inside the routers the application includes."""
+    for route in routes:
+        if isinstance(route, APIRoute):
+            yield route
+        inner = getattr(route, "original_router", None)
+        if inner is not None:
+            yield from api_routes(inner.routes)
+
+
+def test_exactly_the_five_routes_carry_the_turnstile_dependency(make_settings):
+    routes = list(api_routes(create_app(make_settings()).routes))
+    guarded_routes = {
+        (method, route.path)
+        for route in routes
+        if any(dep.dependency is require_human for dep in route.dependencies)
+        for method in route.methods
+    }
+
+    assert len(routes) > 50  # the walk really reached the routers
+    assert guarded_routes == {
+        ("POST", "/auth/signup"),
+        ("POST", "/auth/login"),
+        ("POST", "/auth/forgot-password"),
+        ("POST", "/auth/resend-verification"),
+        ("POST", "/support"),
+    }
+
+
+async def test_another_route_does_not_ask_for_a_token(guarded, verifier):
     response = await guarded.get("/auth/providers")
 
     assert response.status_code == 200
