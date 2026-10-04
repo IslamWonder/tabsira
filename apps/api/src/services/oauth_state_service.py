@@ -39,6 +39,8 @@ class FinishedFlow:
     verifier: str
     nonce: str
     next_path: str | None
+    accepted_terms_version: str | None = None
+    accepted_privacy_version: str | None = None
 
 
 def safe_next_path(value: str | None) -> str | None:
@@ -61,8 +63,20 @@ def safe_next_path(value: str | None) -> str | None:
     return value
 
 
-async def start(db: AsyncSession, settings: Settings, next_path: str | None) -> StartedFlow:
-    """Store a new sign-in and return the secrets the redirect and the cookie carry."""
+async def start(
+    db: AsyncSession,
+    settings: Settings,
+    next_path: str | None,
+    *,
+    accepted_terms_version: str | None = None,
+    accepted_privacy_version: str | None = None,
+) -> StartedFlow:
+    """
+    Store a new sign-in and return the secrets the redirect and the cookie carry.
+
+    The versions of the terms and the privacy policy the person ticked are kept with it,
+    for the callback to record if it creates an account.
+    """
     now = clock.utcnow()
     await db.execute(delete(OAuthState).where(OAuthState.expires_at < now))
     flow = StartedFlow(
@@ -78,6 +92,8 @@ async def start(db: AsyncSession, settings: Settings, next_path: str | None) -> 
             code_verifier=flow.verifier,
             nonce=flow.nonce,
             next_path=safe_next_path(next_path),
+            accepted_terms_version=accepted_terms_version,
+            accepted_privacy_version=accepted_privacy_version,
             created_at=now,
             expires_at=now + timedelta(seconds=settings.google_state_ttl_seconds),
         )
@@ -106,4 +122,10 @@ async def consume(db: AsyncSession, state: str, binder: str | None) -> FinishedF
         row.binder_hash, security.hash_token(binder).hex()
     ):
         return None
-    return FinishedFlow(verifier=row.code_verifier, nonce=row.nonce, next_path=row.next_path)
+    return FinishedFlow(
+        verifier=row.code_verifier,
+        nonce=row.nonce,
+        next_path=row.next_path,
+        accepted_terms_version=row.accepted_terms_version,
+        accepted_privacy_version=row.accepted_privacy_version,
+    )

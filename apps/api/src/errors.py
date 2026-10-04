@@ -55,6 +55,9 @@ class ErrorCode(StrEnum):
     INSIGHT_NOT_PUBLISHABLE = "INSIGHT_NOT_PUBLISHABLE"
     INVALID_CURSOR = "INVALID_CURSOR"
     GONE = "GONE"
+    # The two codes below are lower case on purpose: they are the strings the web app matches.
+    legal_acceptance_required = "legal_acceptance_required"
+    mail_unavailable = "mail_unavailable"
 
 
 _CODE_BY_STATUS: dict[int, ErrorCode] = {

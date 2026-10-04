@@ -6,8 +6,14 @@ from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 
 from src.deps import CurrentUser, DbDep, IpHashDep, SettingsDep
 from src.models.email_token import TokenPurpose
-from src.schemas.auth import LoginIn, ProviderOut, ProvidersOut, SignupIn, UserOut
-from src.services import auth_service, email_service, email_token_service, session_service
+from src.schemas.auth import LegalAcceptIn, LoginIn, ProviderOut, ProvidersOut, SignupIn, UserOut
+from src.services import (
+    auth_service,
+    email_service,
+    email_token_service,
+    legal_service,
+    session_service,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -40,6 +46,8 @@ async def signup(
         password=body.password,
         display_name=body.display_name,
         ip_hash=ip_hash,
+        accepted_terms_version=body.accepted_terms_version,
+        accepted_privacy_version=body.accepted_privacy_version,
     )
     token = await session_service.start_for_request(
         db, settings, request, user_id=user.id, ip_hash=ip_hash
@@ -54,7 +62,7 @@ async def signup(
         name=user.display_name,
         token=verification,
     )
-    return await auth_service.describe(db, user)
+    return await auth_service.describe(db, settings, user)
 
 
 @router.post("/login", summary="Sign in with an e-mail address and a password")
@@ -80,7 +88,7 @@ async def login(
     )
     await db.commit()
     session_service.set_cookie(response, settings, token)
-    return await auth_service.describe(db, user)
+    return await auth_service.describe(db, settings, user)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, summary="End the current session")
@@ -96,9 +104,25 @@ async def logout(request: Request, db: DbDep, settings: SettingsDep) -> Response
 
 
 @router.get("/me", summary="The signed-in account")
-async def me(user: CurrentUser, db: DbDep) -> UserOut:
+async def me(user: CurrentUser, db: DbDep, settings: SettingsDep) -> UserOut:
     """Return the caller's own account. The private profile fields are not part of it."""
-    return await auth_service.describe(db, user)
+    return await auth_service.describe(db, settings, user)
+
+
+@router.post("/legal/accept", summary="Accept the current terms of use and privacy policy")
+async def accept_legal(
+    body: LegalAcceptIn, user: CurrentUser, db: DbDep, settings: SettingsDep
+) -> UserOut:
+    """
+    Record that the signed-in account accepts both texts, for a version that changed.
+
+    The versions must be the current ones (`GET /legal`); anything else is a 422
+    `legal_acceptance_required`. Two consent rows are appended; none is ever edited.
+    """
+    legal_service.require_current(settings, body.terms_version, body.privacy_version)
+    legal_service.record_acceptance(db, settings, user.id)
+    await db.commit()
+    return await auth_service.describe(db, settings, user)
 
 
 @router.get("/providers", summary="Which ways of signing in are available")

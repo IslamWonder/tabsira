@@ -82,17 +82,39 @@ async def start(
             description="A path in the web app to return to; anything else is ignored.",
         ),
     ] = None,
+    terms: Annotated[
+        str | None,
+        Query(
+            max_length=32,
+            description="The terms version the person accepted, when signing up.",
+        ),
+    ] = None,
+    privacy: Annotated[
+        str | None,
+        Query(
+            max_length=32,
+            description="The privacy policy version the person accepted, when signing up.",
+        ),
+    ] = None,
 ) -> RedirectResponse:
     """
     Begin the authorization code flow with PKCE (S256), a state and a nonce.
 
     Redirects to Google. The state, the code verifier and the nonce are kept on
     the server for GOOGLE_STATE_TTL_SECONDS; a cookie ties them to this browser.
+    `terms` and `privacy`, when given, are kept with them: if the callback creates a
+    new account and both are the current versions, it records the acceptance.
     """
     _require_configured(settings)
     await rate_limit.check(db, settings, AttemptKind.GOOGLE_START, ip_hash=ip_hash)
     await rate_limit.record(db, settings, AttemptKind.GOOGLE_START, ip_hash=ip_hash, succeeded=True)
-    flow = await oauth_state_service.start(db, settings, next_path)
+    flow = await oauth_state_service.start(
+        db,
+        settings,
+        next_path,
+        accepted_terms_version=terms,
+        accepted_privacy_version=privacy,
+    )
     await db.commit()
     redirect = RedirectResponse(
         google_oidc.authorization_url(
@@ -153,7 +175,13 @@ async def callback(
         log.warning("Google sign-in refused: %s", refusal)
         return _failure(settings, auth_service.WEB_GOOGLE_FAILED)
     try:
-        user = await auth_service.sign_in_with_google(db, identity)
+        user = await auth_service.sign_in_with_google(
+            db,
+            settings,
+            identity,
+            accepted_terms_version=flow.accepted_terms_version,
+            accepted_privacy_version=flow.accepted_privacy_version,
+        )
     except auth_service.SignInRefusedError as refusal:
         return _failure(settings, refusal.code)
     token = await session_service.start_for_request(

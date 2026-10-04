@@ -228,7 +228,15 @@ async def test_after_deletion_the_address_can_be_used_again_and_the_old_login_is
 
     assert (await web.post("/auth/login", json=LOGIN)).status_code == 401
     assert (
-        await web.post("/auth/signup", json={**LOGIN, "display_name": "again"})
+        await web.post(
+            "/auth/signup",
+            json={
+                **LOGIN,
+                "display_name": "again",
+                "accepted_terms_version": "2026-10-04",
+                "accepted_privacy_version": "2026-10-04",
+            },
+        )
     ).status_code == 201
 
 

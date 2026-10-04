@@ -6,11 +6,18 @@ import bcrypt
 import pytest
 from sqlalchemy import func, select
 
-from src.models import LoginAttempt, Session, User
+from src.models import Consent, LoginAttempt, Session, User
+from src.models.consent import ConsentKind
 from src.services import auth_service, session_service
 from tests.conftest import BROWSER_ORIGIN, PASSPHRASE
 
-SIGNUP = {"email": "reader@example.com", "password": PASSPHRASE, "display_name": "ليلى"}
+SIGNUP = {
+    "email": "reader@example.com",
+    "password": PASSPHRASE,
+    "display_name": "ليلى",
+    "accepted_terms_version": "2026-10-04",
+    "accepted_privacy_version": "2026-10-04",
+}
 LOGIN = {"email": "reader@example.com", "password": PASSPHRASE}
 
 
@@ -45,6 +52,7 @@ async def test_signing_up_creates_the_account_signs_it_in_and_answers_with_it(
         "has_password",
         "providers",
         "created_at",
+        "legal_acceptance_required",
     }
     assert PASSPHRASE not in response.text
     assert response.headers["cache-control"] == "no-store"
@@ -241,6 +249,61 @@ async def test_sign_ups_are_rate_limited_per_email(web):
 
     # One 201, then 409s that count too, until the address is limited.
     assert statuses == [201, 409, 409, 409, 409, 429]
+
+
+# ─── Sign up: the terms and the privacy policy ───────────────────────────────
+
+
+async def consents_of(db, email="reader@example.com"):
+    return (
+        await db.execute(
+            select(Consent.kind, Consent.version, Consent.granted)
+            .join(User, User.id == Consent.user_id)
+            .where(User.email == email)
+        )
+    ).all()
+
+
+async def test_signing_up_records_the_acceptance_of_both_texts(web, db_session):
+    response = await web.post("/auth/signup", json=SIGNUP)
+
+    assert response.status_code == 201
+    rows = await consents_of(db_session)
+    assert {(row.kind, row.version, row.granted) for row in rows} == {
+        (ConsentKind.TERMS, "2026-10-04", True),
+        (ConsentKind.PRIVACY, "2026-10-04", True),
+    }
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"accepted_terms_version": "2020-01-01"},
+        {"accepted_privacy_version": "2020-01-01"},
+        {"accepted_terms_version": "2026-10-04 "},
+    ],
+)
+async def test_an_old_or_wrong_version_is_refused_before_anything_is_created(
+    web, db_session, changes
+):
+    response = await web.post("/auth/signup", json={**SIGNUP, **changes})
+
+    assert response.status_code == 422
+    assert response.json()["error"] == "legal_acceptance_required"
+    assert await db_session.scalar(select(func.count()).select_from(User)) == 0
+    assert await db_session.scalar(select(func.count()).select_from(Consent)) == 0
+    assert await db_session.scalar(select(func.count()).select_from(LoginAttempt)) == 0
+
+
+@pytest.mark.parametrize("missing", ["accepted_terms_version", "accepted_privacy_version"])
+async def test_a_sign_up_that_does_not_name_both_versions_is_a_validation_error(web, missing):
+    body = {key: value for key, value in SIGNUP.items() if key != missing}
+
+    response = await web.post("/auth/signup", json=body)
+
+    assert response.status_code == 422
+    assert response.json()["error"] == "VALIDATION_ERROR"
+    assert [f["loc"] for f in response.json()["fields"]] == [["body", missing]]
 
 
 # ─── Sign in ──────────────────────────────────────────────────────────────────

@@ -15,6 +15,8 @@ DISPLAY_NAME_MAX = 60
 # Tokens are 256 random bits in URL-safe text (43 characters); the bound only
 # refuses absurd input before it is hashed.
 Token = Annotated[str, StringConstraints(min_length=16, max_length=256)]
+# A version label such as "2026-10-04"; the column that stores it holds 32 characters.
+LegalVersion = Annotated[str, StringConstraints(min_length=1, max_length=32)]
 
 
 def _clean_display_name(value: str) -> str:
@@ -39,6 +41,10 @@ class SignupIn(BaseModel):
     email: EmailStr
     password: str
     display_name: Annotated[str, Field(min_length=1, max_length=DISPLAY_NAME_MAX * 2)]
+    # The versions of the terms of use and the privacy policy the person ticked. They must be
+    # the current ones (decision 35); the check answers `legal_acceptance_required`.
+    accepted_terms_version: LegalVersion
+    accepted_privacy_version: LegalVersion
 
     _password = field_validator("password")(_checked_password)
 
@@ -97,6 +103,18 @@ class UserOut(BaseModel):
     has_password: bool
     providers: list[str]
     created_at: datetime
+    # True when the latest accepted terms or privacy version is not the current one, or there is
+    # none: the web app then asks for the acceptance (`POST /auth/legal/accept`) before going on.
+    legal_acceptance_required: bool
+
+
+class LegalAcceptIn(BaseModel):
+    """The versions a signed-in person accepts; they must be the current ones."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    terms_version: LegalVersion
+    privacy_version: LegalVersion
 
 
 class ProviderOut(BaseModel):
