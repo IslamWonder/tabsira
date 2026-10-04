@@ -20,6 +20,10 @@ NAMING_CONVENTION = {
 }
 
 APP_SCHEMA = "app"
+# The scripture reference data, the world ontology and the learning path: tables of
+# the same metadata and the same Alembic chain, kept apart so they can be exported
+# and installed as one verified archive (docs/CORPUS.md, decision 57).
+CORPUS_SCHEMA = "corpus"
 
 
 class Base(DeclarativeBase):

@@ -241,12 +241,15 @@ def _migration(name: str):
 
 
 def test_the_migration_writes_the_spans_the_models_write():
+    corpus = _migration("20261004_209000_move_reference_data_to_corpus.py")
     guard = _migration("20261004_192000_add_scripture_guard_text.py")
     first = _migration("20261004_191000_create_quran_verse_spans.py")
 
-    assert guard.VERSE_SPAN_STATEMENTS == scripture_models.VERSE_SPAN_STATEMENTS
-    assert guard.DROP_VERSE_SPANS == scripture_models.DROP_VERSE_SPANS
-    # Its downgrade puts back the spans of the revision before it.
+    assert corpus.VERSE_SPAN_STATEMENTS == scripture_models.VERSE_SPAN_STATEMENTS
+    assert corpus.DROP_VERSE_SPANS == scripture_models.DROP_VERSE_SPANS
+    # Each downgrade puts back the spans of the revision before it.
+    assert corpus.PREVIOUS_SPAN_STATEMENTS == guard.VERSE_SPAN_STATEMENTS
+    assert corpus.DROP_PREVIOUS_SPANS == guard.DROP_VERSE_SPANS
     assert guard.PREVIOUS_SPAN_STATEMENTS == first.VERSE_SPAN_STATEMENTS
 
 

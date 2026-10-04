@@ -35,7 +35,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.models.base import Base
+from src.models.base import CORPUS_SCHEMA, Base
 
 
 class LearningPathVersion(Base):
@@ -49,6 +49,9 @@ class LearningPathVersion(Base):
             unique=True,
             postgresql_where=text("is_active"),
         ),
+        # The path is reference data, installed with the scripture store (docs/CORPUS.md);
+        # what a learner did with it stays in `app`.
+        {"schema": CORPUS_SCHEMA},
     )
 
     path_version: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -77,11 +80,12 @@ class LearningDomain(Base):
     __table_args__ = (
         UniqueConstraint("path_version", "position", name="uq_learning_domains_position"),
         CheckConstraint("position >= 1", name="position_positive"),
+        {"schema": CORPUS_SCHEMA},
     )
 
     path_version: Mapped[str] = mapped_column(
         String(64),
-        ForeignKey("learning_path_versions.path_version", ondelete="CASCADE"),
+        ForeignKey("corpus.learning_path_versions.path_version", ondelete="CASCADE"),
         primary_key=True,
     )
     id: Mapped[str] = mapped_column(String(16), primary_key=True)
@@ -107,7 +111,7 @@ class LearningUnit(Base):
     __table_args__ = (
         ForeignKeyConstraint(
             ["path_version", "domain_id"],
-            ["learning_domains.path_version", "learning_domains.id"],
+            ["corpus.learning_domains.path_version", "corpus.learning_domains.id"],
             ondelete="CASCADE",
             name="fk_learning_units_domain",
         ),
@@ -116,6 +120,7 @@ class LearningUnit(Base):
         ),
         CheckConstraint("position >= 1", name="position_positive"),
         Index("ix_learning_units_domain", "path_version", "domain_id"),
+        {"schema": CORPUS_SCHEMA},
     )
 
     path_version: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -147,7 +152,7 @@ class LearnerUnitState(Base):
     __table_args__ = (
         ForeignKeyConstraint(
             ["path_version", "unit_id"],
-            ["learning_units.path_version", "learning_units.id"],
+            ["corpus.learning_units.path_version", "corpus.learning_units.id"],
             name="fk_learner_unit_states_unit",
         ),
         CheckConstraint("num_nonnulls(user_id, guest_key) = 1", name="one_owner"),

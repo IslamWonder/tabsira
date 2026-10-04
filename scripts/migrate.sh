@@ -52,18 +52,18 @@ PSQL_URL="${SYNC_DATABASE_URL:-$DATABASE_URL}"
 PSQL_URL="${PSQL_URL/+asyncpg/}"
 PSQL_URL="${PSQL_URL/+psycopg/}"
 
-# The three schemas must exist before Alembic runs: each chain keeps its version
-# table in its own schema. A schema that exists is left alone, so the role
+# The schemas must exist before Alembic runs: each chain keeps its version
+# table in its own schema, and the app chain also fills `corpus` (decision 57). A schema that exists is left alone, so the role
 # needs no CREATE privilege on the database when setup-db.sh made them.
 if have psql; then
-	log "Ensuring the app, geodata and vectors schemas exist..."
-	for schema in app geodata vectors; do
+	log "Ensuring the app, corpus, geodata and vectors schemas exist..."
+	for schema in app corpus geodata vectors; do
 		if [[ "$(psql "$PSQL_URL" -tA -c "SELECT 1 FROM pg_namespace WHERE nspname = '$schema'")" != "1" ]]; then
 			psql "$PSQL_URL" -v ON_ERROR_STOP=1 -c "CREATE SCHEMA $schema" >/dev/null
 		fi
 	done
 else
-	warn "psql not found; assuming the app, geodata and vectors schemas already exist"
+	warn "psql not found; assuming the app, corpus, geodata and vectors schemas already exist"
 fi
 
 if [[ -n "${1:-}" ]]; then

@@ -145,9 +145,9 @@ async def test_an_ordinary_update_delete_or_truncate_of_a_verse_is_refused(db_se
 
     statements = (
         update(QuranVerse).where(QuranVerse.id == verse.id).values(page=1),
-        text("DELETE FROM app.quran_verses"),
-        text("TRUNCATE app.quran_verses CASCADE"),
-        text("UPDATE app.quran_verses SET text = text"),
+        text("DELETE FROM corpus.quran_verses"),
+        text("TRUNCATE corpus.quran_verses CASCADE"),
+        text("UPDATE corpus.quran_verses SET text = text"),
     )
     for statement in statements:
         with pytest.raises(IntegrityError, match="refused"):
@@ -204,7 +204,7 @@ async def test_a_ruling_is_appended_freely_but_never_changed_or_removed(db_sessi
         await allow_scripture_writes(db_session, WritePurpose.IMPORT)
         hadith_id = await db_session.scalar(
             text(
-                "INSERT INTO app.hadiths (collection, number, text, text_sha256, source_dataset,"
+                "INSERT INTO corpus.hadiths (collection, number, text, text_sha256, source_dataset,"
                 " source_version) VALUES ('bukhari', '1032', :body, :digest, 'x', 'x')"
                 " RETURNING id"
             ),
@@ -230,7 +230,7 @@ async def test_a_ruling_is_appended_freely_but_never_changed_or_removed(db_sessi
     for statement in (
         update(HadithRuling).values(ruling_text="y"),
         text("DELETE FROM app.hadith_rulings"),
-        text("UPDATE app.hadiths SET number = '1'"),
+        text("UPDATE corpus.hadiths SET number = '1'"),
     ):
         with pytest.raises(IntegrityError, match="refused"):
             async with db_session.begin_nested():
@@ -284,7 +284,7 @@ async def test_every_guarded_table_has_its_two_triggers(db_session):
                 text(
                     "SELECT tgname FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid "
                     "JOIN pg_namespace n ON n.oid = c.relnamespace "
-                    "WHERE n.nspname = 'app' AND NOT t.tgisinternal"
+                    "WHERE n.nspname IN ('app', 'corpus') AND NOT t.tgisinternal"
                 )
             )
         ).scalars()

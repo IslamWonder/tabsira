@@ -5,7 +5,7 @@ Import the world ontology workbook.
                                               [--validate-only] [--no-json] [--no-db]
 
 Reads and validates `data/world-ontology.xlsx` (it is never modified), writes the
-generated `data/ontology/world-ontology.json`, and loads `app.ontology_entities`
+generated `data/ontology/world-ontology.json`, and loads `corpus.ontology_entities`
 in one transaction. Re-running with the same file changes nothing but the import
 time. Exits 0 on success and 1 when the workbook is broken, naming each problem,
 or when the database cannot be loaded.

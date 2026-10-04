@@ -39,7 +39,7 @@ def test_the_engine_is_configured_with_a_short_timeout_and_the_search_path(monke
     assert captured["hide_parameters"] is True
     assert captured["connect_args"] == {
         "timeout": settings.db_connect_timeout,
-        "server_settings": {"search_path": "app,geodata,vectors,public"},
+        "server_settings": {"search_path": "app,corpus,geodata,vectors,public"},
     }
     assert settings.db_connect_timeout <= 5
 
@@ -60,7 +60,7 @@ async def test_get_db_yields_a_working_session_with_the_search_path_set(engine):
         search_path = (await session.execute(text("SHOW search_path"))).scalar_one()
         assert (await session.execute(text("SELECT 1"))).scalar_one() == 1
 
-    assert search_path == "app,geodata,vectors,public"
+    assert search_path == "app,corpus,geodata,vectors,public"
     assert sessions[0].in_transaction() is False
 
 

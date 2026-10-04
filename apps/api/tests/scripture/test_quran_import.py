@@ -262,7 +262,7 @@ def test_dump_files_are_read_compressed_or_plain(tmp_path):
 async def test_the_stored_hash_is_checked_by_the_database_on_every_verse(quran_session):
     mismatched = await quran_session.scalar(
         text(
-            "SELECT count(*) FROM app.quran_verses "
+            "SELECT count(*) FROM corpus.quran_verses "
             "WHERE text_sha256 <> encode(sha256(convert_to(text, 'UTF8')), 'hex')"
         )
     )

@@ -32,9 +32,9 @@ PSQL=(psql -X -v ON_ERROR_STOP=1 -q)
 mkdir -p "$DIR"
 
 echo "[vectors] exporting verses"
-"${PSQL[@]}" -c "\\copy (SELECT v.surah, v.ayah, v.text_sha256, e.model, e.dimensions, e.document_sha256, e.embedding FROM vectors.quran_verse_embeddings e JOIN app.quran_verses v ON v.id = e.verse_id ORDER BY v.surah, v.ayah, e.model, e.dimensions) TO '$DIR/quran_verse_embeddings.tsv' WITH (FORMAT text)"
+"${PSQL[@]}" -c "\\copy (SELECT v.surah, v.ayah, v.text_sha256, e.model, e.dimensions, e.document_sha256, e.embedding FROM vectors.quran_verse_embeddings e JOIN corpus.quran_verses v ON v.id = e.verse_id ORDER BY v.surah, v.ayah, e.model, e.dimensions) TO '$DIR/quran_verse_embeddings.tsv' WITH (FORMAT text)"
 echo "[vectors] exporting hadiths"
-"${PSQL[@]}" -c "\\copy (SELECT h.collection, h.number, h.text_sha256, e.model, e.dimensions, e.document_sha256, e.embedding FROM vectors.hadith_embeddings e JOIN app.hadiths h ON h.id = e.hadith_id ORDER BY h.collection, h.number, e.model, e.dimensions) TO '$DIR/hadith_embeddings.tsv' WITH (FORMAT text)"
+"${PSQL[@]}" -c "\\copy (SELECT h.collection, h.number, h.text_sha256, e.model, e.dimensions, e.document_sha256, e.embedding FROM vectors.hadith_embeddings e JOIN corpus.hadiths h ON h.id = e.hadith_id ORDER BY h.collection, h.number, e.model, e.dimensions) TO '$DIR/hadith_embeddings.tsv' WITH (FORMAT text)"
 
 echo "[vectors] writing the manifest"
 "${PSQL[@]}" -tA >"$DIR/manifest.json" <<'SQL'
@@ -45,10 +45,10 @@ SELECT json_build_object(
   'quran', (SELECT json_agg(json_build_object('model', model, 'dimensions', dimensions, 'rows', n)) FROM (SELECT model, dimensions, count(*) n FROM vectors.quran_verse_embeddings GROUP BY 1, 2 ORDER BY 1, 2) x),
   'hadith', (SELECT json_agg(json_build_object('model', model, 'dimensions', dimensions, 'rows', n)) FROM (SELECT model, dimensions, count(*) n FROM vectors.hadith_embeddings GROUP BY 1, 2 ORDER BY 1, 2) x),
   'store', json_build_object(
-     'verses', (SELECT count(*) FROM app.quran_verses),
-     'hadiths', (SELECT count(*) FROM app.hadiths),
-     'quran_text_fingerprint', (SELECT encode(sha256(string_agg(text_sha256, '' ORDER BY surah, ayah)::bytea), 'hex') FROM app.quran_verses),
-     'hadith_text_fingerprint', (SELECT encode(sha256(string_agg(text_sha256, '' ORDER BY collection, number)::bytea), 'hex') FROM app.hadiths)),
+     'verses', (SELECT count(*) FROM corpus.quran_verses),
+     'hadiths', (SELECT count(*) FROM corpus.hadiths),
+     'quran_text_fingerprint', (SELECT encode(sha256(string_agg(text_sha256, '' ORDER BY surah, ayah)::bytea), 'hex') FROM corpus.quran_verses),
+     'hadith_text_fingerprint', (SELECT encode(sha256(string_agg(text_sha256, '' ORDER BY collection, number)::bytea), 'hex') FROM corpus.hadiths)),
   'runs', (SELECT json_agg(json_build_object('corpus', corpus, 'provider', provider, 'model', model, 'dimensions', dimensions, 'status', status, 'documents', documents, 'already_present', unchanged, 'embedded', embedded, 'input_tokens', input_tokens, 'cost_usd', round(cost_usd::numeric, 4), 'started_at', started_at, 'finished_at', finished_at) ORDER BY id) FROM vectors.embedding_runs)
 );
 SQL

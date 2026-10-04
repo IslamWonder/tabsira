@@ -11,7 +11,7 @@ Strategy:
 - Each test gets its own session in a transaction that is rolled back.
 - With pytest-xdist every worker gets its own database, copied from the
   server-wide `tabsira_template` database (TEST_TEMPLATE_DATABASE) that
-  scripts/setup-db.sh provisions with the three schemas and every extension but no
+  scripts/setup-db.sh provisions with the four schemas and every extension but no
   tables; the worker then builds the tables in its copy. The test role is not a
   superuser, so it could not create PostGIS or TimescaleDB itself, and the suite
   makes no template of its own: TimescaleDB attaches a background session to
@@ -60,8 +60,8 @@ pytest_plugins = [
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
-SEARCH_PATH = "app,geodata,vectors,public"
-# Provisioned by scripts/setup-db.sh: both schemas and every extension, no tables.
+SEARCH_PATH = "app,corpus,geodata,vectors,public"
+# Provisioned by scripts/setup-db.sh: the schemas and every extension, no tables.
 DEFAULT_BASE_TEMPLATE = "tabsira_template"
 # A fixed key: workers take the same advisory lock around copying the template.
 TEMPLATE_LOCK_KEY = 7_424_011

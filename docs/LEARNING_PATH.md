@@ -23,8 +23,8 @@ Version 1.0 holds **16 domains and 96 units** (`T00` to `T15`, six units each) a
 
 The path is data, not code (master prompt v2, section 13). Every table row carries its `path_version`:
 
-- `app.learning_path_versions`: one row per release, with the hash of the imported file, the depths, the coverage rules and an `is_active` flag. At most one row is active (a partial unique index).
-- `app.learning_domains` and `app.learning_units`: keyed by `(path_version, id)`.
+- `corpus.learning_path_versions`: one row per release, with the hash of the imported file, the depths, the coverage rules and an `is_active` flag. At most one row is active (a partial unique index).
+- `corpus.learning_domains` and `corpus.learning_units`: keyed by `(path_version, id)`.
 - A monthly release is a new file `data/masar/tabsira-masar-<n>.json` of the same shape, imported with `import_masar`. Nothing in the code changes.
 - Importing the same file again changes nothing. Another file for a version already published is refused: a published version does not change. `--replace` exists for the time before a release is published, and is refused while a learner has state for a unit that the new file drops.
 - A first version becomes active by itself; a later one waits for `--activate`.

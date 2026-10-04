@@ -39,7 +39,7 @@ PSQL=(psql -X -v ON_ERROR_STOP=1 -q)
 say "checking the files against the manifest"
 sha256sum --check --quiet SHA256SUMS || die "a file does not match SHA256SUMS; download the archive again"
 
-for table in vectors.quran_verse_embeddings vectors.hadith_embeddings app.quran_verses app.hadiths; do
+for table in vectors.quran_verse_embeddings vectors.hadith_embeddings corpus.quran_verses corpus.hadiths; do
 	found="$("${PSQL[@]}" -tA -c "SELECT to_regclass('$table') IS NOT NULL")"
 	[[ "$found" == "t" ]] || die "$table is missing: run make migrate and make data first"
 done
@@ -56,7 +56,7 @@ CREATE TEMP TABLE report (corpus text, model text, dimensions smallint, staged b
 
 WITH matched AS (
     SELECT s.*, v.id AS verse_id, v.text_sha256 AS current_sha
-    FROM staged_verses s LEFT JOIN app.quran_verses v ON v.surah = s.surah AND v.ayah = s.ayah
+    FROM staged_verses s LEFT JOIN corpus.quran_verses v ON v.surah = s.surah AND v.ayah = s.ayah
 ), inserted AS (
     INSERT INTO vectors.quran_verse_embeddings (verse_id, model, dimensions, document_sha256, embedding)
     SELECT verse_id, model, dimensions, document_sha256, embedding::vector
@@ -73,7 +73,7 @@ FROM matched m GROUP BY m.model, m.dimensions;
 
 WITH matched AS (
     SELECT s.*, h.id AS hadith_id, h.text_sha256 AS current_sha
-    FROM staged_hadiths s LEFT JOIN app.hadiths h ON h.collection = s.collection AND h.number = s.number
+    FROM staged_hadiths s LEFT JOIN corpus.hadiths h ON h.collection = s.collection AND h.number = s.number
 ), inserted AS (
     INSERT INTO vectors.hadith_embeddings (hadith_id, model, dimensions, document_sha256, embedding)
     SELECT hadith_id, model, dimensions, document_sha256, embedding::vector

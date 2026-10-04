@@ -42,8 +42,8 @@ Done when `cd data/corpus && sha256sum -c SHA256SUMS` says OK for both files. Ot
 Check first:
 
 ```sql
-SELECT (SELECT count(*) FROM app.quran_verses)  AS verses,   -- 6236 when imported
-       (SELECT count(*) FROM app.hadiths)        AS hadiths;  -- 65712 when imported
+SELECT (SELECT count(*) FROM corpus.quran_verses)  AS verses,   -- 6236 when imported
+       (SELECT count(*) FROM corpus.hadiths)        AS hadiths;  -- 65712 when imported
 ```
 
 If both are full, `make data` sees it and skips the store (its guard: the whole Quran, hadiths, annotations and signals present). Otherwise `make data`. It is idempotent (downloads are cached in `data/cache/` and checked against their SHA-256, rows are matched by their hash), so running it again only costs a few minutes. `make data` imports the vectors from the published archive before it runs `embed_corpus` (step 7), so nothing is computed.
@@ -85,10 +85,10 @@ Every import is meant to run once: `make data` skips the scripture store and the
 One query that says what is already there (run it with `psql` against your development database):
 
 ```sql
-SELECT (SELECT count(*) FROM app.quran_verses)                    AS verses,
-       (SELECT count(*) FROM app.hadiths)                         AS hadiths,
+SELECT (SELECT count(*) FROM corpus.quran_verses)                    AS verses,
+       (SELECT count(*) FROM corpus.hadiths)                         AS hadiths,
        (SELECT count(*) FROM geodata.geonames)                    AS places,
-       (SELECT count(*) FROM app.ontology_entities)               AS ontology_entities,
-       (SELECT count(*) FROM app.learning_path_versions)          AS learning_path_versions,
+       (SELECT count(*) FROM corpus.ontology_entities)               AS ontology_entities,
+       (SELECT count(*) FROM corpus.learning_path_versions)          AS learning_path_versions,
        to_regclass('vectors.hadith_embeddings') IS NOT NULL       AS vectors_schema;
 ```

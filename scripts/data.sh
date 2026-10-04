@@ -10,9 +10,9 @@
 # The scripture store, in this order, every step idempotent:
 #   download     quranpedia's current dump and the nine hadith files, each
 #                checked against its SHA-256 (cached in data/cache/)
-#   quran        quranpedia mushaf 2 into app.quran_verses, with history on corrections
+#   quran        quranpedia mushaf 2 into corpus.quran_verses, with history on corrections
 #   annotations  data/corpus/quran-annotations.json, for retrieval only
-#   hadith       the nine books into app.hadiths
+#   hadith       the nine books into corpus.hadiths
 #   signals      data/corpus/sunnah-enriched.json, repaired from cp720 and linked
 #
 # Then the vectors of every new or changed text for semantic search
@@ -57,10 +57,10 @@ done
 banner "Scripture store"
 started=$SECONDS
 # The whole Quran, hadiths, annotations and signals already stored mean the store was imported.
-stored="$(query "SELECT (SELECT count(*) FROM app.quran_verses) = 6236
-	AND (SELECT count(*) FROM app.hadiths) > 0
-	AND (SELECT count(*) FROM app.quran_annotations) > 0
-	AND (SELECT count(*) FROM app.hadith_signals) > 0" 2>/dev/null || echo f)"
+stored="$(query "SELECT (SELECT count(*) FROM corpus.quran_verses) = 6236
+	AND (SELECT count(*) FROM corpus.hadiths) > 0
+	AND (SELECT count(*) FROM corpus.quran_annotations) > 0
+	AND (SELECT count(*) FROM corpus.hadith_signals) > 0" 2>/dev/null || echo f)"
 if [[ "$stored" == "t" && "$FORCE" != "true" ]]; then
 	ok "Scripture store already imported: nothing to do. Use --force to import again."
 else

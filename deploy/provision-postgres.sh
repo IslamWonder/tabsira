@@ -27,8 +27,9 @@
 #      application database from PG_APP_SUBNET (the VPN network, derived from the
 #      wt0 prefix) with scram-sha-256 — or only from APP_HOST_VPN_IP/32 when that
 #      is set, which is narrower. No trust lines, never `all all`.
-#   6. Creates the application role and database, the three schemas (app,
-#      geodata, vectors: one Alembic chain each, migrated by the first deploy), and
+#   6. Creates the application role and database, the four schemas (app and
+#      corpus, filled by the app chain; geodata and vectors, one chain each; all
+#      migrated by the first deploy), and
 #      the nine extensions the API expects, logging each with its version; a
 #      missing one is an error. The password is generated on the first run and kept
 #      in /etc/tabsira/postgres.env (root only); every later run re-applies it.
@@ -44,8 +45,7 @@
 #
 # It ends by printing the DATABASE_URL / SYNC_DATABASE_URL lines for the
 # application host's environment file, and the next steps: deploy (which migrates
-# the three schemas), then deploy/load-data.sh (scripture, vectors, ontology,
-# learning path, GeoNames).
+# the schemas), then deploy/load-data.sh (GeoNames, the corpus archive, vectors).
 #
 # Re-running is safe and is how you apply a change or pick up a new minor release.
 # A new major needs pg_upgradecluster, which this script deliberately does not run.
@@ -342,7 +342,7 @@ EOF
 [[ -z $DB_RO_USER ]] || echo "                 host $DB_NAME $DB_RO_USER $HBA_SOURCE scram-sha-256"
 cat <<EOF
   Database       $DB_NAME, owned by $DB_USER (password $PASSWORD_SOURCE)${DB_RO_USER:+; read-only role $DB_RO_USER}
-  Schemas        app, geodata, vectors (search_path app, geodata, public)
+  Schemas        app, corpus, geodata, vectors (search_path app, corpus, geodata, vectors, public)
   Extensions     $(printf '%s ' "${EXTENSIONS[@]%%:*}")
   Locale         UTF8/$PG_LOCALE$(
 	current="$(cluster_locale)"
@@ -660,13 +660,14 @@ for entry in "${EXTENSIONS[@]}"; do
 	ok "  $ext $ext_version — $why"
 done
 
-log "Schemas (app, geodata, vectors; search_path app, geodata, public)"
+log "Schemas (app, corpus, geodata, vectors; search_path app, corpus, geodata, vectors, public)"
 pg -d "$DB_NAME" <<EOF
 CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION $DB_USER;
+CREATE SCHEMA IF NOT EXISTS corpus AUTHORIZATION $DB_USER;
 CREATE SCHEMA IF NOT EXISTS geodata AUTHORIZATION $DB_USER;
 CREATE SCHEMA IF NOT EXISTS vectors AUTHORIZATION $DB_USER;
-ALTER ROLE $DB_USER SET search_path = app, geodata, public;
-ALTER DATABASE $DB_NAME SET search_path = app, geodata, public;
+ALTER ROLE $DB_USER SET search_path = app, corpus, geodata, vectors, public;
+ALTER DATABASE $DB_NAME SET search_path = app, corpus, geodata, vectors, public;
 EOF
 
 if [[ -n $DB_RO_USER ]]; then
@@ -678,13 +679,13 @@ if [[ -n $DB_RO_USER ]]; then
 	fi
 	pg -d "$DB_NAME" <<EOF
 GRANT CONNECT ON DATABASE $DB_NAME TO $DB_RO_USER;
-GRANT USAGE ON SCHEMA app, geodata, vectors, public TO $DB_RO_USER;
-GRANT SELECT ON ALL TABLES IN SCHEMA app, geodata, vectors TO $DB_RO_USER;
-ALTER DEFAULT PRIVILEGES FOR ROLE $DB_USER IN SCHEMA app, geodata, vectors GRANT SELECT ON TABLES TO $DB_RO_USER;
-ALTER ROLE $DB_RO_USER SET search_path = app, geodata, public;
+GRANT USAGE ON SCHEMA app, corpus, geodata, vectors, public TO $DB_RO_USER;
+GRANT SELECT ON ALL TABLES IN SCHEMA app, corpus, geodata, vectors TO $DB_RO_USER;
+ALTER DEFAULT PRIVILEGES FOR ROLE $DB_USER IN SCHEMA app, corpus, geodata, vectors GRANT SELECT ON TABLES TO $DB_RO_USER;
+ALTER ROLE $DB_RO_USER SET search_path = app, corpus, geodata, vectors, public;
 EOF
 fi
-ok "Database '$DB_NAME' ready: ${#EXTENSIONS[@]} extensions, three schemas, PostGIS $(pg_scalar -d "$DB_NAME" -c 'SELECT PostGIS_Lib_Version();')"
+ok "Database '$DB_NAME' ready: ${#EXTENSIONS[@]} extensions, four schemas, PostGIS $(pg_scalar -d "$DB_NAME" -c 'SELECT PostGIS_Lib_Version();')"
 
 # ---------- credentials file ----------
 install -d -m 0750 /etc/tabsira
@@ -799,7 +800,7 @@ is hex, so it sits in the URL unescaped; it is also in $CREDENTIALS_FILE.
 
 Next, on the application host, as devops:
   deploy/deploy.sh --check    the environment file, this database's port and login
-  tabsira-deploy              the first deploy migrates the three schemas (app, geodata, vectors)
+  tabsira-deploy              the first deploy migrates the four schemas (app, corpus, geodata, vectors)
   deploy/load-data.sh         scripture, vectors, ontology, learning path (--geonames for the atlas)
 
 Firewall:     not configured here; allow $PG_PORT/tcp from the application host. pg_hba admits $DB_USER from $HBA_SOURCE only.

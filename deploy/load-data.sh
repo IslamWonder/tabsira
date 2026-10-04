@@ -84,8 +84,8 @@ done
 for ext in $EXTENSIONS; do
 	[[ "$(query "SELECT count(*) FROM pg_extension WHERE extname = '$ext'")" == 1 ]] || bad "extension $ext is missing: run deploy/provision-postgres.sh on the data host"
 done
-[[ "$(query "SELECT to_regclass('app.quran_verses') IS NOT NULL")" == t ]] ||
-	bad "app.quran_verses does not exist: the migrations have not run; deploy first"
+[[ "$(query "SELECT to_regclass('corpus.quran_verses') IS NOT NULL")" == t ]] ||
+	bad "corpus.quran_verses does not exist: the migrations have not run; deploy first"
 ((PROBLEMS == 0)) || die "The database is not ready for the data (see above)."
 ok "all nine extensions present; the migrations have run"
 
@@ -108,11 +108,11 @@ fi
 
 # ─── What is in the database now ────────────────────────────────────
 banner "Loaded"
-verses="$(count app.quran_verses)"
-hadiths="$(count app.hadiths)"
-annotations="$(count app.quran_annotations)"
-signals="$(count app.hadith_signals)"
-ontology="$(count app.ontology_entities)"
+verses="$(count corpus.quran_verses)"
+hadiths="$(count corpus.hadiths)"
+annotations="$(count corpus.quran_annotations)"
+signals="$(count corpus.hadith_signals)"
+ontology="$(count corpus.ontology_entities)"
 quran_vectors="$(count vectors.quran_verse_embeddings)"
 hadith_vectors="$(count vectors.hadith_embeddings)"
 places="$(count geodata.geonames)"
