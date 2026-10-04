@@ -11,7 +11,7 @@ export interface AnalyticsEvents {
   scan_started: { source: 'camera' | 'upload' | 'example' };
   scan_finished: { outcome: 'insight' | 'none' | 'failed'; seconds: number };
   insight_opened: { origin: 'scene' | 'world' | 'community' | 'atlas' | 'link' };
-  /** «تمّ» pressed on an insight. */
+  /** The primary "done" button of an insight pressed. */
   done_pressed: { context: 'insight' };
   share: { method: 'link' | 'card' | 'system'; kind: 'insight' | 'place' | 'post' };
   sign_up_completed: { method: 'email' | 'google' };
