@@ -20,9 +20,8 @@ from src.models import HadithClassification, MapCapturePoint, MapEntry
 from src.owner import Owner
 from src.scripture.rulings import RulingInput, find_hadith, record_ruling
 from src.scripture.text import sha256_hex
-from src.services import atlas_service
+from src.services import atlas_service, sitemap_service
 from src.services import cursor as cursors
-from src.services import sitemap_service
 from src.services.sitemap_service import Section
 from tests import geo_dataset as world_data
 from tests.geo_dataset import TUNIS, TUNIS_CITY
