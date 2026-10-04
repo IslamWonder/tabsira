@@ -33,6 +33,8 @@ APP_TABLES = {
     "email_tokens",
     "login_attempts",
     "oauth_states",
+    "ontology_entities",
+    "ontology_candidates",
 }
 
 
@@ -148,7 +150,7 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
         *(f"app.{table}" for table in APP_TABLES),
     } == tables
     assert set(EXTENSIONS) <= extensions
-    assert versions == {"app": "20261004_100000", "geodata": "20261004_130000"}
+    assert versions == {"app": "20261004_110000", "geodata": "20261004_130000"}
     # The models and the migrations describe the same database.
     assert {"ix_geonames_name_trgm", "ix_geonames_location_geom", "pk_geonames"} <= indexes
     for config in (GEODATA_CONFIG, APP_CONFIG):
@@ -234,3 +236,19 @@ async def test_the_app_chain_builds_the_append_only_trigger_and_removes_it_again
         ).scalar_one()
     # Only the version table is left, and no function.
     assert (functions, tables) == (0, 1)
+
+
+async def test_the_migration_builds_the_trigram_index_the_resolver_relies_on(migrated):
+    assert alembic(APP_CONFIG, "upgrade", "head").returncode == 0
+
+    async with migrated.connect() as connection:
+        definition = (
+            await connection.execute(
+                text(
+                    "SELECT indexdef FROM pg_indexes "
+                    "WHERE indexname = 'ix_ontology_entities_search_text_trgm'"
+                )
+            )
+        ).scalar_one()
+
+    assert "USING gin (search_text gin_trgm_ops)" in definition

@@ -14,6 +14,7 @@ from src.models.geonames import (
     GeoPostalCode,
 )
 from src.models.login_attempt import AttemptKind, LoginAttempt
+from src.models.ontology import CandidateKind, CandidateStatus, OntologyCandidate, OntologyEntity
 from src.models.profile import (
     AgeRange,
     Gender,
@@ -30,6 +31,8 @@ __all__ = [
     "AgeRange",
     "AttemptKind",
     "Base",
+    "CandidateKind",
+    "CandidateStatus",
     "Consent",
     "ConsentKind",
     "EmailToken",
@@ -45,6 +48,8 @@ __all__ = [
     "LoginAttempt",
     "OAuthAccount",
     "OAuthState",
+    "OntologyCandidate",
+    "OntologyEntity",
     "Profile",
     "ReligiousBackground",
     "Session",
