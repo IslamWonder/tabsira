@@ -2,7 +2,7 @@
 
 One short file per feature: what it is, where it stands, what is waiting on the owners, and how it is checked. Phase 1 is this release (decision 40); phase 2 follows.
 
-**Updated:** 2026-10-04 17:51 (Tunis) · ✅ done · 🔄 in progress · ⬜ not started · ⏸ phase 2
+**Updated:** 2026-10-04 18:48 (Tunis) · ✅ done · 🔄 in progress · ⬜ not started · ⏸ phase 2
 
 | #   | Feature                                                           | Phase | Priority | Status |
 | --- | ----------------------------------------------------------------- | ----- | -------- | ------ |
@@ -14,7 +14,7 @@ One short file per feature: what it is, where it stands, what is waiting on the 
 | 06  | [Insight screen](06_insight_screen.md)                            | 1     | Critical | ✅     |
 | 07  | [Personal world](07_personal_world.md)                            | 1     | High     | ✅     |
 | 08  | [Practice progress](08_practice_progress.md)                      | 1     | High     | ✅     |
-| 09  | [Share card and public insight page](09_share_and_public_page.md) | 1     | High     | ⬜     |
+| 09  | [Share card and public insight page](09_share_and_public_page.md) | 1     | High     | ✅     |
 | 10  | [Design, logo and app](10_design_brand_app.md)                    | 1     | High     | ✅     |
 | 11  | [Analytics and search engines](11_analytics_seo.md)               | 1     | Medium   | ✅     |
 | 12  | [Admin area](12_admin.md)                                         | 1     | Medium   | ✅     |
