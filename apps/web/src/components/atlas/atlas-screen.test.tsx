@@ -1,15 +1,20 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { setSignedIn } from '@/account/session';
 import { apiError, mockApi, type Route } from '@/test/api';
-import { FEATURE, SECOND_FEATURE } from '@/test/atlas';
+import { FEATURE, OWNER_ENTRY, SECOND_FEATURE } from '@/test/atlas';
+import { USER } from '@/test/fixtures';
 import { forgetMaps, loadedMap } from '@/test/maplibre';
 import { AtlasScreen } from './atlas-screen';
 
 vi.mock('maplibre-gl', () => import('@/test/maplibre'));
 vi.mock('next/navigation', () => ({ usePathname: () => '/atlas' }));
 
-afterEach(forgetMaps);
+afterEach(() => {
+  forgetMaps();
+  window.history.replaceState(null, '', '/atlas');
+});
 
 const collection = (features = [FEATURE, SECOND_FEATURE], truncated = false) => ({
   body: { type: 'FeatureCollection', features, truncated },
@@ -164,5 +169,141 @@ describe('AtlasScreen', () => {
     });
     await userEvent.click(screen.getByRole('button', { name: 'قريب مني' }));
     expect(await screen.findByText(/لم يُمنح إذن الموقع/)).toBeInTheDocument();
+  });
+
+  it('opens on the view, selection and filters the address carries, and keeps the address in step', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      `/atlas#c=39.826,21.423,11&e=${SECOND_FEATURE.id}&p=month&k=SA`
+    );
+    const api = guest();
+    render(<AtlasScreen />);
+    const map = await loadedMap();
+    expect(map.options).toMatchObject({ center: [39.826, 21.423], zoom: 11 });
+    await screen.findByRole('button', { name: /^\[بصيرة ثانية\]/ });
+    const query = new URL(api.requests.at(-1)?.url ?? '').searchParams;
+    expect(query.get('since')).not.toBeNull();
+    expect(query.get('country')).toBe('SA');
+    expect(screen.getByRole('radio', { name: 'آخر شهر' })).toBeChecked();
+    expect(screen.getAllByRole('article', { name: '[بصيرة ثانية]' }).length).toBeGreaterThan(0);
+
+    // A hand move, a new selection and a cleared filter are written back, replacing the address.
+    map.center = { lng: 10.5, lat: 36.5 };
+    map.zoom = 9.25;
+    map.emit('moveend', { originalEvent: {} });
+    await waitFor(() => expect(window.location.hash).toContain('c=10.5,36.5,9.3'));
+    await userEvent.click(screen.getByRole('button', { name: /^\[عنوان البصيرة\]/ }));
+    expect(window.location.hash).toContain(`e=${FEATURE.id}`);
+    await userEvent.click(screen.getByRole('button', { name: 'امسح المرشحات' }));
+    await waitFor(() => expect(window.location.hash).not.toContain('p=month'));
+    expect(window.location.hash).toBe(`#c=10.5,36.5,9.3&e=${FEATURE.id}`);
+  });
+
+  it('ignores a malformed address and replaces it with what the map shows', async () => {
+    window.history.replaceState(null, '', '/atlas#c=nonsense&e=0&p=never');
+    guest();
+    render(<AtlasScreen />);
+    const map = await loadedMap();
+    expect(map.options).toMatchObject({ center: [30, 27] });
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    expect(window.location.hash).toBe('#c=10,36,8');
+  });
+
+  it('filters by a concept the address names, says so, and lets the reader clear it', async () => {
+    window.history.replaceState(null, '', '/atlas#t=E012');
+    const api = guest();
+    render(<AtlasScreen />);
+    await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    expect(new URL(api.requests.at(-1)?.url ?? '').searchParams.get('concept')).toBe('E012');
+    expect(screen.getByText(/بالمعنى نفسه/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'امسح المعنى' }));
+    await waitFor(() =>
+      expect(new URL(api.requests.at(-1)?.url ?? '').searchParams.get('concept')).toBeNull()
+    );
+    expect(screen.queryByText(/بالمعنى نفسه/)).toBeNull();
+    expect(window.location.hash).not.toContain('t=');
+  });
+
+  it("lists the signed-in owner's own entries on request, in every state, and shows a public one on the map", async () => {
+    setSignedIn(USER);
+    const published = {
+      ...OWNER_ENTRY,
+      id: '7400000000000000002',
+      insight_id: '7000000000000000002',
+      title: '[بصيرتي المنشورة]',
+      status: 'published' as const,
+      published_at: '2026-10-04T09:00:00Z',
+    };
+    const withdrawn = {
+      ...OWNER_ENTRY,
+      id: '7400000000000000003',
+      insight_id: '7000000000000000003',
+      title: '[بصيرتي المسحوبة]',
+      status: 'withdrawn' as const,
+      capture: null,
+      public: null,
+      place: null,
+    };
+    const api = guest({ 'GET /me/map-entries': { body: [OWNER_ENTRY, published, withdrawn] } });
+    render(<AtlasScreen />);
+    const map = await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    expect(api.requests.some((r) => r.url.includes('/me/map-entries'))).toBe(false);
+
+    await userEvent.click(screen.getByRole('radio', { name: 'بصائري المنشورة' }));
+    const mine = await screen.findByRole('region', { name: 'بصائري على الأطلس' });
+    expect(await within(mine).findByText('[بصيرتي المنشورة]')).toBeInTheDocument();
+    expect(within(mine).getByText('موضع محفوظ، لم يُنشر، [تونس]')).toBeInTheDocument();
+    expect(within(mine).getByText('منشورة على الأطلس، [تونس]')).toBeInTheDocument();
+    expect(within(mine).getByText('مسحوبة')).toBeInTheDocument();
+    expect(within(mine).getAllByRole('link', { name: 'افتحها على الأطلس' })).toHaveLength(1);
+    expect(within(mine).getByRole('link', { name: 'افتحها على الأطلس' })).toHaveAttribute(
+      'href',
+      '/atlas/entries/7400000000000000002'
+    );
+    expect(
+      within(mine)
+        .getAllByRole('link', { name: 'راجع الموضع' })
+        .map((link) => link.getAttribute('href'))
+    ).toEqual([
+      '/atlas/publish?insight=7000000000000000001',
+      '/atlas/publish?insight=7000000000000000002',
+      '/atlas/publish?insight=7000000000000000003',
+    ]);
+    // The private capture point is never written; the public cell centre moves the map.
+    expect(document.body.textContent).not.toContain('36.806512');
+    expect(within(mine).getAllByRole('button', { name: 'اعرض على الخريطة' })).toHaveLength(2);
+    await userEvent.click(
+      within(mine).getAllByRole('button', { name: 'اعرض على الخريطة' })[0] as HTMLElement
+    );
+    expect(map.flyTo).toHaveBeenLastCalledWith(
+      expect.objectContaining({ center: [10.1815, 36.8065], zoom: 12 })
+    );
+    expect(screen.getByRole('region', { name: 'قائمة البصائر في المنطقة' })).toHaveClass('hidden');
+
+    await userEvent.click(screen.getByRole('radio', { name: 'بصائر الناس' }));
+    expect(screen.queryByRole('region', { name: 'بصائري على الأطلس' })).toBeNull();
+    expect(screen.getByRole('region', { name: 'قائمة البصائر في المنطقة' })).not.toHaveClass(
+      'hidden'
+    );
+  });
+
+  it("offers a guest no entries of their own, and says when the owner's cannot be read", async () => {
+    guest();
+    render(<AtlasScreen />);
+    await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    expect(screen.queryByRole('radio', { name: 'بصائري المنشورة' })).toBeNull();
+
+    setSignedIn(USER);
+    guest({ 'GET /me/map-entries': 'network-error' });
+    await userEvent.click(await screen.findByRole('radio', { name: 'بصائري المنشورة' }));
+    const mine = await screen.findByRole('region', { name: 'بصائري على الأطلس' });
+    expect(await within(mine).findByRole('alert')).toBeInTheDocument();
+    guest({ 'GET /me/map-entries': { body: [] } });
+    await userEvent.click(within(mine).getByRole('button', { name: 'أعد المحاولة' }));
+    expect(await within(mine).findByText(/لم تضع بصيرة على الأطلس بعد/)).toBeInTheDocument();
   });
 });

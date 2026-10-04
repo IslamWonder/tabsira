@@ -23,7 +23,16 @@ async def client(make_settings):
 
 
 @pytest.mark.parametrize(
-    "path", ["/auth/me", "/auth/providers", "/auth/_private", "/profile", "/account/export"]
+    "path",
+    [
+        "/auth/me",
+        "/auth/providers",
+        "/auth/_private",
+        "/profile",
+        "/account/export",
+        "/atlas/entries/1",
+        "/atlas/places/1",
+    ],
 )
 async def test_private_routes_are_never_cached_even_when_they_fail(client, path):
     response = await client.get(path)

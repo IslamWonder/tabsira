@@ -2,6 +2,8 @@
 
 import type { Route } from 'next';
 import { useState } from 'react';
+import { useSession } from '@/account/session';
+import { FirstInsightQuestions } from '@/components/account/first-insight-questions';
 import { StatusScreen } from '@/components/app/status-screen';
 import { ReadingLayout } from '@/components/layout/layouts';
 import { Button, LinkButton } from '@/components/ui/button';
@@ -10,16 +12,23 @@ import { Notice } from '@/components/ui/notice';
 import type { Insight } from '@/lib/scan/api';
 import { journeyFailureMessage } from '@/lib/scan/failure';
 import { centre } from '@/lib/scan/spans';
+import { profileQuestionsMax } from '@/lib/site';
 import { messages } from '@/messages';
 import { ChatSheet } from './chat-sheet';
-import { CompletionPanel } from './completion-panel';
+import { CompletionPanel, type ShareOption } from './completion-panel';
 import { DisclosureLine } from './disclosure-line';
-import { DoneButton } from './done-button';
 import { EngineLabel } from './engine-label';
 import { ExplanationSections } from './explanation-sections';
 import { InsightEvidence } from './insight-evidence';
-import { InsightHeader, InsightPhoto, InsightTools, SeenNote } from './insight-frame';
+import {
+  InsightActions,
+  InsightHeader,
+  InsightPhoto,
+  InsightTools,
+  SeenNote,
+} from './insight-frame';
 import { PhotoPlaceholder } from './photo-placeholder';
+import { NO_TARGETS, type PublishTargets, ShareSheet } from './share-sheet';
 import { StepCard } from './step-card';
 import { type PhotoView, useInsight } from './use-insight';
 import { WhySheet } from './why-sheet';
@@ -69,11 +78,20 @@ function Photo({
  * text. What the API labels (a prepared example, a simulation, a relation, the
  * step's kind) is shown as it labels it.
  */
-export function InsightScreen({ insightId }: { insightId: string }) {
+export function InsightScreen({
+  insightId,
+  publishTo = NO_TARGETS,
+}: {
+  insightId: string;
+  /** FEATURE_ATLAS and FEATURE_SOCIAL, read by the server: the other ways to publish inside sharing. */
+  publishTo?: PublishTargets;
+}) {
   const controls = useInsight(insightId);
   const { load, photo, step, finish } = controls;
   const [whyOpen, setWhyOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const session = useSession();
   const [invitationClosed, setInvitationClosed] = useState(false);
 
   if (load.phase === 'loading') {
@@ -107,6 +125,17 @@ export function InsightScreen({ insightId }: { insightId: string }) {
   const backHref = backTo(insight);
   const seen = insight.explanation.find((part) => part.section === 'seen');
   const { chat } = insight;
+  // The API publishes only a signed-in owner's insight from the real analysis; offer sharing only then.
+  const canShare = session.status === 'signed-in' && insight.engine === 'pipeline';
+  const share: ShareOption = canShare
+    ? { kind: 'open', onOpen: () => setShareOpen(true) }
+    : {
+        kind: 'blocked',
+        reason:
+          insight.engine !== 'pipeline'
+            ? messages.completion.shareExample
+            : messages.completion.shareSignIn,
+      };
 
   return (
     <>
@@ -119,11 +148,12 @@ export function InsightScreen({ insightId }: { insightId: string }) {
                 <Notice tone="error">{finish.error}</Notice>
               </div>
             )}
-            <DoneButton
+            <InsightActions
               status={finish.status}
               onDone={() => {
                 void controls.complete();
               }}
+              onShare={canShare ? () => setShareOpen(true) : undefined}
             />
           </div>
         }
@@ -168,8 +198,12 @@ export function InsightScreen({ insightId }: { insightId: string }) {
             returnTo={`/insight/${insight.id}` as Route}
             onContinueAsGuest={() => setInvitationClosed(true)}
             invitationClosed={invitationClosed}
+            share={share}
           />
         )}
+        {finish.completion?.first_time ? (
+          <FirstInsightQuestions max={profileQuestionsMax()} />
+        ) : null}
         {finish.status === 'done' && finish.completion === null ? (
           <div className="flex flex-col items-start gap-2">
             <p className="m-0 font-semibold text-fg">{T.done.alreadyTitle}</p>
@@ -183,6 +217,16 @@ export function InsightScreen({ insightId }: { insightId: string }) {
       </ReadingLayout>
 
       <WhySheet open={whyOpen} onClose={() => setWhyOpen(false)} insight={insight} />
+      {canShare ? (
+        <ShareSheet
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+          insightId={insight.id}
+          insightTitle={insight.title}
+          published={insight.published_at !== null}
+          publishTo={publishTo}
+        />
+      ) : null}
       <ChatSheet
         open={chatOpen}
         onClose={() => setChatOpen(false)}

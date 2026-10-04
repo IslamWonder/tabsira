@@ -4,6 +4,7 @@ import { parseEnv } from 'node:util';
 import type { NextConfig } from 'next';
 import { PHASE_DEVELOPMENT_SERVER } from 'next/constants';
 import { mergeEnv, resolvePublicEnv } from './src/config/public-env';
+import { QURAN_SOURCE, TEXT_SOURCES } from './src/lib/share-card/fonts';
 
 const REPO_ROOT = path.resolve(__dirname, '../..');
 
@@ -30,6 +31,11 @@ export default function nextConfig(phase: string): NextConfig {
   return {
     output: 'standalone',
     outputFileTracingRoot: REPO_ROOT,
+    // The share card reads its fonts from disk at request time (src/lib/share-card/fonts.ts),
+    // a path the tracer cannot follow; name the files so a standalone build carries them.
+    outputFileTracingIncludes: {
+      '/insights/[id]/card': [QURAN_SOURCE, ...TEXT_SOURCES].map((file) => `./${file}`),
+    },
     turbopack: { root: REPO_ROOT },
     poweredByHeader: false,
     // Our rules live in the root AGENTS.md; stop `next dev` writing its own copies.
@@ -38,7 +44,7 @@ export default function nextConfig(phase: string): NextConfig {
     // The floating dev badge sits on the phone navigation; the terminal reports the same.
     devIndicators: false,
     typedRoutes: true,
-    // `next dev` is reached through the local nginx (https://tabsira.test); its
+    // `next dev` is reached through the local nginx (http://tabsira.test); its
     // hot reload and dev assets refuse other origins unless they are listed.
     allowedDevOrigins: isDevServer ? [new URL(publicEnv.siteUrl).hostname] : [],
     // The component gallery (src/app/dev/ui/page.dev.tsx) is a route only under
@@ -47,6 +53,7 @@ export default function nextConfig(phase: string): NextConfig {
     env: {
       NEXT_PUBLIC_SITE_URL: publicEnv.siteUrl,
       NEXT_PUBLIC_API_URL: publicEnv.apiUrl,
+      NEXT_PUBLIC_PROFILE_QUESTIONS_MAX: String(publicEnv.profileQuestionsMax),
     },
     async redirects() {
       return [

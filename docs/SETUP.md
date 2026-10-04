@@ -1,6 +1,6 @@
 # Setting up a machine
 
-A new laptop (Linux, macOS, or Linux in a virtual machine on Windows) ready to work: the databases filled with the scripture store, GeoNames and the scripture vectors, and the app running at `https://tabsira.test`, **without importing anything that is already there**. Every step below is safe to run again, and each one starts with the check that tells you it is already done. Task 15.4 turns these steps into one command, `make bootstrap`. Windows itself, without a virtual machine: [docs/SETUP-WINDOWS.md](SETUP-WINDOWS.md).
+A new laptop (Linux, macOS, or Linux in a virtual machine on Windows) ready to work: the databases filled with the scripture store, GeoNames and the scripture vectors, and the app running at `http://tabsira.test`, **without importing anything that is already there**. Every step below is safe to run again, and each one starts with the check that tells you it is already done. Task 15.4 turns these steps into one command, `make bootstrap`. Windows itself, without a virtual machine: [docs/SETUP-WINDOWS.md](SETUP-WINDOWS.md).
 
 Artifacts you make while working (exports, reports) go beside the checkout in `../tabsira-artifact/`, never into the repository.
 
@@ -16,12 +16,12 @@ Artifacts you make while working (exports, reports) go beside the checkout in `.
 
 ## Steps
 
-### 1. System, database server, local HTTPS
+### 1. System, database server, local nginx
 
-Done when `psql "$(grep ^SYNC_DATABASE_URL= .env | cut -d= -f2- | sed 's/+psycopg//')" -c 'select 1'` answers and `https://tabsira.test` resolves.
+Done when `psql "$(grep ^SYNC_DATABASE_URL= .env | cut -d= -f2- | sed 's/+psycopg//')" -c 'select 1'` answers and `http://tabsira.test` resolves.
 
 - Install Node 24, pnpm and uv yourself (nvm, fnm, brew: your choice).
-- Ubuntu or Mint: `sudo bash scripts/provision-dev.sh` installs PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, the quality tools, creates the role, the databases and `.env` (`scripts/setup-db.sh`), and sets up nginx with mkcert for `tabsira.test`. Idempotent.
+- Ubuntu or Mint: `sudo bash scripts/provision-dev.sh` installs PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, the quality tools, creates the role, the databases and `.env` (`scripts/setup-db.sh`), and sets up nginx for `tabsira.test` on port 80, plain HTTP (decision 49). Idempotent.
 - macOS: `bash scripts/install-postgres.sh`, then `bash scripts/setup-db.sh` and `bash scripts/setup-nginx-local.sh` (the provisioning script is for Ubuntu).
 - Redis must run on 127.0.0.1:6379 (scans use it).
 
@@ -46,7 +46,7 @@ SELECT (SELECT count(*) FROM app.quran_verses)  AS verses,   -- 6236 when import
        (SELECT count(*) FROM app.hadiths)        AS hadiths;  -- 65712 when imported
 ```
 
-If both are full, skip. Otherwise `make data`. It is idempotent (downloads are cached in `data/cache/` and checked against their SHA-256, rows are matched by their hash), so running it again only costs a few minutes. Once the engine is merged, `make data` also runs `embed_corpus`; import the vectors (step 7) **before** giving it an API key, so it finds nothing to compute.
+If both are full, `make data` sees it and skips the store (its guard: the whole Quran, hadiths, annotations and signals present). Otherwise `make data`. It is idempotent (downloads are cached in `data/cache/` and checked against their SHA-256, rows are matched by their hash), so running it again only costs a few minutes. `make data` imports the vectors from the published archive before it runs `embed_corpus` (step 7), so nothing is computed.
 
 ### 6. GeoNames
 
@@ -59,9 +59,9 @@ sha256sum -c tabsira-geodata-2026-10-04.dump.sha256
 pg_restore --no-owner --role=tabsira --clean --if-exists --schema=geodata -d "<your database URL>" tabsira-geodata-2026-10-04.dump
 ```
 
-Or import from GeoNames itself: `bash scripts/seed-geonames.sh` (downloads about 600 MB from geonames.org into `data/cache/geonames`, reused afterwards, and imports several million rows; `--limit 50000` for a small, quick set). Note that `seed-geonames.sh` replaces the tables on every run: run it only when the check says the data is missing.
+Or import from GeoNames itself: `bash scripts/seed-geonames.sh` (it refuses to run on a filled `geodata.geonames` unless `--force` is given) (downloads about 600 MB from geonames.org into `data/cache/geonames`, reused afterwards, and imports several million rows; `--limit 50000` for a small, quick set). Note that `seed-geonames.sh` replaces the tables on every run: run it only when the check says the data is missing.
 
-### 7. Scripture vectors (after task 05.1 is merged)
+### 7. Scripture vectors
 
 Check first:
 
@@ -70,11 +70,15 @@ SELECT (SELECT count(*) FROM vectors.quran_verse_embeddings) AS verse_vectors,  
        (SELECT count(*) FROM vectors.hadith_embeddings)      AS hadith_vectors;  -- 146364
 ```
 
-If both are full, skip. Otherwise download, check and import as docs/EMBEDDINGS.md says (`curl`, `sha256sum -c`, `tar -xzf`, `import.sh`). The import only adds what is missing and skips any vector whose text changed.
+If both are full, `make data` skips it (its guard). Otherwise `make data` does it: its vectors step (`scripts/vectors/ensure.sh`) makes the same check, downloads the archive named by `VECTORS_ARCHIVE_URL` into `../tabsira-data/vectors/` once (930 MB, verified against its `.sha256`), extracts it and runs `scripts/vectors/import.sh`; a copy you already have is used instead when `VECTORS_ARCHIVE` points at the `.tar.gz` or its extracted folder. Only then does `embed_corpus` run, and finds nothing to compute. Never run `embed_corpus` with an API key before this step: it would pay for vectors the archive holds (docs/EMBEDDINGS.md).
 
 ### 8. Run
 
-`make dev` starts the API, the web app, the vision service and the scan worker; open `https://tabsira.test`. `make smoke` checks the main pages and routes. `make stats` prints a short summary of the code.
+`make dev` starts the API, the web app, the vision service and the scan worker; open `http://tabsira.test`. `make smoke` checks the main pages and routes. `make stats` prints a short summary of the code.
+
+## Importing again
+
+Every import is meant to run once: `make data` skips the scripture store and the vectors when they are there, and `scripts/seed-geonames.sh` refuses a filled GeoNames table. To import again anyway: `bash scripts/data.sh --force` (or `DATA_FORCE=true make data`) and `bash scripts/seed-geonames.sh --force`.
 
 ## Everything at once
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Evaluate the insight engine on the gold scenes (make eval): every image of
-# apps/api/tests/evaluation/scenes/ goes through the whole scan pipeline with
+# Evaluate the insight engine on the gold scenes and the chat cases (make eval):
+# every image of apps/api/tests/evaluation/scenes/ goes through the whole scan pipeline with
 # the active provider, and the result is checked by rule (no scripture leaked,
 # every reference resolves to a hash-checked stored text, abstention where the
 # scene calls for it, time per stage, cost per scan). The report is written to
@@ -13,10 +13,12 @@
 # should run, and without it the scenes are analysed without boxes and the
 # evidence is kept in its fused order, which the report says.
 #
-# The twelve official contest cases are dialogue cases of the chat, which is
-# not built yet; they are not part of this run.
+# Then the twelve chat cases (v2 §27.16, apps/api/tests/evaluation/chat/cases.json)
+# are asked through the chat service in transactions that are rolled back, and
+# written to their own section of docs/EVALUATION.md.
 #
-# Usage: scripts/eval.sh [--scenes a,b] [--max-cost USD] [--no-report]
+# Usage: scripts/eval.sh [--only scenes|chat] [--scenes a,b] [--cases a,b]
+#                        [--max-cost USD] [--no-report]
 set -euo pipefail
 # shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"

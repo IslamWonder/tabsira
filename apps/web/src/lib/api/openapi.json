@@ -1437,7 +1437,7 @@
       "put": {
         "tags": ["members"],
         "summary": "Block a member",
-        "description": "Block a member.\n\nEach of the two stops seeing the other everywhere, and the follows between them, in\nboth directions, end. Blocking again changes nothing. 400 for oneself.",
+        "description": "Block a member.\n\nEach of the two stops seeing the other everywhere, and the follows between them, in\nboth directions, end. Blocking again changes nothing. 400 for oneself. A handle nobody\nholds answers 204 like any other: a 404 here would tell the caller that a handle they can\nno longer see (`/u/{handle}` says 404 for a block too) does exist and has blocked them.",
         "operationId": "block_member_blocks__handle__put",
         "parameters": [
           {
@@ -1469,7 +1469,7 @@
       "delete": {
         "tags": ["members"],
         "summary": "Lift a block",
-        "description": "Lift the caller's own block; safe to repeat.",
+        "description": "Lift the caller's own block; safe to repeat, and 204 for a handle nobody holds too.",
         "operationId": "unblock_member_blocks__handle__delete",
         "parameters": [
           {
@@ -2156,8 +2156,8 @@
     "/reports": {
       "post": {
         "tags": ["reports"],
-        "summary": "Report a post or a comment",
-        "description": "Tell the moderators about something the caller may read.\n\nThe reasons include a false attribution of a religious claim, a photo published without\npermission, a place that is not right and a location or photo that gives away private\ninformation. 404 for what the caller may not read, 400 for their own words. Reporting the\nsame thing twice answers with the first report. Enough different reporters send a published\nitem back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`).",
+        "summary": "Report a post, a comment or a map entry",
+        "description": "Tell the moderators about something the caller may read.\n\nThe reasons include a false attribution of a religious claim, a photo published without\npermission, a place that is not right and a location or photo that gives away private\ninformation. 404 for what the caller may not read, and for a target whose feature is switched\noff, 400 for their own words. Reporting the same thing twice answers with the first report. Enough different reporters send a published\nitem back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`).",
         "operationId": "report_reports_post",
         "requestBody": {
           "content": {
@@ -8102,6 +8102,10 @@
             "type": "boolean",
             "title": "Sound Enabled"
           },
+          "questions_asked": {
+            "type": "boolean",
+            "title": "Questions Asked"
+          },
           "consent_version": {
             "anyOf": [
               {
@@ -8133,6 +8137,7 @@
           "theme",
           "reduced_motion",
           "sound_enabled",
+          "questions_asked",
           "consent_version",
           "updated_at"
         ],
@@ -8237,12 +8242,23 @@
               }
             ],
             "title": "Sound Enabled"
+          },
+          "questions_asked": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questions Asked"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "ProfilePatch",
-        "description": "The fields a user may change, any of them, alone.\n\nThe three consent switches are not here: they change only through\n`POST /consents`, which records the answer. A field sent as null is refused;\nto clear an answer, send `unknown` (or `[]` for the goals)."
+        "description": "The fields a user may change, any of them, alone.\n\nThe three consent switches are not here: they change only through\n`POST /consents`, which records the answer. A field sent as null is refused;\nto clear an answer, send `unknown` (or `[]` for the goals).\n\nSkipping the optional questions is `questions_asked: true` alone: every\nfield stays `unknown` and the questions are never offered again. Answering\nany of the three question fields records the same."
       },
       "ProgressOut": {
         "properties": {

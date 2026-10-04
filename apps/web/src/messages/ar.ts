@@ -1,4 +1,5 @@
 import { scanMessages } from './scan';
+import { shareMessages } from './share';
 
 /**
  * Every user-visible string of the web app (AGENTS.md: Arabic copy lives here,
@@ -218,10 +219,16 @@ export const ar = {
       dropping: 'أفلت الصورة هنا',
       choose: 'اختر صورة',
       camera: 'التقط بالكاميرا',
-      pasteLink: 'الصق رابط صورة',
-      linkLabel: 'رابط الصورة',
-      useLink: 'استخدم الرابط',
-      invalidLink: 'هذا لا يبدو رابطًا. انسخ عنوان الصورة كاملًا ثم أعد المحاولة.',
+      cameraPreview: 'معاينة الكاميرا',
+      cameraStarting: 'تُفتح الكاميرا…',
+      shutter: 'التقط',
+      cameraClose: 'أغلق الكاميرا',
+      captureFailed: 'لم تُلتقط الصورة. حاول مرة أخرى أو اختر صورة.',
+      cameraDenied: 'لم يُسمح بالكاميرا. يفتح هذا الزر كاميرا الهاتف، أو اختر صورة.',
+      cameraUnavailable:
+        'لا كاميرا متاحة في هذا المتصفح. يفتح هذا الزر كاميرا الهاتف إن وُجدت، أو اختر صورة.',
+      cameraNeedsHttps:
+        'تعمل الكاميرا الحية عبر اتصال آمن (https) فقط. يفتح هذا الزر كاميرا الهاتف، أو اختر صورة.',
       notImage: 'هذا الملف ليس صورة. اختر صورة بصيغة JPEG أو PNG أو WebP أو HEIC.',
     },
     /** Rows top to bottom, columns left to right of the photo (photo coordinates are physical). */
@@ -728,6 +735,8 @@ export const ar = {
     lead: 'بصائر نشرها أصحابها في أماكنها التقريبية. تصفّح العالم دون أن تمنح موقعك.',
     mapLabel: 'خريطة الأطلس',
     /** Joins a place's labels (place, region, country) the way Arabic lists them. */
+    mapUnsupported:
+      'لا يدعم هذا المتصفح أو الجهاز عرض الخريطة (يلزم WebGL2). تبقى النتائج في القائمة بجانبها.',
     joinLabels: (parts: readonly (string | null | undefined)[]) => parts.filter(Boolean).join('، '),
     attribution: 'بلاط الخريطة من OpenFreeMap، بيانات OpenStreetMap.',
     searchHere: 'ابحث في هذه المنطقة',
@@ -765,7 +774,20 @@ export const ar = {
       anyCountry: 'كل البلدان',
       concept: 'الموضوع',
       anyConcept: 'كل المواضيع',
+      /** A concept filter comes from an entry's own page («بصائر بالمعنى نفسه»); the ids carry no name yet. */
+      conceptActive: 'بالمعنى نفسه: بصائر تشترك في معنى البصيرة التي جئت منها.',
+      clearConcept: 'امسح المعنى',
+      scope: 'ما يُعرض',
+      scopes: { public: 'بصائر الناس', mine: 'بصائري المنشورة' },
       clear: 'امسح المرشحات',
+    },
+    /** The owner's own entries, from every state, beside the public map (extension §4). */
+    mine: {
+      list: 'بصائري على الأطلس',
+      loading: 'نحمّل بصائرك…',
+      empty: 'لم تضع بصيرة على الأطلس بعد.',
+      emptyHint: 'افتح بصيرة في عالمك واختر «انشر على الخريطة».',
+      review: 'راجع الموضع',
     },
     list: 'قائمة البصائر في المنطقة',
     marker: (title: string) => `افتح ${title}`,
@@ -791,6 +813,7 @@ export const ar = {
         'النقطة مركز منطقة تقريبية حُسب على الخادم، لا موضع التصوير الحقيقي، كما حدّده صاحب البصيرة ولم يُتحقق منه. الموقع قرينة جغرافية لا دليل ديني.',
       explanation: 'شرح تبصرة',
       step: 'خطوة صغيرة',
+      sameMeaning: 'بصائر بالمعنى نفسه على الخريطة',
     },
     /** The share line of a place page. */
     placeDescription: (label: string) => `البصائر التي نشرها الناس في ${label} على أطلس تبصرة.`,
@@ -858,6 +881,75 @@ export const ar = {
       open: 'افتحها على الأطلس',
       loadingMine: 'نتحقق مما حفظته…',
       noLocation: 'لم تحدد موضعًا بعد.',
+    },
+    /**
+     * «اكتشف البصائر حولك» (extension §5–7): published entries near the device,
+     * listed by distance over the camera's live view, with the direction of each
+     * when the sensors give a heading. The view is never read or sent; what is
+     * shown is recorded knowledge, never an analysis of what the camera sees.
+     */
+    camera: {
+      title: 'اكتشف البصائر حولك',
+      description:
+        'وجّه كاميرا هاتفك لترى البصائر التي نشرها الناس قريبًا منك، في منطقتها التقريبية.',
+      open: 'اكتشف بالكاميرا',
+      lead: 'بصائر منشورة قريبة منك تظهر فوق بث الكاميرا، كل واحدة في منطقتها التقريبية.',
+      needs: {
+        heading: 'ما يحتاجه الاستكشاف',
+        camera: 'الكاميرا: لترى ما حولك خلف التسميات. لا تُحفظ منها لقطة ولا تُرسل إلى تبصرة.',
+        location: 'الموقع: ليُعرف نطاق البحث. يُرسل نطاق تقريبي حول موضعك، لا موضعك نفسه.',
+        direction: 'الاتجاه، إن شئت: ليشير سهم نحو منطقة كل بصيرة. يبقى على جهازك.',
+      },
+      start: 'ابدأ الاستكشاف',
+      starting: 'نطلب الأذونات…',
+      showOnMap: 'اعرض على الخريطة',
+      stageLabel: 'بث الكاميرا وتسميات البصائر القريبة',
+      nearbyLabel: 'بصائر قريبة',
+      notLive: 'ما يظهر بصائر سجّلها أصحابها من قبل، لا تحليلًا لما تراه الكاميرا الآن.',
+      mode: {
+        area: 'العرض بحسب المنطقة',
+        direction: 'العرض بالاتجاه التقريبي',
+        chosen: 'استكشاف المنطقة المختارة',
+      },
+      cameraDenied: 'لم يُمنح إذن الكاميرا، فتبقى القائمة والخريطة. يمكنك منحه من إعدادات المتصفح.',
+      cameraUnavailable:
+        'لا تتوفر الكاميرا في هذا المتصفح أو عبر هذا الاتصال، فتبقى القائمة والخريطة.',
+      cameraPaused: 'توقفت الكاميرا حين غادرت الصفحة.',
+      resumeCamera: 'أعد تشغيل الكاميرا',
+      stopCamera: 'أوقف الكاميرا',
+      locating: 'نحدد منطقتك…',
+      locationDenied: 'لم يُمنح إذن الموقع. اختر مكانًا لتستكشف منطقته.',
+      locationUnavailable: 'لا يستطيع هذا الجهاز تحديد موضعه الآن. اختر مكانًا لتستكشف منطقته.',
+      lowAccuracy: 'دقة الموقع منخفضة، فنعرض البصائر بحسب المنطقة.',
+      enableHeading: 'فعّل الاتجاه',
+      headingWaiting: 'ننتظر قراءة الاتجاه…',
+      headingDenied: 'لم يُمنح إذن حساسات الاتجاه؛ العرض بحسب المنطقة.',
+      headingUnavailable: 'لا يعطي هذا الجهاز اتجاهًا مطلقًا؛ العرض بحسب المنطقة.',
+      headingStale: 'انقطعت قراءة الاتجاه؛ العرض بحسب المنطقة.',
+      headingNote:
+        'السهم يشير إلى المنطقة التقريبية للبصيرة، لا إلى شيء بعينه، ولا يعني أن الطريق إليها مفتوح.',
+      near: 'أنت بالقرب من منطقتها',
+      inArea: 'في هذه المنطقة',
+      about: (distance: string) => `نحو ${distance}`,
+      meters: (count: number) => `${count} م`,
+      kilometers: (count: string) => `${count} كم`,
+      sectors: { ahead: 'أمامك', right: 'عن يمينك', behind: 'خلفك', left: 'عن يسارك' },
+      toward: (sector: string) => `الاتجاه التقريبي: ${sector}`,
+      arrow: (sector: string) => `سهم نحو منطقة البصيرة، ${sector}`,
+      inViewMark: 'في اتجاه الكاميرا',
+      list: 'قائمة البصائر القريبة',
+      listHeading: 'الأقرب إليك',
+      showAll: (count: number) => `اعرض الكل (${count})`,
+      showNearest: 'اعرض الأقرب فقط',
+      loading: 'نحمّل البصائر القريبة…',
+      empty: 'لا توجد بصائر منشورة قريبة بعد.',
+      emptyHint: 'كن أول من يضيف بصيرة، أو وسّع المنطقة.',
+      widen: 'وسّع المنطقة',
+      widest: 'هذا أوسع نطاق نبحث فيه.',
+      addOwn: 'أضف بصيرة',
+      retry: 'أعد المحاولة',
+      openEntry: 'افتح البصيرة',
+      statusLabel: 'حالة الاستكشاف',
     },
   },
 
@@ -1204,7 +1296,6 @@ export const ar = {
       slow: 'انتظار طويل',
       scenePlaceholderAlt: 'صورة بديلة للتطوير: سماء ليلية وأرض، بلا مشهد حقيقي',
       picked: 'وصل ملف:',
-      linked: 'وصل رابط:',
       nothingYet: 'لم يصل شيء بعد',
       fieldLabel: '[اسم الحقل]',
       fieldHint: '[قاعدة الحقل]',
@@ -1240,6 +1331,7 @@ export const ar = {
   },
 
   ...scanMessages,
+  ...shareMessages,
 } as const;
 
 export type Messages = typeof ar;

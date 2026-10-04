@@ -16,7 +16,7 @@ Read first, in this order:
 TABSIRA (تَبْصِرَة, no "h") turns a photo into an insight (بصيرة) backed by one Quran verse and one hadith, in Arabic, as a phone-first PWA. Insights can be saved in a personal world, shared, published to a small social network («تبصرة تواصل») and placed on a real map («أطلس بصائر العالم») that a camera view can discover nearby. Authors: Firas Ben Sassi and Ghazi Triki.
 
 - Production: `https://tabsira.me` (`api.tabsira.me` for the API).
-- Local development: `https://tabsira.test` (`api.tabsira.test`), TLS by mkcert. Production files never contain `.test`; `.test` defaults in code are development-only.
+- Local development: `http://tabsira.test` (`api.tabsira.test`, `admin.tabsira.test`), plain HTTP on port 80, never 443 (decision 49). Production is https only. Production files never contain `.test`; `.test` defaults in code are development-only.
 
 ## Stack
 
@@ -35,7 +35,7 @@ Keep every one working; never rename them.
 make install     # all dependencies: web, api, vision, git hooks
 make dev         # api + web (+ vision) with reload against tabsira.test
 make migrate     # geodata chain, then app chain
-make data        # import corpora, ontology and learning path; build indexes
+make data        # import corpora, ontology, learning path and vectors, once (DATA_FORCE=true to redo)
 make test        # unit tests, web and api
 make coverage    # tests with the 100 % threshold and HTML reports
 make lint        # format check, lint, type check (web and api)
@@ -43,7 +43,7 @@ make format      # rewrite files the way the format check wants them
 make eval        # gold scenes and the official contest cases
 make smoke       # HTTP checks against a running app
 make benchmark   # compare AI providers, detectors and rerankers on the same scenes
-make up          # docker compose up, whole stack
+make up          # docker compose, which decision 20 ruled out: fails until a compose file exists
 make stats       # a few lines about the code: size, tests, coverage, today
 ```
 

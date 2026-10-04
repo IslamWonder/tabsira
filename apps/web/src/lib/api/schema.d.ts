@@ -765,13 +765,15 @@ export interface paths {
      * @description Block a member.
      *
      *     Each of the two stops seeing the other everywhere, and the follows between them, in
-     *     both directions, end. Blocking again changes nothing. 400 for oneself.
+     *     both directions, end. Blocking again changes nothing. 400 for oneself. A handle nobody
+     *     holds answers 204 like any other: a 404 here would tell the caller that a handle they can
+     *     no longer see (`/u/{handle}` says 404 for a block too) does exist and has blocked them.
      */
     put: operations['block_member_blocks__handle__put'];
     post?: never;
     /**
      * Lift a block
-     * @description Lift the caller's own block; safe to repeat.
+     * @description Lift the caller's own block; safe to repeat, and 204 for a handle nobody holds too.
      */
     delete: operations['unblock_member_blocks__handle__delete'];
     options?: never;
@@ -1017,13 +1019,13 @@ export interface paths {
     get?: never;
     put?: never;
     /**
-     * Report a post or a comment
+     * Report a post, a comment or a map entry
      * @description Tell the moderators about something the caller may read.
      *
      *     The reasons include a false attribution of a religious claim, a photo published without
      *     permission, a place that is not right and a location or photo that gives away private
-     *     information. 404 for what the caller may not read, 400 for their own words. Reporting the
-     *     same thing twice answers with the first report. Enough different reporters send a published
+     *     information. 404 for what the caller may not read, and for a target whose feature is switched
+     *     off, 400 for their own words. Reporting the same thing twice answers with the first report. Enough different reporters send a published
      *     item back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`).
      */
     post: operations['report_reports_post'];
@@ -3466,6 +3468,8 @@ export interface components {
       reduced_motion: components['schemas']['ReducedMotion'];
       /** Sound Enabled */
       sound_enabled: boolean;
+      /** Questions Asked */
+      questions_asked: boolean;
       /** Consent Version */
       consent_version: string | null;
       /**
@@ -3481,6 +3485,10 @@ export interface components {
      *     The three consent switches are not here: they change only through
      *     `POST /consents`, which records the answer. A field sent as null is refused;
      *     to clear an answer, send `unknown` (or `[]` for the goals).
+     *
+     *     Skipping the optional questions is `questions_asked: true` alone: every
+     *     field stays `unknown` and the questions are never offered again. Answering
+     *     any of the three question fields records the same.
      */
     ProfilePatch: {
       /** Goals */
@@ -3495,6 +3503,8 @@ export interface components {
       reduced_motion?: components['schemas']['ReducedMotion'] | null;
       /** Sound Enabled */
       sound_enabled?: boolean | null;
+      /** Questions Asked */
+      questions_asked?: boolean | null;
     };
     /** ProgressOut */
     ProgressOut: {

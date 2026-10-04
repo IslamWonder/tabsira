@@ -59,7 +59,7 @@ def cookie_value(settings: Settings, token: str) -> str:
 
 def cookie_token(request: Request, settings: Settings) -> str | None:
     """Return the random part of a guest cookie the server signed, or None."""
-    value = request.cookies.get(settings.guest_cookie_name)
+    value = request.cookies.get(settings.cookie_name(settings.guest_cookie_name))
     if not value or len(value) > COOKIE_MAX:
         return None
     token, _, signature = value.rpartition(".")
@@ -69,14 +69,14 @@ def cookie_token(request: Request, settings: Settings) -> str | None:
 
 
 def set_cookie(response: Response, settings: Settings, token: str) -> None:
-    """Attach the guest cookie: httpOnly, Secure, SameSite=Lax, on the session cookie's domain."""
+    """Attach the guest cookie: httpOnly, Secure over https, SameSite=Lax, on the session cookie's domain."""
     response.set_cookie(
-        settings.guest_cookie_name,
+        settings.cookie_name(settings.guest_cookie_name),
         cookie_value(settings, token),
         max_age=int(settings.guest_ttl.total_seconds()),
         path="/",
         domain=settings.session_cookie_domain or None,
-        secure=True,
+        secure=settings.cookie_secure,
         httponly=True,
         samesite="lax",
     )
@@ -84,10 +84,10 @@ def set_cookie(response: Response, settings: Settings, token: str) -> None:
 
 def clear_cookie(response: Response, settings: Settings) -> None:
     response.delete_cookie(
-        settings.guest_cookie_name,
+        settings.cookie_name(settings.guest_cookie_name),
         path="/",
         domain=settings.session_cookie_domain or None,
-        secure=True,
+        secure=settings.cookie_secure,
         httponly=True,
         samesite="lax",
     )

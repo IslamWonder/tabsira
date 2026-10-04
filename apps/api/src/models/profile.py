@@ -144,6 +144,9 @@ class Profile(Base):
         server_default=ReducedMotion.SYSTEM.value,
     )
     sound_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # The three optional questions were offered once, after the first insight
+    # (master prompt v2 §5 and §4.9): answered or skipped, they are never asked again.
+    questions_asked: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     # Version of the latest consent text the user answered.
     consent_version: Mapped[str | None] = mapped_column(String(32))
     updated_at: Mapped[datetime] = mapped_column(

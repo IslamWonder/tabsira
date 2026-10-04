@@ -29,6 +29,7 @@ export const PROFILE: Profile = {
   theme: 'system',
   reduced_motion: 'system',
   sound_enabled: false,
+  questions_asked: false,
   consent_version: null,
   updated_at: '2026-10-04T08:00:00Z',
 };

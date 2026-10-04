@@ -12,8 +12,8 @@ async def test_legal_needs_no_session_and_is_revalidated_every_time(client):
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-cache"
     assert response.json() == {
-        "terms_version": "2026-10-04",
-        "privacy_version": "2026-10-04",
+        "terms_version": "2026-10-04T20:00Z",
+        "privacy_version": "2026-10-04T20:00Z",
         "privacy_email": "privacy@tabsira.me",
         "support_email": "support@tabsira.me",
     }

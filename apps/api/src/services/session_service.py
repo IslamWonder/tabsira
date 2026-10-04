@@ -32,7 +32,7 @@ TOKEN_MAX = 128
 
 def cookie_token(request: Request, settings: Settings) -> str | None:
     """Return the session token the request's cookie carries, if it looks like one."""
-    token = request.cookies.get(settings.session_cookie_name)
+    token = request.cookies.get(settings.cookie_name(settings.session_cookie_name))
     return token if token and len(token) <= TOKEN_MAX else None
 
 
@@ -46,12 +46,12 @@ def set_cookie(response: Response, settings: Settings, token: str) -> None:
     guest cookie is cleared at the same time: its guest was merged at sign-in.
     """
     response.set_cookie(
-        settings.session_cookie_name,
+        settings.cookie_name(settings.session_cookie_name),
         token,
         max_age=int(settings.session_ttl.total_seconds()),
         path="/",
         domain=settings.session_cookie_domain or None,
-        secure=True,
+        secure=settings.cookie_secure,
         httponly=True,
         samesite="lax",
     )
@@ -61,10 +61,10 @@ def set_cookie(response: Response, settings: Settings, token: str) -> None:
 def clear_cookie(response: Response, settings: Settings) -> None:
     """Tell the browser to drop the session cookie."""
     response.delete_cookie(
-        settings.session_cookie_name,
+        settings.cookie_name(settings.session_cookie_name),
         path="/",
         domain=settings.session_cookie_domain or None,
-        secure=True,
+        secure=settings.cookie_secure,
         httponly=True,
         samesite="lax",
     )

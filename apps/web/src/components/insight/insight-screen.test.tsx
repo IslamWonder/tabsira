@@ -1,7 +1,9 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { forgetSession, setGuest, setSignedIn } from '@/account/session';
 import { apiError, mockApi, type Route } from '@/test/api';
+import { PROFILE, USER } from '@/test/fixtures';
 import {
   chatReply,
   completionOut,
@@ -18,6 +20,8 @@ const SCAN = '110000000000000001';
 
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
+  forgetSession();
+  window.localStorage.clear();
 });
 
 function serve(insight = insightOut(), extra: Record<string, Route> = {}) {
@@ -218,6 +222,77 @@ describe('InsightScreen: why, the chat and the step', () => {
   });
 });
 
+describe('InsightScreen: sharing', () => {
+  it('opens the share sheet from the share button, for a signed-in owner of a real analysis', async () => {
+    setSignedIn(USER);
+    const api = serve();
+    render(<InsightScreen insightId={ID} publishTo={{ atlas: true, community: true }} />);
+    await screen.findByRole('heading', { level: 1, name: insightOut().title });
+    await userEvent.click(screen.getByRole('button', { name: 'شارك' }));
+    const sheet = screen.getByRole('dialog', { name: 'شارك البصيرة' });
+    expect(within(sheet).getByRole('button', { name: 'انشر وشارك' })).toBeInTheDocument();
+    // The other surfaces the server said are on, each leading to its own preview with this insight.
+    expect(within(sheet).getByRole('link', { name: 'انشر على الخريطة' })).toHaveAttribute(
+      'href',
+      `/atlas/publish?insight=${ID}`
+    );
+    expect(within(sheet).getByRole('link', { name: 'انشر في تواصل' })).toHaveAttribute(
+      'href',
+      `/community/publish?insight=${ID}`
+    );
+    expect(api.requests.some((request) => request.url.includes('/publication'))).toBe(false);
+    await userEvent.click(within(sheet).getByRole('button', { name: 'أغلق' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('opens it already public for an insight the owner published', async () => {
+    setSignedIn(USER);
+    await open(insightOut({ published_at: '2026-10-04T09:00:00Z' }));
+    await userEvent.click(screen.getByRole('button', { name: 'شارك' }));
+    const sheet = screen.getByRole('dialog', { name: 'شارك البصيرة' });
+    expect(within(sheet).getByRole('button', { name: 'اسحب النشر' })).toBeInTheDocument();
+  });
+
+  it('offers no sharing to a guest, whom the API refuses, and says so after «تمّ»', async () => {
+    setGuest();
+    await open(insightOut(), {
+      [`POST /insights/${ID}/complete`]: { body: completionOut() },
+      'GET /me/progress': { body: progressOut() },
+    });
+    expect(screen.queryByRole('button', { name: 'شارك' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
+    const panel = await screen.findByRole('region', { name: 'اكتملت بصيرتك' });
+    expect(within(panel).queryByRole('button', { name: 'شارك البصيرة' })).toBeNull();
+    expect(within(panel).getByText(/سجّل الدخول لتشارك البصيرة/)).toBeInTheDocument();
+  });
+
+  it('offers no sharing for an insight that is not from the real analysis, and says so', async () => {
+    setSignedIn(USER);
+    await open(insightOut({ engine: 'demo' }), {
+      [`POST /insights/${ID}/complete`]: { body: completionOut() },
+      'GET /me/progress': { body: progressOut() },
+      'GET /profile': { body: { ...PROFILE, questions_asked: true } },
+    });
+    expect(screen.queryByRole('button', { name: 'شارك' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
+    const panel = await screen.findByRole('region', { name: 'اكتملت بصيرتك' });
+    expect(within(panel).getByText(/المثال المُعدّ لا يُشارك/)).toBeInTheDocument();
+  });
+
+  it('opens the share sheet from the third option after «تمّ», for an owner who may publish', async () => {
+    setSignedIn(USER);
+    await open(insightOut(), {
+      [`POST /insights/${ID}/complete`]: { body: completionOut() },
+      'GET /me/progress': { body: progressOut() },
+      'GET /profile': { body: { ...PROFILE, questions_asked: true } },
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
+    const panel = await screen.findByRole('region', { name: 'اكتملت بصيرتك' });
+    await userEvent.click(within(panel).getByRole('button', { name: 'شارك البصيرة' }));
+    expect(screen.getByRole('dialog', { name: 'شارك البصيرة' })).toBeInTheDocument();
+  });
+});
+
 describe('InsightScreen: «تمّ»', () => {
   it('saves once, shows what was earned, and leaves the button done', async () => {
     const api = await open(insightOut(), {
@@ -244,6 +319,33 @@ describe('InsightScreen: «تمّ»', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'أتابع كضيف' }));
     expect(screen.queryByRole('button', { name: 'أتابع كضيف' })).toBeNull();
     expect(screen.getByRole('region', { name: 'اكتملت بصيرتك' })).toBeInTheDocument();
+  });
+
+  it('offers a guest the optional questions after a first «تمّ», each skippable, and only then', async () => {
+    setGuest();
+    await open(insightOut(), {
+      [`POST /insights/${ID}/complete`]: { body: completionOut() },
+      'GET /me/progress': { body: progressOut() },
+    });
+    expect(screen.queryByRole('heading', { name: 'كيف تحب أن تتعلم وتتأمل؟' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
+    const questions = await screen.findByRole('region', { name: 'كيف تحب أن تتعلم وتتأمل؟' });
+    expect(within(questions).getByRole('button', { name: 'تخطَّ' })).toBeInTheDocument();
+    // The completion panel comes first: the questions never stand between «تمّ» and what it earned.
+    const panel = screen.getByRole('region', { name: 'اكتملت بصيرتك' });
+    expect(
+      panel.compareDocumentPosition(questions) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('asks no question when «تمّ» was already recorded on this insight', async () => {
+    setGuest();
+    await open(insightOut(), {
+      [`POST /insights/${ID}/complete`]: { body: completionOut({ first_time: false }) },
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
+    await screen.findByRole('region', { name: 'اكتملت بصيرتك' });
+    expect(screen.queryByRole('region', { name: 'كيف تحب أن تتعلم وتتأمل؟' })).toBeNull();
   });
 
   it('says the save failed, announces nothing, and lets the reader try again', async () => {

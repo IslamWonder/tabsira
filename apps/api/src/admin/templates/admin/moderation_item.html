@@ -1,7 +1,9 @@
 {#
-  One post or comment under review: its text, the insight it was published with, its reports,
-  its moderation log, and the decisions that fit its state. A reason is chosen from the app's
-  codes; the author reads that code's text, never the moderator's words.
+  One post, comment or map entry under review: its text, the insight it was made from, its
+  reports, its moderation log, and the decisions that fit its state. A reason is chosen from the
+  app's codes; the author reads that code's text, never the moderator's words. A map entry shows
+  only what the public atlas shows: its place, its cell and the cell's centre; never the exact
+  point its owner gave, and never a photo.
 #}
 {% extends "sqladmin/layout.html" %}
 {% macro token() -%}
@@ -27,23 +29,29 @@
   <div class="alert alert-danger" role="alert">{{ error }}</div>
   {% endif %}
   <div class="card mb-3">
-    <div class="card-header"><h3 class="card-title">{{ kind | capitalize }} {{ item.id }}</h3></div>
+    <div class="card-header"><h3 class="card-title">{{ label | capitalize }} {{ item.id }}</h3></div>
     <div class="card-body">
       {% if text %}
       <p class="moderated-text fs-3" id="item-text" dir="rtl" lang="ar">{{ text }}</p>
+      {% elif location %}
+      <dl class="row mb-3" id="item-location">
+        <dt class="col-4">Place</dt><dd class="col-8" dir="rtl" lang="ar">{{ location.place or '—' }}</dd>
+        <dt class="col-4">Shown as</dt><dd class="col-8" dir="rtl" lang="ar">{{ location.precision }} · {{ location.meaning }}</dd>
+        <dt class="col-4">Cell centre</dt><dd class="col-8">{% if location.lat is not none %}{{ '%.4f' | format(location.lat) }}, {{ '%.4f' | format(location.lng) }}{% else %}cleared{% endif %}</dd>
+      </dl>
       {% else %}
       <p class="text-secondary" id="item-text">No text of the author's own.</p>
       {% endif %}
       {% if publication %}
       <div class="mb-3">
-        <div class="subheader">Published insight</div>
+        <div class="subheader">{{ 'Placed insight' if kind == 'map_entry' else 'Published insight' }}</div>
         <div dir="rtl" lang="ar">{{ publication.title }}</div>
         <div class="text-secondary" dir="rtl" lang="ar">{{ publication.glimpse }}</div>
       </div>
       {% endif %}
       <dl class="row mb-0">
         <dt class="col-4">Status</dt><dd class="col-8" id="item-status">{{ item.status.value if item.status.value is defined else item.status }}{% if item.status_reason %} ({{ item.status_reason }}){% endif %}</dd>
-        <dt class="col-4">Author</dt><dd class="col-8"><code>{{ item.author_id }}</code></dd>
+        <dt class="col-4">Author</dt><dd class="col-8"><code>{{ author_id }}</code></dd>
         {% if kind == 'comment' %}<dt class="col-4">On post</dt><dd class="col-8">{{ item.post_id }}</dd>{% endif %}
         {% if kind == 'post' and item.reflection_looks_like_scripture %}<dt class="col-4">Note</dt><dd class="col-8">The guard found this reflection reads like scripture; the reader is told it is the author's text.</dd>{% endif %}
         <dt class="col-4">Written</dt><dd class="col-8">{{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</dd>
@@ -113,7 +121,7 @@
       {% if can_reject %}
       <form action="{{ url_for('admin:view-moderation-queue-decide', kind=kind, item_id=item.id, decision='reject') }}" method="POST">
         {{ token() }}
-        <label class="form-label" for="reject-reason">Refuse it; the author is shown this reason</label>
+        <label class="form-label" for="reject-reason">{% if kind == 'map_entry' %}Take the held entry down{% else %}Refuse it{% endif %}; the author is shown this reason</label>
         {{ reason_select('reject-reason') }}
         <button type="submit" class="btn btn-warning mt-2" id="reject">Reject</button>
       </form>

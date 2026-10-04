@@ -17,16 +17,26 @@ from src.deps import (
     VerifiedUser,
     limited,
     require_social,
+    require_social_or_atlas,
 )
 from src.errors import AppError, ErrorCode
 from src.schemas.social import MemberOut, MemberProfileOut, PublicIdentityIn, PublicIdentityOut
 from src.services import block_service, member_service, public_identity
 from src.services.social_limits import WriteKind
 
-router = APIRouter(tags=["members"], dependencies=[Depends(require_social)])
+router = APIRouter(tags=["members"])
+
+# The handle and public name are what the atlas publishes under as well, so choosing them is
+# open while either feature is on; profiles, follows and blocks belong to the network alone.
+_either = [Depends(require_social_or_atlas)]
+_social = [Depends(require_social)]
 
 
-@router.get("/me/public-identity", summary="The caller's handle and public name")
+@router.get(
+    "/me/public-identity",
+    summary="The caller's handle and public name",
+    dependencies=_either,
+)
 async def get_public_identity(user: CurrentUser) -> PublicIdentityOut:
     """Return the identity the caller appears under, or nulls until they choose one."""
     return PublicIdentityOut(handle=user.handle, public_name=user.public_name)
@@ -35,7 +45,7 @@ async def get_public_identity(user: CurrentUser) -> PublicIdentityOut:
 @router.put(
     "/me/public-identity",
     summary="Choose or change the handle and public name",
-    dependencies=[limited(WriteKind.IDENTITY)],
+    dependencies=[*_either, limited(WriteKind.IDENTITY)],
 )
 async def put_public_identity(
     body: PublicIdentityIn, user: VerifiedUser, db: DbDep
@@ -53,7 +63,7 @@ async def put_public_identity(
     return PublicIdentityOut(handle=user.handle, public_name=user.public_name)
 
 
-@router.get("/u/{handle}", summary="A public profile")
+@router.get("/u/{handle}", summary="A public profile", dependencies=_social)
 async def get_profile(handle: str, viewer: OptionalUser, db: DbDep) -> MemberProfileOut:
     """
     Return a member's public profile: handle, public name, month joined and three counts.
@@ -69,7 +79,7 @@ async def get_profile(handle: str, viewer: OptionalUser, db: DbDep) -> MemberPro
     "/u/{handle}/follow",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Follow a member",
-    dependencies=[limited(WriteKind.REACTION)],
+    dependencies=[*_social, limited(WriteKind.REACTION)],
 )
 async def follow_member(handle: str, user: VerifiedUser, db: DbDep) -> Response:
     """Follow a member; following again changes nothing. 400 for oneself."""
@@ -83,7 +93,7 @@ async def follow_member(handle: str, user: VerifiedUser, db: DbDep) -> Response:
     "/u/{handle}/follow",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Stop following a member",
-    dependencies=[limited(WriteKind.REACTION)],
+    dependencies=[*_social, limited(WriteKind.REACTION)],
 )
 async def unfollow_member(handle: str, user: CurrentUser, db: DbDep) -> Response:
     """Stop following a member; safe to repeat."""
@@ -93,7 +103,7 @@ async def unfollow_member(handle: str, user: CurrentUser, db: DbDep) -> Response
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/blocks", summary="The members the caller has blocked")
+@router.get("/blocks", summary="The members the caller has blocked", dependencies=_social)
 async def list_blocks(user: CurrentUser, db: DbDep) -> list[MemberOut]:
     """List the members the caller blocked, newest first, by handle and public name only."""
     blocked = await block_service.blocked_accounts(db, user)
@@ -108,18 +118,20 @@ async def list_blocks(user: CurrentUser, db: DbDep) -> list[MemberOut]:
     "/blocks/{handle}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Block a member",
-    dependencies=[limited(WriteKind.BLOCK)],
+    dependencies=[*_social, limited(WriteKind.BLOCK)],
 )
 async def block_member(handle: str, user: CurrentUser, db: DbDep) -> Response:
     """
     Block a member.
 
     Each of the two stops seeing the other everywhere, and the follows between them, in
-    both directions, end. Blocking again changes nothing. 400 for oneself.
+    both directions, end. Blocking again changes nothing. 400 for oneself. A handle nobody
+    holds answers 204 like any other: a 404 here would tell the caller that a handle they can
+    no longer see (`/u/{handle}` says 404 for a block too) does exist and has blocked them.
     """
     target = await public_identity.find_member(db, handle)
     if target is None:
-        raise member_service.not_found()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     if target.id == user.id:
         raise AppError(ErrorCode.BAD_REQUEST, "You cannot block yourself.", status_code=400)
     await block_service.block(db, user, target)
@@ -131,13 +143,13 @@ async def block_member(handle: str, user: CurrentUser, db: DbDep) -> Response:
     "/blocks/{handle}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Lift a block",
-    dependencies=[limited(WriteKind.BLOCK)],
+    dependencies=[*_social, limited(WriteKind.BLOCK)],
 )
 async def unblock_member(handle: str, user: CurrentUser, db: DbDep) -> Response:
-    """Lift the caller's own block; safe to repeat."""
+    """Lift the caller's own block; safe to repeat, and 204 for a handle nobody holds too."""
     target = await public_identity.find_member(db, handle)
     if target is None:
-        raise member_service.not_found()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     await block_service.unblock(db, user, target)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

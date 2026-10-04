@@ -226,7 +226,8 @@ async def place(
         setattr(entry, column, value)
     entry.status = MapEntryStatus.DRAFT
     entry.status_reason = None
-    entry.published_at = None
+    # `published_at` is kept: it records that the address was once public, so that a later
+    # withdrawal leaves the tombstone (410) a once-shared address needs; publishing sets it anew.
     entry.withdrawn_at = None
     await db.flush()
     point = await db.get(MapCapturePoint, entry.id)
@@ -328,7 +329,8 @@ async def withdraw(db: AsyncSession, user: User, insight_id: int) -> None:
     if point is not None:
         await db.delete(point)
     if entry.published_at is None:
-        # Never public: no address to keep, so no tombstone that would say it existed.
+        # Never public (re-placing keeps the time): no address to keep, so no tombstone that
+        # would say it existed.
         await db.delete(entry)
         await db.flush()
         return
@@ -380,6 +382,20 @@ def _published_on(entry: MapEntry) -> date:
     return moment.astimezone(UTC).date()
 
 
+def _published_day() -> ColumnElement[datetime]:
+    """
+    Return the day of publication in UTC, as `published_on` shows it.
+
+    The public lists are ordered by it, then by id, so that a cursor carries the day and the id
+    alone and never the hour.
+    """
+    return func.date_trunc("day", MapEntry.published_at, "UTC")
+
+
+def _day_start(entry: MapEntry) -> datetime:
+    return datetime.combine(_published_on(entry), time.min, tzinfo=UTC)
+
+
 def _feature(entry: MapEntry, insight: Insight, author: User) -> AtlasFeature:
     # A published entry always has its point (a database constraint); the checks keep mypy honest.
     lat = entry.public_lat if entry.public_lat is not None else 0.0
@@ -418,7 +434,7 @@ def _published_rows(filters: Filters, viewer: User | None):  # type: ignore[no-u
         statement = statement.where(MapEntry.country_iso2 == filters.country.upper())
     if filters.concept is not None:
         statement = statement.where(Insight.entity_ids.contains([filters.concept]))
-    return statement.order_by(MapEntry.published_at.desc(), MapEntry.id.desc())
+    return statement.order_by(_published_day().desc(), MapEntry.id.desc())
 
 
 async def features_in(
@@ -528,9 +544,9 @@ async def place_page(
     """Return a place and the published entries labelled with it, newest first; 404 without any."""
     statement = _published_rows(Filters(), viewer).where(MapEntry.place_geoname_id == geoname_id)
     if cursor is not None:
+        day = _published_day()
         statement = statement.where(
-            (MapEntry.published_at < cursor.at)
-            | ((MapEntry.published_at == cursor.at) & (MapEntry.id < cursor.id))
+            (day < cursor.at) | ((day == cursor.at) & (MapEntry.id < cursor.id))
         )
     rows = (await db.execute(statement.limit(limit + 1))).all()
     geoname = await db.scalar(
@@ -551,6 +567,6 @@ async def place_page(
         next_cursor=(
             None
             if last is None or last.published_at is None
-            else cursors.encode(cursors.Cursor(at=last.published_at, id=last.id))
+            else cursors.encode(cursors.Cursor(at=_day_start(last), id=last.id))
         ),
     )

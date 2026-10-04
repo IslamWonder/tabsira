@@ -17,6 +17,8 @@ sensitivity guard and the insight engine, with the real providers. Then:
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import json
 import statistics
 import time
@@ -26,7 +28,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,8 +49,8 @@ from src.pipeline.engine import (
 from src.pipeline.insight.guard import scripture_guard
 from src.pipeline.leak_guard import LeakDetector, ScriptureLeakError
 from src.pipeline.scene_analyzer import analyze_scene
-from src.pipeline.schemas import SceneRequest, SensitivityRequest
-from src.pipeline.sensitivity import check_sensitivity
+from src.pipeline.schemas import SceneRequest
+from src.pipeline.sensitivity import moderate, with_moderation
 from src.retrieval.refs import hadith_key, parse_quran, quran_key
 from src.scripture.text import sha256_hex
 
@@ -98,6 +100,8 @@ class SceneRun(BaseModel):
     total_ms: int
     cost_usd: float
     calls: int
+    # The latency of every model call, by stage, in the order they were made.
+    call_ms: dict[str, list[int]] = Field(default_factory=dict)
 
 
 class EvaluationResult(BaseModel):
@@ -226,6 +230,14 @@ async def check_result(
 EngineFactory = Callable[[CallLog], tuple[ModelClient, InsightEngine]]
 
 
+def call_latencies(log: CallLog) -> dict[str, list[int]]:
+    """Return the latency of each model call by stage, in call order."""
+    latencies: dict[str, list[int]] = {}
+    for record in log.records:
+        latencies.setdefault(record.stage.value, []).append(record.latency_ms)
+    return latencies
+
+
 async def evaluate_scene(
     session: AsyncSession,
     prepared: PreparedScene,
@@ -241,14 +253,14 @@ async def evaluate_scene(
     started = clock()
     checked: dict[str, object]
     vision_ms = 0
+    # As in the scan workflow, the moderation runs while the scene is described.
+    moderation = asyncio.create_task(moderate(prepared.image.model_image, client=client))
     try:
         described = await analyze_scene(
             SceneRequest(image=prepared.image.model_image, detector=prepared.detector),
             client=client,
         )
-        scene = await check_sensitivity(
-            SensitivityRequest(image=prepared.image.model_image, scene=described), client=client
-        )
+        scene = with_moderation(described, await moderation)
         vision_ms = round((clock() - started) * 1000)
         result = await engine.propose(
             EngineRequest(scan_id=f"eval-{prepared.gold.id}", scene=scene)
@@ -257,6 +269,11 @@ async def evaluate_scene(
     except (AiCallError, ScriptureLeakError) as error:
         status = "vision_failed" if isinstance(error, AiCallError) else "vision_leak"
         checked = {"status": status, "correct": False}
+    finally:
+        if not moderation.done():
+            moderation.cancel()
+            with contextlib.suppress(BaseException):
+                await moderation
     return SceneRun(
         scene=prepared.gold.id,
         expected=expectation.expect,
@@ -265,6 +282,7 @@ async def evaluate_scene(
         total_ms=round((clock() - started) * 1000),
         cost_usd=round(log.total_cost_usd, 6),
         calls=len(log.records),
+        call_ms=call_latencies(log),
         **{
             "insights": 0,
             "relations": [],

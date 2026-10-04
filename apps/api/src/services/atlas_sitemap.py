@@ -2,8 +2,9 @@
 The `places` section of the sitemap (decision 29): the public place pages of the atlas.
 
 A place is listed while at least one published entry of an active member with a handle is
-labelled with it, so an empty page is never advertised; its `lastmod` is the newest of those
-entries. Pages are cut by GeoNames id, ascending. Importing this module registers the
+labelled with it, so an empty page is never advertised; its `lastmod` is the day (in UTC) of the
+newest of those entries, never the hour, as the public pages themselves give a day only. Pages
+are cut by GeoNames id, ascending. Importing this module registers the
 provider; `create_app` imports it.
 """
 
@@ -25,7 +26,8 @@ class PlacesProvider:
 
     _PLACES = f"""
         FROM (
-            SELECT e.place_geoname_id AS geoname_id, max(e.published_at) AS changed
+            SELECT e.place_geoname_id AS geoname_id,
+                   date_trunc('day', max(e.published_at), 'UTC') AS changed
             FROM app.map_entries e JOIN app.users u ON u.id = e.user_id
             WHERE e.status = '{MapEntryStatus.PUBLISHED.value}'
               AND e.place_geoname_id IS NOT NULL

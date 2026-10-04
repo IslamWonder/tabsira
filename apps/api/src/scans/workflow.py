@@ -20,6 +20,7 @@ whatever the outcome.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import io
 import logging
 import time
@@ -59,9 +60,8 @@ from src.pipeline.schemas import (
     SceneAnalysis,
     SceneEntity,
     SceneRequest,
-    SensitivityRequest,
 )
-from src.pipeline.sensitivity import check_sensitivity
+from src.pipeline.sensitivity import Moderation, moderate, with_moderation
 from src.scans import buffer, progress
 from src.scans.accept import accept
 from src.scans.engines import EngineDeps, EngineFactory
@@ -329,35 +329,16 @@ async def _understand(job: Run, client: ModelClient) -> SceneAnalysis:
     with Image.open(io.BytesIO(data)) as decoded:
         width, height = decoded.size
     image = EncodedImage(data=data, width=width, height=height)
-
+    # The moderation looks at the photo alone, so it runs while the scene is described;
+    # its trace time runs from its start, overlapping the description.
     started = services.timer()
-    detected = await services.detector.detect(DetectorRequest(image=image))
-    job.trace.add("detect", "done" if detected.available else "skipped", started, detected.error)
-
-    started = services.timer()
+    moderation = asyncio.create_task(moderate(image, client=client))
     try:
-        scene = await analyze_scene(SceneRequest(image=image, detector=detected), client=client)
-    except AiCallError as error:
-        code = (
-            ErrorCode.VISION_FAILED
-            if error.code in VISION_FAILURES
-            else ErrorCode.MODEL_UNAVAILABLE
-        )
-        job.trace.add("understand", "failed", started, error.code.value)
-        raise ScanFailedError(code, error.code.value) from None
-    except ScriptureLeakError:
-        job.trace.add("understand", "failed", started, "leak")
-        raise ScanFailedError(ErrorCode.VISION_FAILED, "scripture-like text in the scene") from None
-    async with services.sessionmaker() as db:
-        # The scene's words are shown too: no run of a stored text in them, marked or not.
-        copied = await repeats_store(db, scene_texts(scene).values())
-    if copied:
-        job.trace.add("understand", "failed", started, "leak")
-        raise ScanFailedError(ErrorCode.VISION_FAILED, "scripture-like text in the scene")
-    job.trace.add("understand", "done", started)
-
-    started = services.timer()
-    scene = await check_sensitivity(SensitivityRequest(image=image, scene=scene), client=client)
+        scene = await _describe(job, client, image)
+    except BaseException:
+        await _stop(moderation)
+        raise
+    scene = with_moderation(scene, await moderation)
     guard = scene.guard
     job.trace.add(
         "sensitivity",
@@ -384,6 +365,44 @@ async def _understand(job: Run, client: ModelClient) -> SceneAnalysis:
             )
         )
         await db.commit()
+    return scene
+
+
+async def _stop(task: asyncio.Task[Moderation]) -> None:
+    """Cancel the moderation of a scan that ended, and wait until it has stopped."""
+    task.cancel()
+    with contextlib.suppress(BaseException):
+        await task
+
+
+async def _describe(job: Run, client: ModelClient, image: EncodedImage) -> SceneAnalysis:
+    """Detect, describe and check the scene's words; a failure ends the scan."""
+    services = job.services
+    started = services.timer()
+    detected = await services.detector.detect(DetectorRequest(image=image))
+    job.trace.add("detect", "done" if detected.available else "skipped", started, detected.error)
+
+    started = services.timer()
+    try:
+        scene = await analyze_scene(SceneRequest(image=image, detector=detected), client=client)
+    except AiCallError as error:
+        code = (
+            ErrorCode.VISION_FAILED
+            if error.code in VISION_FAILURES
+            else ErrorCode.MODEL_UNAVAILABLE
+        )
+        job.trace.add("understand", "failed", started, error.code.value)
+        raise ScanFailedError(code, error.code.value) from None
+    except ScriptureLeakError:
+        job.trace.add("understand", "failed", started, "leak")
+        raise ScanFailedError(ErrorCode.VISION_FAILED, "scripture-like text in the scene") from None
+    async with services.sessionmaker() as db:
+        # The scene's words are shown too: no run of a stored text in them, marked or not.
+        copied = await repeats_store(db, scene_texts(scene).values())
+    if copied:
+        job.trace.add("understand", "failed", started, "leak")
+        raise ScanFailedError(ErrorCode.VISION_FAILED, "scripture-like text in the scene")
+    job.trace.add("understand", "done", started)
     return scene
 
 

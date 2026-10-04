@@ -66,9 +66,27 @@ def test_the_guest_cookie_is_httponly_secure_and_lax(flow_settings):
 
     first, cleared = response.headers.getlist("set-cookie")
     assert first.startswith("__Secure-tabsira_guest=token.")
-    for part in ("HttpOnly", "Secure", "SameSite=lax", "Domain=.tabsira.test", "Max-Age=7776000"):
+    for part in ("HttpOnly", "; Secure", "SameSite=lax", "Domain=.tabsira.test", "Max-Age=7776000"):
         assert part in first
     assert "Max-Age=0" in cleared
+
+
+def test_over_plain_http_the_guest_cookie_loses_its_secure_prefix_and_flag(make_settings):
+    """Local development is http://tabsira.test (decision 49): a __Secure- cookie would be dropped."""
+    settings = make_settings(
+        site_url="http://tabsira.test",
+        api_url="http://api.tabsira.test",
+        admin_url="http://admin.tabsira.test",
+        cors_origins="http://tabsira.test",
+    )
+    response = Response()
+
+    guest_service.set_cookie(response, settings, "token")
+
+    first = response.headers["set-cookie"]
+    assert first.startswith("tabsira_guest=token.")
+    assert "; Secure" not in first
+    assert "HttpOnly" in first
 
 
 async def test_a_guest_lives_while_it_is_seen_and_expires_with_what_it_saved(

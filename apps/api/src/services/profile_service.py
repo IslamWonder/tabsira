@@ -28,6 +28,9 @@ from src.services import legal_service
 # version of the text is known to it.
 UNVERSIONED = "unversioned"
 
+# The fields of the three optional questions (master prompt v2 §5), in their order.
+QUESTION_FIELDS = frozenset({"goals", "knowledge_level", "age_range"})
+
 
 async def ensure_profile(db: AsyncSession, user_id: uuid.UUID) -> Profile:
     """Return the user's profile, creating the empty one if there is none yet."""
@@ -79,6 +82,9 @@ async def update_profile(db: AsyncSession, user_id: uuid.UUID, patch: ProfilePat
         profile.goals = [goal.value for goal in changes.pop("goals")]
     for field, value in changes.items():
         setattr(profile, field, value)
+    if changes.keys() & QUESTION_FIELDS or "goals" in patch.model_fields_set:
+        # An answer, or a skip to `unknown`, means the questions were offered.
+        profile.questions_asked = True
     if profile.age_range == AgeRange.UNDER_13 and profile.photo_storage_consent:
         # Declaring under 13 withdraws the photo consent, on the record.
         await record_consent(

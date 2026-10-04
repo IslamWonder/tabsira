@@ -86,6 +86,7 @@ def test_feature_flags_default_and_can_be_switched(make_settings, monkeypatch):
         "feature_photo_storage",
         "feature_canonical_verify",
         "feature_admin",
+        "feature_dev_inspector",
     }
     # Anchoring stays off until it is proven on devices; everything else is on.
     assert [name for name, on in flags.items() if not on] == ["feature_camera_anchor"]
@@ -120,8 +121,8 @@ def test_ai_defaults_are_what_the_benchmark_measured(make_settings):
     assert settings.ai_openai.embedding_dimensions == 1536
     assert settings.ai_ovh.model_for(AiStage.EMBEDDING) == "bge-m3"
     assert settings.ai_ovh.embedding_dimensions is None
-    # Decision 41: the small text model reranks; OVH has none measured, so it reranks nothing.
-    assert settings.reranker is RerankerKind.LLM
+    # Decision 50: no reranking by default; the small text model stays set for RERANKER=llm.
+    assert settings.reranker is RerankerKind.OFF
     assert settings.ai_openai.model_for(AiStage.RERANK) == "gpt-5.4-nano-2026-03-17"
     assert settings.ai_ovh.model_for(AiStage.RERANK) == ""
     text_stages = (AiStage.PLANNER, AiStage.VERIFY, AiStage.COMPOSE)
@@ -183,6 +184,15 @@ def test_ai_call_limits_default_and_are_bounded(make_settings):
     assert "AI_MAX_RETRIES" in errors_of(ai_max_retries=6)
     assert "AI_TIMEOUT_SECONDS" in errors_of(ai_timeout_seconds=0)
     assert "AI_RETRY_BACKOFF_SECONDS" in errors_of(ai_retry_backoff_seconds=-1)
+
+
+def test_the_profile_questions_count_defaults_to_three_and_stays_between_zero_and_three(
+    make_settings,
+):
+    assert make_settings().profile_questions_max == 3
+    assert make_settings(profile_questions_max=0).profile_questions_max == 0
+    assert "PROFILE_QUESTIONS_MAX" in errors_of(profile_questions_max=4)
+    assert "PROFILE_QUESTIONS_MAX" in errors_of(profile_questions_max=-1)
 
 
 def test_each_provider_carries_its_price_table(make_settings, monkeypatch):
@@ -1191,3 +1201,62 @@ def test_an_empty_reranker_url_switches_reranking_off(make_settings):
     )
     with pytest.raises(ValidationError):
         make_settings(reranker_url="vision:8100")
+
+
+def test_cookies_are_secure_and_prefixed_only_where_the_web_app_is_served_over_https():
+    """Local development runs over plain HTTP on port 80 (decision 49); production over https."""
+    https = Settings(_env_file=None)
+    http = Settings(
+        _env_file=None,
+        site_url="http://tabsira.test",
+        api_url="http://api.tabsira.test",
+        admin_url="http://admin.tabsira.test",
+        cors_origins="http://tabsira.test",
+    )
+
+    assert https.cookie_secure is True
+    assert https.cookie_name("__Secure-tabsira_session") == "__Secure-tabsira_session"
+    assert http.cookie_secure is False
+    assert http.cookie_name("__Secure-tabsira_session") == "tabsira_session"
+    assert http.cookie_name("plain") == "plain"
+
+
+@pytest.mark.parametrize("name", ["site_url", "api_url", "admin_url"])
+def test_production_refuses_a_public_address_over_plain_http(name):
+    message = errors_of(**{**PRODUCTION, name: "http://tabsira.me"})
+
+    assert f"{name.upper()} must use https in production, not http://tabsira.me" in message
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("cors_origins", "https://tabsira.me,http://www.tabsira.me"),
+        ("web_base_url", "http://tabsira.me"),
+        ("google_redirect_uri", "http://api.tabsira.me/auth/google/callback"),
+    ],
+)
+def test_production_refuses_every_other_public_address_over_plain_http(name, value):
+    message = errors_of(**{**PRODUCTION, name: value})
+
+    assert f"{name.upper()} must use https in production, not http://" in message
+
+
+@pytest.mark.parametrize("name", ["session_cookie_name", "guest_cookie_name"])
+def test_production_keeps_the_secure_prefix_on_the_cookie_names(name):
+    message = errors_of(**{**PRODUCTION, name: "tabsira_plain"})
+
+    assert f"{name.upper()} must start with __Secure- in production, not tabsira_plain" in message
+
+
+def test_the_vector_archive_keys_are_typed_and_the_url_is_https(make_settings):
+    settings = make_settings()
+    local = make_settings(
+        vectors_archive=" ../tabsira-data/vectors/x.tar.gz ", vectors_archive_url=" "
+    )
+
+    assert settings.vectors_archive == ""
+    assert settings.vectors_archive_url.startswith("https://s3-v2.riastorage.com/tabsira/vectors/")
+    assert local.vectors_archive == "../tabsira-data/vectors/x.tar.gz"
+    assert local.vectors_archive_url == ""
+    assert "VECTORS_ARCHIVE_URL" in errors_of(vectors_archive_url="http://example.org/v.tar.gz")

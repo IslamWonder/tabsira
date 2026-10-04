@@ -12,6 +12,16 @@ export function publicInsightPath(id: string): string {
   return `/insights/${id}`;
 }
 
+/** The share card's address (app/insights/[id]/card): a PNG that exists while the insight is public. */
+export function publicInsightCardPath(id: string): string {
+  return `${publicInsightPath(id)}/card`;
+}
+
+/** The name the browser gives the downloaded card; ASCII so every device keeps it. */
+export function cardFileName(id: string): string {
+  return `tabsira-${id}.png`;
+}
+
 /**
  * A published insight, read by the web server. Every visitor gets the same
  * answer for the same id; the API says 404 alike for unknown, unpublished and

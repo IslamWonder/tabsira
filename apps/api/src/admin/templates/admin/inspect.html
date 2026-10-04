@@ -1,0 +1,186 @@
+{#
+  The developer panel (v2 §23): one scan's stored trace. The scan's status and outcome,
+  the stages of every run with their times, the model calls with their cost, the entities
+  of the verified scene and the insights by their references. Never the photo, nothing
+  about the person who took it, and no scripture text: references only.
+#}
+{% extends "sqladmin/layout.html" %}
+{% macro when(value) -%}{% if value %}{{ value.strftime('%Y-%m-%d %H:%M:%S') }}{% else %}—{% endif %}{%- endmacro %}
+
+{% block content %}
+{% if scan is none %}
+<div class="col-12 col-lg-6">
+  {% if error %}
+  <div class="alert alert-warning" role="alert">{{ error }}</div>
+  {% endif %}
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">Open a scan</h3></div>
+    <div class="card-body">
+      <form method="GET" action="{{ url_for('admin:view-inspect') }}">
+        <label class="form-label" for="scan-id">Scan id</label>
+        <div class="input-group">
+          <input id="scan-id" name="scan_id" class="form-control" inputmode="numeric" pattern="[1-9][0-9]{0,18}" required>
+          <button type="submit" class="btn btn-primary">Inspect</button>
+        </div>
+        <p class="text-secondary mt-2 mb-0">The id the app shows in its address, <code>/scan/{id}</code>. The page shows what the workflow stored about the scan; never the photo.</p>
+      </form>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="col-12 col-lg-5">
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Scan {{ scan.id }}</h3></div>
+    <div class="card-body">
+      <dl class="row mb-0">
+        <dt class="col-5">Status</dt><dd class="col-7" id="scan-status">{{ scan.status.value }}{% if scan.error_code %} ({{ scan.error_code }}){% endif %}</dd>
+        <dt class="col-5">Outcome</dt><dd class="col-7">{{ scan.outcome.value if scan.outcome else '—' }}</dd>
+        <dt class="col-5">Engine</dt><dd class="col-7" id="scan-engine">{{ scan.engine }}</dd>
+        <dt class="col-5">Runs</dt><dd class="col-7">{{ scan.run }}</dd>
+        <dt class="col-5">Source</dt><dd class="col-7">{{ scan.source.value }}</dd>
+        <dt class="col-5">Image</dt><dd class="col-7">{% if scan.image_width %}{{ scan.image_width }} × {{ scan.image_height }} px{% else %}—{% endif %} (never shown here)</dd>
+        <dt class="col-5">Sensitive</dt><dd class="col-7">{% if scan.sensitive %}yes: {{ scan.sensitive_categories | join(', ') }}{% else %}no{% endif %}</dd>
+        <dt class="col-5">Created</dt><dd class="col-7">{{ when(scan.created_at) }}</dd>
+        <dt class="col-5">Finished</dt><dd class="col-7">{{ when(scan.finished_at) }}</dd>
+        <dt class="col-5">Duration</dt><dd class="col-7">{% if duration_ms is not none %}{{ duration_ms }} ms{% else %}—{% endif %}</dd>
+        {% if scan.clarification_question %}
+        <dt class="col-5">Clarification asked</dt><dd class="col-7" dir="rtl" lang="ar">{{ scan.clarification_question }}</dd>
+        {% endif %}
+        {% if scan.awaiting_ruling %}
+        <dt class="col-5">Awaiting a ruling</dt><dd class="col-7">{% for wanted in scan.awaiting_ruling %}{{ wanted.collection }} {{ wanted.number }}{% if not loop.last %}, {% endif %}{% endfor %}</dd>
+        {% endif %}
+      </dl>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Scene</h3></div>
+    <div class="card-body">
+      {% if description %}
+      <p dir="rtl" lang="ar" id="scene-description">{{ description }}</p>
+      <p class="text-secondary">Described by {{ scene_provider }} · {{ scene_model }}</p>
+      {% else %}
+      <p class="text-secondary mb-0">No scene was stored.</p>
+      {% endif %}
+      {% if ambiguities %}
+      <div class="subheader">Ambiguities</div>
+      <ul dir="rtl" lang="ar">{% for item in ambiguities %}<li>{{ item }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% if rejected %}
+      <div class="subheader">Refused in the model's answer</div>
+      <ul>{% for item in rejected %}<li>{{ item }}</li>{% endfor %}</ul>
+      {% endif %}
+    </div>
+    {% if entities %}
+    <div class="table-responsive">
+      <table class="table card-table table-vcenter" id="entities">
+        <thead><tr><th>Id</th><th>Label</th><th>Arabic</th><th>Origin</th><th>Status</th><th>Box</th></tr></thead>
+        <tbody>
+          {% for entity in entities %}
+          <tr>
+            <td><code>{{ entity.id }}</code></td>
+            <td>{{ entity.label }}</td>
+            <td dir="rtl" lang="ar">{{ entity.label_arabic }}</td>
+            <td class="text-nowrap">{{ entity.origin }}</td>
+            <td class="text-nowrap">{{ entity.status }}</td>
+            <td>{{ 'yes' if entity.boxed else 'no' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Insights</h3></div>
+    {% if insights %}
+    <div class="table-responsive">
+      <table class="table card-table table-vcenter" id="insights">
+        <thead><tr><th>Id</th><th>Run</th><th>Title</th><th>Relation</th><th>Quran</th><th>Hadith</th><th>Unit</th><th>Public</th></tr></thead>
+        <tbody>
+          {% for insight in insights %}
+          <tr>
+            <td><code>{{ insight.id }}</code></td>
+            <td>{{ insight.run }}.{{ insight.position }}</td>
+            <td dir="rtl" lang="ar">{{ insight.title }}</td>
+            <td class="text-nowrap">{{ insight.relation }}</td>
+            <td class="text-nowrap">{{ insight.quran or '—' }}</td>
+            <td class="text-nowrap">{{ insight.hadith or '—' }}</td>
+            <td class="text-nowrap">{{ insight.learning_unit_id or '—' }}</td>
+            <td>{{ 'yes' if insight.published else 'no' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card-body">No insight.</div>
+    {% endif %}
+  </div>
+  <a class="btn" href="{{ form_url }}">Inspect another scan</a>
+</div>
+
+<div class="col-12 col-lg-7">
+  <div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Stages</h3></div>
+    {% if events %}
+    <div class="table-responsive">
+      <table class="table card-table table-vcenter" id="stages">
+        <thead><tr><th>Run</th><th>At</th><th>Stage</th><th>Status</th><th class="text-end">ms</th><th>Code</th></tr></thead>
+        <tbody>
+          {% for event in events %}
+          <tr>
+            <td>{{ event.run }}</td>
+            <td class="text-nowrap">{{ when(event.at) }}</td>
+            <td class="text-nowrap">{{ event.stage }}</td>
+            <td class="text-nowrap">{{ event.status }}</td>
+            <td class="text-end">{{ event.ms if event.ms is not none else '—' }}</td>
+            <td class="text-nowrap">{{ event.code or '' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card-body">No stage was recorded; the trace is written when a run ends.</div>
+    {% endif %}
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">
+      <h3 class="card-title">Model calls</h3>
+      <div class="card-actions text-secondary" id="call-totals">{{ totals.calls }} calls{% if totals.failed %}, {{ totals.failed }} failed{% endif %} · {{ '%.4f' | format(totals.cost_usd) }} USD · {{ totals.input_tokens }} in / {{ totals.output_tokens }} out · {{ totals.latency_ms }} ms</div>
+    </div>
+    {% if calls %}
+    <div class="table-responsive">
+      <table class="table card-table table-vcenter" id="calls">
+        <thead><tr><th>At</th><th>Stage</th><th>Kind</th><th>Provider</th><th>Model</th><th class="text-end">Tries</th><th class="text-end">In</th><th class="text-end">Out</th><th class="text-end">Reasoning</th><th class="text-end">Cached</th><th class="text-end">USD</th><th class="text-end">ms</th><th>Result</th></tr></thead>
+        <tbody>
+          {% for call in calls %}
+          <tr>
+            <td class="text-nowrap">{{ when(call.at) }}</td>
+            <td class="text-nowrap">{{ call.stage }}</td>
+            <td class="text-nowrap">{{ call.kind }}</td>
+            <td class="text-nowrap">{{ call.provider }}</td>
+            <td class="text-nowrap"><code>{{ call.model }}</code></td>
+            <td class="text-end">{{ call.attempts }}</td>
+            <td class="text-end">{{ call.input_tokens }}</td>
+            <td class="text-end">{{ call.output_tokens }}</td>
+            <td class="text-end">{{ call.reasoning_tokens }}</td>
+            <td class="text-end">{{ call.cached_input_tokens }}</td>
+            <td class="text-end">{% if call.cost_usd is not none %}{{ '%.5f' | format(call.cost_usd) }}{% else %}—{% endif %}</td>
+            <td class="text-end">{{ call.latency_ms }}</td>
+            <td class="text-nowrap">{% if call.ok %}ok{% else %}failed{% if call.error_code %}: {{ call.error_code }}{% endif %}{% endif %}{% if call.finish_reason %} · {{ call.finish_reason }}{% endif %}{% if call.retried_errors %} · retried: {{ call.retried_errors | join(', ') }}{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card-body">No model call was recorded for this scan.</div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

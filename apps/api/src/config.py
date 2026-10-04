@@ -43,7 +43,10 @@ from src.geo.privacy import DEFAULT_CELL_METERS, MAX_CELL_METERS, MIN_CELL_METER
 # developer's real .env, with its keys and URLs, can never reach a test.
 ENV_FILE_OVERRIDE = "TABSIRA_ENV_FILE"
 
-# Where the services run when nothing else is configured: local development only.
+# The development hosts, used when nothing else is configured (tests, CI). A
+# developer's `.env`, written from `.env.example`, names them over plain HTTP on
+# port 80 (decision 49); the https form here keeps the test suite on the cookie
+# and origin rules production runs under. Production refuses `.test` and http.
 DEV_SITE_URL = "https://tabsira.test"
 DEV_API_URL = "https://api.tabsira.test"
 DEV_ADMIN_URL = "https://admin.tabsira.test"
@@ -69,7 +72,7 @@ DEFAULT_MAIL_FROM = "تبصرة <no-reply@tabsira.me>"
 DEFAULT_SUPPORT_EMAIL = "support@tabsira.me"
 DEFAULT_PRIVACY_EMAIL = "privacy@tabsira.me"
 # The date the first terms and privacy texts were written.
-DEFAULT_LEGAL_VERSION = "2026-10-04"
+DEFAULT_LEGAL_VERSION = "2026-10-04T20:00Z"
 DEFAULT_LANGUAGE = "ar"
 
 # A cookie name: RFC 6265 token characters we actually use. `__Host-` is refused
@@ -464,8 +467,8 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = 8000
 
-    # Public addresses. The .test defaults are development-only (mkcert TLS) and
-    # are refused in production.
+    # Public addresses. The .test defaults are development-only and are refused
+    # in production, which also requires https.
     site_url: str = DEV_SITE_URL
     api_url: str = DEV_API_URL
     # Where the admin area (/admin) is served: its own host, reachable through the VPN only.
@@ -575,6 +578,8 @@ class Settings(BaseSettings):
     feature_photo_storage: bool = True
     feature_canonical_verify: bool = True
     feature_admin: bool = True
+    # The developer panel of v2 §23 (the scan inspector in the admin area); off in production.
+    feature_dev_inspector: bool = True
 
     # Side, in metres, of the grid cell a public location is rounded to (see
     # src/geo/privacy.py). The limits are the ones that function enforces.
@@ -638,6 +643,15 @@ class Settings(BaseSettings):
     # Wait before the first retry; doubled for each later one.
     ai_retry_backoff_seconds: Annotated[float, Field(ge=0)] = 1.0
 
+    # The scripture vectors a new installation imports instead of computing (task 05.4,
+    # docs/EMBEDDINGS.md): a local archive or extracted folder, else the archive in the
+    # owners' bucket, downloaded once by scripts/vectors/ensure.sh; an empty URL means
+    # "never download". Read by the data scripts, kept here so every key is typed.
+    vectors_archive: str = ""
+    vectors_archive_url: str = (
+        "https://s3-v2.riastorage.com/tabsira/vectors/tabsira-vectors-2026-10-04.tar.gz"
+    )
+
     # The object detector (services/vision), reached over HTTP only. A detector
     # that does not answer in time is skipped and the scan goes on without boxes.
     detector_url: str = "http://127.0.0.1:8100"
@@ -645,7 +659,8 @@ class Settings(BaseSettings):
     # What reranks the evidence candidates (decision 41): the provider's small text
     # model by default. A reranker that fails or does not answer in time is skipped
     # and the fused order is kept.
-    reranker: RerankerKind = RerankerKind.LLM
+    # Decision 50: off by default; the verifier judges the fused head itself (docs/EVALUATION.md).
+    reranker: RerankerKind = RerankerKind.OFF
     # The cross-encoder of services/vision (POST /rerank), used when RERANKER=cross_encoder;
     # empty switches it off (docs/BENCHMARK.md: about 19 s per 30 passages on a CPU).
     reranker_url: str = "http://127.0.0.1:8100"
@@ -685,6 +700,10 @@ class Settings(BaseSettings):
 
     # Chat (v2 §14): successful user messages allowed per insight.
     max_chat_user_messages: Annotated[int, Field(ge=0, le=10)] = 3
+
+    # The optional questions (v2 §5): how many of the three the web asks after
+    # the first insight, 0 to 3. The web build reads the same key from the root .env.
+    profile_questions_max: Annotated[int, Field(ge=0, le=3)] = 3
 
     # The hidden treasure (v2 §17) shows on return: after this many days, on a
     # visit to its place this many hours after it was hidden, or after a related insight.
@@ -839,6 +858,20 @@ class Settings(BaseSettings):
     @classmethod
     def _check_detector_url(cls, value: str) -> str:
         return _origin(value)
+
+    @field_validator("vectors_archive")
+    @classmethod
+    def _strip_vectors_archive(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("vectors_archive_url")
+    @classmethod
+    def _check_vectors_archive_url(cls, value: str) -> str:
+        value = value.strip()
+        if value and not value.startswith("https://"):
+            message = "VECTORS_ARCHIVE_URL must be an https address, or empty to never download"
+            raise ValueError(message)
+        return value
 
     @field_validator("reranker_url")
     @classmethod
@@ -1037,6 +1070,29 @@ class Settings(BaseSettings):
             )
             if _host_is_test_domain(url)
         ]
+        problems.extend(
+            f"{name} must use https in production, not {url}"
+            for name, url in (
+                [
+                    ("SITE_URL", self.site_url),
+                    ("API_URL", self.api_url),
+                    ("ADMIN_URL", self.admin_url),
+                    ("WEB_BASE_URL", self.web_base_url),
+                    ("GOOGLE_REDIRECT_URI", self.google_redirect_uri),
+                ]
+                + [("CORS_ORIGINS", origin) for origin in self.cors_origins]
+            )
+            if url and urlsplit(url).scheme != "https"
+        )
+        # Over https the `__Secure-` prefix is a promise browsers enforce; production keeps it.
+        problems.extend(
+            f"{name} must start with __Secure- in production, not {value}"
+            for name, value in (
+                ("SESSION_COOKIE_NAME", self.session_cookie_name),
+                ("GUEST_COOKIE_NAME", self.guest_cookie_name),
+            )
+            if not value.startswith("__Secure-")
+        )
         problems.extend(self._storage_problems())
         if not self.ai.api_key.get_secret_value():
             problems.append(f"the key of the active AI provider ({self.ai_provider}) is empty")
@@ -1134,6 +1190,26 @@ class Settings(BaseSettings):
     def mail_link_base(self) -> str:
         """Base of the links in mail: WEB_BASE_URL, else the web app's own address."""
         return self.web_base_url or self.site_url
+
+    @property
+    def cookie_secure(self) -> bool:
+        """
+        Whether cookies carry the Secure flag: whenever the web app is served over https.
+
+        Local development runs over plain HTTP on port 80 (decision 49), where a
+        browser drops a Secure cookie; production is https and so always Secure.
+        """
+        return urlsplit(self.site_url).scheme == "https"
+
+    def cookie_name(self, name: str) -> str:
+        """
+        Return the name a cookie is set and read under.
+
+        A `__Secure-` prefix is a promise browsers enforce: such a cookie is
+        refused over plain HTTP, so the prefix is dropped where cookies are not
+        Secure, and kept everywhere else.
+        """
+        return name if self.cookie_secure else name.removeprefix("__Secure-")
 
     @property
     def admin_host(self) -> str:

@@ -43,7 +43,7 @@ describe('InsightEvidence', () => {
     );
     const sunnah = screen.getByRole('article', { name: 'السنة' });
     expect(within(sunnah).getByText('صحيح اختبار، رقم 1032')).toBeInTheDocument();
-    expect(within(sunnah).getByText('حكم الدرر: صحيح')).toBeInTheDocument();
+    expect(within(sunnah).getByText('حكم الدرر: إسناده صحيح')).toBeInTheDocument();
     expect(within(sunnah).getByText('محدّث الاختبار، كتاب الاختبار، 12')).toBeInTheDocument();
     expect(within(sunnah).getByRole('link', { name: /افتح المصدر/ })).toHaveAttribute(
       'href',

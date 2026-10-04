@@ -18,6 +18,8 @@ export class FakeSource {
 
 export class FakeMap {
   static instances: FakeMap[] = [];
+  /** Set to an error to make the next construction throw, as a browser without WebGL2 does. */
+  static failWith: Error | null = null;
   options: Record<string, unknown>;
   sources = new Map<string, FakeSource>();
   layers: string[] = [];
@@ -30,8 +32,13 @@ export class FakeMap {
   addControl = vi.fn();
   queryRenderedFeatures = vi.fn((): unknown[] => []);
   bounds = { west: 9, south: 35, east: 11, north: 37 };
+  center = { lng: 10, lat: 36 };
+  zoom = 8;
 
   constructor(options: Record<string, unknown>) {
+    if (FakeMap.failWith !== null) {
+      throw FakeMap.failWith;
+    }
     this.options = options;
     FakeMap.instances.push(this);
   }
@@ -69,6 +76,14 @@ export class FakeMap {
     this.featureState.set(String(target.id), state);
   }
 
+  getCenter() {
+    return this.center;
+  }
+
+  getZoom() {
+    return this.zoom;
+  }
+
   getBounds() {
     const { west, south, east, north } = this.bounds;
     return {
@@ -96,6 +111,7 @@ export async function loadedMap(): Promise<FakeMap> {
 
 export function forgetMaps(): void {
   FakeMap.instances = [];
+  FakeMap.failWith = null;
 }
 
 // The name maplibre-gl exports; declared last so nothing above shadows the built-in Map.

@@ -6,6 +6,7 @@ import {
   PublicEnvError,
   resolveEnvironment,
   resolveOrigin,
+  resolveProfileQuestionsMax,
   resolvePublicEnv,
 } from './public-env';
 
@@ -15,6 +16,7 @@ describe('resolvePublicEnv', () => {
       environment: 'development',
       siteUrl: DEVELOPMENT_SITE_URL,
       apiUrl: DEVELOPMENT_API_URL,
+      profileQuestionsMax: 3,
     });
   });
 
@@ -30,7 +32,21 @@ describe('resolvePublicEnv', () => {
       environment: 'production',
       siteUrl: 'https://tabsira.me',
       apiUrl: 'https://api.tabsira.me',
+      profileQuestionsMax: 3,
     });
+  });
+
+  it('reads PROFILE_QUESTIONS_MAX from the shared .env, NEXT_PUBLIC_ first, and bounds it', () => {
+    expect(resolvePublicEnv({ PROFILE_QUESTIONS_MAX: '2' }).profileQuestionsMax).toBe(2);
+    expect(
+      resolvePublicEnv({ PROFILE_QUESTIONS_MAX: '2', NEXT_PUBLIC_PROFILE_QUESTIONS_MAX: '0' })
+        .profileQuestionsMax
+    ).toBe(0);
+    expect(resolveProfileQuestionsMax(' 1 ')).toBe(1);
+    expect(resolveProfileQuestionsMax(undefined)).toBe(3);
+    for (const bad of ['4', '-1', '1.5', 'three']) {
+      expect(() => resolveProfileQuestionsMax(bad)).toThrow(PublicEnvError);
+    }
   });
 
   it('falls back to the shared SITE_URL and API_URL', () => {
@@ -128,6 +144,8 @@ describe('mergeEnv', () => {
       API_URL: 'https://api.file.example',
       NEXT_PUBLIC_SITE_URL: undefined,
       NEXT_PUBLIC_API_URL: undefined,
+      PROFILE_QUESTIONS_MAX: undefined,
+      NEXT_PUBLIC_PROFILE_QUESTIONS_MAX: undefined,
     });
   });
 });

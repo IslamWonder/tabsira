@@ -317,6 +317,7 @@ async def test_the_command_writes_results_and_report_and_fails_on_a_leak(maker, 
     )
     http = httpx.AsyncClient(transport=httpx.MockTransport(lambda _r: httpx.Response(503)))
     arguments = [
+        "--only", "scenes",
         "--scenes", "rain",
         "--results-dir", str(tmp_path / "results"),
         "--report", str(tmp_path / "EVALUATION.md"),
@@ -382,7 +383,7 @@ async def test_the_command_builds_the_real_engine_and_closes_its_own(
     monkeypatch.setattr(command, "dispose_engine", dispose)
     monkeypatch.setattr(command, "prepare_scenes", boom)
     with pytest.raises(RuntimeError):
-        await command.run(["--no-report"], settings=settings)
+        await command.run(["--only", "scenes", "--no-report"], settings=settings)
     assert disposed == [True]
     assert engine is not again
 
@@ -415,7 +416,7 @@ async def test_a_clarification_question_that_quotes_scripture_counts_as_a_leak(s
 
 
 def test_the_report_names_what_reranked(make_settings):
-    assert command.models_of(make_settings(ai_provider="openai"))["rerank"] == (
+    assert command.models_of(make_settings(ai_provider="openai", reranker="llm"))["rerank"] == (
         "gpt-5.4-nano-2026-03-17"
     )
     assert command.models_of(make_settings(ai_provider="ovh"))["rerank"] == "off"

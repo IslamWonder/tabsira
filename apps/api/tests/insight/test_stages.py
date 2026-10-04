@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
 from sqlalchemy import select
 
+from src.ai.errors import AiCallError, AiErrorCode
 from src.models import EmbeddedCorpus, QuranVerse
 from src.pipeline.engine import (
     EngineRequest,
@@ -26,12 +28,11 @@ from src.pipeline.insight.composer import (
     cites_only_its_own,
 )
 from src.pipeline.insight.context import SceneContext, build_context
-from src.pipeline.insight.engine import scene_texts
+from src.pipeline.insight.engine import PipelineInsightEngine, scene_texts
 from src.pipeline.insight.evidence import (
     Chosen,
     GateResult,
     Shortlist,
-    VerifierLeakError,
     pick,
     seen_ids,
     verify,
@@ -353,7 +354,7 @@ async def test_the_verifier_keeps_known_labels_of_known_candidates_only():
     assert set(verdicts[0]) == {"Q1", "H1"}
 
 
-async def test_a_leaking_verifier_is_asked_again_then_refused():
+async def test_a_leaking_verifier_is_asked_again_then_its_candidate_gets_no_verdict():
     leaking = {
         "candidates": [
             {
@@ -362,15 +363,15 @@ async def test_a_leaking_verifier_is_asked_again_then_refused():
             }
         ]
     }
-    shortlist = Shortlist(candidate(), [found(1)], [])
+    shortlists = [Shortlist(candidate(), [found(1)], []), Shortlist(candidate(), [found(2)], [])]
+    clean = {"candidates": [{"candidate": 0, "texts": [verdict("Q1")]}]}
+    # The fake answers at once, so the first candidate takes both its attempts first.
+    client = FakeModelClient(answers=[leaking, leaking, clean])
 
-    with pytest.raises(VerifierLeakError):
-        await verify(
-            FakeModelClient(answers=[leaking, leaking]),
-            rain_scene(),
-            [shortlist],
-            EngineGuard(LeakGuard(), None),
-        )
+    verdicts = await verify(client, rain_scene(), shortlists, EngineGuard(LeakGuard(), None))
+
+    assert verdicts == {0: {}, 1: {"Q1": verdicts[1]["Q1"]}}
+    assert len(client.calls) == 3
 
 
 def test_pick_prefers_an_unseen_text_of_the_strongest_tier_and_reviews_otherwise():
@@ -444,15 +445,16 @@ def test_a_personal_matter_ends_with_the_referral_and_steps_keep_their_kind():
     assert referred.learning_path_version is None
 
 
-async def test_the_composer_drops_an_insight_that_keeps_leaking_and_ignores_unknown_indexes():
-    leaking = composed(1, value=f"قال تعالى: «{verse_text(30, 50)}»")
+async def test_the_composer_writes_each_insight_apart_and_drops_one_that_keeps_leaking():
+    leaking = composed(0, value=f"قال تعالى: «{verse_text(30, 50)}»")
     results = [
         GateResult(candidate(), quran=chosen(1), quran_ref=QuranRef(surah=1, ayah=1)),
         GateResult(candidate(), quran=chosen(2), quran_ref=QuranRef(surah=1, ayah=2)),
     ]
     client = FakeModelClient(
         answers=[
-            compose_answer(composed(0, small_step=None), leaking, composed(9)),
+            compose_answer(composed(9), composed(0, small_step=None)),
+            compose_answer(leaking),
             compose_answer(leaking),
         ]
     )
@@ -463,7 +465,56 @@ async def test_the_composer_drops_an_insight_that_keeps_leaking_and_ignores_unkn
 
     assert len(composition.insights) == 1
     assert composition.leaked == [1]
-    assert len(client.calls) == 2
+    assert len(client.calls) == 3
+    assert [json.loads(call["user"])["insights"][0]["insight"] for call in client.calls] == [0] * 3
+
+
+async def test_a_model_failure_in_one_composer_call_is_raised():
+    results = [GateResult(candidate(), quran=chosen(1), quran_ref=QuranRef(surah=1, ayah=1))]
+    client = FakeModelClient(answers=[AiCallError(AiErrorCode.TIMEOUT, "slow")])
+
+    with pytest.raises(AiCallError):
+        await InsightComposer(client).compose(
+            rain_scene(), results, LearnerContext(), LeakGuard(), "v1"
+        )
+
+
+async def test_each_candidate_is_verified_in_its_own_call_and_a_failure_is_raised():
+    shortlists = [
+        Shortlist(candidate(), [found(1)], []),
+        Shortlist(candidate(concept="الرحمة"), [found(2)], []),
+    ]
+    client = FakeModelClient(
+        answers=[
+            {"candidates": [{"candidate": 0, "texts": [verdict("Q1")]}]},
+            {"candidates": [{"candidate": 0, "texts": [verdict("Q1", strength="weak")]}]},
+        ]
+    )
+
+    verdicts = await verify(client, rain_scene(), shortlists, EngineGuard(LeakGuard(), None))
+    failing = FakeModelClient(answers=[{"candidates": []}, AiCallError(AiErrorCode.TIMEOUT, "x")])
+
+    assert (verdicts[0]["Q1"].strength, verdicts[1]["Q1"].strength) == ("strong", "weak")
+    assert [len(json.loads(call["user"])["candidates"]) for call in client.calls] == [1, 1]
+    with pytest.raises(AiCallError):
+        await verify(failing, rain_scene(), shortlists, EngineGuard(LeakGuard(), None))
+
+
+def test_a_weak_main_text_makes_a_general_reminder():
+    weak = Chosen(found(1), RelationType.DIRECT, "", review=False, unseen_preferred=False,
+                  strength="weak")  # fmt: skip
+    result = GateResult(candidate(), quran=weak, quran_ref=QuranRef(surah=1, ayah=1))
+
+    assert result.relation is RelationType.THEMATIC_REMINDER
+    assert GateResult(candidate()).relation is RelationType.THEMATIC_REMINDER
+    built = build_insight(
+        ComposedInsight.model_validate(composed(sunnah=None)),
+        result,
+        rain_scene(),
+        LearnerContext(),
+        None,
+    )
+    assert built.quran.relation is RelationType.THEMATIC_REMINDER
 
 
 async def test_the_guard_compares_with_the_hadiths_shown_without_the_honorific():
@@ -538,3 +589,24 @@ def test_an_insight_citing_anything_but_its_own_texts_and_unit_is_refused():
     assert not cites_only_its_own(free_form)
     assert not cites_only_its_own(unit_as_ground)
     assert citation(HadithRef(collection="muslim", number="93")) == "hadith:muslim:93"
+
+
+def test_a_general_reminder_is_kept_only_when_nothing_stronger_holds():
+    def result(ayah: int, relation: RelationType) -> GateResult:
+        return GateResult(
+            candidate(relation=relation), quran=chosen(ayah), quran_ref=QuranRef(surah=2, ayah=ayah)
+        )
+
+    request = EngineRequest(scan_id="r", scene=rain_scene())
+    mixed = [
+        result(1, RelationType.THEMATIC_REMINDER),
+        result(2, RelationType.CLOSE_CONCEPTUAL),
+        result(3, RelationType.THEMATIC_REMINDER),
+    ]
+    general = [result(4, RelationType.THEMATIC_REMINDER), result(5, RelationType.THEMATIC_REMINDER)]
+
+    kept = PipelineInsightEngine._ranked(request, mixed, None)
+    alone = PipelineInsightEngine._ranked(request, general, None)
+
+    assert [r.quran_ref.ayah for r in kept] == [2]
+    assert [r.quran_ref.ayah for r in alone] == [4]

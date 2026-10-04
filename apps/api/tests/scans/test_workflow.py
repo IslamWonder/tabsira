@@ -574,3 +574,44 @@ def test_call_records_become_rows_without_the_prompt_or_the_answer():
     assert row.retried_errors == ["network"]
     assert row.insight_id == 1
     assert row.input_tokens == 1000
+
+
+async def test_the_moderation_runs_with_the_description_and_stops_when_it_fails(
+    store, redis, http, flow_settings, monkeypatch
+):
+    started = asyncio.Event()
+    stopped: list[str] = []
+
+    async def slow_moderation(image, *, client):
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            stopped.append("cancelled")
+            raise
+
+    describe = workflow._describe
+
+    async def describe_after_a_turn(job, client, image):
+        # The fakes answer at once; a real description waits on the network.
+        await asyncio.sleep(0)
+        return await describe(job, client, image)
+
+    monkeypatch.setattr(workflow, "moderate", slow_moderation)
+    monkeypatch.setattr(workflow, "_describe", describe_after_a_turn)
+    scan_id = await new_scan(store, redis)
+    services, _ = services_for(
+        store,
+        redis,
+        http,
+        flow_settings,
+        StaticEngine(EngineResult(status=EngineStatus.OK)),
+        answers=[AiCallError(AiErrorCode.INVALID_OUTPUT, "bad")],
+    )
+
+    await run_scan(services, scan_id, 1)
+
+    assert started.is_set()
+    assert stopped == ["cancelled"]
+    assert (await the_scan(store, scan_id)).status is ScanStatus.FAILED
+    assert not await buffer.kept(redis, scan_id, buffer.Copy.MODEL)

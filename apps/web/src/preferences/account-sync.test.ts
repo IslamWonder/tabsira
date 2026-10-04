@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readDeviceAnswers, rememberDeviceAnswer } from '@/account/device-answers';
 import { forgetSession, setGuest, setSignedIn } from '@/account/session';
 import { PROFILE, USER } from '@/test/fixtures';
 import {
@@ -46,6 +47,41 @@ describe('account preferences', () => {
     loadProfile.mockResolvedValue({ ok: false });
     await syncFromAccount();
     expect(window.localStorage.getItem('tabsira.theme')).toBe('light');
+  });
+
+  it('moves the answers a guest gave on this device into an account never asked', async () => {
+    rememberDeviceAnswer({ goals: ['reflection'], age_range: '18_24' });
+    loadProfile.mockResolvedValue({ ok: true, data: PROFILE });
+    patchProfile.mockResolvedValue({ ok: true });
+    await syncFromAccount();
+    expect(patchProfile).toHaveBeenCalledWith({
+      goals: ['reflection'],
+      age_range: '18_24',
+      questions_asked: true,
+    });
+    expect(readDeviceAnswers()).toBeNull();
+  });
+
+  it('keeps the device answers for the next sign-in when the account refuses them', async () => {
+    rememberDeviceAnswer({ knowledge_level: 'general' });
+    loadProfile.mockResolvedValue({ ok: true, data: PROFILE });
+    patchProfile.mockResolvedValue({ ok: false });
+    await syncFromAccount();
+    expect(readDeviceAnswers()).toEqual({ knowledge_level: 'general' });
+  });
+
+  it('forgets the device answers when the account was already asked, and patches nothing', async () => {
+    rememberDeviceAnswer({ knowledge_level: 'general' });
+    loadProfile.mockResolvedValue({ ok: true, data: { ...PROFILE, questions_asked: true } });
+    await syncFromAccount();
+    expect(patchProfile).not.toHaveBeenCalled();
+    expect(readDeviceAnswers()).toBeNull();
+  });
+
+  it('patches nothing at sign-in when the device holds no answers', async () => {
+    loadProfile.mockResolvedValue({ ok: true, data: PROFILE });
+    await syncFromAccount();
+    expect(patchProfile).not.toHaveBeenCalled();
   });
 
   it('saves a change to the account only when signed in', async () => {

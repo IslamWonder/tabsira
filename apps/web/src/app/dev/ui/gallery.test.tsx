@@ -135,7 +135,7 @@ describe('the development gallery', () => {
     expect(doneSection.getByRole('button', { name: 'تمّ' })).toBeEnabled();
   });
 
-  it('receives a photo or a link from the starter, and sends nothing', async () => {
+  it('receives a photo from the starter, and sends nothing', async () => {
     render(<DevUiPage />);
     const half = within(lightHalf());
     const zone = half.getByRole('region', { name: /اسحب صورة/ });
@@ -144,12 +144,6 @@ describe('the development gallery', () => {
       new File(['x'], 'rain.jpg', { type: 'image/jpeg' })
     );
     expect(half.getByText(/وصل ملف: rain.jpg/)).toBeInTheDocument();
-    await userEvent.click(within(zone).getByRole('button', { name: 'الصق رابط صورة' }));
-    await userEvent.type(within(zone).getByLabelText('رابط الصورة'), 'example.org/a.jpg');
-    await act(async () => {
-      await userEvent.click(within(zone).getByRole('button', { name: 'استخدم الرابط' }));
-    });
-    expect(half.getByText(/وصل رابط: https:\/\/example.org\/a.jpg/)).toBeInTheDocument();
   });
 
   it('plays the insight frame inside its preview', () => {

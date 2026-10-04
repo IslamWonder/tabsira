@@ -23,7 +23,9 @@ never a weaker one; the reranker's order breaks the remaining ties.
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Annotated, Any, Literal
@@ -43,6 +45,8 @@ from src.pipeline.leak_guard import ScriptureLeakError
 from src.pipeline.prompt import load_prompt
 from src.pipeline.schemas import SceneAnalysis
 from src.scripture import rulings
+
+log = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = "insight_verifier_system.v1"
 MAX_OUTPUT_TOKENS = 4096
@@ -68,10 +72,6 @@ class CandidateVerdict(BaseModel):
 
 class VerifierOutput(BaseModel):
     candidates: list[CandidateVerdict]
-
-
-class VerifierLeakError(RuntimeError):
-    """The verifier kept writing scripture-like text after every attempt."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,10 +118,16 @@ class GateResult:
 
     @property
     def relation(self) -> RelationType:
-        """The weaker of the planned relation and the main text's own relation to the scene."""
+        """
+        The weaker of the planned relation and the main text's own relation to the scene.
+
+        A main text the verifier called weak (a general or remote link) makes a general
+        reminder, whatever relation was claimed for it.
+        """
         main = self.quran or self.hadith
-        found = main.relation if main else RelationType.THEMATIC_REMINDER
-        return max(self.candidate.relation, found, key=RELATION_ORDER.__getitem__)
+        if main is None or main.strength == "weak":
+            return RelationType.THEMATIC_REMINDER
+        return max(self.candidate.relation, main.relation, key=RELATION_ORDER.__getitem__)
 
 
 def verifier_message(scene: SceneAnalysis, shortlists: Sequence[Shortlist]) -> str:
@@ -156,9 +162,34 @@ async def verify(
     *,
     attempts: int = 2,
 ) -> dict[int, dict[str, TextVerdict]]:
-    """Return, per candidate index, the verdict on each label; leaking answers are asked again."""
+    """
+    Return, per candidate index, the verdict on each label.
+
+    Each candidate is judged in a call of its own and the calls run together: a
+    verdict never depends on another candidate, and one long answer took as long
+    as several short ones side by side. The first error of any call is raised.
+    """
+    judged = await asyncio.gather(
+        *(_verify_one(client, scene, shortlist, guard, attempts) for shortlist in shortlists),
+        return_exceptions=True,
+    )
+    for outcome in judged:
+        if isinstance(outcome, BaseException):
+            raise outcome
+    return {index: verdicts for index, verdicts in enumerate(judged) if isinstance(verdicts, dict)}
+
+
+async def _verify_one(
+    client: ModelClient,
+    scene: SceneAnalysis,
+    shortlist: Shortlist,
+    guard: EngineGuard,
+    attempts: int,
+) -> dict[str, TextVerdict]:
+    """Judge one candidate's texts; an answer whose limits leak is asked again, then dropped."""
     system = load_prompt(SYSTEM_PROMPT)
-    user = verifier_message(scene, shortlists)
+    user = verifier_message(scene, [shortlist])
+    known = shortlist.labelled()
     for attempt in range(1, attempts + 1):
         result = await client.chat_json(
             VerifierOutput,
@@ -167,6 +198,7 @@ async def verify(
             user=user,
             max_output_tokens=MAX_OUTPUT_TOKENS,
         )
+        mine = [item for item in result.value.candidates if item.candidate == 0]
         limits = {
             f"candidates.{c.candidate}.{t.label}.limit": t.limit
             for c in result.value.candidates
@@ -176,16 +208,12 @@ async def verify(
         try:
             await guard.ensure_clean(limits)
         except ScriptureLeakError as error:
-            if attempt == attempts:
-                raise VerifierLeakError(str(error)) from None
+            log.warning("verifier answer refused (attempt %d): %s", attempt, error)
             continue
-        verdicts: dict[int, dict[str, TextVerdict]] = {}
-        for item in result.value.candidates:
-            if 0 <= item.candidate < len(shortlists):
-                known = shortlists[item.candidate].labelled()
-                verdicts[item.candidate] = {t.label: t for t in item.texts if t.label in known}
-        return verdicts
-    raise AssertionError  # the loop returns or raises
+        return {t.label: t for item in mine for t in item.texts if t.label in known}
+    # Still leaking: this candidate gets no verdict, so none of its texts passes the
+    # gate; the others are judged in their own calls and go on.
+    return {}
 
 
 def _ordered(

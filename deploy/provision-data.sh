@@ -2,6 +2,7 @@
 # Provision the production DATA host: PostgreSQL 18 and Redis, reachable only
 # over the Netbird VPN (interface wt0) by the application host.
 #
+#   0. net.ipv4.ip_nonlocal_bind, so a reboot never starts them before the VPN address exists
 #   1. deploy/provision-postgres.sh   packages, extensions, roles, database,
 #                                      pg_hba for APP_HOST_VPN_IP/32, nightly dump
 #   2. deploy/provision-redis.sh      password, protected mode, no persistence
@@ -59,12 +60,14 @@ firewall() {
 
 banner "Data host: PostgreSQL, Redis, firewall (app host $APP_HOST_VPN_IP over $VPN_IFACE)"
 if is_dry; then
+	install_nonlocal_bind
 	bash "$DEPLOY_DIR/provision-postgres.sh" --dry-run
 	bash "$DEPLOY_DIR/provision-redis.sh" --dry-run
 	firewall
 	ok "Dry run complete: nothing was changed."
 	exit 0
 fi
+install_nonlocal_bind
 bash "$DEPLOY_DIR/provision-postgres.sh"
 bash "$DEPLOY_DIR/provision-redis.sh"
 firewall

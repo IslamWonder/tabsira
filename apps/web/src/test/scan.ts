@@ -146,7 +146,7 @@ export function insightOut(overrides: Partial<Insight> = {}): Insight {
         spans: HADITH_SPANS,
         informational_grades: null,
         ruling: {
-          ruling_text: 'صحيح',
+          ruling_text: 'إسناده صحيح',
           scholar: 'محدّث الاختبار',
           source_book: 'كتاب الاختبار',
           page: '12',

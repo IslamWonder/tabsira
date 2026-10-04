@@ -61,3 +61,52 @@ export function serverSiteOrigin(env: Env = process.env): URL {
 
 /** How long the sitemap waits for the API: a page of 10 000 entries is more than a consent check. */
 export const SITEMAP_TIMEOUT_MS = 10_000;
+
+// The spellings pydantic accepts for a boolean setting, so the web and the API read one value alike.
+const TRUE_WORDS = new Set(['1', 'true', 't', 'yes', 'y', 'on']);
+
+/**
+ * A FEATURE_* flag the web server reads at request time, from the same
+ * environment file as the API (deploy/ecosystem.config.cjs): on unless the
+ * value says otherwise, as the API's own defaults are. Server code only; no
+ * flag is baked into the bundle.
+ */
+export function featureFlag(name: string, env: Env = process.env): boolean {
+  const value = env[`FEATURE_${name}`]?.trim().toLowerCase() ?? '';
+  return value === '' ? true : TRUE_WORDS.has(value);
+}
+
+/** The camera discovery, levels A and B (decision 9); off in production until proven on phones. */
+export function featureCameraDiscovery(env: Env = process.env): boolean {
+  return featureFlag('CAMERA_DISCOVERY', env);
+}
+
+/** The admin area of `make dev`; production names its own in ADMIN_URL (docs/ADMIN.md). */
+export const DEVELOPMENT_ADMIN_URL = 'http://admin.tabsira.test';
+
+// A public id as the API writes it: a positive decimal that fits 64 bits.
+const SCAN_ID = /^[1-9][0-9]{0,18}$/;
+
+/**
+ * Where the developer panel of a scan lives (v2 §23): the scan inspector of the
+ * admin area, on the admin host, behind an admin session. The web app's own
+ * `/dev/inspect/{scanId}` only hands over to it, because an admin session exists
+ * on that host alone. Null when the id is not one.
+ */
+export function adminInspectorUrl(scanId: string, env: Env = process.env): string | null {
+  if (!SCAN_ID.test(scanId)) {
+    return null;
+  }
+  const base = env.ADMIN_URL?.trim() || DEVELOPMENT_ADMIN_URL;
+  return new URL(`/admin/inspect/${scanId}`, base).toString();
+}
+
+/** «أطلس بصائر العالم»: while it is off, its pages do not exist (decision 1), as the API's routes do not. */
+export function featureAtlas(env: Env = process.env): boolean {
+  return featureFlag('ATLAS', env);
+}
+
+/** «تبصرة تواصل»: while it is off, its pages do not exist (decision 1), as the API's routes do not. */
+export function featureSocial(env: Env = process.env): boolean {
+  return featureFlag('SOCIAL', env);
+}

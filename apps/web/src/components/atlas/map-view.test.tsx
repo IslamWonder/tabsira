@@ -1,5 +1,6 @@
 import { act, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { messages } from '@/messages';
 import { FEATURE, SECOND_FEATURE } from '@/test/atlas';
 import { FakeMap, type FakeSource, forgetMaps, loadedMap } from '@/test/maplibre';
 import { MapView } from './map-view';
@@ -20,7 +21,10 @@ describe('MapView', () => {
     const data = map.getSource('entries')?.data as { features: { properties: { id: string } }[] };
     expect(data.features.map((feature) => feature.properties.id)).toEqual([FEATURE.id]);
     // The first window is reported once the map is ready, so the page can ask for it.
-    expect(onMoved).toHaveBeenCalledWith({ west: 9, south: 35, east: 11, north: 37 }, false);
+    expect(onMoved).toHaveBeenCalledWith({ west: 9, south: 35, east: 11, north: 37 }, false, {
+      center: [10, 36],
+      zoom: 8,
+    });
     expect(map.addControl).toHaveBeenCalled();
   });
 
@@ -32,9 +36,9 @@ describe('MapView', () => {
     const map = await loadedMap();
     onMoved.mockClear();
     map.emit('moveend', {});
-    expect(onMoved).toHaveBeenLastCalledWith(expect.anything(), false);
+    expect(onMoved).toHaveBeenLastCalledWith(expect.anything(), false, expect.anything());
     map.emit('moveend', { originalEvent: {} });
-    expect(onMoved).toHaveBeenLastCalledWith(expect.anything(), true);
+    expect(onMoved).toHaveBeenLastCalledWith(expect.anything(), true, expect.anything());
     expect(onMoved).toHaveBeenCalledTimes(2);
     map.emit('click:points', { features: [{ properties: { id: FEATURE.id } }] });
     expect(onSelect).toHaveBeenCalledWith(FEATURE.id);
@@ -118,5 +122,12 @@ describe('MapView', () => {
     map.emit('click:points', { features: [{ properties: {} }] });
     expect(map.easeTo).not.toHaveBeenCalled();
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('says so, and does not crash, when the browser has no WebGL2', async () => {
+    FakeMap.failWith = new Error('WebGL2 is required');
+    const { findByRole } = render(<MapView features={[FEATURE]} />);
+    expect((await findByRole('status')).textContent).toBe(messages.atlas.mapUnsupported);
+    expect(FakeMap.instances).toHaveLength(0);
   });
 });

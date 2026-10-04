@@ -17,10 +17,13 @@ no storage) belongs to the scan route; this stage only states it.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 from src.ai.client import ModelClient, ModelImage
-from src.ai.errors import AiCallError
+from src.ai.errors import AiCallError, AiErrorCode
 from src.config import AiProvider
 from src.pipeline.schemas import (
+    EncodedImage,
     ModerationStatus,
     SceneAnalysis,
     SensitiveCategory,
@@ -41,23 +44,35 @@ MODERATION_CATEGORIES: dict[str, SensitiveCategory] = {
 }
 
 
-async def check_sensitivity(request: SensitivityRequest, *, client: ModelClient) -> SceneAnalysis:
-    """Return the scene with the guard's verdict attached."""
-    scene_categories = list(request.scene.sensitive)
-    flags: list[str] = []
-    error = None
-    if client.provider != AiProvider.OPENAI:
-        status = ModerationStatus.NOT_AVAILABLE
-    else:
-        try:
-            moderation = await client.moderate_image(
-                ModelImage(request.image.data, request.image.mime)
-            )
-        except AiCallError as failure:
-            status, error = ModerationStatus.FAILED, failure.code
-        else:
-            status, flags = ModerationStatus.CHECKED, moderation.categories
+@dataclass(frozen=True, slots=True)
+class Moderation:
+    """What the provider's image moderation said, before it meets the scene's own flags."""
 
+    status: ModerationStatus
+    flags: list[str] = field(default_factory=list)
+    error: AiErrorCode | None = None
+
+
+async def moderate(image: EncodedImage, *, client: ModelClient) -> Moderation:
+    """
+    Run the provider's image moderation on the photo alone.
+
+    It needs nothing of the scene, so the scan starts it with the scene analysis
+    and the two calls overlap; a failure is recorded, never raised.
+    """
+    if client.provider != AiProvider.OPENAI:
+        return Moderation(ModerationStatus.NOT_AVAILABLE)
+    try:
+        result = await client.moderate_image(ModelImage(image.data, image.mime))
+    except AiCallError as failure:
+        return Moderation(ModerationStatus.FAILED, error=failure.code)
+    return Moderation(ModerationStatus.CHECKED, flags=list(result.categories))
+
+
+def with_moderation(scene: SceneAnalysis, moderation: Moderation) -> SceneAnalysis:
+    """Return the scene with the guard's verdict: its own flags and the moderation's, by union."""
+    scene_categories = list(scene.sensitive)
+    flags = moderation.flags
     flagged = {MODERATION_CATEGORIES[name] for name in flags if name in MODERATION_CATEGORIES}
     moderation_categories = [category for category in SensitiveCategory if category in flagged]
     union = set(scene_categories) | flagged
@@ -68,7 +83,12 @@ async def check_sensitivity(request: SensitivityRequest, *, client: ModelClient)
         scene_categories=scene_categories,
         moderation_categories=moderation_categories,
         moderation_flags=flags,
-        moderation_status=status,
-        moderation_error=error,
+        moderation_status=moderation.status,
+        moderation_error=moderation.error,
     )
-    return request.scene.model_copy(update={"guard": result})
+    return scene.model_copy(update={"guard": result})
+
+
+async def check_sensitivity(request: SensitivityRequest, *, client: ModelClient) -> SceneAnalysis:
+    """Return the scene with the guard's verdict attached."""
+    return with_moderation(request.scene, await moderate(request.image, client=client))

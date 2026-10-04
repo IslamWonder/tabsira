@@ -38,7 +38,7 @@ Scheduled work runs in exactly one process: timers on the one application host, 
 /srv/tabsira/current            symlink to the live release
 /srv/tabsira/previous           symlink to the release before it
 /srv/tabsira/shared/.env        production environment (0600, owned by the app user)
-/srv/tabsira/shared/{state,cache,vision-weights}
+/srv/tabsira/shared/{state,cache,vision-weights,corpus}
 /srv/tabsira/static/_next/static  every recent build's static files, served by nginx
 /var/log/tabsira                web logs (pm2); the API and timers log to the journal
 ```
@@ -57,7 +57,7 @@ Order matters: the data host first, because the first deploy migrates the databa
    APP_HOST_VPN_IP=<app host VPN address> deploy/provision-data.sh
    ```
 
-   It installs PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, creates the role `tabsira` and the database `tabsira` with `search_path = app, geodata, public` and the nine extensions (`postgis`, `vector`, `timescaledb`, `pg_trgm`, `unaccent`, `pgcrypto`, `btree_gin`, `btree_gist`, `pg_stat_statements`), and installs Redis 8 with a password and protected mode. Both listen on `127.0.0.1` and the `wt0` address only (`DATA_HOST_VPN_IP` to name it). `pg_hba.conf` has one managed block: the application role from `APP_HOST_VPN_IP/32` with `scram-sha-256`, no ranges, no trust. The firewall step adds `ufw` rules that allow 5432 and 6379 from the app host on `wt0` and deny them elsewhere; it does not enable `ufw` (a wrong default over ssh locks you out) unless `FIREWALL_ENABLE=true`. Passwords are generated into `/etc/tabsira/postgres.env` and `/etc/tabsira/redis.env` (root only); the script ends by printing the values to paste into the application host's `.env`: the two database URLs with the password left as a placeholder, and for Redis `REDIS_URL` without a password plus `REDIS_PASSWORD`. The API refuses a Redis URL that carries a password.
+   It installs PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, creates the role `tabsira` and the database `tabsira` with `search_path = app, geodata, public` and the nine extensions (`postgis`, `vector`, `timescaledb`, `pg_trgm`, `unaccent`, `pgcrypto`, `btree_gin`, `btree_gist`, `pg_stat_statements`), and installs Redis 8 with a password and protected mode. Both listen on `127.0.0.1` and the `wt0` address only (`DATA_HOST_VPN_IP` to name it). The script first sets `net.ipv4.ip_nonlocal_bind=1` (`/etc/sysctl.d/90-tabsira-nonlocal-bind.conf`), so a reboot that starts them before Netbird has given the address does not leave them down. `pg_hba.conf` has one managed block: the application role from `APP_HOST_VPN_IP/32` with `scram-sha-256`, no ranges, no trust. The firewall step adds `ufw` rules that allow 5432 and 6379 from the app host on `wt0` and deny them elsewhere; it does not enable `ufw` (a wrong default over ssh locks you out) unless `FIREWALL_ENABLE=true`. Passwords are generated into `/etc/tabsira/postgres.env` and `/etc/tabsira/redis.env` (root only); the script ends by printing the values to paste into the application host's `.env`: the two database URLs with the password left as a placeholder, and for Redis `REDIS_URL` without a password plus `REDIS_PASSWORD`. The API refuses a Redis URL that carries a password.
 
 3. **Application host** (as root, from a checkout):
 
@@ -70,7 +70,17 @@ Order matters: the data host first, because the first deploy migrates the databa
    Run it without `--dry-run` once the plan reads right. The certificates are issued by certbot during the run, so the names must already resolve to this host and the DNS credential must work. Where they cannot yet (a rehearsal, a host before the DNS change), run it with `--skip-tls`: it does everything else but the certificates and `apply-config.sh`. Put a certificate and its key at `/etc/letsencrypt/live/tabsira.me/{fullchain,privkey}.pem` and `/etc/letsencrypt/live/admin.tabsira.me/{fullchain,privkey}.pem` (self-signed ones will do for a rehearsal), then run `APP_HOST_VPN_IP=<this host's VPN address> deploy/apply-config.sh` as root. Do not leave self-signed files where certbot will write: delete `/etc/letsencrypt/live/<name>` before the real issue. It creates the user and layout, installs Node 24 (latest 24.x from nodejs.org, checksum verified), pnpm through corepack, pm2 (started at boot), uv and the Python 3.12 of `apps/api/.python-version`, nginx, certbot, the narrow sudoers file and `/usr/local/bin/tabsira-deploy`, and applies `deploy/apply-config.sh`. It writes `/srv/tabsira/shared/.env` from `deploy/env.production.example` when none exists and generates `HASH_SECRET`; every other `CHANGE_ME` is left for the owners.
 
 4. Fill `/srv/tabsira/shared/.env` (every `CHANGE_ME`, the S3 keys of [Photos](#photos), `REDIS_PASSWORD`). Then check the data host from the application host before the first deploy: `psql "<the DATABASE_URL without +asyncpg>" -c 'select current_user'` must answer (the data host cannot test this login itself, `pg_hba` admits the application host only), and Redis must refuse a client without the password. Then `tabsira-deploy --dry-run` and `tabsira-deploy` as the app user. The first deploy builds the web app, installs the Python environments and downloads the detector weights (about 630 MB, once; written from the scripts, not exercised in the rehearsal); the first build takes a few minutes.
-5. After the first deploy, as the app user: the data imports are run from the release (`cd /srv/tabsira/current && bash scripts/data.sh`), and `cd /srv/tabsira/current/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.make_admin <email>` makes an existing account the first admin (`docs/ADMIN.md`). Keep `UV_NO_SYNC=1` on every `uv run` in a release: without it uv installs the development dependencies into the production environment.
+5. After the first deploy, as the app user: the data imports are run from the release. The two corpus files are not in git, so copy them to `/srv/tabsira/shared/corpus/` first (`docs/ASSET_MANIFEST.md` has their SHA-256), then `cd /srv/tabsira/current && CORPUS_DIR=/srv/tabsira/shared/corpus bash scripts/data.sh` (`data.sh` sets `UV_NO_SYNC=1` itself when `ENVIRONMENT=production`; the scripture store, then the scripture vectors downloaded from the owners' bucket and verified, docs/EMBEDDINGS.md, so no vector is ever computed on the server; `VECTORS_ARCHIVE` in `.env` may name a copy already on the host), and `cd /srv/tabsira/current/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.make_admin <email>` makes an existing account the first admin (`docs/ADMIN.md`). Keep `UV_NO_SYNC=1` on every other `uv run` in a release: without it uv installs the development dependencies into the production environment.
+
+## Checking the environment file
+
+`python -m src.cli.check_config` loads the settings (which already refuse a development host, an empty key or a short secret in production) and, when `ENVIRONMENT=production`, prints the production checklist: every setting an operator reads before a deploy, grouped by what it is for, each line `ok`, `fix` (required: the exit status is 1 and the deploy stops), `check` (recommended) or `off` (optional). Secrets are never printed. It covers, among others: no `CHANGE_ME` or address placeholder left, one domain for the site, the API and the admin host, `CORS_ORIGINS` and the cookie domain, `SYNC_DATABASE_URL` naming the same database, password lengths, `API_WORKERS` against the connection budget, a model for every AI stage of the active provider (a blank `AI_*__PLANNER_MODEL=` line overrides the default with nothing), the mail server, the Google callback, the baked `NEXT_PUBLIC_*` addresses and the pm2 settings.
+
+`--live` also tries the services: the database, Redis (the password, and that it keeps nothing on disk), the AI provider's key (a listing of its models: no tokens spent), the detector, the mail server (a login, never a message) and that this host resolves the site and the API names. `--env-file PATH` checks another file. The deploy runs it in a new release before the migrations; run it by hand from any release:
+
+```bash
+cd /srv/tabsira/releases/<id>/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.check_config --live
+```
 
 ## Deploying
 
@@ -86,7 +96,7 @@ tabsira-deploy --rollback           # back to the previous release, no rebuild
 1. Take the lock; check the host and that `.env` says `ENVIRONMENT=production` and names no development address.
 2. Optional dump (`PRE_DEPLOY_BACKUP=true`).
 3. Cut `releases/<id>` with `git archive`, `uv sync --frozen --no-dev` for the API and vision, `pnpm install --frozen-lockfile`, build the web app (`NEXT_PUBLIC_*` are baked here from `.env`; the build refuses a development address), assemble `web/` and copy its static files to the shared static folder.
-4. `check_config --live`, then the migrations: the `geodata` chain, then the `app` chain (`scripts/migrate.sh`), then the audit policy.
+4. `check_config --live`: the production checklist of the environment file, and each service tried for real (see [Checking the environment file](#checking-the-environment-file)); a `fix` line stops the deploy here, before anything is migrated or switched. Then the migrations: the `geodata` chain, then the `app` chain (`scripts/migrate.sh`), then the audit policy.
 5. Pre-flight: boot the new API and the new web build on spare ports (18000, 3100) and wait until they answer. A release that cannot start is removed and the live one was never touched.
 6. Switch `current` with one atomic rename.
 7. Roll the API, restart the scan worker, roll the web, then restart vision when `services/vision` changed.
@@ -118,7 +128,7 @@ A first start, or a changed Python, is a `systemctl restart tabsira-api` (worker
 
 ## nginx and TLS
 
-`nginx/production/tabsira.me.conf` and `nginx/production/snippets/` are installed by `sudo deploy/apply-config.sh` (also `--check` and `--dry-run`). It builds every file aside, installs them, runs `nginx -t`, and **restores the previous files and does not reload when the test fails**. The deploy user cannot write `/etc`, so `deploy.sh` only warns when the host differs.
+`nginx/production/tabsira.me.conf` and `nginx/production/snippets/` are installed by `sudo deploy/apply-config.sh` (also `--check` and `--dry-run`). It also installs the same `ip_nonlocal_bind` setting and a systemd drop-in that starts nginx after `netbird.service`: the admin block listens on the VPN address only, and without them a reboot that brings nginx up before Netbird leaves the whole site down. It builds every file aside, installs them, runs `nginx -t`, and **restores the previous files and does not reload when the test fails**. The deploy user cannot write `/etc`, so `deploy.sh` only warns when the host differs.
 
 - Security headers live in snippets that every location that sets a header includes (a location that uses `add_header` drops the server block's headers). HSTS, a CSP for the web host that allows only the map tiles, Google Analytics 4 and Microsoft Clarity (injected after consent), `client_max_body_size 16m` for photos.
 - `limit_req` on the open POST routes (`/auth/login`, `/auth/signup`, `/support`, `/consent`, `/client-errors`). nginx caches and serves no photo; public photos from the bucket or a CDN carry `Cache-Control: public, max-age=300`, never longer.
@@ -134,7 +144,7 @@ The admin area is served only at `https://admin.tabsira.me`, over the VPN.
 - `api.tabsira.me` answers 404 for `/admin` and everything under it. The API also refuses `/admin` on any host but `ADMIN_URL`.
 - **DNS.** No public record exists for `admin.tabsira.me`. In the Netbird dashboard add a DNS nameserver entry (split DNS) for the domain `admin.tabsira.me`, or a custom zone with an A record, that resolves it to the app host's VPN address, and distribute it to the admins' peer group.
 - **TLS.** The host is not reachable from the internet, so its certificate is issued by a DNS-01 challenge: `certbot certonly --dns-<plugin> --dns-<plugin>-credentials <file> -d admin.tabsira.me`, run by `deploy/provision-app.sh`. The owners supply the DNS provider's certbot plugin name (`CERTBOT_DNS_PLUGIN`) and an API credential for the zone (`CERTBOT_DNS_CREDENTIALS`, a file mode 0600 that never goes in git). Renewal is automatic with the same credential.
-- Locally, `admin.tabsira.test` is added by `scripts/setup-nginx-local.sh` (mkcert certificate, `/etc/hosts` line) and answers this machine only.
+- Locally, `admin.tabsira.test` is added by `scripts/setup-nginx-local.sh` (plain HTTP on port 80, `/etc/hosts` line) and answers this machine only.
 
 ## Backups
 
@@ -164,6 +174,26 @@ sudo deploy/apply-config.sh --check                # does the host match the rel
 ```
 
 Log rotation (`/etc/logrotate.d/tabsira`) covers `/var/log/tabsira`; nginx rotates its own logs; the journal follows `journald.conf`.
+
+## Cost, alternatives and content review
+
+**What a scan costs.** Measured by `make eval` on the fifteen gold scenes with the real providers and recorded in [docs/EVALUATION.md](EVALUATION.md): $0.0204 a scan with the small-model reranker, and about $0.016 a scan after task 05.3 (run 3, «Runs of task 05.3»: $0.246 for the fifteen scenes with `RERANKER=off`, the default since decision 50), at about 18 s at p50 and 22 s at p95. A chat answer costs about $0.0012 (the twelve cases, $0.014). The admin area shows the running figures (AI cost and latency, decision 14); `AI_*__PRICES` holds the prices the numbers are computed from, so a price change is one setting, not a code change.
+
+**Alternatives to each dependency.**
+
+- The AI provider is one setting, `AI_PROVIDER=openai | ovh`, and every stage has its own model setting under `AI_OPENAI__*` and `AI_OVH__*`; switching provider switches the vision, planner, verifier, composer, embedding and chat models together (decisions 33 and 46). [docs/BENCHMARK.md](BENCHMARK.md) compares them on the same scenes: OpenAI `gpt-5.4-mini` is the default on quality (0.98), zero violations and speed (vision p95 5.7 s against 27 s), OVH `Qwen3.8-27B` is the measured fallback (quality 0.97, $0.0045 against $0.0033 a scan for the vision stage). `make benchmark` re-measures when a model or price changes. gpt-oss models are never used (AGENTS.md).
+- The reranker is `RERANKER=off | llm | cross_encoder` (decision 50): off by default, the small model when the owners want it back, the cross-encoder in `services/vision` when no second model may be called.
+- The detector is `services/vision` (Ultralytics YOLOE / YOLO-World) at `DETECTOR_URL`; a scan goes on without boxes when the service is down, since the vision model describes the scene on its own, so the detector can be replaced or dropped without stopping scans.
+- Error tracking is optional (`GLITCHTIP_DSN` empty means off, decision 24); analytics are off unless `GA_MEASUREMENT_ID` and consent are both present (decision 28).
+- The scripture store depends on nothing live: quranpedia's dumps and the hadith files are imported with their hashes checked, and the daily sync only applies quranpedia's corrections ([docs/SOURCES-AND-LICENSES.md](SOURCES-AND-LICENSES.md)).
+
+**Who reviews content.**
+
+- _Scripture_ is never written or edited by anyone in the app: the admin shows Quran and hadith records read-only (decision 14), and tests compare displayed text with its stored hash.
+- _Hadith grades_ come from dorar.net only and are recorded by the owners' editors (decisions 18 and 47): an editor opens dorar in a browser and records the ruling in the admin rulings queue (`/admin/rulings-queue`, ordered by demand) or with `python -m src.cli.record_ruling`, starting with the rain-scene hadiths Bukhari 1032 and 2320. Until a hadith has a ruling, its insight shows the verse alone. [docs/ADMIN.md](ADMIN.md) describes the queue.
+- _Posts, comments and map entries_ go through the automatic text guard first; what it holds, and what enough readers report, waits in the admin moderation queue (`/admin/moderation-queue`, decision 14) for a person to publish, refuse or remove it. Every decision is written to the moderation log and the audit log.
+- _Ontology candidates_ (labels the detector saw that the world ontology does not know) are reviewed in the admin with the reviewer recorded.
+- _Insights_ themselves are not edited by a moderator: an insight is published or withdrawn by its owner, and a published one can be reported like a post.
 
 ## What the owners must supply
 

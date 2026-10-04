@@ -119,6 +119,7 @@ async def test_a_profile_starts_with_every_answer_unknown_and_the_switches_at_th
     assert profile.theme is Theme.SYSTEM
     assert profile.reduced_motion is ReducedMotion.SYSTEM
     assert profile.sound_enabled is False
+    assert profile.questions_asked is False
     assert profile.consent_version is None
     assert profile.updated_at is not None
 

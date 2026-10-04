@@ -4,7 +4,7 @@ import type { Route } from 'next';
 import { useEffect, useId, useRef } from 'react';
 import { SaveInvitation } from '@/components/account/save-invitation';
 import { CheckIcon } from '@/components/icons';
-import { LinkButton } from '@/components/ui/button';
+import { Button, LinkButton } from '@/components/ui/button';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { Notice } from '@/components/ui/notice';
 import type { Completion, Progress } from '@/lib/scan/api';
@@ -24,12 +24,21 @@ export interface CompletionPanelProps {
   onContinueAsGuest: () => void;
   /** The guest chose to continue as one: the invitation is not asked again in this visit. */
   invitationClosed: boolean;
+  /** The third option: open the share sheet, or the one-line reason it cannot be opened. */
+  share: ShareOption;
 }
+
+export type ShareOption =
+  | { kind: 'open'; onOpen: () => void }
+  | { kind: 'blocked'; reason: string };
 
 /**
  * What the done action earned, each thing only once the save has succeeded (tajriba §7,
  * A04): the place the fog lifted from, the day's quest, a practice badge,
- * then the way on: the world first, another scene next. Practice, never
+ * then the way on: the world first, another scene next, sharing third (v2 §4.8).
+ * The API's share option is a button when the API lists it and the owner may
+ * publish; otherwise the reason stands in its place, in one line, so nothing is
+ * silently missing. Practice, never
  * piety: the disclaimer stands wherever a badge does (decision 27). Focus
  * moves here when it appears, so a screen reader hears it and a phone shows it.
  */
@@ -40,6 +49,7 @@ export function CompletionPanel({
   returnTo,
   onContinueAsGuest,
   invitationClosed,
+  share,
 }: CompletionPanelProps) {
   const titleId = useId();
   const region = useRef<HTMLElement>(null);
@@ -49,6 +59,9 @@ export function CompletionPanel({
   );
   const label = (id: 'open_world' | 'new_scan', fallback: string) =>
     completion.options.find((option) => option.id === id)?.label ?? fallback;
+  const shareOption = completion.options.find((option) => option.id === 'share');
+  const shareReason =
+    share.kind === 'blocked' ? share.reason : shareOption === undefined ? T.shareUnavailable : null;
 
   useEffect(() => {
     const element = region.current as HTMLElement;
@@ -128,7 +141,15 @@ export function CompletionPanel({
             <LinkButton href="/" variant="secondary" size="lg" className="flex-1">
               {label('new_scan', T.newScan)}
             </LinkButton>
+            {shareOption !== undefined && share.kind === 'open' ? (
+              <Button variant="secondary" size="lg" className="flex-1" onClick={share.onOpen}>
+                {shareOption.label}
+              </Button>
+            ) : null}
           </div>
+          {shareReason === null ? null : (
+            <p className="m-0 text-[0.9375rem] text-fg-muted leading-[1.7]">{shareReason}</p>
+          )}
         </GlassPanel>
       </section>
 

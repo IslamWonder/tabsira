@@ -53,6 +53,7 @@ class ProfileOut(BaseModel):
     theme: Theme
     reduced_motion: ReducedMotion
     sound_enabled: bool
+    questions_asked: bool
     consent_version: str | None
     updated_at: datetime
 
@@ -64,6 +65,10 @@ class ProfilePatch(BaseModel):
     The three consent switches are not here: they change only through
     `POST /consents`, which records the answer. A field sent as null is refused;
     to clear an answer, send `unknown` (or `[]` for the goals).
+
+    Skipping the optional questions is `questions_asked: true` alone: every
+    field stays `unknown` and the questions are never offered again. Answering
+    any of the three question fields records the same.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -77,6 +82,7 @@ class ProfilePatch(BaseModel):
     theme: Theme | None = None
     reduced_motion: ReducedMotion | None = None
     sound_enabled: bool | None = None
+    questions_asked: bool | None = None
 
     @field_validator("goals")
     @classmethod

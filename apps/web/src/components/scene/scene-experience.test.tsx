@@ -105,22 +105,6 @@ describe('SceneExperience: a scene of the reader', () => {
     expect(api.requests.some((request) => request.url.endsWith('/scans'))).toBe(true);
   });
 
-  it('sends a pasted link to the API, which fetches it; the browser never loads it', async () => {
-    const api = mockApi({
-      ...tutorial,
-      'POST /scans': { status: 202, body: scanOut({ id: '110000000000000098', status: 'queued' }) },
-    });
-    render(<SceneExperience />);
-    await userEvent.click(screen.getByRole('button', { name: 'أو صوّر مشهدك أنت' }));
-    const starter = screen.getByRole('dialog', { name: 'صوّر مشهدًا' });
-    await userEvent.click(within(starter).getByRole('button', { name: 'الصق رابط صورة' }));
-    await userEvent.type(within(starter).getByLabelText('رابط الصورة'), 'example.org/rain.jpg');
-    await userEvent.click(within(starter).getByRole('button', { name: 'استخدم الرابط' }));
-    expect(await api.bodies('POST', '/scans')).toEqual([{ url: 'https://example.org/rain.jpg' }]);
-    expect(push).toHaveBeenCalledWith('/scan/110000000000000098');
-    expect(document.querySelector('img[src*="example.org"]')).toBeNull();
-  });
-
   it('says in Arabic why the API refused the photo, and offers to try again or to close', async () => {
     let answers = 0;
     mockApi({
@@ -159,33 +143,6 @@ describe('SceneExperience: a scene of the reader', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     await act(async () => release());
     expect(push).not.toHaveBeenCalled();
-  });
-
-  it('says a link is being fetched, and closes after a refusal', async () => {
-    mockApi({ ...tutorial, 'POST /scans': apiError(422, 'IMAGE_FETCH_FAILED') });
-    render(<SceneExperience />);
-    await userEvent.click(screen.getByRole('button', { name: 'أو صوّر مشهدك أنت' }));
-    const starter = screen.getByRole('dialog', { name: 'صوّر مشهدًا' });
-    await userEvent.click(within(starter).getByRole('button', { name: 'الصق رابط صورة' }));
-    await userEvent.type(within(starter).getByLabelText('رابط الصورة'), 'example.org/a.jpg');
-    await userEvent.click(within(starter).getByRole('button', { name: 'استخدم الرابط' }));
-    const sheet = await screen.findByRole('dialog', { name: 'صورتك' });
-    expect(await within(sheet).findByText(/تعذّر جلب الصورة من الرابط/)).toBeInTheDocument();
-    await userEvent.click(within(sheet).getByRole('button', { name: 'عد إلى المشهد' }));
-    expect(screen.queryByRole('dialog')).toBeNull();
-  });
-
-  it('shows the link step while the link is being fetched', async () => {
-    mockApi({ ...tutorial, 'POST /scans': () => new Promise(() => undefined) });
-    render(<SceneExperience />);
-    await userEvent.click(screen.getByRole('button', { name: 'أو صوّر مشهدك أنت' }));
-    const starter = screen.getByRole('dialog', { name: 'صوّر مشهدًا' });
-    await userEvent.click(within(starter).getByRole('button', { name: 'الصق رابط صورة' }));
-    await userEvent.type(within(starter).getByLabelText('رابط الصورة'), 'example.org/a.jpg');
-    await userEvent.click(within(starter).getByRole('button', { name: 'استخدم الرابط' }));
-    expect(
-      within(await screen.findByRole('dialog', { name: 'صورتك' })).getByRole('status')
-    ).toHaveTextContent('أطلب الصورة من الرابط');
   });
 
   it('closes the phone starter without choosing anything', async () => {

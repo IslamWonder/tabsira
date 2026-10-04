@@ -20,6 +20,7 @@ from src.models import HadithClassification, MapCapturePoint, MapEntry
 from src.owner import Owner
 from src.scripture.rulings import RulingInput, find_hadith, record_ruling
 from src.scripture.text import sha256_hex
+from src.services import cursor as cursors
 from src.services import sitemap_service
 from src.services.sitemap_service import Section
 from tests import geo_dataset as world_data
@@ -257,6 +258,14 @@ async def test_publishing_and_withdrawing_follow_the_states(
     moved = await _place(author, insight_id, latitude=36.80, longitude=10.18)
     assert moved.json()["status"] == "draft" and moved.json()["id"] == new_id
     assert (await author.http.get(f"/atlas/entries/{new_id}")).status_code == 404
+    # The address was shared once: withdrawing the re-placed draft still leaves the tombstone.
+    assert (await author.http.delete(f"/insights/{insight_id}/map")).status_code == 204
+    gone_again = await author.http.get(f"/atlas/entries/{new_id}")
+    assert (gone_again.status_code, gone_again.json()["error"]) == (410, "GONE")
+    tombstone = await db_session.get(MapEntry, int(new_id))
+    assert tombstone is not None and tombstone.status.value == "withdrawn"
+    assert (tombstone.public_lat, tombstone.place_label) == (None, None)
+    assert await db_session.get(MapCapturePoint, int(new_id)) is None
 
 
 async def test_a_draft_withdrawn_before_it_was_public_leaves_nothing_behind(
@@ -407,12 +416,20 @@ async def test_a_place_page_lists_its_entries_newest_first_with_a_cursor(
     )
     assert [entry["id"] for entry in body["entries"]] == [second]
     assert body["next_cursor"] is not None
+    # The cursor carries the day of publication and the id, never the hour.
+    position = cursors.decode(body["next_cursor"])
+    assert position is not None and position.at.astimezone(UTC).timetuple()[3:6] == (0, 0, 0)
+    assert position.id == int(second)
     rest = await guest.http.get(
         f"/atlas/places/{TUNIS_CITY}", params={"limit": 1, "cursor": body["next_cursor"]}
     )
     assert [entry["id"] for entry in rest.json()["entries"]] == [first]
     assert rest.json()["next_cursor"] is None
     assert (await guest.http.get("/atlas/places/999")).status_code == 404
+    # Nothing of the atlas is cached: the answer depends on the viewer, and a withdrawal must
+    # leave every cache at once.
+    for response in (page, rest):
+        assert response.headers["cache-control"] == "no-store"
 
 
 async def test_a_blocked_or_nameless_author_and_a_switched_off_atlas_show_nothing(
@@ -464,6 +481,42 @@ async def test_a_map_entry_can_be_reported_but_not_one_s_own_nor_a_draft(
     assert (await reader.http.get(f"/atlas/entries/{entry_id}")).status_code == 200
 
 
+async def test_a_map_entry_is_reported_while_the_atlas_alone_is_on_and_never_while_it_is_off(
+    db_session, make_member, make_insight, world, account_app, guard
+):
+    from tests.support_social import publish_post
+
+    author = await make_member("author")
+    reader = await make_member("reader")
+    entry_id = await _published(author, await _insight(db_session, author))
+    post_id = await publish_post(author, make_insight)
+    settings = account_app.state.settings
+
+    def report(target_type: str, target: str) -> Any:
+        return reader.http.post(
+            "/reports",
+            json={"target_type": target_type, "target_id": target, "reason": "private_information"},
+        )
+
+    try:
+        account_app.state.settings = settings.model_copy(update={"feature_social": False})
+        filed = await report("map_entry", entry_id)
+        assert filed.status_code == 201, filed.text
+        # The network is off: its posts are not there to be reported, nor said to exist.
+        assert (await report("post", post_id)).status_code == 404
+
+        account_app.state.settings = settings.model_copy(update={"feature_atlas": False})
+        assert (await report("post", post_id)).status_code == 201
+        assert (await report("map_entry", entry_id)).status_code == 404
+
+        account_app.state.settings = settings.model_copy(
+            update={"feature_social": False, "feature_atlas": False}
+        )
+        assert (await report("map_entry", entry_id)).status_code == 404
+    finally:
+        account_app.state.settings = settings
+
+
 async def test_the_export_carries_the_owner_s_entries_with_their_exact_points(
     db_session, make_member, make_insight, world
 ):
@@ -493,6 +546,9 @@ async def test_the_sitemap_lists_a_place_once_it_has_a_published_entry(
     entries = await provider.entries(db_session, 0, 10)
     assert [entry.path for entry in entries] == [f"/atlas/places/{TUNIS_CITY}"]
     assert entries[0].lastmod >= datetime(2026, 1, 1, tzinfo=UTC)
+    # A day, never the hour: the sitemap says no more than the place page does.
+    for stamp in (pages[0].lastmod, entries[0].lastmod):
+        assert stamp.astimezone(UTC).timetuple()[3:6] == (0, 0, 0), stamp
 
 
 def test_public_schemas_have_no_field_for_a_private_location():

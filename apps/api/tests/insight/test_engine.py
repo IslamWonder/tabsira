@@ -292,11 +292,30 @@ async def test_a_refined_candidate_that_finds_evidence_is_kept(maker):
     assert result.status is EngineStatus.OK
 
 
+async def test_once_one_candidate_holds_the_failed_ones_are_not_refined(maker):
+    engine, client = make_engine(
+        maker,
+        [
+            plan_answer(planned(), planned(title="ثانية", quran_queries=["خلق السماوات"])),
+            verify_all(),
+            verify_none,
+            compose_answer(composed(0)),
+        ],
+    )
+
+    result = await engine.propose(EngineRequest(scan_id="s15", scene=rain_scene()))
+
+    assert result.status is EngineStatus.OK
+    stages = [call["stage"].value for call in client.calls]
+    assert stages == ["planner", "verify", "verify", "compose"]
+
+
 async def test_two_candidates_on_the_same_texts_make_one_insight(maker):
     engine, _ = make_engine(
         maker,
         [
             plan_answer(planned(), planned(title="ثانية")),
+            verify_all(),
             verify_all(),
             compose_answer(composed(0)),
         ],
@@ -397,7 +416,9 @@ async def test_a_verse_in_todays_spelling_is_refused_wherever_a_model_writes_it(
     step = {"text": quoting, "kind": "reflection", "from_hadith": False}
     answers: dict[str, list[Any]] = {
         "planner": [plan_answer(planned(value=quoting))] * 2,
-        "verifier": [plan_answer(planned()), *[_verify_limited_by(quoting)] * 2],
+        # A verifier that keeps quoting leaves its candidate without evidence; the
+        # refinement that follows proposes nothing.
+        "verifier": [plan_answer(planned()), *[_verify_limited_by(quoting)] * 2, plan_answer()],
         "explanation": [
             plan_answer(planned()),
             verify_all(),
@@ -421,7 +442,7 @@ async def test_a_verse_in_todays_spelling_is_refused_wherever_a_model_writes_it(
     assert result.clarification_question is None
     expected = (
         EngineStatus.NO_RELEVANT_EVIDENCE
-        if where == "scene_question"
+        if where in {"scene_question", "verifier"}
         else EngineStatus.MODEL_UNAVAILABLE
     )
     assert result.status is expected
@@ -486,7 +507,7 @@ async def test_a_failed_query_embedding_falls_back_to_lexical_search(maker):
 
 
 def test_the_engine_is_built_from_the_active_provider(make_settings):
-    settings = make_settings(ai_provider=AiProvider.OVH)
+    settings = make_settings(ai_provider=AiProvider.OVH, reranker="llm")
     http = httpx.AsyncClient()
 
     engine = build_engine(settings, http, None)  # type: ignore[arg-type]
@@ -495,9 +516,9 @@ def test_the_engine_is_built_from_the_active_provider(make_settings):
 
     assert engine._embedding.model == "bge-m3"
     assert without._embedding is None
-    # OVH has no rerank model measured: with the default RERANKER=llm it reranks nothing.
+    # OVH has no rerank model measured: even with RERANKER=llm it reranks nothing.
     assert engine._reranker is None
-    small = build_engine(make_settings(ai_provider="openai"), http, None)  # type: ignore[arg-type]
+    small = build_engine(make_settings(ai_provider="openai", reranker="llm"), http, None)  # type: ignore[arg-type]
     assert isinstance(small._reranker, LlmReranker)
     cross = make_settings(reranker="cross_encoder")
     assert isinstance(build_engine(cross, http, None)._reranker, RerankerClient)  # type: ignore[arg-type]

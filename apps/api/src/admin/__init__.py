@@ -17,6 +17,7 @@ from src.admin.audit import AuditTrail
 from src.admin.auth import AdminAuth
 from src.admin.registry import load_extensions, register_view, registered_views
 from src.admin.views import BUILT_IN_VIEWS
+from src.admin.views.inspector import ScanInspectorView
 from src.config import Settings
 from src.database import get_engine
 
@@ -49,6 +50,8 @@ def install_admin(
     )
     for view in BUILT_IN_VIEWS:
         admin.register(view)
+    if settings.feature_dev_inspector:
+        admin.register(ScanInspectorView)
     load_extensions()
     for view in registered_views():
         admin.register(view)
