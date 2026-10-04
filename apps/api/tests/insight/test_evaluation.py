@@ -412,3 +412,11 @@ async def test_a_clarification_question_that_quotes_scripture_counts_as_a_leak(s
 
     assert checked["leaks"] == ["clarification_question"]
     assert checked["correct"] is True
+
+
+def test_the_report_names_what_reranked(make_settings):
+    assert command.models_of(make_settings(ai_provider="openai"))["rerank"] == (
+        "gpt-5.4-nano-2026-03-17"
+    )
+    assert command.models_of(make_settings(ai_provider="ovh"))["rerank"] == "off"
+    assert command.models_of(make_settings(reranker="cross_encoder"))["rerank"] == "cross_encoder"
