@@ -24,6 +24,7 @@ One short file per feature: what it is, where it stands, what is waiting on the 
 | 16  | [Social network «تبصرة تواصل»](16_social_network.md)              | 2     | Medium   | 🔄     |
 | 17  | [World atlas «أطلس بصائر العالم»](17_atlas.md)                    | 2     | Medium   | 🔄     |
 | 18  | [Camera discovery «اكتشف البصائر حولك»](18_camera_discovery.md)   | 2     | Low      | 🔄     |
+| 19  | [Consented photos](19_photos.md)                                  | 2     | High     | ✅     |
 
 ## Taking a task
 
