@@ -136,18 +136,30 @@ async def test_a_stream_without_news_ends_after_its_life(redis):
     assert events == []
 
 
-async def test_the_photo_is_kept_for_its_time_and_dropped_on_demand(redis):
+async def test_the_photo_is_kept_sealed_for_its_time_and_dropped_on_demand(
+    redis, flow_settings, make_settings
+):
     scan_id = 7_314_159_265_358_979_323
-    full = EncodedImage(data=b"full", width=4, height=4)
+    key = buffer.photo_key(flow_settings)
+    full = EncodedImage(data=b"full photo bytes", width=4, height=4)
     small = EncodedImage(data=b"small", width=2, height=2)
 
-    await buffer.put(redis, scan_id, full=full, model=small, ttl=120)
+    await buffer.put(redis, scan_id, full=full, model=small, ttl=120, key=key)
 
-    assert await buffer.get(redis, scan_id, buffer.Copy.FULL) == b"full"
-    assert await buffer.get(redis, scan_id, buffer.Copy.MODEL) == b"small"
+    stored = await redis.get(f"scan:{scan_id}:image")
+    assert b"full photo bytes" not in stored
+    assert await buffer.get(redis, scan_id, buffer.Copy.FULL, key=key) == b"full photo bytes"
+    assert await buffer.get(redis, scan_id, buffer.Copy.MODEL, key=key) == b"small"
     assert 0 < await redis.ttl(f"scan:{scan_id}:image") <= 120
+    # Another server key, or a sealed value moved to another scan or copy, opens nothing.
+    other = buffer.photo_key(make_settings(hash_secret="x" * 40))
+    assert other != key
+    assert await buffer.get(redis, scan_id, buffer.Copy.FULL, key=other) is None
+    await redis.set(f"scan:{scan_id}:model_image", stored)
+    assert await buffer.get(redis, scan_id, buffer.Copy.MODEL, key=key) is None
     await buffer.drop(redis, scan_id, buffer.Copy.MODEL)
-    assert await buffer.get(redis, scan_id, buffer.Copy.MODEL) is None
-    assert await buffer.get(redis, scan_id, buffer.Copy.FULL) == b"full"
+    assert not await buffer.kept(redis, scan_id, buffer.Copy.MODEL)
+    assert await buffer.get(redis, scan_id, buffer.Copy.MODEL, key=key) is None
+    assert await buffer.kept(redis, scan_id, buffer.Copy.FULL)
     await buffer.drop(redis, scan_id)
-    assert await buffer.get(redis, scan_id, buffer.Copy.FULL) is None
+    assert await buffer.get(redis, scan_id, buffer.Copy.FULL, key=key) is None

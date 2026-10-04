@@ -13,6 +13,7 @@ from sqlalchemy import select, update
 
 from src.ai.errors import AiCallError, AiErrorCode
 from src.ai.records import CallLog
+from src.config import get_settings
 from src.models import (
     AiCall,
     Guest,
@@ -141,7 +142,14 @@ async def new_scan(store, redis, *, keep_photo: bool = True, **values: Any) -> i
         scan_id = scan.id
     if keep_photo:
         image = validate_image(ImageUpload(data=photo()), max_bytes=10**7, max_pixels=10**7)
-        await buffer.put(redis, scan_id, full=image.image, model=image.model_image, ttl=600)
+        await buffer.put(
+            redis,
+            scan_id,
+            full=image.image,
+            model=image.model_image,
+            ttl=600,
+            key=buffer.photo_key(get_settings()),
+        )
     return scan_id
 
 
@@ -168,7 +176,7 @@ async def test_a_scan_runs_through_every_stage_and_saves_its_insights(
         )
     )
     services, model = services_for(store, redis, http, flow_settings, engine, detector=detector)
-    sent = await buffer.get(redis, scan_id, buffer.Copy.MODEL)
+    sent = await buffer.get(redis, scan_id, buffer.Copy.MODEL, key=buffer.photo_key(flow_settings))
 
     await run_scan(services, scan_id, 1)
 
@@ -201,8 +209,8 @@ async def test_a_scan_runs_through_every_stage_and_saves_its_insights(
     assert [(call.stage, call.ok) for call in calls] == [("vision", True)]
     assert detector.requests[0].image.width == 96
     assert model.calls[0]["images"][0].data == sent
-    assert await buffer.get(redis, scan_id, buffer.Copy.MODEL) is None
-    assert await buffer.get(redis, scan_id, buffer.Copy.FULL) is not None
+    assert not await buffer.kept(redis, scan_id, buffer.Copy.MODEL)
+    assert await buffer.kept(redis, scan_id, buffer.Copy.FULL)
     published = await events(redis, scan_id)
     assert [name for name, _ in published] == ["stage"] * 6 + ["done"]
     assert [(data["stage"], data["state"]) for name, data in published if name == "stage"] == [
@@ -234,8 +242,8 @@ async def test_a_sensitive_scene_drops_its_photo_at_once_and_keeps_its_meaning(
     assert scan.sensitive
     assert scan.sensitive_categories == ["alcohol"]
     assert scan.outcome is ScanOutcome.INSIGHTS
-    assert await buffer.get(redis, scan_id, buffer.Copy.FULL) is None
-    assert await buffer.get(redis, scan_id, buffer.Copy.MODEL) is None
+    assert not await buffer.kept(redis, scan_id, buffer.Copy.FULL)
+    assert not await buffer.kept(redis, scan_id, buffer.Copy.MODEL)
 
 
 async def test_a_scan_already_run_elsewhere_or_of_another_run_is_left_alone(
@@ -293,8 +301,8 @@ async def test_a_scene_that_cannot_be_understood_fails_the_scan_honestly(
         stages = (await db.scalars(select(ScanEvent).where(ScanEvent.scan_id == scan_id))).all()
     assert ("understand", "failed", reason) in {(e.stage, e.status, e.code) for e in stages}
     # No verdict was reached: no copy of the photo is kept at all.
-    assert await buffer.get(redis, scan_id, buffer.Copy.MODEL) is None
-    assert await buffer.get(redis, scan_id, buffer.Copy.FULL) is None
+    assert not await buffer.kept(redis, scan_id, buffer.Copy.MODEL)
+    assert not await buffer.kept(redis, scan_id, buffer.Copy.FULL)
 
 
 async def test_a_photo_that_left_the_store_fails_as_a_missing_asset(

@@ -54,7 +54,7 @@ async def test_an_upload_starts_a_scan_for_a_new_guest_and_answers_at_once(
     scan_id = int(body["id"])
     assert queue.runs == [(scan_id, 1)]
     assert [event.event for event in await progress.replay(redis, scan_id)] == ["queued"]
-    assert await buffer.get(redis, scan_id, buffer.Copy.MODEL) is not None
+    assert await buffer.kept(redis, scan_id, buffer.Copy.MODEL)
     async with store() as db:
         scan = await db.get(Scan, scan_id)
         assert scan.guest_key is not None
@@ -192,7 +192,9 @@ async def test_the_owner_sees_the_photo_while_it_is_kept(
     shown = await browser.get(path)
     assert shown.headers["content-type"] == "image/jpeg"
     assert shown.headers["cache-control"] == "no-store"
-    assert shown.content == await buffer.get(redis, int(body["id"]), buffer.Copy.FULL)
+    assert shown.content == await buffer.get(
+        redis, int(body["id"]), buffer.Copy.FULL, key=buffer.photo_key(flow_app.state.settings)
+    )
 
     async def broken(*_args):
         message = "down"

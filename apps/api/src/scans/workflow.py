@@ -317,7 +317,12 @@ async def _analyse_and_propose(job: Run) -> str:
 
 async def _understand(job: Run, client: ModelClient) -> SceneAnalysis:
     services = job.services
-    data = await buffer.get(services.redis, job.scan_id, buffer.Copy.MODEL)
+    data = await buffer.get(
+        services.redis,
+        job.scan_id,
+        buffer.Copy.MODEL,
+        key=buffer.photo_key(services.settings),
+    )
     if data is None:
         raise ScanFailedError(ErrorCode.ASSET_MISSING, "the photo left the temporary store")
     with Image.open(io.BytesIO(data)) as decoded:

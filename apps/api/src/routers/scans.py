@@ -186,7 +186,7 @@ async def describe(db: AsyncSession, scan: Scan, redis: RedisDep) -> ScanOut:
     available = False
     if photo_may_show(scan):
         try:
-            available = bool(await redis.exists(f"scan:{scan.id}:{buffer.Copy.FULL.value}"))
+            available = await buffer.kept(redis, scan.id, buffer.Copy.FULL)
         except RedisError:
             available = False
     return ScanOut(
@@ -289,6 +289,7 @@ async def create_scan(
             full=image.image,
             model=image.model_image,
             ttl=settings.scan_image_ttl_seconds,
+            key=buffer.photo_key(settings),
         )
     except RedisError:
         await db.rollback()
@@ -313,11 +314,19 @@ async def get_scan(
     responses={200: {"content": {"image/jpeg": {}}}},
 )
 async def get_scan_image(
-    scan_id: PublicIdPath, db: DbDep, owner: OptionalOwner, redis: RedisDep
+    scan_id: PublicIdPath,
+    db: DbDep,
+    settings: SettingsDep,
+    owner: OptionalOwner,
+    redis: RedisDep,
 ) -> Response:
     """Return the photo without its metadata to its owner, for the hour it is kept."""
     scan = await _owned_scan(db, owner, scan_id)
-    data = await buffer.get(redis, scan.id, buffer.Copy.FULL) if photo_may_show(scan) else None
+    data = (
+        await buffer.get(redis, scan.id, buffer.Copy.FULL, key=buffer.photo_key(settings))
+        if photo_may_show(scan)
+        else None
+    )
     if data is None:
         raise AppError(
             ErrorCode.ASSET_MISSING,

@@ -81,7 +81,7 @@ async def test_deleting_the_account_deletes_its_learning_and_its_kept_photos(bro
     response = await browser.delete("/account")
 
     assert response.status_code == 204
-    assert await buffer.get(redis, scan_id, buffer.Copy.FULL) is None
+    assert not await buffer.kept(redis, scan_id, buffer.Copy.FULL)
     async with store() as db:
         assert await db.get(User, user.id) is None
         for model in (Scan, Insight, EvidenceExposure):
