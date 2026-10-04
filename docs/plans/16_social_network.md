@@ -1,6 +1,6 @@
 # 16 · Social network «تبصرة تواصل»
 
-**Phase:** 2 · **Priority:** Medium · **Status:** 🔄 · **Updated:** 2026-10-04 16:51 (Tunis)
+**Phase:** 2 · **Priority:** Medium · **Status:** 🔄 · **Updated:** 2026-10-04 19:34 (Tunis)
 
 Posts made from verified insights, follows, likes, comments, reports and moderation.
 
@@ -8,7 +8,7 @@ Posts made from verified insights, follows, likes, comments, reports and moderat
 | ------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------- |
 | Server side: profiles, posts, feeds, comments, reports, moderation | ✅     | Merged, switched off in production.                                             |
 | Screens                                                            | ✅     | Task 16.1, screenshots in docs/screenshots (community, post, profile, publish). |
-| Moderators' queue                                                  | ⏸      |                                                                                 |
+| Moderators' queue                                                  | ✅     | Admin queue for posts and comments (task 12.2) and map entries (task 17.2).     |
 | Privacy re-review                                                  | ⏸      |                                                                                 |
 
 **How we check it**

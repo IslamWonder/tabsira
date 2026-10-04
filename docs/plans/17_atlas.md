@@ -1,6 +1,6 @@
 # 17 · World atlas «أطلس بصائر العالم»
 
-**Phase:** 2 · **Priority:** Medium · **Status:** 🔄 · **Updated:** 2026-10-04 17:48 (Tunis)
+**Phase:** 2 · **Priority:** Medium · **Status:** ✅ · **Updated:** 2026-10-04 19:34 (Tunis)
 
 A real map of shared insights, at approximate locations only.
 
@@ -9,10 +9,12 @@ A real map of shared insights, at approximate locations only.
 | Place search and the approximation grid  | ✅     |                                                                                       |
 | Map entries: publish and withdraw        | ✅     | Task 17.1: two tables, the exact point private, the cell centre public.               |
 | Map screen with clusters and place pages | ✅     | Task 17.1: MapLibre with OpenFreeMap tiles, filters, place pages, placing an insight. |
+| Map entries in the moderation queue      | ✅     | Task 17.2: held and reported entries, approve or remove, public place only.           |
 
 **How we check it**
 
 - Exact locations never reach a public page (tested).
+- The admin queue shows a map entry's public place and cell only; the capture point is never read (tested).
 
 ## Tasks
 
@@ -28,8 +30,10 @@ A real map of shared insights, at approximate locations only.
 
 ### 17.2 Map entries in the moderation queue
 
-- **Status:** ⬜ open
+- **Status:** ✅ 2026-10-04 19:34, owners' agent (branch task/17.2-map-entries-moderation)
 - **Goal:** The admin moderation queue lists held and reported map entries (`ReportTarget.MAP_ENTRY`, `MapEntryStatus.PENDING_REVIEW`) and lets a moderator approve or remove them; `moderation_service.approve` and `remove` already accept a map entry.
 - **Depends on:** 17.1
 - **Touches:** apps/api/src/admin/views/moderation.py and its templates, tests/test_admin_moderation.py.
 - **Done when:** A reported entry can be taken down from the admin area; then the owners may switch `FEATURE_ATLAS` on in production.
+- **Reviews:** privacy review of the diff applied: the admin reads `map_entries` only, never `map_capture_points`; the pages show the GeoNames label, the cell size and the cell centre the public API already serves, and no photo; a draft entry has no page; the exact point is asserted absent from every page in the tests.
+- **Left for the owners:** `FEATURE_ATLAS` is still off in `deploy/env.production.example`; switching it on is the owners' call.
