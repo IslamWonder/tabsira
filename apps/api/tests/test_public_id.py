@@ -85,7 +85,7 @@ def test_the_column_is_a_bigint_key_the_function_fills_and_marks_for_its_sequenc
     assert isinstance(column.type, BigInteger)
     assert column.primary_key is True
     assert column.autoincrement is False
-    assert str(column.server_default.arg) == "app.timestamp_id('posts')"
+    assert str(column.server_default.arg) == "app.timestamp_id('posts'::text)"
     assert column.info == {PUBLIC_ID_INFO: True}
 
 
