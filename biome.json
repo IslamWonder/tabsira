@@ -1,0 +1,72 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "suspicious": {
+        "noExplicitAny": "error"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "error"
+      }
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "trailingCommas": "es5"
+    }
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/.pnpm-store",
+      "!**/.next",
+      "!**/out",
+      "!**/.turbo",
+      "!**/dist",
+      "!**/build",
+      "!**/*.tsbuildinfo",
+      "!**/next-env.d.ts",
+      "!**/*.min.js",
+      "!**/*.bundle.js",
+      "!**/*.map",
+      "!**/.venv",
+      "!**/venv",
+      "!**/__pycache__",
+      "!**/.pytest_cache",
+      "!**/.mypy_cache",
+      "!**/.ruff_cache",
+      "!**/.env",
+      "!**/.env.*",
+      "!**/.vscode",
+      "!**/.idea",
+      "!**/.DS_Store",
+      "!**/*.log",
+      "!**/logs",
+      "!**/coverage",
+      "!**/.coverage",
+      "!**/htmlcov",
+      "!**/.nyc_output",
+      "!**/.scannerwork",
+      "!**/.dev",
+      "!**/.ci_metrics",
+      "!**/.ci_logs",
+      "!**/uploads",
+      "!**/*.css",
+      "!data",
+      "!docs/spec",
+      "!services/vision/weights"
+    ]
+  }
+}

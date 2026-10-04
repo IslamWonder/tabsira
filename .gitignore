@@ -1,0 +1,86 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.venv/
+venv/
+.uv-cache/
+
+# Build outputs
+.next/
+dist/
+build/
+out/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# Environment: only the example is tracked
+.env
+.env.*
+!.env.example
+
+# Tests and coverage
+coverage/
+htmlcov/
+.coverage
+.coverage.*
+.nyc_output/
+test-results/
+playwright-report/
+.scannerwork/
+
+# CI and tooling output
+.ci_metrics/
+.ci_logs/
+.dev/
+
+# Data: corpora, caches and media are downloaded or built, never committed.
+# data/world-ontology.xlsx and other small source files stay tracked.
+data/cache/
+data/corpus/
+data/media/
+
+# Model weights. The vision service downloads its own into services/vision/weights
+# (one is a 600 MB TorchScript file named .ts); none is ever committed.
+*.pt
+*.pth
+*.onnx
+*.safetensors
+services/vision/weights/
+
+# Local TLS (mkcert): the CA and the keys never leave the machine
+nginx/local/certs/
+rootCA.pem
+rootCA-key.pem
+*.key
+
+# Local uploads
+uploads/
+
+# Logs
+*.log
+logs/
+
+# Editors and operating systems
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+.cache/
+
+# Claude Code per-machine settings
+.claude/settings.local.json

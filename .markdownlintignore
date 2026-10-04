@@ -1,0 +1,14 @@
+node_modules
+.git
+.venv
+**/.venv
+.next
+dist
+build
+coverage
+
+# Imported specifications, kept as the owners wrote them.
+docs/spec
+
+# Corpora and caches (README and LICENSE files of downloaded datasets).
+data

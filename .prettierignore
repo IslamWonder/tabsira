@@ -1,0 +1,21 @@
+# Prettier formats Markdown only (scripts/format.sh). Everything below is
+# either generated, a dependency, or material that must stay byte for byte.
+node_modules
+.pnpm-store
+.next
+.turbo
+dist
+build
+out
+coverage
+htmlcov
+.venv
+**/.venv
+.dev
+pnpm-lock.yaml
+
+# Imported specifications: reformatting would hide the owners' own wording.
+docs/spec
+
+# Corpora and caches: Quran and hadith text is never rewritten by a tool.
+data

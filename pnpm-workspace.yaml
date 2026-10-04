@@ -1,0 +1,12 @@
+# apps/web does not exist until the design gate is passed; a pattern that
+# matches nothing is fine for pnpm and turbo.
+packages:
+  - apps/web
+  - packages/*
+
+# Advisories in transitive dependencies, each pinned within its own major so the
+# package that depends on it keeps working. Remove an entry once the direct
+# dependency has caught up on its own.
+overrides:
+  # CPU exhaustion on merge keys (GHSA-r3ph-w7gj-g6xm), via markdownlint-cli.
+  js-yaml@5: ^5.4.1

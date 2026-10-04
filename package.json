@@ -1,0 +1,26 @@
+{
+  "name": "tabsira",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TABSIRA: a photo becomes an insight backed by one Quran verse and one hadith",
+  "packageManager": "pnpm@12.9.1",
+  "scripts": {
+    "prepare": "bash scripts/install-git-hooks.sh",
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "format": "bash scripts/format.sh",
+    "format:check": "bash scripts/format.sh --check",
+    "lint": "turbo run lint type-check",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "jscpd": "^5.4.0",
+    "markdownlint-cli": "^0.49.1",
+    "prettier": "^3.9.9",
+    "turbo": "^2.11.7"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

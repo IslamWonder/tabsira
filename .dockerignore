@@ -1,0 +1,52 @@
+# Keep the build context to what the Dockerfiles copy. Without this, `docker
+# build` uploads every node_modules tree and virtualenv in the workspace
+# before a single layer runs.
+
+.git
+.github
+.claude
+**/node_modules
+**/.venv
+**/.next
+**/.turbo
+**/dist
+**/build
+
+# Python
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/.coverage
+**/htmlcov
+
+# Local state that must never end up in an image
+.env
+.env.*
+!.env.example
+**/*.log
+**/logs
+nginx/local/certs
+rootCA.pem
+rootCA-key.pem
+.dev
+.ci_metrics
+.ci_logs
+
+# Downloaded corpora and caches are mounted or imported, not baked in.
+data/cache
+data/corpus
+data/media
+
+# Model weights are fetched by the vision image's own build step.
+**/*.pt
+services/vision/weights
+
+# Not needed at runtime
+**/coverage
+**/test-results
+**/playwright-report
+docs
+*.md
+!README.md

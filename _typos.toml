@@ -1,0 +1,85 @@
+# typos: source-code spell checker (scripts/audit.sh).
+# https://github.com/crate-ci/typos/blob/master/docs/reference.md
+#
+# The product is Arabic. Arabic script is not in typos' English dictionary, so it
+# is never flagged; the transliterations and project names below are Latin text
+# that would be.
+
+[files]
+extend-exclude = [
+  ".git",
+  "node_modules",
+  ".pnpm-store",
+  ".next",
+  ".turbo",
+  "dist",
+  "build",
+  "out",
+  ".venv",
+  "venv",
+  "__pycache__",
+  ".pytest_cache",
+  ".mypy_cache",
+  ".ruff_cache",
+  "coverage",
+  "htmlcov",
+  "pnpm-lock.yaml",
+  "package-lock.json",
+  "uv.lock",
+  "*.lock",
+  "*.min.js",
+  "*.bundle.js",
+  "*.map",
+  "*.tmp",
+  "*.bak",
+  "uploads",
+  "logs",
+  ".cache",
+  # Alembic revisions are generated.
+  "alembic/versions",
+  "alembic_geodata/versions",
+  # Imported specifications and the corpora: owners' wording and scripture,
+  # transliterated names of books, narrators and surahs.
+  "docs/spec",
+  "data",
+  # Downloaded detector weights.
+  "services/vision/weights",
+]
+
+[default.extend-words]
+# Project and product names
+tabsira = "tabsira"
+basira = "basira"
+basair = "basair"
+masar = "masar"
+tajriba = "tajriba"
+# Islamic terms, transliterated
+hadith = "hadith"
+hadiths = "hadiths"
+sunnah = "sunnah"
+quran = "quran"
+surah = "surah"
+ayah = "ayah"
+ayat = "ayat"
+tafsir = "tafsir"
+uthmani = "uthmani"
+hafs = "hafs"
+tanzil = "tanzil"
+sahih = "sahih"
+hasan = "hasan"
+daif = "daif"
+isnad = "isnad"
+# Sources and libraries
+fawazahmed0 = "fawazahmed0"
+geonames = "geonames"
+openfreemap = "openfreemap"
+maplibre = "maplibre"
+sqladmin = "sqladmin"
+timescaledb = "timescaledb"
+pgvector = "pgvector"
+asyncpg = "asyncpg"
+uvicorn = "uvicorn"
+yoloe = "yoloe"
+mkcert = "mkcert"
+# Deliberate misspelling: the settings tests prove an unknown ENVIRONMENT is refused.
+prodcution = "prodcution"

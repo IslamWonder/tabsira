@@ -1,0 +1,29 @@
+# LF everywhere: scripts, JSON, Arabic text and the corpora must hash the same
+# on every machine (Linux, macOS and the Windows laptops' Linux virtual machines).
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.py text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+Makefile text eol=lf
+scripts/git-hooks/* text eol=lf
+
+# Binary: never diffed, never converted.
+*.xlsx binary
+*.woff2 binary
+*.woff binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.pt binary
+*.onnx binary
+*.safetensors binary
+
+# Generated: collapsed in reviews.
+pnpm-lock.yaml linguist-generated -diff
+uv.lock linguist-generated -diff

@@ -1,0 +1,28 @@
+{
+  "threshold": 3,
+  "reporters": ["console", "consoleFull"],
+  "format": ["python", "typescript", "javascript", "tsx", "jsx"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/.venv/**",
+    "**/.next/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/htmlcov/**",
+    "**/__pycache__/**",
+    "**/*.min.js",
+    "**/*.bundle.js",
+    "**/*.config.*",
+    "**/alembic/versions/**",
+    "**/alembic_geodata/versions/**",
+    "**/tests/**",
+    "**/public/**",
+    "data/**",
+    "services/vision/weights/**",
+    "docs/**",
+    "scripts/**"
+  ],
+  "absolute": false,
+  "gitignore": true
+}

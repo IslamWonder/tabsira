@@ -1,0 +1,3 @@
+# Repository-wide ShellCheck settings (shellcheck reads this file from the root).
+# Scripts source lib.sh through a computed path, which ShellCheck cannot follow.
+disable=SC1091
