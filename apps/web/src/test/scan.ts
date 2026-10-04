@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { PublicInsight } from '@/lib/public-insight';
 import type { ChatReply, Completion, Insight, Progress, Scan, Tutorial } from '@/lib/scan/api';
 
 /*
@@ -335,4 +336,30 @@ export function sseResponse(chunks: readonly string[], status = 200): Response {
     status,
     headers: { 'Content-Type': 'text/event-stream' },
   });
+}
+
+/** The public answer for a published insight: the same scripture, none of the owner's things. */
+export function publicInsightOut(overrides: Partial<PublicInsight> = {}): PublicInsight {
+  const { quran, hadith, ...owned } = insightOut();
+  return {
+    id: owned.id,
+    engine: owned.engine,
+    label: owned.label,
+    title: owned.title,
+    glimpse: owned.glimpse,
+    relation: owned.relation,
+    relation_label: owned.relation_label,
+    quran,
+    hadith,
+    hadith_status: owned.hadith_status,
+    notice: owned.notice,
+    pair_complete: owned.pair_complete,
+    explanation_tag: owned.explanation_tag,
+    explanation: owned.explanation,
+    small_step: owned.small_step,
+    author: { handle: 'sara_21', public_name: 'سارة' },
+    published_at: '2026-10-05T09:30:00Z',
+    disclosure: owned.disclosure,
+    ...overrides,
+  };
 }

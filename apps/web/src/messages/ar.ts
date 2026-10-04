@@ -259,6 +259,17 @@ export const ar = {
     photoCaption: 'تبقى الصورة أمامك وأنت تقرأ.',
   },
 
+  /** The public page of a published insight (task 09.2): what a visitor without an account reads. */
+  publicInsight: {
+    unavailableTitle: 'تعذّر عرض البصيرة الآن',
+    publishedOn: (day: string) => `نُشرت في ${day}`,
+    authorLabel: 'صاحب البصيرة',
+    stepTitle: 'خطوة صغيرة',
+    callTitle: 'ابدأ بصيرتك أنت',
+    callBody: 'صوّر مشهدًا من حولك، وانظر ما تقوله الآية والحديث عنه.',
+    callSignIn: 'ادخل إلى حسابك',
+  },
+
   victory: {
     title: 'اكتُشِف المعنى',
   },

@@ -8,6 +8,9 @@ import { EvidencePair } from './evidence-pair';
 /** Below this many characters each, the two texts may sit side by side on a wide screen (tajriba §6). */
 const SHORT_TEXT = 280;
 
+/** The fields both the owner's insight and the public one carry. */
+export type EvidenceSource = Pick<Insight, 'quran' | 'hadith' | 'hadith_status' | 'notice'>;
+
 /**
  * The verse and the hadith of an insight, exactly as the API returns them:
  * the stored text is passed through untouched (never trimmed, joined,
@@ -16,7 +19,7 @@ const SHORT_TEXT = 280;
  * for its ruling stands alone, with the API's notice beside it, so the reader
  * is told why and never shown a hadith that has not been ruled on.
  */
-export function InsightEvidence({ insight }: { insight: Insight }) {
+export function InsightEvidence({ insight }: { insight: EvidenceSource }) {
   const { quran, hadith } = insight;
   const verse = quran?.verse;
   const narration = hadith?.hadith;
