@@ -51,7 +51,7 @@ from src.services.insight_view import (
     step_out,
 )
 
-SYSTEM_PROMPT = "insight_chat_system.v2"
+SYSTEM_PROMPT = "insight_chat_system.v3"
 USER_PROMPT = "insight_chat_user.v2"
 MAX_OUTPUT_TOKENS = 1200
 # A pending answer older than this was left by a crash; its slot is given back.
