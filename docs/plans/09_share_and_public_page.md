@@ -7,7 +7,7 @@ A shareable image of an insight with real Arabic fonts, and a public page for it
 | Step                                     | Status | Notes                           |
 | ---------------------------------------- | ------ | ------------------------------- |
 | Publish an insight (server)              | ✅     | Done 2026-10-04 17:51.          |
-| Share card image                         | ⬜     | Next, after the insight screen. |
+| Share card image                         | ✅     | Done 2026-10-04 18:26. Card OK. |
 | Public insight page with search metadata | ✅     | Done 2026-10-04 17:59.          |
 
 **How we check it**
@@ -34,7 +34,7 @@ A shareable image of an insight with real Arabic fonts, and a public page for it
 
 ### 09.3 Share card image
 
-- **Status:** ⬜ open
+- **Status:** ✅ done 2026-10-04 18:26
 - **Goal:** An image of an insight with real Arabic fonts for sharing, plus the share action.
 - **Depends on:** 09.1
 - **Touches:** apps/web one image route and the share sheet.
