@@ -138,6 +138,10 @@ def test_live_check_prefers_the_sync_database_url(monkeypatch):
 
 @pytest.mark.parametrize("variant", [{"connect_error": True}, {"fail": True}])
 def test_live_check_failure_exits_one_without_leaking_the_error_text(monkeypatch, capsys, variant):
+    # Pin the address: CI runs its database on a port chosen per build.
+    monkeypatch.setenv(
+        "SYNC_DATABASE_URL", f"postgresql+psycopg://tabsira:{PASSWORD}@127.0.0.1:5432/tabsira"
+    )
     patch_psycopg(monkeypatch, **variant)
 
     code = check_config.main(["--live"])
