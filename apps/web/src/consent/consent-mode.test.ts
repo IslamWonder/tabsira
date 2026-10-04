@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 import { consentModeDefaults } from '@/components/consent/consent-mode-defaults';
-import { gaMeasurementId } from '@/config/server-env';
+import { clarityProjectId, gaMeasurementId } from '@/config/server-env';
 import { CONSENT_MODE_DEFAULTS } from './consent-mode';
 
 vi.mock('next/server', () => ({ connection: async () => undefined }));
@@ -12,6 +12,17 @@ describe('the analytics configuration', () => {
     expect(gaMeasurementId({ GA_MEASUREMENT_ID: '' })).toBeNull();
     expect(gaMeasurementId({})).toBeNull();
     expect(gaMeasurementId({ GA_MEASUREMENT_ID: 'G-1";alert(1)' })).toBeNull();
+  });
+});
+
+describe('the heatmap configuration', () => {
+  it('reads CLARITY_PROJECT_ID and refuses what is not a project id', () => {
+    expect(clarityProjectId({ CLARITY_PROJECT_ID: ' k3x9abcd12 ' })).toBe('k3x9abcd12');
+    expect(clarityProjectId({ CLARITY_PROJECT_ID: '' })).toBeNull();
+    expect(clarityProjectId({})).toBeNull();
+    expect(clarityProjectId({ CLARITY_PROJECT_ID: 'x";alert(1)' })).toBeNull();
+    vi.stubEnv('CLARITY_PROJECT_ID', 'k3x9abcd12');
+    expect(clarityProjectId()).toBe('k3x9abcd12');
   });
 });
 

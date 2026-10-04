@@ -2,11 +2,13 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { readSession } from '@/account/session';
+import { track } from '@/analytics/events';
 import { apiError, mockApi, type Route } from '@/test/api';
 import { USER } from '@/test/fixtures';
 import { LEGAL } from '@/test/legal';
 import { SignUpScreen } from './sign-up-screen';
 
+vi.mock('@/analytics/events', () => ({ track: vi.fn() }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn() }),
   usePathname: () => '/signup',
@@ -86,6 +88,8 @@ describe('SignUpScreen', () => {
       },
     ]);
     expect(readSession().status).toBe('signed-in');
+    // Reported as a fixed word only: no name, no address (owner decision 28).
+    expect(track).toHaveBeenCalledWith('sign_up_completed', { method: 'email' });
   });
 
   it('checks every field before sending', async () => {

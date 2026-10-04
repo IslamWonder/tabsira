@@ -17,6 +17,7 @@ import {
   emailProblem,
   newPasswordProblem,
 } from '@/account/validation';
+import { track } from '@/analytics/events';
 import { MailIcon } from '@/components/icons';
 import { Button, LinkButton } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -108,6 +109,7 @@ export function SignUpScreen({ next }: { next: Route }) {
     if (result.ok) {
       setSignedIn(result.data);
       setCreated(result.data);
+      track('sign_up_completed', { method: 'email' });
       return;
     }
     const refused = refusedField(result);

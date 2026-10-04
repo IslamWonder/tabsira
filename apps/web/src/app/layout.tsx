@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import { CLARITY_MASK } from '@/analytics/clarity';
 import { LegalGate } from '@/components/account/legal-gate';
 import { AppNav } from '@/components/app/app-nav';
 import { PageShell } from '@/components/app/page-shell';
@@ -9,11 +10,13 @@ import { SkipLink } from '@/components/app/skip-link';
 import { StageBackdrop } from '@/components/app/stage-backdrop';
 import { ThemeSync } from '@/components/app/theme-sync';
 import { TopBar } from '@/components/app/top-bar';
+import { AnalyticsTags } from '@/components/consent/analytics-tags';
 import { consentModeDefaults } from '@/components/consent/consent-mode-defaults';
 import { ConsentScreen } from '@/components/consent/consent-screen';
 import { BurstLayer } from '@/components/fx/burst-layer';
 import { FocusCursor } from '@/components/fx/focus-cursor';
 import { VictoryLayer } from '@/components/fx/victory-layer';
+import { clarityProjectId, gaMeasurementId } from '@/config/server-env';
 import { serverConsent } from '@/consent/server';
 import { fontVariables } from '@/fonts';
 import { siteOrigin } from '@/lib/site';
@@ -104,7 +107,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: a constant written in src/preferences/init-script.ts, with no input from the request or the user; it must run before the first paint. */}
         <script dangerouslySetInnerHTML={{ __html: PREFERENCES_INIT_SCRIPT }} />
       </head>
-      <body className="antialiased">
+      {/* Clarity masks everything under this attribute: no typed text, scripture or user text is recorded. */}
+      <body className="antialiased" {...CLARITY_MASK}>
         <PageShell consent={consent}>
           <SkipLink />
           <StageBackdrop />
@@ -121,6 +125,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <BurstLayer />
         <VictoryLayer />
         <FocusCursor />
+        <AnalyticsTags gaId={gaMeasurementId()} clarityId={clarityProjectId()} />
         <ThemeSync />
         <ServiceWorkerRegister />
       </body>

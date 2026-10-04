@@ -77,6 +77,16 @@ describe('RootLayout', () => {
     expect(document.documentElement.outerHTML).not.toContain('googletagmanager');
   });
 
+  it('masks every text of the page for the heatmap tool, and loads no analytics script itself', async () => {
+    vi.stubEnv('GA_MEASUREMENT_ID', 'G-TEST1234');
+    vi.stubEnv('CLARITY_PROJECT_ID', 'k3x9abcd12');
+    const document = await renderLayout();
+    expect(document.body.getAttribute('data-clarity-mask')).toBe('True');
+    // The tools are injected by the client, behind the consent, never in the HTML.
+    expect(document.documentElement.outerHTML).not.toMatch(/googletagmanager|clarity\.ms/);
+    expect(document.querySelectorAll('script[src]')).toHaveLength(0);
+  });
+
   it('opens with the skip link, then the top bar, the main content, the footer, the phone bar and the burst layer', async () => {
     const body = (await renderLayout()).body;
     const skip = body.querySelector('a');

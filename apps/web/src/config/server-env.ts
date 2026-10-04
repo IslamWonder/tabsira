@@ -15,6 +15,15 @@ export function gaMeasurementId(env: Readonly<Record<string, string | undefined>
   return MEASUREMENT_ID.test(value) ? value : null;
 }
 
+// A Clarity project id: lower-case letters and digits, ten of them in practice.
+const CLARITY_ID = /^[a-z0-9]{6,16}$/;
+
+/** CLARITY_PROJECT_ID, or null when it is empty or malformed: then no heatmaps (owner decision 32). */
+export function clarityProjectId(env: Readonly<Record<string, string | undefined>> = process.env) {
+  const value = env.CLARITY_PROJECT_ID?.trim() ?? '';
+  return CLARITY_ID.test(value) ? value : null;
+}
+
 type Env = Readonly<Record<string, string | undefined>>;
 
 /** The API of `make dev` (scripts/dev-api.sh), on loopback: the server need not trust mkcert. */
