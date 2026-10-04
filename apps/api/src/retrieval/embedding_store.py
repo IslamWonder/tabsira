@@ -7,7 +7,9 @@ changed (a corrected verse, a new annotation), in batches. Each batch is
 written with its share of the run's counters in one transaction, so a run that
 stops (a network fault, the spend cap) keeps what it finished and the next run
 starts where it stopped. Every run is recorded in `embedding_runs` with the
-tokens it used and what they cost at the provider prices of the settings.
+tokens it used and what they cost at the provider prices of the settings. A
+process that is killed (a reboot, a deploy) cannot record its end: the next run
+marks such a run failed once it is older than any run could last.
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ import asyncio
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -38,6 +40,9 @@ DEFAULT_CONCURRENCY = 4
 # Texts one embedding request may carry: OVH answers HTTP 400 above 25 (measured);
 # OpenAI documents 2,048.
 BATCH_LIMITS = {AiProvider.OVH: 25, AiProvider.OPENAI: 2048}
+# A whole corpus embeds in minutes; a run still `running` after this was killed.
+STALE_AFTER = timedelta(hours=6)
+ABANDONED = "abandoned: the process stopped before the run ended"
 
 _TABLES: dict[EmbeddedCorpus, type[QuranVerseEmbedding] | type[HadithEmbedding]] = {
     EmbeddedCorpus.QURAN: QuranVerseEmbedding,
@@ -157,7 +162,16 @@ class CorpusEmbedder:
         return report
 
     async def _start(self, report: RunReport) -> int:
+        now = datetime.now(UTC)
         async with self._sessionmaker() as session, session.begin():
+            await session.execute(
+                update(EmbeddingRun)
+                .where(
+                    EmbeddingRun.status == EmbeddingRunStatus.RUNNING.value,
+                    EmbeddingRun.started_at < now - STALE_AFTER,
+                )
+                .values(status=EmbeddingRunStatus.FAILED.value, error=ABANDONED, finished_at=now)
+            )
             run = EmbeddingRun(
                 corpus=report.corpus.value,
                 provider=self._client.provider.value,
