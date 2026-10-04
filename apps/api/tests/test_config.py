@@ -761,3 +761,92 @@ def test_the_cookie_policy_version_is_a_short_plain_token(version):
 @pytest.mark.parametrize("days", [0, -1, 731])
 def test_the_reask_interval_is_between_a_day_and_two_years(days):
     assert "CONSENT_REASK_DAYS" in errors_of(consent_reask_days=days)
+
+
+# ─── Photo storage ─────────────────────────────────────────────────
+
+S3 = {
+    "storage_backend": "s3",
+    "s3_bucket": "tabsira-photos",
+    "s3_access_key_id": "AKIAEXAMPLE",
+    "s3_secret_access_key": "s3-secret-value",
+    "s3_public_base_url": "https://media.tabsira.me/",
+}
+
+
+def test_photos_are_kept_on_local_disk_by_default_with_a_short_link_life(make_settings):
+    settings = make_settings()
+
+    assert settings.storage_backend == "local"
+    assert settings.signed_url_ttl_seconds == 300
+    assert (settings.s3_endpoint_url, settings.s3_bucket, settings.s3_public_base_url) == (
+        "",
+        "",
+        "",
+    )
+    assert settings.s3_region == "us-east-1"
+    assert settings.s3_secret_access_key.get_secret_value() == ""
+
+
+def test_the_s3_backend_needs_every_key_and_names_the_ones_that_are_missing():
+    message = errors_of(storage_backend="s3")
+
+    assert "STORAGE_BACKEND=s3 needs S3_BUCKET, S3_ACCESS_KEY_ID, S3_PUBLIC_BASE_URL" in message
+    assert message.endswith("S3_SECRET_ACCESS_KEY")
+    only_secret = errors_of(**{**S3, "s3_secret_access_key": ""})
+    assert "needs S3_SECRET_ACCESS_KEY" in only_secret
+    assert "S3_BUCKET" not in only_secret
+
+
+def test_the_s3_keys_are_not_needed_while_photos_stay_on_disk(make_settings):
+    assert make_settings(storage_backend="local").storage_backend == "local"
+
+
+def test_a_complete_s3_configuration_is_accepted_and_tidied(make_settings):
+    settings = make_settings(
+        **{
+            **S3,
+            "s3_endpoint_url": " https://s3.gra.example.net/ ",
+            "s3_bucket": " tabsira-photos ",
+        }
+    )
+
+    assert settings.s3_public_base_url == "https://media.tabsira.me"
+    assert settings.s3_endpoint_url == "https://s3.gra.example.net"
+    assert settings.s3_bucket == "tabsira-photos"
+
+
+def test_the_s3_secret_is_a_secret(make_settings):
+    settings = make_settings(**S3)
+
+    assert "s3-secret-value" not in repr(settings) + settings.model_dump_json()
+
+
+@pytest.mark.parametrize("key", ["s3_endpoint_url", "s3_public_base_url"])
+@pytest.mark.parametrize(
+    "value",
+    [
+        "ftp://media.example",
+        "media.example",
+        "https://",
+        "https://m.example/a?x=1",
+        "https://m.example/#a",
+    ],
+)
+def test_an_s3_address_is_an_http_url_without_query_or_fragment(key, value):
+    assert key.upper() in errors_of(**{key: value})
+
+
+@pytest.mark.parametrize("seconds", [0, 29, 3601])
+def test_a_signed_link_lives_between_half_a_minute_and_an_hour(seconds):
+    assert "SIGNED_URL_TTL_SECONDS" in errors_of(signed_url_ttl_seconds=seconds)
+
+
+def test_production_refuses_a_development_public_media_address():
+    message = errors_of(**{**PRODUCTION, **S3, "s3_public_base_url": "https://media.tabsira.test"})
+
+    assert "S3_PUBLIC_BASE_URL points at the development host https://media.tabsira.test" in message
+
+
+def test_production_accepts_a_real_s3_configuration(make_settings):
+    assert make_settings(**PRODUCTION, **S3).storage_backend == "s3"

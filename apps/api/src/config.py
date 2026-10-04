@@ -434,6 +434,22 @@ class Settings(BaseSettings):
     # last page of its section).
     sitemap_page_size: Annotated[int, Field(ge=1, le=MAX_SITEMAP_PAGE_SIZE)] = 10_000
 
+    # Where consented photos are kept (decisions 8 and 19): on local disk under
+    # data/media in development, in a private S3-compatible bucket in production.
+    # Every S3 key below is required once the backend is "s3", in any environment.
+    storage_backend: Literal["local", "s3"] = "local"
+    # Empty uses AWS; set it for another S3-compatible service.
+    s3_endpoint_url: str = ""
+    s3_region: str = "us-east-1"
+    s3_bucket: str = ""
+    s3_access_key_id: str = ""
+    s3_secret_access_key: SecretStr = SecretStr("")
+    # Where the public/ prefix of the bucket is served from: a CDN or the bucket's own
+    # public address. Only photos their owner published are ever under that prefix.
+    s3_public_base_url: str = ""
+    # Seconds a signed link to a private photo stays valid. Short on purpose.
+    signed_url_ttl_seconds: Annotated[int, Field(ge=30, le=3600)] = 300
+
     # AI providers: one active provider, one settings block each. In the
     # environment the blocks are AI_OVH__API_KEY, AI_OPENAI__VISION_MODEL, ...
     # OpenAI by measurement (docs/BENCHMARK.md): same quality as OVH's best on the
@@ -546,6 +562,27 @@ class Settings(BaseSettings):
                 raise ValueError(message) from None
         return SecretStr(dsn)
 
+    @field_validator("s3_endpoint_url", "s3_public_base_url")
+    @classmethod
+    def _check_s3_url(cls, value: str) -> str:
+        """Accept an empty address, or an http(s) one with a host and no query or fragment."""
+        candidate = value.strip()
+        if not candidate:
+            return ""
+        parts = urlsplit(candidate)
+        if parts.scheme not in {"http", "https"} or not parts.hostname:
+            message = "must be empty or an http(s) URL with a host"
+            raise ValueError(message)
+        if parts.query or parts.fragment:
+            message = "must have no query and no fragment"
+            raise ValueError(message)
+        return candidate.rstrip("/")
+
+    @field_validator("s3_bucket", "s3_access_key_id", "s3_region")
+    @classmethod
+    def _strip_s3_text(cls, value: str) -> str:
+        return value.strip()
+
     @field_validator("sync_database_url", "test_database_url", mode="before")
     @classmethod
     def _empty_means_unset(cls, value: Any) -> Any:
@@ -572,6 +609,23 @@ class Settings(BaseSettings):
             message = "must name a database ending in _test, so tests can never touch real data"
             raise ValueError(message)
         return value
+
+    @model_validator(mode="after")
+    def _require_s3_settings(self) -> Self:
+        """With the S3 backend every S3 key must be set, so photos are never lost to a typo."""
+        if self.storage_backend != "s3":
+            return self
+        missing = [
+            name.upper()
+            for name in ("s3_bucket", "s3_access_key_id", "s3_public_base_url", "s3_region")
+            if not getattr(self, name)
+        ]
+        if not self.s3_secret_access_key.get_secret_value():
+            missing.append("S3_SECRET_ACCESS_KEY")
+        if missing:
+            message = "STORAGE_BACKEND=s3 needs " + ", ".join(missing)
+            raise ValueError(message)
+        return self
 
     @model_validator(mode="after")
     def _refuse_unsafe_production(self) -> Self:
@@ -612,6 +666,10 @@ class Settings(BaseSettings):
         ):
             if dsn.get_secret_value() and _host_is_test_domain(dsn.get_secret_value()):
                 problems.append(f"{name} points at a development host")
+        if self.s3_public_base_url and _host_is_test_domain(self.s3_public_base_url):
+            problems.append(
+                f"S3_PUBLIC_BASE_URL points at the development host {self.s3_public_base_url}"
+            )
         if self.google_configured:
             if not self.google_client_secret.get_secret_value():
                 problems.append("GOOGLE_CLIENT_ID is set but GOOGLE_CLIENT_SECRET is empty")
