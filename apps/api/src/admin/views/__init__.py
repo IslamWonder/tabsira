@@ -10,6 +10,7 @@ from src.admin.views.learning import (
     LearningUnitAdmin,
 )
 from src.admin.views.ontology import OntologyCandidateAdmin, OntologyEntityAdmin
+from src.admin.views.places import GeoNameAdmin
 from src.admin.views.security import AdminAuditLogAdmin, TwoFactorView
 
 # sqladmin lists views in the order they are added, so this is the sidebar.
@@ -22,6 +23,7 @@ BUILT_IN_VIEWS: tuple[ViewClass, ...] = (
     LearningPathVersionAdmin,
     LearningDomainAdmin,
     LearningUnitAdmin,
+    GeoNameAdmin,
     AdminAuditLogAdmin,
     TwoFactorView,
 )
