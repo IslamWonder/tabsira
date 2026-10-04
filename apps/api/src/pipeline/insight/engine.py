@@ -76,7 +76,7 @@ from src.pipeline.insight.planner import (
     PlannedCandidate,
     PlannerLeakError,
 )
-from src.pipeline.insight.search import Embedding, EvidenceSearch, embed_queries
+from src.pipeline.insight.search import Embedding, EvidenceSearch, SearchResult, embed_queries
 from src.pipeline.leak_guard import LeakDetector
 from src.retrieval.concepts import ConceptIndex, load_concept_index
 from src.retrieval.refs import Numbering, is_quran, resolve_hadiths, resolve_verses
@@ -284,6 +284,9 @@ class PipelineInsightEngine:
             question = plan.question or context.question_for(plan.waiting_on)
             if question is None and request.clarification_answer is None:
                 question = scene.clarification_question
+            # The scene's question was written by the vision model: it meets the Quran too.
+            if question and scripture_guard(resources.quran).check(question).leaked:
+                question = None
             if question:
                 raise _Stopped(EngineStatus.NEEDS_CLARIFICATION, question)
             raise _Stopped(EngineStatus.NO_RELEVANT_EVIDENCE)
@@ -360,19 +363,29 @@ class PipelineInsightEngine:
         shortlists = []
         for candidate in candidates:
             verse_anchors, hadith_anchors = await self._anchors(session, candidate)
-            quran = await search.search(
-                session,
-                EmbeddedCorpus.QURAN,
-                candidate.quran_queries or candidate.hadith_queries,
-                vectors,
-                anchors=verse_anchors,
+            # A corpus the planner asked nothing of is not searched: no half is filled
+            # with a text found by the other half's queries.
+            quran = (
+                await search.search(
+                    session,
+                    EmbeddedCorpus.QURAN,
+                    candidate.quran_queries,
+                    vectors,
+                    anchors=verse_anchors,
+                )
+                if candidate.quran_queries
+                else SearchResult([])
             )
-            hadith = await search.search(
-                session,
-                EmbeddedCorpus.HADITH,
-                candidate.hadith_queries or candidate.quran_queries,
-                vectors,
-                anchors=hadith_anchors,
+            hadith = (
+                await search.search(
+                    session,
+                    EmbeddedCorpus.HADITH,
+                    candidate.hadith_queries,
+                    vectors,
+                    anchors=hadith_anchors,
+                )
+                if candidate.hadith_queries
+                else SearchResult([])
             )
             for result in (quran, hadith):
                 if result.rerank_error:

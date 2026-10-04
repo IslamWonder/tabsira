@@ -205,6 +205,8 @@ async def check_result(
         for field, text in insight_texts(insight).items():
             if guard.check(text).leaked:
                 leaks.append(f"insights.{index}.{field}")
+    if result.clarification_question and guard.check(result.clarification_question).leaked:
+        leaks.append("clarification_question")
     abstained = result.status in ABSTAINED
     correct = abstained if expectation.expect == "abstain" else result.status is EngineStatus.OK
     return {

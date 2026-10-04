@@ -386,3 +386,19 @@ def test_main_runs_the_command(monkeypatch):
     assert command.main([]) == 5
     assert command._relative(SCENES / "gold.json").endswith("gold.json")
     assert command._relative(__import__("pathlib").Path("/x/y")) == "/x/y"
+
+
+async def test_a_clarification_question_that_quotes_scripture_counts_as_a_leak(store):
+    from src.evaluation.engine_eval import check_result
+    from src.pipeline.insight.guard import quran_detector
+
+    expectation = load_engine_gold().scenes[0]
+    asked = EngineResult(
+        status=EngineStatus.NEEDS_CLARIFICATION,
+        clarification_question=f"«{verse_text(30, 50)}»؟",
+    )
+
+    checked = await check_result(store, expectation, asked, await quran_detector(store))
+
+    assert checked["leaks"] == ["clarification_question"]
+    assert checked["correct"] is True
