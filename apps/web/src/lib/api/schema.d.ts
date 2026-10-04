@@ -1030,7 +1030,8 @@ export interface paths {
      *     permission, a place that is not right and a location or photo that gives away private
      *     information. 404 for what the caller may not read, and for a target whose feature is switched
      *     off, 400 for their own words. Reporting the same thing twice answers with the first report. Enough different reporters send a published
-     *     item back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`).
+     *     item back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`), and the public copy of a
+     *     photo it showed is deleted until a moderator approves it.
      */
     post: operations['report_reports_post'];
     delete?: never;
@@ -1540,6 +1541,7 @@ export interface paths {
      *     The public point is the centre of the grid cell (GEO_APPROX_CELL_METERS), labelled with
      *     the nearest populated place; the answer carries the cell as a polygon, so the owner reviews
      *     it before publishing. 409 INSIGHT_NOT_PUBLISHABLE for an insight that is not the pipeline's.
+     *     Placing a published entry again takes it off the map, and its photo's public copy with it.
      */
     put: operations['place_insight_insights__insight_id__map_put'];
     post?: never;
@@ -3783,6 +3785,9 @@ export interface components {
     /**
      * PublicationExport
      * @description The copy of an insight a post published: references to the evidence, never scripture.
+     *
+     *     The photo is stated as two facts, like `learning.photos`: whether the owner chose to show
+     *     it with this publication, and whether a public copy exists right now. Never a key.
      */
     PublicationExport: {
       /** Id */
@@ -3811,8 +3816,16 @@ export interface components {
       explanation_excerpt: string;
       /** Step Text */
       step_text: string | null;
-      /** Photo Ref */
-      photo_ref: string | null;
+      /**
+       * Has Photo
+       * @description The owner chose to show the insight's photo with this post
+       */
+      has_photo: boolean;
+      /**
+       * Published
+       * @description A public copy of the photo exists right now
+       */
+      published: boolean;
       /**
        * Created At
        * Format: date-time

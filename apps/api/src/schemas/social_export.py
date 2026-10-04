@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.social import (
     CommentStatus,
@@ -26,7 +26,12 @@ from src.schemas.public_id import PublicId
 
 
 class PublicationExport(BaseModel):
-    """The copy of an insight a post published: references to the evidence, never scripture."""
+    """
+    The copy of an insight a post published: references to the evidence, never scripture.
+
+    The photo is stated as two facts, like `learning.photos`: whether the owner chose to show
+    it with this publication, and whether a public copy exists right now. Never a key.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -41,7 +46,10 @@ class PublicationExport(BaseModel):
     hadith_refs: list[dict[str, Any]]
     explanation_excerpt: str
     step_text: str | None
-    photo_ref: str | None
+    has_photo: bool = Field(
+        description="The owner chose to show the insight's photo with this post"
+    )
+    published: bool = Field(description="A public copy of the photo exists right now")
     created_at: datetime
 
 

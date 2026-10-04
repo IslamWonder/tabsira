@@ -2157,7 +2157,7 @@
       "post": {
         "tags": ["reports"],
         "summary": "Report a post, a comment or a map entry",
-        "description": "Tell the moderators about something the caller may read.\n\nThe reasons include a false attribution of a religious claim, a photo published without\npermission, a place that is not right and a location or photo that gives away private\ninformation. 404 for what the caller may not read, and for a target whose feature is switched\noff, 400 for their own words. Reporting the same thing twice answers with the first report. Enough different reporters send a published\nitem back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`).",
+        "description": "Tell the moderators about something the caller may read.\n\nThe reasons include a false attribution of a religious claim, a photo published without\npermission, a place that is not right and a location or photo that gives away private\ninformation. 404 for what the caller may not read, and for a target whose feature is switched\noff, 400 for their own words. Reporting the same thing twice answers with the first report. Enough different reporters send a published\nitem back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`), and the public copy of a\nphoto it showed is deleted until a moderator approves it.",
         "operationId": "report_reports_post",
         "requestBody": {
           "content": {
@@ -3285,7 +3285,7 @@
       "put": {
         "tags": ["atlas"],
         "summary": "Place one of the caller's insights on the atlas, as a draft",
-        "description": "Keep the exact point privately and answer with what the map will show.\n\nThe public point is the centre of the grid cell (GEO_APPROX_CELL_METERS), labelled with\nthe nearest populated place; the answer carries the cell as a polygon, so the owner reviews\nit before publishing. 409 INSIGHT_NOT_PUBLISHABLE for an insight that is not the pipeline's.",
+        "description": "Keep the exact point privately and answer with what the map will show.\n\nThe public point is the centre of the grid cell (GEO_APPROX_CELL_METERS), labelled with\nthe nearest populated place; the answer carries the cell as a polygon, so the owner reviews\nit before publishing. 409 INSIGHT_NOT_PUBLISHABLE for an insight that is not the pipeline's.\nPlacing a published entry again takes it off the map, and its photo's public copy with it.",
         "operationId": "place_insight_insights__insight_id__map_put",
         "parameters": [
           {
@@ -3869,7 +3869,9 @@
         "responses": {
           "200": {
             "description": "Successful Response",
-            "content": { "audio/mpeg": {} }
+            "content": {
+              "audio/mpeg": {}
+            }
           },
           "default": {
             "description": "An error",
@@ -8888,16 +8890,15 @@
             ],
             "title": "Step Text"
           },
-          "photo_ref": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Photo Ref"
+          "has_photo": {
+            "type": "boolean",
+            "title": "Has Photo",
+            "description": "The owner chose to show the insight's photo with this post"
+          },
+          "published": {
+            "type": "boolean",
+            "title": "Published",
+            "description": "A public copy of the photo exists right now"
           },
           "created_at": {
             "type": "string",
@@ -8918,11 +8919,12 @@
           "hadith_refs",
           "explanation_excerpt",
           "step_text",
-          "photo_ref",
+          "has_photo",
+          "published",
           "created_at"
         ],
         "title": "PublicationExport",
-        "description": "The copy of an insight a post published: references to the evidence, never scripture."
+        "description": "The copy of an insight a post published: references to the evidence, never scripture.\n\nThe photo is stated as two facts, like `learning.photos`: whether the owner chose to show\nit with this publication, and whether a public copy exists right now. Never a key."
       },
       "PublicationOut": {
         "properties": {

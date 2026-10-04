@@ -684,3 +684,56 @@ async def test_a_copy_the_store_failed_to_delete_goes_with_the_reconcile(
     assert await keys_of(db_session, withdrawn) == (withdrawn.photo_key, None)
     assert await keys_of(db_session, still_shown) == (still_shown.photo_key, live)
     assert objects(media) == sorted([withdrawn.photo_key, still_shown.photo_key, live])
+
+
+# ─── The account export ───
+
+
+async def test_the_export_states_the_photo_of_a_post_as_facts_and_never_as_a_key(
+    db_session, make_member, photos, media, world
+):
+    author = await make_member("author")
+    await consent(author)
+    shown = await kept_insight(db_session, author, photos)
+    chosen_no_copy = await kept_insight(db_session, author, photos)
+    shown_post = await post_with_photo(author, shown)
+    assert (await author.http.post(f"/posts/{shown_post}/submit")).json()["status"] == "published"
+    # Chosen for a post to followers only: no public copy is ever made (and none exists).
+    followers = await author.http.post(
+        "/posts",
+        json={"insight_id": str(chosen_no_copy.id), "photo": True, "visibility": "followers"},
+    )
+    followers_post = str(followers.json()["id"])
+    assert (await author.http.post(f"/posts/{followers_post}/submit")).status_code == 200
+    bare_post = await post_with_photo(author, chosen_no_copy, photo=False)
+    # A withdrawn post keeps no publication at all.
+    withdrawn_post = await post_with_photo(author, shown)
+    assert (await author.http.post(f"/posts/{withdrawn_post}/submit")).status_code == 200
+    assert (await author.http.delete(f"/posts/{withdrawn_post}")).status_code == 204
+    _, public = await keys_of(db_session, shown)
+    assert public is not None
+
+    response = await author.http.get("/account/export")
+
+    assert response.status_code == 200
+    facts = {
+        post["id"]: (
+            None
+            if post["publication"] is None
+            else (post["publication"]["has_photo"], post["publication"]["published"])
+        )
+        for post in response.json()["social"]["posts"]
+    }
+    assert facts == {
+        shown_post: (True, True),
+        followers_post: (True, False),
+        bare_post: (False, False),
+        withdrawn_post: None,
+    }
+    assert "photo_ref" not in response.text
+    for key in (shown.photo_key, chosen_no_copy.photo_key, public):
+        assert key not in response.text
+    assert response.json()["learning"]["photos"] == [
+        {"insight_id": str(shown.id), "published": True},
+        {"insight_id": str(chosen_no_copy.id), "published": False},
+    ]
