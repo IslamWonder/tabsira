@@ -298,6 +298,7 @@ async def test_two_candidates_on_the_same_texts_make_one_insight(maker):
         [
             plan_answer(planned(), planned(title="ثانية")),
             verify_all(),
+            verify_all(),
             compose_answer(composed(0)),
         ],
     )

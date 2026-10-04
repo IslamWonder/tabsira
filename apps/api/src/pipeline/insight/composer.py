@@ -19,6 +19,7 @@ scholar (v2 §12, rule 7).
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -256,27 +257,23 @@ class InsightComposer:
         guard: EngineGuard,
         path_version: str | None,
     ) -> Composition:
+        """
+        Write every insight in a call of its own, all at once.
+
+        No insight's text depends on another's, and one long answer took as long as
+        several short ones side by side. The first error of any call is raised.
+        """
         system = load_prompt(SYSTEM_PROMPT)
-        user = composer_message(scene, results, learner)
-        clean: dict[int, ComposedInsight] = {}
-        for _ in range(self._attempts):
-            output = await self._client.chat_json(
-                ComposerOutput,
-                stage=AiStage.COMPOSE,
-                system=system.text,
-                user=user,
-                max_output_tokens=MAX_OUTPUT_TOKENS,
-            )
-            for item in output.value.insights:
-                valid = 0 <= item.insight < len(results)
-                if (
-                    valid
-                    and item.insight not in clean
-                    and not await guard.leaks(composer_texts(item).values())
-                ):
-                    clean[item.insight] = item
-            if len(clean) == len(results):
-                break
+        written = await asyncio.gather(
+            *(self._compose_one(system.text, scene, result, learner, guard) for result in results),
+            return_exceptions=True,
+        )
+        for outcome in written:
+            if isinstance(outcome, BaseException):
+                raise outcome
+        clean = {
+            index: item for index, item in enumerate(written) if isinstance(item, ComposedInsight)
+        }
         built = {
             index: build_insight(clean[index], result, scene, learner, path_version)
             for index, result in enumerate(results)
@@ -286,3 +283,26 @@ class InsightComposer:
         insights = [insight for insight in built.values() if cites_only_its_own(insight)]
         leaked = [index for index in range(len(results)) if index not in clean]
         return Composition(insights, leaked, system.version)
+
+    async def _compose_one(
+        self,
+        system: str,
+        scene: SceneAnalysis,
+        result: GateResult,
+        learner: LearnerContext,
+        guard: EngineGuard,
+    ) -> ComposedInsight | None:
+        """Write one insight; an answer that leaks is asked again, then the insight is dropped."""
+        user = composer_message(scene, [result], learner)
+        for _ in range(self._attempts):
+            output = await self._client.chat_json(
+                ComposerOutput,
+                stage=AiStage.COMPOSE,
+                system=system,
+                user=user,
+                max_output_tokens=MAX_OUTPUT_TOKENS,
+            )
+            for item in output.value.insights:
+                if item.insight == 0 and not await guard.leaks(composer_texts(item).values()):
+                    return item
+        return None

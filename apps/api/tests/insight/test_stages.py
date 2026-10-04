@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
 from sqlalchemy import select
 
+from src.ai.errors import AiCallError, AiErrorCode
 from src.models import EmbeddedCorpus, QuranVerse
 from src.pipeline.engine import (
     EngineRequest,
@@ -444,15 +446,16 @@ def test_a_personal_matter_ends_with_the_referral_and_steps_keep_their_kind():
     assert referred.learning_path_version is None
 
 
-async def test_the_composer_drops_an_insight_that_keeps_leaking_and_ignores_unknown_indexes():
-    leaking = composed(1, value=f"قال تعالى: «{verse_text(30, 50)}»")
+async def test_the_composer_writes_each_insight_apart_and_drops_one_that_keeps_leaking():
+    leaking = composed(0, value=f"قال تعالى: «{verse_text(30, 50)}»")
     results = [
         GateResult(candidate(), quran=chosen(1), quran_ref=QuranRef(surah=1, ayah=1)),
         GateResult(candidate(), quran=chosen(2), quran_ref=QuranRef(surah=1, ayah=2)),
     ]
     client = FakeModelClient(
         answers=[
-            compose_answer(composed(0, small_step=None), leaking, composed(9)),
+            compose_answer(composed(9), composed(0, small_step=None)),
+            compose_answer(leaking),
             compose_answer(leaking),
         ]
     )
@@ -463,7 +466,39 @@ async def test_the_composer_drops_an_insight_that_keeps_leaking_and_ignores_unkn
 
     assert len(composition.insights) == 1
     assert composition.leaked == [1]
-    assert len(client.calls) == 2
+    assert len(client.calls) == 3
+    assert [json.loads(call["user"])["insights"][0]["insight"] for call in client.calls] == [0] * 3
+
+
+async def test_a_model_failure_in_one_composer_call_is_raised():
+    results = [GateResult(candidate(), quran=chosen(1), quran_ref=QuranRef(surah=1, ayah=1))]
+    client = FakeModelClient(answers=[AiCallError(AiErrorCode.TIMEOUT, "slow")])
+
+    with pytest.raises(AiCallError):
+        await InsightComposer(client).compose(
+            rain_scene(), results, LearnerContext(), LeakGuard(), "v1"
+        )
+
+
+async def test_each_candidate_is_verified_in_its_own_call_and_a_failure_is_raised():
+    shortlists = [
+        Shortlist(candidate(), [found(1)], []),
+        Shortlist(candidate(concept="الرحمة"), [found(2)], []),
+    ]
+    client = FakeModelClient(
+        answers=[
+            {"candidates": [{"candidate": 0, "texts": [verdict("Q1")]}]},
+            {"candidates": [{"candidate": 0, "texts": [verdict("Q1", strength="weak")]}]},
+        ]
+    )
+
+    verdicts = await verify(client, rain_scene(), shortlists, LeakGuard())
+    failing = FakeModelClient(answers=[{"candidates": []}, AiCallError(AiErrorCode.TIMEOUT, "x")])
+
+    assert (verdicts[0]["Q1"].strength, verdicts[1]["Q1"].strength) == ("strong", "weak")
+    assert [len(json.loads(call["user"])["candidates"]) for call in client.calls] == [1, 1]
+    with pytest.raises(AiCallError):
+        await verify(failing, rain_scene(), shortlists, LeakGuard())
 
 
 async def test_the_guard_compares_with_the_hadiths_shown_without_the_honorific():
