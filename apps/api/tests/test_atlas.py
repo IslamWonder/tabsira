@@ -464,6 +464,42 @@ async def test_a_map_entry_can_be_reported_but_not_one_s_own_nor_a_draft(
     assert (await reader.http.get(f"/atlas/entries/{entry_id}")).status_code == 200
 
 
+async def test_a_map_entry_is_reported_while_the_atlas_alone_is_on_and_never_while_it_is_off(
+    db_session, make_member, make_insight, world, account_app, guard
+):
+    from tests.support_social import publish_post
+
+    author = await make_member("author")
+    reader = await make_member("reader")
+    entry_id = await _published(author, await _insight(db_session, author))
+    post_id = await publish_post(author, make_insight)
+    settings = account_app.state.settings
+
+    def report(target_type: str, target: str) -> Any:
+        return reader.http.post(
+            "/reports",
+            json={"target_type": target_type, "target_id": target, "reason": "private_information"},
+        )
+
+    try:
+        account_app.state.settings = settings.model_copy(update={"feature_social": False})
+        filed = await report("map_entry", entry_id)
+        assert filed.status_code == 201, filed.text
+        # The network is off: its posts are not there to be reported, nor said to exist.
+        assert (await report("post", post_id)).status_code == 404
+
+        account_app.state.settings = settings.model_copy(update={"feature_atlas": False})
+        assert (await report("post", post_id)).status_code == 201
+        assert (await report("map_entry", entry_id)).status_code == 404
+
+        account_app.state.settings = settings.model_copy(
+            update={"feature_social": False, "feature_atlas": False}
+        )
+        assert (await report("map_entry", entry_id)).status_code == 404
+    finally:
+        account_app.state.settings = settings
+
+
 async def test_the_export_carries_the_owner_s_entries_with_their_exact_points(
     db_session, make_member, make_insight, world
 ):

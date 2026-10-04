@@ -1,5 +1,5 @@
 """
-Reports: a reader tells the moderators about a post or a comment, with a reason.
+Reports: a reader tells the moderators about a post, a comment or a map entry, with a reason.
 
 Only what the reporter may read can be reported, a person cannot report their own words, and
 one reporter reports one thing once (a second report is answered with the first). A report
@@ -24,15 +24,34 @@ def _own() -> AppError:
     return AppError(ErrorCode.BAD_REQUEST, "You cannot report your own words.", status_code=400)
 
 
+def _switched_off() -> AppError:
+    return AppError(ErrorCode.NOT_FOUND, "Not found.", status_code=404)
+
+
 async def _target(
-    db: AsyncSession, reporter: User, target_type: ReportTarget, target_id: int
+    db: AsyncSession,
+    reporter: User,
+    target_type: ReportTarget,
+    target_id: int,
+    *,
+    social_on: bool,
+    atlas_on: bool,
 ) -> Post | Comment | MapEntry:
-    """Load what is reported, or raise 404 when the reporter may not read it."""
+    """
+    Load what is reported, or raise 404 when the reporter may not read it.
+
+    A target whose feature is switched off is 404 too: the atlas alone opens map entries to
+    reports, the network alone posts and comments, and neither says what the other holds.
+    """
     if target_type is ReportTarget.MAP_ENTRY:
+        if not atlas_on:
+            raise _switched_off()
         entry = await atlas_service.published_entry(db, target_id, reporter)
         if entry.user_id == reporter.id:
             raise _own()
         return entry
+    if not social_on:
+        raise _switched_off()
     if target_type is ReportTarget.POST:
         row = await post_service.get_interactable(db, target_id, reporter)
         if row.post.author_id == reporter.id:
@@ -58,9 +77,13 @@ async def file_report(
     reason: ReportReason,
     details: str | None,
     hold_threshold: int,
+    social_on: bool,
+    atlas_on: bool,
 ) -> int:
     """File a report and return its id; the same report filed again returns the first one's."""
-    target = await _target(db, reporter, target_type, target_id)
+    target = await _target(
+        db, reporter, target_type, target_id, social_on=social_on, atlas_on=atlas_on
+    )
     created: int | None = await db.scalar(
         insert(Report)
         .values(

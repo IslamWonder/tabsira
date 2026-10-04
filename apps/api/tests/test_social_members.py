@@ -390,7 +390,10 @@ async def test_every_social_route_answers_404_while_the_feature_is_off(
     make_member, account_app, account_settings
 ):
     reader = await make_member("reader")
-    account_app.state.settings = account_settings.model_copy(update={"feature_social": False})
+    # The identity stays open while the atlas is on (next test); here both are off.
+    account_app.state.settings = account_settings.model_copy(
+        update={"feature_social": False, "feature_atlas": False}
+    )
 
     for method, path in (
         ("GET", "/me/public-identity"),
@@ -400,6 +403,39 @@ async def test_every_social_route_answers_404_while_the_feature_is_off(
     ):
         response = await reader.http.request(method, path)
         assert response.status_code == 404, path
+
+
+async def test_the_atlas_alone_opens_the_public_identity_and_nothing_else_of_the_network(
+    make_member, account_app, account_settings
+):
+    """The atlas publishes under the handle, so a member chooses one while the network is off."""
+    reader = await make_member(identity=False)
+    account_app.state.settings = account_settings.model_copy(
+        update={"feature_social": False, "feature_atlas": True}
+    )
+
+    chosen = await reader.http.put(
+        "/me/public-identity", json={"handle": "basira", "public_name": "Basira"}
+    )
+    assert chosen.status_code == 200, chosen.text
+    shown = await reader.http.get("/me/public-identity")
+    assert shown.json() == {"handle": "basira", "public_name": "Basira"}
+    for method, path in (
+        ("GET", "/u/basira"),
+        ("PUT", "/u/basira/follow"),
+        ("DELETE", "/u/basira/follow"),
+        ("GET", "/blocks"),
+        ("PUT", "/blocks/basira"),
+        ("DELETE", "/blocks/basira"),
+    ):
+        response = await reader.http.request(method, path)
+        assert response.status_code == 404, path
+
+    account_app.state.settings = account_settings.model_copy(
+        update={"feature_social": False, "feature_atlas": False}
+    )
+    assert (await reader.http.get("/me/public-identity")).status_code == 404
+    assert (await reader.http.put("/me/public-identity", json={})).status_code == 404
 
 
 async def test_the_social_routes_are_never_cached_because_they_carry_the_viewers_own_state(

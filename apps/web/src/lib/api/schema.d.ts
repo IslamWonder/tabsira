@@ -1017,13 +1017,13 @@ export interface paths {
     get?: never;
     put?: never;
     /**
-     * Report a post or a comment
+     * Report a post, a comment or a map entry
      * @description Tell the moderators about something the caller may read.
      *
      *     The reasons include a false attribution of a religious claim, a photo published without
      *     permission, a place that is not right and a location or photo that gives away private
-     *     information. 404 for what the caller may not read, 400 for their own words. Reporting the
-     *     same thing twice answers with the first report. Enough different reporters send a published
+     *     information. 404 for what the caller may not read, and for a target whose feature is switched
+     *     off, 400 for their own words. Reporting the same thing twice answers with the first report. Enough different reporters send a published
      *     item back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`).
      */
     post: operations['report_reports_post'];

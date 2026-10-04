@@ -157,6 +157,18 @@ def require_social(settings: SettingsDep) -> None:
         raise AppError(ErrorCode.NOT_FOUND, "Not found.", status_code=404)
 
 
+def require_social_or_atlas(settings: SettingsDep) -> None:
+    """
+    Answer 404 while both the network and the atlas are switched off.
+
+    The public identity and the reports serve both: the atlas publishes under the handle too,
+    and a place on the map is reported through the same route as a post. Nothing else of the
+    network opens with the atlas alone.
+    """
+    if not (settings.feature_social or settings.feature_atlas):
+        raise AppError(ErrorCode.NOT_FOUND, "Not found.", status_code=404)
+
+
 def get_insight_source(request: Request) -> InsightSource:
     """
     Return where publishable insights are read from.
