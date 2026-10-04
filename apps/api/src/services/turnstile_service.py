@@ -15,6 +15,7 @@ the visitor's address is ever logged; only the error codes Cloudflare returns ar
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import httpx
@@ -30,6 +31,12 @@ TOKEN_HEADER = "CF-Turnstile-Response"  # noqa: S105  # nosec B105
 # Cloudflare answers well inside a second; the forms behind it are rate limited anyway, so
 # give up quickly rather than hold a request open.
 VERIFY_TIMEOUT_SECONDS = 5.0
+
+# Cloudflare documents tokens of at most 2048 characters. Anything longer, or with other
+# characters, cannot be one, so it is refused here without a call (a flood of junk must not
+# become outbound traffic).
+MAX_TOKEN_LENGTH = 2048
+TOKEN_PATTERN = re.compile(r"[0-9A-Za-z_.-]+")
 
 _client: httpx.AsyncClient | None = None
 
@@ -78,7 +85,7 @@ async def verify(settings: Settings, token: str | None, *, remote_ip: str | None
     """
     if not settings.turnstile_enabled:
         return True
-    if not token:
+    if not token or len(token) > MAX_TOKEN_LENGTH or not TOKEN_PATTERN.fullmatch(token):
         return False
     body = await post_siteverify(settings.turnstile_secret_key.get_secret_value(), token, remote_ip)
     if body is None:

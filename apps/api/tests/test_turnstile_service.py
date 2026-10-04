@@ -79,6 +79,25 @@ async def test_a_missing_token_is_refused_without_asking_cloudflare(on):
     assert seen == []
 
 
+@pytest.mark.parametrize(
+    "token",
+    ["x" * 2049, "has space", "semi;colon", "new\nline", "tökén", "a&secret=b", "a=b"],
+)
+async def test_a_token_that_cannot_be_cloudflares_is_refused_without_a_call(on, token):
+    seen = answer(lambda _r: httpx.Response(200, json={"success": True}))
+
+    assert await turnstile_service.verify(on, token) is False
+    assert seen == []
+
+
+async def test_a_token_of_the_longest_length_and_every_allowed_character_is_sent(on):
+    seen = answer(lambda _r: httpx.Response(200, json={"success": True}))
+    token = ("aZ09-_." * 400)[:2048]
+
+    assert await turnstile_service.verify(on, token) is True
+    assert len(seen) == 1
+
+
 async def test_an_accepted_token_passes_and_the_form_fields_are_sent(on):
     seen = answer(lambda _r: httpx.Response(200, json={"success": True}))
 
