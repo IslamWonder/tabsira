@@ -68,3 +68,32 @@ export function gridCell(point: Ratios): { row: 0 | 1 | 2; column: 0 | 1 | 2 } {
   const cell = (value: number) => Math.min(2, Math.floor(value * 3)) as 0 | 1 | 2;
   return { row: cell(point.y), column: cell(point.x) };
 }
+
+/** A rectangle in percent of its box. */
+export interface Frame {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * Where an `object-fit: contain` photo sits inside its box, in percent of the
+ * box: the whole photo, uncropped, so a box given as ratios of the photo can be
+ * laid over it exactly (choosing a focus needs every thing in view). Before the
+ * box is measured the frame is the whole box.
+ */
+export function containFrame(image: Size, box: Size | null): Frame {
+  if (box === null || box.width <= 0 || box.height <= 0 || image.width <= 0 || image.height <= 0) {
+    return { left: 0, top: 0, width: 100, height: 100 };
+  }
+  const scale = Math.min(box.width / image.width, box.height / image.height);
+  const width = (image.width * scale) / box.width;
+  const height = (image.height * scale) / box.height;
+  return {
+    left: ((1 - width) / 2) * 100,
+    top: ((1 - height) / 2) * 100,
+    width: width * 100,
+    height: height * 100,
+  };
+}

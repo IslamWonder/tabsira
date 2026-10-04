@@ -179,10 +179,16 @@ export function ExplanationBlock({ text }: { text: string }) {
 export interface InsightToolsProps {
   onWhy: () => void;
   onDiscuss: () => void;
+  /** How much of the chat is used, e.g. «استُعمل 1 من 3»; the plain limit before it is known. */
+  discussNote?: string;
 }
 
 /** Why-this and the chat, side by side from tablet up: two secondary paths, same weight. */
-export function InsightTools({ onWhy, onDiscuss }: InsightToolsProps) {
+export function InsightTools({
+  onWhy,
+  onDiscuss,
+  discussNote = messages.insight.discussLimit,
+}: InsightToolsProps) {
   return (
     <div className="flex flex-col gap-3 tablet:flex-row">
       <button
@@ -210,13 +216,12 @@ export function InsightTools({ onWhy, onDiscuss }: InsightToolsProps) {
       </button>
       <button
         type="button"
+        aria-haspopup="dialog"
         onClick={onDiscuss}
         className="flex min-h-[52px] flex-1 items-center gap-2.5 rounded-[var(--radius-card)] bg-[var(--chip-primary-bg)] px-4 text-[0.96875rem] text-[var(--chip-primary-fg)] transition-colors duration-200 hover:bg-[var(--sunnah-surface-from)]"
       >
         {messages.insight.discuss}
-        <span className="ms-auto text-[0.8125rem] text-fg-soft">
-          {messages.insight.discussLimit}
-        </span>
+        <span className="ms-auto text-[0.8125rem] text-fg-soft">{discussNote}</span>
       </button>
     </div>
   );

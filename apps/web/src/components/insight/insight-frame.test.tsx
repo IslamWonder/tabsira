@@ -118,6 +118,15 @@ describe('InsightTools and InsightActions', () => {
   });
 });
 
+describe('InsightTools, the chat note', () => {
+  it('says how much of the chat is used when it is told', () => {
+    render(<InsightTools onWhy={vi.fn()} onDiscuss={vi.fn()} discussNote="[استُعمل 1 من 3]" />);
+    expect(screen.getByRole('button', { name: /ناقش البصيرة/ })).toHaveTextContent(
+      '[استُعمل 1 من 3]'
+    );
+  });
+});
+
 describe('DoneButton', () => {
   it('celebrates once the save has succeeded, not on the tap', async () => {
     const bursts = vi.fn();
@@ -160,5 +169,12 @@ describe('EvidencePair', () => {
     expect(container.querySelector('svg')).toBeNull();
     rerender(<EvidencePair quran={<p>[قرآن]</p>} sunnah={<p>[سنة]</p>} sideBySide />);
     expect(container.firstElementChild).toHaveClass('wide:grid');
+  });
+
+  it('stands a hadith alone, with no thread, when its verse is not shown', () => {
+    const { container } = render(<EvidencePair sunnah={<p>[سنة]</p>} />);
+    expect(container.querySelector('svg')).toBeNull();
+    expect(container.firstElementChild?.children).toHaveLength(1);
+    expect(container.firstElementChild?.firstElementChild?.className).toContain('fx-from-end');
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { coverPlacement, gridCell, isRatio, labelSides } from './scene-geometry';
+import { containFrame, coverPlacement, gridCell, isRatio, labelSides } from './scene-geometry';
 
 const PORTRAIT = { width: 1200, height: 1600 };
 
@@ -66,5 +66,33 @@ describe('gridCell and isRatio', () => {
   it('accepts 0 to 1 and nothing else', () => {
     expect([0, 0.5, 1].every(isRatio)).toBe(true);
     expect([-0.01, 1.01, Number.NaN, Number.POSITIVE_INFINITY].some(isRatio)).toBe(false);
+  });
+});
+
+describe('containFrame', () => {
+  it('fits the whole photo inside the box and centres it', () => {
+    // A 4:3 photo in a square box: full width, three quarters of the height, centred.
+    expect(containFrame({ width: 800, height: 600 }, { width: 400, height: 400 })).toEqual({
+      left: 0,
+      top: 12.5,
+      width: 100,
+      height: 75,
+    });
+    // A tall photo in a wide box: full height, a narrow strip in the middle.
+    expect(containFrame({ width: 300, height: 600 }, { width: 600, height: 300 })).toEqual({
+      left: 37.5,
+      top: 0,
+      width: 25,
+      height: 100,
+    });
+  });
+
+  it('takes the whole box before it is measured, or when a size is unusable', () => {
+    const whole = { left: 0, top: 0, width: 100, height: 100 };
+    expect(containFrame({ width: 800, height: 600 }, null)).toEqual(whole);
+    expect(containFrame({ width: 800, height: 600 }, { width: 0, height: 10 })).toEqual(whole);
+    expect(containFrame({ width: 800, height: 600 }, { width: 10, height: 0 })).toEqual(whole);
+    expect(containFrame({ width: 0, height: 600 }, { width: 10, height: 10 })).toEqual(whole);
+    expect(containFrame({ width: 800, height: 0 }, { width: 10, height: 10 })).toEqual(whole);
   });
 });

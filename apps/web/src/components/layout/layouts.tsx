@@ -35,6 +35,11 @@ export interface StageLayoutProps extends Slot {
   stageLabel: string;
   /** Overrides the stage's phone height (full screen by default, for a full-bleed photo). */
   stageClassName?: string;
+  /**
+   * On a phone the stage sits above the panel (a photo you act on first). The panel stays first
+   * in the DOM so a screen reader hears the state before the photo; from tablet up both orders agree.
+   */
+  stageFirstOnPhone?: boolean;
 }
 
 /**
@@ -49,12 +54,14 @@ export function StageLayout({
   stage,
   stageLabel,
   stageClassName,
+  stageFirstOnPhone = false,
   className,
 }: StageLayoutProps) {
   return (
     <div
       className={cx(
-        'mx-auto flex w-full max-w-[1440px] flex-col',
+        'mx-auto flex w-full max-w-[1440px]',
+        stageFirstOnPhone ? 'flex-col-reverse tablet:flex-col' : 'flex-col',
         'tablet:grid tablet:grid-cols-[minmax(19rem,2fr)_minmax(0,3fr)]',
         'desktop:grid-cols-[33rem_minmax(0,1fr)]',
         FULL_HEIGHT,

@@ -47,9 +47,38 @@ describe('StepCard', () => {
     expect(screen.getByRole('status')).toHaveTextContent('سُجّل ما صرّحت به.');
   });
 
-  it('confirms a deferral without blame', () => {
+  it('confirms a deferral without blame, and keeps «done» for when the reader comes back', () => {
     renderStep('deferred');
-    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
+      '[الإقرار]',
+    ]);
     expect(screen.getByRole('status')).toHaveTextContent('أجّلت الخطوة');
+  });
+
+  it('labels the step as the API does, and says what the API says the answer means', () => {
+    const { rerender } = render(
+      <StepCard
+        body="[الخطوة]"
+        label="[من السنة]"
+        confirmLabel="[الإقرار]"
+        onConfirm={vi.fn()}
+        onDefer={vi.fn()}
+        status="saved"
+        statusText="[ما يعنيه الجواب]"
+      />
+    );
+    expect(screen.getByText('[من السنة]')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('[ما يعنيه الجواب]');
+    rerender(
+      <StepCard
+        body="[الخطوة]"
+        confirmLabel="[الإقرار]"
+        onConfirm={vi.fn()}
+        onDefer={vi.fn()}
+        error="[لم يُحفظ]"
+      />
+    );
+    expect(screen.queryByText('[من السنة]')).toBeNull();
+    expect(screen.getByRole('alert')).toHaveTextContent('[لم يُحفظ]');
   });
 });

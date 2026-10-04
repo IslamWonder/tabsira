@@ -21,6 +21,16 @@ describe('stageState', () => {
 });
 
 describe('ProgressStages', () => {
+  it('says it is waiting its turn before any stage has started, with every stage still ahead', () => {
+    render(<ProgressStages current="queued" />);
+    expect(screen.getByRole('status')).toHaveTextContent('ننتظر دور مشهدك');
+    expect(
+      within(screen.getByRole('region', { name: 'مراحل إعداد البصيرة' }))
+        .getAllByRole('listitem')
+        .map((item) => item.getAttribute('aria-current'))
+    ).toEqual([null, null, null, null]);
+  });
+
   it('names the four honest stages in order, with their state', () => {
     render(<ProgressStages current="evidence" />);
     const region = screen.getByRole('region', { name: 'مراحل إعداد البصيرة' });

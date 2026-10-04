@@ -39,6 +39,19 @@ describe('layout primitives', () => {
     expect(stage).toHaveClass('h-72');
   });
 
+  it('StageLayout can put the stage above the panel on a phone, with the panel still first in the DOM', () => {
+    const { container } = render(
+      <StageLayout
+        panel={<p>panel</p>}
+        stage={<p>stage</p>}
+        stageLabel="المشهد"
+        stageFirstOnPhone
+      />
+    );
+    expect(order('panel', 'stage')).toBe(true);
+    expect(container.firstElementChild).toHaveClass('flex-col-reverse', 'tablet:flex-col');
+  });
+
   it('ReadingLayout keeps the photo first, the column next, and pins its footer', () => {
     const { rerender } = render(
       <ReadingLayout media={<figure>photo</figure>} footer={<span>actions</span>}>

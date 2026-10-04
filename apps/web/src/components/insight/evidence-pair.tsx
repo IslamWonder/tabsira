@@ -35,14 +35,15 @@ function Thread() {
  * enters from the start side, the Sunnah panel from the end side, and a gold
  * thread draws between them. Only the panels move, once, on display; the
  * scripture inside never animates, glows or shifts. With one source (the
- * hadith still awaiting its ruling), the Quran panel stands alone.
+ * hadith still awaiting its ruling), the Quran panel stands alone; likewise a
+ * hadith whose verse is not shown.
  */
 export function EvidencePair({
   quran,
   sunnah,
   sideBySide = false,
 }: {
-  quran: ReactNode;
+  quran?: ReactNode;
   sunnah?: ReactNode;
   /**
    * Both texts are short (under about 280 characters): from 1440 px they may
@@ -58,12 +59,15 @@ export function EvidencePair({
           : 'flex flex-col'
       }
     >
-      <div className="motion-safe:animate-[fx-from-start_0.7s_cubic-bezier(0.22,1,0.36,1)_both]">
-        {quran}
-      </div>
+      {quran === undefined ? null : (
+        <div className="motion-safe:animate-[fx-from-start_0.7s_cubic-bezier(0.22,1,0.36,1)_both]">
+          {quran}
+        </div>
+      )}
       {sunnah === undefined ? null : (
         <>
-          <Thread />
+          {/* A thread joins two sources, never one. */}
+          {quran === undefined ? null : <Thread />}
           <div className="motion-safe:animate-[fx-from-end_0.7s_cubic-bezier(0.22,1,0.36,1)_0.12s_both]">
             {sunnah}
           </div>

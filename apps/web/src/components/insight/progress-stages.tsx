@@ -9,8 +9,8 @@ export type StageId = (typeof STAGES)[number];
 export type StageState = 'done' | 'current' | 'pending';
 
 export interface ProgressStagesProps {
-  /** The stage the server reports as running, or `done` once the insight is ready. */
-  current: StageId | 'done';
+  /** The stage the server reports as running, `queued` before the first one starts, or `done` once the insight is ready. */
+  current: StageId | 'queued' | 'done';
   /** The request is taking longer than usual: say so calmly (tajriba §8). */
   slow?: boolean;
   /** Leaves the wait; the late answer must then be ignored by the caller. */
@@ -18,7 +18,7 @@ export interface ProgressStagesProps {
   className?: string;
 }
 
-export function stageState(stage: StageId, current: StageId | 'done'): StageState {
+export function stageState(stage: StageId, current: StageId | 'queued' | 'done'): StageState {
   if (current === 'done') {
     return 'done';
   }
@@ -48,7 +48,11 @@ export function ProgressStages({
   className,
 }: ProgressStagesProps) {
   const done = current === 'done';
-  const label = done ? messages.progress.complete : messages.progress.stages[current];
+  const label = done
+    ? messages.progress.complete
+    : current === 'queued'
+      ? messages.progress.queued
+      : messages.progress.stages[current];
   const states = STAGES.map((stage) => stageState(stage, current));
 
   return (

@@ -32,6 +32,8 @@ export interface SunnahEvidenceProps extends EvidenceBase {
   verifyHref: string;
   /** The ruling as an editor recorded it from dorar.net, word for word. */
   ruling?: string;
+  /** Who gave the ruling and where (scholar, book, page), as recorded; shown under it, quieter. */
+  rulingSource?: string;
 }
 
 export type EvidenceCardProps = QuranEvidenceProps | SunnahEvidenceProps;
@@ -130,9 +132,14 @@ export function EvidenceCard(props: EvidenceCardProps) {
           {props.ruling === undefined ? (
             <span />
           ) : (
-            <p className="m-0 text-[0.8125rem] text-fg-muted">
-              {messages.evidence.ruling(props.ruling)}
-            </p>
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <p className="m-0 text-[0.8125rem] text-fg-muted">
+                {messages.evidence.ruling(props.ruling)}
+              </p>
+              {props.rulingSource === undefined ? null : (
+                <p className="m-0 text-[0.75rem] text-fg-muted">{props.rulingSource}</p>
+              )}
+            </div>
           )}
           <ExternalLink href={props.sourceHref}>{messages.evidence.openSource}</ExternalLink>
         </footer>
