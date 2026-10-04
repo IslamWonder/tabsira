@@ -102,6 +102,7 @@ export function insightOut(overrides: Partial<Insight> = {}): Insight {
     anchor: { x: 0.1, y: 0.2, width: 0.2, height: 0.2 },
     relation: 'direct',
     relation_label: 'صلة مباشرة',
+    sound_url: null,
     quran: {
       tag: 'القرآن',
       verse: {

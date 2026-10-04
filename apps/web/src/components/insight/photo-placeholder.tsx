@@ -1,6 +1,7 @@
 import type { Route } from 'next';
 import Link from 'next/link';
 import { LogoMark } from '@/components/brand/logo';
+import { SoundToggle } from '@/components/ui/sound-toggle';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 import { BackArrow } from './insight-frame';
@@ -36,6 +37,9 @@ export function PhotoPlaceholder({
         className
       )}
     >
+      {backHref === undefined ? null : (
+        <SoundToggle className="absolute top-3.5 end-3.5 z-10 tablet:hidden" />
+      )}
       {backHref === undefined ? null : (
         <Link
           href={backHref}

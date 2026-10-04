@@ -4,6 +4,7 @@ import type { ConsentSwitch, Profile } from '@/account/profile';
 import { GENDER_CHOICES, RELIGION_CHOICES } from '@/components/account/profile-options';
 import { ChoiceGroup } from '@/components/ui/choice-group';
 import { MotionSwitch } from '@/components/ui/motion-switch';
+import { SoundSwitch } from '@/components/ui/sound-switch';
 import { SwitchRow } from '@/components/ui/switch-row';
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { messages } from '@/messages';
@@ -73,9 +74,9 @@ function AccountSettings({
 
 /**
  * The settings (tajriba S13): what this device shows (theme, decorative
- * motion) for everyone, then what the account keeps (personalisation, memory,
- * photo storage, and the two private answers) once signed in. Sound has no
- * switch until there is sound (owner, 4 October 2026).
+ * motion, the sound effect) for everyone, then what the account keeps
+ * (personalisation, memory, photo storage, and the two private answers) once
+ * signed in.
  */
 export function SettingsSection({
   editor,
@@ -90,6 +91,7 @@ export function SettingsSection({
       <SubHeading>{S.device}</SubHeading>
       <ThemeSwitcher />
       <MotionSwitch />
+      <SoundSwitch />
       <SubHeading>{S.account}</SubHeading>
       {signedIn ? null : (
         <p className="m-0 text-fg-soft">{messages.pages.me.guest.accountSettings}</p>
