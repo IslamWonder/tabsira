@@ -85,6 +85,7 @@ Before you say a task is done: `make lint && make coverage` pass, and `make smok
 - Lower a coverage threshold, delete a failing test, or mark a test skipped to get green.
 - Add analytics, trackers, CDN assets or any third-party request from the visitor's browser. The documented exceptions: map tiles (decision 9) and Google Analytics only when `GA_MEASUREMENT_ID` is set and only after consent (decision 28).
 - Use gpt-oss models.
+- Add any payment, paid plan, subscription, premium feature or advertising. TABSIRA is free (decision 43).
 - Present a prepared example, a cached result or demo data as live analysis.
 
 ## Code style
