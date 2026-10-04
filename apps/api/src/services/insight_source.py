@@ -39,6 +39,7 @@ class InsightSnapshot:
     """
     One insight as it is at the moment of publishing, with only what a post copies.
 
+    `insight_id` is the insight's public id (decision 37), `owner_id` its owner's account id.
     `verified` says the insight passed the evidence gate when it was made. The photo
     fields are the owner's facts: `photo_ref` is an opaque reference to the stored
     photo, `photo_consent` says the owner agreed to publish it, `scene_sensitive` says
@@ -46,7 +47,7 @@ class InsightSnapshot:
     author's and never scripture.
     """
 
-    insight_id: uuid.UUID
+    insight_id: int
     version: int
     owner_id: uuid.UUID
     verified: bool
@@ -67,7 +68,7 @@ class InsightSource(Protocol):
     """What the social network needs from the insights."""
 
     async def load_for_publishing(
-        self, db: AsyncSession, insight_id: uuid.UUID, owner_id: uuid.UUID
+        self, db: AsyncSession, insight_id: int, owner_id: uuid.UUID
     ) -> InsightSnapshot | None:
         """
         Return the insight, or None when there is none with this id owned by `owner_id`.

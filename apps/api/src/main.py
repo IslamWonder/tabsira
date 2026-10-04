@@ -28,6 +28,7 @@ from src.routers import (
     google_auth,
     health,
     members,
+    posts,
     profile,
     scripture,
     sitemap,
@@ -51,6 +52,10 @@ OPENAPI_TAGS = [
     {"name": "geo", "description": "Place search, reverse lookup and countries from GeoNames."},
     {"name": "scripture", "description": "Quran verses and hadith, read-only, exactly as stored."},
     {"name": "sitemap", "description": "The public pages for the web app's sitemaps."},
+    {
+        "name": "posts",
+        "description": "Posts made from verified insights: drafts, submission, withdrawal.",
+    },
     {
         "name": "members",
         "description": "The public handle and name, public profiles, follows and blocks.",
@@ -144,6 +149,7 @@ def create_app(
     app.include_router(cookie_consent.router)
     app.include_router(sitemap.router)
     app.include_router(members.router)
+    app.include_router(posts.router)
     # The admin area is not mounted at all while its feature flag is off.
     if settings.feature_admin:
         install_admin(app, settings)

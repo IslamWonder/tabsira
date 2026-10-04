@@ -1,0 +1,83 @@
+"""Scripture in a response: read from the store by reference, shown only while it is eligible."""
+
+from __future__ import annotations
+
+from src.models import HadithClassification
+from src.scripture.rulings import RulingInput, find_hadith, record_ruling
+from src.scripture.text import sha256_hex
+from src.services.evidence_view import load_evidence
+from tests.scripture.fixtures import hadith_text, verse_text
+
+
+async def rule(db_session, number, classification):
+    hadith = await find_hadith(db_session, "bukhari", number)
+    await record_ruling(
+        db_session,
+        hadith.id,
+        RulingInput(
+            ruling_text=f"[{classification.value}]",
+            scholar="s",
+            source_book="b",
+            page="1",
+            dorar_url="https://dorar.net/h/x",
+            classification=classification,
+            editor_name="editor",
+        ),
+    )
+
+
+async def test_no_references_cost_no_query(db_session):
+    found = await load_evidence(db_session, [], [])
+
+    assert (found.quran, found.hadith) == ({}, {})
+
+
+async def test_a_verse_is_read_exactly_as_stored_with_its_stored_hash(db_session, scripture):
+    found = await load_evidence(db_session, [(1, 1), (2, 49), (112, 4), (112, 4)], [])
+
+    assert set(found.quran) == {(1, 1), (2, 49), (112, 4)}
+    for (surah, ayah), verse in found.quran.items():
+        assert verse.text == verse_text(surah, ayah)
+        assert verse.sha256 == sha256_hex(verse.text)
+        assert verse.verified is True
+
+
+async def test_a_reference_the_store_does_not_hold_is_left_out_and_never_replaced(
+    db_session, scripture
+):
+    found = await load_evidence(
+        db_session, [(112, 1), (114, 6), (3, 3)], [("bukhari", "1"), ("tirmidhi", "5")]
+    )
+
+    assert set(found.quran) == {(112, 1)}
+    assert set(found.hadith) == {("bukhari", "1")}
+
+
+async def test_a_hadith_is_read_as_stored_and_carries_its_ruling_and_a_verification_link(
+    db_session, scripture
+):
+    found = await load_evidence(db_session, [], [("bukhari", "1")])
+
+    hadith = found.hadith[("bukhari", "1")]
+    assert hadith.text == hadith_text("bukhari", 1)
+    assert hadith.sha256 == sha256_hex(hadith.text)
+    assert hadith.classification is HadithClassification.SAHIH
+    assert hadith.collection_name
+    assert hadith.verification_url.startswith("https://dorar.net/hadith/search?")
+
+
+async def test_a_hadith_without_a_ruling_or_with_a_weak_one_is_not_shown(db_session, scripture):
+    # bukhari 8 is ضعيف, muslim 1 has no ruling at all.
+    found = await load_evidence(db_session, [], [("bukhari", "8"), ("muslim", "1")])
+
+    assert found.hadith == {}
+
+
+async def test_the_latest_ruling_decides_in_both_directions(db_session, scripture):
+    await rule(db_session, "8", HadithClassification.HASAN)
+    await rule(db_session, "1", HadithClassification.DISPUTED)
+
+    found = await load_evidence(db_session, [], [("bukhari", "1"), ("bukhari", "8")])
+
+    assert set(found.hadith) == {("bukhari", "8")}
+    assert found.hadith[("bukhari", "8")].classification is HadithClassification.HASAN
