@@ -9,6 +9,7 @@ Read first, in this order:
 3. `docs/spec/extension-atlas-camera.md` — the world atlas and the camera discovery.
 4. `docs/spec/masar.md` (learning path) and `docs/spec/tajriba.md` (UX rules, Laws of UX) inside their own scope.
 5. `docs/plans/README.md` — the features and their tasks; take a task the way it says.
+6. `docs/SETUP.md` — how to set up a machine with the data already imported elsewhere, without importing anything twice.
 
 ## Project
 
@@ -57,6 +58,7 @@ Before you say a task is done: `make lint && make coverage` pass, and `make smok
 - Work on `main`. Commit locally; **never push** — the owners push. Never force, never rewrite history, never skip hooks (`--no-verify` is forbidden).
 - Run `make format` before committing; the pre-commit hook refuses unformatted staged files.
 - Never commit secrets, `.env` files, user photos, corpora larger than 5 MB, or generated reports.
+- Artifacts you produce that are not source code (board exports, reports, review notes, data exports, archives, screenshots when asked) go beside the checkout in `../tabsira-artifact/`, on every machine and platform; data archives go in `../tabsira-data/`. Neither is ever committed.
 
 ## Boundaries
 
