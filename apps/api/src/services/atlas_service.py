@@ -226,7 +226,8 @@ async def place(
         setattr(entry, column, value)
     entry.status = MapEntryStatus.DRAFT
     entry.status_reason = None
-    entry.published_at = None
+    # `published_at` is kept: it records that the address was once public, so that a later
+    # withdrawal leaves the tombstone (410) a once-shared address needs; publishing sets it anew.
     entry.withdrawn_at = None
     await db.flush()
     point = await db.get(MapCapturePoint, entry.id)
@@ -328,7 +329,8 @@ async def withdraw(db: AsyncSession, user: User, insight_id: int) -> None:
     if point is not None:
         await db.delete(point)
     if entry.published_at is None:
-        # Never public: no address to keep, so no tombstone that would say it existed.
+        # Never public (re-placing keeps the time): no address to keep, so no tombstone that
+        # would say it existed.
         await db.delete(entry)
         await db.flush()
         return

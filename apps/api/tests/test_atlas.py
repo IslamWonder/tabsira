@@ -258,6 +258,14 @@ async def test_publishing_and_withdrawing_follow_the_states(
     moved = await _place(author, insight_id, latitude=36.80, longitude=10.18)
     assert moved.json()["status"] == "draft" and moved.json()["id"] == new_id
     assert (await author.http.get(f"/atlas/entries/{new_id}")).status_code == 404
+    # The address was shared once: withdrawing the re-placed draft still leaves the tombstone.
+    assert (await author.http.delete(f"/insights/{insight_id}/map")).status_code == 204
+    gone_again = await author.http.get(f"/atlas/entries/{new_id}")
+    assert (gone_again.status_code, gone_again.json()["error"]) == (410, "GONE")
+    tombstone = await db_session.get(MapEntry, int(new_id))
+    assert tombstone is not None and tombstone.status.value == "withdrawn"
+    assert (tombstone.public_lat, tombstone.place_label) == (None, None)
+    assert await db_session.get(MapCapturePoint, int(new_id)) is None
 
 
 async def test_a_draft_withdrawn_before_it_was_public_leaves_nothing_behind(
