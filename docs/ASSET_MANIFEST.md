@@ -5,6 +5,7 @@ Required by v2 §3 and decisions 6, 16 and 17. One row per asset: status, where 
 - Audit date: 4 October 2026. Nothing listed here was modified.
 - Import: the scripture store was built from these sources on 4 October 2026; §9 records what was imported, and docs/SOURCES-AND-LICENSES.md the licences.
 - `data/cache/` is a download cache for importers and audits, ignored by git (`.gitignore`: `data/cache/`).
+- Installations do not rebuild the store from these sources: they import the `corpus` schema from the verified archive in the owners' bucket (docs/CORPUS.md, decision 57). The sources below are what the archive was built from, and `make data` still rebuilds from them when `CORPUS_ARCHIVE_URL` is empty.
 - Status: `available` (present and parsed), `missing` (not obtainable from the named source), `invalid` (present but unusable as is).
 
 ## 1. Summary
