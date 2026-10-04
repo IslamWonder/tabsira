@@ -13,7 +13,7 @@ export const metadata = legalMetadata(SEO);
 
 export default function SupportPage() {
   return (
-    <div className="mx-auto w-full max-w-[46rem] px-4 pt-[max(28px,env(safe-area-inset-top))] pb-nav tablet:px-6 tablet:pb-8">
+    <div className="mx-auto w-full max-w-[46rem] px-4 pt-[max(28px,env(safe-area-inset-top))] pb-8 tablet:px-6">
       <JsonLd data={webPageJsonLd(SEO)} />
       <JsonLd data={breadcrumbJsonLd([{ name: SEO.title, path: SEO.path }])} />
       <GlassPanel

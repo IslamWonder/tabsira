@@ -68,7 +68,7 @@ function Invitation() {
  */
 export function PublicInsightPage({ insight }: { insight: PublicInsight }) {
   return (
-    <div className="mx-auto flex w-full max-w-[46rem] flex-col gap-6 px-4 pt-[max(28px,env(safe-area-inset-top))] pb-nav tablet:px-6 tablet:pb-10">
+    <div className="mx-auto flex w-full max-w-[46rem] flex-col gap-6 px-4 pt-[max(28px,env(safe-area-inset-top))] pb-8 tablet:px-6 tablet:pb-10">
       <article className="motion-safe:animate-fade-in flex flex-col gap-6">
         <EngineLabel engine={insight.engine} label={insight.label} />
         <header className="flex flex-col gap-3">

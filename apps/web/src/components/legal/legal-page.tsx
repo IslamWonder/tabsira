@@ -43,7 +43,7 @@ interface LegalPageProps {
 export function LegalPage({ document, seo }: LegalPageProps) {
   return (
     <SettingsLayout
-      className="pt-[max(28px,env(safe-area-inset-top))] pb-nav tablet:pb-8"
+      className="pt-[max(28px,env(safe-area-inset-top))] pb-8"
       nav={<TableOfContents document={document} />}
     >
       <JsonLd data={webPageJsonLd(seo, document.version)} />
