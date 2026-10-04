@@ -19,10 +19,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.admin_audit import AdminAuditLog, AuditAction
 
 USER_AGENT_MAX = 256
+# The columns' own lengths. A request can name any view or record in its address, so what
+# is longer is cut here instead of failing the insert, which would turn a 404 into a 500.
+MODEL_MAX = 64
+RECORD_ID_MAX = 256
 # A bulk action lists the records it touched, up to this many; the count is always exact.
 MAX_LISTED_IDS = 50
 _NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
-_REASON = re.compile(r"^[a-z_]{1,64}$")
+_REASON = re.compile(r"^[a-z0-9_]{1,64}$")
 
 
 def details_of(
@@ -49,7 +53,7 @@ def details_of(
             message = "an audit reason must be a lower-case code"
             raise ValueError(message)
         details["reason"] = reason
-    listed = [str(record_id) for record_id in ids]
+    listed = [str(record_id)[:RECORD_ID_MAX] for record_id in ids]
     if listed:
         details["count"] = len(listed)
         details["ids"] = listed[:MAX_LISTED_IDS]
@@ -78,8 +82,8 @@ async def record(
     row = AdminAuditLog(
         action=action,
         admin_user_id=admin_user_id,
-        model=model,
-        record_id=record_id,
+        model=(model or None) and model[:MODEL_MAX],
+        record_id=(record_id or None) and record_id[:RECORD_ID_MAX],
         details=details_of(fields=fields, reason=reason, ids=ids),
         ip_hash=ip_hash,
         user_agent=(user_agent or None) and user_agent[:USER_AGENT_MAX],

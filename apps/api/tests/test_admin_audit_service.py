@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from src.models import AdminAuditLog, AuditAction
 from src.services import admin_audit_service
@@ -89,3 +89,30 @@ async def test_no_agent_is_stored_as_none(db_session):
     row = await record(db_session, action=AuditAction.SIGN_OUT, user_agent="")
 
     assert row.user_agent is None
+
+
+async def test_a_view_or_record_longer_than_its_column_is_cut_not_refused(db_session):
+    row = await record(
+        db_session,
+        action=AuditAction.VIEW,
+        model="m" * 300,
+        record_id="r" * 1000,
+        ids=["i" * 1000],
+    )
+
+    assert row.model == "m" * admin_audit_service.MODEL_MAX
+    assert row.record_id == "r" * admin_audit_service.RECORD_ID_MAX
+    assert row.details == {"count": 1, "ids": ["i" * admin_audit_service.RECORD_ID_MAX]}
+
+
+async def test_a_row_with_nothing_to_say_stores_sql_null_not_a_json_null(db_session):
+    await record(db_session, action=AuditAction.LIST, model="user")
+
+    unset = await db_session.scalar(
+        text("SELECT count(*) FROM app.admin_audit_log WHERE details IS NULL")
+    )
+    assert unset == 1
+
+
+def test_a_reason_may_hold_digits():
+    assert details_of(reason="step_2") == {"reason": "step_2"}

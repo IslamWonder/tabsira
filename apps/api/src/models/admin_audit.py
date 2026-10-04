@@ -87,7 +87,7 @@ class AdminAuditLog(Base):
     model: Mapped[str | None] = mapped_column(String(64))
     record_id: Mapped[str | None] = mapped_column(String(256))
     # Field names, a reason code, a count: see `admin_audit_service.details_of`.
-    details: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    details: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
     # A keyed hash of the address, never the address.
     ip_hash: Mapped[str | None] = mapped_column(String(64))
     user_agent: Mapped[str | None] = mapped_column(String(256))
