@@ -114,3 +114,128 @@ Most frequent findings per cell, with their count over all runs:
 ## Spend
 
 Total model spend of this run: **$1.3758** (prices of `AI_*__PRICES`; moderation is free).
+
+<!-- section:retrieval -->
+
+# Benchmark: retrieval
+
+Measured on 04 October 2026 by `uv run python -m src.cli.retrieval_benchmark` (`apps/api/src/evaluation/retrieval_benchmark.py`). Raw ranks: `apps/api/tests/evaluation/results/retrieval-2026-10-04.json` (not committed). This section is rewritten by that command; the scene benchmark keeps it.
+
+## Method
+
+- **Gold set**: `apps/api/tests/evaluation/retrieval/gold.json`, 109 Arabic concept queries written the way the planner writes them (69 Quran, 40 hadith), each with the stored texts that answer it: the anchors of the learning path, the texts the gold scenes call for, and well-known hadiths whose stored numbers were found by searching their distinctive words. No query quotes scripture. Hadith queries are judged against bukhari, muslim only, so every embedding model sees the same 14,940 hadiths and the whole Quran.
+- **Documents**: the folded search copy of each text (a hadith without its chain) followed by its model-written concepts (`src/retrieval/documents.py`); never displayed.
+- **Methods**: vector search per embedding cell (exact scan), PostgreSQL full text (`fts`, `simple` configuration, stems matched behind every clitic) and pg_trgm word similarity (`trigram`), the concept index, their RRF fusions (k = 60), and the rerankers on the 30 fused candidates of `hybrid+concepts:openai-3-large`. `+metadata` is the earlier build's recipe: 0.6 x (0.7 x reranker + 0.3 x share of the query's stems in the text's concepts) + 0.4 x fused score.
+- **Metrics**: recall@k = share of queries with an answer in the first k; MRR@10 = mean of 1/rank of the first answer, 0 past ten. One acceptable answer per query while the corpus may hold others as good: these numbers are lower bounds, fit for comparing methods.
+
+| Cell             | Provider | Model                    | Dimensions |
+| ---------------- | -------- | ------------------------ | ---------- |
+| `openai-3-small` | openai   | `text-embedding-3-small` | 1536       |
+| `openai-3-large` | openai   | `text-embedding-3-large` | 1536       |
+| `ovh-bge-m3`     | ovh      | `bge-m3`                 | 1024       |
+
+## Results (all queries)
+
+| Method                                        | Corpus | R@1 | R@3 | R@10 | R@30 | MRR@10 |
+| --------------------------------------------- | ------ | --- | --- | ---- | ---- | ------ |
+| `rerank:llm-gpt-5.4-nano-2026-03-17`          | all    | 68% | 84% | 92%  | 94%  | 0.770  |
+| `rerank:llm-gpt-5.4-nano-2026-03-17+metadata` | all    | 58% | 82% | 90%  | 94%  | 0.703  |
+| `vector:openai-3-large`                       | all    | 62% | 76% | 83%  | 89%  | 0.696  |
+| `rerank:bge-reranker-v2-m3`                   | all    | 55% | 80% | 86%  | 94%  | 0.667  |
+| `rerank:bge-reranker-v2-m3+metadata`          | all    | 51% | 74% | 85%  | 94%  | 0.638  |
+| `vector:ovh-bge-m3`                           | all    | 53% | 65% | 74%  | 79%  | 0.601  |
+| `rerank:amberoad-msmarco+metadata`            | all    | 44% | 69% | 83%  | 94%  | 0.585  |
+| `rerank:amberoad-msmarco`                     | all    | 46% | 68% | 83%  | 94%  | 0.583  |
+| `hybrid+concepts:openai-3-large`              | all    | 41% | 67% | 85%  | 94%  | 0.564  |
+| `hybrid+concepts:ovh-bge-m3`                  | all    | 37% | 64% | 77%  | 85%  | 0.513  |
+| `hybrid:openai-3-large`                       | all    | 34% | 61% | 86%  | 91%  | 0.511  |
+| `hybrid+concepts:openai-3-small`              | all    | 35% | 54% | 73%  | 84%  | 0.465  |
+| `hybrid:ovh-bge-m3`                           | all    | 28% | 58% | 76%  | 81%  | 0.436  |
+| `concepts`                                    | all    | 32% | 52% | 64%  | 78%  | 0.429  |
+| `vector:openai-3-small`                       | all    | 32% | 43% | 60%  | 74%  | 0.399  |
+| `hybrid:openai-3-small`                       | all    | 24% | 44% | 63%  | 73%  | 0.360  |
+| `fts`                                         | all    | 17% | 27% | 31%  | 39%  | 0.219  |
+| `trigram`                                     | all    | 11% | 14% | 20%  | 32%  | 0.133  |
+
+## Results by corpus
+
+| Method                                        | Corpus | R@1 | R@3 | R@10 | R@30 | MRR@10 |
+| --------------------------------------------- | ------ | --- | --- | ---- | ---- | ------ |
+| `rerank:llm-gpt-5.4-nano-2026-03-17`          | hadith | 62% | 85% | 90%  | 90%  | 0.738  |
+| `rerank:llm-gpt-5.4-nano-2026-03-17+metadata` | hadith | 57% | 88% | 90%  | 90%  | 0.722  |
+| `vector:openai-3-large`                       | hadith | 62% | 80% | 82%  | 85%  | 0.705  |
+| `rerank:bge-reranker-v2-m3+metadata`          | hadith | 55% | 82% | 82%  | 90%  | 0.671  |
+| `rerank:bge-reranker-v2-m3`                   | hadith | 55% | 80% | 85%  | 90%  | 0.662  |
+| `rerank:amberoad-msmarco`                     | hadith | 55% | 80% | 85%  | 90%  | 0.660  |
+| `rerank:amberoad-msmarco+metadata`            | hadith | 48% | 78% | 82%  | 90%  | 0.617  |
+| `hybrid+concepts:openai-3-large`              | hadith | 48% | 70% | 85%  | 90%  | 0.605  |
+| `vector:ovh-bge-m3`                           | hadith | 48% | 60% | 65%  | 70%  | 0.542  |
+| `hybrid+concepts:ovh-bge-m3`                  | hadith | 40% | 68% | 75%  | 82%  | 0.538  |
+| `hybrid:openai-3-large`                       | hadith | 32% | 68% | 85%  | 88%  | 0.532  |
+| `concepts`                                    | hadith | 35% | 55% | 72%  | 80%  | 0.465  |
+| `hybrid:ovh-bge-m3`                           | hadith | 30% | 57% | 70%  | 70%  | 0.446  |
+| `hybrid+concepts:openai-3-small`              | hadith | 25% | 55% | 68%  | 82%  | 0.405  |
+| `hybrid:openai-3-small`                       | hadith | 25% | 45% | 55%  | 68%  | 0.360  |
+| `vector:openai-3-small`                       | hadith | 30% | 40% | 55%  | 68%  | 0.360  |
+| `fts`                                         | hadith | 22% | 30% | 38%  | 38%  | 0.272  |
+| `trigram`                                     | hadith | 10% | 10% | 18%  | 28%  | 0.114  |
+| `rerank:llm-gpt-5.4-nano-2026-03-17`          | quran  | 71% | 84% | 93%  | 96%  | 0.789  |
+| `rerank:llm-gpt-5.4-nano-2026-03-17+metadata` | quran  | 58% | 78% | 90%  | 96%  | 0.692  |
+| `vector:openai-3-large`                       | quran  | 62% | 74% | 83%  | 91%  | 0.691  |
+| `rerank:bge-reranker-v2-m3`                   | quran  | 55% | 80% | 87%  | 96%  | 0.670  |
+| `vector:ovh-bge-m3`                           | quran  | 57% | 68% | 80%  | 84%  | 0.635  |
+| `rerank:bge-reranker-v2-m3+metadata`          | quran  | 49% | 70% | 87%  | 96%  | 0.619  |
+| `rerank:amberoad-msmarco+metadata`            | quran  | 42% | 64% | 84%  | 96%  | 0.567  |
+| `hybrid+concepts:openai-3-large`              | quran  | 38% | 65% | 86%  | 96%  | 0.540  |
+| `rerank:amberoad-msmarco`                     | quran  | 41% | 61% | 83%  | 96%  | 0.538  |
+| `hybrid+concepts:openai-3-small`              | quran  | 41% | 54% | 77%  | 86%  | 0.500  |
+| `hybrid:openai-3-large`                       | quran  | 35% | 58% | 87%  | 93%  | 0.499  |
+| `hybrid+concepts:ovh-bge-m3`                  | quran  | 35% | 62% | 78%  | 87%  | 0.499  |
+| `hybrid:ovh-bge-m3`                           | quran  | 26% | 58% | 80%  | 87%  | 0.430  |
+| `vector:openai-3-small`                       | quran  | 33% | 45% | 62%  | 78%  | 0.422  |
+| `concepts`                                    | quran  | 30% | 51% | 59%  | 77%  | 0.408  |
+| `hybrid:openai-3-small`                       | quran  | 23% | 43% | 68%  | 77%  | 0.360  |
+| `fts`                                         | quran  | 14% | 25% | 28%  | 41%  | 0.189  |
+| `trigram`                                     | quran  | 12% | 16% | 22%  | 35%  | 0.144  |
+
+## Latency (this machine, CPU)
+
+| Step                                   | Samples | p50      | p95      |
+| -------------------------------------- | ------- | -------- | -------- |
+| embed one query: openai-3-small        | 5       | 254 ms   | 1137 ms  |
+| embed one query: ovh-bge-m3            | 5       | 163 ms   | 192 ms   |
+| search: trigram                        | 109     | 707 ms   | 11042 ms |
+| search: vector openai-3-small          | 109     | 49 ms    | 89 ms    |
+| search: vector ovh-bge-m3              | 109     | 24 ms    | 274 ms   |
+| rerank 30: bge-reranker-v2-m3          | 109     | 19409 ms | 34235 ms |
+| rerank 30: llm-gpt-5.4-nano-2026-03-17 | 109     | 3046 ms  | 3670 ms  |
+| embed one query: openai-3-large        | 5       | 273 ms   | 807 ms   |
+| search: fts                            | 109     | 97 ms    | 379 ms   |
+| search: concepts                       | 109     | 5 ms     | 10 ms    |
+| search: vector openai-3-large          | 109     | 6 ms     | 12 ms    |
+| rerank 30: amberoad-msmarco            | 109     | 5285 ms  | 6771 ms  |
+
+## Choices
+
+| Setting            | Choice                          | Measured                    |
+| ------------------ | ------------------------------- | --------------------------- |
+| embedding (openai) | `text-embedding-3-large` @ 1536 | MRR@10 0.696, recall@10 83% |
+| embedding (ovh)    | `bge-m3` @ 1024                 | MRR@10 0.601, recall@10 74% |
+| lexical search     | `fts`                           | MRR@10 0.219                |
+| reranker           | `bge-reranker-v2-m3`            | MRR@10 0.667, recall@3 80%  |
+
+Spend of the runs merged here: **$0.1484** (query embeddings and the LLM rerank baseline; the corpus vectors were paid by `src.cli.embed_corpus`, see `app.embedding_runs`).
+<!-- /section:retrieval -->
+
+<!-- section:retrieval-notes -->
+
+## Retrieval: what the numbers decided
+
+Written by hand from the retrieval section above (4 October 2026); the commands keep it.
+
+- **Embedding.** `text-embedding-3-large` at 1,536 dimensions is the clear best (MRR@10 0.696 against 0.601 for OVH's `bge-m3` and 0.399 for `text-embedding-3-small`, which is weak on Arabic concept queries). It is the OpenAI default; `bge-m3` is the OVH default, so switching `AI_PROVIDER` keeps semantic search. 1,536 rather than 3,072 dimensions so pgvector can index it with HNSW (2,000 at most). Embedding the whole store cost $2.03 (`docs/ASSET_MANIFEST.md` §11).
+- **Lexical search.** PostgreSQL full text beats pg_trgm on quality (MRR@10 0.219 against 0.133) and on time (p95 0.45 s against 11 s over the hadiths), so the search copies carry a `tsvector` with a GIN index and trigram search is not used by the engine.
+- **Fusion.** Vector, full text and the model-written concepts fused by RRF reach recall@30 94 %, the most of any method, so the reranker and the verifier see more right answers; the fused order alone ranks worse than the vector alone (MRR 0.564 against 0.696), which is what the reranker is for.
+- **Reranker.** Of the two cross-encoders, `BAAI/bge-reranker-v2-m3` wins clearly over the reference `amberoad/bert-multilingual-passage-reranking-msmarco` (MRR 0.667 against 0.583, recall@3 80 % against 68 %), and the reference file's metadata blend makes both worse, so it is not used. `bge-reranker-v2-m3` is the model services/vision serves. On this CPU it reads 30 passages in 19 s at p50 (34 s at p95), far over the 5 to 12 s budget of a scan, so the engine sends it only the eight best fused candidates of each search, with a 15 s timeout and the fused order kept when it does not answer; on a host without a GPU, `RERANKER_URL=` empty switches it off. The LLM baseline (`gpt-5.4-nano`) ranks best of all (MRR 0.770) in 3 s, but it is a second model call per search where the evidence verifier already judges the first four texts with a model; it stays a measured alternative, not the default.
+
+<!-- /section:retrieval-notes -->
