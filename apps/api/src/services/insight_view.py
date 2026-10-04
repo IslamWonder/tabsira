@@ -132,8 +132,9 @@ def step_out(
     """
     Return the small step, or None when it rests on a text that is not shown.
 
-    It is «من السنة» only when it rests on a hadith shown with it (v2 §14);
-    anything else is «اقتراح عملي».
+    It is «من السنة» only when it is a practice the text grounds
+    (`text_grounded`) and rests on a hadith shown with it (v2 §14, masar
+    §11.3); anything else is «اقتراح عملي».
     """
     if not step:
         return None
@@ -141,7 +142,9 @@ def step_out(
     grounded = [str(ref) for ref in step.get("grounded_in", [])]
     if _rests_on_hidden(grounded, shown):
         return None
-    from_sunnah = any(ref.startswith("hadith:") for ref in grounded)
+    from_sunnah = step["kind"] == "text_grounded" and any(
+        ref.startswith("hadith:") for ref in grounded
+    )
     return StepOut(
         text=str(step["text"]),
         kind=step["kind"],

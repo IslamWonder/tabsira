@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from src.routers.scripture import read_verse
+import pytest
+
+from src.routers.scripture import read_hadith, read_verse
 from src.services.insight_view import explanation_out, step_out
 from tests.scans.builders import insight_row, scan_row
 from tests.scans.conftest import as_guest, rule
@@ -32,6 +34,26 @@ async def test_a_step_is_from_the_sunnah_only_with_a_hadith_shown(store):
     assert step is not None
     assert step.label == "اقتراح عملي"
     assert step_out(from_verse, None, None) is None
+
+
+@pytest.mark.parametrize(
+    ("kind", "label"),
+    [
+        ("text_grounded", "من السنة"),
+        ("ethical_application", "اقتراح عملي"),
+        ("reflection", "اقتراح عملي"),
+    ],
+)
+async def test_only_a_practice_the_shown_hadith_grounds_is_from_the_sunnah(store, kind, label):
+    async with store() as db:
+        await rule(db, "bukhari", "1032")
+        hadith = await read_hadith(db, "bukhari", "1032")
+    step = {"text": "ادع.", "kind": kind, "grounded_in": ["hadith:bukhari:1032"]}
+
+    shown = step_out(step, None, hadith)
+
+    assert shown is not None
+    assert shown.label == label
 
 
 async def test_a_hidden_hadith_hides_its_section_on_an_insight(browser, store, flow_settings):
