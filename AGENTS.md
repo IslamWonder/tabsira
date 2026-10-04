@@ -8,6 +8,7 @@ Read first, in this order:
 2. `docs/spec/master-prompt-v2.md` — what to build.
 3. `docs/spec/extension-atlas-camera.md` — the world atlas and the camera discovery.
 4. `docs/spec/masar.md` (learning path) and `docs/spec/tajriba.md` (UX rules, Laws of UX) inside their own scope.
+5. `docs/plans/README.md` — the features and their tasks; take a task the way it says.
 
 ## Project
 

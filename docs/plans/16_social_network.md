@@ -1,6 +1,6 @@
 # 16 · Social network «تبصرة تواصل»
 
-**Phase:** 2 · **Priority:** Medium · **Status:** ⏸ · **Updated:** 2026-10-04 14:36 (Tunis)
+**Phase:** 2 · **Priority:** Medium · **Status:** ⏸ · **Updated:** 2026-10-04 14:51 (Tunis)
 
 Posts made from verified insights, follows, likes, comments, reports and moderation.
 
@@ -14,3 +14,13 @@ Posts made from verified insights, follows, likes, comments, reports and moderat
 **How we check it**
 
 - Re-review before it is switched on.
+
+## Tasks
+
+### 16.1 Social screens
+
+- **Status:** ⏸ phase 2
+- **Goal:** Feeds, posts, profiles, comments, reports.
+- **Depends on:** Phase 2.
+- **Touches:** apps/web community routes.
+- **Done when:** Privacy re-review first.

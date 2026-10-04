@@ -2,7 +2,7 @@
 
 One short file per feature: what it is, where it stands, what is waiting on the owners, and how it is checked. Phase 1 is this release (decision 40); phase 2 follows.
 
-**Updated:** 2026-10-04 14:36 (Tunis) · ✅ done · 🔄 in progress · ⬜ not started · ⏸ phase 2
+**Updated:** 2026-10-04 14:51 (Tunis) · ✅ done · 🔄 in progress · ⬜ not started · ⏸ phase 2
 
 | #   | Feature                                                           | Phase | Priority | Status |
 | --- | ----------------------------------------------------------------- | ----- | -------- | ------ |
@@ -25,6 +25,14 @@ One short file per feature: what it is, where it stands, what is waiting on the 
 | 17  | [World atlas «أطلس بصائر العالم»](17_atlas.md)                    | 2     | Medium   | ⏸      |
 | 18  | [Camera discovery «اكتشف البصائر حولك»](18_camera_discovery.md)   | 2     | Low      | ⏸      |
 
-## Keeping it current
+## Taking a task
 
-Whoever merges a change updates the status of its step in the feature's file and the date on its first line, in the same commit. Details live in the code and in `docs/`; these files stay short enough to send as they are.
+Each feature file ends with numbered tasks. A task is one unit of work for one person or agent on one machine, sized to merge on its own.
+
+1. Pick a task marked ⬜ open whose **Depends on** has merged. Read `AGENTS.md`, `docs/spec/DECISIONS.md` and the feature file first.
+2. Claim it: set its status to `🔄 <name>, <machine>`, commit that one line on `main` and push it before you start, so nobody else takes it.
+3. Work on a branch named `task/<id>-<short-name>`, touching only what **Touches** lists. If you need another area, say so in the task first.
+4. Before merging: rebase onto the latest `main`, re-chain any migration onto the current head, run the gate once (`make lint && make coverage`, under `flock /tmp/tabsira-gate.lock` when several agents share a machine), and get the review the task names.
+5. Merge, set the task to ✅ with the date, and update the steps table above it in the same commit.
+
+Two tasks that touch the same files never run at the same time. Waiting on the owners: ask in the task, don't guess.

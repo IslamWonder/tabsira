@@ -1,6 +1,6 @@
 # 12 · Admin area
 
-**Phase:** 1 · **Priority:** Medium · **Status:** ✅ · **Updated:** 2026-10-04 14:36 (Tunis)
+**Phase:** 1 · **Priority:** Medium · **Status:** ✅ · **Updated:** 2026-10-04 14:51 (Tunis)
 
 A private area for the team at admin.tabsira.me, reachable only over the VPN.
 
@@ -18,3 +18,13 @@ A private area for the team at admin.tabsira.me, reachable only over the VPN.
 **How we check it**
 
 - Security review passed.
+
+## Tasks
+
+### 12.1 Rulings and moderation queues
+
+- **Status:** ⏸ phase 2
+- **Goal:** Admin screens for editors' rulings and reported posts.
+- **Depends on:** —
+- **Touches:** apps/api admin views.
+- **Done when:** Security review.

@@ -1,6 +1,6 @@
 # 02 · Legal pages, consent and support
 
-**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 14:36 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 14:51 (Tunis)
 
 Terms and privacy pages, the full-screen cookie choice, acceptance of the terms at sign-up, and a support form that e-mails `support@tabsira.me`.
 
@@ -22,3 +22,21 @@ Terms and privacy pages, the full-screen cookie choice, acceptance of the terms 
 
 - Every promise in the privacy text matches the code (checked in review).
 - Security review of acceptance and support: findings fixed.
+
+## Tasks
+
+### 02.1 Legal acceptance and support API: rebase and merge
+
+- **Status:** 🔄 main machine
+- **Goal:** Server rules for accepting terms and privacy, the re-ask gate and the support form, after their security review.
+- **Depends on:** —
+- **Touches:** apps/api auth, legal, support, consents; one migration.
+- **Done when:** Gate green; privacy review findings closed.
+
+### 02.2 Consent proof retention job
+
+- **Status:** ⏸ waiting on owners
+- **Goal:** Delete proof of consent after the period the owners choose, in one scheduled job.
+- **Depends on:** The owners' retention period.
+- **Touches:** apps/api one CLI command, deploy/systemd one timer, docs/PRIVACY.md and the privacy page text.
+- **Done when:** Rows older than the period are gone; the privacy page states the period.

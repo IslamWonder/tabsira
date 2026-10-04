@@ -1,6 +1,6 @@
 # 11 · Analytics and search engines
 
-**Phase:** 1 · **Priority:** Medium · **Status:** 🔄 · **Updated:** 2026-10-04 14:39 (Tunis)
+**Phase:** 1 · **Priority:** Medium · **Status:** 🔄 · **Updated:** 2026-10-04 14:51 (Tunis)
 
 Google Analytics and heatmaps only after consent; pages that search engines and AI crawlers read well.
 
@@ -20,3 +20,21 @@ Google Analytics and heatmaps only after consent; pages that search engines and 
 **How we check it**
 
 - No request to Google or Clarity before consent (tested).
+
+## Tasks
+
+### 11.1 Serve /sitemap.xml from the web app
+
+- **Status:** ⬜ open
+- **Goal:** The web app serves the sitemap index and sections from the API; the static list drops pages that do not exist (/about, /cookies) or they get pages.
+- **Depends on:** —
+- **Touches:** apps/web sitemap route, apps/api sitemap static list.
+- **Done when:** robots.txt and the sitemap agree; check:site passes.
+
+### 11.2 Accessibility check in CI
+
+- **Status:** ⬜ open
+- **Goal:** Run check:a11y in Jenkins with Chromium and sample API answers.
+- **Depends on:** —
+- **Touches:** Jenkinsfile, apps/web scripts.
+- **Done when:** The Jenkins stage fails on any violation.
