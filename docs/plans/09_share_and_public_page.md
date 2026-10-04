@@ -1,11 +1,12 @@
 # 09 · Share card and public insight page
 
-**Phase:** 1 · **Priority:** High · **Status:** ⬜ · **Updated:** 2026-10-04 14:51 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** ⬜ · **Updated:** 2026-10-04 17:51 (Tunis)
 
 A shareable image of an insight with real Arabic fonts, and a public page for it, with no private data.
 
 | Step                                     | Status | Notes                           |
 | ---------------------------------------- | ------ | ------------------------------- |
+| Publish an insight (server)              | ✅     | Done 2026-10-04 17:51.          |
 | Share card image                         | ⬜     | Next, after the insight screen. |
 | Public insight page with search metadata | ⬜     |                                 |
 
@@ -17,7 +18,7 @@ A shareable image of an insight with real Arabic fonts, and a public page for it
 
 ### 09.1 Publish an insight publicly (server)
 
-- **Status:** ⬜ open
+- **Status:** ✅ done 2026-10-04 17:51
 - **Goal:** The owner publishes or withdraws one insight; a public read route returns only published insights, by public id, with no private data and photos only under the consent rules.
 - **Depends on:** 04.1
 - **Touches:** apps/api insights (one route group, one migration), docs/PRIVACY.md.
