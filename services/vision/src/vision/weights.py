@@ -4,7 +4,9 @@ Where the weights live, how Ultralytics is told, and how they are fetched.
 A checkpoint (`yoloe-11s-seg.pt`) is not enough on its own: an open vocabulary
 needs a text encoder, a second file of 340 to 600 MB that Ultralytics would
 download on the first request. Here both are fetched ahead of time by
-`scripts/fetch-weights.sh`, and the service never downloads anything.
+`scripts/fetch-weights.sh`, with the reranker's model from the Hugging Face
+hub (its weights, configuration and tokenizer files only), and the service
+never downloads anything.
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from vision.config import ModelFamily, Settings, family_of
+from vision.reranker import model_directory
 
 logger = logging.getLogger(__name__)
 
@@ -79,11 +82,38 @@ def fetch_weights(settings: Settings) -> list[Path]:
     return [checkpoint, *encoder]
 
 
+# A reranker's weights, safetensors preferred; and the files its tokenizer may need.
+RERANKER_WEIGHT_FILES = ("model.safetensors", "pytorch_model.bin")
+RERANKER_SIDE_FILES = (
+    "config.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "special_tokens_map.json",
+    "sentencepiece.bpe.model",
+    "vocab.txt",
+)
+
+
+def fetch_reranker(settings: Settings) -> list[Path]:
+    """Download the reranker's weights and tokenizer into weights/rerankers/; skip what exists."""
+    hub: Any = importlib.import_module("huggingface_hub")
+    repo = settings.vision_reranker_model
+    files = set(hub.list_repo_files(repo))
+    weights = [name for name in RERANKER_WEIGHT_FILES if name in files][:1]
+    if not weights:
+        message = f"{repo} has neither model.safetensors nor pytorch_model.bin"
+        raise FileNotFoundError(message)
+    wanted = [name for name in RERANKER_SIDE_FILES if name in files] + weights
+    directory = model_directory(settings.vision_weights_dir, repo)
+    hub.snapshot_download(repo, local_dir=str(directory), allow_patterns=wanted)
+    return [directory / name for name in wanted]
+
+
 def main() -> None:
     """Command line entry point of `scripts/fetch-weights.sh`."""
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     settings = Settings()
-    for path in fetch_weights(settings):
+    for path in [*fetch_weights(settings), *fetch_reranker(settings)]:
         logger.info("%s (%.1f MB)", path, path.stat().st_size / 1_000_000)
 
 

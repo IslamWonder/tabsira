@@ -21,9 +21,16 @@ REPO_ROOT = SERVICE_DIR.parents[1]
 # Hard limits that are not worth a setting.
 MAX_DETECTIONS_LIMIT = 300
 MAX_VOCABULARY = 500
+# One rerank request: the API sends 20 to 30 candidates of a few hundred characters.
+MAX_PASSAGES = 64
+MAX_PASSAGE_CHARS = 4000
+MAX_QUERY_CHARS = 1000
 
 DEFAULT_MODEL = "yoloe-11s-seg.pt"
 ALTERNATIVE_MODEL = "yolov8s-worldv2.pt"
+
+# The cross-encoder chosen by the API's retrieval benchmark (docs/BENCHMARK.md).
+DEFAULT_RERANKER = "BAAI/bge-reranker-v2-m3"
 
 
 class ModelFamily(StrEnum):
@@ -69,6 +76,15 @@ class Settings(BaseSettings):
     # Used when a request does not say.
     detector_conf: Annotated[float, Field(ge=0, le=1)] = 0.2
     detector_max_detections: Annotated[int, Field(ge=1, le=MAX_DETECTIONS_LIMIT)] = 20
+
+    # Cross-encoder of POST /rerank: a Hugging Face model id, fetched by scripts/fetch-weights.sh.
+    vision_reranker_model: Annotated[str, Field(pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")] = (
+        DEFAULT_RERANKER
+    )
+    # Tokens of one query and passage pair; a longer passage is cut.
+    vision_reranker_max_length: Annotated[int, Field(ge=32, le=512)] = 256
+    # Load the reranker at startup (it holds about 2 GB of memory) instead of on the first request.
+    vision_reranker_warmup: bool = False
 
     @field_validator("detector_model")
     @classmethod
