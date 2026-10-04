@@ -178,6 +178,19 @@ describe('ShareSheet', () => {
     expect(within(sheet).queryByRole('button', { name: 'اسحب النشر' })).toBeNull();
   });
 
+  it('says that an account under 13 publishes nothing, and stays unpublished', async () => {
+    mockApi({
+      [`PUT /insights/${ID}/publication`]: apiError(409, 'UNDER_13_CANNOT_PUBLISH'),
+    });
+    const sheet = renderSheet();
+    await userEvent.click(within(sheet).getByRole('button', { name: 'انشر وشارك' }));
+    expect(await within(sheet).findByRole('alert')).toHaveTextContent(
+      'لا يُتاح النشر العام لمن أعلن في ملفه أنه دون 13 سنة'
+    );
+    expect(within(sheet).getByRole('button', { name: 'انشر وشارك' })).toBeEnabled();
+    expect(within(sheet).queryByRole('button', { name: 'اسحب النشر' })).toBeNull();
+  });
+
   it('says what to do when the reader is a guest, or nothing answers', async () => {
     mockApi({ [`PUT /insights/${ID}/publication`]: apiError(401, 'UNAUTHORIZED') });
     const sheet = renderSheet();

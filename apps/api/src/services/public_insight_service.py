@@ -2,8 +2,9 @@
 Publishing an insight, withdrawing it, and reading a published one as a stranger.
 
 Publishing is the owner's own act and needs a signed-in, verified account (decision 25); a
-guest's insight is never public. Whether it may be public is decided here, whatever the caller
-says: it must come from the real analysis, not be shaped by the profile, carry at least one
+guest's insight is never public, and neither is anything of an account that declared it is
+under 13 (v2 §5: a declared fact, never an inference). Whether it may be public is decided
+here, whatever the caller says: it must come from the real analysis, not be shaped by the profile, carry at least one
 text shown from the store (a verse, or a hadith whose ruling allows it), none of its platform
 text may look like scripture (the check the analysis applies), and its scene must not be
 sensitive. A public insight names no photo, no scan, no place and no exact point, and says
@@ -24,6 +25,7 @@ from src import clock
 from src.errors import AppError, ErrorCode
 from src.messages import messages_for
 from src.models import Insight, Scan
+from src.models.profile import AgeRange, Profile
 from src.models.user import User
 from src.owner import INSIGHT, not_found
 from src.pipeline.engine import RelationType
@@ -58,8 +60,20 @@ def state(insight: Insight) -> PublicationOut:
     )
 
 
+async def _refuse_under_13(db: AsyncSession, insight: Insight) -> None:
+    """Refuse the publication itself, not only the photo, for an account that said it is under 13."""
+    profile = await db.get(Profile, insight.user_id) if insight.user_id is not None else None
+    if profile is not None and profile.age_range is AgeRange.UNDER_13:
+        raise AppError(
+            ErrorCode.UNDER_13_CANNOT_PUBLISH,
+            "This insight cannot be made public: the account declared it is under 13.",
+            status_code=409,
+        )
+
+
 async def _check(db: AsyncSession, insight: Insight) -> None:
     """Refuse an insight that may not be public."""
+    await _refuse_under_13(db, insight)
     if insight.engine != PUBLISHABLE_ENGINE:
         # The same rule as a post's: a simulation or a shared prepared example is no one's insight.
         _refuse("only an insight made by the real analysis can be public")

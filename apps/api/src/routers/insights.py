@@ -163,7 +163,8 @@ async def publish_insight(
 
     Answers 409 INSIGHT_NOT_PUBLISHABLE for a sensitive scene, an insight with no text to
     show from the store, text that looks like scripture, one shaped by the profile, or one that is not from the real
-    analysis. A guest gets 401.
+    analysis; 409 UNDER_13_CANNOT_PUBLISH when the account declared it is under 13 (v2 §5).
+    A guest gets 401.
     """
     _owner, insight = await owned_insight(db, Owner(user_id=user.id), insight_id)
     return await public_insight_service.publish(db, insight)

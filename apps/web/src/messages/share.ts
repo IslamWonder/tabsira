@@ -35,6 +35,9 @@ export const shareMessages = {
     publishCommunity: 'انشر في تواصل',
     publishSeparate:
       'كلٌّ منهما نشر مستقل تعاينه قبل أن يتم. النشر على الخريطة يجعل البصيرة قابلة للاكتشاف على الأطلس وبالكاميرا في موقعها التقريبي، ولا يفعّل النشر في تواصل.',
+    /** The account said in its profile that it is under 13: nothing of its own is published. */
+    notForUnder13:
+      'لا يُتاح النشر العام لمن أعلن في ملفه أنه دون 13 سنة. البصيرة تبقى في عالمك، ويمكنك تعديل نطاق العمر في ملفك إن كان خطأ.',
   },
 
   shareCard: {

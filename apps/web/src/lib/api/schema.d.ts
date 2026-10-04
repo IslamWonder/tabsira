@@ -1390,7 +1390,8 @@ export interface paths {
      *
      *     Answers 409 INSIGHT_NOT_PUBLISHABLE for a sensitive scene, an insight with no text to
      *     show from the store, text that looks like scripture, one shaped by the profile, or one that is not from the real
-     *     analysis. A guest gets 401.
+     *     analysis; 409 UNDER_13_CANNOT_PUBLISH when the account declared it is under 13 (v2 §5).
+     *     A guest gets 401.
      */
     put: operations['publish_insight_insights__insight_id__publication_put'];
     post?: never;
@@ -2479,6 +2480,7 @@ export interface components {
       | 'HANDLE_TAKEN'
       | 'PUBLIC_IDENTITY_REQUIRED'
       | 'INSIGHT_NOT_PUBLISHABLE'
+      | 'UNDER_13_CANNOT_PUBLISH'
       | 'INVALID_CURSOR'
       | 'GONE'
       | 'legal_acceptance_required'

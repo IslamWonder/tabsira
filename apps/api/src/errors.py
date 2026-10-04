@@ -53,6 +53,8 @@ class ErrorCode(StrEnum):
     HANDLE_TAKEN = "HANDLE_TAKEN"
     PUBLIC_IDENTITY_REQUIRED = "PUBLIC_IDENTITY_REQUIRED"
     INSIGHT_NOT_PUBLISHABLE = "INSIGHT_NOT_PUBLISHABLE"
+    # The account declared it is under 13: nothing of its own is made public (v2 §5).
+    UNDER_13_CANNOT_PUBLISH = "UNDER_13_CANNOT_PUBLISH"
     INVALID_CURSOR = "INVALID_CURSOR"
     GONE = "GONE"
     # The two codes below are lower case on purpose: they are the strings the web app matches.

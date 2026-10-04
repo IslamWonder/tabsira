@@ -236,6 +236,23 @@ async def test_an_insight_that_may_not_be_public_is_refused(browser, store, valu
         assert (await db.get(Insight, insight_id)).published_at is None
 
 
+async def test_an_account_that_said_it_is_under_13_publishes_nothing(browser, other, store):
+    """v2 §5: the declared age range closes public publication itself, not only the photo."""
+    user = await verified_account(store, browser)
+    insight_id = await keep(store, user.id)
+    assert (await browser.patch("/profile", json={"age_range": "under_13"})).status_code == 200
+
+    refused = await browser.put(f"/insights/{insight_id}/publication")
+
+    assert (refused.status_code, refused.json()["error"]) == (409, "UNDER_13_CANNOT_PUBLISH")
+    assert (await other.get(f"/public/insights/{insight_id}")).status_code == 404
+    async with store() as db:
+        assert (await db.get(Insight, insight_id)).published_at is None
+    # The answer is the person's own and can be corrected; nothing is inferred to keep the door shut.
+    assert (await browser.patch("/profile", json={"age_range": "unknown"})).status_code == 200
+    assert (await browser.put(f"/insights/{insight_id}/publication")).status_code == 200
+
+
 async def test_a_weak_hadith_is_not_shown_publicly_either(browser, other, store):
     user = await verified_account(store, browser)
     insight_id = await keep(store, user.id)

@@ -3002,7 +3002,7 @@
       "put": {
         "tags": ["insights"],
         "summary": "Make the insight public (verified owners)",
-        "description": "Publish the caller's own insight; asking again changes nothing.\n\nAnswers 409 INSIGHT_NOT_PUBLISHABLE for a sensitive scene, an insight with no text to\nshow from the store, text that looks like scripture, one shaped by the profile, or one that is not from the real\nanalysis. A guest gets 401.",
+        "description": "Publish the caller's own insight; asking again changes nothing.\n\nAnswers 409 INSIGHT_NOT_PUBLISHABLE for a sensitive scene, an insight with no text to\nshow from the store, text that looks like scripture, one shaped by the profile, or one that is not from the real\nanalysis; 409 UNDER_13_CANNOT_PUBLISH when the account declared it is under 13 (v2 §5).\nA guest gets 401.",
         "operationId": "publish_insight_insights__insight_id__publication_put",
         "parameters": [
           {
@@ -5589,6 +5589,7 @@
           "HANDLE_TAKEN",
           "PUBLIC_IDENTITY_REQUIRED",
           "INSIGHT_NOT_PUBLISHABLE",
+          "UNDER_13_CANNOT_PUBLISH",
           "INVALID_CURSOR",
           "GONE",
           "legal_acceptance_required",

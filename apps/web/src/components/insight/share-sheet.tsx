@@ -43,7 +43,13 @@ function addressOf(path: string): string {
 }
 
 function refusal(failure: Failure): string {
-  return failure.code === 'INSIGHT_NOT_PUBLISHABLE' && failure.status === 409
+  if (failure.status !== 409) {
+    return journeyFailureMessage(failure);
+  }
+  if (failure.code === 'UNDER_13_CANNOT_PUBLISH') {
+    return T.notForUnder13;
+  }
+  return failure.code === 'INSIGHT_NOT_PUBLISHABLE'
     ? T.notPublishable
     : journeyFailureMessage(failure);
 }
