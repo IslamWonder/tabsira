@@ -7,19 +7,47 @@ from typing import Any
 
 from geoalchemy2 import Geometry
 from sqlalchemy import (
+    DDL,
     BigInteger,
     Boolean,
+    Computed,
     Date,
     Float,
     Index,
     Integer,
     Text,
+    UniqueConstraint,
+    event,
     false,
+    func,
+    text,
     true,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.geo_base import GeoBase
+
+# One definition of how a place name is folded for searching, kept in the
+# database so that the stored names, the query text and the seed scripts all
+# fold the same way. Lower case; Latin accents and Arabic vowel marks, the
+# elongation stroke and the hamza carriers removed; alef wasla, ta marbuta and
+# alef maqsura written as alef, ha and ya (the spellings people type
+# interchangeably); hyphens, dots, commas and apostrophes read as spaces.
+# IMMUTABLE so that it can back a generated column and an index. The migration
+# that created it holds its own copy; a test keeps the two identical.
+NORMALIZE_NAME_FUNCTION = "geodata.normalize_name"
+NORMALIZE_NAME_SQL = r"""
+CREATE OR REPLACE FUNCTION geodata.normalize_name(value text) RETURNS text
+LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT AS $fn$
+  SELECT btrim(regexp_replace(
+    translate(
+      regexp_replace(
+        normalize(lower(value), NFD),
+        '[\u0300-\u036f\u0640\u064b-\u065f\u0670]', '', 'g'),
+      E'\u0671\u0629\u0649', E'\u0627\u0647\u064a'),
+    '[\s\-.,''\u2018\u2019]+', ' ', 'g'))
+$fn$
+"""
 
 
 class GeoName(GeoBase):
@@ -40,6 +68,15 @@ class GeoName(GeoBase):
             postgresql_ops={"name": "gin_trgm_ops"},
         ),
         Index("ix_geonames_location_geom", "location_geom", postgresql_using="gist"),
+        # A place finds its administrative area by (country, admin1 code); the
+        # partial index holds only the few thousand ADM1 rows, so the lookup
+        # never scans the places that share the code.
+        Index(
+            "ix_geonames_adm1",
+            "country_code",
+            "admin1_code",
+            postgresql_where=text("feature_code = 'ADM1'"),
+        ),
     )
 
     # Assigned by GeoNames, never by this database: no sequence behind it.
@@ -58,6 +95,9 @@ class GeoName(GeoBase):
     population: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     timezone: Mapped[str | None] = mapped_column(Text, nullable=True)
     modification_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # The preferred Arabic name, chosen from the Arabic alternate names by the
+    # import scripts: the label shown to the user when there is one.
+    ar_name: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Soft-delete flag (GeoNames monthly reconciliation uses this, never hard-delete)
     is_active: Mapped[bool] = mapped_column(
@@ -78,6 +118,18 @@ class GeoAlternateName(GeoBase):
         Index("ix_geonames_alternate_names_geoname_id", "geoname_id"),
         Index("ix_geonames_alternate_names_language", "iso_language"),
         Index("ix_geonames_alternate_names_name", "alternate_name"),
+        # Search by the folded name: fuzzy (trigram) and by prefix.
+        Index(
+            "ix_geonames_alternate_names_name_norm_trgm",
+            "name_norm",
+            postgresql_using="gin",
+            postgresql_ops={"name_norm": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_geonames_alternate_names_name_norm_prefix",
+            "name_norm",
+            postgresql_ops={"name_norm": "text_pattern_ops"},
+        ),
     )
 
     alternate_name_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
@@ -96,6 +148,14 @@ class GeoAlternateName(GeoBase):
     is_historic: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=false()
     )
+    # The name as `geodata.normalize_name` folds it. Computed by the database
+    # on every write, so it can never disagree with `alternate_name`. Written
+    # without the schema, as PostgreSQL reports it back, so that Alembic's
+    # comparison finds no difference; the schema is on every connection's
+    # search_path (see src/database.py).
+    name_norm: Mapped[str] = mapped_column(
+        Text, Computed("normalize_name(alternate_name)", persisted=True)
+    )
 
 
 class GeoHierarchy(GeoBase):
@@ -105,6 +165,8 @@ class GeoHierarchy(GeoBase):
     __table_args__ = (
         Index("ix_geonames_hierarchy_parent_id", "parent_id"),
         Index("ix_geonames_hierarchy_child_id", "child_id"),
+        # One row per pair: the monthly reconciliation upserts on it.
+        UniqueConstraint("parent_id", "child_id", name="uq_geonames_hierarchy_parent_child"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -167,3 +229,27 @@ class GeoCountryInfo(GeoBase):
     neighbours: Mapped[str | None] = mapped_column(Text, nullable=True)
     flag_emoji: Mapped[str | None] = mapped_column(Text, nullable=True)
     equivalent_fips: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+# The geography view of a place, for distances in metres. An expression index
+# on it is what lets ST_DWithin on geography find the places around a point
+# without reading every row. Plain `geography(...)`, the same expression the
+# queries write as `location_geom::geography`, so the planner matches them.
+Index(
+    "ix_geonames_location_geog",
+    func.geography(GeoName.location_geom),
+    postgresql_using="gist",
+)
+
+# `create_all` (the test database, a fresh development one) creates the folding
+# function before the tables that use it, as the migration does.
+event.listen(
+    GeoBase.metadata,
+    "before_create",
+    DDL(NORMALIZE_NAME_SQL),  # type: ignore[no-untyped-call]
+)
+event.listen(
+    GeoBase.metadata,
+    "after_drop",
+    DDL(f"DROP FUNCTION IF EXISTS {NORMALIZE_NAME_FUNCTION}(text)"),  # type: ignore[no-untyped-call]
+)
