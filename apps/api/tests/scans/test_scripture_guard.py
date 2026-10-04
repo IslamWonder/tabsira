@@ -15,6 +15,7 @@ from src.models import scripture as scripture_models
 from src.pipeline.engine import ExplanationPart, SmallStep
 from src.scans.accept import accept
 from src.scripture import overlap
+from src.scripture.guard_fold import guard_fold
 from src.scripture.text import search_copy
 from tests.scans.builders import hadith, insight_row, proposed, scan_row, scene
 from tests.scans.conftest import DATA, as_guest, rule
@@ -161,20 +162,26 @@ async def test_a_chat_answer_quoting_a_text_whole_without_any_mark_is_refused(
 async def test_a_short_verse_is_held_whole_by_word_and_a_very_short_one_not_at_all(store):
     ikhlas = QUOTED_WHOLE["112:1"]
     words = ikhlas.split()
+    waw, feh, beh = chr(0x0648), chr(0x0641), chr(0x0628)
     async with store() as db:
         assert await overlap.repeats_store(db, [f"نقول: {ikhlas}."])
         assert await overlap.repeats_store(db, [QUOTED_WHOLE["94:6"]])
-        # Part of a short verse is not the verse.
+        # A conjunction glued to the first word is how a writer joins a quotation.
+        assert await overlap.repeats_store(db, [f"{waw}{ikhlas}"])
+        assert await overlap.repeats_store(db, [f"نعم {feh}{QUOTED_WHOLE['94:6']}"])
+        # Part of a short verse is not the verse, nor is it with another letter glued to it.
         assert not await overlap.repeats_store(db, [" ".join(words[:-1])])
-        # Two words («الله الصمد», 112:2) are the stock phrases of every Arabic text.
+        assert not await overlap.repeats_store(db, [f"{beh}{ikhlas}"])
+        # Two words (112:2) are the stock phrases of every Arabic text.
         assert not await overlap.repeats_store(db, [standard(verse_text(112, 2))])
         assert not await overlap.repeats_store(db, ["", "  "])
 
-    assert overlap.padded(["", "قل هو الله أحد.", "قل هو الله احد"]) == [" قل هو له حد "]
+    folded = guard_fold(verse_text(112, 1))
+    assert overlap.padded(["", f"{ikhlas}.", search_copy(verse_text(112, 1))]) == [f" {folded} "]
 
 
 async def test_the_short_verse_check_is_served_by_the_word_count_index(store):
-    wanted = overlap.padded(["نعم، قل هو الله أحد."])
+    wanted = overlap.padded([f"نعم، {QUOTED_WHOLE['112:1']}."])
     async with store() as db:
         await db.execute(text("SET LOCAL enable_seqscan = off"))
         compiled = overlap.short_verse_statement(wanted).compile(

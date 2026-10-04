@@ -102,7 +102,7 @@ async def test_every_verse_of_the_store_in_any_spelling_is_caught(store):
         quotes = [
             text
             for _, _, text in rows
-            if len(guard_fold(text).split()) >= overlap.SHORT_VERSE_WORDS[0]
+            if len(guard_fold(text).split()) >= overlap.SHORTEST_VERSE_WORDS
         ]
         for _, verses in groupby(rows, key=lambda row: row.surah):
             quotes.append(" ".join(text for _, _, text in verses))
