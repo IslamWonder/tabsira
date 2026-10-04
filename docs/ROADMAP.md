@@ -13,7 +13,7 @@ The order in which TABSIRA is built. Each line becomes one or more atomic commit
 ## Wave 2 — data, accounts, shell
 
 - [ ] Scripture store: Quran and nine-books hadith tables with stored hashes, read-only; importers; Sunnah signals after the cp720 repair; search copy normalised separately.
-- [ ] World ontology and learning-path importers (`masar.md` as versioned data), `OntologyCandidate`.
+- [x] World ontology and learning-path importers (`masar.md` as versioned data), `OntologyCandidate`.
 - [x] Accounts: email and password, Google (OIDC with PKCE), sessions, guest merge, profile with the three optional questions, consent records, deletion and export.
 - [ ] Web shell: Next.js app, design tokens for both themes, self-hosted fonts, PWA, navigation, messages module, generated API client, 100 % coverage.
 - [x] Vision service: YOLOE / YOLO-World over HTTP, AGPL-3.0.
