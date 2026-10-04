@@ -8,10 +8,13 @@ the fog from its place in the world (made once, then reused), records the
 threads it makes, and hides its treasure when a verified one exists. A second
 «تمّ» changes nothing and answers the same place. With memory switched off the
 learner state and the exposures are not written; the insight and its place are.
+For a signed-in owner who consented to keep photos, the first «تمّ» also keeps
+the scan's photo privately (v2 §19); a guest's photo is never kept.
 """
 
 from __future__ import annotations
 
+from redis.asyncio import Redis
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,10 +25,11 @@ from src.models import Insight, Treasure, WorldPlace
 from src.owner import Owner
 from src.pipeline.engine import HadithRef, QuranRef
 from src.schemas.insight import AfterOption, CompletionOut, PlaceOut
-from src.services import learner_service, progress_service, world_service
+from src.services import learner_service, photo_service, progress_service, world_service
 from src.services.content import load_regions
 from src.services.insight_view import shown_evidence
 from src.services.practice import UTC_ZONE, badges
+from src.storage.photos import PhotoStore
 
 
 def options() -> list[AfterOption]:
@@ -39,9 +43,21 @@ def options() -> list[AfterOption]:
 
 
 async def complete(
-    db: AsyncSession, settings: Settings, owner: Owner, insight: Insight
+    db: AsyncSession,
+    settings: Settings,
+    owner: Owner,
+    insight: Insight,
+    *,
+    redis: Redis,
+    photos: PhotoStore,
 ) -> CompletionOut:
-    """Complete an insight once and return what the learner may do next."""
+    """
+    Complete an insight once and return what the learner may do next.
+
+    The first «تمّ» also keeps the scan's photo, read from the buffer in `redis`, as the
+    owner's private copy in `photos` when the rules of v2 §19 allow it (`photo_service`);
+    for anyone the rules refuse, no photo is kept.
+    """
     now = clock.utcnow()
     earned_before = await _earned(db, owner)
     first = (
@@ -57,6 +73,7 @@ async def complete(
     treasure_prepared = False
     if first:
         await _remember(db, owner, insight)
+        await photo_service.keep_from_buffer(db, redis, photos, insight)
         if settings.feature_world:
             region = await world_service.region_of(db, insight)
             place, place_created = await world_service.ensure_place(db, owner, region)

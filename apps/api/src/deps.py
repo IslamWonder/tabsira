@@ -17,6 +17,7 @@ from src.services.insight_source import InsightSource
 from src.services.moderation_guard import OpenAiTextGuard, TextGuard
 from src.services.social_limits import WriteKind, get_social_limits
 from src.services.window_limiter import too_many_requests
+from src.storage.photos import PhotoStore, build_photo_store
 
 
 def get_app_settings(request: Request) -> Settings:
@@ -188,6 +189,23 @@ def get_insight_source(request: Request) -> InsightSource:
 
 
 InsightSourceDep = Annotated[InsightSource, Depends(get_insight_source)]
+
+
+def get_photo_store(request: Request, settings: SettingsDep) -> PhotoStore:
+    """
+    Return the photo store the settings describe, built once per application.
+
+    A test sets `app.state.photo_store` to one on a temporary directory; otherwise the store
+    is built from the settings (the S3 bucket, or the local disk in development, decision 44).
+    """
+    store: PhotoStore | None = getattr(request.app.state, "photo_store", None)
+    if store is None:
+        store = build_photo_store(settings)
+        request.app.state.photo_store = store
+    return store
+
+
+PhotoStoreDep = Annotated[PhotoStore, Depends(get_photo_store)]
 
 
 def get_text_guard(request: Request, settings: SettingsDep) -> TextGuard:

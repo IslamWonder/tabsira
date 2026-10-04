@@ -22,6 +22,7 @@ Strategy:
 from __future__ import annotations
 
 import os
+import tempfile
 from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 from typing import Any
@@ -112,6 +113,8 @@ _WORKER_URL: URL = (
 
 _scrub_environment()
 os.environ["ENVIRONMENT"] = "test"
+# Photos a test keeps go to a directory of this run, never to data/media of the checkout.
+os.environ["LOCAL_MEDIA_DIR"] = tempfile.mkdtemp(prefix="tabsira-test-media-")
 os.environ["DATABASE_URL"] = _WORKER_URL.render_as_string(hide_password=False)
 # The code's defaults are the plain-http development addresses (decision 49). The
 # suite runs as production does, over https, so the Secure cookies and their

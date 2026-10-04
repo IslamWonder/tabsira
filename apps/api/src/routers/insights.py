@@ -20,12 +20,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import clock
 from src.ai.client import ModelClient, client_for
 from src.ai.records import CallLog
-from src.deps import DbDep, SettingsDep, UngatedCurrentUser, VerifiedUser, limited
+from src.deps import DbDep, PhotoStoreDep, SettingsDep, UngatedCurrentUser, VerifiedUser, limited
 from src.errors import AppError, ErrorCode
 from src.models import Insight
 from src.owner import INSIGHT, OptionalOwner, Owner, not_found
 from src.pipeline.insight.engine import SHARED_RESOURCES, ResourceCache
-from src.scans.deps import CHAT_LIMITS, PublicIdPath, address_limit, feature
+from src.scans.deps import CHAT_LIMITS, PublicIdPath, RedisDep, address_limit, feature
 from src.schemas.insight import (
     ActionIn,
     ActionOut,
@@ -156,12 +156,24 @@ async def declare_action(
 
 @router.post("/{insight_id}/complete", summary="«تمّ»: complete the insight, once")
 async def complete_insight(
-    insight_id: PublicIdPath, db: DbDep, settings: SettingsDep, owner: OptionalOwner
+    insight_id: PublicIdPath,
+    db: DbDep,
+    settings: SettingsDep,
+    owner: OptionalOwner,
+    redis: RedisDep,
+    photos: PhotoStoreDep,
 ) -> CompletionOut:
-    """Complete the insight; a second call saves nothing more and answers the same place."""
+    """
+    Complete the insight; a second call saves nothing more and answers the same place.
+
+    The first «تمّ» of a signed-in owner who consented to keep photos also keeps the scan's
+    photo privately (v2 §19); nothing is kept for a guest or a sensitive scene.
+    """
     found, insight = await owned_insight(db, owner, insight_id)
     try:
-        return await completion_service.complete(db, settings, found, insight)
+        return await completion_service.complete(
+            db, settings, found, insight, redis=redis, photos=photos
+        )
     except SQLAlchemyError:
         await db.rollback()
         raise AppError(
