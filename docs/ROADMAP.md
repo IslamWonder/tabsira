@@ -4,10 +4,10 @@ The order in which TABSIRA is built. Each line becomes one or more atomic commit
 
 ## Wave 1 — foundations
 
-- [ ] Repository tooling: pnpm workspace, Biome, prettier, markdownlint, typos, jscpd, check-only pre-commit hook, security and audit scripts, Makefile.
-- [ ] Local `tabsira.test`: PostgreSQL extensions (PostGIS, pgvector, TimescaleDB and the rest), databases `tabsira` and `tabsira_test`, nginx with mkcert.
-- [ ] API skeleton: settings, database, `app` and `geodata` Alembic chains, health, error handling, 100 % coverage.
-- [ ] Provider research (OVH, OpenAI) and the corpus audit: `docs/research/ai-providers.md`, `docs/ASSET_MANIFEST.md`.
+- [x] Repository tooling: pnpm workspace, Biome, prettier, markdownlint, typos, jscpd, check-only pre-commit hook, security and audit scripts, Makefile.
+- [x] Local `tabsira.test`: PostgreSQL extensions (PostGIS, pgvector, TimescaleDB and the rest), databases `tabsira` and `tabsira_test`, nginx with mkcert.
+- [x] API skeleton: settings, database, `app` and `geodata` Alembic chains, health, error handling, 100 % coverage.
+- [x] Provider research (OVH, OpenAI) and the corpus audit: `docs/research/ai-providers.md`, `docs/ASSET_MANIFEST.md`.
 - [x] Design gate: direction C with a light theme in A's colours (`docs/DESIGN_DECISION.md`).
 
 ## Wave 2 — data, accounts, shell
@@ -16,7 +16,7 @@ The order in which TABSIRA is built. Each line becomes one or more atomic commit
 - [ ] World ontology and learning-path importers (`masar.md` as versioned data), `OntologyCandidate`.
 - [ ] Accounts: email and password, Google (OIDC with PKCE), sessions, guest merge, profile with the three optional questions, consent records, deletion and export.
 - [ ] Web shell: Next.js app, design tokens for both themes, self-hosted fonts, PWA, navigation, messages module, generated API client, 100 % coverage.
-- [ ] Vision service: YOLOE / YOLO-World over HTTP, AGPL-3.0.
+- [x] Vision service: YOLOE / YOLO-World over HTTP, AGPL-3.0.
 - [ ] Jenkinsfile with SonarQube and the quality gate; zero-downtime deploy scripts for pm2 and gunicorn; production provisioning for `tabsira.me`.
 
 ## Wave 3 — the insight
