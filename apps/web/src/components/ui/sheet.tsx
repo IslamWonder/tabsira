@@ -54,10 +54,12 @@ export function Sheet({ open, onClose, title, description, theme, children }: Sh
         aria-labelledby={titleId}
         aria-describedby={description === undefined ? undefined : descriptionId}
         tabIndex={-1}
-        className="glass relative flex max-h-[88dvh] w-full max-w-xl flex-col rounded-t-[28px] border-b-0 shadow-[var(--panel-shadow)] motion-safe:animate-rise"
+        // As tall as the screen allows below the status bar: a fixed share of it pushed a
+        // live camera's controls out of sight on a small phone. The header never scrolls.
+        className="glass relative flex max-h-[calc(100dvh-env(safe-area-inset-top)-16px)] w-full max-w-xl flex-col rounded-t-[28px] border-b-0 shadow-[var(--panel-shadow)] motion-safe:animate-rise"
       >
         <span aria-hidden="true" className="mx-auto mt-2.5 h-1.5 w-11 rounded-full bg-line" />
-        <header className="flex items-start justify-between gap-3 px-5 pt-2">
+        <header className="flex shrink-0 items-start justify-between gap-3 px-5 pt-2">
           <div className="flex flex-col gap-1 pt-2">
             <h2 id={titleId} className="font-semibold text-fg text-xl">
               {title}
@@ -77,7 +79,7 @@ export function Sheet({ open, onClose, title, description, theme, children }: Sh
             <CloseIcon />
           </Button>
         </header>
-        <div className="overflow-y-auto overscroll-contain px-5 pt-3 pb-[max(24px,env(safe-area-inset-bottom))]">
+        <div className="min-h-0 overflow-y-auto overscroll-contain px-5 pt-3 pb-[max(24px,env(safe-area-inset-bottom))]">
           {children}
         </div>
       </div>
