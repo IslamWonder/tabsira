@@ -10,6 +10,9 @@ The engine is trusted for nothing it can get wrong silently:
 - every text it wrote goes through the leak guard, with the cited texts
   (refused ones included) as a corpus, and is compared with every verse and
   hadith of the store, so a quotation hidden in an explanation refuses the insight;
+- an explanation part or a small step may rest only on the insight's own
+  verse or hadith (`quran:S:A`, `hadith:C:N`) or on a learning unit that
+  exists (`masar:T01_06`); one that names anything else is dropped;
 - entity ids must be the scene's, the learning unit must be in its path
   version, and there are three insights at most.
 Each refusal is recorded by a stable reason, never with the refused text.
@@ -31,6 +34,7 @@ from src.scripture.overlap import repeats_store
 from src.scripture.rulings import classification_is_eligible, enqueue_demand, latest_ruling
 
 MAX_INSIGHTS = 3
+UNIT_PREFIX = "masar:"
 
 
 @dataclass(frozen=True)
@@ -87,6 +91,7 @@ async def accept(
         checked = await _check(db, insight, refusals)
         if checked is None:
             continue
+        checked = await _placed(db, checked, refusals)
         ids = [entity_id for entity_id in checked.entity_ids if entity_id in entity_ids]
         anchor = checked.anchor or next((boxes[i] for i in ids if boxes[i] is not None), None)
         unit = checked.learning_unit_id
@@ -170,6 +175,52 @@ async def _check(
         refusals.append("leak")
         return None
     return insight.model_copy(update={"quran": quran, "hadith": hadith})
+
+
+def _cited_ids(insight: ProposedInsight) -> set[str]:
+    cited = set()
+    for evidence in (insight.quran, insight.hadith):
+        ref = evidence.ref if evidence is not None else None
+        if isinstance(ref, QuranRef):
+            cited.add(f"quran:{ref.surah}:{ref.ayah}")
+        elif isinstance(ref, HadithRef):
+            cited.add(f"hadith:{ref.collection}:{ref.number}")
+    return cited
+
+
+async def _placed(
+    db: AsyncSession, insight: ProposedInsight, refusals: list[str]
+) -> ProposedInsight:
+    """Drop the parts and the step that rest on anything but the insight's texts or a unit."""
+    named = {
+        ref.removeprefix(UNIT_PREFIX)
+        for refs in [
+            *(part.sources for part in insight.explanation),
+            insight.small_step.grounded_in if insight.small_step else [],
+        ]
+        for ref in refs
+        if ref.startswith(UNIT_PREFIX)
+    }
+    units = set(
+        (await db.scalars(select(LearningUnit.id).where(LearningUnit.id.in_(named)))).all()
+        if named
+        else []
+    )
+    known = _cited_ids(insight) | {f"{UNIT_PREFIX}{unit}" for unit in units}
+
+    def placed(refs: list[str]) -> bool:
+        if all(ref in known for ref in refs):
+            return True
+        refusals.append("unknown_reference")
+        return False
+
+    step = insight.small_step
+    return insight.model_copy(
+        update={
+            "explanation": [part for part in insight.explanation if placed(part.sources)],
+            "small_step": step if step is None or placed(step.grounded_in) else None,
+        }
+    )
 
 
 async def _unit_exists(db: AsyncSession, unit_id: str, path_version: str | None) -> bool:

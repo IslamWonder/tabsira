@@ -40,7 +40,9 @@ async def test_a_ruled_hadith_is_kept_and_a_weak_one_is_dropped(store):
         assert sound.insights[0].hadith is not None
         assert await queued(db) == []
         assert weak.insights[0].hadith is None
-        assert weak.refusals == ["hadith_ineligible"]
+        # Its step rested on another hadith than the one cited, and goes with it.
+        assert weak.insights[0].small_step is None
+        assert weak.refusals == ["hadith_ineligible", "unknown_reference"]
 
 
 async def test_evidence_the_store_does_not_hold_or_of_the_wrong_kind_is_dropped(store):

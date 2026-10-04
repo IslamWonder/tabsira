@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from src.models import HadithClassification
-from src.pipeline.engine import ExplanationPart
+from src.pipeline.engine import ExplanationPart, SmallStep
 from src.scans.accept import accept
 from src.scripture import overlap
 from src.scripture.text import search_copy
@@ -51,6 +51,42 @@ async def test_a_hadith_waiting_for_its_ruling_with_no_verse_shows_nothing_and_i
 
     assert (waiting.insights, waiting.refusals) == ([], ["nothing_to_show"])
     assert len(ruled.insights) == 1
+
+
+async def test_a_part_or_step_citing_anything_but_its_own_texts_or_a_unit_is_dropped(store):
+    def part(text: str, *sources: str) -> ExplanationPart:
+        return ExplanationPart(section="value", text=text, sources=list(sources))
+
+    parts = [
+        part("آية البصيرة.", "quran:30:50"),
+        part("حديثها.", "hadith:bukhari:1032"),
+        part("وحدتها.", "masar:T01_06"),
+        part("بلا مرجع."),
+        part("آية أخرى.", "quran:2:255"),
+        part("حديث آخر.", "hadith:muslim:1"),
+        part("وحدة لا وجود لها.", "masar:T99_99"),
+        part("مذكرة.", "note:rain"),
+        part("رمز وحده.", "T01_06"),
+        part("نص ضعيف.", "hadith:bukhari:8"),
+    ]
+    elsewhere = SmallStep(text="تأمّل.", kind="reflection", grounded_in=["quran:2:255"])
+    async with store() as db:
+        accepted = await accept(
+            db,
+            scene(),
+            [proposed(explanation=parts), proposed(small_step=elsewhere)],
+        )
+
+    first, second = accepted.insights
+    assert [p.text for p in first.explanation] == [
+        "آية البصيرة.",
+        "حديثها.",
+        "وحدتها.",
+        "بلا مرجع.",
+    ]
+    assert first.small_step is not None
+    assert second.small_step is None
+    assert accepted.refusals == ["unknown_reference"] * 7
 
 
 async def test_the_store_overlap_compares_runs_of_seven_folded_words(store):
