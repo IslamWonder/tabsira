@@ -275,3 +275,49 @@ describe('useInsight: the chat', () => {
     expect(load.phase === 'ready' && load.insight.chat.used).toBe(0);
   });
 });
+
+describe('useInsight: publishing', () => {
+  it('publishes once at a time, keeps a refusal, and withdraws', async () => {
+    const published = {
+      insight_id: ID,
+      published: true,
+      published_at: '2026-10-04T09:00:00Z',
+      path: `/insights/${ID}`,
+    };
+    let answers = 0;
+    routes({
+      [`PUT /insights/${ID}/publication`]: async () => {
+        answers += 1;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        return answers === 1 ? { body: published } : apiError(409, 'INSIGHT_NOT_PUBLISHABLE');
+      },
+      [`DELETE /insights/${ID}/publication`]: {
+        body: { insight_id: ID, published: false, published_at: null, path: null },
+      },
+    });
+    const { result } = renderHook(() => useInsight(ID));
+    await waitFor(() => expect(result.current.load.phase).toBe('ready'));
+
+    await act(async () => {
+      await Promise.all([result.current.publish(), result.current.publish()]);
+    });
+    expect(answers).toBe(1);
+    expect(result.current.publishing).toEqual({ status: 'idle' });
+    expect(
+      result.current.load.phase === 'ready' ? result.current.load.insight.published_at : null
+    ).toBe(published.published_at);
+
+    await act(async () => {
+      await result.current.publish();
+    });
+    expect(result.current.publishing.failure?.status).toBe(409);
+
+    await act(async () => {
+      await result.current.withdraw();
+    });
+    expect(result.current.publishing).toEqual({ status: 'idle' });
+    expect(
+      result.current.load.phase === 'ready' ? result.current.load.insight.published_at : null
+    ).toBeNull();
+  });
+});

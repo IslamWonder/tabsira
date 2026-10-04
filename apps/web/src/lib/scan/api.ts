@@ -15,6 +15,8 @@ export type ScanEntity = Schemas['ScanEntityOut'];
 export type InsightSummary = Schemas['InsightSummary'];
 export type Tutorial = Schemas['TutorialOut'];
 export type Insight = Schemas['InsightDetailOut'];
+/** Whether the owner made an insight public, since when, and its public path. */
+export type Publication = Schemas['PublicationOut'];
 export type ChatReply = Schemas['ChatReply'];
 export type ChatMessage = Schemas['ChatMessageOut'];
 export type Completion = Schemas['CompletionOut'];
@@ -91,6 +93,20 @@ export function declareAction(id: string, choice: ActionChoice): Promise<Result<
 }
 
 /** the done action: saved once, however many times it is sent. */
+/** Make the insight public (v2 §18); the API refuses with 409 what cannot be published. */
+export function publishInsight(id: string): Promise<Result<Publication>> {
+  return attempt(
+    api.PUT('/insights/{insight_id}/publication', { params: { path: { insight_id: id } } })
+  );
+}
+
+/** Take the insight off its public address. */
+export function withdrawInsight(id: string): Promise<Result<Publication>> {
+  return attempt(
+    api.DELETE('/insights/{insight_id}/publication', { params: { path: { insight_id: id } } })
+  );
+}
+
 export function completeInsight(id: string): Promise<Result<Completion>> {
   return attempt(
     api.POST('/insights/{insight_id}/complete', { params: { path: { insight_id: id } } })

@@ -12,6 +12,11 @@ export function publicInsightPath(id: string): string {
   return `/insights/${id}`;
 }
 
+/** The share card drawn for the insight (1200×630 PNG), the page's share image. */
+export function publicInsightCardPath(id: string): string {
+  return `${publicInsightPath(id)}/card.png`;
+}
+
 /**
  * A published insight, read by the web server. Every visitor gets the same
  * answer for the same id; the API says 404 alike for unknown, unpublished and
@@ -53,6 +58,12 @@ export function publicInsightSeo(insight: PublicInsight): PageSeo {
     title: insight.title,
     description: describe(insight.glimpse),
     type: 'article',
+    image: {
+      url: publicInsightCardPath(insight.id),
+      width: 1200,
+      height: 630,
+      alt: insight.title,
+    },
   };
 }
 

@@ -37,6 +37,7 @@ describe('the description', () => {
       title: 'عنوان البصيرة الأولى',
       description: 'لمحة البصيرة الأولى',
       type: 'article',
+      image: { url: '/insights/7/card.png', width: 1200, height: 630, alt: 'عنوان البصيرة الأولى' },
     });
   });
 });

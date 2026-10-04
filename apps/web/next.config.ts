@@ -30,6 +30,13 @@ export default function nextConfig(phase: string): NextConfig {
   return {
     output: 'standalone',
     outputFileTracingRoot: REPO_ROOT,
+    // The share card reads its font files at run time (src/lib/share-card-fonts.ts), so the
+    // standalone build must carry them beside the route.
+    outputFileTracingIncludes: {
+      '/insights/[id]/card.png': [
+        './node_modules/@fontsource/ibm-plex-sans-arabic/files/*-{500,600}-normal.woff',
+      ],
+    },
     turbopack: { root: REPO_ROOT },
     poweredByHeader: false,
     // Our rules live in the root AGENTS.md; stop `next dev` writing its own copies.
