@@ -75,6 +75,7 @@ async def test_a_search_is_never_cached_by_a_shared_cache(geo):
         {"q": ""},
         {"q": "a"},
         {"q": "x" * 101},
+        {"q": "ab\x00cd"},
         {"q": "Tunis", "limit": 0},
         {"q": "Tunis", "limit": 51},
         {"q": "Tunis", "limit": "many"},

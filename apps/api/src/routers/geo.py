@@ -26,7 +26,13 @@ Longitude = Annotated[float, Query(ge=-180, le=180, description="Degrees, -180 t
 async def search(
     response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
-    q: Annotated[str, Query(min_length=2, max_length=100, description="Part of a place name")],
+    q: Annotated[
+        str,
+        # PostgreSQL text cannot hold a NUL; refused here, not as a server error later.
+        Query(
+            min_length=2, max_length=100, pattern=r"^[^\x00]*$", description="Part of a place name"
+        ),
+    ],
     limit: Annotated[int, Query(ge=1, le=50)] = geo_service.DEFAULT_SEARCH_LIMIT,
 ) -> list[PlaceHit]:
     """
