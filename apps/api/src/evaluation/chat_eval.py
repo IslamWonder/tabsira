@@ -31,7 +31,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionmaker
 
-from src import clock, messages
+from src import clock
 from src.ai.client import (
     ChatResult,
     EmbeddingResult,
@@ -43,6 +43,7 @@ from src.ai.records import CallLog
 from src.arabic import normalize_arabic
 from src.config import AiProvider, AiStage, ProviderSettings, Settings
 from src.errors import AppError, ErrorCode
+from src.messages import messages_for
 from src.models import Guest, Insight, InsightOrigin, Scan, ScanSource, ScanStatus
 from src.pipeline.insight.guard import scripture_guard
 from src.pipeline.leak_guard import LeakDetector
@@ -296,30 +297,35 @@ async def evaluate_case(
     maker = async_sessionmaker(
         bind=connection, expire_on_commit=False, join_transaction_mode="create_savepoint"
     )
+    leaks: list[str] = []
     try:
         async with maker() as db:
             row = await _insight(db, insight)
-            reply = await chat_service.answer(
-                db,
-                settings,
-                row,
-                question=case.question,
-                key=f"eval-{case.id}",
-                client_factory=lambda _log: factory(log),
-            )
-        kind = reply.message.kind
-        level = reply.message.level
-        answer = reply.message.answer
-        disclosed = reply.disclosure == messages.AI_DISCLOSURE
-    except AppError as error:
-        kind = "refused" if error.code is ErrorCode.CHAT_ANSWER_REJECTED else "failed"
+            try:
+                reply = await chat_service.answer(
+                    db,
+                    settings,
+                    row,
+                    question=case.question,
+                    key=f"eval-{case.id}",
+                    client_factory=lambda _log: factory(log),
+                )
+            except AppError as error:
+                kind = "refused" if error.code is ErrorCode.CHAT_ANSWER_REJECTED else "failed"
+            else:
+                kind = reply.message.kind
+                level = reply.message.level
+                answer = reply.message.answer
+                disclosed = reply.disclosure == messages_for().ai_disclosure
+                # Checked again here, apart from the service: patterns, the Quran, the store.
+                if answer and await scripture_guard(quran, session=db).leaks([answer]):
+                    leaks = ["answer"]
     finally:
         await savepoint.rollback()
     said = recorder[0].last if recorder else None
     model_answer = getattr(said, "answer", None)
     if level is None and said is not None:
         level = getattr(said, "level", None)
-    leaks = ["answer"] if answer and scripture_guard(quran).check(answer).leaked else []
     failures = score(case.expect, kind=kind, level=level, answer=answer, disclosed=disclosed)
     failures += [f"leak in {where}" for where in leaks]
     return ChatCaseRun(
