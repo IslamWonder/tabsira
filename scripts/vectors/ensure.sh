@@ -16,13 +16,22 @@
 # then runs scripts/vectors/import.sh on the extracted folder. Without any archive
 # it only warns: embed_corpus then computes the vectors, which costs money.
 #
-# Usage: scripts/vectors/ensure.sh            (reads the root .env)
+# Usage: scripts/vectors/ensure.sh [--force]   (reads the root .env)
+#   --force   import even when the vectors are there (also DATA_FORCE=true, from make data)
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # shellcheck source=../lib.sh
 source "$REPO_ROOT/scripts/lib.sh"
+
+FORCE="${DATA_FORCE:-false}"
+for arg in "$@"; do
+	case "$arg" in
+	--force) FORCE=true ;;
+	*) die "unknown argument: $arg" ;;
+	esac
+done
 
 load_env
 [[ -n "${DATABASE_URL:-}" ]] || die "DATABASE_URL is not set. Run scripts/setup-db.sh, then make migrate."
@@ -55,8 +64,8 @@ covered="$(query "
 		WHERE model IN ($DEFAULT_MODELS) GROUP BY model
 		HAVING count(*) >= (SELECT count(*) FROM app.hadiths)
 	) full_models")"
-if [[ "$covered" != "0" ]]; then
-	ok "Scripture vectors are already in the database: nothing to import."
+if [[ "$covered" != "0" && "$FORCE" != "true" ]]; then
+	ok "Scripture vectors are already in the database: nothing to import. Use --force to import again."
 	exit 0
 fi
 

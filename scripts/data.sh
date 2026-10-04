@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Import the corpora (make data). Run `make migrate` first.
 #
+# Usage: scripts/data.sh [--force]
+#   Data already there (the scripture store, the vectors) is left alone; --force,
+#   or DATA_FORCE=true with make data, imports it again. GeoNames has the same
+#   guard in scripts/seed-geonames.sh.
+#
 # The scripture store, in this order, every step idempotent:
 #   download     quranpedia's current dump and the nine hadith files, each
 #                checked against its SHA-256 (cached in data/cache/)
@@ -22,9 +27,24 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 CORPUS_DIR="$REPO_ROOT/data/corpus"
 CORPUS_FILES="quran-annotations.json sunnah-enriched.json"
 
+# Data that is there is left alone; --force (or DATA_FORCE=true) imports it again.
+FORCE="${DATA_FORCE:-false}"
+for arg in "$@"; do
+	case "$arg" in
+	--force) FORCE=true ;;
+	*) die "unknown argument: $arg (only --force)" ;;
+	esac
+done
+export DATA_FORCE="$FORCE"
+
 load_env
 [[ -n "${DATABASE_URL:-}" ]] || die "DATABASE_URL is not set. Run scripts/setup-db.sh, then make migrate."
 require_cmd uv "See https://docs.astral.sh/uv/"
+require_cmd psql "Install the PostgreSQL client."
+sync_url="${SYNC_DATABASE_URL:-$DATABASE_URL}"
+sync_url="${sync_url/postgresql+asyncpg:/postgresql:}"
+sync_url="${sync_url/postgresql+psycopg:/postgresql:}"
+query() { psql -X -q -tA -v ON_ERROR_STOP=1 "$sync_url" -c "$1"; }
 
 for name in $CORPUS_FILES; do
 	[[ -f "$CORPUS_DIR/$name" ]] ||
@@ -33,9 +53,18 @@ done
 
 banner "Scripture store"
 started=$SECONDS
-(cd "$REPO_ROOT/apps/api" && uv run --quiet python -m src.cli.import_scripture \
-	download quran annotations hadith signals --cache-dir "$REPO_ROOT/data/cache" --corpus-dir "$CORPUS_DIR")
-ok "Scripture store imported in $((SECONDS - started)) s"
+# The whole Quran, hadiths, annotations and signals already stored mean the store was imported.
+stored="$(query "SELECT (SELECT count(*) FROM app.quran_verses) = 6236
+	AND (SELECT count(*) FROM app.hadiths) > 0
+	AND (SELECT count(*) FROM app.quran_annotations) > 0
+	AND (SELECT count(*) FROM app.hadith_signals) > 0" 2>/dev/null || echo f)"
+if [[ "$stored" == "t" && "$FORCE" != "true" ]]; then
+	ok "Scripture store already imported: nothing to do. Use --force to import again."
+else
+	(cd "$REPO_ROOT/apps/api" && uv run --quiet python -m src.cli.import_scripture \
+		download quran annotations hadith signals --cache-dir "$REPO_ROOT/data/cache" --corpus-dir "$CORPUS_DIR")
+	ok "Scripture store imported in $((SECONDS - started)) s"
+fi
 
 # Vectors for semantic search, with the active provider's embedding model. Only
 # new or changed documents are sent, so a second run costs nothing; without an

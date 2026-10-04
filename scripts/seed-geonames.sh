@@ -4,7 +4,10 @@
 # held, in one transaction, so a run that fails changes nothing. For a live
 # database, the monthly reconciliation is scripts/update-geonames.sh.
 #
-# Usage: scripts/seed-geonames.sh [--limit N] [--postal-codes]
+# Usage: scripts/seed-geonames.sh [--limit N] [--postal-codes] [--force]
+#   --force          import again even when geodata.geonames already holds places.
+#                    Without it a filled table is left alone (the import takes a
+#                    long time and the data is reference data).
 #   --limit N        keep N places only: every country and first-level region
 #                    first, then the most populated places. For CI and quick
 #                    local runs; the full import is several million rows.
@@ -30,6 +33,7 @@ source "$SCRIPT_DIR/geonames-common.sh"
 
 LIMIT_ROWS=""
 WITH_POSTAL=false
+FORCE="${DATA_FORCE:-false}"
 
 usage() {
 	sed -n '2,/^set -Eeuo/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'
@@ -50,6 +54,10 @@ while [[ $# -gt 0 ]]; do
 		WITH_POSTAL=true
 		shift
 		;;
+	--force)
+		FORCE=true
+		shift
+		;;
 	-h | --help)
 		usage
 		exit 0
@@ -66,6 +74,13 @@ for tool in psql curl unzip awk sort cut; do
 done
 geonames_resolve_database
 geonames_require_schema
+
+# Reference data is imported once; a filled table is a sign it was (docs/SETUP.md, step 6).
+places="$(geonames_psql -tA -c "SELECT count(*) FROM geodata.geonames")"
+if [[ "$places" != "0" && "$FORCE" != "true" ]]; then
+	ok "GeoNames already imported ($places places in $DB_NAME): nothing to do. Use --force to import again."
+	exit 0
+fi
 
 if in_ci; then
 	export GEONAMES_MAX_AGE_DAYS="${GEONAMES_MAX_AGE_DAYS:-1}"

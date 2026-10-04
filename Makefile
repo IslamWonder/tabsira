@@ -18,7 +18,7 @@ dev: ## api + web (+ vision) with reload against tabsira.test
 migrate: ## geodata chain, then app chain, then vectors chain
 	@bash scripts/migrate.sh
 
-data: ## Import corpora, ontology and learning path; build indexes
+data: ## Import corpora, ontology, learning path and vectors, once (DATA_FORCE=true to redo)
 	@bash scripts/data.sh
 
 test: ## Unit tests, web and api
