@@ -101,12 +101,12 @@ async def test_app_error_defaults_to_bad_request(error_client):
         (403, "FORBIDDEN"),
         (404, "NOT_FOUND"),
         (409, "CONFLICT"),
+        (413, "PAYLOAD_TOO_LARGE"),
         (422, "VALIDATION_ERROR"),
         (429, "RATE_LIMITED"),
         (500, "INTERNAL_ERROR"),
         (503, "SERVICE_UNAVAILABLE"),
         (418, "HTTP_ERROR"),
-        (413, "HTTP_ERROR"),
     ],
 )
 async def test_http_exceptions_map_to_stable_codes_and_keep_their_headers(
