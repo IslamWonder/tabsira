@@ -13,7 +13,7 @@ INSERT_CONSENT = text(
 
 
 async def test_privacy_is_accepted_after_the_migration_and_removed_by_its_downgrade(migrated):  # noqa: F811
-    assert alembic(APP_CONFIG, "upgrade", "20261004_170000").returncode == 0
+    assert alembic(APP_CONFIG, "upgrade", "20261004_180000").returncode == 0
     async with migrated.begin() as connection:
         user_id = (
             await connection.execute(
@@ -32,7 +32,7 @@ async def test_privacy_is_accepted_after_the_migration_and_removed_by_its_downgr
         await connection.execute(INSERT_CONSENT, {"u": user_id, "k": "privacy"})
         await connection.execute(INSERT_CONSENT, {"u": user_id, "k": "terms"})
 
-    assert alembic(APP_CONFIG, "downgrade", "20261004_170000").returncode == 0
+    assert alembic(APP_CONFIG, "downgrade", "20261004_180000").returncode == 0
     async with migrated.connect() as connection:
         kinds = (await connection.execute(text("SELECT kind FROM app.consents"))).scalars().all()
     assert kinds == ["terms"]

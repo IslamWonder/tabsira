@@ -1,8 +1,8 @@
 """add_support_attempt_kind
 
-Revision ID: 20261004_180000
-Revises: 20261004_175000
-Create Date: 2026-10-04 18:00:00.000000
+Revision ID: 20261004_182000
+Revises: 20261004_181000
+Create Date: 2026-10-04 18:20:00.000000
 
 The support form is rate limited in PostgreSQL like the sign-in routes, so the limit holds
 across every worker: `login_attempts.kind` gains `support`.
@@ -14,8 +14,8 @@ from collections.abc import Sequence
 
 from alembic import op
 
-revision: str = "20261004_180000"
-down_revision: str | Sequence[str] | None = "20261004_175000"
+revision: str = "20261004_182000"
+down_revision: str | Sequence[str] | None = "20261004_181000"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
