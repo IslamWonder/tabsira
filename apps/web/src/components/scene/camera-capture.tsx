@@ -1,8 +1,8 @@
 'use client';
 
-import { type ChangeEvent, useEffect, useId, useState, useSyncExternalStore } from 'react';
-import { useCameraStream } from '@/components/atlas/camera-sensors';
-import { CameraIcon } from '@/components/icons';
+import { type ChangeEvent, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import { type CameraFailure, useCameraStream } from '@/components/atlas/camera-sensors';
+import { CameraIcon, SwitchCameraIcon } from '@/components/icons';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
@@ -22,6 +22,7 @@ export async function frameToFile(
   video: HTMLVideoElement,
   now: () => number
 ): Promise<File | null> {
+  // The stream's own pixels, not the size the page draws the video at.
   const width = video.videoWidth || 0;
   const height = video.videoHeight || 0;
   if (width === 0 || height === 0) {
@@ -42,42 +43,57 @@ export async function frameToFile(
   if (blob === null) {
     return null;
   }
-  return new File([blob], `capture-${now()}.jpg`, { type: 'image/jpeg', lastModified: now() });
+  return new File([blob], `tabsira-capture-${now()}.jpg`, {
+    type: 'image/jpeg',
+    lastModified: now(),
+  });
 }
 
 /**
  * Take a photo in the page, as the earlier prototype did: the back camera as a
- * live preview, one shutter, one JPEG handed to the owner. The frame goes
- * nowhere else: the stream stops as soon as the photo is taken or the view is
- * closed. Where the page cannot open a camera (no device, refused, a plain
- * http page), the native picker with `capture` takes over, which on a phone
- * opens its camera app.
+ * live preview, one shutter, one JPEG handed to the owner, which sends it the
+ * way it sends a chosen file. The frame goes nowhere else: the stream stops as
+ * soon as the photo is taken or the view is closed. Where the page cannot open
+ * a camera (no device, refused, a plain http page), the native picker with
+ * `capture` takes over, which on a phone opens its camera app, and the reason
+ * is said under it.
  */
-export type CameraAvailability = 'unknown' | 'available' | 'none' | 'denied';
+export type CameraAvailability = 'unknown' | 'available' | 'none' | 'denied' | 'unsupported';
+
+export interface CameraLook {
+  availability: CameraAvailability;
+  /** How many cameras the device lists: the switch shows from two. */
+  cameras: number;
+}
 
 /**
  * What the device says before any camera is asked for: whether a video input
  * exists (`enumerateDevices` lists devices without their labels until a
  * permission is given) and whether the camera permission was already refused.
  * A machine without a webcam, or a refusal remembered by the browser, is then
- * known at once and the fallback shows without a tap that would fail.
+ * known at once and the fallback shows without a tap that would fail. `live`
+ * asks once more when the camera runs: some browsers list a single camera
+ * until a permission is given.
  */
-export function useCameraAvailability(secure: boolean): CameraAvailability {
-  const [availability, setAvailability] = useState<CameraAvailability>('unknown');
+export function useCameraAvailability(secure: boolean, live = false): CameraLook {
+  const [look, setLook] = useState<CameraLook>({ availability: 'unknown', cameras: 0 });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `live` is a trigger; the list is read again once the camera runs.
   useEffect(() => {
     const devices = typeof navigator === 'undefined' ? undefined : navigator.mediaDevices;
     if (!secure || devices === undefined || typeof devices.getUserMedia !== 'function') {
-      setAvailability('none');
+      setLook({ availability: 'unsupported', cameras: 0 });
       return;
     }
     let cancelled = false;
-    const look = async () => {
+    const read = async () => {
       let found: CameraAvailability = 'unknown';
+      let cameras = 0;
       if (typeof devices.enumerateDevices === 'function') {
         try {
           const list = await devices.enumerateDevices();
-          found = list.some((device) => device.kind === 'videoinput') ? 'available' : 'none';
+          cameras = list.filter((device) => device.kind === 'videoinput').length;
+          found = cameras > 0 ? 'available' : 'none';
         } catch {
           found = 'unknown';
         }
@@ -94,20 +110,20 @@ export function useCameraAvailability(secure: boolean): CameraAvailability {
         }
       }
       if (!cancelled) {
-        setAvailability(found);
+        setLook({ availability: found, cameras });
       }
     };
-    void look();
+    void read();
     // A webcam plugged in or removed changes the answer.
-    const onChange = () => void look();
+    const onChange = () => void read();
     devices.addEventListener?.('devicechange', onChange);
     return () => {
       cancelled = true;
       devices.removeEventListener?.('devicechange', onChange);
     };
-  }, [secure]);
+  }, [secure, live]);
 
-  return availability;
+  return look;
 }
 
 const neverChanges = () => () => {};
@@ -116,6 +132,38 @@ const pageIsSecure = () => window.isSecureContext !== false;
 // client corrects it right after hydration, so both first renders match.
 const serverIsSecure = () => true;
 
+/** What keeps the live camera closed, from what the page knew before a tap and what the tap answered. */
+export function cameraProblem(
+  secure: boolean,
+  failure: CameraFailure | null,
+  availability: CameraAvailability
+): CameraFailure | null {
+  if (!secure) {
+    return 'insecure';
+  }
+  if (failure !== null) {
+    return failure;
+  }
+  switch (availability) {
+    case 'denied':
+      return 'denied';
+    case 'none':
+      return 'missing';
+    case 'unsupported':
+      return 'unsupported';
+    default:
+      return null;
+  }
+}
+
+const PROBLEM_TEXT: Record<CameraFailure, string> = {
+  denied: messages.scene.starter.cameraDenied,
+  missing: messages.scene.starter.cameraMissing,
+  busy: messages.scene.starter.cameraBusy,
+  insecure: messages.scene.starter.cameraNeedsHttps,
+  unsupported: messages.scene.starter.cameraUnavailable,
+};
+
 export function CameraCapture({ onFile, onPick }: CameraCaptureProps) {
   const camera = useCameraStream();
   const [taking, setTaking] = useState(false);
@@ -123,9 +171,23 @@ export function CameraCapture({ onFile, onPick }: CameraCaptureProps) {
   const inputId = useId();
   const text = messages.scene.starter;
   const secure = useSyncExternalStore(neverChanges, pageIsSecure, serverIsSecure);
-  const availability = useCameraAvailability(secure);
-  const denied = camera.state === 'denied' || availability === 'denied';
-  const fallback = !secure || denied || camera.state === 'unavailable' || availability === 'none';
+  const { availability, cameras } = useCameraAvailability(secure, camera.state === 'live');
+  const problem = cameraProblem(secure, camera.failure, availability);
+  const viewRef = useRef<HTMLDivElement>(null);
+  const starting = camera.state === 'starting';
+
+  // The preview and its shutter come into sight when the camera opens: in a sheet or a
+  // panel that scrolls, they would otherwise open below the fold. Instant, never animated.
+  useEffect(() => {
+    if (starting) {
+      viewRef.current?.scrollIntoView?.({ block: 'nearest' });
+    }
+  }, [starting]);
+
+  const open = () => {
+    setFailed(false);
+    void camera.start();
+  };
 
   const shoot = async () => {
     const video = camera.videoRef.current;
@@ -143,7 +205,8 @@ export function CameraCapture({ onFile, onPick }: CameraCaptureProps) {
     onFile(file);
   };
 
-  if (fallback) {
+  // A busy camera may be free a moment later: the live button stays, with the reason under it.
+  if (problem !== null && problem !== 'busy') {
     return (
       <div className="flex flex-col gap-2">
         <label
@@ -165,23 +228,30 @@ export function CameraCapture({ onFile, onPick }: CameraCaptureProps) {
           />
         </label>
         <p className="m-0 text-fg-muted text-sm leading-relaxed" role="status">
-          {!secure ? text.cameraNeedsHttps : denied ? text.cameraDenied : text.cameraUnavailable}
+          {`${PROBLEM_TEXT[problem]} ${text.cameraFallback}`}
         </p>
       </div>
     );
   }
 
-  if (camera.state === 'idle' || camera.state === 'paused') {
+  if (camera.state !== 'starting' && camera.state !== 'live') {
     return (
-      <Button variant="secondary" onClick={() => void camera.start()}>
-        <CameraIcon width="18" height="18" />
-        {text.camera}
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button variant="secondary" onClick={open}>
+          <CameraIcon width="18" height="18" />
+          {text.camera}
+        </Button>
+        {problem === 'busy' ? (
+          <p className="m-0 text-fg-muted text-sm leading-relaxed" role="status">
+            {PROBLEM_TEXT.busy}
+          </p>
+        ) : null}
+      </div>
     );
   }
 
   return (
-    <div className="flex w-full flex-col gap-3">
+    <div ref={viewRef} className="flex w-full flex-col gap-3">
       <div className="relative overflow-hidden rounded-[18px] bg-black">
         <video
           ref={camera.videoRef}
@@ -189,7 +259,11 @@ export function CameraCapture({ onFile, onPick }: CameraCaptureProps) {
           muted
           autoPlay
           aria-label={text.cameraPreview}
-          className="block aspect-[4/3] w-full object-cover"
+          className={cx(
+            'block aspect-[4/3] max-h-[50dvh] w-full object-cover',
+            // The front camera shows a mirror, as a phone does; the photo itself is not mirrored.
+            camera.facing === 'user' && '-scale-x-100'
+          )}
         />
         {camera.state === 'starting' ? (
           <p
@@ -198,6 +272,17 @@ export function CameraCapture({ onFile, onPick }: CameraCaptureProps) {
           >
             {text.cameraStarting}
           </p>
+        ) : null}
+        {/* On the preview itself, as on a phone's camera: the shutter row stays one line on a narrow screen. */}
+        {cameras > 1 && camera.state === 'live' ? (
+          <Button
+            variant="icon"
+            label={text.cameraSwitch}
+            onClick={() => void camera.start(camera.facing === 'user' ? 'environment' : 'user')}
+            className="absolute end-2 top-2"
+          >
+            <SwitchCameraIcon />
+          </Button>
         ) : null}
       </div>
       {failed ? (

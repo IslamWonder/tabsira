@@ -223,12 +223,16 @@ export const ar = {
       cameraStarting: 'تُفتح الكاميرا…',
       shutter: 'التقط',
       cameraClose: 'أغلق الكاميرا',
+      cameraSwitch: 'بدّل الكاميرا',
       captureFailed: 'لم تُلتقط الصورة. حاول مرة أخرى أو اختر صورة.',
-      cameraDenied: 'لم يُسمح بالكاميرا. يفتح هذا الزر كاميرا الهاتف، أو اختر صورة.',
-      cameraUnavailable:
-        'لا كاميرا متاحة في هذا المتصفح. يفتح هذا الزر كاميرا الهاتف إن وُجدت، أو اختر صورة.',
-      cameraNeedsHttps:
-        'تعمل الكاميرا الحية عبر اتصال آمن (https) فقط. يفتح هذا الزر كاميرا الهاتف، أو اختر صورة.',
+      cameraDenied:
+        'تعذّر الوصول إلى الكاميرا. اسمح لتبصرة باستخدام الكاميرا من إعدادات المتصفح ثم حاول مجددًا.',
+      cameraMissing: 'لم يتم العثور على كاميرا متاحة على هذا الجهاز.',
+      cameraBusy: 'تعذّر تشغيل الكاميرا. قد تكون مستخدمة حاليًا من تطبيق آخر.',
+      cameraUnavailable: 'لا يتيح هذا المتصفح الكاميرا الحية.',
+      cameraNeedsHttps: 'تشغيل الكاميرا يتطلب اتصال HTTPS آمنًا أو localhost.',
+      /** Said after the reason, under the button that now opens the phone's own camera or the picker. */
+      cameraFallback: 'يفتح هذا الزر كاميرا الهاتف إن وُجدت، أو اختر صورة.',
       notImage: 'هذا الملف ليس صورة. اختر صورة بصيغة JPEG أو PNG أو WebP أو HEIC.',
     },
     /** Rows top to bottom, columns left to right of the photo (photo coordinates are physical). */

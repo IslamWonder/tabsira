@@ -58,6 +58,19 @@ export function CameraIcon(props: IconProps) {
   );
 }
 
+/** Two arrows turning around the lens: the other camera of the device. */
+export function SwitchCameraIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.7" />
+      <path d="M20 4v4.7h-4.7" />
+      <path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.3" />
+      <path d="M4 20v-4.7h4.7" />
+      <circle cx="12" cy="12" r="2.5" />
+    </Icon>
+  );
+}
+
 export function AtlasIcon(props: IconProps) {
   return (
     <Icon {...props}>

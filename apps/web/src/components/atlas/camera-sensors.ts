@@ -13,10 +13,24 @@ import { cameraHeading, type LngLat, type OrientationReading, smoothHeading } fr
 
 export type CameraState = 'idle' | 'starting' | 'live' | 'paused' | 'denied' | 'unavailable';
 
+/** Which camera to ask for: the back one by default, the front one on request. */
+export type CameraFacing = 'environment' | 'user';
+
+/**
+ * Why the camera did not start, as the reader needs to hear it: refused,
+ * no camera, a camera held by another application, a page that is not a
+ * secure context (the browser hides the camera API there), or a browser
+ * without the API.
+ */
+export type CameraFailure = 'denied' | 'missing' | 'busy' | 'insecure' | 'unsupported';
+
 export interface CameraStream {
   state: CameraState;
+  /** Set while `state` is 'denied' or 'unavailable'. */
+  failure: CameraFailure | null;
+  facing: CameraFacing;
   videoRef: RefObject<HTMLVideoElement | null>;
-  start: () => Promise<void>;
+  start: (facing?: CameraFacing) => Promise<void>;
   stop: () => void;
 }
 
@@ -26,14 +40,38 @@ function stopTracks(stream: MediaStream | null) {
   }
 }
 
+/** The failure a `getUserMedia` error names (MDN: the DOMException names it may throw). */
+export function cameraFailureOf(error: unknown): CameraFailure {
+  const name = error instanceof Error ? error.name : '';
+  switch (name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'denied';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'missing';
+    case 'NotReadableError':
+    case 'AbortError':
+      return 'busy';
+    default:
+      return 'unsupported';
+  }
+}
+
 /** The back camera as a live `<video>`: no frame is ever drawn, read or sent. */
 export function useCameraStream(): CameraStream {
   const [state, setState] = useState<CameraState>('idle');
+  const [failure, setFailure] = useState<CameraFailure | null>(null);
+  const [facing, setFacing] = useState<CameraFacing>('environment');
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // Each start and each stop takes a new number: a stream granted after the
+  // camera was closed, or after a newer start, is stopped instead of shown.
+  const attemptRef = useRef(0);
 
   // Lets the camera go without saying anything about the state: the callers do.
   const release = useCallback(() => {
+    attemptRef.current += 1;
     stopTracks(streamRef.current);
     streamRef.current = null;
     if (videoRef.current !== null) {
@@ -43,34 +81,52 @@ export function useCameraStream(): CameraStream {
 
   const stop = useCallback(() => {
     release();
+    setFailure(null);
     setState('idle');
   }, [release]);
 
-  const start = useCallback(async () => {
-    const devices = typeof navigator === 'undefined' ? undefined : navigator.mediaDevices;
-    if (devices === undefined || typeof devices.getUserMedia !== 'function') {
-      setState('unavailable');
-      return;
-    }
-    setState('starting');
-    try {
-      const stream = await devices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false,
-      });
-      release();
-      streamRef.current = stream;
-      if (videoRef.current !== null) {
-        videoRef.current.srcObject = stream;
-        // Autoplay may still be refused; the video then shows its first frame when the reader taps.
-        await videoRef.current.play().catch(() => undefined);
+  const fail = useCallback((reason: CameraFailure) => {
+    setFailure(reason);
+    setState(reason === 'denied' ? 'denied' : 'unavailable');
+  }, []);
+
+  const start = useCallback(
+    async (wanted: CameraFacing = 'environment') => {
+      const devices = typeof navigator === 'undefined' ? undefined : navigator.mediaDevices;
+      if (devices === undefined || typeof devices.getUserMedia !== 'function') {
+        fail(window.isSecureContext === false ? 'insecure' : 'unsupported');
+        return;
       }
-      setState('live');
-    } catch (error) {
-      const name = error instanceof Error ? error.name : '';
-      setState(name === 'NotAllowedError' || name === 'SecurityError' ? 'denied' : 'unavailable');
-    }
-  }, [release]);
+      // One stream at a time: a phone refuses a second camera while the first still holds it.
+      release();
+      const attempt = attemptRef.current;
+      setFailure(null);
+      setState('starting');
+      try {
+        const stream = await devices.getUserMedia({
+          video: { facingMode: { ideal: wanted } },
+          audio: false,
+        });
+        if (attempt !== attemptRef.current) {
+          stopTracks(stream);
+          return;
+        }
+        streamRef.current = stream;
+        setFacing(wanted);
+        if (videoRef.current !== null) {
+          videoRef.current.srcObject = stream;
+          // Autoplay may still be refused; the video then shows its first frame when the reader taps.
+          await videoRef.current.play().catch(() => undefined);
+        }
+        setState('live');
+      } catch (error) {
+        if (attempt === attemptRef.current) {
+          fail(cameraFailureOf(error));
+        }
+      }
+    },
+    [fail, release]
+  );
 
   useEffect(() => {
     const onVisibility = () => {
@@ -86,7 +142,7 @@ export function useCameraStream(): CameraStream {
     };
   }, [release]);
 
-  return { state, videoRef, start, stop };
+  return { state, failure, facing, videoRef, start, stop };
 }
 
 export type PositionState = 'idle' | 'locating' | 'ready' | 'denied' | 'unavailable';

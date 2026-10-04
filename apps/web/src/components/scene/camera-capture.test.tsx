@@ -3,7 +3,7 @@ import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { forgetDevice, stubCamera } from '@/test/camera';
-import { CameraCapture, frameToFile } from './camera-capture';
+import { CameraCapture, cameraProblem, frameToFile } from './camera-capture';
 
 /** jsdom draws nothing: a canvas that hands back a small JPEG, or nothing when asked. */
 function stubCanvas(blob: Blob | null = new Blob(['jpeg'], { type: 'image/jpeg' })) {
@@ -70,7 +70,7 @@ describe('CameraCapture', () => {
     await waitFor(() => expect(onFile).toHaveBeenCalledOnce());
     const file = onFile.mock.calls[0]?.[0] as File;
     expect(file.type).toBe('image/jpeg');
-    expect(file.name).toMatch(/^capture-\d+\.jpg$/);
+    expect(file.name).toMatch(/^tabsira-capture-\d+\.jpg$/);
     // Scaled to the longest side of 1600, keeping 4:3.
     expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 1600, 1200);
     expect(track.stop).toHaveBeenCalled();
@@ -115,7 +115,7 @@ describe('CameraCapture', () => {
 
     const input = await screen.findByLabelText(/التقط بالكاميرا/);
     expect(input).toHaveAttribute('capture', 'environment');
-    expect(screen.getByRole('status')).toHaveTextContent('لم يُسمح بالكاميرا');
+    expect(screen.getByRole('status')).toHaveTextContent('تعذّر الوصول إلى الكاميرا');
     fireEvent.change(input, {
       target: { files: [new File(['x'], 'x.jpg', { type: 'image/jpeg' })] },
     });
@@ -130,7 +130,7 @@ describe('CameraCapture', () => {
       'capture',
       'environment'
     );
-    expect(screen.getByRole('status')).toHaveTextContent('لا كاميرا متاحة');
+    expect(screen.getByRole('status')).toHaveTextContent('لا يتيح هذا المتصفح الكاميرا الحية');
     expect(screen.queryByRole('button', { name: /التقط بالكاميرا/ })).toBeNull();
   });
 
@@ -140,7 +140,7 @@ describe('CameraCapture', () => {
     render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
 
     expect(screen.getByLabelText(/التقط بالكاميرا/)).toHaveAttribute('capture', 'environment');
-    expect(screen.getByRole('status')).toHaveTextContent('https');
+    expect(screen.getByRole('status')).toHaveTextContent('HTTPS');
   });
 
   it('hydrates an insecure page without a mismatch, then falls back', async () => {
@@ -158,7 +158,7 @@ describe('CameraCapture', () => {
       });
     });
 
-    expect(within(container).getByRole('status')).toHaveTextContent('https');
+    expect(within(container).getByRole('status')).toHaveTextContent('HTTPS');
     expect(errors).not.toHaveBeenCalled();
     act(() => root?.unmount());
     container.remove();
@@ -179,7 +179,7 @@ describe('CameraCapture', () => {
 
     const input = await screen.findByLabelText(/التقط بالكاميرا/);
     expect(input).toHaveAttribute('capture', 'environment');
-    expect(screen.getByRole('status')).toHaveTextContent('لا كاميرا متاحة');
+    expect(screen.getByRole('status')).toHaveTextContent('لم يتم العثور على كاميرا');
     expect(screen.queryByRole('button', { name: /التقط بالكاميرا/ })).toBeNull();
   });
 
@@ -189,7 +189,7 @@ describe('CameraCapture', () => {
     render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
 
     await screen.findByLabelText(/التقط بالكاميرا/);
-    expect(screen.getByRole('status')).toHaveTextContent('لم يُسمح بالكاميرا');
+    expect(screen.getByRole('status')).toHaveTextContent('تعذّر الوصول إلى الكاميرا');
   });
 
   it('offers the live camera when a camera is listed and the permission is open', async () => {
@@ -201,6 +201,85 @@ describe('CameraCapture', () => {
     fireEvent.click(button);
     await waitFor(() => expect(getUserMedia).toHaveBeenCalledOnce());
     expect(await screen.findByLabelText('معاينة الكاميرا')).toBeInTheDocument();
+  });
+
+  it('keeps the live button when another application holds the camera, and tries again', async () => {
+    const { getUserMedia } = stubCamera('failed');
+    render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /التقط بالكاميرا/ }));
+
+    expect(await screen.findByText(/قد تكون مستخدمة حاليًا/)).toHaveAttribute('role', 'status');
+    fireEvent.click(screen.getByRole('button', { name: /التقط بالكاميرا/ }));
+    await waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(2));
+  });
+
+  it('switches between the back and the front camera, one stream at a time', async () => {
+    const { getUserMedia, track } = stubCamera('granted');
+    withDevices(['videoinput', 'videoinput']);
+    render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /التقط بالكاميرا/ }));
+    const flip = await screen.findByRole('button', { name: 'بدّل الكاميرا' });
+    expect(getUserMedia).toHaveBeenLastCalledWith({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false,
+    });
+    await act(async () => {
+      fireEvent.click(flip);
+    });
+
+    expect(track.stop).toHaveBeenCalled();
+    expect(getUserMedia).toHaveBeenLastCalledWith({
+      video: { facingMode: { ideal: 'user' } },
+      audio: false,
+    });
+    // The front camera is shown as a mirror; a second tap goes back to the back camera.
+    await waitFor(() =>
+      expect(screen.getByLabelText('معاينة الكاميرا')).toHaveClass('-scale-x-100')
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'بدّل الكاميرا' }));
+    });
+    expect(getUserMedia).toHaveBeenLastCalledWith({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false,
+    });
+  });
+
+  it('has no switch on a device with one camera', async () => {
+    stubCamera('granted');
+    withDevices(['videoinput']);
+    render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /التقط بالكاميرا/ }));
+    await screen.findByRole('button', { name: 'التقط' });
+    expect(screen.queryByRole('button', { name: 'بدّل الكاميرا' })).toBeNull();
+  });
+
+  it('brings the preview and its shutter into sight when the camera opens', async () => {
+    stubCamera('granted');
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      value: scrollIntoView,
+      configurable: true,
+    });
+    render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /التقط بالكاميرا/ }));
+
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' }));
+    Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
+  });
+
+  it('cameraProblem puts the page first, then the tap, then what the device said', () => {
+    expect(cameraProblem(false, 'busy', 'available')).toBe('insecure');
+    expect(cameraProblem(true, 'busy', 'denied')).toBe('busy');
+    expect(cameraProblem(true, null, 'denied')).toBe('denied');
+    expect(cameraProblem(true, null, 'none')).toBe('missing');
+    expect(cameraProblem(true, null, 'unsupported')).toBe('unsupported');
+    expect(cameraProblem(true, null, 'available')).toBeNull();
+    expect(cameraProblem(true, null, 'unknown')).toBeNull();
   });
 
   it('keeps the button when the device list cannot be read', async () => {

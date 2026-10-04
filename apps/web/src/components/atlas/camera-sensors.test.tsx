@@ -8,6 +8,7 @@ import {
   turnDevice,
 } from '@/test/camera';
 import {
+  cameraFailureOf,
   FIX_MAX_AGE_MS,
   HEADING_STALE_MS,
   HEADING_WAIT_MS,
@@ -28,9 +29,69 @@ describe('useCameraStream', () => {
     await act(() => result.current.start());
     expect(result.current.state).toBe('unavailable');
 
+    expect(result.current.failure).toBe('unsupported');
+
     stubCamera('failed');
     await act(() => result.current.start());
     expect(result.current.state).toBe('unavailable');
+    expect(result.current.failure).toBe('busy');
+  });
+
+  it('says a page that is not a secure context hides the camera', async () => {
+    stubCamera('none');
+    Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true });
+    const { result } = renderHook(() => useCameraStream());
+    await act(() => result.current.start());
+    expect(result.current.failure).toBe('insecure');
+    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true });
+  });
+
+  it('names each failure of getUserMedia as the reader needs to hear it', () => {
+    const named = (name: string) => Object.assign(new Error(name), { name });
+    expect(cameraFailureOf(named('NotAllowedError'))).toBe('denied');
+    expect(cameraFailureOf(named('SecurityError'))).toBe('denied');
+    expect(cameraFailureOf(named('NotFoundError'))).toBe('missing');
+    expect(cameraFailureOf(named('OverconstrainedError'))).toBe('missing');
+    expect(cameraFailureOf(named('NotReadableError'))).toBe('busy');
+    expect(cameraFailureOf(named('AbortError'))).toBe('busy');
+    expect(cameraFailureOf(named('TypeError'))).toBe('unsupported');
+    expect(cameraFailureOf('not an error')).toBe('unsupported');
+  });
+
+  it('stops a stream granted after the camera was closed, and forgets a late refusal', async () => {
+    const { getUserMedia, track } = stubCamera('granted');
+    let grant: (stream: MediaStream) => void = () => undefined;
+    getUserMedia.mockImplementationOnce(
+      () => new Promise<MediaStream>((resolve) => (grant = resolve))
+    );
+    const { result } = renderHook(() => useCameraStream());
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.start();
+    });
+    expect(result.current.state).toBe('starting');
+    act(() => result.current.stop());
+    await act(async () => {
+      grant({ getTracks: () => [track] } as unknown as MediaStream);
+      await pending;
+    });
+    expect(track.stop).toHaveBeenCalledOnce();
+    expect(result.current.state).toBe('idle');
+
+    let refuse: (error: Error) => void = () => undefined;
+    getUserMedia.mockImplementationOnce(
+      () => new Promise<MediaStream>((_, reject) => (refuse = reject))
+    );
+    act(() => {
+      pending = result.current.start();
+    });
+    act(() => result.current.stop());
+    await act(async () => {
+      refuse(Object.assign(new Error('no'), { name: 'NotAllowedError' }));
+      await pending;
+    });
+    expect(result.current.state).toBe('idle');
+    expect(result.current.failure).toBeNull();
   });
 
   it('lets the tracks go when the screen is left', async () => {
