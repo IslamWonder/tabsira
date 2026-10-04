@@ -2550,6 +2550,7 @@ export interface components {
       | 'GONE'
       | 'legal_acceptance_required'
       | 'mail_unavailable'
+      | 'turnstile_failed'
       | 'UNSUPPORTED_MEDIA_TYPE'
       | 'FEATURE_DISABLED'
       | 'ASSET_MISSING'
