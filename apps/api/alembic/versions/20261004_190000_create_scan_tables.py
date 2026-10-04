@@ -1,7 +1,7 @@
 """create_scan_tables
 
 Revision ID: 20261004_190000
-Revises: 20261004_180000
+Revises: 20261004_182000
 Create Date: 2026-10-04 19:00:00.000000
 
 What the scan workflow keeps for a learner: the guests, the scans, the insights
@@ -23,7 +23,7 @@ from alembic import op
 from src.models.public_id import create_sequence_sql, sequence_name
 
 revision: str = "20261004_190000"
-down_revision: str | Sequence[str] | None = "20261004_180000"
+down_revision: str | Sequence[str] | None = "20261004_182000"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
