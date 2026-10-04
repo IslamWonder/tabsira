@@ -136,6 +136,9 @@ ignore = [
 "src/**/__init__.py" = ["F401", "F403", "F405"]
 # Docstrings: not required on every module, class and function of the application code
 "src/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D107"]
+# sqladmin is configured with class attributes (column_list, form_columns, ...) that
+# its own classes declare as plain lists; they are never mutated.
+"src/admin/views/*.py" = ["RUF012"]
 # Tests use assert and fixtures with throwaway secrets, and build error messages inline
 "tests/**/*.py" = ["S101", "S105", "S106", "S107", "T20", "D", "SLF001", "EM", "TRY003", "PLC0415", "RUF012", "PLR0915"]
 # Alembic migrations: docstring format is auto-generated; raw SQL is expected

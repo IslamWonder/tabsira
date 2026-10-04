@@ -1,0 +1,40 @@
+{#
+  The sign-in form. Its own, not sqladmin's: it asks for an e-mail address and a code as
+  well as the password, and carries the sign-in CSRF token. The message of a refusal is
+  always the same, whatever was wrong.
+#}
+{% extends "sqladmin/base.html" %}
+{% block body %}
+<div class="d-flex align-items-center justify-content-center vh-100">
+  <form class="col-lg-4 col-md-6 col-11 card card-md" action="{{ url_for('admin:login') }}" method="POST" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="{{ login_token }}">
+    <div class="card-body">
+      <h2 class="card-title text-center mb-4">{{ admin.title }}</h2>
+      {% if error %}
+      <div class="alert alert-danger" role="alert">{{ error }}</div>
+      {% endif %}
+      <div class="mb-3">
+        <label class="form-label" for="admin-email">E-mail address</label>
+        <input id="admin-email" name="email" type="email" class="form-control" value="{{ email or '' }}"
+          autocomplete="username" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="admin-password">Password</label>
+        <input id="admin-password" name="password" type="password" class="form-control"
+          autocomplete="current-password" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="admin-code">
+          Authentication code
+          <span class="form-label-description">once two-factor is on</span>
+        </label>
+        <input id="admin-code" name="code" type="text" class="form-control" inputmode="numeric"
+          autocomplete="one-time-code" placeholder="6 digits, or a recovery code">
+      </div>
+      <div class="form-footer">
+        <button type="submit" class="btn btn-primary w-100">Sign in</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

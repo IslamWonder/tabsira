@@ -29,6 +29,11 @@ _NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
 _REASON = re.compile(r"^[a-z0-9_]{1,64}$")
 
 
+def is_field_name(name: object) -> bool:
+    """Whether `name` looks like a column name, which is all a field of the log may be."""
+    return isinstance(name, str) and _NAME.match(name) is not None
+
+
 def details_of(
     *,
     fields: Iterable[str] = (),
@@ -43,7 +48,7 @@ def details_of(
     """
     details: dict[str, Any] = {}
     names = sorted(set(fields))
-    if any(not _NAME.match(name) for name in names):
+    if not all(is_field_name(name) for name in names):
         message = "an audit field must be a column name"
         raise ValueError(message)
     if names:

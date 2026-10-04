@@ -74,4 +74,4 @@ Rate limits count the client address that uvicorn resolves from `X-Forwarded-For
 
 ## Not built
 
-Changing the display name, the e-mail address or the password while signed in; two-factor sign-in (the admin area will have it); a list of a person's own sessions with a way to end one; password re-entry before deleting an account.
+Changing the display name, the e-mail address or the password while signed in; two-factor sign-in for ordinary accounts (the admin area has its own, with its own session: `docs/ADMIN.md`); a list of a person's own sessions with a way to end one; password re-entry before deleting an account.

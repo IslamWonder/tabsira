@@ -1,0 +1,13 @@
+{#
+  The panel's page skeleton, extended from sqladmin's own: it adds the CSRF token for the
+  admin script to read, a stylesheet for Arabic text, and the script that attaches the
+  token to the requests the panel makes itself (deleting, and every bulk action).
+#}
+{% extends "sqladmin_original/base.html" %}
+{% block head %}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="stylesheet" href="{{ url_for('admin:statics', path='css/tabsira-admin.css') }}">
+{% endblock %}
+{% block tail %}
+<script type="text/javascript" src="{{ url_for('admin:statics', path='js/tabsira-admin.js') }}"></script>
+{% endblock %}

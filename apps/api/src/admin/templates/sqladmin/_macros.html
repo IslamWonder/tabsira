@@ -1,0 +1,15 @@
+{#
+  sqladmin's macros, with one change: every create and edit form carries the CSRF token.
+  `render_form_fields` is called inside each of those forms, so putting the token there
+  covers them all, including the forms of views added later. `display_menu` is the only
+  other macro a template imports, and is passed through as it is (Jinja does not re-export
+  a name that was imported, so it is wrapped).
+#}
+{% import "sqladmin_original/_macros.html" as original %}
+
+{% macro display_menu(menu, request) %}{{ original.display_menu(menu, request) }}{% endmacro %}
+
+{% macro render_form_fields(form, form_opts=None, ajax_lookup_url="") %}
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{{ original.render_form_fields(form, form_opts, ajax_lookup_url) }}
+{% endmacro %}

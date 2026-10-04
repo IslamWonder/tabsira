@@ -48,9 +48,9 @@ from sqlalchemy.pool import NullPool
 from src.config import Settings
 from tests.helpers import client_for
 
-# The fixtures of the ontology and learning-path tests, and the GlitchTip recorder, live in
-# their own modules.
-pytest_plugins = ["tests.support_ontology", "tests.support_glitchtip"]
+# The fixtures of the ontology, learning-path and admin tests, and the GlitchTip recorder, live
+# in their own modules.
+pytest_plugins = ["tests.support_ontology", "tests.support_glitchtip", "tests.support_admin"]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 

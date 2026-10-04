@@ -1,0 +1,17 @@
+/* The panel is in English and left to right. Arabic text in it (a place, a term, a
+   learning unit) is shown in its own direction, aligned to its own side. */
+td,
+th,
+dd,
+input.form-control,
+textarea.form-control,
+code,
+pre {
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+
+/* The recovery codes are shown in tabler's dark code block, a little larger than its default. */
+pre.recovery-codes {
+  font-size: 1.1rem;
+}

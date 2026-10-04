@@ -114,5 +114,13 @@ async def test_a_row_with_nothing_to_say_stores_sql_null_not_a_json_null(db_sess
     assert unset == 1
 
 
+@pytest.mark.parametrize(
+    ("name", "valid"),
+    [("status", True), ("a_1", True), ("a b", False), ("", False), (7, False), (None, False)],
+)
+def test_only_something_shaped_like_a_column_name_is_a_field_name(name, valid):
+    assert admin_audit_service.is_field_name(name) is valid
+
+
 def test_a_reason_may_hold_digits():
     assert details_of(reason="step_2") == {"reason": "step_2"}

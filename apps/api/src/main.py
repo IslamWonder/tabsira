@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.admin import install_admin
 from src.config import Settings, get_settings
 from src.database import dispose_engine
 from src.error_tracking import WebReporter, init_error_tracking, shutdown_error_tracking
@@ -126,6 +127,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(client_errors.router)
     app.include_router(cookie_consent.router)
     app.include_router(sitemap.router)
+    # The admin area is not mounted at all while its feature flag is off.
+    if settings.feature_admin:
+        install_admin(app, settings)
     return app
 
 

@@ -1,0 +1,57 @@
+{#
+  The landing page: counts, each one a link to the list it counts. Never a record: what is
+  behind a number is one click away, and that click is written to the audit log.
+#}
+{% extends "sqladmin/layout.html" %}
+{% macro stat(label, value, href, tone) -%}
+<div class="col-sm-6 col-lg-3">
+  <div class="card {{ 'card-link' if href }}">
+    <div class="card-body">
+      <div class="subheader">{% if href %}<a class="stretched-link text-reset" href="{{ href }}">{{ label }}</a>{% else %}{{ label }}{% endif %}</div>
+      <div class="h1 mb-0 {{ tone }}">{{ value }}</div>
+    </div>
+  </div>
+</div>
+{%- endmacro %}
+
+{% block content %}
+{% if not two_factor %}
+<div class="col-12">
+  <div class="alert alert-warning" role="alert">
+    You have not turned on the second factor. It protects every account and consent behind this
+    panel. <a href="{{ url_for('admin:view-two-factor') }}">Turn it on</a>.
+  </div>
+</div>
+{% endif %}
+
+<div class="col-12"><h3 class="mb-1">Accounts</h3></div>
+{{ stat("Accounts", users, url_for('admin:list', identity='user'), '') }}
+{{ stat("Active accounts", active_users, url_for('admin:list', identity='user'), '') }}
+{{ stat("Admins", admins, url_for('admin:list', identity='user'), '') }}
+{{ stat("Live sessions", user_sessions, url_for('admin:list', identity='session'), '') }}
+{{ stat("Consents recorded", consents, url_for('admin:list', identity='consent'), '') }}
+{{ stat("Live admin sessions", admin_sessions, '', '') }}
+
+<div class="col-12 mt-2"><h3 class="mb-1">Ontology</h3></div>
+{{ stat("Candidates to review", candidates_new, url_for('admin:list', identity='ontology-candidate'), 'text-warning' if candidates_new else '') }}
+{{ stat("Accepted", candidates_accepted, url_for('admin:list', identity='ontology-candidate'), '') }}
+{{ stat("Rejected", candidates_rejected, url_for('admin:list', identity='ontology-candidate'), '') }}
+{{ stat("Entities", entities, url_for('admin:list', identity='ontology-entity'), '') }}
+
+<div class="col-12 mt-2"><h3 class="mb-1">Learning path and places</h3></div>
+{{ stat("Path versions", path_versions, url_for('admin:list', identity='learning-path-version'), '') }}
+{{ stat("Domains in the active version", active_domains, url_for('admin:list', identity='learning-domain'), '') }}
+{{ stat("Units in the active version", active_units, url_for('admin:list', identity='learning-unit'), '') }}
+{{ stat("Places (estimate)", places, url_for('admin:list', identity='geo-name'), '') }}
+<div class="col-12">
+  <div class="text-secondary">
+    {% if active_version %}Active version: {{ active_version.title }} ({{ active_version.path_version }}).{% else %}No version of the learning path is active.{% endif %}
+  </div>
+</div>
+
+<div class="col-12 mt-2"><h3 class="mb-1">Security, last 24 hours</h3></div>
+{{ stat("Audit events", audit_events, url_for('admin:list', identity='admin-audit-log'), '') }}
+{{ stat("Admin sign-ins", sign_ins, url_for('admin:list', identity='admin-audit-log'), '') }}
+{{ stat("Failed sign-ins", failed_sign_ins, url_for('admin:list', identity='admin-audit-log'), 'text-danger' if failed_sign_ins else '') }}
+<div class="col-12 mt-2 text-secondary">Signed in as {{ admin_email }}.</div>
+{% endblock %}
