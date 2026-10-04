@@ -14,7 +14,7 @@ from src.storage.local import LocalStorage
 from src.storage.photos import PhotoStore
 from tests.conftest import PASSPHRASE
 from tests.scans.builders import insight_row, scan_row
-from tests.scans.conftest import photo
+from tests.support_images import jpeg_of, pixels
 
 LOGIN = {"email": "reader@example.com", "password": PASSPHRASE}
 
@@ -57,11 +57,11 @@ async def kept(db, user: User, photos: PhotoStore, *, published: bool) -> Insigh
     db.add(scan)
     await db.flush()
     private = new_private_key()
-    await photos.storage.put(private, photo())
+    await photos.storage.put(private, jpeg_of(pixels()))
     public = None
     if published:
         public = new_public_key()
-        await photos.storage.put(public, photo())
+        await photos.storage.put(public, jpeg_of(pixels()))
     insight = insight_row(owner, scan_id=scan.id, photo_key=private, photo_public_key=public)
     db.add(insight)
     await db.flush()

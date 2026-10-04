@@ -26,7 +26,7 @@ from src.storage.photos import PhotoStore
 from tests import geo_dataset as world_data
 from tests.helpers import any_id
 from tests.scans.builders import insight_row, scan_row
-from tests.scans.conftest import photo
+from tests.support_images import jpeg_of, pixels
 from tests.support_social import ALLOW, Member, new_comment, new_post
 
 MODERATOR_ID = __import__("uuid").uuid4()
@@ -99,7 +99,7 @@ async def kept_insight(
     await db.flush()
     if with_photo:
         key = new_private_key()
-        await photos.storage.put(key, photo())
+        await photos.storage.put(key, jpeg_of(pixels()))
         values["photo_key"] = key
     insight = insight_row(owner, scan_id=scan.id, **{**EVIDENCE, **values})
     db.add(insight)

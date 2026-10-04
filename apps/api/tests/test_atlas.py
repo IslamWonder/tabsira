@@ -663,7 +663,7 @@ async def test_an_account_that_said_it_is_under_13_places_nothing(
 
     refused = await _place(author, insight_id)
 
-    assert (refused.status_code, refused.json()["error"]) == (409, "INSIGHT_NOT_PUBLISHABLE")
+    assert (refused.status_code, refused.json()["error"]) == (409, "UNDER_13_CANNOT_PUBLISH")
 
 
 async def test_a_text_that_reads_like_scripture_is_never_placed(

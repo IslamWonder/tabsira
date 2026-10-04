@@ -29,7 +29,6 @@ from src.geo.privacy import approximate, cell_polygon
 from src.messages import messages_for
 from src.models.atlas import LocationMeaning, MapCapturePoint, MapEntry, MapEntryStatus
 from src.models.geonames import GeoName
-from src.models.profile import AgeRange, Profile
 from src.models.scan import Insight, Scan
 from src.models.social import InsightPublication, Post, PostStatus, PostVisibility
 from src.models.user import User
@@ -146,19 +145,16 @@ async def _own_insight(db: AsyncSession, user: User, insight_id: int) -> Insight
     return insight
 
 
-async def _check_publishable(db: AsyncSession, user: User, insight: Insight) -> None:
+async def _check_publishable(db: AsyncSession, insight: Insight) -> None:
     """
-    Apply the posts' rule here too: verified, texts clean, evidence in the store and eligible.
+    Apply the posts' rule here too: not under 13, verified, texts clean, evidence eligible.
 
-    And one rule of the map alone (extension §10): an account that declared itself under 13
-    places no location at all. A declared fact, never an inference.
+    An account that declared itself under 13 places no location at all (extension §10, v2 §5):
+    `publication_service` refuses it with `UNDER_13_CANNOT_PUBLISH`, a declared fact, never
+    an inference.
     """
     scan = await db.get(Scan, insight.scan_id) if insight.scan_id is not None else None
     await publication_service.check_publishable(db, snapshot_of(insight, scan))
-    profile = await db.scalar(select(Profile).where(Profile.user_id == user.id))
-    if profile is not None and profile.age_range is AgeRange.UNDER_13:
-        message = "This insight cannot be placed on the map: the account declared it is under 13."
-        raise AppError(ErrorCode.INSIGHT_NOT_PUBLISHABLE, message, status_code=409)
 
 
 def _live(insight_id: int) -> ColumnElement[bool]:
@@ -205,7 +201,7 @@ async def place(
     the time of placing, kept with the entry.
     """
     insight = await _own_insight(db, user, insight_id)
-    await _check_publishable(db, user, insight)
+    await _check_publishable(db, insight)
     cell_m = int(settings.geo_approx_cell_meters)
     centre = approximate(body.latitude, body.longitude, cell_m)
     labels = await _label(db, centre.lat, centre.lng)
@@ -316,7 +312,7 @@ async def publish(
         message = "Only a placed draft can be published."
         raise _wrong_state(message)
     # Checked again: a ruling may have changed since the entry was placed.
-    await _check_publishable(db, user, insight)
+    await _check_publishable(db, insight)
     entry.status = MapEntryStatus.PUBLISHED
     entry.published_at = clock.utcnow()
     await db.flush()

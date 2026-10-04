@@ -113,14 +113,27 @@ async def _photo_ref(
     return None if facts.refusal(settings) else reference
 
 
+async def _refuse_under_13(db: AsyncSession, snapshot: InsightSnapshot) -> None:
+    """Refuse everything for an account that said it is under 13 (v2 §5): a declared fact."""
+    profile = await db.get(Profile, snapshot.owner_id)
+    if profile is not None and profile.age_range is AgeRange.UNDER_13:
+        raise AppError(
+            ErrorCode.UNDER_13_CANNOT_PUBLISH,
+            "This insight cannot be published: the account declared it is under 13.",
+            status_code=409,
+        )
+
+
 async def check_publishable(db: AsyncSession, snapshot: InsightSnapshot) -> None:
     """
     Refuse, with the reason, an insight that may not be shown to strangers.
 
-    The one rule for a post and for an entry of the atlas: the insight is verified, every
-    text fits and none reads like scripture, and its evidence resolves in the store, a hadith
-    only with an eligible ruling (decision 18).
+    The one rule for a post and for an entry of the atlas: the owner did not say they are under
+    13 (409 `UNDER_13_CANNOT_PUBLISH`), the insight is verified, every text fits and none reads
+    like scripture, and its evidence resolves in the store, a hadith only with an eligible
+    ruling (decision 18).
     """
+    await _refuse_under_13(db, snapshot)
     if not snapshot.verified:
         _refuse("it is not verified")
     _check_texts(snapshot)

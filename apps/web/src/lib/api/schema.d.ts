@@ -400,10 +400,11 @@ export interface paths {
     post?: never;
     /**
      * Delete the account and everything it owns
-     * @description Delete the user, their profile, consents, identities, sessions and everything they saved.
+     * @description Delete the user, their profile, consents, identities, sessions, photos and everything they saved.
      *
      *     Idempotent: without a valid session there is nothing left to delete, and the
-     *     answer is the same 204 that clears the cookie.
+     *     answer is the same 204 that clears the cookie. 503 STORAGE_UNAVAILABLE, with nothing
+     *     deleted, when the photo store cannot be reached.
      */
     delete: operations['delete_account_account_delete'];
     options?: never;
@@ -3073,6 +3074,8 @@ export interface components {
       learner_units: components['schemas']['LearnerUnitExport'][];
       /** Exposures */
       exposures: components['schemas']['ExposureExport'][];
+      /** Photos */
+      photos: components['schemas']['PhotoExport'][];
     };
     /** LearningUnitOut */
     LearningUnitOut: {
@@ -3278,6 +3281,22 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+    };
+    /**
+     * PhotoExport
+     * @description A photo «تمّ» kept with the owner's consent (v2 §19): which insight, and whether a copy is public.
+     *
+     *     The export says that the photo exists; the image itself is not in the file, and neither are
+     *     the keys of its copies.
+     */
+    PhotoExport: {
+      /** Insight Id */
+      insight_id: string;
+      /**
+       * Published
+       * @description A post or a map entry shows a public copy right now
+       */
+      published: boolean;
     };
     /** PlaceExport */
     PlaceExport: {

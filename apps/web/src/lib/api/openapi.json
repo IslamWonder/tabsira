@@ -701,7 +701,7 @@
       "delete": {
         "tags": ["account"],
         "summary": "Delete the account and everything it owns",
-        "description": "Delete the user, their profile, consents, identities, sessions and everything they saved.\n\nIdempotent: without a valid session there is nothing left to delete, and the\nanswer is the same 204 that clears the cookie.",
+        "description": "Delete the user, their profile, consents, identities, sessions, photos and everything they saved.\n\nIdempotent: without a valid session there is nothing left to delete, and the\nanswer is the same 204 that clears the cookie. 503 STORAGE_UNAVAILABLE, with nothing\ndeleted, when the photo store cannot be reached.",
         "operationId": "delete_account_account_delete",
         "responses": {
           "204": {
@@ -7045,6 +7045,13 @@
             },
             "type": "array",
             "title": "Exposures"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/PhotoExport"
+            },
+            "type": "array",
+            "title": "Photos"
           }
         },
         "type": "object",
@@ -7055,7 +7062,8 @@
           "places",
           "treasures",
           "learner_units",
-          "exposures"
+          "exposures",
+          "photos"
         ],
         "title": "LearningExport",
         "description": "Everything the scan workflow keeps for the account."
@@ -7517,6 +7525,24 @@
         "type": "object",
         "required": ["provider", "subject", "created_at"],
         "title": "OAuthAccountExport"
+      },
+      "PhotoExport": {
+        "properties": {
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id"
+          },
+          "published": {
+            "type": "boolean",
+            "title": "Published",
+            "description": "A post or a map entry shows a public copy right now"
+          }
+        },
+        "type": "object",
+        "required": ["insight_id", "published"],
+        "title": "PhotoExport",
+        "description": "A photo «تمّ» kept with the owner's consent (v2 §19): which insight, and whether a copy is public.\n\nThe export says that the photo exists; the image itself is not in the file, and neither are\nthe keys of its copies."
       },
       "PlaceExport": {
         "properties": {

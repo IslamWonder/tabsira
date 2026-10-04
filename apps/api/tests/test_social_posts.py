@@ -288,14 +288,12 @@ async def test_the_photo_rules_are_checked_again_when_the_post_is_made(
 ):
     offered = {"photo_ref": "photos/a", "photo_consent": True}
     switched_off = await make_member("off")
-    young = await make_member("young")
     no_storage = await make_member("nostorage")
     off_feature = await make_member("feature")
     await agree_to_photos(switched_off)
     await switched_off.http.post(
         "/consents", json={"kind": "photo_storage", "version": "v2", "granted": False}
     )
-    await agree_to_photos(young, age_range="under_13")
     await agree_to_photos(off_feature)
 
     # Nobody answered the photo question for `no_storage`: the account never agreed.
@@ -303,7 +301,6 @@ async def test_the_photo_rules_are_checked_again_when_the_post_is_made(
         "withdrew the consent": (
             await create(switched_off, make_insight(switched_off, **offered), photo=True)
         ).json(),
-        "under 13": (await create(young, make_insight(young, **offered), photo=True)).json(),
         "never agreed": (
             await create(no_storage, make_insight(no_storage, **offered), photo=True)
         ).json(),
@@ -317,10 +314,18 @@ async def test_the_photo_rules_are_checked_again_when_the_post_is_made(
 
     assert {name: body["insight"]["has_photo"] for name, body in results.items()} == {
         "withdrew the consent": False,
-        "under 13": False,
         "never agreed": False,
         "feature off": False,
     }
+
+
+async def test_an_account_that_said_it_is_under_13_publishes_no_post(make_member, make_insight):
+    young = await make_member("young")
+    assert (await young.http.patch("/profile", json={"age_range": "under_13"})).status_code == 200
+
+    refused = await create(young, make_insight(young))
+
+    assert (refused.status_code, refused.json()["error"]) == (409, "UNDER_13_CANNOT_PUBLISH")
 
 
 async def test_concepts_are_trimmed_and_capped(make_member, make_insight):
