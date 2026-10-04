@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { INDEXED_ROUTES, UNLISTED_ROUTES } from '@/lib/seo';
 import { messages } from '@/messages';
+import { metadata as atlasCamera } from './atlas/camera/page';
 import { metadata as atlas } from './atlas/page';
 import { metadata as atlasPublish } from './atlas/publish/page';
 import { metadata as community } from './community/page';
@@ -27,6 +28,7 @@ const UNLISTED = {
   '/community/publish': publish,
   '/atlas': atlas,
   '/atlas/publish': atlasPublish,
+  '/atlas/camera': atlasCamera,
   '/me': me,
   '/offline': offline,
   '/signin': signin,

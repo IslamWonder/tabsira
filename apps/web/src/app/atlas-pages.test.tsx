@@ -1,12 +1,19 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { apiError, mockApi } from '@/test/api';
 import { ENTRY, PLACE_PAGE } from '@/test/atlas';
+import AtlasCameraPage, { metadata as cameraMetadata } from './atlas/camera/page';
 import AtlasEntryPage, { generateMetadata as entryMetadata } from './atlas/entries/[id]/page';
+import AtlasPage from './atlas/page';
 import AtlasPlacePage, { generateMetadata as placeMetadata } from './atlas/places/[id]/page';
 
 vi.mock('maplibre-gl', () => import('@/test/maplibre'));
-vi.mock('next/navigation', () => ({ usePathname: () => '/' }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/',
+  notFound: () => {
+    throw new Error('NEXT_NOT_FOUND');
+  },
+}));
 
 const params = <T extends Record<string, string>>(value: T) => ({ params: Promise.resolve(value) });
 const NOINDEX = { index: false, follow: false };
@@ -69,5 +76,33 @@ describe('the atlas place page metadata', () => {
     mockApi({});
     render(await AtlasPlacePage(params({ id: '2464470' })));
     expect(screen.getByText('نحمّل المكان…')).toBeInTheDocument();
+  });
+});
+
+describe('the camera discovery page (FEATURE_CAMERA_DISCOVERY)', () => {
+  it('is a 404 while the flag is off, on the atlas too', () => {
+    vi.stubEnv('FEATURE_CAMERA_DISCOVERY', 'false');
+    expect(() => render(<AtlasCameraPage />)).toThrow('NEXT_NOT_FOUND');
+    mockApi({});
+    render(<AtlasPage />);
+    expect(screen.queryByRole('link', { name: 'اكتشف بالكاميرا' })).toBeNull();
+  });
+
+  it('opens on its explanation while the flag is on, outside the sitemap', () => {
+    vi.stubEnv('FEATURE_CAMERA_DISCOVERY', 'true');
+    mockApi({});
+    render(<AtlasCameraPage />);
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'اكتشف البصائر حولك' })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'ابدأ الاستكشاف' })).toBeInTheDocument();
+    expect(cameraMetadata.alternates?.canonical).toBe('/atlas/camera');
+    expect(cameraMetadata.robots).toEqual({ index: false, follow: false });
+    cleanup();
+    render(<AtlasPage />);
+    expect(screen.getByRole('link', { name: 'اكتشف بالكاميرا' })).toHaveAttribute(
+      'href',
+      '/atlas/camera'
+    );
   });
 });

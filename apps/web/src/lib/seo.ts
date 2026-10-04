@@ -23,6 +23,7 @@ export const UNLISTED_ROUTES = [
   '/community/publish',
   '/atlas',
   '/atlas/publish',
+  '/atlas/camera',
   '/me',
   '/offline',
   '/signin',

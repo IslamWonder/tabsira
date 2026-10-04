@@ -105,7 +105,8 @@ export function EntryCard({ feature, onClose }: { feature: AtlasFeature; onClose
   );
 }
 
-function PlaceSearch({ onPick }: { onPick: (hit: PlaceHit) => void }) {
+/** Finds a city or place by name; the atlas and the camera screen both pick a region with it. */
+export function PlaceSearch({ onPick }: { onPick: (hit: PlaceHit) => void }) {
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<PlaceHit[] | null>(null);
   const [state, setState] = useState<'idle' | 'searching' | 'failed'>('idle');
@@ -242,7 +243,14 @@ function Filters({
  * move; the near-me button moves the map with the device's own position and sends
  * nothing. An empty window says so and invents no point.
  */
-export function AtlasScreen({ initialView = null }: { initialView?: View | null }) {
+export function AtlasScreen({
+  initialView = null,
+  cameraDiscovery = false,
+}: {
+  initialView?: View | null;
+  /** FEATURE_CAMERA_DISCOVERY, read by the server: shows the way to the camera discovery. */
+  cameraDiscovery?: boolean;
+}) {
   const [features, setFeatures] = useState<AtlasFeature[]>([]);
   const [load, setLoad] = useState<Load>({ kind: 'idle' });
   const [filters, setFilters] = useState<AtlasFilters>(EMPTY_FILTERS);
@@ -349,6 +357,11 @@ export function AtlasScreen({ initialView = null }: { initialView?: View | null 
         <Button variant="secondary" onClick={nearMe}>
           {A.nearMe}
         </Button>
+        {cameraDiscovery ? (
+          <LinkButton href="/atlas/camera" variant="secondary">
+            {A.camera.open}
+          </LinkButton>
+        ) : null}
         <Button
           onClick={searchHere}
           disabled={load.kind === 'loading'}
