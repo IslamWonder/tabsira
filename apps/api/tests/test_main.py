@@ -222,3 +222,19 @@ def test_the_application_starts_error_tracking_before_it_is_built(make_settings,
     main.create_app(settings)
 
     assert started == [(settings, main.API_VERSION)]
+
+
+async def test_the_lifespan_closes_the_turnstile_client(make_settings, monkeypatch):
+    from src.services import turnstile_service
+
+    application = main.create_app(make_settings())
+    client = turnstile_service.http_client()
+
+    async def fake_dispose() -> None:
+        return None
+
+    monkeypatch.setattr(main, "dispose_engine", fake_dispose)
+    async with application.router.lifespan_context(application):
+        assert not client.is_closed
+
+    assert client.is_closed

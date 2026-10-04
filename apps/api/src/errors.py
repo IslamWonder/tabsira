@@ -60,6 +60,8 @@ class ErrorCode(StrEnum):
     # The two codes below are lower case on purpose: they are the strings the web app matches.
     legal_acceptance_required = "legal_acceptance_required"
     mail_unavailable = "mail_unavailable"
+    # The bot check (Cloudflare Turnstile, decision 56) was missing or refused: HTTP 403.
+    turnstile_failed = "turnstile_failed"
     UNSUPPORTED_MEDIA_TYPE = "UNSUPPORTED_MEDIA_TYPE"
     FEATURE_DISABLED = "FEATURE_DISABLED"
     # The scan workflow: the codes of master prompt v2 §26, then the ones it needs besides.

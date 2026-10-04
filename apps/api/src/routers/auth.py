@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 
-from src.deps import DbDep, IpHashDep, SettingsDep, UngatedCurrentUser
+from src.deps import DbDep, HumanDep, IpHashDep, SettingsDep, UngatedCurrentUser
 from src.models.email_token import TokenPurpose
 from src.schemas.auth import LegalAcceptIn, LoginIn, ProviderOut, ProvidersOut, SignupIn, UserOut
 from src.services import (
@@ -20,6 +20,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post(
     "/signup",
+    dependencies=[HumanDep],
     status_code=status.HTTP_201_CREATED,
     summary="Create an account with an e-mail address and a password",
 )
@@ -65,7 +66,11 @@ async def signup(
     return await auth_service.describe(db, settings, user)
 
 
-@router.post("/login", summary="Sign in with an e-mail address and a password")
+@router.post(
+    "/login",
+    summary="Sign in with an e-mail address and a password",
+    dependencies=[HumanDep],
+)
 async def login(
     body: LoginIn,
     request: Request,

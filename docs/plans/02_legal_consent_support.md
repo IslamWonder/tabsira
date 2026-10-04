@@ -1,6 +1,6 @@
 # 02 · Legal pages, consent and support
 
-**Phase:** 1 · **Priority:** High · **Status:** ✅ · **Updated:** 2026-10-04 15:16 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** ✅ · **Updated:** 2026-10-04 22:45 (Tunis)
 
 Terms and privacy pages, the full-screen cookie choice, acceptance of the terms at sign-up, and a support form that e-mails `support@tabsira.me`.
 
@@ -40,3 +40,11 @@ Terms and privacy pages, the full-screen cookie choice, acceptance of the terms 
 - **Depends on:** The owners' retention period.
 - **Touches:** apps/api one CLI command, deploy/systemd one timer, docs/PRIVACY.md and the privacy page text.
 - **Done when:** Rows older than the period are gone; the privacy page states the period.
+
+### 02.3 Cloudflare Turnstile on the abused forms (API)
+
+- **Status:** ✅ 2026-10-04 22:45
+- **Goal:** Refuse sign-up, sign-in, the two mail forms and the support form without a valid Turnstile token (decision 56), before any rate-limit bookkeeping, database or mail work.
+- **Depends on:** —
+- **Touches:** apps/api config, deps, errors, messages, turnstile service, five routes, production checklist; `.env.example`, `deploy/env.production.example`, docs/PRIVACY.md, docs/OPERATIONS.md.
+- **Done when:** Both keys empty is off; one without the other is a configuration error; a missing or refused token answers 403 `turnstile_failed`; the web app sends `CF-Turnstile-Response` and shows the widget (separate task, apps/web); the privacy and terms pages name Cloudflare (web).

@@ -562,6 +562,10 @@ class Settings(BaseSettings):
     support_max_per_ip_per_hour: Annotated[int, Field(ge=1)] = 5
     support_max_per_address_per_hour: Annotated[int, Field(ge=1)] = 3
     support_max_per_hour: Annotated[int, Field(ge=1)] = 200
+    # Cloudflare Turnstile (decision 56) on sign-up, sign-in, the two mail forms and the support
+    # form. Both empty means off; one without the other is refused at start.
+    turnstile_site_key: str = ""
+    turnstile_secret_key: SecretStr = SecretStr("")
     # Language readiness (decision 36): Arabic only today; every text is keyed by language.
     default_language: str = DEFAULT_LANGUAGE
     supported_languages: Annotated[tuple[str, ...], NoDecode] = (DEFAULT_LANGUAGE,)
@@ -967,6 +971,22 @@ class Settings(BaseSettings):
                 )
                 raise ValueError(message)
         return self
+
+    @model_validator(mode="after")
+    def _turnstile_keys_come_together(self) -> Self:
+        """Refuse a half-configured Turnstile: the widget and the check need both keys."""
+        has_site = bool(self.turnstile_site_key.strip())
+        has_secret = bool(self.turnstile_secret_key.get_secret_value().strip())
+        if has_site != has_secret:
+            missing = "TURNSTILE_SECRET_KEY" if has_site else "TURNSTILE_SITE_KEY"
+            message = f"{missing} must be set together with the other Turnstile key"
+            raise ValueError(message)
+        return self
+
+    @property
+    def turnstile_enabled(self) -> bool:
+        """Whether the protected forms ask for a Turnstile token."""
+        return bool(self.turnstile_secret_key.get_secret_value().strip())
 
     @field_validator("local_media_dir")
     @classmethod

@@ -14,7 +14,7 @@ from fastapi import APIRouter, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import Settings
-from src.deps import DbDep, SettingsDep, UngatedOptionalUser
+from src.deps import DbDep, HumanDep, SettingsDep, UngatedOptionalUser
 from src.errors import AppError, ErrorCode
 from src.models.login_attempt import AttemptKind
 from src.models.user import User
@@ -60,6 +60,7 @@ async def _reserve(db: AsyncSession, settings: Settings, request: Request, addre
 
 @router.post(
     "",
+    dependencies=[HumanDep],
     status_code=status.HTTP_202_ACCEPTED,
     summary="Send a message to support",
 )

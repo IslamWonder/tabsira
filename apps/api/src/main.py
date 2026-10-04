@@ -52,7 +52,11 @@ from src.routers import (
     world,
 )
 from src.scans.queue import close_queue
-from src.services import atlas_sitemap, social_sitemap  # noqa: F401 - register the sitemap sections
+from src.services import (  # noqa: F401 - the sitemaps register themselves
+    atlas_sitemap,
+    social_sitemap,
+    turnstile_service,
+)
 from src.services.insight_source import InsightSource
 from src.services.insight_table_source import InsightTableSource
 from src.storage.notice import announce_storage
@@ -136,6 +140,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     http = getattr(app.state, "http", None)
     if http is not None:
         await http.aclose()
+    await turnstile_service.close_http_client()
     await close_queue()
     await close_redis()
     await dispose_engine()

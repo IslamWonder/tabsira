@@ -7,7 +7,7 @@ import asyncio
 from fastapi import APIRouter, BackgroundTasks, Request, status
 
 from src import clock, security
-from src.deps import DbDep, IpHashDep, SettingsDep
+from src.deps import DbDep, HumanDep, IpHashDep, SettingsDep
 from src.errors import AppError, ErrorCode
 from src.models.email_token import TokenPurpose
 from src.models.login_attempt import AttemptKind
@@ -53,6 +53,7 @@ async def verify_email(
 
 @router.post(
     "/resend-verification",
+    dependencies=[HumanDep],
     status_code=status.HTTP_202_ACCEPTED,
     summary="Mail the verification link again",
 )
@@ -90,6 +91,7 @@ async def resend_verification(
 
 @router.post(
     "/forgot-password",
+    dependencies=[HumanDep],
     status_code=status.HTTP_202_ACCEPTED,
     summary="Mail a password reset link",
 )

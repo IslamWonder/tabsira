@@ -34,6 +34,8 @@ class Messages:
     # Mail subjects. The bodies are the templates of the language.
     verify_email_subject: str
     reset_password_subject: str
+    # The bot check (Cloudflare Turnstile) was missing or refused.
+    turnstile_failed: str
     # The support form's mail, which reaches the team, not the visitor: its subject
     # (`{topic}` is the topic label below), the labels of its plain-text body, and the
     # label of each topic keyed by the topic's code.
@@ -152,6 +154,7 @@ ARABIC = Messages(
     site_name="تبصرة",
     verify_email_subject="أكّد بريدك الإلكتروني في تبصرة",
     reset_password_subject="إعادة تعيين كلمة المرور في تبصرة",  # noqa: S106 - a mail subject  # nosec B106
+    turnstile_failed="تعذّر التحقق من أنك لست روبوتًا. أعد المحاولة.",
     support_subject="[تبصرة] {topic}",
     support_label_topic="الموضوع",
     support_label_name="الاسم",

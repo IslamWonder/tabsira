@@ -10,8 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import Settings
 from src.database import get_db
 from src.errors import AppError, ErrorCode
+from src.messages import messages_for
 from src.models.user import User
-from src.services import auth_service, legal_service, session_service
+from src.services import auth_service, legal_service, session_service, turnstile_service
 from src.services.google_oidc import GoogleOidc
 from src.services.insight_source import InsightSource
 from src.services.moderation_guard import OpenAiTextGuard, TextGuard
@@ -28,6 +29,33 @@ def get_app_settings(request: Request) -> Settings:
 
 SettingsDep = Annotated[Settings, Depends(get_app_settings)]
 DbDep = Annotated[AsyncSession, Depends(get_db)]
+
+
+async def require_human(request: Request, settings: SettingsDep) -> None:
+    """
+    Answer 403 `turnstile_failed` unless the request carries a token Cloudflare accepts.
+
+    Attached with `dependencies=[HumanDep]`, it refuses before the route's body runs: before
+    the rate limit bookkeeping and any database or mail work. The token is read from the
+    header directly, not declared as a parameter, so the OpenAPI schema and the generated web
+    client stay as they are. Passes everything while Turnstile is off.
+    """
+    if not settings.turnstile_enabled:
+        return
+    verified = await turnstile_service.verify(
+        settings,
+        request.headers.get(turnstile_service.TOKEN_HEADER),
+        remote_ip=request.client.host if request.client else None,
+    )
+    if not verified:
+        raise AppError(
+            ErrorCode.turnstile_failed,
+            messages_for(settings=settings).turnstile_failed,
+            status_code=403,
+        )
+
+
+HumanDep = Depends(require_human)
 
 
 def get_ip_hash(request: Request, settings: SettingsDep) -> str:
