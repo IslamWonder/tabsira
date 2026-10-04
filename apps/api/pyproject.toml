@@ -32,6 +32,8 @@ dependencies = [
   "email-validator>=2.3.0",
   # Transactional mail templates, autoescaped (mail itself goes through smtplib).
   "jinja2>=3.1.6",
+  # Reads the world ontology workbook (.xlsx); never writes one
+  "openpyxl>=3.1.5",
 ]
 
 [dependency-groups]
@@ -43,6 +45,7 @@ dev = [
   "diff-cover>=10.6.0",
   "ruff>=0.16.10",
   "mypy>=2.4.0",
+  "types-openpyxl>=3.1.5",
 ]
 
 [tool.ruff]
