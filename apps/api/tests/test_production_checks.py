@@ -13,6 +13,7 @@ import redis
 from src.cli import check_config, production_checks
 from src.cli.production_checks import Check
 from src.config import Settings
+from src.services import turnstile_service
 
 FERNET_KEY = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
 DATABASE_URL = "postgresql+asyncpg://tabsira:a-long-database-password@10.0.0.2:5432/tabsira"
@@ -601,3 +602,68 @@ def test_production_report_copes_with_a_missing_file(monkeypatch, tmp_path, caps
 
     assert ok
     assert "All required settings are in place." in capsys.readouterr().out
+
+
+# ─── Turnstile ──────────────────────────────────────────────────────
+
+TURNSTILE = {
+    "turnstile_site_key": "1x00000000000000000000AA",
+    "turnstile_secret_key": "1x0000000000000000000000000000AA",
+}
+TURNSTILE_LINE = "TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY"
+
+
+def test_turnstile_is_a_recommendation_met_when_both_keys_are_set():
+    off = by_name(production_checks.run_checks(settings_of(), ENV))[TURNSTILE_LINE]
+    on = by_name(production_checks.run_checks(settings_of(**TURNSTILE), ENV))[TURNSTILE_LINE]
+
+    assert not off.ok
+    assert off.level == production_checks.RECOMMENDED
+    assert on.ok
+
+
+def fake_cloudflare(monkeypatch, body):
+    asked: list[tuple[str, str, str | None]] = []
+
+    async def post(secret, token, remote_ip):
+        asked.append((secret, token, remote_ip))
+        return body
+
+    monkeypatch.setattr(turnstile_service, "post_siteverify", post)
+    return asked
+
+
+def test_the_secret_is_not_probed_when_turnstile_is_off(live_world):
+    assert "Turnstile: the secret" not in live()
+
+
+def test_a_good_secret_is_told_the_dummy_token_is_invalid(live_world, monkeypatch):
+    asked = fake_cloudflare(
+        monkeypatch, {"success": False, "error-codes": ["invalid-input-response"]}
+    )
+
+    check = live(settings_of(**TURNSTILE))["Turnstile: the secret"]
+
+    assert check.ok
+    assert check.level == production_checks.RECOMMENDED
+    assert asked == [(TURNSTILE["turnstile_secret_key"], "tabsira-probe", None)]
+    assert TURNSTILE["turnstile_secret_key"] not in check.detail
+
+
+def test_a_bad_secret_fails_without_printing_it(live_world, monkeypatch):
+    fake_cloudflare(monkeypatch, {"success": False, "error-codes": ["invalid-input-secret"]})
+
+    check = live(settings_of(**TURNSTILE))["Turnstile: the secret"]
+
+    assert not check.ok
+    assert TURNSTILE["turnstile_secret_key"] not in check.detail
+
+
+@pytest.mark.parametrize("body", [None, {"success": False}, {"error-codes": "x"}])
+def test_no_usable_answer_from_cloudflare_is_reported(live_world, monkeypatch, body):
+    fake_cloudflare(monkeypatch, body)
+
+    check = live(settings_of(**TURNSTILE))["Turnstile: the secret"]
+
+    assert not check.ok
+    assert check.detail == "Cloudflare gave no usable answer"

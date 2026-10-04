@@ -15,12 +15,14 @@ message, and nothing reaches a service the application does not already call.
 
 from __future__ import annotations
 
+import asyncio
 import re
 import smtplib
 import socket
 import ssl
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import Any
 from urllib.parse import urlsplit
 
 import httpx
@@ -29,6 +31,7 @@ import redis
 from sqlalchemy.engine import make_url
 
 from src.config import AiStage, RerankerKind, Settings
+from src.services import turnstile_service
 
 REQUIRED, RECOMMENDED, OPTIONAL = "required", "recommended", "optional"
 LIVE_TIMEOUT = 10.0
@@ -321,6 +324,13 @@ def _web_checks(settings: Settings, env: Mapping[str, str], add: Add) -> None:
     )
     add(
         "Services",
+        "TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY",
+        RECOMMENDED,
+        bool(settings.turnstile_site_key.strip()) and settings.turnstile_enabled,
+        "bot check on sign-up, sign-in, the mail forms and support",
+    )
+    add(
+        "Services",
         "DETECTOR_URL is loopback",
         RECOMMENDED,
         _host(settings.detector_url) in LOOPBACK,
@@ -460,6 +470,29 @@ def _resolves(url: str) -> Callable[[Settings, Mapping[str, str]], str]:
     return probe
 
 
+def _turnstile(settings: Settings, _env: Mapping[str, str]) -> str:
+    """Post a dummy token: only the answer `invalid-input-secret` (a bad secret) is a failure."""
+
+    async def ask() -> dict[str, Any] | None:
+        try:
+            return await turnstile_service.post_siteverify(
+                settings.turnstile_secret_key.get_secret_value(), "tabsira-probe", None
+            )
+        finally:
+            # The shared client belongs to this loop only; the next run makes its own.
+            await turnstile_service.close_http_client()
+
+    body = asyncio.run(ask())
+    codes = body.get("error-codes") if body else None
+    if not isinstance(codes, list):
+        message = "Cloudflare gave no usable answer"
+        raise ProbeError(message)
+    if "invalid-input-secret" in codes:
+        message = "Cloudflare refuses the secret as invalid"
+        raise ProbeError(message)
+    return "Cloudflare accepts the secret"
+
+
 Probe = Callable[[Settings, Mapping[str, str]], str]
 
 
@@ -471,6 +504,12 @@ def live_probes(settings: Settings) -> list[tuple[str, str, Probe]]:
         (True, f"AI provider ({settings.ai_provider.value}): the key", REQUIRED, _ai_key),
         (True, "Detector: /health", RECOMMENDED, _detector),
         (settings.smtp_configured, "Mail: connect and log in", RECOMMENDED, _smtp),
+        (
+            settings.turnstile_enabled,
+            "Turnstile: the secret",
+            RECOMMENDED,
+            _turnstile,
+        ),
         (True, "DNS: the site", REQUIRED, _resolves(settings.site_url)),
         (True, "DNS: the API", REQUIRED, _resolves(settings.api_url)),
     ]
