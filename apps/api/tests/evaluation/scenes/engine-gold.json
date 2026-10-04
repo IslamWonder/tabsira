@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "description": "What the insight engine should do with each gold scene of gold.json. `insight`: at least one insight backed by a verified text; `abstain`: a clarification question or no insight (abstaining is the correct result). `hoped`: texts an editor would expect among the evidence (the learning path's anchors and the rain example of v2 §29); missing them is reported, it is not a failure, since the corpus holds other good answers.",
+  "scenes": [
+    {
+      "scene": "phone-alone",
+      "expect": "abstain",
+      "hoped": [],
+      "why": "A still phone does not mean reading or spreading news (masar §13.4): its use must be asked."
+    },
+    {
+      "scene": "phone-news",
+      "expect": "insight",
+      "hoped": ["Q:49:6"],
+      "why": "Hands hold a phone showing an article: verifying news before passing it on."
+    },
+    {
+      "scene": "market",
+      "expect": "insight",
+      "hoped": [],
+      "why": "A market of fruit and vegetables: provision, honest trade."
+    },
+    {
+      "scene": "child-cat",
+      "expect": "insight",
+      "hoped": [],
+      "why": "A person looks at a kitten by a bowl: mercy to animals, without claiming feeding."
+    },
+    {
+      "scene": "shared-meal",
+      "expect": "insight",
+      "hoped": ["Q:7:31"],
+      "why": "Many hands share a meal: blessing of shared food, moderation."
+    },
+    {
+      "scene": "book",
+      "expect": "insight",
+      "hoped": ["Q:20:114"],
+      "why": "Open books by a window: seeking knowledge, without claiming that someone reads."
+    },
+    {
+      "scene": "tv",
+      "expect": "insight",
+      "hoped": [],
+      "why": "An empty room with a screen: time and attention, as a reminder at most."
+    },
+    {
+      "scene": "rain",
+      "expect": "insight",
+      "hoped": ["Q:30:50"],
+      "why": "Rain over cracked earth: the rain example of v2 §29."
+    },
+    {
+      "scene": "tree",
+      "expect": "insight",
+      "hoped": ["Q:6:99"],
+      "why": "An old tree on a slope: plants and fruit as signs, gratitude."
+    },
+    {
+      "scene": "night-sky",
+      "expect": "insight",
+      "hoped": ["Q:3:190-191"],
+      "why": "The Milky Way over dunes: reflection on creation."
+    },
+    {
+      "scene": "hero",
+      "expect": "insight",
+      "hoped": [],
+      "why": "Digital art of a lake and two moons: a thematic reminder at most, never a claim about a real sky."
+    },
+    {
+      "scene": "emblem",
+      "expect": "abstain",
+      "hoped": [],
+      "why": "A geometric medallion with no letters: no honest link to a text."
+    },
+    {
+      "scene": "rain-olive",
+      "expect": "insight",
+      "hoped": ["Q:30:50", "Q:6:99"],
+      "why": "A seedling under rain: reviving the earth, growth."
+    },
+    {
+      "scene": "glass-of-water",
+      "expect": "insight",
+      "hoped": [],
+      "why": "A glass of water on a desk: water as a blessing; it is not alcohol."
+    },
+    {
+      "scene": "sensitive-alcohol",
+      "expect": "insight",
+      "hoped": ["Q:5:90"],
+      "why": "Wine on a bar table: the image is never shown back nor stored, the legal meaning is shown with its verified text (v2 §6)."
+    }
+  ]
+}
