@@ -117,11 +117,11 @@ Total model spend of this run: **$1.3758** (prices of `AI_*__PRICES`; moderation
 
 <!-- section:retrieval -->
 
-# Benchmark: retrieval
+## Benchmark: retrieval
 
 Measured on 04 October 2026 by `uv run python -m src.cli.retrieval_benchmark` (`apps/api/src/evaluation/retrieval_benchmark.py`). Raw ranks: `apps/api/tests/evaluation/results/retrieval-2026-10-04.json` (not committed). This section is rewritten by that command; the scene benchmark keeps it.
 
-## Method
+### Method
 
 - **Gold set**: `apps/api/tests/evaluation/retrieval/gold.json`, 109 Arabic concept queries written the way the planner writes them (69 Quran, 40 hadith), each with the stored texts that answer it: the anchors of the learning path, the texts the gold scenes call for, and well-known hadiths whose stored numbers were found by searching their distinctive words. No query quotes scripture. Hadith queries are judged against bukhari, muslim only, so every embedding model sees the same 14,940 hadiths and the whole Quran.
 - **Documents**: the folded search copy of each text (a hadith without its chain) followed by its model-written concepts (`src/retrieval/documents.py`); never displayed.
@@ -134,7 +134,7 @@ Measured on 04 October 2026 by `uv run python -m src.cli.retrieval_benchmark` (`
 | `openai-3-large` | openai   | `text-embedding-3-large` | 1536       |
 | `ovh-bge-m3`     | ovh      | `bge-m3`                 | 1024       |
 
-## Results (all queries)
+### Results (all queries)
 
 | Method                                        | Corpus | R@1 | R@3 | R@10 | R@30 | MRR@10 |
 | --------------------------------------------- | ------ | --- | --- | ---- | ---- | ------ |
@@ -157,7 +157,7 @@ Measured on 04 October 2026 by `uv run python -m src.cli.retrieval_benchmark` (`
 | `fts`                                         | all    | 17% | 27% | 31%  | 39%  | 0.219  |
 | `trigram`                                     | all    | 11% | 14% | 20%  | 32%  | 0.133  |
 
-## Results by corpus
+### Results by corpus
 
 | Method                                        | Corpus | R@1 | R@3 | R@10 | R@30 | MRR@10 |
 | --------------------------------------------- | ------ | --- | --- | ---- | ---- | ------ |
@@ -198,7 +198,7 @@ Measured on 04 October 2026 by `uv run python -m src.cli.retrieval_benchmark` (`
 | `fts`                                         | quran  | 14% | 25% | 28%  | 41%  | 0.189  |
 | `trigram`                                     | quran  | 12% | 16% | 22%  | 35%  | 0.144  |
 
-## Latency (this machine, CPU)
+### Latency (this machine, CPU)
 
 | Step                                   | Samples | p50      | p95      |
 | -------------------------------------- | ------- | -------- | -------- |
@@ -215,7 +215,7 @@ Measured on 04 October 2026 by `uv run python -m src.cli.retrieval_benchmark` (`
 | search: vector openai-3-large          | 109     | 6 ms     | 12 ms    |
 | rerank 30: amberoad-msmarco            | 109     | 5285 ms  | 6771 ms  |
 
-## Choices
+### Choices
 
 | Setting            | Choice                          | Measured                    |
 | ------------------ | ------------------------------- | --------------------------- |
