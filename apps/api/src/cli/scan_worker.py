@@ -57,17 +57,42 @@ async def serve(stop: asyncio.Event, *, receiver_factory: ReceiverFactory = Rece
         log.info("scan worker stopped")
 
 
+def install_stop_handlers(
+    loop: asyncio.AbstractEventLoop, stop: asyncio.Event
+) -> Callable[[], None]:
+    """Make SIGTERM and SIGINT set `stop`; return what undoes it."""
+    try:
+        for stop_signal in STOP_SIGNALS:
+            loop.add_signal_handler(stop_signal, stop.set)
+    except NotImplementedError:
+        # Windows: its event loop takes no signal handlers, so a plain handler
+        # hands the stop over to the loop from wherever the signal arrives.
+        previous = {
+            stop_signal: signal.signal(stop_signal, lambda *_: loop.call_soon_threadsafe(stop.set))
+            for stop_signal in STOP_SIGNALS
+        }
+
+        def restore_handlers() -> None:
+            for stop_signal, handler in previous.items():
+                signal.signal(stop_signal, handler)
+
+        return restore_handlers
+
+    def remove_handlers() -> None:
+        for stop_signal in STOP_SIGNALS:
+            loop.remove_signal_handler(stop_signal)
+
+    return remove_handlers
+
+
 async def run(*, receiver_factory: ReceiverFactory = Receiver) -> int:
     """Serve until a stop signal arrives; return the exit code."""
     stop = asyncio.Event()
-    loop = asyncio.get_running_loop()
-    for stop_signal in STOP_SIGNALS:
-        loop.add_signal_handler(stop_signal, stop.set)
+    uninstall = install_stop_handlers(asyncio.get_running_loop(), stop)
     try:
         await serve(stop, receiver_factory=receiver_factory)
     finally:
-        for stop_signal in STOP_SIGNALS:
-            loop.remove_signal_handler(stop_signal)
+        uninstall()
     return 0
 
 
