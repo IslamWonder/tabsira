@@ -134,7 +134,7 @@
       "expect": {
         "levels": ["c"],
         "kinds": ["answer"],
-        "mentions": [["خلاف", "اختلف", "يختلف", "أقوال", "آراء"]]
+        "mentions": [["خلاف", "اختلاف", "اختلف", "يختلف", "أقوال", "آراء"]]
       },
       "why": "A matter scholars differ on gets a restrained answer that says so, and no ruling of the app's own."
     },
