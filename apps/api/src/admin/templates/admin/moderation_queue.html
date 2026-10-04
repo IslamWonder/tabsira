@@ -37,7 +37,7 @@
 {% block content %}
 <div class="col-12">
   {% if decided %}
-  <div class="alert alert-success" role="alert">Decided: {{ decided }}. The moderation log has the row.</div>
+  <div class="alert alert-success" role="alert">Decided: {{ decided.group(0) }}. The moderation log has the row.</div>
   {% endif %}
   {{ table('post', posts) }}
   {{ table('comment', comments) }}

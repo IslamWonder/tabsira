@@ -79,8 +79,10 @@ FORBIDDEN_TEXT = (
     "25_39",
     "learn_quran_sunnah",
     "specialist",
-    # The column name, not the word: a report's reason code `false_religious_claim` is public.
+    # The column, as a name and as sqladmin labels it, not the bare word: a report's reason
+    # code `false_religious_claim` is public.
     "religious_background",
+    "religious background",
     "age_range",
     "gender",
 )

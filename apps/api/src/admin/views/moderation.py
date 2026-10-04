@@ -12,6 +12,7 @@ text. The reports and the moderation log have read-only views of their own.
 
 from __future__ import annotations
 
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -41,6 +42,7 @@ from src.models.social import (
     InsightPublication,
     Post,
     PostStatus,
+    RemovalSource,
     Report,
     ReportReason,
     ReportStatus,
@@ -64,6 +66,12 @@ KINDS: dict[str, type[Post] | type[Comment]] = {
 }
 DECISIONS = ("approve", "reject", "remove")
 NO_ITEM = "No post or comment has this id."
+# The audit reason of a decision that was refused (a bad reason, a stale state).
+REFUSED_REASON = "refused"
+# An id the database could hold; anything else names no row and is not even looked up.
+MAX_ID = 2**63 - 1
+# What the queue's success banner may name: a record this view itself wrote into the address.
+DECIDED = re.compile(r"(post|comment):\d{1,19}")
 UNKNOWN_REASON = "Choose a reason from the list: the author is shown its text, never yours."
 STALE = "This decision does not apply to the item as it is now; it was reloaded."
 
@@ -88,6 +96,36 @@ def _record_id(kind: str, item_id: int) -> str:
 def reason_choices() -> list[tuple[str, str]]:
     """Return the reason codes a moderator may give, with the Arabic label the author reads."""
     return sorted(messages_for().reason_labels.items())
+
+
+def chosen_reason(form: Any) -> str | None:
+    """
+    Return the reason the form chose, if it is one the select offers.
+
+    Narrower than the service's `known_reason`: the guard's own codes (`guard_uncertain` and
+    the like) are reasons an item was held, never reasons a moderator gives.
+    """
+    code = str(form.get("reason") or "")
+    return code if code in messages_for().reason_labels else None
+
+
+def _target(request: Request) -> tuple[str, int] | None:
+    """Return the kind and id the address names, or None when no row could match them."""
+    kind = str(request.path_params["kind"])
+    item_id = int(request.path_params["item_id"])
+    if kind not in KINDS or not 0 < item_id <= MAX_ID:
+        return None
+    return kind, item_id
+
+
+def _under_review(item: Item) -> bool:
+    """
+    Whether a moderator may see this item at all.
+
+    A draft was never submitted: its text is the author's private writing, even when the
+    item once went through the queue and was then edited back into a draft.
+    """
+    return not (isinstance(item, Post) and item.status == PostStatus.DRAFT.value)
 
 
 def _open_reports(kind: str) -> Any:
@@ -178,7 +216,7 @@ class ModerationQueueView(BaseView):
             "posts": posts,
             "comments": comments,
             "limit": QUEUE_LIMIT,
-            "decided": request.query_params.get("decided"),
+            "decided": DECIDED.fullmatch(request.query_params.get("decided", "")),
         }
         return await self.templates.TemplateResponse(request, QUEUE_TEMPLATE, context)
 
@@ -208,8 +246,9 @@ class ModerationQueueView(BaseView):
             "reasons": reason_choices(),
             "can_reject": item.status == PostStatus.PENDING_REVIEW.value,
             "can_remove": item.status == PostStatus.PUBLISHED.value,
+            # A post its author withdrew is never brought back (the service refuses it too).
             "can_approve": item.status != PostStatus.PUBLISHED.value
-            and not (isinstance(item, Post) and item.status == PostStatus.DRAFT.value),
+            and not (isinstance(item, Post) and item.removal_source is RemovalSource.OWNER),
             "error": error,
             "queue_url": self._queue_url(request),
         }
@@ -223,27 +262,38 @@ class ModerationQueueView(BaseView):
             request, ITEM_TEMPLATE, context, status_code=status.HTTP_404_NOT_FOUND
         )
 
-    async def _load(self, db: AsyncSession, request: Request) -> tuple[str, Item | None]:
-        kind = str(request.path_params["kind"])
-        model = KINDS.get(kind)
-        if model is None:
-            return kind, None
-        item: Item | None = await db.get(model, int(request.path_params["item_id"]))
-        return kind, item
+    async def _load(self, db: AsyncSession, kind: str, item_id: int) -> Item | None:
+        """Return the item a moderator may look at, or None."""
+        item: Item | None = await db.get(KINDS[kind], item_id)
+        return item if item is not None and _under_review(item) else None
+
+    async def _refused(self, request: Request, admin_id: uuid.UUID, record_id: str) -> None:
+        """Log a decision that was refused: an attempt is an event too."""
+        await self.admin.trail.write(
+            request,
+            AuditAction.UPDATE,
+            admin_user_id=admin_id,
+            model=IDENTITY,
+            record_id=record_id,
+            reason=REFUSED_REASON,
+        )
 
     @expose("/moderation-queue/{kind}/{item_id:int}", methods=["GET"], identity=f"{IDENTITY}-item")
     async def item(self, request: Request) -> Response:
+        target = _target(request)
+        if target is None:
+            return await self._not_found(request)
+        kind, item_id = target
+        # Only a record this view could show is written to the log, never the address as typed.
         await self.admin.trail.write(
             request,
             AuditAction.VIEW,
             admin_user_id=current_admin(request),
             model=IDENTITY,
-            record_id=_record_id(
-                str(request.path_params["kind"]), int(request.path_params["item_id"])
-            ),
+            record_id=_record_id(kind, item_id),
         )
         async with self.admin.db() as db:
-            kind, item = await self._load(db, request)
+            item = await self._load(db, kind, item_id)
             if item is None:
                 return await self._not_found(request)
             return await self._item_page(request, db, kind, item)
@@ -256,13 +306,19 @@ class ModerationQueueView(BaseView):
     async def decide(self, request: Request) -> Response:
         """Apply one decision through the moderation service; the audit row names it."""
         decision = str(request.path_params["decision"])
+        target = _target(request)
+        if target is None or decision not in DECISIONS:
+            return await self._not_found(request)
+        kind, item_id = target
+        record_id = _record_id(kind, item_id)
         admin_id: uuid.UUID = current_admin(request)
-        reason = moderation_service.known_reason(str((await request.form()).get("reason") or ""))
+        reason = chosen_reason(await request.form())
         async with self.admin.db() as db:
-            kind, item = await self._load(db, request)
-            if item is None or decision not in DECISIONS:
+            item = await self._load(db, kind, item_id)
+            if item is None:
                 return await self._not_found(request)
             if decision != "approve" and reason is None:
+                await self._refused(request, admin_id, record_id)
                 return await self._item_page(
                     request, db, kind, item, error=UNKNOWN_REASON, status_code=400
                 )
@@ -275,11 +331,11 @@ class ModerationQueueView(BaseView):
                     await moderation_service.remove(db, item, admin_id, cast("str", reason))
             except AppError:
                 # The service read the item fresh and changed nothing: show it as it is now.
+                await self._refused(request, admin_id, record_id)
                 return await self._item_page(
                     request, db, kind, item, error=STALE, status_code=status.HTTP_409_CONFLICT
                 )
             await db.commit()
-            record_id = _record_id(kind, item.id)
         await self.admin.trail.write(
             request,
             AuditAction.UPDATE,

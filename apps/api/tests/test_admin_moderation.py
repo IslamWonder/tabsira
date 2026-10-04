@@ -187,16 +187,60 @@ async def test_a_published_item_offers_removal_and_a_removed_one_only_approval(
     assert "No text of the author" not in comment_page.text
 
 
-async def test_a_draft_and_a_withdrawn_post_take_no_decision(admin, db_session, authors):
+async def test_a_draft_is_private_writing_and_has_no_page_even_after_a_review(
+    admin, db_session, authors
+):
     http, _ = admin
     author, _ = authors
-    draft = await new_post(db_session, author)
+    draft = await new_post(db_session, author, reflection="مسودة خاصة")
+    db_session.add(
+        ModerationAction(
+            target_type="post",
+            target_id=draft.id,
+            action=ModerationActionKind.REJECTED,
+            source=ModerationSource.GUARD,
+            reason="spam",
+        )
+    )
+    await db_session.flush()
 
     page = await http.get(page_of("post", draft.id))
 
+    assert page.status_code == 404
+    assert "مسودة خاصة" not in page.text
+    assert (await decide(http, "post", draft.id, "approve")).status_code == 404
+    await db_session.refresh(draft)
+    assert draft.status is PostStatus.DRAFT
+
+
+async def test_a_withdrawn_post_offers_no_decision(admin, db_session, authors):
+    http, _ = admin
+    author, _ = authors
+    withdrawn = await new_post(
+        db_session, author, status=PostStatus.REMOVED, removal_source=RemovalSource.OWNER
+    )
+
+    page = await http.get(page_of("post", withdrawn.id))
+
+    assert page.status_code == 200
     assert "Nothing applies to this item as it is now." in page.text
     for button in ("approve", "reject", "remove"):
         assert f'id="{button}"' not in page.text
+
+
+async def test_the_authors_and_the_reporters_words_are_escaped(admin, db_session, authors):
+    http, _ = admin
+    author, reader = authors
+    post = await new_post(
+        db_session, author, status=PostStatus.PENDING_REVIEW, reflection="<script>x</script>"
+    )
+    await report(db_session, reader, "post", post.id, details='"><img src=x onerror=y>')
+
+    page = await http.get(page_of("post", post.id))
+
+    assert "<script>x</script>" not in page.text
+    assert "&lt;script&gt;x&lt;/script&gt;" in page.text
+    assert "<img src=x" not in page.text
 
 
 async def test_an_unknown_item_or_kind_has_no_page(admin, db_session):
@@ -206,6 +250,23 @@ async def test_an_unknown_item_or_kind_has_no_page(admin, db_session):
     assert (await http.get(page_of("photo", 1))).status_code == 404
     assert (await decide(http, "post", 999_999, "approve")).status_code == 404
     assert (await decide(http, "photo", 1, "approve")).status_code == 404
+    # An id the database could not hold, or a kind that is not one: not looked up, not audited.
+    huge = 10**23
+    assert (await http.get(page_of("post", huge))).status_code == 404
+    assert (await decide(http, "post", huge, "approve")).status_code == 404
+    assert (await http.get(page_of("post", 0))).status_code == 404
+    assert (await http.get(page_of("free text typed by admin", 1))).status_code == 404
+    viewed = [r for r in await audit_rows(db_session) if r.action is AuditAction.VIEW]
+    assert [r.record_id for r in viewed] == ["post:999999"]
+
+
+async def test_the_decided_banner_names_only_a_record_this_view_wrote(admin):
+    http, _ = admin
+
+    for crafted in ("Session expired, sign in at evil.example", "post:", "photo:1", "post:1x"):
+        page = await http.get(f"{QUEUE}?decided={crafted}")
+        assert page.status_code == 200, crafted
+        assert "Decided:" not in page.text, crafted
 
 
 # ─── Decisions ─────────────────────────────────────────────────────
@@ -302,7 +363,8 @@ async def test_a_moderators_own_words_are_never_a_reason(admin, db_session, auth
     author, _ = authors
     post = await new_post(db_session, author, status=PostStatus.PENDING_REVIEW)
 
-    for reason in (None, "", "you are rude", "SPAM"):
+    # The guard's codes say why an item was held; a moderator cannot give them as a verdict.
+    for reason in (None, "", "you are rude", "SPAM", "guard_unavailable", "reported"):
         response = await decide(http, "post", post.id, "reject", reason=reason)
         assert response.status_code == 400, reason
         assert "Choose a reason from the list" in response.text
@@ -310,7 +372,12 @@ async def test_a_moderators_own_words_are_never_a_reason(admin, db_session, auth
     await db_session.refresh(post)
     assert post.status is PostStatus.PENDING_REVIEW
     assert await log_rows(db_session, "post", post.id) == []
-    assert not [r for r in await audit_rows(db_session) if r.action is AuditAction.UPDATE]
+    refused = [r for r in await audit_rows(db_session) if r.action is AuditAction.UPDATE]
+    assert len(refused) == 6
+    assert {(r.record_id, repr(r.details)) for r in refused} == {
+        (f"post:{post.id}", "{'reason': 'refused'}")
+    }
+    assert "rude" not in "".join(repr(r.details) for r in refused)
 
 
 async def test_a_decision_that_no_longer_fits_the_item_is_refused_and_the_page_reloaded(
@@ -338,7 +405,11 @@ async def test_a_decision_that_no_longer_fits_the_item_is_refused_and_the_page_r
     assert post.status is PostStatus.PENDING_REVIEW
     assert withdrawn.status is PostStatus.REMOVED
     assert await log_rows(db_session, "post", post.id) == []
-    assert not [r for r in await audit_rows(db_session) if r.action is AuditAction.UPDATE]
+    refused = [r for r in await audit_rows(db_session) if r.action is AuditAction.UPDATE]
+    assert [(r.record_id, r.details) for r in refused] == [
+        (f"post:{post.id}", {"reason": "refused"}),
+        (f"post:{withdrawn.id}", {"reason": "refused"}),
+    ]
 
 
 async def test_an_unknown_decision_is_not_a_page(admin, db_session, authors):
