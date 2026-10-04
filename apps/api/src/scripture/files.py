@@ -5,8 +5,10 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
+from src.scripture.errors import ScriptureError
 
-class SourceFileError(RuntimeError):
+
+class SourceFileError(ScriptureError):
     """A source file is missing, or its bytes are not the ones expected."""
 
 

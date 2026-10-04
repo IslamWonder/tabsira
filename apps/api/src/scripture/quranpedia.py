@@ -23,6 +23,7 @@ from pathlib import Path
 import httpx
 from pydantic import BaseModel, ValidationError
 
+from src.scripture.errors import ScriptureError
 from src.scripture.files import check_bytes, is_verified, write_atomically
 
 log = logging.getLogger("tabsira.scripture.quranpedia")
@@ -43,7 +44,7 @@ REQUEST_TIMEOUT = 60.0
 _REFETCH_PATH = re.compile(rf"^/v1/mushafs/{MUSHAF_ID}/(\d+)/(\d+)$")
 
 
-class QuranpediaError(RuntimeError):
+class QuranpediaError(ScriptureError):
     """quranpedia answered with an error, or with something this client does not understand."""
 
 
