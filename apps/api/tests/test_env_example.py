@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -118,3 +120,25 @@ def test_every_secret_setting_is_known_to_this_test_so_none_is_shipped_filled():
     }
 
     assert top_level | nested == SECRETS
+
+
+def shell_values() -> dict[str, str]:
+    """The values bash sees after sourcing the file, the way scripts/lib.sh `load_env` does."""
+    listing = subprocess.run(
+        ["bash", "-c", 'set -a && . "$1" && set +a && env -0', "bash", str(EXAMPLE)],
+        env={"PATH": os.environ.get("PATH", "")},
+        capture_output=True,
+        check=True,
+    ).stdout.decode()
+    pairs = (entry.split("=", 1) for entry in listing.split("\0") if "=" in entry)
+    return dict(pairs)
+
+
+def test_the_shell_reads_every_value_the_settings_read():
+    # make migrate, make data and the dev scripts source .env with bash: a JSON value
+    # left unquoted loses its double quotes there and the settings refuse to load.
+    in_shell = shell_values()
+
+    assert {
+        key: value for key, value in dotenv_values(EXAMPLE).items() if in_shell.get(key) != value
+    } == {}
