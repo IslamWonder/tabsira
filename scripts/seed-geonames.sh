@@ -65,6 +65,7 @@ for tool in psql curl unzip awk sort cut; do
 	require_cmd "$tool" "It is needed to import GeoNames."
 done
 geonames_resolve_database
+geonames_require_schema
 
 if in_ci; then
 	export GEONAMES_MAX_AGE_DAYS="${GEONAMES_MAX_AGE_DAYS:-1}"

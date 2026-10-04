@@ -49,6 +49,18 @@ geonames_psql() {
 	psql "$PSQL_URL" -X -v ON_ERROR_STOP=1 "$@"
 }
 
+# The tables and columns the import writes exist: the geodata chain is at its head.
+# A script that starts a download of hundreds of megabytes should find out first.
+geonames_require_schema() {
+	local found
+	found="$(geonames_psql -tA -c "
+		SELECT count(*) FROM information_schema.columns
+		WHERE table_schema = 'geodata' AND (
+		  (table_name = 'geonames' AND column_name IN ('ar_name', 'name_norm'))
+		  OR (table_name = 'geonames_alternate_names' AND column_name = 'name_norm'))")"
+	[[ "$found" == "3" ]] || die "The geodata tables are missing or out of date in $DB_NAME. Run: make migrate"
+}
+
 # ─── Download cache ─────────────────────────────────────────────────
 
 # A download is complete when its zip passes `unzip -t`, or, for a text file,

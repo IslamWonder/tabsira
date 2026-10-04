@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.engine import make_url
 
 from tests import geo_dataset as data
 from tests.geo_dataset import place, write_dump, write_postal_codes
@@ -308,6 +309,26 @@ async def test_the_seed_needs_a_database_and_says_so(seed):
 
     assert result.returncode != 0
     assert "DATABASE_URL is not set" in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("script", [SEED, UPDATE])
+async def test_a_database_without_the_geodata_tables_is_named_before_anything_is_downloaded(
+    script, tmp_path
+):
+    # The maintenance database has no geodata schema at all. The cache is empty: if the
+    # script got as far as downloading, it would not be this check that stopped it.
+    other = make_url(os.environ["DATABASE_URL"]).set(database="postgres")
+
+    result = run(
+        script,
+        cache=tmp_path / "empty-cache",
+        tmp_path=tmp_path,
+        SYNC_DATABASE_URL=other.render_as_string(hide_password=False),
+    )
+
+    assert result.returncode != 0
+    assert "Run: make migrate" in result.stdout + result.stderr
+    assert not (tmp_path / "empty-cache").exists()
 
 
 async def test_in_ci_the_seed_writes_its_metrics(engine, seed, tmp_path):
