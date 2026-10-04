@@ -24,6 +24,7 @@ from sqlalchemy import (
     DDL,
     BigInteger,
     CheckConstraint,
+    Computed,
     Date,
     DateTime,
     Enum,
@@ -51,6 +52,9 @@ from src.models.base import Base
 SHA256_LENGTH = 64
 # The text column and its hash agree, or the row does not exist.
 HASH_MATCHES_TEXT = "text_sha256 = encode(sha256(convert_to(text, 'UTF8')), 'hex')"
+# How many words a guard skeleton has, kept by the database beside it (written as
+# PostgreSQL prints it back, so the migration check sees no difference).
+GUARD_WORDS_SQL = "cardinality(string_to_array(guard_text, ' '::text))"
 
 
 class HadithClassification(StrEnum):
@@ -152,6 +156,7 @@ class QuranVerseSearch(Base):
             postgresql_using="gin",
             postgresql_ops={"guard_text": "gin_trgm_ops"},
         ),
+        Index("ix_quran_verse_search_guard_words", "guard_words"),
     )
 
     verse_id: Mapped[int] = mapped_column(
@@ -160,6 +165,9 @@ class QuranVerseSearch(Base):
     normalized_text: Mapped[str] = mapped_column(Text)
     # The leak guard's skeleton of the text (`src.scripture.guard_fold`), for no other use.
     guard_text: Mapped[str] = mapped_column(Text)
+    # The words of the skeleton, counted by the database: the leak guard reads the verses
+    # of a few words through its index (`src.scripture.overlap`).
+    guard_words: Mapped[int] = mapped_column(Integer, Computed(GUARD_WORDS_SQL, persisted=True))
 
 
 # The guard skeleton of each verse followed by the next six words of its surah,

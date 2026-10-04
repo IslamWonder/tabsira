@@ -280,7 +280,7 @@ Downloaded on 4 October 2026. Tanzil served the file without accepting its downl
 | ------------------------------- | ---------: | ------------------------------------------------------------------------------------------------- |
 | `app.quran_surahs`              |        114 |                                                                                                   |
 | `app.quran_verses`              |      6,236 | quranpedia dump 2026-10-03, every hash checked by the database                                    |
-| `app.quran_verse_search`        |      6,236 | folded copies for search, and guard skeletons for the leak guard                                  |
+| `app.quran_verse_search`        |      6,236 | folded copies for search; guard skeletons and their word counts for the leak guard                |
 | `app.quran_verse_spans`         |      6,236 | each verse's guard skeleton with the next six words of its surah, leak guard only (mat. view)     |
 | `app.quran_verse_history`       |          0 | no correction applied yet                                                                         |
 | `app.quran_annotations`         |      6,236 | seven annotation keys per verse; 514 strings repeating the verse left out; `text_ar` not stored   |

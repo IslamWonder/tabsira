@@ -1,6 +1,6 @@
 # 04 · Photo to scan, with honest progress
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 16:09 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 17:21 (Tunis)
 
 A person takes or uploads a photo. They see honest stages (understanding, searching, verifying, composing), can point at what matters and answer one question.
 
@@ -57,11 +57,12 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 
 ### 04.6 Catch short verses quoted whole
 
-- **Status:** ⬜ open
+- **Status:** ✅ 2026-10-04 17:21
 - **Goal:** Refuse model text that contains a whole stored verse of 3 to 6 guard words even without an introducer (for example «قل هو الله أحد» unmarked). Use a computed `guard_words` column with an index on `quran_verse_search` and a bounded check in `repeats_store` (padded guard text contains a short verse's padded `guard_text`); about 1,709 verses qualify.
 - **Depends on:** 04.1
 - **Touches:** apps/api scripture overlap and search models, one migration.
 - **Done when:** Tests built from stored text (112:1, 94:6 added to the test extras from a `make data` store, bukhari 1) are refused in insights, chat and scene texts; the guard stays under 0.5 s per insight; scripture review passes.
+- **Measured:** on the full store (6,236 verses, 65,712 hadiths), the whole store check of one insight's fifteen texts takes about 170 ms, the short-verse statement about 9 ms; 1,709 verses have three to six guard words.
 
 ### 04.7 Refresh the verse spans once per Quran sync
 

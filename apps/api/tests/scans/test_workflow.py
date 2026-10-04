@@ -42,12 +42,13 @@ from src.scripture.text import search_copy
 from tests.fakes import FakeModelClient
 from tests.scans.builders import entity, proposed, scan_row, scene
 from tests.scans.conftest import DATA, photo
-from tests.scripture.fixtures import verse_text
+from tests.scripture.fixtures import hadith_text, verse_text
 from tests.scripture.spelling import standard
 
-# Stored texts the scene tests quote: one from the scripture fixture, two from the extras.
+# Stored texts the scene tests quote: two from the scripture fixture, the rest from the extras.
 STORED = {
     (30, 50): verse_text(30, 50),
+    (112, 1): verse_text(112, 1),
     **{
         (verse["surah"], verse["ayah"]): verse["text"]
         for verse in json.loads((DATA / "extra-scripture.json").read_text(encoding="utf-8"))[
@@ -298,10 +299,17 @@ async def test_a_scan_already_run_elsewhere_or_of_another_run_is_left_alone(
             "VISION_FAILED",
             "leak",
         ),
-        # Whole verses in today's spelling, built from the stored texts.
+        # Whole verses in today's spelling, built from the stored texts; the last two are
+        # short verses, with no run of seven words to find.
         *(
             (scene_answer(description=f"نبتة {standard(STORED[ref])}"), "VISION_FAILED", "leak")
-            for ref in ((2, 43), (3, 190), (30, 50))
+            for ref in ((2, 43), (3, 190), (30, 50), (112, 1), (94, 6))
+        ),
+        # A whole hadith as plain words.
+        (
+            scene_answer(description=" ".join(search_copy(hadith_text("bukhari", 1)).split())),
+            "VISION_FAILED",
+            "leak",
         ),
     ],
 )

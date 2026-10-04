@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -16,9 +17,10 @@ from src.scans.accept import accept
 from src.scripture import overlap
 from src.scripture.text import search_copy
 from tests.scans.builders import hadith, insight_row, proposed, scan_row, scene
-from tests.scans.conftest import as_guest, rule
+from tests.scans.conftest import DATA, as_guest, rule
 from tests.scans.test_chat import an_insight, ask, said
 from tests.scripture.fixtures import hadith_text, load_json, store_quran, verse_text
+from tests.scripture.spelling import standard
 
 API_DIR = Path(__file__).resolve().parents[2]
 TRIGRAM_INDEXES = (
@@ -31,6 +33,21 @@ TRIGRAM_INDEXES = (
 def words_of(text: str, start: int, count: int) -> str:
     """Plain words of a stored text, as a model would copy them without any mark."""
     return " ".join(search_copy(text).split()[start : start + count])
+
+
+def extra_verse_text(surah: int, ayah: int) -> str:
+    """The text of a verse of the test extras, as the store imported by make data holds it."""
+    extra = json.loads((DATA / "extra-scripture.json").read_text(encoding="utf-8"))
+    return next(str(v["text"]) for v in extra["verses"] if (v["surah"], v["ayah"]) == (surah, ayah))
+
+
+# Texts a model may write whole with no mark at all, built from the stored texts: two
+# short verses in today's spelling, and a long hadith as plain words.
+QUOTED_WHOLE = {
+    "112:1": standard(verse_text(112, 1)),
+    "94:6": standard(extra_verse_text(94, 6)),
+    "bukhari 1": words_of(hadith_text("bukhari", 1), 0, 999),
+}
 
 
 def explained(text: str) -> list[ExplanationPart]:
@@ -117,6 +134,55 @@ async def test_the_store_overlap_compares_runs_of_seven_folded_words(store):
         "%درس علم شرح نظر سمع بصر قلب%",
         "%كتب درس علم شرح نظر سمع بصر%",
     ]
+
+
+@pytest.mark.parametrize("quoted", QUOTED_WHOLE.values(), ids=QUOTED_WHOLE)
+async def test_a_text_quoted_whole_without_any_mark_is_refused_in_an_insight(store, quoted):
+    async with store() as db:
+        accepted = await accept(
+            db, scene(), [proposed(explanation=explained(f"ونتذكر هنا {quoted} في كل حال."))]
+        )
+
+    assert accepted.refusals == ["leak"]
+
+
+@pytest.mark.parametrize("quoted", QUOTED_WHOLE.values(), ids=QUOTED_WHOLE)
+async def test_a_chat_answer_quoting_a_text_whole_without_any_mark_is_refused(
+    browser, store, flow_settings, model, quoted
+):
+    insight_id = await an_insight(browser, store, flow_settings)
+    model.answers.extend([said(answer=f"نعم، {quoted}."), said()])
+
+    refused = await ask(browser, insight_id)
+
+    assert (refused.status_code, refused.json()["error"]) == (502, "CHAT_ANSWER_REJECTED")
+
+
+async def test_a_short_verse_is_held_whole_by_word_and_a_very_short_one_not_at_all(store):
+    ikhlas = QUOTED_WHOLE["112:1"]
+    words = ikhlas.split()
+    async with store() as db:
+        assert await overlap.repeats_store(db, [f"نقول: {ikhlas}."])
+        assert await overlap.repeats_store(db, [QUOTED_WHOLE["94:6"]])
+        # Part of a short verse is not the verse.
+        assert not await overlap.repeats_store(db, [" ".join(words[:-1])])
+        # Two words («الله الصمد», 112:2) are the stock phrases of every Arabic text.
+        assert not await overlap.repeats_store(db, [standard(verse_text(112, 2))])
+        assert not await overlap.repeats_store(db, ["", "  "])
+
+    assert overlap.padded(["", "قل هو الله أحد.", "قل هو الله احد"]) == [" قل هو له حد "]
+
+
+async def test_the_short_verse_check_is_served_by_the_word_count_index(store):
+    wanted = overlap.padded(["نعم، قل هو الله أحد."])
+    async with store() as db:
+        await db.execute(text("SET LOCAL enable_seqscan = off"))
+        compiled = overlap.short_verse_statement(wanted).compile(
+            dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
+        )
+        plan = "\n".join((await db.scalars(text(f"EXPLAIN {compiled}"))).all())
+
+    assert "ix_quran_verse_search_guard_words" in plan
 
 
 async def test_the_store_check_is_served_by_the_trigram_indexes(store):

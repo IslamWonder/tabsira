@@ -43,6 +43,9 @@ async def test_the_store_keeps_the_guard_skeleton_of_every_text(store):
                 )
             )
         ).all()
+        counted = (
+            await db.execute(select(QuranVerseSearch.guard_text, QuranVerseSearch.guard_words))
+        ).all()
         hadiths = (
             await db.execute(
                 select(Hadith.text, HadithSearch.guard_text).join(
@@ -54,6 +57,8 @@ async def test_the_store_keeps_the_guard_skeleton_of_every_text(store):
     assert len(verses) >= 20
     assert hadiths
     assert [guard for text, guard in [*verses, *hadiths] if guard != guard_fold(text)] == []
+    # The database counts the words of each skeleton itself, for the short-verse check.
+    assert [guard for guard, words in counted if words != len(guard.split())] == []
 
 
 @pytest.mark.parametrize(("surah", "ayah"), NAMED)
@@ -93,8 +98,12 @@ async def test_every_verse_of_the_store_in_any_spelling_is_caught(store):
                 )
             )
         ).all()
-        # A verse of seven words or more alone; a run of short verses quoted together.
-        quotes = [text for _, _, text in rows if len(guard_fold(text).split()) >= overlap.WINDOW]
+        # A verse of three words or more alone; a run of short verses quoted together.
+        quotes = [
+            text
+            for _, _, text in rows
+            if len(guard_fold(text).split()) >= overlap.SHORT_VERSE_WORDS[0]
+        ]
         for _, verses in groupby(rows, key=lambda row: row.surah):
             quotes.append(" ".join(text for _, _, text in verses))
         rng = Random(46)  # noqa: S311 - a seeded sample, no secret
