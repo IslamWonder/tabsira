@@ -15,7 +15,7 @@
 #      APP_HOST_VPN_IP/32 with scram-sha-256. No trust lines, no ranges.
 #   5. Roles (the application role, and a read-only one when DB_RO_USER is
 #      set; both with search_path app, geodata, public), the database, the
-#      schemas app and geodata, and the nine extensions: postgis, vector,
+#      schemas app, geodata and vectors (one Alembic chain each), and the nine extensions: postgis, vector,
 #      timescaledb, pg_trgm, unaccent, pgcrypto, btree_gin, btree_gist,
 #      pg_stat_statements. A missing one is an error.
 #   6. A systemd timer: nightly dump into BACKUP_DIR, verified, rotated.
@@ -39,7 +39,7 @@ source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)/lib.sh"
 # shellcheck disable=SC1091
 source "$DEPLOY_DIR/net-lib.sh"
 
-[[ "${1:-}" == "--dry-run" ]] && set_dry_run
+[[ "${1:-}" == "--dry-run" || "${1:-}" == "--check" ]] && set_dry_run
 PG_VERSION="${PG_VERSION:-18}"
 VPN_IFACE="${VPN_IFACE:-wt0}"
 DB_NAME="${DB_NAME:-tabsira}"
@@ -220,6 +220,7 @@ done
 pg -d "$DB_NAME" <<EOF
 CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION $DB_USER;
 CREATE SCHEMA IF NOT EXISTS geodata AUTHORIZATION $DB_USER;
+CREATE SCHEMA IF NOT EXISTS vectors AUTHORIZATION $DB_USER;
 ALTER ROLE $DB_USER SET search_path = app, geodata, public;
 ALTER DATABASE $DB_NAME SET search_path = app, geodata, public;
 EOF
@@ -232,9 +233,9 @@ if [[ -n "$DB_RO_USER" ]]; then
 	fi
 	pg -d "$DB_NAME" <<EOF
 GRANT CONNECT ON DATABASE $DB_NAME TO $DB_RO_USER;
-GRANT USAGE ON SCHEMA app, geodata, public TO $DB_RO_USER;
-GRANT SELECT ON ALL TABLES IN SCHEMA app, geodata TO $DB_RO_USER;
-ALTER DEFAULT PRIVILEGES FOR ROLE $DB_USER IN SCHEMA app, geodata GRANT SELECT ON TABLES TO $DB_RO_USER;
+GRANT USAGE ON SCHEMA app, geodata, vectors, public TO $DB_RO_USER;
+GRANT SELECT ON ALL TABLES IN SCHEMA app, geodata, vectors TO $DB_RO_USER;
+ALTER DEFAULT PRIVILEGES FOR ROLE $DB_USER IN SCHEMA app, geodata, vectors GRANT SELECT ON TABLES TO $DB_RO_USER;
 ALTER ROLE $DB_RO_USER SET search_path = app, geodata, public;
 EOF
 fi

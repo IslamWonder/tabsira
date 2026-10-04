@@ -116,6 +116,14 @@ describe('InsightEvidence', () => {
     expect(screen.getByRole('article', { name: 'السنة' })).toBeInTheDocument();
   });
 
+  it('gives both cards the heading level it is told, and h2 by default', () => {
+    const { rerender } = render(<InsightEvidence insight={insightOut()} />);
+    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(2);
+    rerender(<InsightEvidence insight={insightOut()} headingLevel={3} />);
+    expect(screen.queryAllByRole('heading', { level: 2 })).toHaveLength(0);
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(2);
+  });
+
   it('marks the verse as matched to its source, as the API says it was', () => {
     render(<InsightEvidence insight={insightOut()} />);
     expect(screen.getByText('نص موثّق من مصدره')).toBeInTheDocument();

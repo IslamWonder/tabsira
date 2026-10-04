@@ -14,7 +14,7 @@
 #      (SSH_PORT, default 22).
 #
 # Usage (as root, on the data host):
-#   APP_HOST_VPN_IP=<netbird address of the app host> deploy/provision-data.sh [--dry-run]
+#   APP_HOST_VPN_IP=<netbird address of the app host> deploy/provision-data.sh [--dry-run | --check]
 #
 # Environment: everything the two scripts read, plus FIREWALL (ufw | none,
 # default ufw), FIREWALL_ENABLE (false), SSH_PORT (22).
@@ -25,7 +25,7 @@ source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)/lib.sh"
 # shellcheck disable=SC1091
 source "$DEPLOY_DIR/net-lib.sh"
 
-[[ "${1:-}" == "--dry-run" ]] && set_dry_run
+[[ "${1:-}" == "--dry-run" || "${1:-}" == "--check" ]] && set_dry_run
 VPN_IFACE="${VPN_IFACE:-wt0}"
 FIREWALL="${FIREWALL:-ufw}"
 FIREWALL_ENABLE="${FIREWALL_ENABLE:-false}"

@@ -24,7 +24,14 @@ export interface EvidenceSource {
  * for its ruling stands alone, with the API's notice beside it, so the reader
  * is told why and never shown a hadith that has not been ruled on.
  */
-export function InsightEvidence({ insight }: { insight: EvidenceSource }) {
+export function InsightEvidence({
+  insight,
+  headingLevel,
+}: {
+  insight: EvidenceSource;
+  /** Level of each card's heading; 3 when the texts sit under a heading of their own, as in the chat sheet. */
+  headingLevel?: 2 | 3;
+}) {
   const { quran, hadith } = insight;
   const verse = quran?.verse;
   const narration = hadith?.hadith;
@@ -34,6 +41,7 @@ export function InsightEvidence({ insight }: { insight: EvidenceSource }) {
     verse === undefined ? undefined : (
       <EvidenceCard
         variant="quran"
+        headingLevel={headingLevel}
         text={verse.text}
         reference={messages.insightPage.verseReference(verse.surah_name, verse.ayah)}
         sourceHref={verse.links.quranpedia}
@@ -44,6 +52,7 @@ export function InsightEvidence({ insight }: { insight: EvidenceSource }) {
     narration === undefined ? undefined : (
       <EvidenceCard
         variant="sunnah"
+        headingLevel={headingLevel}
         text={narration.text}
         spans={spansInUtf16(narration.text, narration.spans)}
         reference={messages.insightPage.hadithReference(

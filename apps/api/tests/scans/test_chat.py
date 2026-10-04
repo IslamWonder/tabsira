@@ -28,6 +28,7 @@ from src.models import (
 )
 from src.owner import Owner
 from src.pipeline.insight.engine import ResourceCache
+from src.scripture.text import search_copy
 from src.services import chat_service
 from src.services.chat_retrieval import query_for
 from tests.fakes import FakeModelClient
@@ -295,8 +296,13 @@ async def test_a_request_for_another_text_searches_again_verifies_and_shows_the_
     shown = [label[0] for label in labels(model.calls[1])]
     assert "Q" in shown
     assert "H" in shown
-    folded_own = await stored_verse(store, 30, 50)
-    assert all(folded_own[:20] not in text["text"] for text in payload["candidates"][0]["texts"])
+    # The verifier reads folded search copies: the insight's own verse must not be among them.
+    own_copy = search_copy(await stored_verse(store, 30, 50))
+    other_copy = search_copy(await stored_verse(store, 6, 99))
+    offered = [text["text"] for text in payload["candidates"][0]["texts"]]
+    assert offered
+    assert all(not text.startswith(own_copy[:30]) for text in offered)
+    assert any(text.startswith(other_copy[:30]) for text in offered)
     async with store() as db:
         row = await db.scalar(select(ChatMessage))
         assert row is not None

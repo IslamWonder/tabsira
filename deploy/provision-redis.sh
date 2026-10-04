@@ -34,7 +34,7 @@ source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)/lib.sh"
 # shellcheck disable=SC1091
 source "$DEPLOY_DIR/net-lib.sh"
 
-[[ "${1:-}" == "--dry-run" ]] && set_dry_run
+[[ "${1:-}" == "--dry-run" || "${1:-}" == "--check" ]] && set_dry_run
 VPN_IFACE="${VPN_IFACE:-wt0}"
 REDIS_MAXMEMORY_MB="${REDIS_MAXMEMORY_MB:-}"
 REDIS_MAXMEMORY_POLICY="${REDIS_MAXMEMORY_POLICY:-volatile-lru}"

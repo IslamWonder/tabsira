@@ -17,6 +17,42 @@ if [[ -n "${VIRTUAL_ENV:-}" ]]; then
 	unset VIRTUAL_ENV
 fi
 
+# ─── The application user's own tools, on a server ──────────────────
+# On the application host the user's uv sits in ~/.local/bin and its Node, pnpm and
+# pm2 in nvm (deploy/install-toolchain.sh). A deploy over ssh reads no rc file and
+# the login shell may be zsh, so find them here. /etc/tabsira/deploy.env exists on
+# the servers only (deploy/provision-app.sh writes it): development machines keep
+# whatever PATH they have.
+if [[ -f /etc/tabsira/deploy.env ]]; then
+	if [[ -d "$HOME/.local/bin" && ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+		export PATH="$HOME/.local/bin:$PATH"
+	fi
+	if [[ -z "${NODE_HOME:-}" && -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]]; then
+		export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+		# nvm.sh is not written for set -u.
+		_tabsira_nounset=0
+		if [[ $- == *u* ]]; then
+			_tabsira_nounset=1
+			set +u
+		fi
+		# shellcheck disable=SC1091
+		. "$NVM_DIR/nvm.sh" --no-use
+		nvm use --silent default >/dev/null 2>&1 || true
+		# nvm use leaves its bin where it is when PATH already has it: put it first.
+		if [[ -n "${NVM_BIN:-}" ]]; then
+			_tabsira_path=":$PATH:"
+			_tabsira_path="${_tabsira_path//:$NVM_BIN:/:}"
+			_tabsira_path="${_tabsira_path#:}"
+			export PATH="$NVM_BIN:${_tabsira_path%:}"
+			unset _tabsira_path
+		fi
+		if [[ $_tabsira_nounset == 1 ]]; then
+			set -u
+		fi
+		unset _tabsira_nounset
+	fi
+fi
+
 # ─── CI detection ───────────────────────────────────────────────────
 is_ci() { [[ "${CI:-}" == "true" || "${CI:-}" == "1" ]]; }
 is_jenkins() { [[ "${JENKINS_BUILD:-}" == "true" || "${JENKINS_BUILD:-}" == "1" ]]; }
