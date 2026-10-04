@@ -1,6 +1,6 @@
 # 05 · Insight engine
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 16:09 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 16:27 (Tunis)
 
 Finds the verse and hadith that truly fit the scene, checks them, and writes the explanation. It cites texts by reference only.
 
@@ -43,3 +43,27 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 - **Depends on:** 05.1
 - **Touches:** apps/api pipeline prompts and planner, apps/api/tests/evaluation, docs/EVALUATION.md.
 - **Done when:** `make eval` improves on every measure above with no leak; scripture review passes.
+
+### 05.4 Import the vector archive in setup and deploy
+
+- **Status:** ⬜ open, after 05.1
+- **Goal:** A fresh development machine or production server imports `tabsira-vectors-<date>.tar.gz` (docs/EMBEDDINGS.md) instead of computing vectors: `make data` imports it when `VECTORS_ARCHIVE` points at a local copy, before `embed_corpus` fills the gaps; the production provisioning and docs/OPERATIONS.md download it from the bucket (`vectors/` in the owners' S3), check its `.sha256`, and run its `import.sh`.
+- **Depends on:** 05.1 (the retrieval tables).
+- **Touches:** scripts/data.sh, scripts/vectors/, the typed settings and .env.example (`VECTORS_ARCHIVE`), deploy/provision-app.sh or a deploy step, docs/OPERATIONS.md, docs/EMBEDDINGS.md.
+- **Done when:** On an empty database, `make data` with `VECTORS_ARCHIVE` set imports 165,072 vectors and `embed_corpus` then reports nothing to send; no key or archive is committed.
+
+### 05.5 Verify the uploaded archive
+
+- **Status:** ⬜ open, ready once the owners' upload finishes (needs read access to the bucket)
+- **Goal:** Download `vectors/tabsira-vectors-2026-10-04.tar.gz` and its `.sha256` from the owners' bucket, check the SHA-256 is `aca79a6d46eee5bed8d6b2a16c726f279c3af5a52651b3fc1ba362aac7c052d4`, extract it, and run `sha256sum -c SHA256SUMS` inside.
+- **Depends on:** the owners' upload.
+- **Touches:** nothing in the repository; record the result in docs/EMBEDDINGS.md ("Current archive") in one line.
+- **Done when:** Both checks pass and the line says when it was verified, or the owners are told what differs.
+
+### 05.6 Export a new vector archive when the texts or models change
+
+- **Status:** ⬜ when needed
+- **Goal:** After a change to the store, its annotations or the embedding models, compute what changed with `embed_corpus`, run `scripts/vectors/export.sh`, upload the archive and its `.sha256` to `vectors/`, verify it as in 05.5, and update docs/EMBEDDINGS.md.
+- **Depends on:** 05.1
+- **Touches:** docs/EMBEDDINGS.md only; the archive goes to the bucket, never to git.
+- **Done when:** The new archive is verified and documented; the previous one is kept until then.
