@@ -165,6 +165,7 @@ Decision 44. Production keeps consented photos in a private S3-compatible bucket
 - **Check by hand.** `python -m src.cli.check_config` runs the same probe and prints `storage: ok` or `storage: FAILED, <reason>` (exit 1 in production); run it with the production environment file after changing any `S3_*` key.
 - **Development and test.** With no `S3_BUCKET`, photos go to `LOCAL_MEDIA_DIR` (`data/media` of the checkout by default) and the API logs "No S3 bucket: photos go to `<dir>`; production requires S3". A failing probe is a warning there, never a refusal, so `make dev` works offline.
 - **Serving.** No route serves stored photos yet, so nginx has no location for them. Published copies are served from `S3_PUBLIC_BASE_URL` with `Cache-Control: public, max-age=300`; private photos only through signed links.
+- **Sound effects.** The 1,000 MP3 files of the ontology (one per entity, `E001.mp3` to `E1000.mp3`) are static files, not photos. Upload them once to the same bucket under `static/ontology/audio/`, for example `aws s3 sync out/ontology/audio/ s3://<bucket>/static/ontology/audio/ --content-type audio/mpeg`. The API reads them with the bucket's own keys and serves them at `GET /sounds/ontology/<id>` with `Cache-Control: public, max-age=86400`, so the bucket stays private and the browser talks to the API only. Nothing under `static/` is ever a photo. With no bucket, the same path under `LOCAL_MEDIA_DIR` is read (`data/media/static/ontology/audio/` by default). A missing file is a 404 and the page plays nothing.
 
 ## Day to day
 

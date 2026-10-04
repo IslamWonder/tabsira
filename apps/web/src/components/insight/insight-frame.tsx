@@ -7,6 +7,7 @@ import { type ReactNode, useState } from 'react';
 import { ShareIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
+import { SoundToggle } from '@/components/ui/sound-toggle';
 import { cx } from '@/lib/cx';
 import { useBoxSize } from '@/lib/use-box-size';
 import { messages } from '@/messages';
@@ -88,6 +89,8 @@ export function InsightPhoto({
         >
           <BackArrow />
         </Link>
+        {/* The top bar carries the sound switch from tablet up; the photo carries it on a phone. */}
+        <SoundToggle className="absolute top-3.5 end-3.5 z-10 tablet:hidden" />
         {/* Below desktop the photo fades into the page, as in the phone mockup. */}
         <div
           aria-hidden="true"

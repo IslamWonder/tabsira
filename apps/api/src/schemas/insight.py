@@ -134,6 +134,9 @@ class InsightDetailOut(BaseModel):
     anchor: BBox | None
     relation: RelationType
     relation_label: str
+    sound_url: str | None = Field(
+        description="Path on this API of the sound effect of the insight's main ontology entity"
+    )
     quran: InsightQuran | None
     hadith: InsightHadith | None
     hadith_status: Literal["shown", "awaiting_verification", "none"]

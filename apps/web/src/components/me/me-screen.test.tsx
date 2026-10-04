@@ -154,7 +154,7 @@ describe('MeScreen signed in', () => {
       { kind: 'memory', version: '2026-10-04', granted: false },
     ]);
     expect(screen.getByRole('switch', { name: 'التخصيص' })).toBeChecked();
-    expect(screen.queryByRole('switch', { name: /الصوت/ })).toBeNull();
+    expect(screen.getByRole('switch', { name: 'المؤثر الصوتي' })).toBeChecked();
   });
 
   it('turns photo storage on, and records the religious background', async () => {
