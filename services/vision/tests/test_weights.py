@@ -167,7 +167,51 @@ def test_main_reports_what_it_fetched(
     monkeypatch.setattr(weights, "Settings", lambda: Settings(_env_file=None))
     monkeypatch.setattr(weights, "fetch_weights", lambda _settings: [file])
 
+    ranker = tmp_path / "model.safetensors"
+    ranker.write_bytes(b"x" * 3_000_000)
+    monkeypatch.setattr(weights, "fetch_reranker", lambda _settings: [ranker])
+
     with caplog.at_level(logging.INFO, logger="vision.weights"):
         weights.main()
 
     assert "yoloe-11s-seg.pt (2.0 MB)" in caplog.text
+    assert "model.safetensors (3.0 MB)" in caplog.text
+
+
+class FakeHub:
+    """The two calls of `huggingface_hub` that fetch_reranker makes."""
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch, files: list[str]) -> None:
+        self.files = files
+        self.downloads: list[tuple[str, str, list[str]]] = []
+        hub = ModuleType("huggingface_hub")
+        hub.list_repo_files = lambda repo: list(self.files)  # type: ignore[attr-defined]
+        hub.snapshot_download = self.snapshot_download  # type: ignore[attr-defined]
+        monkeypatch.setitem(sys.modules, "huggingface_hub", hub)
+
+    def snapshot_download(self, repo: str, *, local_dir: str, allow_patterns: list[str]) -> str:
+        self.downloads.append((repo, local_dir, allow_patterns))
+        return local_dir
+
+
+def test_fetch_reranker_downloads_the_weights_and_the_tokenizer_only(
+    monkeypatch: pytest.MonkeyPatch, settings: Settings
+) -> None:
+    files = ["README.md", "config.json", "tokenizer.json", "model.safetensors", "pytorch_model.bin"]
+    hub = FakeHub(monkeypatch, files)
+
+    paths = weights.fetch_reranker(settings)
+
+    directory = settings.vision_weights_dir / "rerankers" / "BAAI--bge-reranker-v2-m3"
+    wanted = ["config.json", "tokenizer.json", "model.safetensors"]
+    assert hub.downloads == [("BAAI/bge-reranker-v2-m3", str(directory), wanted)]
+    assert paths == [directory / name for name in wanted]
+
+
+def test_fetch_reranker_refuses_a_repository_without_weights(
+    monkeypatch: pytest.MonkeyPatch, settings: Settings
+) -> None:
+    FakeHub(monkeypatch, ["config.json"])
+
+    with pytest.raises(FileNotFoundError, match=r"neither model\.safetensors"):
+        weights.fetch_reranker(settings)
