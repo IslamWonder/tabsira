@@ -3,8 +3,7 @@
  * Tell Bing, Yandex, Naver, Seznam, Yep and Amazon what changed (IndexNow).
  *
  * One POST to api.indexnow.org reaches them all; Google does not take part and reads the
- * sitemap. Written against the protocol, no package (docs/SEO.md, section 5), and ported from
- * the reference project's scripts/indexnow.mjs:
+ * sitemap. Written against the protocol, no package (docs/SEO.md, section 5):
  *
  * - Production only. It refuses to run unless SITE_URL is https://tabsira.me, or --force is
  *   given: a staging or development machine must never announce its addresses. Refusing is a
