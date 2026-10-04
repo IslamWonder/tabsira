@@ -313,6 +313,8 @@ def test_production_refuses_the_local_store(make_settings):
         "session_cookie_domain": ".tabsira.me",
         "hash_secret": "not-a-real-secret-but-long-enough-for-the-rule",
         "ai_ovh": {"api_key": "ovh-key-123"},
+        "ai_openai": {"api_key": "openai-key-123"},
+        "feature_admin": False,
     }
 
     with pytest.raises(StorageConfigError, match="production keeps photos in S3"):
