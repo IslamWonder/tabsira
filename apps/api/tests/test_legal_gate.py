@@ -140,3 +140,13 @@ def test_only_the_listed_routes_skip_the_gate(make_settings):
             skipping |= {(method, route.path) for method in route.methods}
 
     assert skipping == EXEMPT_PATHS
+
+
+async def test_withdrawing_a_public_insight_does_not_need_the_acceptance_but_publishing_does(
+    web, make_user
+):
+    await sign_in_unaccepted(web, make_user)
+
+    assert (await web.delete("/insights/1/publication")).status_code == 404
+    refused = await web.put("/insights/1/publication")
+    assert (refused.status_code, refused.json()["error"]) == (403, "legal_acceptance_required")

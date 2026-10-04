@@ -3,13 +3,14 @@ Publishing an insight, withdrawing it, and reading a published one as a stranger
 
 Publishing is the owner's own act and needs a signed-in, verified account (decision 25); a
 guest's insight is never public. Whether it may be public is decided here, whatever the caller
-says: it must carry at least one text shown from the store (a verse, or a hadith whose ruling
-allows it), none of its platform text may look like scripture, and its scene must not be
+says: it must come from the real analysis, not be shaped by the profile, carry at least one
+text shown from the store (a verse, or a hadith whose ruling allows it), none of its platform
+text may look like scripture (the check the analysis applies), and its scene must not be
 sensitive. A public insight names no photo, no scan, no place and no exact point, and says
 about its owner only the handle and public name they chose.
 
-Reading answers 404 for an insight that is not public, withdrawn, or whose owner's account is
-closed, the same answer as for one that does not exist.
+Reading answers 404 for an insight that is not public, withdrawn, with nothing to show from the
+store now, or whose owner's account is closed, the same answer as for one that does not exist.
 """
 
 from __future__ import annotations
@@ -20,20 +21,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import clock
-from src.messages import messages_for
 from src.errors import AppError, ErrorCode
+from src.messages import messages_for
 from src.models import Insight, Scan
 from src.models.user import User
 from src.owner import INSIGHT, not_found
 from src.pipeline.engine import RelationType
 from src.scans import accept
-from src.services.insight_table_source import PUBLISHABLE_ENGINE
 from src.schemas.insight import (
     PublicationOut,
     PublicAuthorOut,
     PublicInsightOut,
 )
 from src.services import insight_view
+from src.services.insight_table_source import PUBLISHABLE_ENGINE
 
 
 def _refuse(why: str) -> NoReturn:

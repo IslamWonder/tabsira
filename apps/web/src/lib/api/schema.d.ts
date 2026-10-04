@@ -1387,13 +1387,17 @@ export interface paths {
      * @description Publish the caller's own insight; asking again changes nothing.
      *
      *     Answers 409 INSIGHT_NOT_PUBLISHABLE for a sensitive scene, an insight with no text to
-     *     show from the store, or text that looks like scripture. A guest gets 401.
+     *     show from the store, text that looks like scripture, one shaped by the profile, or one that is not from the real
+     *     analysis. A guest gets 401.
      */
     put: operations['publish_insight_insights__insight_id__publication_put'];
     post?: never;
     /**
      * Withdraw the insight from public view
      * @description Take the caller's insight down at once; its public address answers 404 from then on.
+     *
+     *     Withdrawing publishes nothing, so it needs neither a verified address nor the latest
+     *     terms, and it is never switched off or rate limited.
      */
     delete: operations['withdraw_insight_insights__insight_id__publication_delete'];
     options?: never;
@@ -3528,6 +3532,19 @@ export interface components {
       public_name: string;
     };
     /**
+     * PublicHadith
+     * @description A hadith for a stranger: the text as stored, never the reason the engine chose it.
+     */
+    PublicHadith: {
+      /**
+       * Tag
+       * @description «السنة»: the fixed tag of quoted Sunnah
+       */
+      tag: string;
+      /** @description The hadith exactly as stored, its spans, its dorar.net ruling and links */
+      hadith: components['schemas']['HadithOut'];
+    };
+    /**
      * PublicIdentityIn
      * @description The handle and public name an account chooses to appear under.
      */
@@ -3551,8 +3568,9 @@ export interface components {
      * PublicInsightOut
      * @description A published insight for any reader: scripture from the store, nothing of the owner's.
      *
-     *     There is no photo, no scan, no location, no chat, no progress and no «لماذا ظهر هذا؟»
-     *     (its clues describe the photo and its personal reason is the owner's); the author is
+     *     There is no photo, no scan, no location, no chat, no progress, no «لماذا ظهر هذا؟» (its
+     *     clues describe the photo and its reason may be personal), no `why` beside a text and no
+     *     «ما ظهر» part (it describes the photo); the author is
      *     present only when the owner chose a public handle and name.
      */
     PublicInsightOut: {
@@ -3572,8 +3590,8 @@ export interface components {
       relation: components['schemas']['RelationType'];
       /** Relation Label */
       relation_label: string;
-      quran: components['schemas']['InsightQuran'] | null;
-      hadith: components['schemas']['InsightHadith'] | null;
+      quran: components['schemas']['PublicQuran'] | null;
+      hadith: components['schemas']['PublicHadith'] | null;
       /**
        * Hadith Status
        * @enum {string}
@@ -3625,6 +3643,19 @@ export interface components {
       /** Meaning Label */
       meaning_label: string;
       cell: components['schemas']['GeoJsonPolygon'];
+    };
+    /**
+     * PublicQuran
+     * @description A verse for a stranger: the text as stored, never the reason the engine chose it.
+     */
+    PublicQuran: {
+      /**
+       * Tag
+       * @description «القرآن»: the fixed tag of quoted Quran
+       */
+      tag: string;
+      /** @description The verse exactly as stored, with its hash and link */
+      verse: components['schemas']['QuranVerseOut'];
     };
     /**
      * PublicationExport

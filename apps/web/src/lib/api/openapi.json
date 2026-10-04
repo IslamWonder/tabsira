@@ -3002,7 +3002,7 @@
       "put": {
         "tags": ["insights"],
         "summary": "Make the insight public (verified owners)",
-        "description": "Publish the caller's own insight; asking again changes nothing.\n\nAnswers 409 INSIGHT_NOT_PUBLISHABLE for a sensitive scene, an insight with no text to\nshow from the store, or text that looks like scripture. A guest gets 401.",
+        "description": "Publish the caller's own insight; asking again changes nothing.\n\nAnswers 409 INSIGHT_NOT_PUBLISHABLE for a sensitive scene, an insight with no text to\nshow from the store, text that looks like scripture, one shaped by the profile, or one that is not from the real\nanalysis. A guest gets 401.",
         "operationId": "publish_insight_insights__insight_id__publication_put",
         "parameters": [
           {
@@ -3042,7 +3042,7 @@
       "delete": {
         "tags": ["insights"],
         "summary": "Withdraw the insight from public view",
-        "description": "Take the caller's insight down at once; its public address answers 404 from then on.",
+        "description": "Take the caller's insight down at once; its public address answers 404 from then on.\n\nWithdrawing publishes nothing, so it needs neither a verified address nor the latest\nterms, and it is never switched off or rate limited.",
         "operationId": "withdraw_insight_insights__insight_id__publication_delete",
         "parameters": [
           {
@@ -8310,6 +8310,23 @@
         "title": "PublicAuthorOut",
         "description": "The only things a public insight says about its owner: the handle and name they chose."
       },
+      "PublicHadith": {
+        "properties": {
+          "tag": {
+            "type": "string",
+            "title": "Tag",
+            "description": "«السنة»: the fixed tag of quoted Sunnah"
+          },
+          "hadith": {
+            "$ref": "#/components/schemas/HadithOut",
+            "description": "The hadith exactly as stored, its spans, its dorar.net ruling and links"
+          }
+        },
+        "type": "object",
+        "required": ["tag", "hadith"],
+        "title": "PublicHadith",
+        "description": "A hadith for a stranger: the text as stored, never the reason the engine chose it."
+      },
       "PublicIdentityIn": {
         "properties": {
           "handle": {
@@ -8402,7 +8419,7 @@
           "quran": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/InsightQuran"
+                "$ref": "#/components/schemas/PublicQuran"
               },
               {
                 "type": "null"
@@ -8412,7 +8429,7 @@
           "hadith": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/InsightHadith"
+                "$ref": "#/components/schemas/PublicHadith"
               },
               {
                 "type": "null"
@@ -8502,7 +8519,7 @@
           "disclosure"
         ],
         "title": "PublicInsightOut",
-        "description": "A published insight for any reader: scripture from the store, nothing of the owner's.\n\nThere is no photo, no scan, no location, no chat, no progress and no «لماذا ظهر هذا؟»\n(its clues describe the photo and its personal reason is the owner's); the author is\npresent only when the owner chose a public handle and name."
+        "description": "A published insight for any reader: scripture from the store, nothing of the owner's.\n\nThere is no photo, no scan, no location, no chat, no progress, no «لماذا ظهر هذا؟» (its\nclues describe the photo and its reason may be personal), no `why` beside a text and no\n«ما ظهر» part (it describes the photo); the author is\npresent only when the owner chose a public handle and name."
       },
       "PublicLocationOut": {
         "properties": {
@@ -8558,6 +8575,23 @@
         "required": ["point", "cell_m", "precision_label", "meaning", "meaning_label", "cell"],
         "title": "PublicLocationPreview",
         "description": "The owner's preview before publishing: the cell itself, so they can see what is shown."
+      },
+      "PublicQuran": {
+        "properties": {
+          "tag": {
+            "type": "string",
+            "title": "Tag",
+            "description": "«القرآن»: the fixed tag of quoted Quran"
+          },
+          "verse": {
+            "$ref": "#/components/schemas/QuranVerseOut",
+            "description": "The verse exactly as stored, with its hash and link"
+          }
+        },
+        "type": "object",
+        "required": ["tag", "verse"],
+        "title": "PublicQuran",
+        "description": "A verse for a stranger: the text as stored, never the reason the engine chose it."
       },
       "PublicationExport": {
         "properties": {

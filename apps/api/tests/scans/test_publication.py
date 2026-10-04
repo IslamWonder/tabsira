@@ -9,7 +9,8 @@ import pytest
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
-from src import clock, messages
+from src import clock
+from src.messages import messages_for
 from src.models import Hadith, HadithClassification, Insight, InsightOrigin, QuranVerse
 from src.models.user import User
 from src.owner import Owner
@@ -167,7 +168,8 @@ async def test_a_guest_or_an_unverified_account_cannot_publish(
     insight_id = await keep(store, user.id)
     refused = await browser.put(f"/insights/{insight_id}/publication")
     assert (refused.status_code, refused.json()["error"]) == (403, "EMAIL_NOT_VERIFIED")
-    assert (await browser.delete(f"/insights/{insight_id}/publication")).status_code == 403
+    assert (await browser.delete(f"/insights/{insight_id}/publication")).status_code == 200
+    assert (await other.delete(f"/insights/{guest_insight}/publication")).status_code == 401
 
 
 async def test_another_owners_insight_cannot_be_published_or_withdrawn(browser, store):
@@ -188,8 +190,19 @@ async def test_another_owners_insight_cannot_be_published_or_withdrawn(browser, 
         ({"title": verse_text(30, 50)}, {}),
         ({"title": WITHOUT_MARKS}, {}),
         ({"glimpse": VERSE}, {}),
-        ({"quran_evidence": {"relation": "direct", "matched_on": VERSE}}, {}),
-        ({"hadith_evidence": {"relation": "action_based", "matched_on": HADITH}}, {}),
+        ({"engine": "prepared"}, {}),
+        ({"engine": "demo"}, {}),
+        (
+            {
+                "why": {
+                    "visible_clues": [],
+                    "concept": "x",
+                    "limits": [],
+                    "personalised_because": "هدفك",
+                }
+            },
+            {},
+        ),
         ({"explanation": [{"section": "seen", "text": verse_text(30, 50), "sources": []}]}, {}),
         (
             {"small_step": {"text": verse_text(30, 50), "kind": "reflection", "grounded_in": []}},
@@ -202,8 +215,9 @@ async def test_another_owners_insight_cannot_be_published_or_withdrawn(browser, 
         "scripture in title",
         "title without marks",
         "in glimpse",
-        "in verse matched_on",
-        "in hadith matched_on",
+        "prepared example",
+        "declared simulation",
+        "shaped by the profile",
         "in explanation",
         "in step",
     ],
@@ -235,26 +249,46 @@ async def test_a_weak_hadith_is_not_shown_publicly_either(browser, other, store)
     assert (body["hadith"], body["hadith_status"]) == (None, "none")
 
 
-async def test_a_prepared_example_keeps_its_label(browser, other, store):
+async def test_every_reason_for_no_page_answers_alike(browser, other, store, flow_settings):
     user = await verified_account(store, browser)
-    insight_id = await keep(store, user.id, engine="prepared")
-    await browser.put(f"/insights/{insight_id}/publication")
+    unpublished = await keep(store, user.id)
+    withdrawn = await keep(store, user.id)
+    await browser.put(f"/insights/{withdrawn}/publication")
+    await browser.delete(f"/insights/{withdrawn}/publication")
+    closed = await keep(store, user.id)
+    await browser.put(f"/insights/{closed}/publication")
+    guest = await as_guest(other, store, flow_settings)
+    async with store() as db:
+        row = insight_row(
+            guest, origin=InsightOrigin.TUTORIAL, tutorial_slug="rain", tutorial_scene="rain"
+        )
+        db.add(row)
+        await db.commit()
+        guest_owned = row.id
+    async with store() as db:
+        await db.execute(update(User).where(User.id == user.id).values(is_active=False))
+        await db.commit()
 
-    body = (await other.get(f"/public/insights/{insight_id}")).json()
+    answers = [
+        await other.get(f"/public/insights/{identifier}")
+        for identifier in (1, unpublished, withdrawn, guest_owned, closed)
+    ]
 
-    assert body["label"] == "مثال موثّق مُعدّ"
+    assert len({a.text for a in answers}) == 1
+    assert {a.status_code for a in answers} == {404}
+    assert {a.headers["cache-control"] for a in answers} == {"no-store"}
+    assert {a.json()["error"] for a in answers} == {"NOT_FOUND"}
 
 
-async def test_a_closed_account_or_a_deleted_one_takes_its_insights_off(browser, other, store):
+async def test_a_deleted_account_takes_its_insights_off(browser, other, store):
     user = await verified_account(store, browser)
     insight_id = await keep(store, user.id)
     await browser.put(f"/insights/{insight_id}/publication")
+    async with store() as db:
+        await db.execute(update(User).where(User.id == user.id).values(deleted_at=clock.utcnow()))
+        await db.commit()
 
-    for column in ({"is_active": False}, {"is_active": True, "deleted_at": clock.utcnow()}):
-        async with store() as db:
-            await db.execute(update(User).where(User.id == user.id).values(**column))
-            await db.commit()
-        assert (await other.get(f"/public/insights/{insight_id}")).status_code == 404
+    assert (await other.get(f"/public/insights/{insight_id}")).status_code == 404
 
 
 async def test_the_public_route_answers_404_while_the_feature_is_off(flow_app, other):
@@ -381,7 +415,7 @@ async def test_an_unruled_hadith_is_announced_and_what_rests_on_it_is_dropped_pu
         store,
         user.id,
         explanation=[
-            {"section": "seen", "text": "قطرات على ورق نبتة.", "sources": []},
+            {"section": "value", "text": "قيمة الماء.", "sources": []},
             {
                 "section": "sunnah",
                 "text": "ما تقوله السنة هنا.",
@@ -393,5 +427,91 @@ async def test_an_unruled_hadith_is_announced_and_what_rests_on_it_is_dropped_pu
 
     body = (await other.get(f"/public/insights/{insight_id}")).json()
 
-    assert body["notice"] == messages.HADITH_AWAITS_VERIFICATION
-    assert [part["section"] for part in body["explanation"]] == ["seen"]
+    assert body["notice"] == messages_for().hadith_awaits_verification
+    assert [part["section"] for part in body["explanation"]] == ["value"]
+
+
+def keys_of(value) -> set[str]:
+    """Every key at any depth of a JSON value."""
+    if isinstance(value, dict):
+        return set(value) | {k for item in value.values() for k in keys_of(item)}
+    if isinstance(value, list):
+        return {k for item in value for k in keys_of(item)}
+    return set()
+
+
+async def test_nothing_that_describes_the_photo_or_the_profile_is_public_at_any_depth(
+    browser, other, store
+):
+    user = await verified_account(store, browser)
+    insight_id = await keep(
+        store,
+        user.id,
+        explanation=[
+            {"section": "seen", "text": "يظهر في الصورة: لافتة.", "sources": []},
+            {"section": "value", "text": "قيمة الماء.", "sources": []},
+        ],
+    )
+    async with store() as db:
+        await rule(db, "bukhari", "1032")
+        await db.commit()
+    await browser.put(f"/insights/{insight_id}/publication")
+
+    response = await other.get(f"/public/insights/{insight_id}")
+
+    body = response.json()
+    assert not keys_of(body) & {
+        "why",
+        "matched_on",
+        "visible_clues",
+        "personalised_because",
+        "anchor",
+        "scan_id",
+        "place_id",
+        "image",
+        "chat",
+        "action",
+        "learning_unit",
+        "email",
+        "display_name",
+        "user_id",
+    }
+    assert [part["section"] for part in body["explanation"]] == ["value"]
+    assert "لافتة" not in response.text
+    assert "إحياء الأرض" not in response.text
+
+
+async def test_withdrawing_needs_neither_the_feature_nor_a_verified_address(
+    browser, other, store, flow_app
+):
+    from src.deps import get_app_settings
+
+    user = await verified_account(store, browser)
+    insight_id = await keep(store, user.id)
+    await browser.put(f"/insights/{insight_id}/publication")
+    async with store() as db:
+        await db.execute(update(User).where(User.id == user.id).values(email_verified_at=None))
+        await db.commit()
+    off = flow_app.state.settings.model_copy(update={"feature_world": False})
+    flow_app.dependency_overrides[get_app_settings] = lambda: off
+
+    withdrawn = await browser.delete(f"/insights/{insight_id}/publication")
+    refused = await browser.put(f"/insights/{insight_id}/publication")
+
+    assert withdrawn.json()["published"] is False
+    assert (refused.status_code, refused.json()["error"]) == (404, "FEATURE_DISABLED")
+
+
+async def test_a_verse_alone_can_be_public_with_no_hadith_or_one_the_store_lacks(
+    browser, other, store
+):
+    user = await verified_account(store, browser)
+    bare = await keep(
+        store, user.id, hadith_collection=None, hadith_number=None, hadith_evidence=None
+    )
+    missing = await keep(store, user.id, hadith_number="999999")
+
+    for insight_id in (bare, missing):
+        assert (await browser.put(f"/insights/{insight_id}/publication")).status_code == 200
+        body = (await other.get(f"/public/insights/{insight_id}")).json()
+        assert body["quran"]["verse"]["text"] == VERSE

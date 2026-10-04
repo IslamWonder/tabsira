@@ -34,8 +34,8 @@ from src.schemas.insight import (
     InsightDetailOut,
     PublicationOut,
 )
-from src.services.social_limits import WriteKind
 from src.services import chat_service, completion_service, insight_view, public_insight_service
+from src.services.social_limits import WriteKind
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 

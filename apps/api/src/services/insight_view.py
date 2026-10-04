@@ -34,10 +34,10 @@ from src.schemas.insight import (
     InsightHadith,
     InsightImageOut,
     InsightQuran,
-    PublicHadith,
-    PublicQuran,
     InsightWhyOut,
     LearningUnitOut,
+    PublicHadith,
+    PublicQuran,
     StepOut,
 )
 
