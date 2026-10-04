@@ -66,7 +66,7 @@ async def test_a_verse_carries_its_source_version_link_and_honest_status(api):
         "last_sync_at": None,
     }
     assert body["links"] == {"quranpedia": "https://quranpedia.net/surah/2/30#verse-65709"}
-    assert (body["page"], body["juz"], body["status"]) == (409, 21, "local_corpus")
+    assert (body["page"], body["juz"], body["status"]) == (409, 21, "verified_cached")
     assert "normalized_text" not in body
 
 

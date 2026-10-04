@@ -39,7 +39,11 @@ router = APIRouter(prefix="/scripture", tags=["scripture"])
 
 Session = Annotated[AsyncSession, Depends(get_db)]
 # Where a text came from and how it was checked (master prompt §10). Every text
-# here is a stored copy; none was fetched from its source for this request.
+# here is a stored copy; none was fetched from its source for this request. A
+# verse is quranpedia's own text, from its official dump checked against the
+# SHA-256 quranpedia publishes and kept current by its changes feed (decision
+# 16): verified, served from our copy. A hadith's text is the dataset's.
+VerseStatus = Literal["verified_cached"]
 CorpusStatus = Literal["local_corpus"]
 MUSHAF_NAME = "مصحف حفص نسخة نصية"
 
@@ -69,7 +73,7 @@ class QuranVerseOut(BaseModel):
     juz: int
     source: QuranSource
     links: QuranLinks
-    status: CorpusStatus = "local_corpus"
+    status: VerseStatus = "verified_cached"
 
 
 class CollectionOut(BaseModel):
@@ -142,13 +146,8 @@ def _not_found(what: str) -> AppError:
     )
 
 
-@router.get("/quran/{surah}/{ayah}", summary="One verse of the Quran")
-async def quran_verse(
-    session: Session,
-    surah: Annotated[int, Path(ge=1, le=114)],
-    ayah: Annotated[int, Path(ge=1, le=286)],
-) -> QuranVerseOut:
-    """Return a verse of quranpedia's mushaf 2 exactly as stored, with its hash and source."""
+async def read_verse(session: AsyncSession, surah: int, ayah: int) -> QuranVerseOut | None:
+    """Return a stored verse as the read API shows it, or None; shared with the insight pages."""
     row = (
         await session.execute(
             select(QuranVerse, QuranSurah.name_ar)
@@ -157,8 +156,7 @@ async def quran_verse(
         )
     ).one_or_none()
     if row is None:
-        what = f"verse {surah}:{ayah}"
-        raise _not_found(what)
+        return None
     verse, surah_name = row
     sync = await session.get(ScriptureSyncState, SYNC_SOURCE)
     return QuranVerseOut(
@@ -179,13 +177,8 @@ async def quran_verse(
     )
 
 
-@router.get("/hadith/{collection}/{number}", summary="One hadith")
-async def hadith(
-    session: Session,
-    collection: Annotated[str, Path(pattern=r"^[a-z]{2,32}$")],
-    number: Annotated[str, Path(pattern=r"^[0-9]{1,7}(\.[0-9]{1,3})?$")],
-) -> HadithOut:
-    """Return a hadith exactly as stored, with its spans, its ruling and its eligibility."""
+async def read_hadith(session: AsyncSession, collection: str, number: str) -> HadithOut | None:
+    """Return a stored hadith as the read API shows it, or None; shared with the insight pages."""
     row = (
         await session.execute(
             select(Hadith, HadithCollection)
@@ -194,8 +187,7 @@ async def hadith(
         )
     ).one_or_none()
     if row is None:
-        what = f"hadith {collection} {number}"
-        raise _not_found(what)
+        return None
     stored, book = row
     ruling = await latest_ruling(session, stored.id)
     has_chapter = stored.book_number is not None
@@ -242,3 +234,31 @@ async def hadith(
         eligible=classification_is_eligible(ruling.classification if ruling else None),
         links=HadithLinks(dorar_verification=dorar_search_url(stored.text)),
     )
+
+
+@router.get("/quran/{surah}/{ayah}", summary="One verse of the Quran")
+async def quran_verse(
+    session: Session,
+    surah: Annotated[int, Path(ge=1, le=114)],
+    ayah: Annotated[int, Path(ge=1, le=286)],
+) -> QuranVerseOut:
+    """Return a verse of quranpedia's mushaf 2 exactly as stored, with its hash and source."""
+    verse = await read_verse(session, surah, ayah)
+    if verse is None:
+        what = f"verse {surah}:{ayah}"
+        raise _not_found(what)
+    return verse
+
+
+@router.get("/hadith/{collection}/{number}", summary="One hadith")
+async def hadith(
+    session: Session,
+    collection: Annotated[str, Path(pattern=r"^[a-z]{2,32}$")],
+    number: Annotated[str, Path(pattern=r"^[0-9]{1,7}(\.[0-9]{1,3})?$")],
+) -> HadithOut:
+    """Return a hadith exactly as stored, with its spans, its ruling and its eligibility."""
+    found = await read_hadith(session, collection, number)
+    if found is None:
+        what = f"hadith {collection} {number}"
+        raise _not_found(what)
+    return found
