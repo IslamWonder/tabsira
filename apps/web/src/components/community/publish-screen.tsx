@@ -8,12 +8,14 @@ import { StatusScreen } from '@/components/app/status-screen';
 import { CommunityIcon } from '@/components/icons';
 import { PageContainer } from '@/components/layout/layouts';
 import { Button, LinkButton } from '@/components/ui/button';
+import { CheckboxField } from '@/components/ui/checkbox-field';
 import { ChoiceGroup } from '@/components/ui/choice-group';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { Notice } from '@/components/ui/notice';
 import { TextArea } from '@/components/ui/text-area';
 import { failureMessage } from '@/lib/api/failure-message';
 import type { Failure } from '@/lib/api/result';
+import { useKeptPhoto } from '@/lib/scan/kept-photo';
 import { messages } from '@/messages';
 import { useAccess } from '@/social/access';
 import { createDraft, editDraft, submitPost } from '@/social/api';
@@ -54,23 +56,38 @@ function problemMessage(result: Failure): string {
 
 interface DraftFormProps {
   initial?: Post;
+  /** The owner's insight kept a photo, so a new draft may offer to show it (v2 §19). */
+  photoOffered?: boolean;
   busy: boolean;
   failure: string | null;
-  onSubmit: (reflection: string | null, visibility: PostVisibility) => void;
+  onSubmit: (reflection: string | null, visibility: PostVisibility, photo: boolean) => void;
   onCancel?: () => void;
 }
 
-/** The author's words and audience; the insight itself is copied by the API and never edited here. */
-function DraftForm({ initial, busy, failure, onSubmit, onCancel }: DraftFormProps) {
+/**
+ * The author's words and audience; the insight itself is copied by the API and never edited
+ * here. The photo is a choice made once, when the draft is created, off by default, and only
+ * for a public post: a post for followers never shows it, so the box is not offered there.
+ */
+function DraftForm({
+  initial,
+  photoOffered = false,
+  busy,
+  failure,
+  onSubmit,
+  onCancel,
+}: DraftFormProps) {
   const [reflection, setReflection] = useState(initial?.reflection?.text ?? '');
   const [visibility, setVisibility] = useState<PostVisibility>(initial?.visibility ?? 'public');
+  const [photo, setPhoto] = useState(false);
   const length = Array.from(reflection.trim()).length;
+  const offersPhoto = photoOffered && initial === undefined && visibility === 'public';
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (length > REFLECTION_MAX) {
       return;
     }
-    onSubmit(length === 0 ? null : reflection.trim(), visibility);
+    onSubmit(length === 0 ? null : reflection.trim(), visibility, offersPhoto && photo);
   };
   return (
     <form onSubmit={submit} className="flex flex-col gap-5">
@@ -89,6 +106,9 @@ function DraftForm({ initial, busy, failure, onSubmit, onCancel }: DraftFormProp
         value={visibility}
         onChange={setVisibility}
       />
+      {offersPhoto ? (
+        <CheckboxField label={P.photo} hint={P.photoHint} checked={photo} onChange={setPhoto} />
+      ) : null}
       {failure === null ? null : (
         <div role="alert">
           <Notice tone="error">{failure}</Notice>
@@ -131,6 +151,7 @@ export function PublishScreen() {
   const [failure, setFailure] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [withdrawn, setWithdrawn] = useState(false);
+  const photoKept = useKeptPhoto(insightId, access === 'member');
 
   const run = async (
     call: () => Promise<Awaited<ReturnType<typeof createDraft>>>,
@@ -207,10 +228,11 @@ export function PublishScreen() {
       {access === 'member' && post === null ? (
         <GlassPanel ornate className="tablet:p-7">
           <DraftForm
+            photoOffered={photoKept}
             busy={busy}
             failure={failure}
-            onSubmit={(reflection, visibility) =>
-              void run(() => createDraft({ insightId, reflection, visibility }), P.drafted)
+            onSubmit={(reflection, visibility, photo) =>
+              void run(() => createDraft({ insightId, reflection, visibility, photo }), P.drafted)
             }
           />
         </GlassPanel>

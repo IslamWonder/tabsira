@@ -5,6 +5,7 @@ import { apiError, mockApi, type Route } from '@/test/api';
 import { OWNER_ENTRY } from '@/test/atlas';
 import { USER } from '@/test/fixtures';
 import { type FakeSource, forgetMaps, loadedMap } from '@/test/maplibre';
+import { insightOut } from '@/test/scan';
 import { IDENTITY, NO_IDENTITY } from '@/test/social';
 import { MapPublishScreen } from './map-publish-screen';
 
@@ -169,5 +170,37 @@ describe('MapPublishScreen', () => {
     map.emit('click', { point: { x: 1, y: 1 }, lngLat: { lng: 10.2, lat: 36.9 } });
     expect(await screen.findByText(/الموضع المختار: 36.90000, 10.20000/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'احسب الموضع التقريبي' })).toBeEnabled();
+  });
+
+  it('offers the photo only when the insight kept one, off by default, and sends the choice', async () => {
+    const api = member({
+      [`GET /insights/${INSIGHT}`]: {
+        body: insightOut({ id: INSIGHT, image: { sensitive: false, url: null, has_photo: true } }),
+      },
+      [`PUT /insights/${INSIGHT}/map`]: { body: { ...OWNER_ENTRY, photo: true } },
+    });
+    render(<MapPublishScreen />);
+    const box = await screen.findByRole('checkbox', { name: 'أرفق الصورة' });
+    expect(box).not.toBeChecked();
+    expect(box).toHaveAccessibleDescription(/تصير صورة مشهدك عامة مع النقطة على الأطلس/);
+    const map = await loadedMap();
+    map.emit('click', { point: { x: 1, y: 1 }, lngLat: { lng: 10.2, lat: 36.9 } });
+    await screen.findByText(/الموضع المختار/);
+    await userEvent.click(box);
+    await userEvent.click(screen.getByRole('button', { name: 'احسب الموضع التقريبي' }));
+    expect(await screen.findByText(/حُسب موضعك التقريبي/)).toBeInTheDocument();
+    expect((await api.bodies('PUT', `/insights/${INSIGHT}/map`))[0]).toMatchObject({ photo: true });
+    expect(screen.getByText('تُعرض الصورة مع النقطة')).toBeInTheDocument();
+  });
+
+  it('offers no photo when the insight kept none', async () => {
+    member({
+      [`GET /insights/${INSIGHT}`]: {
+        body: insightOut({ id: INSIGHT, image: { sensitive: false, url: null, has_photo: false } }),
+      },
+    });
+    render(<MapPublishScreen />);
+    await screen.findByText('لم تحدد موضعًا بعد.');
+    expect(screen.queryByRole('checkbox', { name: 'أرفق الصورة' })).toBeNull();
   });
 });
