@@ -85,23 +85,67 @@ async def shown_evidence(
     return await evidence(db, quran, hadith)
 
 
-def step_out(
-    step: dict[str, Any] | None, verse: QuranVerseOut | None, hadith: HadithOut | None
-) -> StepOut | None:
-    if not step:
-        return None
+EVIDENCE_PREFIXES = ("quran:", "hadith:")
+
+
+def shown_ids(verse: QuranVerseOut | None, hadith: HadithOut | None) -> set[str]:
+    """Return the evidence ids (`quran:30:50`, `hadith:bukhari:1032`) of the texts shown."""
     shown = set()
     if verse is not None:
         shown.add(f"quran:{verse.surah}:{verse.ayah}")
     if hadith is not None:
         shown.add(f"hadith:{hadith.collection.slug}:{hadith.number}")
-    grounded = [str(ref) for ref in step.get("grounded_in", [])]
-    if grounded and not set(grounded) <= shown:
+    return shown
+
+
+def _rests_on_hidden(refs: list[str], shown: set[str]) -> bool:
+    return any(ref.startswith(EVIDENCE_PREFIXES) and ref not in shown for ref in refs)
+
+
+def explanation_out(
+    parts: list[dict[str, Any]], verse: QuranVerseOut | None, hadith: HadithOut | None
+) -> list[ExplanationOut]:
+    """
+    Return the explanation parts that may show next to the texts shown.
+
+    What the verse or the hadith adds is said only beside it, and a part that
+    rests on a text not shown (a hadith waiting for its ruling) waits with it.
+    """
+    shown = shown_ids(verse, hadith)
+    absent = {"quran"} if verse is None else set()
+    absent |= {"sunnah"} if hadith is None else set()
+    return [
+        ExplanationOut(
+            section=part["section"],
+            label=messages.EXPLANATION_LABELS[part["section"]],
+            text=part["text"],
+        )
+        for part in parts
+        if part["section"] not in absent
+        and not _rests_on_hidden([str(ref) for ref in part.get("sources", [])], shown)
+    ]
+
+
+def step_out(
+    step: dict[str, Any] | None, verse: QuranVerseOut | None, hadith: HadithOut | None
+) -> StepOut | None:
+    """
+    Return the small step, or None when it rests on a text that is not shown.
+
+    It is «من السنة» only when it rests on a hadith shown with it (v2 §14);
+    anything else is «اقتراح عملي».
+    """
+    if not step:
         return None
+    shown = shown_ids(verse, hadith)
+    grounded = [str(ref) for ref in step.get("grounded_in", [])]
+    if _rests_on_hidden(grounded, shown):
+        return None
+    from_sunnah = any(ref.startswith("hadith:") for ref in grounded)
     return StepOut(
         text=str(step["text"]),
         kind=step["kind"],
-        label=messages.STEP_FROM_SUNNAH if grounded else messages.STEP_SUGGESTION,
+        label=messages.STEP_FROM_SUNNAH if from_sunnah else messages.STEP_SUGGESTION,
     )
 
 
@@ -184,14 +228,7 @@ async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> In
         notice=messages.HADITH_AWAITS_VERIFICATION if awaiting else None,
         pair_complete=verse is not None and hadith is not None,
         explanation_tag=messages.EXPLANATION_TAG,
-        explanation=[
-            ExplanationOut(
-                section=part["section"],
-                label=messages.EXPLANATION_LABELS[part["section"]],
-                text=part["text"],
-            )
-            for part in insight.explanation
-        ],
+        explanation=explanation_out(insight.explanation, verse, hadith),
         why=WhyOut(
             visible_clues=list(insight.why.get("visible_clues", [])),
             concept=str(insight.why.get("concept", "")),

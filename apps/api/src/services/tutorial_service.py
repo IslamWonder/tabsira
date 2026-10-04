@@ -22,10 +22,10 @@ from src import messages
 from src.errors import AppError, ErrorCode
 from src.models import Insight, InsightOrigin
 from src.owner import Owner
-from src.schemas.insight import ExplanationOut, InsightHadith, InsightQuran, WhyOut
+from src.schemas.insight import InsightHadith, InsightQuran, WhyOut
 from src.schemas.tutorial import TutorialImageOut, TutorialInsightOut, TutorialOut
 from src.services.content import Tutorial, TutorialInsight
-from src.services.insight_view import evidence, evidence_why, step_out
+from src.services.insight_view import evidence, evidence_why, explanation_out, step_out
 
 PREPARED = "prepared"
 
@@ -76,14 +76,9 @@ async def _insight(db: AsyncSession, insight: TutorialInsight) -> TutorialInsigh
         notice=messages.HADITH_AWAITS_VERIFICATION if awaiting else None,
         pair_complete=hadith is not None,
         explanation_tag=messages.EXPLANATION_TAG,
-        explanation=[
-            ExplanationOut(
-                section=part.section,
-                label=messages.EXPLANATION_LABELS[part.section],
-                text=part.text,
-            )
-            for part in insight.explanation
-        ],
+        explanation=explanation_out(
+            [part.model_dump(mode="json") for part in insight.explanation], verse, hadith
+        ),
         why=WhyOut(
             visible_clues=insight.why.visible_clues,
             concept=insight.why.concept,

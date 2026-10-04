@@ -1,7 +1,7 @@
 {
   "scene": "rain",
   "version": "1.0",
-  "description": "The prepared rain scene (v2 §4, tajriba §2 and §6). Scripture is cited by reference only and read from the store; the explanations are the platform's own words, reviewed. The two hadith show only once an editor has recorded their dorar.net ruling (decision 18).",
+  "description": "The prepared rain scene (v2 §4, tajriba §2 and §6). Scripture is cited by reference only and read from the store; the explanations are the platform's own words, reviewed. The two hadith show only once an editor has recorded their dorar.net ruling (decision 18); until then what is said about a hadith (its section, and the parts whose sources name it) waits with it.",
   "title": "مطر ينزل على نبتة زيتون صغيرة",
   "image": {
     "path": "/scene/rain-olive.jpg",
@@ -14,7 +14,12 @@
       "slug": "drop",
       "title": "الحياة في قطرة",
       "glimpse": "كيف تُحيا الأرض بعد موتها",
-      "anchor": { "x": 0.06, "y": 0.525, "width": 0.36, "height": 0.06 },
+      "anchor": {
+        "x": 0.06,
+        "y": 0.525,
+        "width": 0.36,
+        "height": 0.06
+      },
       "relation": "direct",
       "quran": {
         "surah": 30,
@@ -29,7 +34,10 @@
         "matched_on": "رؤية المطر"
       },
       "explanation": [
-        { "section": "seen", "text": "قطرات مطر على أوراق نبتة زيتون صغيرة، وتربة رطبة حولها." },
+        {
+          "section": "seen",
+          "text": "قطرات مطر على أوراق نبتة زيتون صغيرة، وتربة رطبة حولها."
+        },
         {
           "section": "value",
           "text": "الماء سبب جعله الله للحياة، والمطر نعمة تُرى آثارها في الأرض والنبات."
@@ -40,25 +48,32 @@
         },
         {
           "section": "sunnah",
-          "text": "يعلّم الحديث ما يقوله المسلم حين يرى المطر: دعاءً بأن يكون مطرًا نافعًا."
+          "text": "يعلّم الحديث ما يقوله المسلم حين يرى المطر: دعاءً بأن يكون مطرًا نافعًا. ويُقال الدعاء عند رؤية المطر فعلًا، فلا يُنسب إليك دعاء عند مطر لم تره."
         },
         {
           "section": "life",
-          "text": "حين ترى المطر بعد اليوم، تذكّر أثر الرحمة في الأرض، وادعُ بالدعاء الوارد في الحديث."
+          "text": "حين ترى المطر بعد اليوم، تذكّر أثر الرحمة في الأرض، وادعُ بالدعاء الوارد في الحديث.",
+          "sources": [
+            "hadith:bukhari:1032"
+          ]
         }
       ],
       "why": {
-        "visible_clues": ["قطرات ماء على الأوراق", "تربة رطبة"],
+        "visible_clues": [
+          "قطرات ماء على الأوراق",
+          "تربة رطبة"
+        ],
         "concept": "الإحياء بالماء",
         "limits": [
-          "الصورة الواحدة لا تثبت أن هذه الأرض كانت هامدة ثم أُحييت؛ هذا معنى يدعو النص إلى التأمل فيه.",
-          "الدعاء يُقال عند رؤية المطر فعلًا، ولا يُنسب إليك دعاء عند مطر لم تره."
+          "الصورة الواحدة لا تثبت أن هذه الأرض كانت هامدة ثم أُحييت؛ هذا معنى يدعو النص إلى التأمل فيه."
         ]
       },
       "small_step": {
         "text": "احفظ الدعاء الوارد في الحديث لتقوله حين ترى المطر.",
         "kind": "text_grounded",
-        "grounded_in": ["hadith:bukhari:1032"]
+        "grounded_in": [
+          "hadith:bukhari:1032"
+        ]
       },
       "learning_unit_id": "T01_06",
       "learning_path_version": "tabsira-masar-1.0"
@@ -67,7 +82,12 @@
       "slug": "planting",
       "title": "الغرس الذي يتعدّاك",
       "glimpse": "نفعٌ يبقى لمن يأتي بعدك",
-      "anchor": { "x": 0.44, "y": 0.55, "width": 0.12, "height": 0.22 },
+      "anchor": {
+        "x": 0.44,
+        "y": 0.55,
+        "width": 0.12,
+        "height": 0.22
+      },
       "relation": "close_conceptual",
       "quran": {
         "surah": 6,
@@ -82,7 +102,10 @@
         "matched_on": "الغرس ونفعه لغير صاحبه"
       },
       "explanation": [
-        { "section": "seen", "text": "نبتة صغيرة ثابتة في التراب، يصل إليها ماء المطر." },
+        {
+          "section": "seen",
+          "text": "نبتة صغيرة ثابتة في التراب، يصل إليها ماء المطر."
+        },
         {
           "section": "value",
           "text": "الغرس عمل صغير يتعدّى نفعه صاحبه إلى غيره من الناس والطير والدواب."
@@ -93,7 +116,7 @@
         },
         {
           "section": "sunnah",
-          "text": "يجعل الحديث ما يغرسه المسلم صدقةً له كلما انتفع به كائن حي، إنسانًا كان أو حيوانًا."
+          "text": "يجعل الحديث ما يغرسه المسلم صدقةً له كلما انتفع به كائن حي، إنسانًا كان أو حيوانًا. وفضله لمن غرس فانتفع بغرسه غيره؛ الصورة لا تثبت ذلك لأحد."
         },
         {
           "section": "life",
@@ -101,11 +124,13 @@
         }
       ],
       "why": {
-        "visible_clues": ["نبتة صغيرة في التراب", "ماء يصل إلى النبتة"],
+        "visible_clues": [
+          "نبتة صغيرة في التراب",
+          "ماء يصل إلى النبتة"
+        ],
         "concept": "الغرس والنفع المتعدي",
         "limits": [
-          "لا يُنسب إليك فعل غرس لم تفعله.",
-          "فضل الغرس في الحديث لمن غرس فانتفع بغرسه غيره؛ الصورة لا تثبت ذلك لأحد."
+          "لا يُنسب إليك فعل غرس لم تفعله."
         ]
       },
       "small_step": {
