@@ -1,31 +1,28 @@
 'use client';
 
-import { type ChangeEvent, type DragEvent, type FormEvent, useId, useState } from 'react';
+import { type ChangeEvent, type DragEvent, useId, useState } from 'react';
 import { SummoningCircle } from '@/components/fx/summoning-circle';
-import { Button, buttonClasses } from '@/components/ui/button';
+import { buttonClasses } from '@/components/ui/button';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 import { CameraCapture } from './camera-capture';
-import { isImageFile, normaliseImageLink } from './image-link';
+import { isImageFile } from './image-link';
 
 export interface SceneStarterProps {
   onFile: (file: File) => void;
-  onLink: (url: string) => void;
   className?: string;
 }
 
 /**
  * Every way into a new scene (Postel's law: accept each input form): drop a
- * photo, choose a file, paste a link, or take a photo with the camera. Dropping
+ * photo, choose a file, or take a photo with the camera (decision 51: no link). Dropping
  * always has a button equivalent, and nothing is sent from here: the page that
- * owns the analysis decides what happens with the file or the link.
+ * owns the analysis decides what happens with the file.
  */
-export function SceneStarter({ onFile, onLink, className }: SceneStarterProps) {
+export function SceneStarter({ onFile, className }: SceneStarterProps) {
   const [dragging, setDragging] = useState(false);
-  const [linkOpen, setLinkOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileId = useId();
-  const linkId = useId();
   const errorId = useId();
 
   const take = (file: File | undefined) => {
@@ -48,18 +45,6 @@ export function SceneStarter({ onFile, onLink, className }: SceneStarterProps) {
     event.preventDefault();
     setDragging(false);
     take(event.dataTransfer.files[0]);
-  };
-
-  const onSubmitLink = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const field = event.currentTarget.elements.namedItem('link') as HTMLInputElement;
-    const url = normaliseImageLink(field.value);
-    if (url === null) {
-      setError(messages.scene.starter.invalidLink);
-      return;
-    }
-    setError(null);
-    onLink(url);
   };
 
   return (
@@ -99,41 +84,7 @@ export function SceneStarter({ onFile, onLink, className }: SceneStarterProps) {
         </label>
         {/* A live camera in the page, as the earlier prototype had; the phone's camera app otherwise. */}
         <CameraCapture onFile={take} onPick={onPick} />
-        <Button
-          variant="ghost"
-          aria-expanded={linkOpen}
-          aria-controls={linkId}
-          onClick={() => setLinkOpen((open) => !open)}
-          className="border border-line"
-        >
-          {messages.scene.starter.pasteLink}
-        </Button>
       </div>
-
-      <form
-        id={linkId}
-        hidden={!linkOpen}
-        onSubmit={onSubmitLink}
-        className="flex flex-wrap items-end gap-2.5"
-        noValidate
-      >
-        <label className="flex min-w-0 flex-1 flex-col gap-1 text-fg-soft text-sm">
-          {messages.scene.starter.linkLabel}
-          <input
-            name="link"
-            type="url"
-            inputMode="url"
-            dir="ltr"
-            autoComplete="off"
-            aria-describedby={error === null ? undefined : errorId}
-            aria-invalid={error === messages.scene.starter.invalidLink}
-            className="min-h-12 rounded-[var(--radius-card)] border border-line bg-surface px-3 text-base text-fg"
-          />
-        </label>
-        <Button type="submit" variant="secondary">
-          {messages.scene.starter.useLink}
-        </Button>
-      </form>
 
       <p className="m-0 text-fg-muted text-sm leading-[1.8]">{messages.sending.privacy}</p>
 

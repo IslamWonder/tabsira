@@ -229,10 +229,6 @@ export const ar = {
         'لا كاميرا متاحة في هذا المتصفح. يفتح هذا الزر كاميرا الهاتف إن وُجدت، أو اختر صورة.',
       cameraNeedsHttps:
         'تعمل الكاميرا الحية عبر اتصال آمن (https) فقط. يفتح هذا الزر كاميرا الهاتف، أو اختر صورة.',
-      pasteLink: 'الصق رابط صورة',
-      linkLabel: 'رابط الصورة',
-      useLink: 'استخدم الرابط',
-      invalidLink: 'هذا لا يبدو رابطًا. انسخ عنوان الصورة كاملًا ثم أعد المحاولة.',
       notImage: 'هذا الملف ليس صورة. اختر صورة بصيغة JPEG أو PNG أو WebP أو HEIC.',
     },
     /** Rows top to bottom, columns left to right of the photo (photo coordinates are physical). */
@@ -1286,7 +1282,6 @@ export const ar = {
       slow: 'انتظار طويل',
       scenePlaceholderAlt: 'صورة بديلة للتطوير: سماء ليلية وأرض، بلا مشهد حقيقي',
       picked: 'وصل ملف:',
-      linked: 'وصل رابط:',
       nothingYet: 'لم يصل شيء بعد',
       fieldLabel: '[اسم الحقل]',
       fieldHint: '[قاعدة الحقل]',

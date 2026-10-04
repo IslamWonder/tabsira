@@ -1,7 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { isImageFile, normaliseImageLink } from './image-link';
 import { SceneInsightList } from './scene-insight-list';
 import { SceneIntro } from './scene-intro';
 import { SceneStarter } from './scene-starter';
@@ -10,33 +9,6 @@ const POINTS = [
   { id: 'a', x: 0.2, y: 0.5, title: '[أولى]', glimpse: '[لمحة]', tone: 'gold' as const },
   { id: 'b', x: 0.5, y: 0.7, title: '[ثانية]', tone: 'emerald' as const },
 ];
-
-describe('normaliseImageLink and isImageFile', () => {
-  it.each([
-    ['  https://example.org/a.jpg ', 'https://example.org/a.jpg'],
-    ['example.org/a.jpg', 'https://example.org/a.jpg'],
-    ['//cdn.example.org/a.png', 'https://cdn.example.org/a.png'],
-    ['http://example.org/a.webp', 'http://example.org/a.webp'],
-  ])('accepts %s', (value, expected) => {
-    expect(normaliseImageLink(value)).toBe(expected);
-  });
-
-  it.each([
-    '',
-    'not a link',
-    'ftp://example.org/a.jpg',
-    'https://localhost/a.jpg',
-    'https://[',
-    'javascript:alert(1)',
-  ])('refuses %s', (value) => {
-    expect(normaliseImageLink(value)).toBeNull();
-  });
-
-  it('tells images from other files', () => {
-    expect(isImageFile(new File(['x'], 'a.jpg', { type: 'image/jpeg' }))).toBe(true);
-    expect(isImageFile(new File(['x'], 'a.pdf', { type: 'application/pdf' }))).toBe(false);
-  });
-});
 
 describe('SceneIntro and SceneInsightList', () => {
   it('give the gilded promise and the insights as a list', async () => {
@@ -66,9 +38,8 @@ describe('SceneIntro and SceneInsightList', () => {
 describe('SceneStarter', () => {
   function renderStarter() {
     const onFile = vi.fn();
-    const onLink = vi.fn();
-    render(<SceneStarter onFile={onFile} onLink={onLink} className="extra" />);
-    return { onFile, onLink, zone: screen.getByRole('region', { name: /اسحب صورة/ }) };
+    render(<SceneStarter onFile={onFile} className="extra" />);
+    return { onFile, zone: screen.getByRole('region', { name: /اسحب صورة/ }) };
   }
 
   it('takes a photo from the file picker and from the camera', async () => {
@@ -107,25 +78,5 @@ describe('SceneStarter', () => {
     });
     fireEvent.drop(zone, { dataTransfer: { files: [] } });
     expect(onFile).toHaveBeenCalledOnce();
-  });
-
-  it('takes a pasted link, and says what is wrong with a bad one', async () => {
-    const { onLink } = renderStarter();
-    const toggle = screen.getByRole('button', { name: 'الصق رابط صورة' });
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    await userEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    const field = screen.getByLabelText('رابط الصورة');
-    await userEvent.type(field, 'not a link');
-    await userEvent.click(screen.getByRole('button', { name: 'استخدم الرابط' }));
-    expect(screen.getByRole('alert')).toHaveTextContent('لا يبدو رابطًا');
-    expect(field).toHaveAttribute('aria-invalid', 'true');
-    await userEvent.clear(field);
-    await userEvent.type(field, 'example.org/rain.jpg');
-    await act(async () => {
-      await userEvent.click(screen.getByRole('button', { name: 'استخدم الرابط' }));
-    });
-    expect(onLink).toHaveBeenCalledWith('https://example.org/rain.jpg');
-    expect(screen.getByRole('alert')).toBeEmptyDOMElement();
   });
 });

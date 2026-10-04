@@ -136,7 +136,7 @@ function SunnahSample() {
 function SceneFrame() {
   const [selected, setSelected] = useState<string | undefined>(undefined);
   const [, setFile] = useState<File | null>(null);
-  const [, setLink] = useState('');
+  const [, _setLink] = useState('');
   return (
     <>
       <TopBar />
@@ -146,7 +146,7 @@ function SceneFrame() {
           <div className="hidden flex-col gap-7 pt-2 tablet:flex">
             <SceneIntro chip={<Chip>{messages.scene.prepared}</Chip>} />
             <SceneInsightList points={POINTS} selectedId={selected} onSelect={setSelected} />
-            <SceneStarter onFile={setFile} onLink={setLink} />
+            <SceneStarter onFile={setFile} />
           </div>
         }
         stage={
@@ -434,10 +434,7 @@ function Showcase({ theme }: { theme: Theme }) {
       </Section>
 
       <Section title={messages.dev.sections.starter}>
-        <SceneStarter
-          onFile={(file) => setReceived(`${S.picked} ${file.name}`)}
-          onLink={(url) => setReceived(`${S.linked} ${url}`)}
-        />
+        <SceneStarter onFile={(file) => setReceived(`${S.picked} ${file.name}`)} />
         <p role="status" className="m-0 text-fg-soft text-sm" dir="auto">
           {received}
         </p>

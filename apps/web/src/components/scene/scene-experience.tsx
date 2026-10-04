@@ -11,13 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { Notice } from '@/components/ui/notice';
 import { Sheet } from '@/components/ui/sheet';
-import {
-  getRainTutorial,
-  keepRainInsight,
-  startScanFromFile,
-  startScanFromLink,
-  type Tutorial,
-} from '@/lib/scan/api';
+import { getRainTutorial, keepRainInsight, startScanFromFile, type Tutorial } from '@/lib/scan/api';
 import { journeyFailureMessage } from '@/lib/scan/failure';
 import { centre } from '@/lib/scan/spans';
 import { messages } from '@/messages';
@@ -54,12 +48,12 @@ function pointsOf(tutorial: Tutorial): ScenePoint[] {
   }));
 }
 
-type Sending = { kind: 'file'; file: File } | { kind: 'link'; url: string };
+type Sending = { kind: 'file'; file: File };
 
 /**
  * The scene (S01): the prepared rain photo first, before any account or
  * permission, labelled as the prepared example the API says it is; its two
- * insights open the API's own copy of them. A photo, a link or the camera
+ * insights open the API's own copy of them. A photo or the camera
  * starts a real scan, which is the only thing that is ever called analysis:
  * the prepared example is never presented as one. The first paint never waits
  * for the API: the photo and the insights' names are here already, and the
@@ -113,10 +107,7 @@ export function SceneExperience() {
     setStarterOpen(false);
     setSending(input);
     setSendError(null);
-    const result =
-      input.kind === 'file'
-        ? await startScanFromFile(input.file, controller.signal)
-        : await startScanFromLink(input.url, controller.signal);
+    const result = await startScanFromFile(input.file, controller.signal);
     if (controller.signal.aborted) {
       return;
     }
@@ -134,7 +125,6 @@ export function SceneExperience() {
   };
 
   const takeFile = (file: File) => void send({ kind: 'file', file });
-  const takeLink = (url: string) => void send({ kind: 'link', url });
 
   return (
     <>
@@ -145,7 +135,7 @@ export function SceneExperience() {
             <SceneIntro chip={<Chip>{label}</Chip>} />
             <SceneInsightList points={points} selectedId={selected} onSelect={open} />
             <OrnamentDivider />
-            <SceneStarter onFile={takeFile} onLink={takeLink} />
+            <SceneStarter onFile={takeFile} />
           </div>
         }
         stage={
@@ -198,18 +188,14 @@ export function SceneExperience() {
         onClose={() => setStarterOpen(false)}
         title={messages.nav.captureScene}
       >
-        <SceneStarter onFile={takeFile} onLink={takeLink} className="mb-2" />
+        <SceneStarter onFile={takeFile} className="mb-2" />
       </Sheet>
 
       <Sheet open={sending !== null} onClose={leaveSending} title={messages.sending.title}>
         <div className="flex flex-col gap-4 pb-2">
           {sending === null ? null : (
             <p role="status" className="m-0 text-fg leading-[1.9]">
-              {sendError === null
-                ? sending.kind === 'file'
-                  ? messages.sending.file(sending.file.name)
-                  : messages.sending.link
-                : null}
+              {sendError === null ? messages.sending.file(sending.file.name) : null}
             </p>
           )}
           {sendError === null ? null : (
