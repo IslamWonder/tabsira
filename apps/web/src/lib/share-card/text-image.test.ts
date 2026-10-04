@@ -5,7 +5,7 @@ import { cardFaces } from './fonts';
 import { drawText, escapeMarkup, markup, type TextSpec, unescapeMarkup } from './text-image';
 
 async function spec(overrides: Partial<TextSpec> = {}): Promise<TextSpec> {
-  const faces = await cardFaces();
+  const faces = cardFaces();
   return {
     text: HADITH_TEXT,
     face: faces.quran,

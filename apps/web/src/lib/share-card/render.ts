@@ -219,7 +219,7 @@ async function hadithCanFit(insight: PublicInsight, faces: CardFaces, shared: Sh
 
 /** The card as PNG bytes, with the fonts of this repository and no network. */
 export async function renderCard(insight: PublicInsight, host: string): Promise<Buffer> {
-  const faces = await cardFaces();
+  const faces = cardFaces();
   await register(faces);
   const fixed = await fixedParts(insight, host, faces);
   const pairs = await labels(insight, faces);

@@ -4,6 +4,7 @@ import { parseEnv } from 'node:util';
 import type { NextConfig } from 'next';
 import { PHASE_DEVELOPMENT_SERVER } from 'next/constants';
 import { mergeEnv, resolvePublicEnv } from './src/config/public-env';
+import { QURAN_SOURCE, TEXT_SOURCES } from './src/lib/share-card/fonts';
 
 const REPO_ROOT = path.resolve(__dirname, '../..');
 
@@ -33,10 +34,7 @@ export default function nextConfig(phase: string): NextConfig {
     // The share card reads its fonts from disk at request time (src/lib/share-card/fonts.ts),
     // a path the tracer cannot follow; name the files so a standalone build carries them.
     outputFileTracingIncludes: {
-      '/insights/[id]/card': [
-        './src/fonts/UthmanicHafs_V22.ttf',
-        './node_modules/@fontsource/readex-pro/files/*-{arabic,latin}-{400,600}-normal.woff',
-      ],
+      '/insights/[id]/card': [QURAN_SOURCE, ...TEXT_SOURCES].map((file) => `./${file}`),
     },
     turbopack: { root: REPO_ROOT },
     poweredByHeader: false,
