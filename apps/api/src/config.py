@@ -20,7 +20,7 @@ from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit, urlunsplit
 
 from pydantic import (
     BaseModel,
@@ -90,6 +90,19 @@ DEFAULT_MODERATION_COMPRESS_AFTER_DAYS = 30
 ASYNC_DRIVER = "postgresql+asyncpg"
 SYNC_DRIVER = "postgresql+psycopg"
 
+# Redis on the development host (decision 21); the password, when there is one, is
+# REDIS_PASSWORD, never part of the URL, so the URL can be printed.
+DEV_REDIS_URL = "redis://127.0.0.1:6379/0"
+REDIS_SCHEMES = frozenset({"redis", "rediss"})
+
+# Retention and compression of the time series (decision 13), in days.
+DEFAULT_SCAN_EVENTS_RETENTION_DAYS = 90
+DEFAULT_SCAN_EVENTS_COMPRESS_AFTER_DAYS = 7
+DEFAULT_AI_CALLS_RETENTION_DAYS = 400
+DEFAULT_AI_CALLS_COMPRESS_AFTER_DAYS = 30
+DEFAULT_EXPOSURES_RETENTION_DAYS = 730
+DEFAULT_EXPOSURES_COMPRESS_AFTER_DAYS = 30
+
 
 class Environment(StrEnum):
     """
@@ -135,6 +148,19 @@ class BoxCoordinates(StrEnum):
 
     PIXELS = "pixels"
     THOUSANDTHS = "thousandths"
+
+
+class ScanEngine(StrEnum):
+    """
+    The insight engine a scan runs.
+
+    `demo` is a declared simulation for development and smoke tests: it never
+    calls a model, cites only references the store holds, and every insight it
+    makes is labelled as coming from it. Production refuses it.
+    """
+
+    PIPELINE = "pipeline"
+    DEMO = "demo"
 
 
 class ConfigError(RuntimeError):
@@ -341,6 +367,25 @@ def _check_postgres_url(value: SecretStr, driver: str) -> SecretStr:
     return value
 
 
+def _check_redis_url(value: str) -> str:
+    """Validate a Redis URL: redis(s)://127.0.0.1:6379/<db>, its password kept apart."""
+    parts = urlsplit(value.strip())
+    if parts.scheme not in REDIS_SCHEMES or not parts.hostname:
+        message = "must be a URL of the form redis://127.0.0.1:6379/0"
+        raise ValueError(message)
+    if parts.hostname == "localhost":
+        message = "must name the host 127.0.0.1, not localhost"
+        raise ValueError(message)
+    if parts.password or parts.username:
+        message = "must not carry a user or a password: set REDIS_PASSWORD instead"
+        raise ValueError(message)
+    database = parts.path.strip("/")
+    if database and not database.isdigit():
+        message = "must end with a database number, such as /0"
+        raise ValueError(message)
+    return value.strip()
+
+
 class Settings(BaseSettings):
     """Every configuration key of the API, with its development default."""
 
@@ -541,6 +586,59 @@ class Settings(BaseSettings):
     # (checked from the header, before decoding: a small file can expand a lot).
     image_max_bytes: Annotated[int, Field(gt=0)] = 15 * 1024 * 1024
     image_max_pixels: Annotated[int, Field(gt=0)] = 40_000_000
+    # A photo given by its address is fetched by the server (v2 §6): public
+    # addresses and default ports only, within this time and this many redirects.
+    image_url_timeout_seconds: Annotated[float, Field(gt=0, le=60)] = 12.0
+    image_url_max_redirects: Annotated[int, Field(ge=0, le=10)] = 3
+
+    # Redis (decision 21): scan progress for whichever worker holds the reader's
+    # stream, and the queue of scan jobs. Durable state stays in PostgreSQL.
+    redis_url: str = DEV_REDIS_URL
+    # Required in production, where Redis refuses clients without it (decision 22).
+    redis_password: SecretStr = SecretStr("")
+    # The Redis database the tests use; empty runs them on an in-process fake.
+    test_redis_url: str = ""
+
+    # Guests: a signed, httpOnly cookie holds a random key; the server keeps its
+    # hash. What a guest saves is kept under it and merged at the first sign-in.
+    guest_cookie_name: str = "__Secure-tabsira_guest"
+    guest_ttl_days: Annotated[int, Field(ge=1, le=365)] = 90
+
+    # Scans. The engine that proposes insights; `demo` is development-only.
+    scan_engine: ScanEngine = ScanEngine.PIPELINE
+    # A scan job that runs longer is stopped and reported as failed. Below the
+    # queue's ten minutes, after which an unacknowledged job is handed out again.
+    scan_job_timeout_seconds: Annotated[float, Field(gt=0, le=540)] = 240.0
+    # Seconds the stripped photo stays in the temporary store for its owner.
+    scan_image_ttl_seconds: Annotated[int, Field(ge=60, le=86400)] = 3600
+    # Seconds the progress events of a scan stay available for a reconnecting reader.
+    scan_events_ttl_seconds: Annotated[int, Field(ge=60, le=86400)] = 3600
+
+    # Chat (v2 §14): successful user messages allowed per insight.
+    max_chat_user_messages: Annotated[int, Field(ge=0, le=10)] = 3
+
+    # The hidden treasure (v2 §17) shows on return: after this many days, on a
+    # visit to its place this many hours after it was hidden, or after a related insight.
+    treasure_reveal_after_days: Annotated[int, Field(ge=0, le=365)] = 3
+    treasure_return_after_hours: Annotated[int, Field(ge=0, le=720)] = 12
+
+    # Time series (decision 13): days before a chunk is compressed, and dropped.
+    scan_events_retention_days: Annotated[int, Field(ge=1, le=3650)] = (
+        DEFAULT_SCAN_EVENTS_RETENTION_DAYS
+    )
+    scan_events_compress_after_days: Annotated[int, Field(ge=1, le=3650)] = (
+        DEFAULT_SCAN_EVENTS_COMPRESS_AFTER_DAYS
+    )
+    ai_calls_retention_days: Annotated[int, Field(ge=1, le=3650)] = DEFAULT_AI_CALLS_RETENTION_DAYS
+    ai_calls_compress_after_days: Annotated[int, Field(ge=1, le=3650)] = (
+        DEFAULT_AI_CALLS_COMPRESS_AFTER_DAYS
+    )
+    evidence_exposures_retention_days: Annotated[int, Field(ge=1, le=3650)] = (
+        DEFAULT_EXPOSURES_RETENTION_DAYS
+    )
+    evidence_exposures_compress_after_days: Annotated[int, Field(ge=1, le=3650)] = (
+        DEFAULT_EXPOSURES_COMPRESS_AFTER_DAYS
+    )
 
     # The social network's automatic guard. Text goes to OpenAI's moderation endpoint
     # (the free `omni-moderation-latest`) and the verdict is read from its scores:
@@ -579,7 +677,7 @@ class Settings(BaseSettings):
     def _check_public_url(cls, value: str) -> str:
         return _origin(value)
 
-    @field_validator("session_cookie_name")
+    @field_validator("session_cookie_name", "guest_cookie_name")
     @classmethod
     def _check_cookie_name(cls, value: str) -> str:
         if not _COOKIE_NAME.match(value) or value.startswith("__Host-"):
@@ -734,6 +832,32 @@ class Settings(BaseSettings):
             raise ValueError(message)
         return value
 
+    @field_validator("redis_url")
+    @classmethod
+    def _check_redis_url(cls, value: str) -> str:
+        return _check_redis_url(value)
+
+    @field_validator("test_redis_url")
+    @classmethod
+    def _check_test_redis_url(cls, value: str) -> str:
+        return _check_redis_url(value) if value.strip() else ""
+
+    @model_validator(mode="after")
+    def _check_redis_and_time_series(self) -> Self:
+        """Keep the tests off the development Redis and every compression before its drop."""
+        if self.test_redis_url and self.test_redis_url == self.redis_url:
+            message = "TEST_REDIS_URL must name another database than REDIS_URL"
+            raise ValueError(message)
+        for series in ("scan_events", "ai_calls", "evidence_exposures"):
+            compress = getattr(self, f"{series}_compress_after_days")
+            if compress >= getattr(self, f"{series}_retention_days"):
+                message = (
+                    f"{series.upper()}_COMPRESS_AFTER_DAYS must be under "
+                    f"{series.upper()}_RETENTION_DAYS"
+                )
+                raise ValueError(message)
+        return self
+
     @model_validator(mode="after")
     def _require_s3_settings(self) -> Self:
         """With the S3 backend every S3 key must be set, so photos are never lost to a typo."""
@@ -832,6 +956,10 @@ class Settings(BaseSettings):
                 problems.append(
                     f"GOOGLE_REDIRECT_URI points at the development host {self.google_redirect_uri}"
                 )
+        if not self.redis_password.get_secret_value():
+            problems.append("REDIS_PASSWORD is empty")
+        if self.scan_engine is ScanEngine.DEMO:
+            problems.append("SCAN_ENGINE is demo, a development simulation")
         return problems
 
     @property
@@ -917,6 +1045,20 @@ class Settings(BaseSettings):
     def ai(self) -> ProviderSettings:
         """The settings block of the active AI provider."""
         return self.ai_ovh if self.ai_provider == AiProvider.OVH else self.ai_openai
+
+    @property
+    def guest_ttl(self) -> timedelta:
+        return timedelta(days=self.guest_ttl_days)
+
+    def redis_connection_url(self, url: str | None = None) -> str:
+        """Return `url` (default REDIS_URL) with REDIS_PASSWORD in it, for the client only."""
+        chosen = url or self.redis_url
+        password = self.redis_password.get_secret_value()
+        if not password:
+            return chosen
+        parts = urlsplit(chosen)
+        netloc = f":{quote(password, safe='')}@{parts.netloc}"
+        return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
 
 
 def format_validation_error(error: ValidationError) -> str:

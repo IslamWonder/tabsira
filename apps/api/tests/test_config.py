@@ -7,12 +7,14 @@ from pydantic import ValidationError
 
 from src import config
 from src.config import (
+    DEV_REDIS_URL,
     AiProvider,
     AiStage,
     BoxCoordinates,
     ConfigError,
     Environment,
     ProviderSettings,
+    ScanEngine,
     Settings,
     format_validation_error,
     get_settings,
@@ -37,6 +39,7 @@ PRODUCTION = {
     "ai_provider": "ovh",
     "admin_totp_encryption_key": FERNET_KEY,
     "ai_ovh": {"api_key": "ovh-key-123"},
+    "redis_password": "redis-secret",
 }
 
 
@@ -969,3 +972,108 @@ def test_only_arabic_is_supported_and_the_default_must_be_supported(make_setting
     assert make_settings(supported_languages="ar, en").supported_languages == ("ar", "en")
     assert make_settings(supported_languages=("ar",)).supported_languages == ("ar",)
     assert "DEFAULT_LANGUAGE" in errors_of(default_language="en")
+
+
+# ─── Redis, guests, scans, chat, treasure and time series ──────────
+
+
+def test_scan_workflow_defaults(make_settings):
+    settings = make_settings()
+
+    assert settings.redis_url == DEV_REDIS_URL == "redis://127.0.0.1:6379/0"
+    assert settings.redis_password.get_secret_value() == ""
+    assert settings.test_redis_url == ""
+    assert settings.guest_cookie_name == "__Secure-tabsira_guest"
+    assert settings.guest_ttl.days == 90
+    assert settings.scan_engine is ScanEngine.PIPELINE
+    assert settings.scan_job_timeout_seconds == 240.0
+    assert (settings.scan_image_ttl_seconds, settings.scan_events_ttl_seconds) == (3600, 3600)
+    # v2 §6: 12 seconds and three redirects for a photo given by its address.
+    assert (settings.image_url_timeout_seconds, settings.image_url_max_redirects) == (12.0, 3)
+    assert settings.max_chat_user_messages == 3
+    assert (settings.treasure_reveal_after_days, settings.treasure_return_after_hours) == (3, 12)
+    assert (settings.scan_events_compress_after_days, settings.scan_events_retention_days) == (
+        7,
+        90,
+    )
+    assert (settings.ai_calls_compress_after_days, settings.ai_calls_retention_days) == (30, 400)
+    assert (
+        settings.evidence_exposures_compress_after_days,
+        settings.evidence_exposures_retention_days,
+    ) == (30, 730)
+
+
+def test_the_redis_password_goes_into_the_client_url_only(make_settings):
+    settings = make_settings(redis_url="rediss://10.0.0.5:6380/2", redis_password="p@ss/word")
+
+    assert settings.redis_url == "rediss://10.0.0.5:6380/2"
+    assert settings.redis_connection_url() == "rediss://:p%40ss%2Fword@10.0.0.5:6380/2"
+    assert (
+        settings.redis_connection_url("redis://127.0.0.1:6379/3")
+        == "redis://:p%40ss%2Fword@127.0.0.1:6379/3"
+    )
+    assert make_settings().redis_connection_url() == DEV_REDIS_URL
+    assert "p@ss" not in repr(settings)
+
+
+@pytest.mark.parametrize(
+    ("url", "reason"),
+    [
+        ("http://127.0.0.1:6379/0", "redis://127.0.0.1:6379/0"),
+        ("redis://localhost:6379/0", "not localhost"),
+        ("redis://:pw@127.0.0.1:6379/0", "REDIS_PASSWORD"),
+        ("redis://user@127.0.0.1:6379/0", "REDIS_PASSWORD"),
+        ("redis://127.0.0.1:6379/zero", "database number"),
+    ],
+)
+def test_redis_urls_are_checked(url, reason):
+    assert reason in errors_of(redis_url=url)
+    assert reason in errors_of(test_redis_url=url)
+
+
+def test_the_tests_never_share_the_development_redis_database(make_settings):
+    assert "TEST_REDIS_URL must name another database" in errors_of(
+        redis_url="redis://127.0.0.1:6379/2", test_redis_url="redis://127.0.0.1:6379/2"
+    )
+    settings = make_settings(
+        redis_url="redis://127.0.0.1:6379/2", test_redis_url=" redis://127.0.0.1:6379/3 "
+    )
+    assert settings.test_redis_url == "redis://127.0.0.1:6379/3"
+    assert make_settings(test_redis_url="  ").test_redis_url == ""
+
+
+def test_the_guest_cookie_name_follows_the_session_cookie_rules():
+    assert "GUEST_COOKIE_NAME" in errors_of(guest_cookie_name="__Host-guest")
+
+
+@pytest.mark.parametrize("series", ["scan_events", "ai_calls", "evidence_exposures"])
+def test_a_time_series_is_compressed_before_it_is_dropped(series):
+    message = errors_of(**{f"{series}_compress_after_days": 30, f"{series}_retention_days": 30})
+
+    assert f"{series.upper()}_COMPRESS_AFTER_DAYS must be under" in message
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("guest_ttl_days", 0),
+        ("scan_job_timeout_seconds", 541),
+        ("scan_image_ttl_seconds", 59),
+        ("scan_events_ttl_seconds", 86401),
+        ("image_url_timeout_seconds", 0),
+        ("image_url_max_redirects", 11),
+        ("max_chat_user_messages", 11),
+        ("treasure_reveal_after_days", -1),
+        ("treasure_return_after_hours", 721),
+        ("ai_calls_retention_days", 0),
+    ],
+)
+def test_scan_workflow_numbers_have_bounds(key, value):
+    assert key.upper() in errors_of(**{key: value})
+
+
+def test_production_needs_a_redis_password_and_refuses_the_demo_engine():
+    message = errors_of(**{**PRODUCTION, "redis_password": "", "scan_engine": "demo"})
+
+    assert "REDIS_PASSWORD is empty" in message
+    assert "SCAN_ENGINE is demo, a development simulation" in message
