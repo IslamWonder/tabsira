@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClasses } from '@/components/ui/button';
 import { Notice, type NoticeTone } from '@/components/ui/notice';
 import { Sheet } from '@/components/ui/sheet';
 import type { Failure } from '@/lib/api/result';
-import { publicInsightPath } from '@/lib/public-insight';
+import { cardFileName, publicInsightCardPath, publicInsightPath } from '@/lib/public-insight';
 import { journeyFailureMessage } from '@/lib/scan/failure';
 import { siteOrigin } from '@/lib/site';
 import { messages } from '@/messages';
@@ -63,7 +63,8 @@ async function shareLink(title: string, url: string): Promise<Said | null> {
  * Sharing an insight (task 09.3): before the first publication the sheet says,
  * in one paragraph, what becomes public; the publish-and-share button publishes (a verified
  * owner's call, idempotent) and then hands the public address to the system's
- * share dialog, or copies it; the withdraw button takes the page down at once. The
+ * share dialog, or copies it; while the insight is public its card image can be
+ * downloaded as a file (v2 §18); the withdraw button takes the page down at once. The
  * API's own refusal (a sensitive scene, nothing to show from the store) is
  * said in Arabic, in words that name what to change.
  */
@@ -152,6 +153,15 @@ export function ShareSheet({ open, onClose, insightId, insightTitle, published }
         >
           {working ? T.working : isPublic ? T.share : T.publishAndShare}
         </Button>
+        {isPublic ? (
+          <a
+            href={publicInsightCardPath(insightId)}
+            download={cardFileName(insightId)}
+            className={buttonClasses('secondary')}
+          >
+            {T.download}
+          </a>
+        ) : null}
         {isPublic ? (
           <Button variant="ghost" onClick={withdraw} disabled={working}>
             {T.withdraw}

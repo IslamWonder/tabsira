@@ -1,10 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { publicInsightOut } from '@/test/scan';
-import { describe as describeGlimpse, publicInsightPath, publicInsightSeo } from './public-insight';
+import {
+  cardFileName,
+  describe as describeGlimpse,
+  publicInsightCardPath,
+  publicInsightPath,
+  publicInsightSeo,
+} from './public-insight';
 
 describe('the public insight address', () => {
   it('is /insights/{id}, the path the API gives', () => {
     expect(publicInsightPath('42')).toBe('/insights/42');
+  });
+
+  it('places the card under the page, and names its file after the id', () => {
+    expect(publicInsightCardPath('42')).toBe('/insights/42/card');
+    expect(cardFileName('42')).toBe('tabsira-42.png');
   });
 });
 

@@ -19,6 +19,8 @@ export const shareMessages = {
       'هذه البصيرة منشورة الآن: صفحتها وصورتها يراهما أي شخص، وقد تظهران في نتائج البحث. اسحبها متى شئت فتزول الصفحة والصورة فورًا، إلا ما نسخه غيرك قبل ذلك.',
     publishAndShare: 'انشر وشارك',
     share: 'شارك الرابط',
+    /** A plain download of the card image (v2 §18), beside sharing and copying the link. */
+    download: 'نزّل البطاقة',
     withdraw: 'اسحب النشر',
     working: 'لحظة…',
     linkLabel: 'رابط البصيرة',
