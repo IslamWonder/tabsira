@@ -41,8 +41,8 @@ const TONES: Record<PointTone, { core: string; halo: string }> = {
 
 /**
  * An insight on the photo: a glowing orb inside a thin gold ring, with a
- * two-line glass label, as one real button (the earlier prototype's hotspot, the
- * owners' choice). Two rings call once from the orb and its halo breathes
+ * two-line glass label, as one real button (the earlier prototype's hotspot,
+ * the owners' choice). Two rings call once from the orb and its halo breathes
  * twice when the scene appears, then everything rests: under five seconds, so
  * no pause control is needed (WCAG 2.2.2), and nothing moves under reduced
  * motion. Selective attention: two calm lights, nothing else on the photo moves.
