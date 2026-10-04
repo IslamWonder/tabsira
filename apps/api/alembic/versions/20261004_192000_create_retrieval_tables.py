@@ -1,8 +1,8 @@
 """create_retrieval_tables
 
-Revision ID: 20261004_191000
+Revision ID: 20261004_192000
 Revises: 20261004_182000
-Create Date: 2026-10-04 19:10:00.000000
+Create Date: 2026-10-04 19:20:00.000000
 
 The vectors of the scripture store, one row per text and embedding model, the
 runs of `src.cli.embed_corpus` with what they cost, and a full-text vector on
@@ -22,7 +22,7 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision: str = "20261004_191000"
+revision: str = "20261004_192000"
 down_revision: str | Sequence[str] | None = "20261004_182000"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
