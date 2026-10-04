@@ -3157,6 +3157,461 @@
         }
       }
     },
+    "/insights/{insight_id}/map": {
+      "put": {
+        "tags": ["atlas"],
+        "summary": "Place one of the caller's insights on the atlas, as a draft",
+        "description": "Keep the exact point privately and answer with what the map will show.\n\nThe public point is the centre of the grid cell (GEO_APPROX_CELL_METERS), labelled with\nthe nearest populated place; the answer carries the cell as a polygon, so the owner reviews\nit before publishing. 409 INSIGHT_NOT_PUBLISHABLE for an insight that is not the pipeline's.",
+        "operationId": "place_insight_insights__insight_id__map_put",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapturePointIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapEntryOwnerOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["atlas"],
+        "summary": "The caller's own entry for an insight",
+        "description": "Return the entry with its private point and its public preview; 404 when there is none.",
+        "operationId": "my_entry_insights__insight_id__map_get",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapEntryOwnerOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["atlas"],
+        "summary": "Withdraw the entry from the atlas",
+        "description": "Take the entry off the map and forget its exact point; its address answers 410 from then on.",
+        "operationId": "withdraw_entry_insights__insight_id__map_delete",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/{insight_id}/map/publish": {
+      "post": {
+        "tags": ["atlas"],
+        "summary": "Show the entry on the atlas",
+        "description": "Publish a placed draft; 409 for an entry that is not a draft.",
+        "operationId": "publish_entry_insights__insight_id__map_publish_post",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapEntryOwnerOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/map-entries": {
+      "get": {
+        "tags": ["atlas"],
+        "summary": "The caller's entries, in every state",
+        "operationId": "my_entries_me_map_entries_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MapEntryOwnerOut"
+                  },
+                  "type": "array",
+                  "title": "Response My Entries Me Map Entries Get"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/atlas/entries": {
+      "get": {
+        "tags": ["atlas"],
+        "summary": "The published entries inside a map window",
+        "description": "Return a GeoJSON FeatureCollection of the published entries in the window, newest first.\n\nEvery geometry is a public point: the centre of an approximation cell, never where a photo\nwas taken. A window with `west > east` crosses the antimeridian. `truncated` says more\nentries lie in the window than `limit` allowed; ask for a smaller window.",
+        "operationId": "entries_in_window_atlas_entries_get",
+        "parameters": [
+          {
+            "name": "west",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "West"
+            }
+          },
+          {
+            "name": "south",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "South"
+            }
+          },
+          {
+            "name": "east",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "East"
+            }
+          },
+          {
+            "name": "north",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "North"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 2,
+                  "pattern": "^[A-Za-z]{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Country"
+            }
+          },
+          {
+            "name": "concept",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.:-]+$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Concept"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 300,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlasFeatureCollection"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/atlas/entries/{entry_id}": {
+      "get": {
+        "tags": ["atlas"],
+        "summary": "One published entry",
+        "description": "Return the entry's page: the insight with its scripture from the store, the public point and its place; 410 once withdrawn.",
+        "operationId": "entry_atlas_entries__entry_id__get",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlasEntryOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/atlas/places/{geoname_id}": {
+      "get": {
+        "tags": ["atlas"],
+        "summary": "A place and the entries labelled with it",
+        "description": "«ذاكرة المكان»: the place from GeoNames and its published entries, newest first; 404 without any.",
+        "operationId": "place_entries_atlas_places__geoname_id__get",
+        "parameters": [
+          {
+            "name": "geoname_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Geoname Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlasPlaceOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/tutorial/rain": {
       "get": {
         "tags": ["tutorial"],
@@ -3276,6 +3731,13 @@
           "social": {
             "$ref": "#/components/schemas/SocialExport"
           },
+          "map_entries": {
+            "items": {
+              "$ref": "#/components/schemas/MapEntryOwnerOut"
+            },
+            "type": "array",
+            "title": "Map Entries"
+          },
           "learning": {
             "$ref": "#/components/schemas/LearningExport"
           }
@@ -3290,6 +3752,7 @@
           "consents",
           "cookie_consents",
           "social",
+          "map_entries",
           "learning"
         ],
         "title": "AccountExport",
@@ -3405,6 +3868,266 @@
         "enum": ["under_13", "13_17", "18_24", "25_39", "40_59", "60_plus", "unknown"],
         "title": "AgeRange"
       },
+      "AtlasEntryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "glimpse": {
+            "type": "string",
+            "title": "Glimpse"
+          },
+          "relation_type": {
+            "type": "string",
+            "title": "Relation Type"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation",
+            "description": "The app's explanation, shortened; written by the app"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          },
+          "concepts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Concepts"
+          },
+          "author": {
+            "$ref": "#/components/schemas/MemberOut"
+          },
+          "location": {
+            "$ref": "#/components/schemas/PublicLocationOut"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlaceRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quran": {
+            "items": {
+              "$ref": "#/components/schemas/QuranEvidenceOut"
+            },
+            "type": "array",
+            "title": "Quran"
+          },
+          "hadith": {
+            "items": {
+              "$ref": "#/components/schemas/HadithEvidenceOut"
+            },
+            "type": "array",
+            "title": "Hadith"
+          },
+          "post_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Id",
+            "description": "The public post of the same insight, if one is published"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Published At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "insight_id",
+          "title",
+          "glimpse",
+          "relation_type",
+          "explanation",
+          "step",
+          "concepts",
+          "author",
+          "location",
+          "place",
+          "quran",
+          "hadith",
+          "post_id",
+          "published_at"
+        ],
+        "title": "AtlasEntryOut",
+        "description": "A published entry on its own page: the insight by reference, the public point, its place."
+      },
+      "AtlasFeature": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Feature",
+            "title": "Type",
+            "default": "Feature"
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/GeoJsonPoint"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/AtlasFeatureProperties"
+          }
+        },
+        "type": "object",
+        "required": ["id", "geometry", "properties"],
+        "title": "AtlasFeature",
+        "description": "One published entry as a GeoJSON Feature; `geometry` is the public point."
+      },
+      "AtlasFeatureCollection": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type",
+            "default": "FeatureCollection"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/AtlasFeature"
+            },
+            "type": "array",
+            "title": "Features"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "description": "More entries lie in the window than were returned"
+          }
+        },
+        "type": "object",
+        "required": ["features", "truncated"],
+        "title": "AtlasFeatureCollection"
+      },
+      "AtlasFeatureProperties": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "glimpse": {
+            "type": "string",
+            "title": "Glimpse"
+          },
+          "author": {
+            "$ref": "#/components/schemas/MemberOut"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlaceRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cell_m": {
+            "type": "integer",
+            "title": "Cell M"
+          },
+          "precision_label": {
+            "type": "string",
+            "title": "Precision Label"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Published At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "insight_id",
+          "title",
+          "glimpse",
+          "author",
+          "place",
+          "cell_m",
+          "precision_label",
+          "published_at"
+        ],
+        "title": "AtlasFeatureProperties"
+      },
+      "AtlasPlaceOut": {
+        "properties": {
+          "place": {
+            "$ref": "#/components/schemas/PlaceRef"
+          },
+          "point": {
+            "$ref": "#/components/schemas/GeoJsonPoint"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/AtlasFeature"
+            },
+            "type": "array",
+            "title": "Entries"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "required": ["place", "point", "entries", "next_cursor"],
+        "title": "AtlasPlaceOut",
+        "description": "A place page: the place, its point from GeoNames, and the entries labelled with it."
+      },
       "BBox": {
         "properties": {
           "x": {
@@ -3471,6 +4194,140 @@
         "type": "object",
         "required": ["id", "title", "description", "earned", "earned_at"],
         "title": "BadgeOut"
+      },
+      "CapturePointIn": {
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "description": "Degrees; zero is a value"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "description": "Degrees; zero is a value"
+          },
+          "accuracy_m": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy M"
+          },
+          "source": {
+            "$ref": "#/components/schemas/LocationSource"
+          },
+          "meaning": {
+            "$ref": "#/components/schemas/LocationMeaning",
+            "default": "capture_point"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "measured_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["latitude", "longitude", "source"],
+        "title": "CapturePointIn",
+        "description": "Where the photo was taken, or the public place the owner chose; private to the owner."
+      },
+      "CapturePointOut": {
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "accuracy_m": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy M"
+          },
+          "source": {
+            "$ref": "#/components/schemas/LocationSource"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "measured_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured At"
+          },
+          "confirmed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Confirmed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "latitude",
+          "longitude",
+          "accuracy_m",
+          "source",
+          "captured_at",
+          "measured_at",
+          "confirmed_at"
+        ],
+        "title": "CapturePointOut",
+        "description": "The owner's own point, echoed to the owner alone."
       },
       "ChapterOut": {
         "properties": {
@@ -4953,14 +5810,9 @@
             "default": "Point"
           },
           "coordinates": {
-            "prefixItems": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "number"
-              }
-            ],
+            "items": {
+              "type": "number"
+            },
             "type": "array",
             "maxItems": 2,
             "minItems": 2,
@@ -4972,6 +5824,35 @@
         "required": ["coordinates"],
         "title": "GeoJsonPoint",
         "description": "A GeoJSON Point (RFC 7946): `coordinates` is [longitude, latitude]."
+      },
+      "GeoJsonPolygon": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Polygon",
+            "title": "Type",
+            "default": "Polygon"
+          },
+          "coordinates": {
+            "items": {
+              "items": {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Coordinates"
+          }
+        },
+        "type": "object",
+        "required": ["coordinates"],
+        "title": "GeoJsonPolygon",
+        "description": "A GeoJSON Polygon: one closed ring of [longitude, latitude] positions."
       },
       "Goal": {
         "type": "string",
@@ -6050,6 +6931,18 @@
         "required": ["status"],
         "title": "Liveness"
       },
+      "LocationMeaning": {
+        "type": "string",
+        "enum": ["capture_point", "public_place"],
+        "title": "LocationMeaning",
+        "description": "What the point stands for: where the photo was taken, or a public place the owner named."
+      },
+      "LocationSource": {
+        "type": "string",
+        "enum": ["device_capture", "photo_exif", "user_selected"],
+        "title": "LocationSource",
+        "description": "Where the capture point came from (extension §3); none of them proves presence."
+      },
       "LoginIn": {
         "properties": {
           "email": {
@@ -6068,6 +6961,109 @@
         "type": "object",
         "required": ["email", "password"],
         "title": "LoginIn"
+      },
+      "MapEntryOwnerOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MapEntryStatus"
+          },
+          "capture": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CapturePointOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null once the entry is withdrawn"
+          },
+          "public": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicLocationPreview"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null once the entry is withdrawn"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlaceRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "withdrawn_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawn At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "insight_id",
+          "title",
+          "status",
+          "capture",
+          "public",
+          "place",
+          "published_at",
+          "withdrawn_at",
+          "created_at"
+        ],
+        "title": "MapEntryOwnerOut",
+        "description": "An entry as its owner sees it: the private point, the public preview, the state."
+      },
+      "MapEntryStatus": {
+        "type": "string",
+        "enum": ["draft", "published", "withdrawn"],
+        "title": "MapEntryStatus",
+        "description": "Placed but not shown, shown, or taken down by its owner."
       },
       "MemberOut": {
         "properties": {
@@ -6480,6 +7476,55 @@
         "type": "object",
         "required": ["id", "region_id", "name", "created"],
         "title": "PlaceOut"
+      },
+      "PlaceRef": {
+        "properties": {
+          "geoname_id": {
+            "type": "integer",
+            "title": "Geoname Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "admin_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admin Label"
+          },
+          "country_iso2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Iso2"
+          },
+          "country_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Label"
+          }
+        },
+        "type": "object",
+        "required": ["geoname_id", "label", "admin_label", "country_iso2", "country_label"],
+        "title": "PlaceRef",
+        "description": "The populated place a public point is labelled with, from GeoNames."
       },
       "PositionOut": {
         "properties": {
@@ -7133,6 +8178,61 @@
         "title": "PublicIdentityOut",
         "description": "The caller's own handle and public name; both null until they have chosen."
       },
+      "PublicLocationOut": {
+        "properties": {
+          "point": {
+            "$ref": "#/components/schemas/GeoJsonPoint"
+          },
+          "cell_m": {
+            "type": "integer",
+            "title": "Cell M"
+          },
+          "precision_label": {
+            "type": "string",
+            "title": "Precision Label"
+          },
+          "meaning": {
+            "$ref": "#/components/schemas/LocationMeaning"
+          },
+          "meaning_label": {
+            "type": "string",
+            "title": "Meaning Label"
+          }
+        },
+        "type": "object",
+        "required": ["point", "cell_m", "precision_label", "meaning", "meaning_label"],
+        "title": "PublicLocationOut",
+        "description": "What the map shows: the cell centre, how wide the cell is, and the words for it."
+      },
+      "PublicLocationPreview": {
+        "properties": {
+          "point": {
+            "$ref": "#/components/schemas/GeoJsonPoint"
+          },
+          "cell_m": {
+            "type": "integer",
+            "title": "Cell M"
+          },
+          "precision_label": {
+            "type": "string",
+            "title": "Precision Label"
+          },
+          "meaning": {
+            "$ref": "#/components/schemas/LocationMeaning"
+          },
+          "meaning_label": {
+            "type": "string",
+            "title": "Meaning Label"
+          },
+          "cell": {
+            "$ref": "#/components/schemas/GeoJsonPolygon"
+          }
+        },
+        "type": "object",
+        "required": ["point", "cell_m", "precision_label", "meaning", "meaning_label", "cell"],
+        "title": "PublicLocationPreview",
+        "description": "The owner's preview before publishing: the cell itself, so they can see what is shown."
+      },
       "PublicationExport": {
         "properties": {
           "id": {
@@ -7778,7 +8878,7 @@
       },
       "ReportTarget": {
         "type": "string",
-        "enum": ["post", "comment"],
+        "enum": ["post", "comment", "map_entry"],
         "title": "ReportTarget"
       },
       "ResetPasswordIn": {
@@ -9406,6 +10506,10 @@
     {
       "name": "geo",
       "description": "Place search, reverse lookup and countries from GeoNames."
+    },
+    {
+      "name": "atlas",
+      "description": "«أطلس بصائر العالم»: insights placed on the map at approximate points."
     },
     {
       "name": "scripture",

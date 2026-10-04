@@ -1459,6 +1459,139 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/insights/{insight_id}/map': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The caller's own entry for an insight
+     * @description Return the entry with its private point and its public preview; 404 when there is none.
+     */
+    get: operations['my_entry_insights__insight_id__map_get'];
+    /**
+     * Place one of the caller's insights on the atlas, as a draft
+     * @description Keep the exact point privately and answer with what the map will show.
+     *
+     *     The public point is the centre of the grid cell (GEO_APPROX_CELL_METERS), labelled with
+     *     the nearest populated place; the answer carries the cell as a polygon, so the owner reviews
+     *     it before publishing. 409 INSIGHT_NOT_PUBLISHABLE for an insight that is not the pipeline's.
+     */
+    put: operations['place_insight_insights__insight_id__map_put'];
+    post?: never;
+    /**
+     * Withdraw the entry from the atlas
+     * @description Take the entry off the map and forget its exact point; its address answers 410 from then on.
+     */
+    delete: operations['withdraw_entry_insights__insight_id__map_delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/insights/{insight_id}/map/publish': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Show the entry on the atlas
+     * @description Publish a placed draft; 409 for an entry that is not a draft.
+     */
+    post: operations['publish_entry_insights__insight_id__map_publish_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/me/map-entries': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The caller's entries, in every state */
+    get: operations['my_entries_me_map_entries_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/atlas/entries': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The published entries inside a map window
+     * @description Return a GeoJSON FeatureCollection of the published entries in the window, newest first.
+     *
+     *     Every geometry is a public point: the centre of an approximation cell, never where a photo
+     *     was taken. A window with `west > east` crosses the antimeridian. `truncated` says more
+     *     entries lie in the window than `limit` allowed; ask for a smaller window.
+     */
+    get: operations['entries_in_window_atlas_entries_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/atlas/entries/{entry_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * One published entry
+     * @description Return the entry's page: the insight with its scripture from the store, the public point and its place; 410 once withdrawn.
+     */
+    get: operations['entry_atlas_entries__entry_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/atlas/places/{geoname_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * A place and the entries labelled with it
+     * @description «ذاكرة المكان»: the place from GeoNames and its published entries, newest first; 404 without any.
+     */
+    get: operations['place_entries_atlas_places__geoname_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/tutorial/rain': {
     parameters: {
       query?: never;
@@ -1530,6 +1663,8 @@ export interface components {
       /** Cookie Consents */
       cookie_consents: components['schemas']['CookieConsentExport'][];
       social: components['schemas']['SocialExport'];
+      /** Map Entries */
+      map_entries: components['schemas']['MapEntryOwnerOut'][];
       learning: components['schemas']['LearningExport'];
     };
     /**
@@ -1586,6 +1721,114 @@ export interface components {
      */
     AgeRange: 'under_13' | '13_17' | '18_24' | '25_39' | '40_59' | '60_plus' | 'unknown';
     /**
+     * AtlasEntryOut
+     * @description A published entry on its own page: the insight by reference, the public point, its place.
+     */
+    AtlasEntryOut: {
+      /** Id */
+      id: string;
+      /** Insight Id */
+      insight_id: string;
+      /** Title */
+      title: string;
+      /** Glimpse */
+      glimpse: string;
+      /** Relation Type */
+      relation_type: string;
+      /**
+       * Explanation
+       * @description The app's explanation, shortened; written by the app
+       */
+      explanation: string;
+      /** Step */
+      step: string | null;
+      /** Concepts */
+      concepts: string[];
+      author: components['schemas']['MemberOut'];
+      location: components['schemas']['PublicLocationOut'];
+      place: components['schemas']['PlaceRef'] | null;
+      /** Quran */
+      quran: components['schemas']['QuranEvidenceOut'][];
+      /** Hadith */
+      hadith: components['schemas']['HadithEvidenceOut'][];
+      /**
+       * Post Id
+       * @description The public post of the same insight, if one is published
+       */
+      post_id: string | null;
+      /**
+       * Published At
+       * Format: date-time
+       */
+      published_at: string;
+    };
+    /**
+     * AtlasFeature
+     * @description One published entry as a GeoJSON Feature; `geometry` is the public point.
+     */
+    AtlasFeature: {
+      /**
+       * Type
+       * @default Feature
+       * @constant
+       */
+      type: 'Feature';
+      /** Id */
+      id: string;
+      geometry: components['schemas']['GeoJsonPoint'];
+      properties: components['schemas']['AtlasFeatureProperties'];
+    };
+    /** AtlasFeatureCollection */
+    AtlasFeatureCollection: {
+      /**
+       * Type
+       * @default FeatureCollection
+       * @constant
+       */
+      type: 'FeatureCollection';
+      /** Features */
+      features: components['schemas']['AtlasFeature'][];
+      /**
+       * Truncated
+       * @description More entries lie in the window than were returned
+       */
+      truncated: boolean;
+    };
+    /** AtlasFeatureProperties */
+    AtlasFeatureProperties: {
+      /** Id */
+      id: string;
+      /** Insight Id */
+      insight_id: string;
+      /** Title */
+      title: string;
+      /** Glimpse */
+      glimpse: string;
+      author: components['schemas']['MemberOut'];
+      place: components['schemas']['PlaceRef'] | null;
+      /** Cell M */
+      cell_m: number;
+      /** Precision Label */
+      precision_label: string;
+      /**
+       * Published At
+       * Format: date-time
+       */
+      published_at: string;
+    };
+    /**
+     * AtlasPlaceOut
+     * @description A place page: the place, its point from GeoNames, and the entries labelled with it.
+     */
+    AtlasPlaceOut: {
+      place: components['schemas']['PlaceRef'];
+      point: components['schemas']['GeoJsonPoint'];
+      /** Entries */
+      entries: components['schemas']['AtlasFeature'][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
+    /**
      * BBox
      * @description A box as ratios of the image; `x` and `y` are its top-left corner.
      */
@@ -1611,6 +1854,53 @@ export interface components {
       earned: boolean;
       /** Earned At */
       earned_at: string | null;
+    };
+    /**
+     * CapturePointIn
+     * @description Where the photo was taken, or the public place the owner chose; private to the owner.
+     */
+    CapturePointIn: {
+      /**
+       * Latitude
+       * @description Degrees; zero is a value
+       */
+      latitude: number;
+      /**
+       * Longitude
+       * @description Degrees; zero is a value
+       */
+      longitude: number;
+      /** Accuracy M */
+      accuracy_m?: number | null;
+      source: components['schemas']['LocationSource'];
+      /** @default capture_point */
+      meaning: components['schemas']['LocationMeaning'];
+      /** Captured At */
+      captured_at?: string | null;
+      /** Measured At */
+      measured_at?: string | null;
+    };
+    /**
+     * CapturePointOut
+     * @description The owner's own point, echoed to the owner alone.
+     */
+    CapturePointOut: {
+      /** Latitude */
+      latitude: number;
+      /** Longitude */
+      longitude: number;
+      /** Accuracy M */
+      accuracy_m: number | null;
+      source: components['schemas']['LocationSource'];
+      /** Captured At */
+      captured_at: string | null;
+      /** Measured At */
+      measured_at: string | null;
+      /**
+       * Confirmed At
+       * Format: date-time
+       */
+      confirmed_at: string;
     };
     /** ChapterOut */
     ChapterOut: {
@@ -2289,7 +2579,21 @@ export interface components {
        * Coordinates
        * @description [longitude, latitude]
        */
-      coordinates: [number, number];
+      coordinates: number[];
+    };
+    /**
+     * GeoJsonPolygon
+     * @description A GeoJSON Polygon: one closed ring of [longitude, latitude] positions.
+     */
+    GeoJsonPolygon: {
+      /**
+       * Type
+       * @default Polygon
+       * @constant
+       */
+      type: 'Polygon';
+      /** Coordinates */
+      coordinates: number[][][];
     };
     /**
      * Goal
@@ -2728,6 +3032,18 @@ export interface components {
        */
       status: 'ok';
     };
+    /**
+     * LocationMeaning
+     * @description What the point stands for: where the photo was taken, or a public place the owner named.
+     * @enum {string}
+     */
+    LocationMeaning: 'capture_point' | 'public_place';
+    /**
+     * LocationSource
+     * @description Where the capture point came from (extension §3); none of them proves presence.
+     * @enum {string}
+     */
+    LocationSource: 'device_capture' | 'photo_exif' | 'user_selected';
     /** LoginIn */
     LoginIn: {
       /**
@@ -2738,6 +3054,39 @@ export interface components {
       /** Password */
       password: string;
     };
+    /**
+     * MapEntryOwnerOut
+     * @description An entry as its owner sees it: the private point, the public preview, the state.
+     */
+    MapEntryOwnerOut: {
+      /** Id */
+      id: string;
+      /** Insight Id */
+      insight_id: string;
+      /** Title */
+      title: string;
+      status: components['schemas']['MapEntryStatus'];
+      /** @description Null once the entry is withdrawn */
+      capture: components['schemas']['CapturePointOut'] | null;
+      /** @description Null once the entry is withdrawn */
+      public: components['schemas']['PublicLocationPreview'] | null;
+      place: components['schemas']['PlaceRef'] | null;
+      /** Published At */
+      published_at: string | null;
+      /** Withdrawn At */
+      withdrawn_at: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /**
+     * MapEntryStatus
+     * @description Placed but not shown, shown, or taken down by its owner.
+     * @enum {string}
+     */
+    MapEntryStatus: 'draft' | 'published' | 'withdrawn';
     /**
      * MemberOut
      * @description A person as the network shows them: the two things they chose, and nothing else.
@@ -2898,6 +3247,22 @@ export interface components {
        * @description The fog lifted from this place with this completion
        */
       created: boolean;
+    };
+    /**
+     * PlaceRef
+     * @description The populated place a public point is labelled with, from GeoNames.
+     */
+    PlaceRef: {
+      /** Geoname Id */
+      geoname_id: number;
+      /** Label */
+      label: string;
+      /** Admin Label */
+      admin_label: string | null;
+      /** Country Iso2 */
+      country_iso2: string | null;
+      /** Country Label */
+      country_label: string | null;
     };
     /** PositionOut */
     PositionOut: {
@@ -3105,6 +3470,35 @@ export interface components {
       handle: string | null;
       /** Public Name */
       public_name: string | null;
+    };
+    /**
+     * PublicLocationOut
+     * @description What the map shows: the cell centre, how wide the cell is, and the words for it.
+     */
+    PublicLocationOut: {
+      point: components['schemas']['GeoJsonPoint'];
+      /** Cell M */
+      cell_m: number;
+      /** Precision Label */
+      precision_label: string;
+      meaning: components['schemas']['LocationMeaning'];
+      /** Meaning Label */
+      meaning_label: string;
+    };
+    /**
+     * PublicLocationPreview
+     * @description The owner's preview before publishing: the cell itself, so they can see what is shown.
+     */
+    PublicLocationPreview: {
+      point: components['schemas']['GeoJsonPoint'];
+      /** Cell M */
+      cell_m: number;
+      /** Precision Label */
+      precision_label: string;
+      meaning: components['schemas']['LocationMeaning'];
+      /** Meaning Label */
+      meaning_label: string;
+      cell: components['schemas']['GeoJsonPolygon'];
     };
     /**
      * PublicationExport
@@ -3451,7 +3845,7 @@ export interface components {
      * ReportTarget
      * @enum {string}
      */
-    ReportTarget: 'post' | 'comment';
+    ReportTarget: 'post' | 'comment' | 'map_entry';
     /** ResetPasswordIn */
     ResetPasswordIn: {
       /** Token */
@@ -6413,6 +6807,264 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProgressOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  my_entry_insights__insight_id__map_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MapEntryOwnerOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  place_insight_insights__insight_id__map_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CapturePointIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MapEntryOwnerOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  withdraw_entry_insights__insight_id__map_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  publish_entry_insights__insight_id__map_publish_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MapEntryOwnerOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  my_entries_me_map_entries_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MapEntryOwnerOut'][];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  entries_in_window_atlas_entries_get: {
+    parameters: {
+      query: {
+        west: number;
+        south: number;
+        east: number;
+        north: number;
+        since?: string | null;
+        country?: string | null;
+        concept?: string | null;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AtlasFeatureCollection'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  entry_atlas_entries__entry_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        entry_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AtlasEntryOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  place_entries_atlas_places__geoname_id__get: {
+    parameters: {
+      query?: {
+        cursor?: string | null;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        geoname_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AtlasPlaceOut'];
         };
       };
       /** @description An error */
