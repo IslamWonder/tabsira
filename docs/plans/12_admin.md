@@ -31,7 +31,7 @@ A private area for the team at admin.tabsira.me, reachable only over the VPN.
 
 ### 12.2 Moderation queue for reported posts
 
-- **Status:** ⏸ phase 2, ready to start (the social API is on main)
+- **Status:** 🔄 main machine. Phase 2, started early: the social API is on main.
 - **Goal:** An admin screen for held and reported posts and comments, using `moderation_service.approve`, `reject` and `remove`; a moderator's own words are never shown to the author.
 - **Depends on:** —
 - **Touches:** `apps/api/src/admin/views/` (one new view), `apps/api/src/admin/registry.py`, `docs/ADMIN.md`.
