@@ -155,7 +155,8 @@ async def test_a_new_person_gets_an_account_a_session_and_lands_on_the_web_app(
     # A new account must accept the texts before it can use anything else.
     assert (await web.get("/profile")).status_code == 403
     await web.post(
-        "/auth/legal/accept", json={"terms_version": "2026-10-04", "privacy_version": "2026-10-04"}
+        "/auth/legal/accept",
+        json={"terms_version": "2026-10-04T20:00Z", "privacy_version": "2026-10-04T20:00Z"},
     )
     assert (await web.get("/profile")).json()["age_range"] == "unknown"
     assert response.headers["cache-control"] == "no-store"

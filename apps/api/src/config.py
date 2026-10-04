@@ -72,7 +72,7 @@ DEFAULT_MAIL_FROM = "تبصرة <no-reply@tabsira.me>"
 DEFAULT_SUPPORT_EMAIL = "support@tabsira.me"
 DEFAULT_PRIVACY_EMAIL = "privacy@tabsira.me"
 # The date the first terms and privacy texts were written.
-DEFAULT_LEGAL_VERSION = "2026-10-04"
+DEFAULT_LEGAL_VERSION = "2026-10-04T20:00Z"
 DEFAULT_LANGUAGE = "ar"
 
 # A cookie name: RFC 6265 token characters we actually use. `__Host-` is refused
