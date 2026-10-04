@@ -1,0 +1,35 @@
+# TABSIRA API: gunicorn with uvicorn workers. Installed by deploy/apply-config.sh,
+# which fills @APP_USER@, @APP_GROUP@ and @APP_ROOT@.
+#
+# Everything is spelled through the `current` link on purpose: workers forked
+# after a deploy (deploy/api-roll.sh, TTIN then TTOU) import the new release.
+# The pid file is how that script finds the master. Settings of the application
+# are read by the application itself from @APP_ROOT@/shared/.env, in each worker.
+[Unit]
+Description=TABSIRA API (gunicorn, uvicorn workers)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@APP_USER@
+Group=@APP_GROUP@
+WorkingDirectory=@APP_ROOT@/current/apps/api
+Environment=ENV_FILE=@APP_ROOT@/shared/.env
+Environment=PYTHONUNBUFFERED=1
+RuntimeDirectory=tabsira-api
+RuntimeDirectoryPreserve=yes
+ExecStart=@APP_ROOT@/current/apps/api/.venv/bin/python -m gunicorn src.main:app -c @APP_ROOT@/current/deploy/gunicorn.conf.py --chdir @APP_ROOT@/current/apps/api --pid /run/tabsira-api/gunicorn.pid
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=60
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+# Rotation of the logs TABSIRA writes itself. Installed by deploy/apply-config.sh
+# to /etc/logrotate.d/tabsira. nginx rotates /var/log/nginx/*.log with its own
+# package file, which already covers tabsira.web.* and tabsira.api.*; the API,
+# the vision service and the timers log to the journal (journald keeps what
+# SystemMaxUse in /etc/systemd/journald.conf allows).
+#
+# pm2 holds its log files open, so they are copied and truncated.
+/var/log/tabsira/*.log {
+    daily
+    rotate 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    su @APP_USER@ @APP_GROUP@
+}

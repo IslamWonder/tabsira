@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily: Re-apply the admin audit retention policy
+
+[Timer]
+OnCalendar=*-*-* 03:40:00 UTC
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

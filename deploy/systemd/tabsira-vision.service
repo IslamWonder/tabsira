@@ -1,0 +1,23 @@
+# TABSIRA vision service: the object detector (YOLOE), bound to 127.0.0.1 only.
+# One worker: each one holds the model in memory. Installed by deploy/apply-config.sh.
+[Unit]
+Description=TABSIRA vision detector
+After=network-online.target
+
+[Service]
+Type=simple
+User=@APP_USER@
+Group=@APP_GROUP@
+WorkingDirectory=@APP_ROOT@/current/services/vision
+Environment=PYTHONUNBUFFERED=1
+ExecStart=@APP_ROOT@/current/services/vision/.venv/bin/python -m gunicorn "vision.main:create_app()" -k uvicorn_worker.UvicornWorker -w 1 -b 127.0.0.1:8100 --timeout 120 --chdir @APP_ROOT@/current/services/vision
+Restart=on-failure
+RestartSec=5
+# Loading the model and its text encoder takes a while on the first start.
+TimeoutStartSec=300
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
