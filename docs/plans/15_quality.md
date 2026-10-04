@@ -4,12 +4,12 @@
 
 Every change is tested; nothing merges below 100 % coverage.
 
-| Step                                                | Status | Notes            |
-| --------------------------------------------------- | ------ | ---------------- |
-| 100 % coverage, lint and type checks on every merge | ✅     |                  |
-| Code summary command (make stats)                   | ✅     |                  |
-| Gold scenes evaluation (make eval)                  | 🔄     | With the engine. |
-| HTTP smoke test (make smoke)                        | ✅     | 2026-10-04 15:13 |
+| Step                                                | Status | Notes              |
+| --------------------------------------------------- | ------ | ------------------ |
+| 100 % coverage, lint and type checks on every merge | ✅     |                    |
+| Code summary command (make stats)                   | ✅     |                    |
+| Gold scenes evaluation (make eval)                  | ✅     | docs/EVALUATION.md |
+| HTTP smoke test (make smoke)                        | ✅     | 2026-10-04 15:13   |
 
 **How we check it**
 
