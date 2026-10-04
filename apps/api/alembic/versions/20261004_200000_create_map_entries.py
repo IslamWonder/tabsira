@@ -1,14 +1,14 @@
 """create_map_entries
 
-Revision ID: 20261004_193000
+Revision ID: 20261004_200000
 Revises: 20261004_192700
-Create Date: 2026-10-04 19:30:00.000000
+Create Date: 2026-10-04 20:00:00.000000
 
 «أطلس بصائر العالم» (extension §10): `map_entries`, the public side of a placed insight (the
 approximation cell's centre as a PostGIS point, the cell size, the GeoNames label, the state),
 and `map_capture_points`, the private side (the exact point, read by its owner alone), in two
-tables so no public query can touch the private one. Reports may now name a map entry.
-Written by hand after the models.
+tables so no public query can touch the private one. Reports and the moderation log may now
+name a map entry. Written by hand after the models.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from geoalchemy2 import Geometry
 from alembic import op
 from src.models.public_id import create_sequence_sql, sequence_name
 
-revision: str = "20261004_193000"
+revision: str = "20261004_200000"
 down_revision: str | Sequence[str] | None = "20261004_192700"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -29,6 +29,7 @@ depends_on: str | Sequence[str] | None = None
 SCHEMA = "app"
 REPORT_TARGETS_BEFORE = "target_type IN ('post', 'comment')"
 REPORT_TARGETS_AFTER = "target_type IN ('post', 'comment', 'map_entry')"
+TARGET_TABLES = ("reports", "moderation_actions")
 
 
 def _one_of(table: str, column: str, values: tuple[str, ...]) -> sa.CheckConstraint:
@@ -59,7 +60,11 @@ def upgrade() -> None:
         sa.Column("country_iso2", sa.String(length=2), nullable=True),
         sa.Column("country_label", sa.String(length=200), nullable=True),
         sa.Column("status", sa.String(length=32), server_default="draft", nullable=False),
+        sa.Column("status_reason", sa.String(length=64), nullable=True),
         sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("reviewed_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("reviewed_by", sa.Uuid(), nullable=True),
+        sa.Column("removed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("withdrawn_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at",
@@ -82,7 +87,11 @@ def upgrade() -> None:
             name=op.f("ck_map_entries_published_has_point"),
         ),
         _one_of("map_entries", "location_meaning", ("capture_point", "public_place")),
-        _one_of("map_entries", "status", ("draft", "published", "withdrawn")),
+        _one_of(
+            "map_entries",
+            "status",
+            ("draft", "published", "pending_review", "removed", "withdrawn"),
+        ),
         sa.ForeignKeyConstraint(
             ["insight_id"],
             ["app.insights.id"],
@@ -96,8 +105,22 @@ def upgrade() -> None:
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_map_entries")),
-        sa.UniqueConstraint("insight_id", name=op.f("uq_map_entries_insight_id")),
         schema=SCHEMA,
+    )
+    op.create_index(
+        "uq_map_entries_live_insight",
+        "map_entries",
+        ["insight_id"],
+        unique=True,
+        schema=SCHEMA,
+        postgresql_where=sa.text("status <> 'withdrawn'"),
+    )
+    op.create_index(
+        "ix_map_entries_pending_review",
+        "map_entries",
+        ["created_at"],
+        schema=SCHEMA,
+        postgresql_where=sa.text("status = 'pending_review'"),
     )
     op.create_index(
         "ix_map_entries_public_geom",
@@ -157,19 +180,24 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("entry_id", name=op.f("pk_map_capture_points")),
         schema=SCHEMA,
     )
-    op.drop_constraint(op.f("ck_reports_target_type"), "reports", schema=SCHEMA, type_="check")
-    op.create_check_constraint(
-        op.f("ck_reports_target_type"), "reports", REPORT_TARGETS_AFTER, schema=SCHEMA
-    )
+    for table in TARGET_TABLES:
+        op.drop_constraint(op.f(f"ck_{table}_target_type"), table, schema=SCHEMA, type_="check")
+        op.create_check_constraint(
+            op.f(f"ck_{table}_target_type"), table, REPORT_TARGETS_AFTER, schema=SCHEMA
+        )
 
 
 def downgrade() -> None:
     op.execute(f"DELETE FROM {SCHEMA}.reports WHERE target_type = 'map_entry'")
-    op.drop_constraint(op.f("ck_reports_target_type"), "reports", schema=SCHEMA, type_="check")
-    op.create_check_constraint(
-        op.f("ck_reports_target_type"), "reports", REPORT_TARGETS_BEFORE, schema=SCHEMA
-    )
+    op.execute(f"DELETE FROM {SCHEMA}.moderation_actions WHERE target_type = 'map_entry'")
+    for table in TARGET_TABLES:
+        op.drop_constraint(op.f(f"ck_{table}_target_type"), table, schema=SCHEMA, type_="check")
+        op.create_check_constraint(
+            op.f(f"ck_{table}_target_type"), table, REPORT_TARGETS_BEFORE, schema=SCHEMA
+        )
     op.drop_table("map_capture_points", schema=SCHEMA)
+    op.drop_index("ix_map_entries_pending_review", table_name="map_entries", schema=SCHEMA)
+    op.drop_index("uq_map_entries_live_insight", table_name="map_entries", schema=SCHEMA)
     op.drop_index("ix_map_entries_user_id", table_name="map_entries", schema=SCHEMA)
     op.drop_index("ix_map_entries_place", table_name="map_entries", schema=SCHEMA)
     op.drop_index("ix_map_entries_published", table_name="map_entries", schema=SCHEMA)
