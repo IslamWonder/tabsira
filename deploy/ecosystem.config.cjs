@@ -16,7 +16,7 @@
  * time, and a build never bakes them in.
  *
  * Settings (environment of the shell that runs `pm2 start`), all optional:
- *   APP_ROOT        production root (default: /srv/tabsira)
+ *   APP_ROOT        production root (default: /opt/tabsira)
  *   ENV_FILE        environment file (default: $APP_ROOT/shared/.env)
  *   WEB_INSTANCES   number of processes (default: 2), or `max` for one per CPU
  *   WEB_PORT        shared port nginx proxies to (default: 3000)
@@ -26,7 +26,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const appRoot = process.env.APP_ROOT || '/srv/tabsira';
+const appRoot = process.env.APP_ROOT || '/opt/tabsira';
 const envFile = process.env.ENV_FILE || path.join(appRoot, 'shared', '.env');
 const logDir = process.env.LOG_DIR || '/var/log/tabsira';
 

@@ -23,8 +23,8 @@
 #               for the comparison of the files it can read)
 #   --dry-run   print the plan
 #
-# Environment: APP_USER (tabsira), APP_GROUP (its group), APP_ROOT
-# (/srv/tabsira), APP_HOME (the user's home), APP_HOST_VPN_IP (required),
+# Environment: APP_USER (devops, the existing account the application runs as), APP_GROUP (its group), APP_ROOT
+# (/opt/tabsira), APP_HOME (the user's home), APP_HOST_VPN_IP (required),
 # VPN_SUBNET (100.64.0.0/10, Netbird's default), TLS_NAME (tabsira.me),
 # ADMIN_TLS_NAME (admin.tabsira.me), LE_DIR (/etc/letsencrypt/live).
 
@@ -45,7 +45,7 @@ case "${1:-}" in
 *) die "usage: apply-config.sh [--check | --dry-run]" ;;
 esac
 
-APP_USER="${APP_USER:-tabsira}"
+APP_USER="${APP_USER:-devops}"
 APP_GROUP="${APP_GROUP:-$(id -gn "$APP_USER" 2>/dev/null || echo "$APP_USER")}"
 APP_HOME="${APP_HOME:-$(getent passwd "$APP_USER" 2>/dev/null | cut -d: -f6 || true)}"
 APP_HOME="${APP_HOME:-/home/$APP_USER}"
@@ -72,7 +72,7 @@ fill() {
 }
 
 # ─── Build every file aside ─────────────────────────────────────────
-cp "$NGINX_SRC/tabsira.me.conf" "$STAGE/site"
+fill "$NGINX_SRC/tabsira.me.conf" "$STAGE/site"
 add "$STAGE/site" /etc/nginx/sites-available/tabsira
 for snippet in "$NGINX_SRC"/snippets/*.conf; do
 	cp "$snippet" "$STAGE/$(basename "$snippet")"

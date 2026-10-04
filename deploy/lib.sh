@@ -26,7 +26,7 @@ export DEPLOY_DIR
 #   $APP_ROOT/shared/state       what outlives a release (IndexNow's memory)
 #   $APP_ROOT/shared/cache       uv and pnpm caches, on the same disk as the releases
 #   $APP_ROOT/static             every build's /_next/static files, served by nginx
-APP_ROOT="${APP_ROOT:-/srv/tabsira}"
+APP_ROOT="${APP_ROOT:-/opt/tabsira}"
 REPO_DIR="${REPO_DIR:-$APP_ROOT/repo}"
 RELEASES_DIR="${RELEASES_DIR:-$APP_ROOT/releases}"
 CURRENT_LINK="${CURRENT_LINK:-$APP_ROOT/current}"

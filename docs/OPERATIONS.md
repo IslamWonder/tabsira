@@ -33,13 +33,13 @@ Scheduled work runs in exactly one process: timers on the one application host, 
 ## Layout on the application host
 
 ```text
-/srv/tabsira/repo               git clone every release is cut from
-/srv/tabsira/releases/<id>      one folder per deploy (UTC time and short commit), never edited
-/srv/tabsira/current            symlink to the live release
-/srv/tabsira/previous           symlink to the release before it
-/srv/tabsira/shared/.env        production environment (0600, owned by the app user)
-/srv/tabsira/shared/{state,cache,vision-weights,corpus}
-/srv/tabsira/static/_next/static  every recent build's static files, served by nginx
+/opt/tabsira/repo               git clone every release is cut from
+/opt/tabsira/releases/<id>      one folder per deploy (UTC time and short commit), never edited
+/opt/tabsira/current            symlink to the live release
+/opt/tabsira/previous           symlink to the release before it
+/opt/tabsira/shared/.env        production environment (0600, owned by the app user)
+/opt/tabsira/shared/{state,cache,vision-weights,corpus}
+/opt/tabsira/static/_next/static  every recent build's static files, served by nginx
 /var/log/tabsira                web logs (pm2); the API and timers log to the journal
 ```
 
@@ -67,10 +67,10 @@ Order matters: the data host first, because the first deploy migrates the databa
      APP_REPO=<git url> deploy/provision-app.sh --dry-run
    ```
 
-   Run it without `--dry-run` once the plan reads right. The certificates are issued by certbot during the run, so the names must already resolve to this host and the DNS credential must work. Where they cannot yet (a rehearsal, a host before the DNS change), run it with `--skip-tls`: it does everything else but the certificates and `apply-config.sh`. Put a certificate and its key at `/etc/letsencrypt/live/tabsira.me/{fullchain,privkey}.pem` and `/etc/letsencrypt/live/admin.tabsira.me/{fullchain,privkey}.pem` (self-signed ones will do for a rehearsal), then run `APP_HOST_VPN_IP=<this host's VPN address> deploy/apply-config.sh` as root. Do not leave self-signed files where certbot will write: delete `/etc/letsencrypt/live/<name>` before the real issue. It creates the user and layout, installs Node 24 (latest 24.x from nodejs.org, checksum verified), pnpm through corepack, pm2 (started at boot), uv and the Python 3.12 of `apps/api/.python-version`, nginx, certbot, the narrow sudoers file and `/usr/local/bin/tabsira-deploy`, and applies `deploy/apply-config.sh`. It writes `/srv/tabsira/shared/.env` from `deploy/env.production.example` when none exists and generates `HASH_SECRET`; every other `CHANGE_ME` is left for the owners.
+   Run it without `--dry-run` once the plan reads right. The certificates are issued by certbot during the run, so the names must already resolve to this host and the DNS credential must work. Where they cannot yet (a rehearsal, a host before the DNS change), run it with `--skip-tls`: it does everything else but the certificates and `apply-config.sh`. Put a certificate and its key at `/etc/letsencrypt/live/tabsira.me/{fullchain,privkey}.pem` and `/etc/letsencrypt/live/admin.tabsira.me/{fullchain,privkey}.pem` (self-signed ones will do for a rehearsal), then run `APP_HOST_VPN_IP=<this host's VPN address> deploy/apply-config.sh` as root. Do not leave self-signed files where certbot will write: delete `/etc/letsencrypt/live/<name>` before the real issue. It creates the user and layout, installs Node 24 (latest 24.x from nodejs.org, checksum verified), pnpm through corepack, pm2 (started at boot), uv and the Python 3.12 of `apps/api/.python-version`, nginx, certbot, the narrow sudoers file and `/usr/local/bin/tabsira-deploy`, and applies `deploy/apply-config.sh`. It writes `/opt/tabsira/shared/.env` from `deploy/env.production.example` when none exists and generates `HASH_SECRET`; every other `CHANGE_ME` is left for the owners.
 
-4. Fill `/srv/tabsira/shared/.env` (every `CHANGE_ME`, the S3 keys of [Photos](#photos), `REDIS_PASSWORD`). Then check the data host from the application host before the first deploy: `psql "<the DATABASE_URL without +asyncpg>" -c 'select current_user'` must answer (the data host cannot test this login itself, `pg_hba` admits the application host only), and Redis must refuse a client without the password. Then `tabsira-deploy --dry-run` and `tabsira-deploy` as the app user. The first deploy builds the web app, installs the Python environments and downloads the detector weights (about 630 MB, once; written from the scripts, not exercised in the rehearsal); the first build takes a few minutes.
-5. After the first deploy, as the app user: the data imports are run from the release. The two corpus files are not in git, so copy them to `/srv/tabsira/shared/corpus/` first (`docs/ASSET_MANIFEST.md` has their SHA-256), then `cd /srv/tabsira/current && CORPUS_DIR=/srv/tabsira/shared/corpus bash scripts/data.sh` (`data.sh` sets `UV_NO_SYNC=1` itself when `ENVIRONMENT=production`; the scripture store, then the scripture vectors downloaded from the owners' bucket and verified, docs/EMBEDDINGS.md, so no vector is ever computed on the server; `VECTORS_ARCHIVE` in `.env` may name a copy already on the host), and `cd /srv/tabsira/current/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.make_admin <email>` makes an existing account the first admin (`docs/ADMIN.md`). Keep `UV_NO_SYNC=1` on every other `uv run` in a release: without it uv installs the development dependencies into the production environment.
+4. Fill `/opt/tabsira/shared/.env` (every `CHANGE_ME`, the S3 keys of [Photos](#photos), `REDIS_PASSWORD`). Then check the data host from the application host before the first deploy: `psql "<the DATABASE_URL without +asyncpg>" -c 'select current_user'` must answer (the data host cannot test this login itself, `pg_hba` admits the application host only), and Redis must refuse a client without the password. Then `tabsira-deploy --dry-run` and `tabsira-deploy` as the app user. The first deploy builds the web app, installs the Python environments and downloads the detector weights (about 630 MB, once; written from the scripts, not exercised in the rehearsal); the first build takes a few minutes.
+5. After the first deploy, as the app user: the data imports are run from the release. The two corpus files are not in git, so copy them to `/opt/tabsira/shared/corpus/` first (`docs/ASSET_MANIFEST.md` has their SHA-256), then `cd /opt/tabsira/current && CORPUS_DIR=/opt/tabsira/shared/corpus bash scripts/data.sh` (`data.sh` sets `UV_NO_SYNC=1` itself when `ENVIRONMENT=production`; the scripture store, then the scripture vectors downloaded from the owners' bucket and verified, docs/EMBEDDINGS.md, so no vector is ever computed on the server; `VECTORS_ARCHIVE` in `.env` may name a copy already on the host), and `cd /opt/tabsira/current/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.make_admin <email>` makes an existing account the first admin (`docs/ADMIN.md`). Keep `UV_NO_SYNC=1` on every other `uv run` in a release: without it uv installs the development dependencies into the production environment.
 
 ## Checking the environment file
 
@@ -79,7 +79,7 @@ Order matters: the data host first, because the first deploy migrates the databa
 `--live` also tries the services: the database, Redis (the password, and that it keeps nothing on disk), the AI provider's key (a listing of its models: no tokens spent), the detector, the mail server (a login, never a message) and that this host resolves the site and the API names. `--env-file PATH` checks another file. The deploy runs it in a new release before the migrations; run it by hand from any release:
 
 ```bash
-cd /srv/tabsira/releases/<id>/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.check_config --live
+cd /opt/tabsira/releases/<id>/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.check_config --live
 ```
 
 ## Deploying
@@ -148,7 +148,7 @@ The admin area is served only at `https://admin.tabsira.me`, over the VPN.
 
 ## Backups
 
-On the data host `tabsira-pg-backup.timer` runs nightly at 03:15 UTC (`/usr/local/bin/tabsira-pg-backup`): a custom-format dump of `tabsira` into `/var/backups/tabsira`, verified with `pg_restore --list`, plus a globals file (roles and their `search_path`). Dumps older than 14 days are deleted, but the newest three are always kept (`BACKUP_KEEP_DAYS`, `BACKUP_KEEP_MIN`). Run one now: `systemctl start tabsira-pg-backup.service`, or `deploy/backup-db.sh` as root (it runs itself as `postgres`). `deploy/backup-db.sh --url <url>` takes one from the app host before a risky deploy (`PRE_DEPLOY_BACKUP=true`); the application user cannot write `/var/backups`, so that dump goes to `/srv/tabsira/shared/backups` (`BACKUP_DIR` overrides it), on the application host, which the loss of the data host does not touch but a compromise of the application host does. `pg_dump` prints a warning about circular foreign keys on `continuous_agg`: it belongs to TimescaleDB's own catalog, and the restore script handles it.
+On the data host `tabsira-pg-backup.timer` runs nightly at 03:15 UTC (`/usr/local/bin/tabsira-pg-backup`): a custom-format dump of `tabsira` into `/var/backups/tabsira`, verified with `pg_restore --list`, plus a globals file (roles and their `search_path`). Dumps older than 14 days are deleted, but the newest three are always kept (`BACKUP_KEEP_DAYS`, `BACKUP_KEEP_MIN`). Run one now: `systemctl start tabsira-pg-backup.service`, or `deploy/backup-db.sh` as root (it runs itself as `postgres`). `deploy/backup-db.sh --url <url>` takes one from the app host before a risky deploy (`PRE_DEPLOY_BACKUP=true`); the application user cannot write `/var/backups`, so that dump goes to `/opt/tabsira/shared/backups` (`BACKUP_DIR` overrides it), on the application host, which the loss of the data host does not touch but a compromise of the application host does. `pg_dump` prints a warning about circular foreign keys on `continuous_agg`: it belongs to TimescaleDB's own catalog, and the restore script handles it.
 
 These are local copies: they do not survive the loss of the data host. Copying `/var/backups/tabsira` off the machine is the owners' decision (listed below).
 

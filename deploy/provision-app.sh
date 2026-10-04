@@ -34,7 +34,7 @@
 # CERTBOT_DNS_PLUGIN (the certbot DNS plugin of the DNS provider, for example
 # the provider's name; required for the admin certificate),
 # CERTBOT_DNS_CREDENTIALS (its credentials file, mode 0600, supplied by the
-# owners, never in git), APP_USER (tabsira), APP_ROOT (/srv/tabsira), APP_REPO
+# owners, never in git), APP_USER (the account that ran sudo, else devops; created when missing), APP_ROOT (/opt/tabsira), APP_REPO
 # (git URL to clone on the first run), VPN_SUBNET, PG_CLIENT_VERSION (18).
 
 set -Eeuo pipefail
@@ -52,7 +52,9 @@ for arg in "$@"; do
 	esac
 done
 
-APP_USER="${APP_USER:-tabsira}"
+# The account that ran sudo (devops), never root: the application runs as an existing user, as on the earlier prototype.
+APP_USER="${APP_USER:-${SUDO_USER:-devops}}"
+[[ "$APP_USER" != "root" ]] || APP_USER=devops
 APP_REPO="${APP_REPO:-}"
 PG_CLIENT_VERSION="${PG_CLIENT_VERSION:-18}"
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-}"
@@ -103,7 +105,7 @@ fi
 apt-get install -y -qq "postgresql-client-$PG_CLIENT_VERSION" >/dev/null
 
 # ─── 2. User and layout ─────────────────────────────────────────────
-id -u "$APP_USER" >/dev/null 2>&1 || useradd --system --create-home --shell /bin/bash "$APP_USER"
+id -u "$APP_USER" >/dev/null 2>&1 || useradd --create-home --shell /bin/bash "$APP_USER"
 APP_GROUP="$(id -gn "$APP_USER")"
 APP_HOME="$(getent passwd "$APP_USER" | cut -d: -f6)"
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$APP_ROOT" "$APP_ROOT/releases" "$APP_ROOT/shared" \
