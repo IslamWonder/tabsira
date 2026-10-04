@@ -15,6 +15,8 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from src.models import OntologyEntity
+from src.schemas.learning_path import LearningPathFile
+from src.services.masar_parser import parse_masar
 from src.services.ontology_import import (
     HEADERS,
     SHEET_NAME,
@@ -27,6 +29,8 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 API_DIR = REPO_ROOT / "apps" / "api"
 REAL_WORKBOOK = REPO_ROOT / "data" / "world-ontology.xlsx"
 REAL_JSON = REPO_ROOT / "data" / "ontology" / "world-ontology.json"
+REAL_MASAR = REPO_ROOT / "docs" / "spec" / "masar.md"
+REAL_MASAR_JSON = REPO_ROOT / "data" / "masar" / "tabsira-masar-1.0.json"
 HEADER_ORDER = list(HEADERS.values())
 
 
@@ -81,6 +85,22 @@ def parsed_real_ontology() -> ParsedOntology:
 @pytest.fixture(scope="session")
 def real_ontology() -> ParsedOntology:
     return parsed_real_ontology()
+
+
+@cache
+def parsed_real_path() -> LearningPathFile:
+    """The real learning path reference, parsed once for the whole run."""
+    return parse_masar(REAL_MASAR.read_text(encoding="utf-8"), source_name="docs/spec/masar.md")
+
+
+@pytest.fixture(scope="session")
+def masar_text() -> str:
+    return REAL_MASAR.read_text(encoding="utf-8")
+
+
+@pytest.fixture(scope="session")
+def real_path() -> LearningPathFile:
+    return parsed_real_path()
 
 
 @pytest_asyncio.fixture
