@@ -107,3 +107,7 @@ The owners' target: TABSIRA must feel like a AAA game production — gamified, i
 - **Social network as a guild hall, not a ranking.** «تبصرة تواصل» shows posts as illuminated cards (photo, insight title, the verified pair behind a reveal), reactions as a single gentle «أثر» glow, follows as companions on the path. No counters that turn people into scores.
 - **Typography and scripture stay sacred.** No effect ever animates, distorts, glows behind or overlaps Quran or hadith text beyond the calm entrance of its panel; the text is always fully legible, still and selectable.
 - **Quality bar.** Every screen is reviewed at 375, 768 and 1440 px in both themes before it is called done; screenshots go to `docs/screenshots/`.
+
+### Logo (added 4 October 2026)
+
+The designer's logo (`brand/`) replaces the temporary eight-point star mark and the typed wordmark everywhere: the round calligraphic «تبصرة» is the mark, and «TABSIRA» joins it in the full logo. On night surfaces it is brand gold `#B28B38` (5.99:1); on day surfaces it is deep gold `#8D6E2C` (4.53:1), because brand gold reaches only 3.00:1 on the day background. Favicon, PWA, Apple touch and tile icons carry their own night background with the brand gold mark, so they read on any browser chrome. See `brand/README.md`.
