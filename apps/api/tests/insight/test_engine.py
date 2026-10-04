@@ -416,7 +416,9 @@ async def test_a_verse_in_todays_spelling_is_refused_wherever_a_model_writes_it(
     step = {"text": quoting, "kind": "reflection", "from_hadith": False}
     answers: dict[str, list[Any]] = {
         "planner": [plan_answer(planned(value=quoting))] * 2,
-        "verifier": [plan_answer(planned()), *[_verify_limited_by(quoting)] * 2],
+        # A verifier that keeps quoting leaves its candidate without evidence; the
+        # refinement that follows proposes nothing.
+        "verifier": [plan_answer(planned()), *[_verify_limited_by(quoting)] * 2, plan_answer()],
         "explanation": [
             plan_answer(planned()),
             verify_all(),
@@ -440,7 +442,7 @@ async def test_a_verse_in_todays_spelling_is_refused_wherever_a_model_writes_it(
     assert result.clarification_question is None
     expected = (
         EngineStatus.NO_RELEVANT_EVIDENCE
-        if where == "scene_question"
+        if where in {"scene_question", "verifier"}
         else EngineStatus.MODEL_UNAVAILABLE
     )
     assert result.status is expected

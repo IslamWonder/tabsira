@@ -491,13 +491,13 @@ async def test_each_candidate_is_verified_in_its_own_call_and_a_failure_is_raise
         ]
     )
 
-    verdicts = await verify(client, rain_scene(), shortlists, LeakGuard())
+    verdicts = await verify(client, rain_scene(), shortlists, EngineGuard(LeakGuard(), None))
     failing = FakeModelClient(answers=[{"candidates": []}, AiCallError(AiErrorCode.TIMEOUT, "x")])
 
     assert (verdicts[0]["Q1"].strength, verdicts[1]["Q1"].strength) == ("strong", "weak")
     assert [len(json.loads(call["user"])["candidates"]) for call in client.calls] == [1, 1]
     with pytest.raises(AiCallError):
-        await verify(failing, rain_scene(), shortlists, LeakGuard())
+        await verify(failing, rain_scene(), shortlists, EngineGuard(LeakGuard(), None))
 
 
 def test_a_weak_main_text_makes_a_general_reminder():
