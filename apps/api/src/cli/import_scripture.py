@@ -10,6 +10,7 @@ Steps run in the order given; with none, all of them in this order:
     quran        import mushaf 2 from the newest verified dump in the cache
     annotations  import the annotations of data/corpus/quran-annotations.json
     hadith       import the nine books from their pinned, verified files
+    signals      repair data/corpus/sunnah-enriched.json and link its records to hadiths
 
 Every step can run again: what is already stored and unchanged stays as it is.
 Each step writes in one transaction (the scripture steps with the guard open),
@@ -53,6 +54,7 @@ from src.scripture.quranpedia import (
     fetch_dump_files,
     new_http_client,
 )
+from src.scripture.sunnah import SUNNAH_FILE, SUNNAH_SHA256, import_signals, repair
 
 log = logging.getLogger("tabsira.scripture.import")
 
@@ -145,11 +147,29 @@ async def step_hadith(context: Context) -> None:
         )
 
 
+async def step_signals(context: Context) -> None:
+    path = require_verified(context.corpus_dir / SUNNAH_FILE, SUNNAH_SHA256)
+    raw = load_json_file(path)
+    records = repair(raw["results"])
+    async with context.sessionmaker() as session, session.begin():
+        report = await import_signals(
+            session,
+            records,
+            model=repair(raw["metadata"]["model_used"]),
+            source_sha256=SUNNAH_SHA256,
+        )
+    _say(
+        f"signals: {report.records} records repaired losslessly, {report.linked} linked to a hadith, "
+        f"{report.records - report.linked} without a match"
+    )
+
+
 STEPS: dict[str, Callable[[Context], Awaitable[None]]] = {
     "download": step_download,
     "quran": step_quran,
     "annotations": step_annotations,
     "hadith": step_hadith,
+    "signals": step_signals,
 }
 
 
