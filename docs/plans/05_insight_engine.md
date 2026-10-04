@@ -35,3 +35,11 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 - **Depends on:** 05.1
 - **Touches:** apps/api/tests/evaluation (data and scoring), docs/BENCHMARK.md.
 - **Done when:** `make eval` reports each case; results written in docs/BENCHMARK.md.
+
+### 05.3 Insight quality tuning
+
+- **Status:** ⬜ open
+- **Goal:** Better scene-to-text fit: abstain on empty scenes (the still phone), fewer thematic reminders, no loose verses (the market drew the ablution verse), more of the hoped-for texts (3 of 9 today). Tune the planner prompt and the gold expectations.
+- **Depends on:** 05.1
+- **Touches:** apps/api pipeline prompts and planner, apps/api/tests/evaluation, docs/EVALUATION.md.
+- **Done when:** `make eval` improves on every measure above with no leak; scripture review passes.
