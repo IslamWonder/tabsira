@@ -507,7 +507,7 @@ async def test_a_failed_query_embedding_falls_back_to_lexical_search(maker):
 
 
 def test_the_engine_is_built_from_the_active_provider(make_settings):
-    settings = make_settings(ai_provider=AiProvider.OVH)
+    settings = make_settings(ai_provider=AiProvider.OVH, reranker="llm")
     http = httpx.AsyncClient()
 
     engine = build_engine(settings, http, None)  # type: ignore[arg-type]
@@ -516,9 +516,9 @@ def test_the_engine_is_built_from_the_active_provider(make_settings):
 
     assert engine._embedding.model == "bge-m3"
     assert without._embedding is None
-    # OVH has no rerank model measured: with the default RERANKER=llm it reranks nothing.
+    # OVH has no rerank model measured: even with RERANKER=llm it reranks nothing.
     assert engine._reranker is None
-    small = build_engine(make_settings(ai_provider="openai"), http, None)  # type: ignore[arg-type]
+    small = build_engine(make_settings(ai_provider="openai", reranker="llm"), http, None)  # type: ignore[arg-type]
     assert isinstance(small._reranker, LlmReranker)
     cross = make_settings(reranker="cross_encoder")
     assert isinstance(build_engine(cross, http, None)._reranker, RerankerClient)  # type: ignore[arg-type]
