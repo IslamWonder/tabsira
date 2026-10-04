@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiError, mockApi } from '@/test/api';
 import { ENTRY } from '@/test/atlas';
 import { USER } from '@/test/fixtures';
-import { forgetMaps, loadedMap } from '@/test/maplibre';
+import { type FakeSource, forgetMaps, loadedMap } from '@/test/maplibre';
 import { HADITH_TEXT, IDENTITY, QURAN_TEXT, sha256 } from '@/test/social';
 import { EntryScreen } from './entry-screen';
 
@@ -28,6 +28,12 @@ describe('EntryScreen', () => {
     expect(quran?.textContent).toBe(QURAN_TEXT);
     expect(hadith?.textContent).toBe(HADITH_TEXT);
     expect(sha256(quran?.textContent ?? '')).toBe(ENTRY.quran[0]?.sha256);
+    expect(sha256(hadith?.textContent ?? '')).toBe(ENTRY.hadith[0]?.sha256);
+    expect(screen.getByRole('link', { name: /تحقق في الدرر/ })).toHaveAttribute(
+      'href',
+      'https://dorar.net/'
+    );
+    expect(screen.getByText('تصنيف المحرّر لحكم الدرر: صحيح')).toBeInTheDocument();
     expect(screen.getByText('[موقع تقريبي ضمن نحو 1000 م]')).toBeInTheDocument();
     expect(screen.getByText(/النقطة مركز منطقة تقريبية/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '[تونس]، [تونس البلد]' })).toHaveAttribute(
@@ -44,7 +50,9 @@ describe('EntryScreen', () => {
     );
     const map = await loadedMap();
     expect(map.options.interactive).toBe(false);
-    expect((map.getSource('marker')?.data as { features: unknown[] }).features).toHaveLength(1);
+    expect(
+      ((map.getSource('marker') as FakeSource).data as { features: unknown[] }).features
+    ).toHaveLength(1);
     // A guest has no report button.
     expect(screen.queryByRole('button', { name: 'بلّغ' })).toBeNull();
   });

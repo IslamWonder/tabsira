@@ -17,8 +17,8 @@ export interface MapViewProps {
   features?: readonly AtlasFeature[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
-  /** The window after the map was moved by hand (never on a programmatic move). */
-  onMoved?: (window: Window) => void;
+  /** The window after every move; `byHand` says a person dragged or zoomed, not the page. */
+  onMoved?: (window: Window, byHand: boolean) => void;
   /** Where to look; a change flies there (or jumps, under reduced motion). */
   view?: { center: [number, number]; zoom: number } | null;
   /** A single point to mark: a chosen capture point, or an entry's public point. */
@@ -238,12 +238,9 @@ export function MapView({
           }
         });
         instance.on('moveend', (event: { originalEvent?: unknown }) => {
-          // Only a move by hand asks for a new window; a fly-to is the page's own doing.
-          if (event.originalEvent !== undefined) {
-            handlers.current.onMoved?.(windowOf(instance));
-          }
+          handlers.current.onMoved?.(windowOf(instance), event.originalEvent !== undefined);
         });
-        handlers.current.onMoved?.(windowOf(instance));
+        handlers.current.onMoved?.(windowOf(instance), false);
       });
     });
     return () => {

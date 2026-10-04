@@ -1540,8 +1540,10 @@ export interface paths {
      * @description Return a GeoJSON FeatureCollection of the published entries in the window, newest first.
      *
      *     Every geometry is a public point: the centre of an approximation cell, never where a photo
-     *     was taken. A window with `west > east` crosses the antimeridian. `truncated` says more
-     *     entries lie in the window than `limit` allowed; ask for a smaller window.
+     *     was taken, and `published_on` is a day, never a time. A window with `west > east` crosses
+     *     the antimeridian. `truncated` says more entries lie in the window than `limit` allowed; ask
+     *     for a smaller window. For a signed-in viewer, entries of members a block stands between
+     *     are left out.
      */
     get: operations['entries_in_window_atlas_entries_get'];
     put?: never;
@@ -1727,8 +1729,6 @@ export interface components {
     AtlasEntryOut: {
       /** Id */
       id: string;
-      /** Insight Id */
-      insight_id: string;
       /** Title */
       title: string;
       /** Glimpse */
@@ -1757,10 +1757,10 @@ export interface components {
        */
       post_id: string | null;
       /**
-       * Published At
-       * Format: date-time
+       * Published On
+       * Format: date
        */
-      published_at: string;
+      published_on: string;
     };
     /**
      * AtlasFeature
@@ -1794,12 +1794,13 @@ export interface components {
        */
       truncated: boolean;
     };
-    /** AtlasFeatureProperties */
+    /**
+     * AtlasFeatureProperties
+     * @description No insight id here: a public id is a timestamp, and the scan time is nobody's business.
+     */
     AtlasFeatureProperties: {
       /** Id */
       id: string;
-      /** Insight Id */
-      insight_id: string;
       /** Title */
       title: string;
       /** Glimpse */
@@ -1811,10 +1812,11 @@ export interface components {
       /** Precision Label */
       precision_label: string;
       /**
-       * Published At
-       * Format: date-time
+       * Published On
+       * Format: date
+       * @description The day, never the time: no trail of a person's hours
        */
-      published_at: string;
+      published_on: string;
     };
     /**
      * AtlasPlaceOut
@@ -3066,6 +3068,11 @@ export interface components {
       /** Title */
       title: string;
       status: components['schemas']['MapEntryStatus'];
+      /**
+       * Status Message
+       * @description What happened to it, in Arabic, for its owner
+       */
+      status_message: string | null;
       /** @description Null once the entry is withdrawn */
       capture: components['schemas']['CapturePointOut'] | null;
       /** @description Null once the entry is withdrawn */
@@ -3083,10 +3090,13 @@ export interface components {
     };
     /**
      * MapEntryStatus
-     * @description Placed but not shown, shown, or taken down by its owner.
+     * @description Where an entry is in its life.
+     *
+     *     Placed but not shown; shown; hidden by reports until a moderator decides; taken down by a
+     *     moderator (kept for an appeal); or withdrawn by its owner (a tombstone with no location).
      * @enum {string}
      */
-    MapEntryStatus: 'draft' | 'published' | 'withdrawn';
+    MapEntryStatus: 'draft' | 'published' | 'pending_review' | 'removed' | 'withdrawn';
     /**
      * MemberOut
      * @description A person as the network shows them: the two things they chose, and nothing else.

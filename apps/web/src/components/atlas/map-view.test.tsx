@@ -1,7 +1,7 @@
 import { act, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FEATURE, SECOND_FEATURE } from '@/test/atlas';
-import { FakeMap, forgetMaps, loadedMap } from '@/test/maplibre';
+import { FakeMap, type FakeSource, forgetMaps, loadedMap } from '@/test/maplibre';
 import { MapView } from './map-view';
 
 vi.mock('maplibre-gl', () => import('@/test/maplibre'));
@@ -20,11 +20,11 @@ describe('MapView', () => {
     const data = map.getSource('entries')?.data as { features: { properties: { id: string } }[] };
     expect(data.features.map((feature) => feature.properties.id)).toEqual([FEATURE.id]);
     // The first window is reported once the map is ready, so the page can ask for it.
-    expect(onMoved).toHaveBeenCalledWith({ west: 9, south: 35, east: 11, north: 37 });
+    expect(onMoved).toHaveBeenCalledWith({ west: 9, south: 35, east: 11, north: 37 }, false);
     expect(map.addControl).toHaveBeenCalled();
   });
 
-  it('reports a window only after a move by hand, and selects a point on tap', async () => {
+  it('reports every move, saying whether a hand made it, and selects a point on tap', async () => {
     const onMoved = vi.fn();
     const onSelect = vi.fn();
     const onPick = vi.fn();
@@ -32,9 +32,10 @@ describe('MapView', () => {
     const map = await loadedMap();
     onMoved.mockClear();
     map.emit('moveend', {});
-    expect(onMoved).not.toHaveBeenCalled();
+    expect(onMoved).toHaveBeenLastCalledWith(expect.anything(), false);
     map.emit('moveend', { originalEvent: {} });
-    expect(onMoved).toHaveBeenCalledTimes(1);
+    expect(onMoved).toHaveBeenLastCalledWith(expect.anything(), true);
+    expect(onMoved).toHaveBeenCalledTimes(2);
     map.emit('click:points', { features: [{ properties: { id: FEATURE.id } }] });
     expect(onSelect).toHaveBeenCalledWith(FEATURE.id);
     map.emit('click', { point: { x: 1, y: 1 }, lngLat: { lng: 10.5, lat: 36.5 } });
@@ -92,10 +93,16 @@ describe('MapView', () => {
     const map = await loadedMap();
     expect(map.options.interactive).toBe(false);
     expect(map.addControl).not.toHaveBeenCalled();
-    expect((map.getSource('marker')?.data as { features: unknown[] }).features).toHaveLength(1);
-    expect((map.getSource('cell')?.data as { features: unknown[] }).features).toHaveLength(1);
+    expect(
+      ((map.getSource('marker') as FakeSource).data as { features: unknown[] }).features
+    ).toHaveLength(1);
+    expect(
+      ((map.getSource('cell') as FakeSource).data as { features: unknown[] }).features
+    ).toHaveLength(1);
     rerender(<MapView marker={null} cell={null} interactive={false} />);
-    expect((map.getSource('marker')?.data as { features: unknown[] }).features).toHaveLength(0);
+    expect(
+      ((map.getSource('marker') as FakeSource).data as { features: unknown[] }).features
+    ).toHaveLength(0);
     act(() => unmount());
     expect(map.remove).toHaveBeenCalled();
     expect(FakeMap.instances).toHaveLength(1);

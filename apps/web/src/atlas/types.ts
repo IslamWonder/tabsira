@@ -33,6 +33,22 @@ export interface Window {
   north: number;
 }
 
+/** The grid a window is widened to before it is sent, so a request never says where a person stands to the metre. */
+export const WINDOW_STEP = 0.05;
+
+/** Widens the window outward to the grid: what the API (and its logs) receive is never finer than that. */
+export function coarsen(window: Window): Window {
+  const down = (value: number) => Math.floor(value / WINDOW_STEP) * WINDOW_STEP;
+  const up = (value: number) => Math.ceil(value / WINDOW_STEP) * WINDOW_STEP;
+  const clamp = (value: number, limit: number) => Math.max(-limit, Math.min(limit, value));
+  return {
+    west: clamp(Number(down(window.west).toFixed(2)), 180),
+    south: clamp(Number(down(window.south).toFixed(2)), 90),
+    east: clamp(Number(up(window.east).toFixed(2)), 180),
+    north: clamp(Number(up(window.north).toFixed(2)), 90),
+  };
+}
+
 export type Period = 'all' | 'week' | 'month' | 'year';
 
 export interface AtlasFilters {

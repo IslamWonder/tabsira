@@ -711,11 +711,6 @@ export const ar = {
     change: 'غيّر اختياراتي',
   },
 
-  /**
-   * «تبصرة تواصل» (docs/SOCIAL_NETWORK.md). Posts are made from verified
-   * insights; the author's own words are always labelled as theirs. A like is
-   * an «أثر», a gentle glow, never a score (DESIGN_DECISION.md «Game feel»).
-   */
   /** «أطلس بصائر العالم» (docs/spec/extension-atlas-camera.md): published insights at approximate points. */
   atlas: {
     title: 'أطلس بصائر العالم',
@@ -726,7 +721,8 @@ export const ar = {
     attribution: 'بلاط الخريطة من OpenFreeMap، بيانات OpenStreetMap.',
     searchHere: 'ابحث في هذه المنطقة',
     nearMe: 'قريب مني',
-    nearMeHint: 'يحرّك الخريطة إلى موضعك على جهازك فقط؛ لا يُرسل موضعك إلى تبصرة.',
+    nearMeHint:
+      'يحرّك الخريطة إلى موضعك على جهازك؛ موضعك نفسه لا يُرسل إلى تبصرة، وما يُرسل عند البحث هو نطاق الخريطة المعروض.',
     nearMeDenied: 'لم يُمنح إذن الموقع، فتبقى الخريطة حيث هي. يمكنك البحث عن مكان.',
     nearMeUnavailable: 'لا يستطيع هذا الجهاز تحديد موضعه الآن.',
     search: 'ابحث عن مدينة أو مكان',
@@ -781,10 +777,9 @@ export const ar = {
       },
       mapLabel: 'موضع البصيرة التقريبي',
       locationNote:
-        'النقطة مركز منطقة تقريبية حُسب على الخادم، لا موضع التصوير الحقيقي. الموقع قرينة جغرافية لا دليل ديني.',
+        'النقطة مركز منطقة تقريبية حُسب على الخادم، لا موضع التصوير الحقيقي، كما حدّده صاحب البصيرة ولم يُتحقق منه. الموقع قرينة جغرافية لا دليل ديني.',
       explanation: 'شرح تبصرة',
       step: 'خطوة صغيرة',
-      reveal: 'اعرض الآية والحديث',
     },
     /** The share line of a place page. */
     placeDescription: (label: string) => `البصائر التي نشرها الناس في ${label} على أطلس تبصرة.`,
@@ -819,9 +814,10 @@ export const ar = {
       tapMap: 'أو المس الخريطة لتحدد الموضع',
       chosen: 'الموضع المختار',
       meaning: 'ما الذي تشير إليه النقطة؟',
-      meanings: { capture_point: 'موضع التقاط الصورة', public_place: 'مكان عام أسمّيه' },
+      meanings: { capture_point: 'موضع التقاط الصورة', public_place: 'مكان عام اخترته' },
       preview: 'هكذا يظهر موضعك للناس',
-      previewHint: 'المنطقة المظللة هي ما يُنشر؛ النقطة الدقيقة لا تغادر الخادم.',
+      previewHint:
+        'المنطقة المظللة والنقطة في وسطها هما ما يُنشر؛ موضعك الدقيق لا يظهر لغيرك، ويبقى لك في حسابك.',
       precision: 'الدقة',
       placeLabel: 'يُسمّى المكان',
       noPlace: 'لا مكان مأهول قريب في بيانات الخريطة؛ تُعرض النقطة بلا اسم.',
@@ -839,7 +835,13 @@ export const ar = {
         'تختفي النقطة من الخريطة والبحث في الحال، ويُنسى موضعها الدقيق. تبقى البصيرة في عالمك.',
       withdrawConfirm: 'اسحب',
       cancel: 'تراجع',
-      status: { draft: 'موضع محفوظ، لم يُنشر', published: 'منشورة على الأطلس', withdrawn: 'مسحوبة' },
+      status: {
+        draft: 'موضع محفوظ، لم يُنشر',
+        published: 'منشورة على الأطلس',
+        pending_review: 'مخفية حتى يراجعها مشرف',
+        removed: 'أزالها مشرف',
+        withdrawn: 'مسحوبة',
+      },
       notPublishable:
         'لا يمكن وضع هذه البصيرة على الأطلس: تُنشر البصائر المتحقَّقة التي تملكها وحدها.',
       open: 'افتحها على الأطلس',
@@ -848,6 +850,11 @@ export const ar = {
     },
   },
 
+  /**
+   * «تبصرة تواصل» (docs/SOCIAL_NETWORK.md). Posts are made from verified
+   * insights; the author's own words are always labelled as theirs. A like is
+   * an «أثر», a gentle glow, never a score (DESIGN_DECISION.md «Game feel»).
+   */
   community: {
     title: 'تبصرة تواصل',
     lead: 'بصائر موثّقة ينشرها أصحابها؛ تتابعهم، وتحفظ ما ينفعك، وتعلّق بأدب.',
@@ -886,9 +893,9 @@ export const ar = {
       revealNone: 'اعرض الدليل',
       hide: 'أخفِ الآية والحديث',
       evidenceLabel: 'الدليل الموثّق',
-      verseAlone: 'يستند هذا المنشور إلى الآية وحدها.',
-      hadithAlone: 'يستند هذا المنشور إلى الحديث وحده.',
-      noEvidence: 'لا نص موثّق يُعرض مع هذا المنشور الآن.',
+      verseAlone: 'تستند هذه البصيرة إلى الآية وحدها.',
+      hadithAlone: 'تستند هذه البصيرة إلى الحديث وحده.',
+      noEvidence: 'لا نص موثّق يُعرض مع هذه البصيرة الآن.',
       reflection: 'كلمات الكاتب',
       reflectionNote: 'هذه كلمات الكاتب نفسه، ليست نصًا موثّقًا.',
       looksLikeScripture: 'يبدو هذا النص كآية أو حديث، وهو من كلمات الكاتب ولم تتحقق منه تبصرة.',

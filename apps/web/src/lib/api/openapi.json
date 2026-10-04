@@ -3361,7 +3361,7 @@
       "get": {
         "tags": ["atlas"],
         "summary": "The published entries inside a map window",
-        "description": "Return a GeoJSON FeatureCollection of the published entries in the window, newest first.\n\nEvery geometry is a public point: the centre of an approximation cell, never where a photo\nwas taken. A window with `west > east` crosses the antimeridian. `truncated` says more\nentries lie in the window than `limit` allowed; ask for a smaller window.",
+        "description": "Return a GeoJSON FeatureCollection of the published entries in the window, newest first.\n\nEvery geometry is a public point: the centre of an approximation cell, never where a photo\nwas taken, and `published_on` is a day, never a time. A window with `west > east` crosses\nthe antimeridian. `truncated` says more entries lie in the window than `limit` allowed; ask\nfor a smaller window. For a signed-in viewer, entries of members a block stands between\nare left out.",
         "operationId": "entries_in_window_atlas_entries_get",
         "parameters": [
           {
@@ -3416,7 +3416,7 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "format": "date-time"
+                  "format": "date"
                 },
                 {
                   "type": "null"
@@ -3875,11 +3875,6 @@
             "pattern": "^[1-9][0-9]{0,18}$",
             "title": "Id"
           },
-          "insight_id": {
-            "type": "string",
-            "pattern": "^[1-9][0-9]{0,18}$",
-            "title": "Insight Id"
-          },
           "title": {
             "type": "string",
             "title": "Title"
@@ -3958,16 +3953,15 @@
             "title": "Post Id",
             "description": "The public post of the same insight, if one is published"
           },
-          "published_at": {
+          "published_on": {
             "type": "string",
-            "format": "date-time",
-            "title": "Published At"
+            "format": "date",
+            "title": "Published On"
           }
         },
         "type": "object",
         "required": [
           "id",
-          "insight_id",
           "title",
           "glimpse",
           "relation_type",
@@ -3980,7 +3974,7 @@
           "quran",
           "hadith",
           "post_id",
-          "published_at"
+          "published_on"
         ],
         "title": "AtlasEntryOut",
         "description": "A published entry on its own page: the insight by reference, the public point, its place."
@@ -4042,11 +4036,6 @@
             "pattern": "^[1-9][0-9]{0,18}$",
             "title": "Id"
           },
-          "insight_id": {
-            "type": "string",
-            "pattern": "^[1-9][0-9]{0,18}$",
-            "title": "Insight Id"
-          },
           "title": {
             "type": "string",
             "title": "Title"
@@ -4076,25 +4065,26 @@
             "type": "string",
             "title": "Precision Label"
           },
-          "published_at": {
+          "published_on": {
             "type": "string",
-            "format": "date-time",
-            "title": "Published At"
+            "format": "date",
+            "title": "Published On",
+            "description": "The day, never the time: no trail of a person's hours"
           }
         },
         "type": "object",
         "required": [
           "id",
-          "insight_id",
           "title",
           "glimpse",
           "author",
           "place",
           "cell_m",
           "precision_label",
-          "published_at"
+          "published_on"
         ],
-        "title": "AtlasFeatureProperties"
+        "title": "AtlasFeatureProperties",
+        "description": "No insight id here: a public id is a timestamp, and the scan time is nobody's business."
       },
       "AtlasPlaceOut": {
         "properties": {
@@ -6981,6 +6971,18 @@
           "status": {
             "$ref": "#/components/schemas/MapEntryStatus"
           },
+          "status_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Message",
+            "description": "What happened to it, in Arabic, for its owner"
+          },
           "capture": {
             "anyOf": [
               {
@@ -7049,6 +7051,7 @@
           "insight_id",
           "title",
           "status",
+          "status_message",
           "capture",
           "public",
           "place",
@@ -7061,9 +7064,9 @@
       },
       "MapEntryStatus": {
         "type": "string",
-        "enum": ["draft", "published", "withdrawn"],
+        "enum": ["draft", "published", "pending_review", "removed", "withdrawn"],
         "title": "MapEntryStatus",
-        "description": "Placed but not shown, shown, or taken down by its owner."
+        "description": "Where an entry is in its life.\n\nPlaced but not shown; shown; hidden by reports until a moderator decides; taken down by a\nmoderator (kept for an appeal); or withdrawn by its owner (a tombstone with no location)."
       },
       "MemberOut": {
         "properties": {

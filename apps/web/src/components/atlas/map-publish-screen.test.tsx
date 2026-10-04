@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiError, mockApi, type Route } from '@/test/api';
 import { OWNER_ENTRY } from '@/test/atlas';
 import { USER } from '@/test/fixtures';
-import { forgetMaps, loadedMap } from '@/test/maplibre';
+import { type FakeSource, forgetMaps, loadedMap } from '@/test/maplibre';
 import { IDENTITY, NO_IDENTITY } from '@/test/social';
 import { MapPublishScreen } from './map-publish-screen';
 
@@ -90,7 +90,9 @@ describe('MapPublishScreen', () => {
     expect(screen.getByText('[موقع تقريبي ضمن نحو 1000 م]')).toBeInTheDocument();
     expect(screen.getByText('[تونس]، [ولاية تونس]، [تونس البلد]')).toBeInTheDocument();
     const map = await loadedMap();
-    expect((map.getSource('cell')?.data as { features: unknown[] }).features).toHaveLength(1);
+    expect(
+      ((map.getSource('cell') as FakeSource).data as { features: unknown[] }).features
+    ).toHaveLength(1);
 
     await userEvent.click(screen.getByRole('button', { name: 'انشر على الأطلس' }));
     expect(await screen.findByText('نُشرت بصيرتك على الأطلس.')).toBeInTheDocument();
@@ -126,7 +128,7 @@ describe('MapPublishScreen', () => {
     await userEvent.type(await screen.findByLabelText('ابحث عن مكان'), 'mecca');
     await userEvent.click(screen.getByRole('button', { name: 'ابحث عن مدينة أو مكان' }));
     await userEvent.click(await screen.findByRole('button', { name: /\[مكة\]/ }));
-    expect(screen.getByRole('radio', { name: 'مكان عام أسمّيه' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'مكان عام اخترته' })).toBeChecked();
     await userEvent.click(screen.getByRole('button', { name: 'احسب الموضع التقريبي' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /لا يمكن وضع هذه البصيرة على الأطلس/

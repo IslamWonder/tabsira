@@ -1,14 +1,15 @@
 import { api } from '@/lib/api/client';
 import { attempt, type Result } from '@/lib/api/result';
-import type {
-  AtlasEntry,
-  AtlasFeatureCollection,
-  AtlasFilters,
-  AtlasPlace,
-  CapturePointIn,
-  MapEntryOwner,
-  PlaceHit,
-  Window,
+import {
+  type AtlasEntry,
+  type AtlasFeatureCollection,
+  type AtlasFilters,
+  type AtlasPlace,
+  type CapturePointIn,
+  coarsen,
+  type MapEntryOwner,
+  type PlaceHit,
+  type Window,
 } from './types';
 
 /*
@@ -19,11 +20,12 @@ import type {
 
 const PERIOD_DAYS = { week: 7, month: 30, year: 365 } as const;
 
+/** The first day of the period, as a day: the API takes days, never times. */
 function sinceOf(filters: AtlasFilters, now: () => number): string | undefined {
   if (filters.period === 'all') {
     return undefined;
   }
-  return new Date(now() - PERIOD_DAYS[filters.period] * 86_400_000).toISOString();
+  return new Date(now() - PERIOD_DAYS[filters.period] * 86_400_000).toISOString().slice(0, 10);
 }
 
 export function entriesIn(
@@ -31,14 +33,15 @@ export function entriesIn(
   filters: AtlasFilters,
   now: () => number = Date.now
 ): Promise<Result<AtlasFeatureCollection>> {
+  const wide = coarsen(window);
   return attempt(
     api.GET('/atlas/entries', {
       params: {
         query: {
-          west: window.west,
-          south: window.south,
-          east: window.east,
-          north: window.north,
+          west: wide.west,
+          south: wide.south,
+          east: wide.east,
+          north: wide.north,
           since: sinceOf(filters, now),
           country: filters.country ?? undefined,
           concept: filters.concept ?? undefined,

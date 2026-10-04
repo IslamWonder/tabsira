@@ -17,7 +17,7 @@ import { GlassPanel } from '@/components/ui/glass-panel';
 import { Notice } from '@/components/ui/notice';
 import { failureMessage } from '@/lib/api/failure-message';
 import type { Failure } from '@/lib/api/result';
-import { formatWhen } from '@/lib/dates';
+import { formatDay } from '@/lib/dates';
 import { messages } from '@/messages';
 import { postPath, profilePath } from '@/social/identity';
 import { placePath } from './atlas-screen';
@@ -91,8 +91,8 @@ export function EntryScreen({ entryId }: { entryId: string }) {
               <div className="flex flex-wrap items-center gap-2 text-[0.8125rem] text-fg-muted">
                 <Chip>{load.entry.location.precision_label}</Chip>
                 <Chip>{load.entry.location.meaning_label}</Chip>
-                <time dateTime={load.entry.published_at}>
-                  {A.card.publishedAt(formatWhen(load.entry.published_at))}
+                <time dateTime={load.entry.published_on}>
+                  {A.card.publishedAt(formatDay(load.entry.published_on))}
                 </time>
               </div>
               <h1 className="m-0 font-bold font-display text-[2rem] text-gilded leading-[1.3]">

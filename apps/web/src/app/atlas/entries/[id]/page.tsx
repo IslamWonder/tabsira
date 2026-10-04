@@ -49,7 +49,7 @@ export default async function AtlasEntryPage({ params }: Params) {
           data={articleJsonLd({
             path: path(id),
             headline: result.data.title,
-            datePublished: result.data.published_at,
+            datePublished: result.data.published_on,
             authorName: result.data.author.public_name,
           })}
         />

@@ -23,7 +23,7 @@ import { Sheet } from '@/components/ui/sheet';
 import { TextField } from '@/components/ui/text-field';
 import { failureMessage } from '@/lib/api/failure-message';
 import { cx } from '@/lib/cx';
-import { formatWhen } from '@/lib/dates';
+import { formatDay } from '@/lib/dates';
 import { messages } from '@/messages';
 import { profilePath } from '@/social/identity';
 import { MapView } from './map-view';
@@ -92,8 +92,8 @@ export function EntryCard({ feature, onClose }: { feature: AtlasFeature; onClose
         </div>
         <div className="flex gap-2">
           <dd className="m-0">
-            <time dateTime={properties.published_at}>
-              {A.card.publishedAt(formatWhen(properties.published_at))}
+            <time dateTime={properties.published_on}>
+              {A.card.publishedAt(formatDay(properties.published_on))}
             </time>
           </dd>
         </div>
@@ -270,7 +270,7 @@ export function AtlasScreen({ initialView = null }: { initialView?: View | null 
   }, []);
 
   const onMoved = useCallback(
-    (window: Window) => {
+    (window: Window, _byHand: boolean) => {
       const first = window_.current === null;
       window_.current = window;
       if (first) {

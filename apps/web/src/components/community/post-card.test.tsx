@@ -61,7 +61,7 @@ describe('PostCard and the scripture it shows', () => {
       />
     );
     expect(screen.getByTestId('post-evidence')).toBeInTheDocument();
-    expect(screen.getByText('يستند هذا المنشور إلى الآية وحدها.')).toBeInTheDocument();
+    expect(screen.getByText('تستند هذه البصيرة إلى الآية وحدها.')).toBeInTheDocument();
     // In a feed the reveal names what the post holds.
     render(
       <PostCard

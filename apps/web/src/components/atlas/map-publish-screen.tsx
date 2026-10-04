@@ -180,9 +180,8 @@ export function MapPublishScreen() {
     );
   }
 
-  const marker = entry?.capture
-    ? ([entry.capture.longitude, entry.capture.latitude] as [number, number])
-    : (chosen?.lngLat ?? null);
+  // While choosing, the owner's own point; once placed, the public point: what the atlas will show.
+  const marker = entry?.public ? lngLatOf(entry.public.point) : (chosen?.lngLat ?? null);
   const cell: Polygon | null = entry?.public?.cell
     ? { type: 'Polygon', coordinates: entry.public.cell.coordinates }
     : null;
@@ -339,6 +338,11 @@ export function MapPublishScreen() {
                 <p className="m-0 text-fg-muted text-sm leading-[1.8]">{P.previewHint}</p>
               </div>
               <p className="m-0 text-[0.875rem] text-fg-soft">{P.status[entry.status]}</p>
+              {entry.status_message === null ? null : (
+                <p className="m-0 text-[0.9375rem] text-fg-soft leading-[1.75]">
+                  {entry.status_message}
+                </p>
+              )}
               <div className="h-72 overflow-hidden rounded-[var(--radius-card)] border border-line">
                 <MapView
                   marker={marker}
@@ -376,7 +380,8 @@ export function MapPublishScreen() {
                 </div>
               )}
               <div className="flex flex-wrap gap-2.5">
-                {entry.status === 'draft' ? (
+                {entry.status === 'pending_review' ||
+                entry.status === 'removed' ? null : entry.status === 'draft' ? (
                   <Button
                     size="lg"
                     disabled={busy}

@@ -17,14 +17,13 @@ export const FEATURE: AtlasFeature = {
   geometry: { type: 'Point', coordinates: [10.1815, 36.8065] },
   properties: {
     id: '7400000000000000001',
-    insight_id: '7000000000000000001',
     title: '[عنوان البصيرة]',
     glimpse: '[لمحة البصيرة]',
     author: AUTHOR,
     place: PLACE,
     cell_m: 1000,
     precision_label: '[موقع تقريبي ضمن نحو 1000 م]',
-    published_at: '2026-10-04T10:00:00Z',
+    published_on: '2026-10-04',
   },
 };
 
@@ -47,7 +46,6 @@ export const SECOND_FEATURE: AtlasFeature = {
 
 export const ENTRY: AtlasEntry = {
   id: FEATURE.id,
-  insight_id: '7000000000000000001',
   title: '[عنوان البصيرة]',
   glimpse: '[لمحة البصيرة]',
   relation_type: 'direct',
@@ -87,7 +85,7 @@ export const ENTRY: AtlasEntry = {
     },
   ],
   post_id: '7345678901234567890',
-  published_at: '2026-10-04T10:00:00Z',
+  published_on: '2026-10-04',
 };
 
 export const PLACE_PAGE: AtlasPlace = {
@@ -102,6 +100,7 @@ export const OWNER_ENTRY: MapEntryOwner = {
   insight_id: '7000000000000000001',
   title: '[عنوان البصيرة]',
   status: 'draft',
+  status_message: null,
   capture: {
     latitude: 36.806512,
     longitude: 10.181534,
