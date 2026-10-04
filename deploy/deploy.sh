@@ -193,10 +193,11 @@ backup() {
 		return
 	fi
 	if is_dry; then
-		echo "      would run: $DEPLOY_DIR/backup-db.sh --url \"\$SYNC_DATABASE_URL\""
+		echo "      would run: BACKUP_DIR=${BACKUP_DIR:-$SHARED_DIR/backups} $DEPLOY_DIR/backup-db.sh --url \"\$SYNC_DATABASE_URL\""
 		return
 	fi
-	bash "$DEPLOY_DIR/backup-db.sh" --url "$(env_get "$ENV_FILE" SYNC_DATABASE_URL)"
+	# The application user cannot write /var/backups; its dumps stay in the shared folder.
+	BACKUP_DIR="${BACKUP_DIR:-$SHARED_DIR/backups}" bash "$DEPLOY_DIR/backup-db.sh" --url "$(env_get "$ENV_FILE" SYNC_DATABASE_URL)"
 }
 
 build_release() {
