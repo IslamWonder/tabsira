@@ -340,7 +340,8 @@ export interface paths {
      * @description Change the fields sent and no others.
      *
      *     Enums are validated; a null is refused (send `unknown` to clear an answer).
-     *     The three consent switches change through `POST /consents` only.
+     *     The three consent switches change through `POST /consents` only; declaring under 13
+     *     withdraws the photo consent and deletes the kept photos (503 when the store is down).
      */
     patch: operations['patch_profile_profile_patch'];
     trace?: never;
@@ -359,7 +360,8 @@ export interface paths {
      * @description Append the answer to the user's consent history, and update the matching switch.
      *
      *     A consent is withdrawn by recording the same kind with `granted` false. The
-     *     history is never edited.
+     *     history is never edited. Withdrawing the photo consent deletes the kept photos
+     *     first; 503 STORAGE_UNAVAILABLE, with nothing recorded, when the store is down.
      */
     post: operations['post_consent_consents_post'];
     delete?: never;

@@ -591,7 +591,7 @@
       "patch": {
         "tags": ["profile"],
         "summary": "Change some answers of the caller's profile",
-        "description": "Change the fields sent and no others.\n\nEnums are validated; a null is refused (send `unknown` to clear an answer).\nThe three consent switches change through `POST /consents` only.",
+        "description": "Change the fields sent and no others.\n\nEnums are validated; a null is refused (send `unknown` to clear an answer).\nThe three consent switches change through `POST /consents` only; declaring under 13\nwithdraws the photo consent and deletes the kept photos (503 when the store is down).",
         "operationId": "patch_profile_profile_patch",
         "requestBody": {
           "content": {
@@ -631,7 +631,7 @@
       "post": {
         "tags": ["profile"],
         "summary": "Record an answer to a consent question",
-        "description": "Append the answer to the user's consent history, and update the matching switch.\n\nA consent is withdrawn by recording the same kind with `granted` false. The\nhistory is never edited.",
+        "description": "Append the answer to the user's consent history, and update the matching switch.\n\nA consent is withdrawn by recording the same kind with `granted` false. The\nhistory is never edited. Withdrawing the photo consent deletes the kept photos\nfirst; 503 STORAGE_UNAVAILABLE, with nothing recorded, when the store is down.",
         "operationId": "post_consent_consents_post",
         "requestBody": {
           "content": {

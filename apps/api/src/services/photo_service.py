@@ -18,6 +18,7 @@ logged as a warning, with the insight's id and never a key or a reason that name
 from __future__ import annotations
 
 import logging
+import uuid
 
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
@@ -134,6 +135,25 @@ async def sync_public_copy(db: AsyncSession, store: PhotoStore, insight_id: int 
         log.warning("public copy of insight %s not updated: the photo store failed", insight.id)
         return
     await db.flush()
+
+
+async def remove_all(db: AsyncSession, store: PhotoStore, user_id: uuid.UUID) -> int:
+    """
+    Delete both copies of every photo the account kept and forget their keys.
+
+    For the account's deletion and for a withdrawn photo consent. A `StorageError` is raised
+    as is: the caller refuses its own act, so no photo is left behind once it is said to be gone.
+    Returns how many insights had a photo.
+    """
+    kept = (
+        await db.scalars(
+            select(Insight).where(Insight.user_id == user_id, Insight.photo_key.is_not(None))
+        )
+    ).all()
+    for insight in kept:
+        await remove(store, insight)
+    await db.flush()
+    return len(kept)
 
 
 async def remove(store: PhotoStore, insight: Insight) -> None:

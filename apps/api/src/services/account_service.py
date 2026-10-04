@@ -181,14 +181,8 @@ async def delete_account(db: AsyncSession, user: User, *, redis: Redis, photos: 
     stops the deletion with 503, so no photo is ever left behind without its
     account, and the person can ask again.
     """
-    kept = (
-        await db.scalars(
-            select(Insight).where(Insight.user_id == user.id, Insight.photo_key.is_not(None))
-        )
-    ).all()
     try:
-        for insight in kept:
-            await photo_service.remove(photos, insight)
+        await photo_service.remove_all(db, photos, user.id)
     except StorageError:
         raise AppError(
             ErrorCode.STORAGE_UNAVAILABLE,

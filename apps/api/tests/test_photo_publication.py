@@ -197,9 +197,10 @@ async def test_the_rules_are_checked_again_when_the_copy_would_be_made(
     with caplog.at_level(logging.WARNING, logger="tabsira.photos"):
         response = await author.http.post(f"/posts/{post_id}/submit")
 
+    # The withdrawal already deleted the kept copy; the post is published without any photo.
     assert response.json()["status"] == "published"
-    assert await keys_of(db_session, insight) == (insight.photo_key, None)
-    assert objects(media) == [insight.photo_key]
+    assert await keys_of(db_session, insight) == (None, None)
+    assert objects(media) == []
     assert caplog.records == []
 
 
@@ -285,7 +286,7 @@ async def test_a_map_entry_placed_without_the_choice_makes_no_copy(
     assert objects(media) == [insight.photo_key]
 
 
-async def test_a_consent_withdrawn_takes_an_existing_copy_down_at_the_next_change(
+async def test_a_withdrawn_consent_deletes_both_copies_at_once_whatever_still_shows_them(
     db_session, make_member, photos, media, world
 ):
     author = await make_member("author")
@@ -295,17 +296,19 @@ async def test_a_consent_withdrawn_takes_an_existing_copy_down_at_the_next_chang
     assert (await author.http.post(f"/posts/{post_id}/submit")).json()["status"] == "published"
     await place_with_photo(author, insight)
     assert (await author.http.post(f"/insights/{insight.id}/map/publish")).status_code == 200
-    _, public = await keys_of(db_session, insight)
+    _private, public = await keys_of(db_session, insight)
     assert public is not None
 
     await consent(author, granted=False)
-    # The post still shows the photo, but the rules no longer allow it: the copy goes.
-    assert (await author.http.delete(f"/insights/{insight.id}/map")).status_code == 204
 
-    assert await keys_of(db_session, insight) == (insight.photo_key, None)
-    assert objects(media) == [insight.photo_key]
+    assert await keys_of(db_session, insight) == (None, None)
+    assert objects(media) == []
     with pytest.raises(ObjectNotFoundError):
         await photos.storage.get(public)
+    # The publications stay up without a photo; taking them down asks nothing of the store.
+    assert (await author.http.delete(f"/insights/{insight.id}/map")).status_code == 204
+    assert (await author.http.delete(f"/posts/{post_id}")).status_code == 204
+    assert objects(media) == []
 
 
 # ─── A moderator's decisions ───

@@ -22,7 +22,9 @@ from src.errors import AppError, ErrorCode
 from src.models.consent import Consent, ConsentKind
 from src.models.profile import AgeRange, Profile
 from src.schemas.profile import ProfilePatch
-from src.services import legal_service
+from src.services import legal_service, photo_service
+from src.storage.base import StorageError
+from src.storage.photos import PhotoStore
 
 # The version recorded when the profile itself withdraws a consent and no
 # version of the text is known to it.
@@ -39,13 +41,22 @@ async def ensure_profile(db: AsyncSession, user_id: uuid.UUID) -> Profile:
 
 
 async def record_consent(
-    db: AsyncSession, user_id: uuid.UUID, kind: ConsentKind, version: str, *, granted: bool
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    kind: ConsentKind,
+    version: str,
+    *,
+    granted: bool,
+    photos: PhotoStore | None = None,
 ) -> Consent:
     """
     Append one answer to the consent history and update the profile's mirror of it.
 
     A user who declared they are under 13 cannot consent to photo storage
     (master prompt v2, section 5): their photos are never kept on the server.
+    Withdrawing the photo consent deletes every photo kept so far, both copies, from
+    `photos` before the answer is recorded; a store that cannot be reached refuses the
+    withdrawal with 503, so a recorded withdrawal always means the photos are gone.
     """
     if kind in legal_service.LEGAL_KINDS:
         raise AppError(
@@ -61,6 +72,8 @@ async def record_consent(
             "Photos of users under 13 are not stored.",
             status_code=403,
         )
+    if kind == ConsentKind.PHOTO_STORAGE and not granted and photos is not None:
+        await _forget_photos(db, user_id, photos)
     consent = Consent(user_id=user_id, kind=kind, version=version, granted=granted)
     db.add(consent)
     if kind == ConsentKind.PHOTO_STORAGE:
@@ -74,8 +87,21 @@ async def record_consent(
     return consent
 
 
-async def update_profile(db: AsyncSession, user_id: uuid.UUID, patch: ProfilePatch) -> Profile:
-    """Apply the fields the patch carries and no others."""
+async def _forget_photos(db: AsyncSession, user_id: uuid.UUID, photos: PhotoStore) -> None:
+    try:
+        await photo_service.remove_all(db, photos, user_id)
+    except StorageError:
+        raise AppError(
+            ErrorCode.STORAGE_UNAVAILABLE,
+            "The kept photos could not be deleted, so the consent stays as it was. Try again.",
+            status_code=503,
+        ) from None
+
+
+async def update_profile(
+    db: AsyncSession, user_id: uuid.UUID, patch: ProfilePatch, *, photos: PhotoStore | None = None
+) -> Profile:
+    """Apply the fields the patch carries and no others; `photos` is for a withdrawn consent."""
     profile = await ensure_profile(db, user_id)
     changes = patch.model_dump(exclude_unset=True)
     if "goals" in changes:
@@ -93,6 +119,7 @@ async def update_profile(db: AsyncSession, user_id: uuid.UUID, patch: ProfilePat
             ConsentKind.PHOTO_STORAGE,
             profile.consent_version or UNVERSIONED,
             granted=False,
+            photos=photos,
         )
     await db.flush()
     return profile
