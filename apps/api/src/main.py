@@ -37,6 +37,7 @@ from src.routers import (
     reports,
     scripture,
     sitemap,
+    support,
 )
 from src.services import social_sitemap  # noqa: F401 - registers the posts and profiles sitemaps
 from src.services.insight_source import InsightSource
@@ -58,6 +59,7 @@ OPENAPI_TAGS = [
     {"name": "geo", "description": "Place search, reverse lookup and countries from GeoNames."},
     {"name": "scripture", "description": "Quran verses and hadith, read-only, exactly as stored."},
     {"name": "sitemap", "description": "The public pages for the web app's sitemaps."},
+    {"name": "support", "description": "The support form: an e-mail to the team, nothing stored."},
     {
         "name": "posts",
         "description": "Posts made from verified insights: drafts, submission, withdrawal.",
@@ -133,6 +135,7 @@ def create_app(
         limits={
             "/client-errors": client_errors.MAX_BODY_BYTES,
             "/consent": cookie_consent.MAX_BODY_BYTES,
+            "/support": support.MAX_BODY_BYTES,
         },
     )
     app.add_middleware(
@@ -169,6 +172,7 @@ def create_app(
     app.include_router(reports.router)
     app.include_router(feed.router)
     app.include_router(legal.router)
+    app.include_router(support.router)
     # The admin area is not mounted at all while its feature flag is off.
     if settings.feature_admin:
         install_admin(app, settings)

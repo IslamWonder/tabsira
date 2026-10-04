@@ -33,6 +33,16 @@ class Messages:
     # Mail subjects. The bodies are the templates of the language.
     verify_email_subject: str
     reset_password_subject: str
+    # The support form's mail, which reaches the team, not the visitor: its subject
+    # (`{topic}` is the topic label below), the labels of its plain-text body, and the
+    # label of each topic keyed by the topic's code.
+    support_subject: str
+    support_label_topic: str
+    support_label_name: str
+    support_label_email: str
+    support_label_account: str
+    support_label_message: str
+    support_topics: dict[str, str]
     # Cookie consent: the categories a visitor chooses between (decision 32).
     consent_necessary_title: str
     consent_necessary_description: str
@@ -73,6 +83,20 @@ ARABIC = Messages(
     site_name="تبصرة",
     verify_email_subject="أكّد بريدك الإلكتروني في تبصرة",
     reset_password_subject="إعادة تعيين كلمة المرور في تبصرة",  # noqa: S106 - a mail subject  # nosec B106
+    support_subject="[تبصرة] {topic}",
+    support_label_topic="الموضوع",
+    support_label_name="الاسم",
+    support_label_email="البريد",
+    support_label_account="رقم الحساب",
+    support_label_message="الرسالة",
+    support_topics={
+        "account": "الحساب",
+        "privacy": "الخصوصية",
+        "bug": "مشكلة تقنية",
+        "content": "المحتوى",
+        "suggestion": "اقتراح",
+        "other": "أخرى",
+    },
     consent_necessary_title="ضرورية",
     consent_necessary_description=(
         "تُبقيك مسجّلًا للدخول وتحمي حسابك وهذا الموقع. لا يعمل التطبيق من دونها،"

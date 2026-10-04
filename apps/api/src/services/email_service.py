@@ -187,3 +187,75 @@ async def send_password_reset(settings: Settings, *, email: str, name: str, toke
         },
         purpose="password reset",
     )
+
+
+def build_support_message(
+    settings: Settings,
+    *,
+    reply_to: str,
+    topic: str,
+    name: str | None,
+    text: str,
+    account_id: str | None,
+    language: str | None = None,
+) -> EmailMessage:
+    """
+    Build the mail the support form sends to SUPPORT_EMAIL, replies going to the visitor.
+
+    Plain text only. The body carries what the visitor wrote and the account id when
+    they were signed in; nothing about their connection (no IP, no user agent, no header).
+    """
+    catalog = messages.messages_for(language)
+    label = catalog.support_topics[topic]
+    lines = [
+        f"{catalog.support_label_topic}: {label}",
+        f"{catalog.support_label_name}: {name or '-'}",
+        f"{catalog.support_label_email}: {reply_to}",
+    ]
+    if account_id is not None:
+        lines.append(f"{catalog.support_label_account}: {account_id}")
+    lines += ["", f"{catalog.support_label_message}:", text]
+    sender_domain = parseaddr(settings.mail_from)[1].rpartition("@")[2] or None
+    message = EmailMessage()
+    message["Subject"] = catalog.support_subject.format(topic=label)
+    message["From"] = settings.mail_from
+    message["To"] = settings.support_email
+    message["Reply-To"] = reply_to
+    message["Date"] = formatdate(localtime=False, usegmt=True)
+    message["Message-ID"] = make_msgid(domain=sender_domain)
+    message.set_content("\n".join(lines))
+    return message
+
+
+async def send_support_message(
+    settings: Settings,
+    *,
+    reply_to: str,
+    topic: str,
+    name: str | None,
+    text: str,
+    account_id: str | None,
+) -> bool:
+    """
+    Send one support message now. Returns False, never raising, when it cannot go.
+
+    Nothing of the message or of the visitor's address is logged: only that a send failed
+    and the kind of error.
+    """
+    if not settings.smtp_configured:
+        log.error("Cannot send a support message: SMTP is not configured (SMTP_HOST, MAIL_FROM)")
+        return False
+    try:
+        message = build_support_message(
+            settings,
+            reply_to=reply_to,
+            topic=topic,
+            name=name,
+            text=text,
+            account_id=account_id,
+        )
+        await asyncio.to_thread(deliver, settings, message)
+    except Exception as error:
+        log.error("Failed to send a support message: %s", type(error).__name__)  # noqa: TRY400
+        return False
+    return True
