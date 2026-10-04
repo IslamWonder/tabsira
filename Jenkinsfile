@@ -3,13 +3,14 @@
 //
 //   Checkout -> Prepare -> Services -> Install -> Migrations
 //     -> in parallel: API tests | Vision tests | Web build and tests | Lint | Security gate | Audit
-//     -> SonarQube (on main, or when RUN_SONAR is ticked) -> archive -> notify -> clean up
+//     -> SonarQube (on main, or when RUN_SONAR is ticked)
+//     -> Deploy (only when DEPLOY is ticked, on DEPLOY_BRANCH) -> archive -> notify -> clean up
 //
 // Nothing external is written here. Addresses, names and limits come from
 // jenkins/jenkins.env, may be overridden by a variable on the Jenkins job or in
 // the global environment, and by a build parameter of the same name when it is
 // not blank. Secrets are Jenkins credentials. docs/JENKINS_SETUP.md lists every
-// key; the only credential is the SonarQube token.
+// key; the credentials are the SonarQube token and the deploy ssh key.
 
 // ═════════════════════════════════════════════════════════════════
 //  Helpers
@@ -157,6 +158,18 @@ properties([
             defaultValue: true,
             description: 'Run the advisory audit (SAST, dependency advisories, hygiene). It never fails the build; findings make it unstable.'
         ),
+        booleanParam(
+            name: 'DEPLOY',
+            defaultValue: false,
+            description: 'Deploy this commit to production (deploy/remote-deploy.sh) after a green build on DEPLOY_BRANCH. Never ticked by default.'
+        ),
+        booleanParam(
+            name: 'DEPLOY_DRY_RUN',
+            defaultValue: false,
+            description: 'With DEPLOY: print the steps on the host (deploy.sh --dry-run) and change nothing.'
+        ),
+        string(name: 'DEPLOY_HOST', defaultValue: '', description: 'Application host. Blank: jenkins/jenkins.env, which holds none; set it on the job.'),
+        string(name: 'DEPLOY_USER', defaultValue: '', description: 'Application user on that host. Blank: jenkins/jenkins.env.'),
         string(name: 'SONAR_HOST_URL', defaultValue: '', description: 'SonarQube server address. Blank: jenkins/jenkins.env.'),
         string(name: 'SONAR_PROJECT_KEY', defaultValue: '', description: 'SonarQube project key. Blank: jenkins/jenkins.env (tabsira).'),
         string(name: 'SONAR_CREDENTIALS_ID', defaultValue: '', description: 'Id of the Jenkins secret-text credential with the SonarQube token. Blank: jenkins/jenkins.env (SONAR_TOKEN).'),
@@ -447,6 +460,41 @@ node {
                                 }
                             }
                         }
+                    }
+                }
+
+                // ── Deploy ──────────────────────────────────────────────
+                //
+                // Only when DEPLOY is ticked and the build is on DEPLOY_BRANCH. The
+                // build is green (a failure above never gets here); an unstable one,
+                // an advisory audit or a Sonar gate, is allowed with a warning badge
+                // because the person who ticked DEPLOY is the approval. The host
+                // does the work: `tabsira-deploy` fetches this commit and runs
+                // deploy/deploy.sh (migrations, pre-flight, rolling restart, IndexNow
+                // last). The key is a Jenkins credential; the host, user and host
+                // key are variables, never in git.
+                if (params.DEPLOY && branch == env.DEPLOY_BRANCH) {
+                    stage('Deploy') {
+                        if (!env.DEPLOY_HOST || !env.DEPLOY_USER || !env.DEPLOY_HOST_KEY) {
+                            error('DEPLOY was ticked but DEPLOY_HOST, DEPLOY_USER or DEPLOY_HOST_KEY is blank. Set them on the job.')
+                        }
+                        if (currentBuild.currentResult == 'UNSTABLE') {
+                            buildNote('warning', 'Deploying an unstable build')
+                        }
+                        timeout(time: 45, unit: 'MINUTES') {
+                            withCredentials([sshUserPrivateKey(credentialsId: env.DEPLOY_CREDENTIALS_ID, keyFileVariable: 'DEPLOY_KEY_FILE')]) {
+                                withEnv(["DEPLOY_REF=${env.GIT_COMMIT}"]) {
+                                    sh '''#!/bin/bash
+                                        set -euo pipefail
+                                        mkdir -p .ci_logs
+                                        flags=()
+                                        if [ "${DEPLOY_DRY_RUN:-false}" = "true" ]; then flags+=(--dry-run); fi
+                                        bash deploy/remote-deploy.sh ${flags[@]+"${flags[@]}"} 2>&1 | tee .ci_logs/deploy.log
+                                    '''
+                                }
+                            }
+                        }
+                        buildNote('info', "Deployed ${env.GIT_COMMIT.take(8)} to production")
                     }
                 }
             }
