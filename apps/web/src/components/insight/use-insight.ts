@@ -15,6 +15,8 @@ import {
   getScan,
   type Insight,
   type Progress,
+  publishInsight,
+  withdrawInsight,
 } from '@/lib/scan/api';
 import { journeyFailureMessage } from '@/lib/scan/failure';
 import type { StepStatus } from './step-card';
@@ -57,6 +59,10 @@ export interface InsightControls {
   declare: (choice: ActionChoice) => Promise<void>;
   complete: () => Promise<void>;
   ask: (message: string, key: string) => Promise<Failure | null>;
+  /** Publishing or withdrawing: one request at a time, its failure kept for the sheet. */
+  publishing: PublishingState;
+  publish: () => Promise<void>;
+  withdraw: () => Promise<void>;
 }
 
 const GONE: PhotoView = { kind: 'gone' };
@@ -114,6 +120,11 @@ async function photoOf(insight: Insight): Promise<PhotoView> {
  * guards against a second tap while one is on its way, and none announces
  * success before the API has answered (tajriba §3.5).
  */
+export interface PublishingState {
+  status: 'idle' | 'saving';
+  failure?: Failure;
+}
+
 export function useInsight(insightId: string): InsightControls {
   const [insight, setInsight] = useState<Insight | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -121,8 +132,10 @@ export function useInsight(insightId: string): InsightControls {
   const [step, setStep] = useState<StepState>({ status: 'idle' });
   const [finish, setFinish] = useState<FinishState>(IDLE_FINISH);
   const [attempt, setAttempt] = useState(0);
+  const [publishing, setPublishing] = useState<PublishingState>({ status: 'idle' });
   const stepBusy = useRef(false);
   const finishBusy = useRef(false);
+  const publishBusy = useRef(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` is the retry trigger.
   useEffect(() => {
@@ -214,6 +227,31 @@ export function useInsight(insightId: string): InsightControls {
     [insightId]
   );
 
+  const setPublication = useCallback(async (call: () => ReturnType<typeof publishInsight>) => {
+    if (publishBusy.current) {
+      return;
+    }
+    publishBusy.current = true;
+    setPublishing({ status: 'saving' });
+    const result = await call();
+    publishBusy.current = false;
+    if (!result.ok) {
+      setPublishing({ status: 'idle', failure: result });
+      return;
+    }
+    setPublishing({ status: 'idle' });
+    // Publishing is only offered from a page that has its insight.
+    setInsight((current) => ({ ...(current as Insight), publication: result.data }));
+  }, []);
+  const publish = useCallback(
+    () => setPublication(() => publishInsight(insightId)),
+    [insightId, setPublication]
+  );
+  const withdraw = useCallback(
+    () => setPublication(() => withdrawInsight(insightId)),
+    [insightId, setPublication]
+  );
+
   let load: InsightLoad = { phase: 'loading' };
   if (insight !== null) {
     load = { phase: 'ready', insight };
@@ -230,5 +268,8 @@ export function useInsight(insightId: string): InsightControls {
     declare,
     complete,
     ask,
+    publishing,
+    publish,
+    withdraw,
   };
 }

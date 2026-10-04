@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { messages } from '@/messages';
 import { apiError, mockApi, type Route } from '@/test/api';
 import {
   chatReply,
@@ -12,6 +13,7 @@ import {
   VERSE_TEXT,
 } from '@/test/scan';
 import { InsightScreen } from './insight-screen';
+import { shareLinks } from './share-sheet';
 
 const ID = '110000000000000002';
 const SCAN = '110000000000000001';
@@ -259,5 +261,41 @@ describe('InsightScreen: «تمّ»', () => {
     expect(screen.getByRole('button', { name: 'تمّ' })).toBeDisabled();
     expect(screen.getByText('اكتملت هذه البصيرة')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'افتح عالمي' })).toHaveAttribute('href', '/world');
+  });
+});
+
+describe('InsightScreen: sharing', () => {
+  it('publishes from the share sheet, then withdraws, and keeps a refusal in the sheet', async () => {
+    const published = { published: true, published_at: '2026-10-04T09:00:00Z', path: `/i/${ID}` };
+    let publishAnswer: Route = { body: published };
+    const api = await open(insightOut(), {
+      [`POST /insights/${ID}/publish`]: (request) => {
+        void request;
+        return typeof publishAnswer === 'object' ? publishAnswer : { status: 500 };
+      },
+      [`DELETE /insights/${ID}/publish`]: {
+        body: { published: false, published_at: null, path: null },
+      },
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'شارك البصيرة' }));
+    await userEvent.click(screen.getByRole('button', { name: 'انشر البصيرة' }));
+    expect(await screen.findByLabelText('رابط البصيرة')).toHaveValue(shareLinks(`/i/${ID}`).url);
+    expect(screen.getByRole('button', { name: 'البصيرة منشورة' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'إلغاء النشر' }));
+    expect(await screen.findByRole('button', { name: 'انشر البصيرة' })).toBeInTheDocument();
+    expect(api.requests.filter((r) => r.method === 'DELETE')).toHaveLength(1);
+
+    publishAnswer = apiError(409, 'INSIGHT_NOT_PUBLISHABLE');
+    await userEvent.click(screen.getByRole('button', { name: 'انشر البصيرة' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('لا يمكن نشر هذه البصيرة');
+  });
+
+  it('closes the share sheet again', async () => {
+    await open();
+    await userEvent.click(screen.getByRole('button', { name: 'شارك البصيرة' }));
+    expect(screen.getByRole('button', { name: 'انشر البصيرة' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: messages.sheet.close }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'انشر البصيرة' })).toBeNull());
   });
 });

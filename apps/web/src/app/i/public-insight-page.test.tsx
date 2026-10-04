@@ -70,7 +70,11 @@ describe('the public page of a published insight', () => {
     expect(metadata.description).toBe('بصيرة من تبصرة: لمحة البصيرة الأولى');
     expect(metadata.alternates?.canonical).toBe(`/i/${ID}`);
     expect(metadata.robots).toEqual({ index: true, follow: true });
-    expect(metadata.openGraph).toMatchObject({ type: 'article', url: `/i/${ID}` });
+    expect(metadata.openGraph).toMatchObject({
+      type: 'article',
+      url: `/i/${ID}`,
+      images: [{ url: `/i/${ID}/card.png`, width: 1200, height: 630 }],
+    });
     expect(JSON.stringify(metadata)).not.toContain('قارئ');
   });
 
@@ -94,6 +98,22 @@ describe('the public page of a published insight', () => {
     expect(screen.queryByText('الخطوة الصغيرة')).toBeNull();
     const article = structuredData(container)[2] as { author: Record<string, string> };
     expect(article.author).toEqual({ '@id': expect.stringMatching(/#organization$/) });
+  });
+
+  it('shows a practical suggestion as such, not in the colour of the Sunnah', async () => {
+    mockApi({
+      [route]: {
+        body: publicInsightOut({
+          small_step: {
+            text: 'اسقِ نبتة اليوم.',
+            kind: 'ethical_application',
+            label: 'اقتراح عملي',
+          },
+        }),
+      },
+    });
+    render(await PublicInsightPage(params(ID)));
+    expect(screen.getByText('اقتراح عملي')).toBeInTheDocument();
   });
 
   it('answers not found for a bad id without asking the API, and for an insight the API does not publish', async () => {

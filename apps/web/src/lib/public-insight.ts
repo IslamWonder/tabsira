@@ -24,6 +24,11 @@ export function publicInsightPath(id: string): string {
   return `/i/${id}`;
 }
 
+/** The share card drawn for the insight (`/i/{id}/card.png`, 1200×630). */
+export function publicInsightCardPath(id: string): string {
+  return `${publicInsightPath(id)}/card.png`;
+}
+
 /** Cut a platform text at a word boundary so it fits `max` characters, with an ellipsis. */
 export function clip(text: string, max: number): string {
   const trimmed = text.trim();
@@ -62,5 +67,11 @@ export function publicInsightSeo(insight: PublicInsight): PageSeo {
     title: clip(insight.title, TITLE_MAX),
     description: clip(`${T.descriptionPrefix} ${insight.glimpse}`, DESCRIPTION_MAX),
     type: 'article',
+    image: {
+      url: publicInsightCardPath(insight.id),
+      width: 1200,
+      height: 630,
+      alt: clip(insight.title, TITLE_MAX),
+    },
   };
 }

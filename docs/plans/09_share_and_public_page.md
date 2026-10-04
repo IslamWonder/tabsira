@@ -1,13 +1,13 @@
 # 09 · Share card and public insight page
 
-**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 17:04 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** ✅ · **Updated:** 2026-10-04 17:18 (Tunis)
 
 A shareable image of an insight with real Arabic fonts, and a public page for it, with no private data.
 
-| Step                                     | Status | Notes                           |
-| ---------------------------------------- | ------ | ------------------------------- |
-| Share card image                         | ⬜     | Next, after the insight screen. |
-| Public insight page with search metadata | ✅     | API 09.1, page 09.2.            |
+| Step                                     | Status | Notes                             |
+| ---------------------------------------- | ------ | --------------------------------- |
+| Share card image                         | ✅     | 09.3: card route and share sheet. |
+| Public insight page with search metadata | ✅     | API 09.1, page 09.2.              |
 
 **How we check it**
 
@@ -35,8 +35,9 @@ A shareable image of an insight with real Arabic fonts, and a public page for it
 
 ### 09.3 Share card image
 
-- **Status:** ⬜ open
+- **Status:** ✅ 2026-10-04 17:18
 - **Goal:** An image of an insight with real Arabic fonts for sharing, plus the share action.
 - **Depends on:** 09.1
 - **Touches:** apps/web one image route and the share sheet.
 - **Done when:** The image shows the stored text exactly; renders under 1 s.
+- **Notes:** `GET /i/{id}/card.png` (1200×630 PNG drawn by `next/og` from the public payload, cached 5 min in the process and by HTTP; the page's `og:image`): title, glimpse, the verse and the hadith **by reference** with the hadith's ruling, one explanation line with its tag, the prepared label, the brand, the disclosure and the link, in IBM Plex Sans Arabic only. The card never draws scripture text: the renderer drops vowel marks and changes letter joining, so it cannot print a stored text byte for byte (scripture review), and the fonts' own character maps gate every string so the renderer never fetches a font from Google. The owner's screen gains «شارك البصيرة»: a sheet that says what becomes public, publishes, then offers the device share sheet, «نسخ الرابط», «تنزيل البطاقة» and «إلغاء النشر». Owners' choices to review: the brief says the image shows the stored text, docs/SEO.md §2 says cards never render scripture; the card follows SEO.md because the renderer cannot be faithful, and a different renderer would be needed otherwise; PNG instead of JPEG (no image library at runtime); no photo until photo storage exists; no rate limit on the card route beyond the caches (an nginx `limit_req` is suggested for production).

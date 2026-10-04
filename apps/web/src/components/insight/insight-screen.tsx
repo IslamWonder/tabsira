@@ -20,6 +20,7 @@ import { ExplanationSections } from './explanation-sections';
 import { InsightEvidence } from './insight-evidence';
 import { InsightHeader, InsightPhoto, InsightTools, SeenNote } from './insight-frame';
 import { PhotoPlaceholder } from './photo-placeholder';
+import { ShareSheet } from './share-sheet';
 import { StepCard } from './step-card';
 import { type PhotoView, useInsight } from './use-insight';
 import { WhySheet } from './why-sheet';
@@ -74,6 +75,7 @@ export function InsightScreen({ insightId }: { insightId: string }) {
   const { load, photo, step, finish } = controls;
   const [whyOpen, setWhyOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [invitationClosed, setInvitationClosed] = useState(false);
 
   if (load.phase === 'loading') {
@@ -143,6 +145,11 @@ export function InsightScreen({ insightId }: { insightId: string }) {
           onDiscuss={() => setChatOpen(true)}
           discussNote={messages.insightPage.chat.used(chat.used, chat.limit)}
         />
+        <div className="flex">
+          <Button variant="secondary" aria-haspopup="dialog" onClick={() => setShareOpen(true)}>
+            {insight.publication.published ? messages.share.published : messages.share.open}
+          </Button>
+        </div>
         {insight.small_step === null ? null : (
           <StepCard
             body={insight.small_step.text}
@@ -183,6 +190,18 @@ export function InsightScreen({ insightId }: { insightId: string }) {
       </ReadingLayout>
 
       <WhySheet open={whyOpen} onClose={() => setWhyOpen(false)} insight={insight} />
+      <ShareSheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        insight={insight}
+        publishing={controls.publishing}
+        onPublish={() => {
+          void controls.publish();
+        }}
+        onWithdraw={() => {
+          void controls.withdraw();
+        }}
+      />
       <ChatSheet
         open={chatOpen}
         onClose={() => setChatOpen(false)}
