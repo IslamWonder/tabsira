@@ -13,6 +13,12 @@ from src.models.geonames import (
     GeoName,
     GeoPostalCode,
 )
+from src.models.learning import (
+    LearnerUnitState,
+    LearningDomain,
+    LearningPathVersion,
+    LearningUnit,
+)
 from src.models.login_attempt import AttemptKind, LoginAttempt
 from src.models.ontology import CandidateKind, CandidateStatus, OntologyCandidate, OntologyEntity
 from src.models.profile import (
@@ -45,6 +51,10 @@ __all__ = [
     "GeoPostalCode",
     "Goal",
     "KnowledgeLevel",
+    "LearnerUnitState",
+    "LearningDomain",
+    "LearningPathVersion",
+    "LearningUnit",
     "LoginAttempt",
     "OAuthAccount",
     "OAuthState",
