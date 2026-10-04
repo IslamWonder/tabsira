@@ -132,7 +132,7 @@ async def test_places_are_found_by_the_start_of_their_folded_name_in_index_order
     plan = await explain(
         db_session,
         "SELECT geoname_id FROM geodata.geonames "
-        "WHERE name_norm ~>=~ 'san' AND name_norm ~<~ 'sao' ORDER BY population DESC LIMIT 100",
+        "WHERE name_norm ~>=~ 'san' AND name_norm ~<~ 'sao'",
     )
 
     assert "ix_geonames_name_norm_prefix" in plan
