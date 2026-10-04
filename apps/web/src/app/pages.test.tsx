@@ -58,7 +58,10 @@ describe('placeholder routes', () => {
 
 describe('error, not found and offline', () => {
   it('not found leads back to the start', () => {
-    render(<NotFound />);
+    const { container } = render(<NotFound />);
+    // Inline styles only: the page must read when the stylesheet fails (docs/SEO.md).
+    expect(container.querySelector('[class]')).toBeNull();
+    expect(container.querySelector('a')).toHaveStyle({ minHeight: '48px' });
     expect(
       screen.getByRole('heading', { level: 1, name: 'لم نجد هذه الصفحة' })
     ).toBeInTheDocument();
