@@ -3022,6 +3022,130 @@
         }
       }
     },
+    "/insights/{insight_id}/publish": {
+      "post": {
+        "tags": ["insights"],
+        "summary": "Make the insight public, at a link anyone reads",
+        "description": "Publish the owner's insight (v2 §18); publishing twice keeps the first time.\n\nA verified account only (decision 25). Refused, 409, for a simulation, for an\ninsight none of whose texts is verified and shown yet, or for a text that\nreads like scripture.",
+        "operationId": "publish_insight_insights__insight_id__publish_post",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["insights"],
+        "summary": "«إلغاء النشر»: withdraw the insight from the public",
+        "description": "Take the insight off its public address, which answers 404 from then on.",
+        "operationId": "withdraw_insight_insights__insight_id__publish_delete",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/insights/{insight_id}": {
+      "get": {
+        "tags": ["insights"],
+        "summary": "A published insight, as anyone reads it",
+        "description": "Return a published insight: the texts shown, exactly as stored, and the platform's words.\n\nNothing of the owner but the public name they chose. Private, withdrawn, missing\nand another account's insights all answer the same 404.",
+        "operationId": "get_public_insight_public_insights__insight_id__get",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicInsightOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/world": {
       "get": {
         "tags": ["world"],
@@ -5367,6 +5491,9 @@
           "image": {
             "$ref": "#/components/schemas/InsightImageOut"
           },
+          "publication": {
+            "$ref": "#/components/schemas/PublicationOut"
+          },
           "completed_at": {
             "anyOf": [
               {
@@ -5426,6 +5553,7 @@
           "action",
           "chat",
           "image",
+          "publication",
           "completed_at",
           "place_id",
           "created_at",
@@ -5610,6 +5738,18 @@
             ],
             "title": "Place Id"
           },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -5638,6 +5778,7 @@
           "action_at",
           "completed_at",
           "place_id",
+          "published_at",
           "created_at"
         ],
         "title": "InsightExport",
@@ -7106,6 +7247,18 @@
         "required": ["providers"],
         "title": "ProvidersOut"
       },
+      "PublicAuthorOut": {
+        "properties": {
+          "public_name": {
+            "type": "string",
+            "title": "Public Name"
+          }
+        },
+        "type": "object",
+        "required": ["public_name"],
+        "title": "PublicAuthorOut",
+        "description": "The one thing a public page says about the owner: the name they chose for the public."
+      },
       "PublicIdentityIn": {
         "properties": {
           "handle": {
@@ -7156,6 +7309,156 @@
         "required": ["handle", "public_name"],
         "title": "PublicIdentityOut",
         "description": "The caller's own handle and public name; both null until they have chosen."
+      },
+      "PublicInsightOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "glimpse": {
+            "type": "string",
+            "title": "Glimpse"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label",
+            "description": "«مثال موثّق مُعدّ» when the insight is a prepared one"
+          },
+          "relation": {
+            "$ref": "#/components/schemas/RelationType"
+          },
+          "relation_label": {
+            "type": "string",
+            "title": "Relation Label"
+          },
+          "quran": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InsightQuran"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hadith": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InsightHadith"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "explanation_tag": {
+            "type": "string",
+            "title": "Explanation Tag"
+          },
+          "explanation": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationOut"
+            },
+            "type": "array",
+            "title": "Explanation"
+          },
+          "why": {
+            "$ref": "#/components/schemas/PublicWhyOut"
+          },
+          "small_step": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StepOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "author": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicAuthorOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Published At"
+          },
+          "disclosure": {
+            "type": "string",
+            "title": "Disclosure"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "path",
+          "title",
+          "glimpse",
+          "label",
+          "relation",
+          "relation_label",
+          "quran",
+          "hadith",
+          "explanation_tag",
+          "explanation",
+          "why",
+          "small_step",
+          "author",
+          "published_at",
+          "disclosure"
+        ],
+        "title": "PublicInsightOut",
+        "description": "A published insight as anyone reads it.\n\nThe texts shown, read from the store by reference, and the platform's own words;\nnothing of the person: no profile, no chat, no learning history, no scan, no place\nand no photo (v2 §18)."
+      },
+      "PublicWhyOut": {
+        "properties": {
+          "visible_clues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Visible Clues"
+          },
+          "concept": {
+            "type": "string",
+            "title": "Concept"
+          },
+          "limits": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limits"
+          }
+        },
+        "type": "object",
+        "required": ["visible_clues", "concept", "limits"],
+        "title": "PublicWhyOut",
+        "description": "«لماذا ظهر هذا؟» for everyone: the clues, the concept and the limits, never a personal reason."
       },
       "PublicationExport": {
         "properties": {
@@ -7258,6 +7561,42 @@
         ],
         "title": "PublicationExport",
         "description": "The copy of an insight a post published: references to the evidence, never scripture."
+      },
+      "PublicationOut": {
+        "properties": {
+          "published": {
+            "type": "boolean",
+            "title": "Published"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path",
+            "description": "The public page's path on the web app, while published"
+          }
+        },
+        "type": "object",
+        "required": ["published", "published_at", "path"],
+        "title": "PublicationOut",
+        "description": "Whether the owner made the insight public (v2 §18), since when, and where anyone reads it."
       },
       "QuestOut": {
         "properties": {

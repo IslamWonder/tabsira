@@ -12,7 +12,7 @@ from collections.abc import Callable
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import clock
 from src.ai.client import ModelClient, client_for
 from src.ai.records import CallLog
-from src.deps import DbDep, SettingsDep
+from src.deps import DbDep, SettingsDep, UngatedCurrentUser, VerifiedUser
 from src.errors import AppError, ErrorCode
 from src.models import Insight
 from src.owner import INSIGHT, OptionalOwner, Owner, not_found
@@ -32,10 +32,16 @@ from src.schemas.insight import (
     ChatReply,
     CompletionOut,
     InsightDetailOut,
+    PublicationOut,
+    PublicInsightOut,
 )
-from src.services import chat_service, completion_service, insight_view
+from src.services import chat_service, completion_service, insight_publishing, insight_view
 
 router = APIRouter(prefix="/insights", tags=["insights"])
+# The public address lives outside `/insights`, which the no-store middleware keeps out of
+# every cache: a published insight may be cached for a few minutes, like the sitemap.
+public_router = APIRouter(prefix="/public/insights", tags=["insights"])
+PUBLIC_CACHE_CONTROL = "public, max-age=300"
 
 ClientFactory = Callable[[CallLog], ModelClient]
 
@@ -146,3 +152,67 @@ async def complete_insight(
         raise AppError(
             ErrorCode.SAVE_FAILED, "The insight was not saved.", status_code=503
         ) from None
+
+
+# The public insight belongs to the personal world (decision 29: the `insights` sitemap section
+# follows FEATURE_WORLD), so its routes answer 404 with the section when the feature is off.
+WORLD = Depends(feature("world"))
+
+
+@router.post(
+    "/{insight_id}/publish",
+    summary="Make the insight public, at a link anyone reads",
+    dependencies=[WORLD],
+)
+async def publish_insight(
+    insight_id: PublicIdPath, db: DbDep, user: VerifiedUser
+) -> PublicationOut:
+    """
+    Publish the owner's insight (v2 §18); publishing twice keeps the first time.
+
+    A verified account only (decision 25). Refused, 409, for a simulation, for an
+    insight none of whose texts is verified and shown yet, or for a text that
+    reads like scripture.
+    """
+    _owner, insight = await owned_insight(db, Owner(user_id=user.id), insight_id)
+    return await insight_publishing.publish(db, insight)
+
+
+@router.delete(
+    "/{insight_id}/publish",
+    summary="«إلغاء النشر»: withdraw the insight from the public",
+    dependencies=[WORLD],
+)
+async def withdraw_insight(
+    insight_id: PublicIdPath, db: DbDep, user: UngatedCurrentUser
+) -> PublicationOut:
+    """
+    Take the insight off its public address, which answers 404 from then on.
+
+    Withdrawing is never behind a new version of the terms: an owner can always
+    take their own words off the public web, so this route is exempt from the gate.
+    """
+    _owner, insight = await owned_insight(db, Owner(user_id=user.id), insight_id)
+    return await insight_publishing.withdraw(db, insight)
+
+
+@public_router.get(
+    "/{insight_id}", summary="A published insight, as anyone reads it", dependencies=[WORLD]
+)
+async def get_public_insight(
+    insight_id: PublicIdPath, db: DbDep, response: Response
+) -> PublicInsightOut:
+    """
+    Return a published insight: the texts shown, exactly as stored, and the platform's words.
+
+    Nothing of the owner but the public name they chose. Private, withdrawn, missing
+    and another account's insights all answer the same 404.
+    """
+    found = await insight_publishing.published(db, insight_id)
+    if found is None:
+        raise not_found(INSIGHT)
+    view = await insight_publishing.describe(db, *found)
+    if view is None:
+        raise not_found(INSIGHT)
+    response.headers["Cache-Control"] = PUBLIC_CACHE_CONTROL
+    return view

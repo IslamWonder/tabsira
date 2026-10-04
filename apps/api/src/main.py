@@ -48,7 +48,10 @@ from src.routers import (
     world,
 )
 from src.scans.queue import close_queue
-from src.services import social_sitemap  # noqa: F401 - registers the posts and profiles sitemaps
+from src.services import (
+    insight_sitemap,  # noqa: F401 - registers the insights sitemap
+    social_sitemap,  # noqa: F401 - registers the posts and profiles sitemaps
+)
 from src.services.insight_source import InsightSource
 from src.storage.notice import announce_storage
 from src.storage.probe import check_storage
@@ -236,6 +239,7 @@ def create_app(
     app.include_router(support.router)
     app.include_router(scans.router)
     app.include_router(insights.router)
+    app.include_router(insights.public_router)
     app.include_router(world.router)
     app.include_router(me.router)
     app.include_router(tutorial.router)

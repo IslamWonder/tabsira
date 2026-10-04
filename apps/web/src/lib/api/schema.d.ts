@@ -1374,6 +1374,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/insights/{insight_id}/publish': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Make the insight public, at a link anyone reads
+     * @description Publish the owner's insight (v2 §18); publishing twice keeps the first time.
+     *
+     *     A verified account only (decision 25). Refused, 409, for a simulation, for an
+     *     insight none of whose texts is verified and shown yet, or for a text that
+     *     reads like scripture.
+     */
+    post: operations['publish_insight_insights__insight_id__publish_post'];
+    /**
+     * «إلغاء النشر»: withdraw the insight from the public
+     * @description Take the insight off its public address, which answers 404 from then on.
+     */
+    delete: operations['withdraw_insight_insights__insight_id__publish_delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/public/insights/{insight_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * A published insight, as anyone reads it
+     * @description Return a published insight: the texts shown, exactly as stored, and the platform's words.
+     *
+     *     Nothing of the owner but the public name they chose. Private, withdrawn, missing
+     *     and another account's insights all answer the same 404.
+     */
+    get: operations['get_public_insight_public_insights__insight_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/world': {
     parameters: {
       query?: never;
@@ -2467,6 +2518,7 @@ export interface components {
       action: components['schemas']['ActionOut'];
       chat: components['schemas']['ChatOut'];
       image: components['schemas']['InsightImageOut'];
+      publication: components['schemas']['PublicationOut'];
       /** Completed At */
       completed_at: string | null;
       /** Place Id */
@@ -2530,6 +2582,8 @@ export interface components {
       completed_at: string | null;
       /** Place Id */
       place_id: string | null;
+      /** Published At */
+      published_at: string | null;
       /**
        * Created At
        * Format: date-time
@@ -3087,6 +3141,14 @@ export interface components {
       providers: components['schemas']['ProviderOut'][];
     };
     /**
+     * PublicAuthorOut
+     * @description The one thing a public page says about the owner: the name they chose for the public.
+     */
+    PublicAuthorOut: {
+      /** Public Name */
+      public_name: string;
+    };
+    /**
      * PublicIdentityIn
      * @description The handle and public name an account chooses to appear under.
      */
@@ -3105,6 +3167,60 @@ export interface components {
       handle: string | null;
       /** Public Name */
       public_name: string | null;
+    };
+    /**
+     * PublicInsightOut
+     * @description A published insight as anyone reads it.
+     *
+     *     The texts shown, read from the store by reference, and the platform's own words;
+     *     nothing of the person: no profile, no chat, no learning history, no scan, no place
+     *     and no photo (v2 §18).
+     */
+    PublicInsightOut: {
+      /** Id */
+      id: string;
+      /** Path */
+      path: string;
+      /** Title */
+      title: string;
+      /** Glimpse */
+      glimpse: string;
+      /**
+       * Label
+       * @description «مثال موثّق مُعدّ» when the insight is a prepared one
+       */
+      label: string | null;
+      relation: components['schemas']['RelationType'];
+      /** Relation Label */
+      relation_label: string;
+      quran: components['schemas']['InsightQuran'] | null;
+      hadith: components['schemas']['InsightHadith'] | null;
+      /** Explanation Tag */
+      explanation_tag: string;
+      /** Explanation */
+      explanation: components['schemas']['ExplanationOut'][];
+      why: components['schemas']['PublicWhyOut'];
+      small_step: components['schemas']['StepOut'] | null;
+      author: components['schemas']['PublicAuthorOut'] | null;
+      /**
+       * Published At
+       * Format: date-time
+       */
+      published_at: string;
+      /** Disclosure */
+      disclosure: string;
+    };
+    /**
+     * PublicWhyOut
+     * @description «لماذا ظهر هذا؟» for everyone: the clues, the concept and the limits, never a personal reason.
+     */
+    PublicWhyOut: {
+      /** Visible Clues */
+      visible_clues: string[];
+      /** Concept */
+      concept: string;
+      /** Limits */
+      limits: string[];
     };
     /**
      * PublicationExport
@@ -3144,6 +3260,21 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+    };
+    /**
+     * PublicationOut
+     * @description Whether the owner made the insight public (v2 §18), since when, and where anyone reads it.
+     */
+    PublicationOut: {
+      /** Published */
+      published: boolean;
+      /** Published At */
+      published_at: string | null;
+      /**
+       * Path
+       * @description The public page's path on the web app, while published
+       */
+      path: string | null;
     };
     /** QuestOut */
     QuestOut: {
@@ -6290,6 +6421,99 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['CompletionOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  publish_insight_insights__insight_id__publish_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PublicationOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  withdraw_insight_insights__insight_id__publish_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PublicationOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  get_public_insight_public_insights__insight_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PublicInsightOut'];
         };
       };
       /** @description An error */

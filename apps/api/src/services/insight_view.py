@@ -36,10 +36,26 @@ from src.schemas.insight import (
     InsightQuran,
     InsightWhyOut,
     LearningUnitOut,
+    PublicationOut,
     StepOut,
 )
 
 ACTION_MEANS = {"done": messages.ACTION_DONE_MEANS, "later": messages.ACTION_LATER_MEANS}
+
+
+def public_path(insight_id: int) -> str:
+    """Return the web app's path of a published insight (the one URL form of docs/SEO.md)."""
+    return f"/i/{insight_id}"
+
+
+def publication_out(insight: Insight) -> PublicationOut:
+    """Return whether the insight is public, since when, and its public path while it is."""
+    published = insight.published_at is not None
+    return PublicationOut(
+        published=published,
+        published_at=insight.published_at,
+        path=public_path(insight.id) if published else None,
+    )
 
 
 def evidence_why(evidence: dict[str, Any] | None) -> EvidenceWhy | None:
@@ -196,7 +212,8 @@ def message_out(row: ChatMessage) -> ChatMessageOut:
     )
 
 
-def _label(insight: Insight) -> str | None:
+def engine_label(insight: Insight) -> str | None:
+    """Return the notice of a prepared example or of the simulation, when one applies."""
     if insight.engine == "prepared":
         return messages.PREPARED_EXAMPLE
     if insight.engine == "demo":
@@ -214,7 +231,7 @@ async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> In
         scan_id=insight.scan_id,
         origin=insight.origin,
         engine=insight.engine,
-        label=_label(insight),
+        label=engine_label(insight),
         title=insight.title,
         glimpse=insight.glimpse,
         anchor=BBox.model_validate(insight.anchor) if insight.anchor else None,
@@ -253,6 +270,7 @@ async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> In
             sensitive=sensitive,
             url=f"/scans/{scan.id}/image" if scan is not None and not sensitive else None,
         ),
+        publication=publication_out(insight),
         completed_at=insight.completed_at,
         place_id=insight.place_id,
         created_at=insight.created_at,

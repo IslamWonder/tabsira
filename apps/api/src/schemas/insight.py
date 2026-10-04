@@ -97,6 +97,14 @@ class InsightImageOut(BaseModel):
     url: str | None
 
 
+class PublicationOut(BaseModel):
+    """Whether the owner made the insight public (v2 §18), since when, and where anyone reads it."""
+
+    published: bool
+    published_at: datetime | None
+    path: str | None = Field(description="The public page's path on the web app, while published")
+
+
 class InsightDetailOut(BaseModel):
     id: PublicId
     scan_id: PublicId | None
@@ -123,9 +131,51 @@ class InsightDetailOut(BaseModel):
     action: ActionOut
     chat: ChatOut
     image: InsightImageOut
+    publication: PublicationOut
     completed_at: datetime | None
     place_id: PublicId | None
     created_at: datetime
+    disclosure: str
+
+
+class PublicAuthorOut(BaseModel):
+    """The one thing a public page says about the owner: the name they chose for the public."""
+
+    public_name: str
+
+
+class PublicWhyOut(BaseModel):
+    """«لماذا ظهر هذا؟» for everyone: the clues, the concept and the limits, never a personal reason."""
+
+    visible_clues: list[str]
+    concept: str
+    limits: list[str]
+
+
+class PublicInsightOut(BaseModel):
+    """
+    A published insight as anyone reads it.
+
+    The texts shown, read from the store by reference, and the platform's own words;
+    nothing of the person: no profile, no chat, no learning history, no scan, no place
+    and no photo (v2 §18).
+    """
+
+    id: PublicId
+    path: str
+    title: str
+    glimpse: str
+    label: str | None = Field(description="«مثال موثّق مُعدّ» when the insight is a prepared one")
+    relation: RelationType
+    relation_label: str
+    quran: InsightQuran | None
+    hadith: InsightHadith | None
+    explanation_tag: str
+    explanation: list[ExplanationOut]
+    why: PublicWhyOut
+    small_step: StepOut | None
+    author: PublicAuthorOut | None
+    published_at: datetime
     disclosure: str
 
 

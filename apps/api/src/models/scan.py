@@ -188,6 +188,8 @@ class Insight(Base):
         Index("ix_insights_scan_id", "scan_id"),
         Index("ix_insights_user_id_completed_at", "user_id", "completed_at"),
         Index("ix_insights_guest_key_completed_at", "guest_key", "completed_at"),
+        # The public insights, for the sitemap, oldest first.
+        Index("ix_insights_public", "id", postgresql_where=text("published_at IS NOT NULL")),
         Index(
             "uq_insights_user_tutorial",
             "user_id",
@@ -249,6 +251,8 @@ class Insight(Base):
     place_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("world_places.id", ondelete="SET NULL")
     )
+    # When the owner made the insight public (v2 §18); null while private or once withdrawn.
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
 
 

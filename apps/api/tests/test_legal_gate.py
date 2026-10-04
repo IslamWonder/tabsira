@@ -21,6 +21,7 @@ EXEMPT_PATHS = {
     ("DELETE", "/account"),
     ("POST", "/support"),
     ("POST", "/consent"),
+    ("DELETE", "/insights/{insight_id}/publish"),
 }
 
 
