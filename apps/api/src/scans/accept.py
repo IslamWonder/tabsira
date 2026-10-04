@@ -1,0 +1,173 @@
+"""
+What the workflow accepts from the engine, checked again on the server before anything is saved.
+
+The engine is trusted for nothing it can get wrong silently:
+- a verse or a hadith it cites must be in the store; a hadith whose editor
+  ruling is not صحيح or حسن is never kept as evidence, and one without a ruling
+  is kept (shown once ruled) and counted in the verification queue;
+- an insight left with neither a verse nor a hadith is dropped: no source, no
+  scripture (v2 rule 1);
+- every text it wrote goes through the leak guard, with the cited texts as a
+  corpus, so a quotation hidden in an explanation refuses the insight;
+- entity ids must be the scene's, the learning unit must be in its path
+  version, and there are three insights at most.
+Each refusal is recorded by a stable reason, never with the refused text.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterable
+from dataclasses import dataclass, field
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.models import Hadith, LearningUnit, QuranVerse
+from src.pipeline.engine import EvidenceRef, HadithRef, ProposedInsight, QuranRef
+from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
+from src.pipeline.schemas import SceneAnalysis
+from src.scripture.rulings import classification_is_eligible, enqueue_demand, latest_ruling
+
+MAX_INSIGHTS = 3
+
+
+@dataclass(frozen=True)
+class Accepted:
+    insights: list[ProposedInsight]
+    # Why insights or parts of them were refused: `leak`, `no_evidence`, `quran_missing`, ...
+    refusals: list[str] = field(default_factory=list)
+
+
+def insight_texts(insight: ProposedInsight) -> dict[str, str]:
+    """Every free text the engine wrote for an insight, keyed by where it is."""
+    texts = {"title": insight.title, "glimpse": insight.glimpse}
+    texts |= {f"explanation.{i}": part.text for i, part in enumerate(insight.explanation)}
+    texts |= {f"why.clue.{i}": clue for i, clue in enumerate(insight.why.visible_clues)}
+    texts |= {f"why.limit.{i}": limit for i, limit in enumerate(insight.why.limits)}
+    texts["why.concept"] = insight.why.concept
+    if insight.why.personalised_because:
+        texts["why.personalised_because"] = insight.why.personalised_because
+    if insight.small_step is not None:
+        texts["small_step"] = insight.small_step.text
+    for name, evidence in (("quran", insight.quran), ("hadith", insight.hadith)):
+        if evidence is not None:
+            texts[f"{name}.matched_on"] = evidence.matched_on
+    return texts
+
+
+async def _verse_text(db: AsyncSession, surah: int, ayah: int) -> str | None:
+    text: str | None = await db.scalar(
+        select(QuranVerse.text).where(QuranVerse.surah == surah, QuranVerse.ayah == ayah)
+    )
+    return text
+
+
+async def _hadith(db: AsyncSession, ref: HadithRef) -> Hadith | None:
+    found: Hadith | None = await db.scalar(
+        select(Hadith).where(Hadith.collection == ref.collection, Hadith.number == ref.number)
+    )
+    return found
+
+
+async def accept(
+    db: AsyncSession,
+    scene: SceneAnalysis,
+    proposed: Iterable[ProposedInsight],
+    *,
+    awaiting_ruling: Iterable[HadithRef] = (),
+) -> Accepted:
+    """Return the insights that pass every check, rewritten to what was verified."""
+    refusals: list[str] = []
+    kept: list[ProposedInsight] = []
+    entity_ids = {entity.id for entity in scene.entities}
+    boxes = {entity.id: entity.bbox for entity in scene.entities}
+    for insight in list(proposed)[:MAX_INSIGHTS]:
+        checked = await _check(db, insight, refusals)
+        if checked is None:
+            continue
+        ids = [entity_id for entity_id in checked.entity_ids if entity_id in entity_ids]
+        anchor = checked.anchor or next((boxes[i] for i in ids if boxes[i] is not None), None)
+        unit = checked.learning_unit_id
+        if unit is not None and not await _unit_exists(db, unit, checked.learning_path_version):
+            refusals.append("unknown_unit")
+            unit = None
+        kept.append(
+            checked.model_copy(
+                update={
+                    "entity_ids": ids,
+                    "anchor": anchor,
+                    "learning_unit_id": unit,
+                    "learning_path_version": checked.learning_path_version if unit else None,
+                }
+            )
+        )
+    for ref in awaiting_ruling:
+        stored = await _hadith(db, ref)
+        if stored is not None:
+            await enqueue_demand(db, stored.id)
+    return Accepted(insights=kept, refusals=refusals)
+
+
+async def _checked_quran(
+    db: AsyncSession, evidence: EvidenceRef | None, corpus: list[str], refusals: list[str]
+) -> EvidenceRef | None:
+    if evidence is None:
+        return None
+    if not isinstance(evidence.ref, QuranRef):
+        refusals.append("quran_kind")
+        return None
+    text = await _verse_text(db, evidence.ref.surah, evidence.ref.ayah)
+    if text is None:
+        refusals.append("quran_missing")
+        return None
+    corpus.append(text)
+    return evidence
+
+
+async def _checked_hadith(
+    db: AsyncSession, evidence: EvidenceRef | None, corpus: list[str], refusals: list[str]
+) -> EvidenceRef | None:
+    if evidence is None:
+        return None
+    if not isinstance(evidence.ref, HadithRef):
+        refusals.append("hadith_kind")
+        return None
+    stored = await _hadith(db, evidence.ref)
+    if stored is None:
+        refusals.append("hadith_missing")
+        return None
+    ruling = await latest_ruling(db, stored.id)
+    if ruling is not None and not classification_is_eligible(ruling.classification):
+        refusals.append("hadith_ineligible")
+        return None
+    if ruling is None:
+        await enqueue_demand(db, stored.id)
+    corpus.append(stored.text)
+    return evidence
+
+
+async def _check(
+    db: AsyncSession, insight: ProposedInsight, refusals: list[str]
+) -> ProposedInsight | None:
+    corpus: list[str] = []
+    quran = await _checked_quran(db, insight.quran, corpus, refusals)
+    hadith = await _checked_hadith(db, insight.hadith, corpus, refusals)
+    if quran is None and hadith is None:
+        refusals.append("no_evidence")
+        return None
+    guard = LeakGuard([PatternLeakDetector(), ShingleOverlapDetector(corpus)])
+    if any(guard.check(text).leaked for text in insight_texts(insight).values()):
+        refusals.append("leak")
+        return None
+    return insight.model_copy(update={"quran": quran, "hadith": hadith})
+
+
+async def _unit_exists(db: AsyncSession, unit_id: str, path_version: str | None) -> bool:
+    if path_version is None:
+        return False
+    found = await db.scalar(
+        select(LearningUnit.id).where(
+            LearningUnit.id == unit_id, LearningUnit.path_version == path_version
+        )
+    )
+    return found is not None
