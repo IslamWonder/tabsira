@@ -61,6 +61,33 @@ def insight_texts(insight: ProposedInsight) -> dict[str, str]:
     return texts
 
 
+async def leaks(db: AsyncSession, texts: list[str], corpus: list[str]) -> bool:
+    """
+    Tell whether any text looks like scripture.
+
+    The pattern rules, a run of words of the cited texts (`corpus`) or a run of words of any
+    verse or hadith of the store.
+
+    One check for what the engine writes (here) and for what an owner makes public.
+    """
+    guard = LeakGuard([PatternLeakDetector(), ShingleOverlapDetector(corpus)])
+    return any(guard.check(text).leaked for text in texts) or await repeats_store(db, texts)
+
+
+async def cited_texts(
+    db: AsyncSession, quran: tuple[int, int] | None, hadith: tuple[str, str] | None
+) -> list[str]:
+    """Return the stored text of the cited verse and hadith, whatever the hadith's ruling."""
+    corpus: list[str] = []
+    if quran is not None and (verse := await _verse_text(db, *quran)) is not None:
+        corpus.append(verse)
+    if hadith is not None:
+        stored = await _hadith(db, HadithRef(collection=hadith[0], number=hadith[1]))
+        if stored is not None:
+            corpus.append(stored.text)
+    return corpus
+
+
 async def _verse_text(db: AsyncSession, surah: int, ayah: int) -> str | None:
     text: str | None = await db.scalar(
         select(QuranVerse.text).where(QuranVerse.surah == surah, QuranVerse.ayah == ayah)
@@ -169,9 +196,7 @@ async def _check(
         # A hadith waiting for its ruling is not shown, and there is no verse to show.
         refusals.append("nothing_to_show")
         return None
-    guard = LeakGuard([PatternLeakDetector(), ShingleOverlapDetector(corpus)])
-    texts = list(insight_texts(insight).values())
-    if any(guard.check(text).leaked for text in texts) or await repeats_store(db, texts):
+    if await leaks(db, list(insight_texts(insight).values()), corpus):
         refusals.append("leak")
         return None
     return insight.model_copy(update={"quran": quran, "hadith": hadith})

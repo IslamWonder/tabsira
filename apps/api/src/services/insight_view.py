@@ -34,6 +34,8 @@ from src.schemas.insight import (
     InsightHadith,
     InsightImageOut,
     InsightQuran,
+    PublicHadith,
+    PublicQuran,
     InsightWhyOut,
     LearningUnitOut,
     StepOut,
@@ -226,6 +228,54 @@ def label_of(insight: Insight) -> str | None:
     return None
 
 
+def shown_fields(
+    insight: Insight,
+    verse: QuranVerseOut | None,
+    hadith: HadithOut | None,
+    awaiting: bool,
+    *,
+    public: bool = False,
+) -> dict[str, Any]:
+    """
+    Return the fields every reader sees alike, owner or stranger, from what the store shows.
+
+    One place for the hidden-hadith rules (status, notice, the parts and the step that rest on a
+    text not shown), so the owner's view and the public view cannot drift apart. A public reader
+    gets the texts without «لماذا ظهر هذا؟» (`why`, which can come from the photo or the
+    profile) and without the «ما ظهر» part, which describes the photo.
+    """
+    texts = messages_for()
+    explanation = explanation_out(insight.explanation, verse, hadith)
+    quran: Any = None
+    sunnah: Any = None
+    if verse:
+        quran = (
+            PublicQuran(tag=texts.quran_tag, verse=verse)
+            if public
+            else InsightQuran(
+                tag=texts.quran_tag, verse=verse, why=evidence_why(insight.quran_evidence)
+            )
+        )
+    if hadith:
+        sunnah = (
+            PublicHadith(tag=texts.sunnah_tag, hadith=hadith)
+            if public
+            else InsightHadith(
+                tag=texts.sunnah_tag, hadith=hadith, why=evidence_why(insight.hadith_evidence)
+            )
+        )
+    return {
+        "quran": quran,
+        "hadith": sunnah,
+        "hadith_status": "shown" if hadith else "awaiting_verification" if awaiting else "none",
+        "notice": texts.hadith_awaits_verification if awaiting else None,
+        "pair_complete": verse is not None and hadith is not None,
+        "explanation_tag": texts.explanation_tag,
+        "explanation": [p for p in explanation if p.section != "seen"] if public else explanation,
+        "small_step": step_out(insight.small_step, verse, hadith),
+    }
+
+
 async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> InsightDetailOut:
     """Return the owner's insight, its scripture hydrated from the store."""
     verse, hadith, awaiting = await shown_evidence(db, insight)
@@ -242,28 +292,13 @@ async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> In
         anchor=BBox.model_validate(insight.anchor) if insight.anchor else None,
         relation=RelationType(insight.relation),
         relation_label=messages_for().relation_labels[insight.relation],
-        quran=InsightQuran(
-            tag=messages_for().quran_tag, verse=verse, why=evidence_why(insight.quran_evidence)
-        )
-        if verse
-        else None,
-        hadith=InsightHadith(
-            tag=messages_for().sunnah_tag, hadith=hadith, why=evidence_why(insight.hadith_evidence)
-        )
-        if hadith
-        else None,
-        hadith_status="shown" if hadith else "awaiting_verification" if awaiting else "none",
-        notice=messages_for().hadith_awaits_verification if awaiting else None,
-        pair_complete=verse is not None and hadith is not None,
-        explanation_tag=messages_for().explanation_tag,
-        explanation=explanation_out(insight.explanation, verse, hadith),
+        **shown_fields(insight, verse, hadith, awaiting),
         why=InsightWhyOut(
             visible_clues=list(insight.why.get("visible_clues", [])),
             concept=str(insight.why.get("concept", "")),
             limits=list(insight.why.get("limits", [])),
             personalised_because=insight.why.get("personalised_because"),
         ),
-        small_step=step_out(insight.small_step, verse, hadith),
         learning_unit=await _unit(db, insight),
         action=ActionOut(
             state=insight.action_state,

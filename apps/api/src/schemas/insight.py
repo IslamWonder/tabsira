@@ -38,6 +38,22 @@ class InsightHadith(BaseModel):
     why: EvidenceWhy | None
 
 
+class PublicQuran(BaseModel):
+    """A verse for a stranger: the text as stored, never the reason the engine chose it."""
+
+    tag: str = Field(description="«القرآن»: the fixed tag of quoted Quran")
+    verse: QuranVerseOut = Field(description="The verse exactly as stored, with its hash and link")
+
+
+class PublicHadith(BaseModel):
+    """A hadith for a stranger: the text as stored, never the reason the engine chose it."""
+
+    tag: str = Field(description="«السنة»: the fixed tag of quoted Sunnah")
+    hadith: HadithOut = Field(
+        description="The hadith exactly as stored, its spans, its dorar.net ruling and links"
+    )
+
+
 class ExplanationOut(BaseModel):
     section: Literal["seen", "value", "quran", "sunnah", "life"]
     label: str
@@ -198,8 +214,9 @@ class PublicInsightOut(BaseModel):
     """
     A published insight for any reader: scripture from the store, nothing of the owner's.
 
-    There is no photo, no scan, no location, no chat, no progress and no «لماذا ظهر هذا؟»
-    (its clues describe the photo and its personal reason is the owner's); the author is
+    There is no photo, no scan, no location, no chat, no progress, no «لماذا ظهر هذا؟» (its
+    clues describe the photo and its reason may be personal), no `why` beside a text and no
+    «ما ظهر» part (it describes the photo); the author is
     present only when the owner chose a public handle and name.
     """
 
@@ -210,8 +227,8 @@ class PublicInsightOut(BaseModel):
     glimpse: str
     relation: RelationType
     relation_label: str
-    quran: InsightQuran | None
-    hadith: InsightHadith | None
+    quran: PublicQuran | None
+    hadith: PublicHadith | None
     hadith_status: Literal["shown", "awaiting_verification", "none"]
     notice: str | None
     pair_complete: bool

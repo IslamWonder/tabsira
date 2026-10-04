@@ -21,6 +21,8 @@ EXEMPT_PATHS = {
     ("DELETE", "/account"),
     ("POST", "/support"),
     ("POST", "/consent"),
+    # Taking one's own insight off public view publishes nothing.
+    ("DELETE", "/insights/{insight_id}/publication"),
 }
 
 

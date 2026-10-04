@@ -3,18 +3,24 @@
 from __future__ import annotations
 
 import hashlib
+import unicodedata
 
 import pytest
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
-from src import clock
-from src.models import HadithClassification, Insight, InsightOrigin
+from src import clock, messages
+from src.models import Hadith, HadithClassification, Insight, InsightOrigin, QuranVerse
 from src.models.user import User
 from src.owner import Owner
 from tests.scans.builders import insight_row, scan_row
 from tests.scans.conftest import as_guest, make_account, rule, sign_in
 from tests.scripture.fixtures import hadith_text, verse_text
+
+VERSE = verse_text(30, 50)
+HADITH = hadith_text("bukhari", 1032)
+WITHOUT_MARKS = "".join(c for c in VERSE if unicodedata.category(c) != "Mn")
+NO_VERSE = {"quran_surah": None, "quran_ayah": None, "quran_evidence": None}
 
 PRIVATE_KEYS = {
     "scan_id",
@@ -180,13 +186,27 @@ async def test_another_owners_insight_cannot_be_published_or_withdrawn(browser, 
         ({}, {"sensitive": True}),
         ({"quran_surah": None, "quran_ayah": None, "quran_evidence": None}, {}),
         ({"title": verse_text(30, 50)}, {}),
+        ({"title": WITHOUT_MARKS}, {}),
+        ({"glimpse": VERSE}, {}),
+        ({"quran_evidence": {"relation": "direct", "matched_on": VERSE}}, {}),
+        ({"hadith_evidence": {"relation": "action_based", "matched_on": HADITH}}, {}),
         ({"explanation": [{"section": "seen", "text": verse_text(30, 50), "sources": []}]}, {}),
         (
             {"small_step": {"text": verse_text(30, 50), "kind": "reflection", "grounded_in": []}},
             {},
         ),
     ],
-    ids=["sensitive", "no text to show", "scripture in title", "in explanation", "in step"],
+    ids=[
+        "sensitive",
+        "no text to show",
+        "scripture in title",
+        "title without marks",
+        "in glimpse",
+        "in verse matched_on",
+        "in hadith matched_on",
+        "in explanation",
+        "in step",
+    ],
 )
 async def test_an_insight_that_may_not_be_public_is_refused(browser, store, values, scan_values):
     user = await verified_account(store, browser)
@@ -297,3 +317,81 @@ async def test_the_account_export_carries_the_publication_times(browser, store):
     kept = export["learning"]["insights"][0]
     assert kept["published_at"] is None
     assert kept["withdrawn_at"] is not None
+
+
+async def stored_hashes(store) -> tuple[str, str]:
+    async with store() as db:
+        verse = await db.scalar(
+            select(QuranVerse.text_sha256).where(QuranVerse.surah == 30, QuranVerse.ayah == 50)
+        )
+        hadith = await db.scalar(
+            select(Hadith.text_sha256).where(
+                Hadith.collection == "bukhari", Hadith.number == "1032"
+            )
+        )
+    return verse, hadith
+
+
+async def test_the_public_hashes_are_the_ones_the_store_holds(browser, other, store):
+    user = await verified_account(store, browser)
+    insight_id = await keep(store, user.id)
+    async with store() as db:
+        await rule(db, "bukhari", "1032")
+        await db.commit()
+    await browser.put(f"/insights/{insight_id}/publication")
+
+    body = (await other.get(f"/public/insights/{insight_id}")).json()
+
+    verse_hash, hadith_hash = await stored_hashes(store)
+    assert body["quran"]["verse"]["sha256"] == verse_hash
+    assert body["hadith"]["hadith"]["sha256"] == hadith_hash
+    assert hashlib.sha256(body["hadith"]["hadith"]["text"].encode()).hexdigest() == hadith_hash
+
+
+async def test_a_hadith_ruled_weak_after_publication_leaves_with_its_step_and_the_page_with_it(
+    browser, other, store
+):
+    user = await verified_account(store, browser)
+    with_verse = await keep(store, user.id)
+    only_hadith = await keep(store, user.id, **NO_VERSE)
+    async with store() as db:
+        await rule(db, "bukhari", "1032")
+        await db.commit()
+    for insight_id in (with_verse, only_hadith):
+        assert (await browser.put(f"/insights/{insight_id}/publication")).status_code == 200
+    shown = (await other.get(f"/public/insights/{only_hadith}")).json()
+    assert shown["hadith"]["hadith"]["text"] == HADITH
+    assert shown["small_step"]["label"] == "من السنة"
+
+    async with store() as db:
+        await rule(db, "bukhari", "1032", HadithClassification.DAIF)
+        await db.commit()
+
+    kept = (await other.get(f"/public/insights/{with_verse}")).json()
+    assert (kept["hadith"], kept["small_step"], kept["hadith_status"]) == (None, None, "none")
+    assert kept["quran"]["verse"]["text"] == VERSE
+    assert (await other.get(f"/public/insights/{only_hadith}")).status_code == 404
+
+
+async def test_an_unruled_hadith_is_announced_and_what_rests_on_it_is_dropped_publicly(
+    browser, other, store
+):
+    user = await verified_account(store, browser)
+    insight_id = await keep(
+        store,
+        user.id,
+        explanation=[
+            {"section": "seen", "text": "قطرات على ورق نبتة.", "sources": []},
+            {
+                "section": "sunnah",
+                "text": "ما تقوله السنة هنا.",
+                "sources": ["hadith:bukhari:1032"],
+            },
+        ],
+    )
+    await browser.put(f"/insights/{insight_id}/publication")
+
+    body = (await other.get(f"/public/insights/{insight_id}")).json()
+
+    assert body["notice"] == messages.HADITH_AWAITS_VERIFICATION
+    assert [part["section"] for part in body["explanation"]] == ["seen"]

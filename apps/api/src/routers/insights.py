@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import clock
 from src.ai.client import ModelClient, client_for
 from src.ai.records import CallLog
-from src.deps import DbDep, SettingsDep, VerifiedUser
+from src.deps import DbDep, SettingsDep, UngatedCurrentUser, VerifiedUser, limited
 from src.errors import AppError, ErrorCode
 from src.models import Insight
 from src.owner import INSIGHT, OptionalOwner, Owner, not_found
@@ -34,6 +34,7 @@ from src.schemas.insight import (
     InsightDetailOut,
     PublicationOut,
 )
+from src.services.social_limits import WriteKind
 from src.services import chat_service, completion_service, insight_view, public_insight_service
 
 router = APIRouter(prefix="/insights", tags=["insights"])
@@ -149,7 +150,11 @@ async def complete_insight(
         ) from None
 
 
-@router.put("/{insight_id}/publication", summary="Make the insight public (verified owners)")
+@router.put(
+    "/{insight_id}/publication",
+    summary="Make the insight public (verified owners)",
+    dependencies=[Depends(feature("world")), limited(WriteKind.POST)],
+)
 async def publish_insight(
     insight_id: PublicIdPath, db: DbDep, user: VerifiedUser
 ) -> PublicationOut:
@@ -157,7 +162,8 @@ async def publish_insight(
     Publish the caller's own insight; asking again changes nothing.
 
     Answers 409 INSIGHT_NOT_PUBLISHABLE for a sensitive scene, an insight with no text to
-    show from the store, or text that looks like scripture. A guest gets 401.
+    show from the store, text that looks like scripture, one shaped by the profile, or one that is not from the real
+    analysis. A guest gets 401.
     """
     _owner, insight = await owned_insight(db, Owner(user_id=user.id), insight_id)
     return await public_insight_service.publish(db, insight)
@@ -165,8 +171,13 @@ async def publish_insight(
 
 @router.delete("/{insight_id}/publication", summary="Withdraw the insight from public view")
 async def withdraw_insight(
-    insight_id: PublicIdPath, db: DbDep, user: VerifiedUser
+    insight_id: PublicIdPath, db: DbDep, user: UngatedCurrentUser
 ) -> PublicationOut:
-    """Take the caller's insight down at once; its public address answers 404 from then on."""
+    """
+    Take the caller's insight down at once; its public address answers 404 from then on.
+
+    Withdrawing publishes nothing, so it needs neither a verified address nor the latest
+    terms, and it is never switched off or rate limited.
+    """
     _owner, insight = await owned_insight(db, Owner(user_id=user.id), insight_id)
     return await public_insight_service.withdraw(db, insight)

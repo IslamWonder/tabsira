@@ -19,23 +19,21 @@ from typing import NoReturn
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import clock, messages
+from src import clock
+from src.messages import messages_for
 from src.errors import AppError, ErrorCode
 from src.models import Insight, Scan
 from src.models.user import User
 from src.owner import INSIGHT, not_found
 from src.pipeline.engine import RelationType
-from src.pipeline.leak_guard import LeakGuard
+from src.scans import accept
+from src.services.insight_table_source import PUBLISHABLE_ENGINE
 from src.schemas.insight import (
-    InsightHadith,
-    InsightQuran,
     PublicationOut,
     PublicAuthorOut,
     PublicInsightOut,
 )
 from src.services import insight_view
-
-_LEAK_GUARD = LeakGuard()
 
 
 def _refuse(why: str) -> NoReturn:
@@ -61,6 +59,12 @@ def state(insight: Insight) -> PublicationOut:
 
 async def _check(db: AsyncSession, insight: Insight) -> None:
     """Refuse an insight that may not be public."""
+    if insight.engine != PUBLISHABLE_ENGINE:
+        # The same rule as a post's: a simulation or a shared prepared example is no one's insight.
+        _refuse("only an insight made by the real analysis can be public")
+    if (insight.why or {}).get("personalised_because"):
+        # Its words may be shaped by the profile, which is never public.
+        _refuse("it was shaped by the profile")
     if insight.scan_id is not None:
         scan = await db.get(Scan, insight.scan_id)
         if scan is not None and scan.sensitive:
@@ -72,7 +76,18 @@ async def _check(db: AsyncSession, insight: Insight) -> None:
     texts |= {f"explanation {n}": str(part["text"]) for n, part in enumerate(insight.explanation)}
     if insight.small_step:
         texts["step"] = str(insight.small_step["text"])
-    if any(_LEAK_GUARD.check(text).leaked for text in texts.values()):
+    quran_ref = (
+        (insight.quran_surah, insight.quran_ayah)
+        if insight.quran_surah is not None and insight.quran_ayah is not None
+        else None
+    )
+    hadith_ref = (
+        (insight.hadith_collection, insight.hadith_number)
+        if insight.hadith_collection is not None and insight.hadith_number is not None
+        else None
+    )
+    corpus = await accept.cited_texts(db, quran_ref, hadith_ref)
+    if await accept.leaks(db, list(texts.values()), corpus):
         _refuse("its text looks like scripture, which only the store may supply")
 
 
@@ -113,6 +128,10 @@ async def read_public(db: AsyncSession, insight_id: int) -> PublicInsightOut:
         raise not_found(INSIGHT)
     insight, owner = row[0], row[1]
     verse, hadith, awaiting = await insight_view.shown_evidence(db, insight)
+    if verse is None and hadith is None:
+        # What made it public may have gone since (a ruling changed): nothing to show, no page.
+        raise not_found(INSIGHT)
+    texts = messages_for()
     return PublicInsightOut(
         id=insight.id,
         engine=insight.engine,
@@ -120,30 +139,11 @@ async def read_public(db: AsyncSession, insight_id: int) -> PublicInsightOut:
         title=insight.title,
         glimpse=insight.glimpse,
         relation=RelationType(insight.relation),
-        relation_label=messages.RELATION_LABELS[insight.relation],
-        quran=InsightQuran(
-            tag=messages.QURAN_TAG,
-            verse=verse,
-            why=insight_view.evidence_why(insight.quran_evidence),
-        )
-        if verse
-        else None,
-        hadith=InsightHadith(
-            tag=messages.SUNNAH_TAG,
-            hadith=hadith,
-            why=insight_view.evidence_why(insight.hadith_evidence),
-        )
-        if hadith
-        else None,
-        hadith_status="shown" if hadith else "awaiting_verification" if awaiting else "none",
-        notice=messages.HADITH_AWAITS_VERIFICATION if awaiting else None,
-        pair_complete=verse is not None and hadith is not None,
-        explanation_tag=messages.EXPLANATION_TAG,
-        explanation=insight_view.explanation_out(insight.explanation, verse, hadith),
-        small_step=insight_view.step_out(insight.small_step, verse, hadith),
+        relation_label=texts.relation_labels[insight.relation],
+        **insight_view.shown_fields(insight, verse, hadith, awaiting, public=True),
         author=PublicAuthorOut(handle=owner.handle, public_name=owner.public_name)
         if owner.handle is not None and owner.public_name is not None
         else None,
         published_at=insight.published_at,
-        disclosure=messages.AI_DISCLOSURE,
+        disclosure=texts.ai_disclosure,
     )
