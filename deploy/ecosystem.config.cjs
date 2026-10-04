@@ -5,10 +5,10 @@
  * them one at a time while the others keep serving. deploy/web-roll.sh drives
  * that, each instance checked healthy before the next is touched.
  *
- * The processes run the standalone build under `current/web`, a folder
- * assembled once per deploy, never the checkout: a deploy builds elsewhere
- * while the live processes keep reading their own finished copy, and the
- * `current` link is switched with one atomic rename.
+ * The processes run their own copy of the standalone build, under
+ * $WEB_RELEASES_DIR/current (deploy/web-roll.sh), never the clone: a deploy builds
+ * in /opt/tabsira while the live processes keep reading their finished copy, and the
+ * `current` link is switched with one atomic rename, as on the earlier prototype.
  *
  * The environment comes from the production environment file, read here
  * rather than inherited from whichever shell started pm2: the web server
@@ -16,7 +16,7 @@
  * time, and a build never bakes them in.
  *
  * Settings (environment of the shell that runs `pm2 start`), all optional:
- *   APP_ROOT        runtime root: releases, current, shared, static (default: /srv/tabsira)
+ *   WEB_RELEASES_DIR  the web builds and the `current` link (default: /srv/tabsira/web)
  *   ENV_FILE        environment file (default: /opt/tabsira/.env, at the root of the clone)
  *   WEB_INSTANCES   number of processes (default: 2), or `max` for one per CPU
  *   WEB_PORT        shared port nginx proxies to (default: 3000)
@@ -26,7 +26,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const appRoot = process.env.APP_ROOT || '/srv/tabsira';
+const releases = process.env.WEB_RELEASES_DIR || '/srv/tabsira/web';
 const envFile = process.env.ENV_FILE || '/opt/tabsira/.env';
 const logDir = process.env.LOG_DIR || '/var/log/tabsira';
 
@@ -64,7 +64,7 @@ module.exports = {
   apps: [
     {
       name: 'tabsira-web',
-      cwd: path.join(appRoot, 'current', 'web', 'apps', 'web'),
+      cwd: path.join(releases, 'current', 'apps', 'web'),
       script: 'server.js',
       exec_mode: 'cluster',
       instances: instances === 'max' ? 'max' : Number(instances),

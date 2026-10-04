@@ -16,7 +16,7 @@
 # release exists, `python -m src.cli.check_config --live` (docs/OPERATIONS.md,
 # "Checking the environment file") goes further and tries each service for real.
 #
-# Environment: REPO_DIR (/opt/tabsira), APP_ROOT (/srv/tabsira), ENV_FILE
+# Environment: REPO_DIR (/opt/tabsira), WEB_RELEASES_DIR, STATIC_DIR, ENV_FILE
 # (/opt/tabsira/.env), LE_DIR (/etc/letsencrypt/live),
 # TLS_NAME, API_TLS_NAME, ADMIN_TLS_NAME, TLS_WARN_DAYS (30); /etc/tabsira/deploy.env
 # is read first when present.
@@ -32,7 +32,6 @@ if [[ -f "$DEPLOY_ENV_FILE" ]]; then
 	. "$DEPLOY_ENV_FILE"
 	set +a
 fi
-APP_ROOT="${APP_ROOT:-/srv/tabsira}"
 REPO_DIR="${REPO_DIR:-/opt/tabsira}"
 ENV_FILE="${ENV_FILE:-$REPO_DIR/.env}"
 APP_USER="${APP_USER:-devops}"
@@ -103,10 +102,12 @@ check_user_part() {
 	test_that check "the clone has no local changes" "a deploy resets it to its upstream branch" git -C "$REPO_DIR" diff --quiet HEAD
 	test_that fix ".env is ignored by git" "it must never be committed" git -C "$REPO_DIR" check-ignore -q .env
 
-	section "Runtime ($APP_ROOT)"
-	for dir in releases shared shared/state shared/cache shared/vision-weights shared/corpus shared/vectors static; do
-		test_that fix "$APP_ROOT/$dir exists and is writable" "sudo deploy/provision-app.sh creates the layout" test -w "$APP_ROOT/$dir"
+	section "Web builds and static files"
+	for dir in "$WEB_RELEASES_DIR" "$WEB_RELEASES_DIR/releases" "$STATIC_DIR"; do
+		test_that fix "$dir exists and is writable" "sudo deploy/provision-app.sh creates it" test -w "$dir"
 	done
+	test_that check "the corpus files are in $REPO_DIR/data/corpus" "only deploy/load-data.sh needs them, once" \
+		test -f "$REPO_DIR/data/corpus/sunnah-enriched.json"
 	test_that fix "/etc/tabsira/deploy.env exists" "written by deploy/provision-app.sh" test -f "$DEPLOY_ENV_FILE"
 	test_that check "/var/log/tabsira is writable" "pm2 writes the web logs there" test -w /var/log/tabsira
 	for unit in "$API_UNIT" "$WORKER_UNIT" "$VISION_UNIT"; do

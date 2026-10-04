@@ -8,9 +8,9 @@ After=network-online.target
 Type=simple
 User=@APP_USER@
 Group=@APP_GROUP@
-WorkingDirectory=@APP_ROOT@/current/services/vision
+WorkingDirectory=@REPO_DIR@/services/vision
 Environment=PYTHONUNBUFFERED=1
-ExecStart=@APP_ROOT@/current/services/vision/.venv/bin/python -m gunicorn "vision.main:create_app()" -k uvicorn_worker.UvicornWorker -w 1 -b 127.0.0.1:8100 --timeout 120 --chdir @APP_ROOT@/current/services/vision
+ExecStart=@REPO_DIR@/services/vision/.venv/bin/python -m gunicorn "vision.main:create_app()" -k uvicorn_worker.UvicornWorker -w 1 -b 127.0.0.1:8100 --timeout 120 --chdir @REPO_DIR@/services/vision
 Restart=on-failure
 RestartSec=5
 # Loading the model and its text encoder takes a while on the first start.

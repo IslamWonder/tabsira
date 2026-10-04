@@ -15,10 +15,11 @@
 #   --force      import again what is already there
 #
 # Idempotent: data that is there is left alone. The two corpus files are not in git
-# (docs/ASSET_MANIFEST.md): put them in CORPUS_DIR (default $APP_ROOT/shared/corpus).
+# (docs/ASSET_MANIFEST.md): put them in CORPUS_DIR (default /opt/tabsira/data/corpus,
+# ignored by git).
 # The vectors are downloaded from the owners' bucket and checked against their
 # .sha256, never computed here (docs/EMBEDDINGS.md); VECTORS_DIR (default
-# $APP_ROOT/shared/vectors) keeps the download outside the releases, which are pruned.
+# ~/tabsira-data/vectors) keeps the download outside the clone.
 
 set -Eeuo pipefail
 # shellcheck disable=SC1091
@@ -31,12 +32,9 @@ if [[ -f "$DEPLOY_ENV_FILE" ]]; then
 	. "$DEPLOY_ENV_FILE"
 	set +a
 fi
-APP_ROOT="${APP_ROOT:-/srv/tabsira}"
-CURRENT_LINK="${CURRENT_LINK:-$APP_ROOT/current}"
-SHARED_DIR="${SHARED_DIR:-$APP_ROOT/shared}"
-ENV_FILE="${ENV_FILE:-${REPO_DIR:-/opt/tabsira}/.env}"
-CORPUS_DIR="${CORPUS_DIR:-$SHARED_DIR/corpus}"
-VECTORS_DIR="${VECTORS_DIR:-$SHARED_DIR/vectors}"
+ENV_FILE="${ENV_FILE:-$REPO_DIR/.env}"
+CORPUS_DIR="${CORPUS_DIR:-$REPO_DIR/data/corpus}"
+VECTORS_DIR="${VECTORS_DIR:-$HOME/tabsira-data/vectors}"
 EXTENSIONS="postgis vector timescaledb pg_trgm unaccent pgcrypto btree_gin btree_gist pg_stat_statements"
 
 CHECK=false
@@ -93,7 +91,6 @@ ok "all nine extensions present; the migrations have run"
 
 # ─── Load ───────────────────────────────────────────────────────────
 if ! $CHECK; then
-	[[ -d "$CURRENT_LINK" ]] || die "No release at $CURRENT_LINK: deploy first."
 	for corpus in quran-annotations.json sunnah-enriched.json; do
 		[[ -f "$CORPUS_DIR/$corpus" ]] ||
 			die "$CORPUS_DIR/$corpus is missing. Copy it there (docs/ASSET_MANIFEST.md names its source and SHA-256)."
@@ -102,10 +99,10 @@ if ! $CHECK; then
 	banner "Scripture store, vectors, ontology and learning path"
 	force_arg=()
 	$FORCE && force_arg=(--force)
-	(cd "$CURRENT_LINK" && CORPUS_DIR="$CORPUS_DIR" VECTORS_DIR="$VECTORS_DIR" bash scripts/data.sh "${force_arg[@]}")
+	(cd "$REPO_DIR" && CORPUS_DIR="$CORPUS_DIR" VECTORS_DIR="$VECTORS_DIR" bash scripts/data.sh "${force_arg[@]}")
 	if $GEONAMES; then
 		banner "GeoNames"
-		(cd "$CURRENT_LINK" && bash scripts/seed-geonames.sh "${force_arg[@]}")
+		(cd "$REPO_DIR" && bash scripts/seed-geonames.sh "${force_arg[@]}")
 	fi
 fi
 

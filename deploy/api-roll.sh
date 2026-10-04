@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
 # Replace the API's gunicorn workers one at a time, never all at once.
-# The sequence is TTIN, health check, TTOU, run against release folders.
+# The sequence is TTIN, health check, TTOU, as on the earlier prototype.
 #
-# gunicorn runs N workers behind one listening socket. The unit starts it from
-# the `current` link (its --chdir and its python are both spelled through that
-# link), so a worker forked after the link moves imports the new release:
+# gunicorn runs N workers behind one listening socket. The unit starts it from the
+# clone (/opt/tabsira/apps/api), so a worker forked after a deploy has reset the
+# clone imports the new code:
 #
-#   smoke RELEASE   boot RELEASE once on a spare port and wait for
+#   smoke           boot the code in the clone once on a spare port and wait for
 #                   /health/ready, before any live worker is touched.
 #   roll            1. TTIN: gunicorn starts one extra worker, which imports the
 #                      release `current` now points at.
-#                   2. Wait until it has stayed up, answers /health/ready and
-#                      its memory maps show files of the new release (a worker
-#                      that silently kept the old code stops the roll).
+#                   2. Wait until it has stayed up and answers /health/ready.
 #                   3. TTOU: gunicorn retires its oldest worker gracefully.
 #                   4. Repeat until every worker is new, then bring the pool to
 #                      API_WORKERS.
@@ -51,22 +49,14 @@ workers() {
 worker_count() { workers | grep -c . || true; }
 age_of() { ps -o etimes= -p "$1" 2>/dev/null | tr -d ' ' || echo 0; }
 
-# Does worker $1 run the release `current` points at? /proc/PID/maps names the
-# real paths of the files it loaded, so the venv of the live release must show.
-runs_current_release() {
-	local real
-	real="$(real_dir "$CURRENT_LINK")"
-	grep -qF "$real/apps/api/" "/proc/$1/maps" 2>/dev/null
-}
-
 # ─── Pre-flight ─────────────────────────────────────────────────────
 smoke() {
-	local release="$1" pid deadline log_file="${TMPDIR:-/tmp}/tabsira-api-smoke.log"
+	local release="$REPO_DIR" pid deadline log_file="${TMPDIR:-/tmp}/tabsira-api-smoke.log"
 	[[ -x "$release/apps/api/.venv/bin/python" ]] || die "No virtual environment in $release/apps/api."
 	if curl -s --max-time 2 -o /dev/null "http://127.0.0.1:${API_SMOKE_PORT}/" 2>/dev/null; then
 		die "Port ${API_SMOKE_PORT} is already in use; set API_SMOKE_PORT to a free one."
 	fi
-	log "Pre-flight: booting $(basename "$release") on 127.0.0.1:${API_SMOKE_PORT}"
+	log "Pre-flight: booting $(git -C "$release" rev-parse --short HEAD 2>/dev/null || echo the clone) on 127.0.0.1:${API_SMOKE_PORT}"
 	(
 		cd "$release/apps/api" &&
 			exec .venv/bin/python -m gunicorn src.main:app \
@@ -126,10 +116,6 @@ replace_one() {
 		(($(age_of "$new_pid") < API_BOOT_SECONDS)); then
 		kill -TTOU "$MASTER" || true
 		die "A new worker did not come up healthy; stopping before any other worker is replaced."
-	fi
-	if ! runs_current_release "$new_pid"; then
-		kill -TTOU "$MASTER" || true
-		die "Worker $new_pid is healthy but did not load the release $(release_id_of "$CURRENT_LINK"); stopping. Restart the API outright: sudo systemctl restart $API_UNIT."
 	fi
 
 	kill -TTOU "$MASTER"
@@ -200,19 +186,16 @@ roll() {
 		replace_one
 	done
 	healthy "$API_HEALTH_URL" || die "The API is not ready after the rolling reload."
-	ok "All $TOTAL API workers now run $(release_id_of "$CURRENT_LINK")."
+	ok "All $TOTAL API workers now run $(git -C "$REPO_DIR" rev-parse --short HEAD)."
 	scale_to_setting
 }
 
 case "${1:-}" in
-smoke)
-	[[ -n "${2:-}" ]] || die "usage: api-roll.sh smoke RELEASE_DIR"
-	smoke "$2"
-	;;
+smoke) smoke ;;
 roll) roll ;;
 scale)
 	find_master
 	scale_to_setting
 	;;
-*) die "usage: api-roll.sh smoke RELEASE_DIR | roll | scale" ;;
+*) die "usage: api-roll.sh smoke | roll | scale" ;;
 esac

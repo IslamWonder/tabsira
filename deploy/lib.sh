@@ -17,26 +17,18 @@ source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)/../scrip
 DEPLOY_DIR="$REPO_ROOT/deploy"
 export DEPLOY_DIR
 
-# ─── Layout on the application host ─────────────────────────────────
-#   $REPO_DIR (/opt/tabsira)     the git clone every release is cut from, as on the
-#                                earlier prototype; deploys are run from it (./deploy/deploy.sh)
-#   $REPO_DIR/.env               the production environment file (0600, secrets, never in git)
-#   $APP_ROOT/releases/<id>      one folder per deploy, never edited afterwards
-#   $APP_ROOT/current            symlink to the live release
-#   $APP_ROOT/previous           symlink to the release before it (rollback)
-#   $APP_ROOT/shared/state       what outlives a release (IndexNow's memory)
-#   $APP_ROOT/shared/cache       uv and pnpm caches, on the same disk as the releases
-#   $APP_ROOT/static             every build's /_next/static files, served by nginx
-APP_ROOT="${APP_ROOT:-/srv/tabsira}"
+# ─── Layout on the application host (as on the earlier prototype) ───
+#   $REPO_DIR (/opt/tabsira)       the git clone: the API, the scan worker and vision run
+#                                  from it, in place; deploys run from it and reset it
+#   $REPO_DIR/.env                 the production environment file (0600, never in git)
+#   $WEB_RELEASES_DIR/releases/<id>  (/srv/tabsira/web) each web build's own copy, so the
+#                                  running Next.js never reads a build being replaced
+#   $WEB_RELEASES_DIR/current      symlink to the live web build; previous: the one before
+#   $STATIC_DIR (/srv/tabsira/static) every recent build's /_next/static, served by nginx
 REPO_DIR="${REPO_DIR:-/opt/tabsira}"
-RELEASES_DIR="${RELEASES_DIR:-$APP_ROOT/releases}"
-CURRENT_LINK="${CURRENT_LINK:-$APP_ROOT/current}"
-PREVIOUS_LINK="${PREVIOUS_LINK:-$APP_ROOT/previous}"
-SHARED_DIR="${SHARED_DIR:-$APP_ROOT/shared}"
-STATE_DIR="${STATE_DIR:-$SHARED_DIR/state}"
-CACHE_DIR="${CACHE_DIR:-$SHARED_DIR/cache}"
-STATIC_DIR="${STATIC_DIR:-$APP_ROOT/static}"
 ENV_FILE="${ENV_FILE:-$REPO_DIR/.env}"
+WEB_RELEASES_DIR="${WEB_RELEASES_DIR:-/srv/tabsira/web}"
+STATIC_DIR="${STATIC_DIR:-/srv/tabsira/static}"
 
 API_UNIT="${API_UNIT:-tabsira-api.service}"
 VISION_UNIT="${VISION_UNIT:-tabsira-vision.service}"

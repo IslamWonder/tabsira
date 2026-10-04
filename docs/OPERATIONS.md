@@ -33,20 +33,21 @@ Scheduled work runs in exactly one process: timers on the one application host, 
 
 ## Layout on the application host
 
+As on the earlier prototype: the clone is the application, and only the web builds live elsewhere.
+
 ```text
-/opt/tabsira                    the git clone, as on the earlier prototype: deploys run from it
-                                (cd /opt/tabsira && ./deploy/deploy.sh) and each one first resets
-                                it to its upstream branch; releases are cut from a commit
-/opt/tabsira/.env               production environment (0600, owned by devops, ignored by git)
-/srv/tabsira/releases/<id>      one folder per deploy (UTC time and short commit), never edited
-/srv/tabsira/current            symlink to the live release
-/srv/tabsira/previous           symlink to the release before it
-/srv/tabsira/shared/{state,cache,vision-weights,corpus,vectors}
-/srv/tabsira/static/_next/static  every recent build's static files, served by nginx
-/var/log/tabsira                web logs (pm2); the API and timers log to the journal
+/opt/tabsira                       the git clone: the API, the scan worker and vision run from it,
+                                   in place; deploys run from it (cd /opt/tabsira && ./deploy/deploy.sh)
+/opt/tabsira/.env                  production environment (0600, owned by devops, ignored by git)
+/opt/tabsira/data/corpus           the two corpus files for deploy/load-data.sh (ignored by git)
+/srv/tabsira/web/releases/<id>     each web build's own copy (UTC time and short commit)
+/srv/tabsira/web/current           symlink to the live web build; previous: the one before
+/srv/tabsira/web/deployed-commits  the commit each deploy left serving (for --rollback)
+/srv/tabsira/static/_next/static   every recent build's static files, served by nginx
+/var/log/tabsira                   web logs (pm2); the API and timers log to the journal
 ```
 
-A release holds the sources, the API's and vision's virtual environments, and `web/`, the assembled standalone build.
+The web build has its own copy because Next.js reads its build while it runs: building in the clone while the live processes read it would break pages mid-deploy. The API, the worker and vision need no copy: a worker imports the code once, when it starts, and the roll replaces the workers one at a time.
 
 ## Provisioning
 
@@ -76,14 +77,14 @@ Order matters: the data host first, because the first deploy migrates the databa
      APP_REPO=<git url> deploy/provision-app.sh --dry-run
    ```
 
-   Run it without `--dry-run` once the plan reads right. The certificates are issued by certbot during the run, so the three names must already resolve to this host. A certificate that exists (made with `certbot` by hand) is kept. Where they cannot yet (a rehearsal, a host before the DNS change), run it with `--skip-tls`: it does everything else but the certificates and `apply-config.sh`. Put a certificate and its key at `/etc/letsencrypt/live/<name>/{fullchain,privkey}.pem` for `tabsira.me`, `api.tabsira.me` and `admin.tabsira.me` (self-signed ones will do for a rehearsal), then run `APP_HOST_VPN_IP=<this host's VPN address> deploy/apply-config.sh` as root. Do not leave self-signed files where certbot will write: delete `/etc/letsencrypt/live/<name>` before the real issue. It uses the existing `devops` account (the one that ran `sudo`; it creates it when missing), builds the layout under `/opt/tabsira`, installs in that user's home nvm, the Node of `.nvmrc`, the pnpm that `package.json` pins, pm2 (started at boot), uv and the Python of `apps/api/.python-version` (`deploy/install-toolchain.sh`, pinned versions, `--check` to preview), nginx, certbot, the narrow sudoers file and `/usr/local/bin/tabsira-deploy`, and applies `deploy/apply-config.sh`. It writes `/opt/tabsira/.env` from `deploy/env.production.example` when none exists and generates `HASH_SECRET`; every other `CHANGE_ME` is left for the owners.
+   Run it without `--dry-run` once the plan reads right. The certificates are issued by certbot during the run, so the three names must already resolve to this host. A certificate that exists (made with `certbot` by hand) is kept. Where they cannot yet (a rehearsal, a host before the DNS change), run it with `--skip-tls`: it does everything else but the certificates and `apply-config.sh`. Put a certificate and its key at `/etc/letsencrypt/live/<name>/{fullchain,privkey}.pem` for `tabsira.me`, `api.tabsira.me` and `admin.tabsira.me` (self-signed ones will do for a rehearsal), then run `APP_HOST_VPN_IP=<this host's VPN address> deploy/apply-config.sh` as root. Do not leave self-signed files where certbot will write: delete `/etc/letsencrypt/live/<name>` before the real issue. It uses the existing `devops` account (the one that ran `sudo`; it creates it when missing), builds the clone at `/opt/tabsira` and the web folders under `/srv/tabsira`, installs in that user's home nvm, the Node of `.nvmrc`, the pnpm that `package.json` pins, pm2 (started at boot), uv and the Python of `apps/api/.python-version` (`deploy/install-toolchain.sh`, pinned versions, `--check` to preview), nginx, certbot, the narrow sudoers file and `/usr/local/bin/tabsira-deploy`, and applies `deploy/apply-config.sh`. It writes `/opt/tabsira/.env` from `deploy/env.production.example` when none exists and generates `HASH_SECRET`; every other `CHANGE_ME` is left for the owners.
 
-4. Fill `/opt/tabsira/.env` (every `CHANGE_ME`, the S3 keys of [Photos](#photos), `REDIS_PASSWORD`). Then check the data host from the application host before the first deploy: `psql "<the DATABASE_URL without +asyncpg>" -c 'select current_user'` must answer (the data host cannot test this login itself, `pg_hba` admits the application host only), and Redis must refuse a client without the password. Then `tabsira-deploy --dry-run` and `tabsira-deploy` as the app user. The first deploy builds the web app, installs the Python environments and downloads the detector weights (about 630 MB, once; written from the scripts, not exercised in the rehearsal); the first build takes a few minutes.
-5. After the first deploy, as the app user: `deploy/load-data.sh`. The database has three schemas, one Alembic chain each (`app`, `geodata`, `vectors`); the first deploy migrated them and this fills them. The two corpus files are not in git, so copy them to `/srv/tabsira/shared/corpus/` first (`docs/ASSET_MANIFEST.md` has their SHA-256). It checks the schemas and the nine extensions, runs `scripts/data.sh` from the current release (the scripture store, then the scripture vectors downloaded from the owners' bucket and verified against their `.sha256`, docs/EMBEDDINGS.md, so no vector is ever computed on the server; the world ontology and the learning path), with `--geonames` also the places of the atlas, and ends by counting what the three schemas hold (6,236 verses, hadiths, annotations, signals, ontology, vectors covering the store) and failing when a count is wrong. `--check` only prints the state. Data that is there is left alone; `--force` imports it again. Then `cd /srv/tabsira/current/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.make_admin <email>` makes an existing account the first admin (`docs/ADMIN.md`). Keep `UV_NO_SYNC=1` on every `uv run` in a release: without it uv installs the development dependencies into the production environment.
+4. Fill `/opt/tabsira/.env` (every `CHANGE_ME`, the S3 keys of [Photos](#photos), `REDIS_PASSWORD`). Then check the data host from the application host before the first deploy: `psql "<the DATABASE_URL without +asyncpg>" -c 'select current_user'` must answer (the data host cannot test this login itself, `pg_hba` admits the application host only), and Redis must refuse a client without the password. Then, as devops: `cd /opt/tabsira && ./deploy/deploy.sh --check`, `./deploy/deploy.sh --dry-run` and `./deploy/deploy.sh`. The first deploy builds the web app, installs the Python environments and downloads the detector weights (about 630 MB, once; written from the scripts, not exercised in the rehearsal); the first build takes a few minutes.
+5. After the first deploy, as the app user: `deploy/load-data.sh`. The database has three schemas, one Alembic chain each (`app`, `geodata`, `vectors`); the first deploy migrated them and this fills them. The two corpus files are not in git, so copy them to `/opt/tabsira/data/corpus/` first (ignored by git) (`docs/ASSET_MANIFEST.md` has their SHA-256). It checks the schemas and the nine extensions, runs `scripts/data.sh` from the clone (the scripture store, then the scripture vectors downloaded from the owners' bucket and verified against their `.sha256`, docs/EMBEDDINGS.md, so no vector is ever computed on the server; the world ontology and the learning path), with `--geonames` also the places of the atlas, and ends by counting what the three schemas hold (6,236 verses, hadiths, annotations, signals, ontology, vectors covering the store) and failing when a count is wrong. `--check` only prints the state. Data that is there is left alone; `--force` imports it again. Then `cd /opt/tabsira/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.make_admin <email>` makes an existing account the first admin (`docs/ADMIN.md`). Keep `UV_NO_SYNC=1` on every `uv run` in the clone: without it uv installs the development dependencies into the production environment.
 
 ## Checking the host before a deploy
 
-`deploy/deploy.sh --check` (also `deploy/check.sh`) is a read-only readiness check in plain shell. It needs no release and no Python environment, so it runs before the first deploy. It reports the tools on the application user's PATH (node of `.nvmrc`, pnpm, pm2, uv), the layout under `/opt/tabsira`, the installed units and sudoers file, whether `deploy/apply-config.sh --check` finds the host in step with the checkout, the environment file (mode 0600, `ENVIRONMENT=production`, no placeholder, no development address, every required key set), whether the data host's database and Redis ports accept connections and the database accepts this login, and each Let's Encrypt certificate (present, names its host, not about to expire, renewed through the webroot). Each line is `ok`, `fix` (the exit status is 1) or `check`. The provisioning scripts take `--check` as another name for `--dry-run`.
+`deploy/deploy.sh --check` (also `deploy/check.sh`) is a read-only readiness check in plain shell. It needs no build and no Python environment, so it runs before the first deploy. It reports the tools on the application user's PATH (node of `.nvmrc`, pnpm, pm2, uv), the clone at `/opt/tabsira` and the web folders under `/srv/tabsira`, the installed units and sudoers file, whether `deploy/apply-config.sh --check` finds the host in step with the checkout, the environment file (mode 0600, `ENVIRONMENT=production`, no placeholder, no development address, every required key set), whether the data host's database and Redis ports accept connections and the database accepts this login, and each Let's Encrypt certificate (present, names its host, not about to expire, renewed through the webroot). Each line is `ok`, `fix` (the exit status is 1) or `check`. The provisioning scripts take `--check` as another name for `--dry-run`.
 
 ## Checking the environment file
 
@@ -92,7 +93,7 @@ Order matters: the data host first, because the first deploy migrates the databa
 `--live` also tries the services: the database, Redis (the password, and that it keeps nothing on disk), the AI provider's key (a listing of its models: no tokens spent), the detector, the mail server (a login, never a message) and that this host resolves the site and the API names. `--env-file PATH` checks another file. The deploy runs it in a new release before the migrations; run it by hand from any release:
 
 ```bash
-cd /srv/tabsira/releases/<id>/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.check_config --live
+cd /opt/tabsira/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.check_config --live
 ```
 
 ## Deploying
@@ -101,31 +102,31 @@ As devops, from the clone, as on the earlier prototype:
 
 ```bash
 cd /opt/tabsira
-./deploy/deploy.sh --check              # read-only: tools, clone, runtime, .env, database, Redis, certificates
+./deploy/deploy.sh --check              # read-only: tools, clone, web folders, .env, database, Redis, certificates
 ./deploy/deploy.sh --dry-run            # print every step with its values, run nothing
 ./deploy/deploy.sh                      # deploy origin/main
-./deploy/deploy.sh --ref v1.2.0         # a tag, branch or commit
-./deploy/deploy.sh --rollback           # back to the previous release, no rebuild
+./deploy/deploy.sh --rollback           # back to the commit deployed before this one
 ```
 
-A deploy first fetches the clone and resets it to its upstream branch, then runs again from the updated copy, so the deploy that runs is always the latest; the release itself is cut from the commit `--ref` names. `/usr/local/bin/tabsira-deploy` does the same from anywhere (Jenkins calls it over ssh). The steps:
+`/usr/local/bin/tabsira-deploy` does the same from anywhere (Jenkins calls it over ssh). The steps:
 
 1. Take the lock; check the host and that `.env` says `ENVIRONMENT=production` and names no development address.
 2. Optional dump (`PRE_DEPLOY_BACKUP=true`).
-3. Cut `releases/<id>` with `git archive`, `uv sync --frozen --no-dev` for the API and vision, `pnpm install --frozen-lockfile`, build the web app (`NEXT_PUBLIC_*` are baked here from `.env`; the build refuses a development address), assemble `web/` and copy its static files to the shared static folder.
-4. `check_config --live`: the production checklist of the environment file, and each service tried for real (see [Checking the environment file](#checking-the-environment-file)); a `fix` line stops the deploy here, before anything is migrated or switched. Then the migrations: the `geodata` chain, then the `app` chain (`scripts/migrate.sh`), then the audit policy.
-5. Pre-flight: boot the new API and the new web build on spare ports (18000, 3100) and wait until they answer. A release that cannot start is removed and the live one was never touched.
-6. Switch `current` with one atomic rename.
-7. Roll the API, restart the scan worker, roll the web, then restart vision when `services/vision` changed.
-8. Health gate; compare the host's nginx and units with the release (a warning); IndexNow (`node scripts/indexnow.mjs`, production only, never fails the deploy); prune old releases (five kept).
+3. Record the commit that serves now, fetch, and reset the clone to its upstream branch (`git reset --hard @{u}`); then run again from the updated copy, so the steps below are always the latest.
+4. `uv sync --frozen --no-dev` for the API and vision, `pnpm install --frozen-lockfile`, the detector weights (once).
+5. `check_config --live`: the production checklist of the environment file, and each service tried for real (see [Checking the environment file](#checking-the-environment-file)); a `fix` line stops the deploy here, before anything is migrated. Then the migrations: the `geodata`, `app` and `vectors` chains (`scripts/migrate.sh`), then the audit policy.
+6. Build the web app (`NEXT_PUBLIC_*` are baked here from `.env`; the build refuses a development address).
+7. The API: boot the new code once on a spare port (18000) and wait for `/health/ready`, then replace the workers one at a time. Then restart the scan worker, and vision when `services/vision` changed.
+8. The web (`deploy/web-roll.sh deploy`): copy the build to `/srv/tabsira/web/releases/<id>`, add its static files to `/srv/tabsira/static`, boot it once on a spare port (3100), switch `current`, reload the pm2 instances one at a time.
+9. Health gate; compare the host's nginx and units with the clone (a warning); IndexNow (`node scripts/indexnow.mjs`, production only, never fails the deploy).
 
-On a failure after the switch `current` goes back to the previous release and the API and web are rolled again. **Migrations are not reverted**: write migrations that the previous release can run against (add before you remove), and restore a dump (`deploy/restore-db.sh`) only as a last resort.
+On a failure after the pull the clone goes back to the recorded commit, the dependencies are installed again, the API and worker are rolled again and the web goes back to its previous build. **Migrations are not reverted**: write migrations that the previous code can run against (add before you remove), and restore a dump (`deploy/restore-db.sh`) only as a last resort.
 
 ### The scan worker
 
-`tabsira-worker.service` runs `python -m src.cli.scan_worker` from the `current` link, as the application user, with the API's `.env` (including `REDIS_URL` and `REDIS_PASSWORD`). It is the only consumer of the scan queue: never start a second one, and never run it inside the API workers. `deploy/apply-config.sh` installs and enables it (`provision-app.sh` runs that); the sudoers file lets the deploy user restart and status it.
+`tabsira-worker.service` runs `python -m src.cli.scan_worker` from the clone (`/opt/tabsira/apps/api`), as the application user, with the API's `.env` (including `REDIS_URL` and `REDIS_PASSWORD`). It is the only consumer of the scan queue: never start a second one, and never run it inside the API workers. `deploy/apply-config.sh` installs and enables it (`provision-app.sh` runs that); the sudoers file lets the deploy user restart and status it.
 
-The deploy restarts it right after the API rolls, once the migrations have run. A restart is a `SIGTERM`: the worker stops taking jobs, lets running scans finish for up to `SCAN_JOB_TIMEOUT_SECONDS` (240 s), then exits. `TimeoutStopSec=300` covers that, so a deploy can wait up to five minutes for the worker; raise `TimeoutStopSec` if you raise the job timeout. A restart does not drop in-flight jobs: the queue is idempotent, a job that was cut short stays unacknowledged on the Redis stream and is delivered again (after ten minutes), and running a scan twice changes nothing. `Restart=on-failure` brings it back after a crash. A rollback restarts it onto the previous release the same way.
+The deploy restarts it right after the API rolls, once the migrations have run. A restart is a `SIGTERM`: the worker stops taking jobs, lets running scans finish for up to `SCAN_JOB_TIMEOUT_SECONDS` (240 s), then exits. `TimeoutStopSec=300` covers that, so a deploy can wait up to five minutes for the worker; raise `TimeoutStopSec` if you raise the job timeout. A restart does not drop in-flight jobs: the queue is idempotent, a job that was cut short stays unacknowledged on the Redis stream and is delivered again (after ten minutes), and running a scan twice changes nothing. `Restart=on-failure` brings it back after a crash. A rollback restarts it onto the previous commit the same way.
 
 Check: `systemctl status tabsira-worker`, `journalctl -u tabsira-worker -f`. Rehearse without changing anything: `deploy/deploy.sh --dry-run` prints the restart step, `deploy/provision-app.sh --dry-run` the sudoers line, `sudo deploy/apply-config.sh --dry-run` the unit file to install.
 
@@ -135,13 +136,13 @@ The scan workflow keeps each photo in Redis, sealed with AES-GCM (the key comes 
 
 ### The API roll (gunicorn)
 
-`deploy/api-roll.sh` replaces the workers one at a time. The unit starts gunicorn through the `current` link (its python, its `--chdir`), so a worker forked after the link moves imports the new release. For each running worker: `TTIN` adds one, the script waits until it has stayed up for eight seconds and `/health/ready` answers, checks that the new worker really loaded files of the new release (from `/proc/<pid>/maps`; a worker that kept the old code stops the roll), then `TTOU` retires the oldest, which finishes its requests within `--graceful-timeout` (30 s). At least N workers serve at every moment. Afterwards the pool is brought to `API_WORKERS`.
+`deploy/api-roll.sh` replaces the workers one at a time. The unit starts gunicorn from the clone (`/opt/tabsira/apps/api`, its `.venv`), so a worker forked after the deploy has reset the clone imports the new code. For each running worker: `TTIN` adds one, the script waits until it has stayed up for eight seconds and `/health/ready` answers, then `TTOU` retires the oldest, which finishes its requests within `--graceful-timeout` (30 s). At least N workers serve at every moment. Afterwards the pool is brought to `API_WORKERS`.
 
-A first start, or a changed Python, is a `systemctl restart tabsira-api` (workers keep the master's interpreter). The master keeps its start release alive on disk; the prune never deletes it and the deploy tells you when to restart the unit in a quiet hour.
+A first start, or a changed Python, is a `systemctl restart tabsira-api` (workers keep the master's interpreter).
 
 ### The web roll (pm2)
 
-`deploy/web-roll.sh` puts the new build live. `deploy/ecosystem.config.cjs` runs `current/web/apps/web/server.js` in cluster mode (`WEB_INSTANCES`, default 2). `pm2 reload` runs one instance at a time; each must be online, up for five seconds and answer before the next is touched. The shared static folder keeps the files of older builds for seven days, because a tab opened before a deploy still asks for the old chunk names.
+`deploy/web-roll.sh` puts the new build live. `deploy/ecosystem.config.cjs` runs `/srv/tabsira/web/current/apps/web/server.js` in cluster mode (`WEB_INSTANCES`, default 2), with the environment of `/opt/tabsira/.env`. `pm2 reload` runs one instance at a time; each must be online, up for five seconds and answer before the next is touched. Five builds are kept; the shared static folder keeps the files of older builds for seven days, because a tab opened before a deploy still asks for the old chunk names. `deploy/web-roll.sh rollback` puts the previous build back the same way.
 
 ## nginx and TLS
 
@@ -165,7 +166,7 @@ The admin area is served only at `https://admin.tabsira.me`, over the VPN.
 
 ## Backups
 
-On the data host `tabsira-pg-backup.timer` runs nightly at 03:15 UTC (`/usr/local/bin/tabsira-pg-backup`): a custom-format dump of `tabsira` into `/var/backups/tabsira`, verified with `pg_restore --list`, plus a globals file (roles and their `search_path`). Dumps older than 14 days are deleted, but the newest three are always kept (`BACKUP_KEEP_DAYS`, `BACKUP_KEEP_MIN`). Run one now: `systemctl start tabsira-pg-backup.service`, or `deploy/backup-db.sh` as root (it runs itself as `postgres`). `deploy/backup-db.sh --url <url>` takes one from the app host before a risky deploy (`PRE_DEPLOY_BACKUP=true`); the application user cannot write `/var/backups`, so that dump goes to `/srv/tabsira/shared/backups` (`BACKUP_DIR` overrides it), on the application host, which the loss of the data host does not touch but a compromise of the application host does. `pg_dump` prints a warning about circular foreign keys on `continuous_agg`: it belongs to TimescaleDB's own catalog, and the restore script handles it.
+On the data host `tabsira-pg-backup.timer` runs nightly at 03:15 UTC (`/usr/local/bin/tabsira-pg-backup`): a custom-format dump of `tabsira` into `/var/backups/tabsira`, verified with `pg_restore --list`, plus a globals file (roles and their `search_path`). Dumps older than 14 days are deleted, but the newest three are always kept (`BACKUP_KEEP_DAYS`, `BACKUP_KEEP_MIN`). Run one now: `systemctl start tabsira-pg-backup.service`, or `deploy/backup-db.sh` as root (it runs itself as `postgres`). `deploy/backup-db.sh --url <url>` takes one from the app host before a risky deploy (`PRE_DEPLOY_BACKUP=true`); the application user cannot write `/var/backups`, so that dump goes to `~/backups/tabsira` (`BACKUP_DIR` overrides it), on the application host, which the loss of the data host does not touch but a compromise of the application host does. `pg_dump` prints a warning about circular foreign keys on `continuous_agg`: it belongs to TimescaleDB's own catalog, and the restore script handles it.
 
 These are local copies: they do not survive the loss of the data host. Copying `/var/backups/tabsira` off the machine is the owners' decision (listed below).
 
@@ -189,7 +190,7 @@ systemctl status tabsira-api tabsira-vision tabsira-worker  # units
 journalctl -u tabsira-api -f                       # API logs
 pm2 status; pm2 logs tabsira-web                   # web
 systemctl list-timers 'tabsira-*'                  # the scheduled work
-sudo deploy/apply-config.sh --check                # does the host match the release?
+sudo deploy/apply-config.sh --check                # does the host match the clone?
 ```
 
 Log rotation (`/etc/logrotate.d/tabsira`) covers `/var/log/tabsira`; nginx rotates its own logs; the journal follows `journald.conf`.

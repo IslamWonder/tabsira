@@ -9,9 +9,10 @@
 #   1. apt packages: nginx, certbot (and its DNS plugin), git, curl,
 #      postgresql-client-18 from PGDG (psql and pg_dump for migrations and dumps).
 #   2. The application user and the layout: the clone at REPO_DIR (/opt/tabsira,
-#      cloned from APP_REPO when it is not there yet), and under APP_ROOT
-#      (/srv/tabsira) the releases, shared (state, cache, weights, corpus,
-#      vectors) and static folders; /var/log/tabsira.
+#      cloned from APP_REPO when it is not there yet) which the API, the scan worker
+#      and vision run from in place; /srv/tabsira/web for the web builds and
+#      /srv/tabsira/static for their static files, as on the earlier prototype;
+#      /var/log/tabsira.
 #   3. The toolchain, in the application user's home (deploy/install-toolchain.sh):
 #      nvm with the Node of .nvmrc, the pnpm package.json pins, pm2, uv and the
 #      Python apps/api/.python-version names as uv builds it (never the system
@@ -36,7 +37,8 @@
 # CERTBOT_DNS_PLUGIN and CERTBOT_DNS_CREDENTIALS (optional: issue the admin
 # certificate by DNS-01 instead of HTTP; the credentials file is mode 0600, supplied
 # by the owners, never in git), APP_USER (the account that ran sudo, else devops;
-# created when missing), APP_ROOT (/srv/tabsira), REPO_DIR (/opt/tabsira), APP_REPO (git URL to clone
+# created when missing), REPO_DIR (/opt/tabsira), WEB_RELEASES_DIR (/srv/tabsira/web), STATIC_DIR
+# (/srv/tabsira/static), APP_REPO (git URL to clone
 # into REPO_DIR when it is not a clone yet), VPN_SUBNET, PG_CLIENT_VERSION (18).
 
 set -Eeuo pipefail
@@ -69,7 +71,7 @@ require_app_host
 
 if is_dry; then
 	banner "DRY RUN: application host"
-	log "user          $APP_USER; clone $REPO_DIR (with its .env); runtime $APP_ROOT/{releases,shared,static}; logs /var/log/tabsira"
+	log "user          $APP_USER; clone $REPO_DIR (with its .env); web builds $WEB_RELEASES_DIR; static $STATIC_DIR; logs /var/log/tabsira"
 	log "packages      nginx certbot${CERTBOT_DNS_PLUGIN:+ python3-certbot-dns-$CERTBOT_DNS_PLUGIN} git curl postgresql-client-$PG_CLIENT_VERSION"
 	log "toolchain     deploy/install-toolchain.sh as $APP_USER: nvm, Node (.nvmrc), pnpm (package.json), pm2, uv, Python (apps/api/.python-version); pm2 at boot"
 	log "env file      $ENV_FILE from deploy/env.production.example when missing (0600)"
@@ -110,13 +112,11 @@ apt-get install -y -qq "postgresql-client-$PG_CLIENT_VERSION" >/dev/null
 id -u "$APP_USER" >/dev/null 2>&1 || useradd --create-home --shell /bin/bash "$APP_USER"
 APP_GROUP="$(id -gn "$APP_USER")"
 APP_HOME="$(getent passwd "$APP_USER" | cut -d: -f6)"
-install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$APP_ROOT" "$APP_ROOT/releases" "$APP_ROOT/shared" \
-	"$APP_ROOT/shared/state" "$APP_ROOT/shared/cache" "$APP_ROOT/shared/vision-weights" "$APP_ROOT/shared/corpus" \
-	"$APP_ROOT/shared/vectors"
-install -d -o "$APP_USER" -g "$APP_GROUP" -m 0755 "$APP_ROOT/static" /var/log/tabsira
+install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$WEB_RELEASES_DIR" "$WEB_RELEASES_DIR/releases"
+install -d -o "$APP_USER" -g "$APP_GROUP" -m 0755 "$(dirname "$STATIC_DIR")" "$STATIC_DIR" /var/log/tabsira
 install -d -m 0755 /var/www/certbot /etc/tabsira
-# nginx (www-data) reads the static files; it needs to traverse APP_ROOT.
-chmod o+x "$APP_ROOT"
+# nginx (www-data) reads the static files; it needs to traverse their parent.
+chmod o+x "$(dirname "$STATIC_DIR")"
 if [[ ! -d "$REPO_DIR/.git" ]]; then
 	[[ -n "$APP_REPO" ]] || die "$REPO_DIR is not a git clone. Clone the repository there first, or set APP_REPO."
 	log "Cloning the repository into $REPO_DIR"
@@ -128,9 +128,10 @@ fi
 	warn "This script runs from $REPO_ROOT, not from the clone $REPO_DIR; deploys run from $REPO_DIR."
 cat >/etc/tabsira/deploy.env <<EOF
 # Read by deploy/deploy.sh and deploy/check.sh. No secret: addresses and names only.
-APP_ROOT=$APP_ROOT
 REPO_DIR=$REPO_DIR
 ENV_FILE=$ENV_FILE
+WEB_RELEASES_DIR=$WEB_RELEASES_DIR
+STATIC_DIR=$STATIC_DIR
 APP_HOST_VPN_IP=$APP_HOST_VPN_IP
 VPN_SUBNET=${VPN_SUBNET:-100.64.0.0/10}
 APP_USER=$APP_USER
