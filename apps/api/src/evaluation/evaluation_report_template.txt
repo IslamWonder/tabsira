@@ -1,0 +1,40 @@
+# Evaluation: the insight engine on the gold scenes
+
+Measured on $date by `make eval` (`apps/api/src/cli/evaluate.py`, `apps/api/src/evaluation/engine_eval.py`), with the real providers: $provider ($models). Raw results: `$raw_path` (not committed). This file is written by that command.
+
+## Method
+
+- **Scenes**: the $scenes gold scenes of `apps/api/tests/evaluation/scenes/gold.json` (generated images, not phone photos; see docs/BENCHMARK.md), each with what the engine should do in `engine-gold.json`: give an insight, or abstain (a question, or no insight).
+- **Pipeline per scene**: image check, the detector of services/vision (available for $detector of $scenes scenes; without it the scene is described without boxes), scene analysis and the sensitivity guard, then the insight engine: ontology and constraints, learning path, planner, hybrid search and rerank, verifier and evidence gate, composer.
+- **Checks, by rule**: every text of every insight through the scripture guard (patterns, the whole Quran, the hadiths shown); every evidence reference resolved to a stored text whose SHA-256 still matches its bytes; the relation types; abstention where expected; the hoped-for texts (informational: other texts can be as good).
+
+## Results
+
+| Measure | Result |
+| --- | --- |
+| Scripture leakage (texts refused by the guard) | $leaks |
+| Evidence references resolvable and hash-checked | $resolved |
+| Scenes handled as expected | $correct |
+| Abstention where expected | $abstain |
+| Insight where expected | $insight |
+| Hoped-for texts found | $hoped |
+| Hadiths queued for an editor's ruling | $awaiting |
+| Cost per scan | $$$cost_per_scan (total $$$cost) |
+
+Statuses: $statuses.
+
+Relation types of the insights: $relations.
+
+## Time per stage
+
+$stage_table
+
+## Per scene
+
+$scene_table
+
+## Limits
+
+- Fifteen generated scenes, one run each: a p95 over so few samples is close to the maximum, and real photos may behave differently.
+- No hadith has an editor's ruling yet (decision 18), so every insight carries its verse alone and the hadiths it wanted wait in the verification queue; the hadith half of the pipeline (relevance, queueing) runs, the display of a hadith does not.
+- The checks are rules: they prove that no scripture leaked and that every reference is real, not that an explanation is good Arabic or a wise choice. Read the raw answers before trusting a small difference.
