@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
@@ -35,6 +36,7 @@ def test_the_engine_is_configured_with_a_short_timeout_and_the_search_path(monke
     assert captured["max_overflow"] == settings.db_max_overflow
     assert captured["pool_timeout"] == settings.db_connect_timeout
     assert captured["pool_pre_ping"] is True
+    assert captured["hide_parameters"] is True
     assert captured["connect_args"] == {
         "timeout": settings.db_connect_timeout,
         "server_settings": {"search_path": "app,geodata,public"},
@@ -82,3 +84,18 @@ async def test_dispose_engine_closes_the_pool_and_the_engine_keeps_working(engin
 
     async for session in database.get_db():
         assert (await session.execute(text("SELECT 1"))).scalar_one() == 1
+
+
+async def test_a_database_error_does_not_carry_the_values_of_the_statement(engine):
+    from sqlalchemy.exc import IntegrityError
+
+    async for session in database.get_db():
+        session.add(GeoName(geoname_id=1, name="First"))
+        await session.flush()
+        with pytest.raises(IntegrityError) as caught:
+            async with session.begin_nested():
+                session.add(GeoName(geoname_id=1, name="private-answer-muslim"))
+                await session.flush()
+
+    assert "private-answer-muslim" not in str(caught.value)
+    assert "parameters hidden" in str(caught.value)

@@ -32,6 +32,9 @@ def get_engine() -> AsyncEngine:
     return create_async_engine(
         settings.database_url.get_secret_value(),
         echo=False,
+        # An error message must not carry the values of the statement: they can be a
+        # private profile answer, an address or a password hash.
+        hide_parameters=True,
         pool_pre_ping=True,
         pool_size=settings.db_pool_size,
         max_overflow=settings.db_max_overflow,
