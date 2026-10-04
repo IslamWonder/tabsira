@@ -28,13 +28,15 @@ The order in which TABSIRA is built. Each line becomes one or more atomic commit
 - [ ] Insight screen, «لماذا ظهر هذا؟», the small step, chat limited to three messages, «تمّ» with idempotent save.
 - [ ] Exposure log and diversity of equal-weight texts; hidden treasure.
 - [ ] Personal world: fog map with places per learning-path domain.
+- [ ] Gamification (decision 27): practice ranks, streak, daily quest, sky of meanings, badges, victory banner, world growth.
 
 ## Wave 4 — sharing, social, atlas
 
 - [ ] Share card rendered with real fonts; public insight page.
 - [ ] «تبصرة تواصل»: posts from verified insights, feeds «لك» and «أتابع» with cursors, follow, like, comments, bookmarks, reports, blocks, moderation states.
 - [ ] Photo storage with consent (S3 in production, disk locally), EXIF read then stripped.
-- [ ] GeoNames import into `geodata`; private capture location and public map entry; approximate cells; publish and withdraw.
+- [x] GeoNames import into `geodata`, place search, reverse lookup and the deterministic approximation grid.
+- [ ] Private capture location and public map entry; publish and withdraw.
 - [ ] «أطلس بصائر العالم»: MapLibre map with clusters, filters, place pages.
 - [ ] «اكتشف البصائر حولك»: camera discovery level A, level B with orientation, level C behind a flag.
 
