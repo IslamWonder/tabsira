@@ -6,6 +6,13 @@
 //
 //   pnpm --filter @tabsira/web check:a11y [base-url]
 //
+// Environment: A11Y_FAIL_ON=any fails on every violation, not only the serious
+// and critical ones (Jenkins sets it); A11Y_API_ORIGIN names the API origin the
+// built app calls from the browser (default: api.<host of the base url>);
+// API_INTERNAL_URL is the API the web server and this script reach (default
+// http://127.0.0.1:8000: the real API, or scripts/lib/api-stub.mjs in CI);
+// CHROME_PATH is the browser.
+//
 // Checked, in both themes, at 375 and 1440 px: the scene (/), the cookie
 // screen of a first visit, the sign-in page and «ملفي» signed in. The API is
 // answered with the samples of scripts/lib/api-mock.mjs.
@@ -18,7 +25,8 @@ import { emulate, visit, withPage } from './lib/chrome.mjs';
 const require = createRequire(import.meta.url);
 const AXE = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
-const BLOCKING = new Set(['serious', 'critical']);
+const FAIL_ON_ANY = process.env.A11Y_FAIL_ON === 'any';
+const SERIOUS = new Set(['serious', 'critical']);
 
 const CHECKS = [
   { name: 'scene', path: '/', consent: 'decided', state: 'guest' },
@@ -31,7 +39,7 @@ async function main() {
   const base = process.argv[2] ?? 'https://tabsira.test';
   const siteOrigin = new URL(base).origin;
   const url = new URL(base);
-  const apiOrigin = `${url.protocol}//api.${url.host}`;
+  const apiOrigin = process.env.A11Y_API_ORIGIN || `${url.protocol}//api.${url.host}`;
   const state = { value: 'guest' };
   const consentId = await recordedConsentId();
   let failures = 0;
@@ -62,11 +70,13 @@ async function main() {
             returnByValue: true,
           });
           const violations = JSON.parse(result.value);
-          const blocking = violations.filter((violation) => BLOCKING.has(violation.impact));
+          const blocking = violations.filter(
+            (violation) => FAIL_ON_ANY || SERIOUS.has(violation.impact)
+          );
           failures += blocking.length;
           const label = `${check.name} ${width}px ${theme}`;
           console.log(
-            `${blocking.length === 0 ? 'ok  ' : 'FAIL'} ${label}: ${blocking.length} serious or critical, ${violations.length - blocking.length} minor`
+            `${blocking.length === 0 ? 'ok  ' : 'FAIL'} ${label}: ${blocking.length} blocking, ${violations.length - blocking.length} other`
           );
           for (const violation of violations) {
             console.log(

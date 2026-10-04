@@ -8,7 +8,7 @@ Nothing in the repository names a Jenkins, Gitea or SonarQube server. The owners
 
 ```text
 Checkout -> Prepare -> Services -> Install -> Migrations
-  -> in parallel: API tests | Vision tests | Web build and tests | Lint | Security gate | Audit
+  -> in parallel: API tests | Vision tests | Web build, accessibility and tests | Lint | Security gate | Audit
   -> SonarQube (main, or RUN_SONAR) -> archive -> notify -> remove the services
 ```
 
@@ -21,12 +21,25 @@ Checkout -> Prepare -> Services -> Install -> Migrations
 | API tests           | `scripts/test-coverage.sh`                                         | Yes: 100 % of the suite and of the changed lines                                        |
 | Vision tests        | `jenkins/vision-coverage.sh`                                       | Yes: 100 % (`fail_under` in its `pyproject.toml`)                                       |
 | Web build and tests | `pnpm build`, `scripts/test-web-coverage.sh`                       | Yes; skipped with a notice while `apps/web` does not exist                              |
+| Web accessibility   | `jenkins/web-a11y.sh`                                              | Yes: any axe violation; needs Chromium, `RUN_A11Y` turns it off                         |
 | Lint                | `scripts/lint.sh`                                                  | Yes: format check, lint rules, types, shell, Markdown                                   |
 | Security gate       | `scripts/security-gate.sh`                                         | Yes: secrets in the tree or the history, critical advisories in production dependencies |
 | Audit               | `scripts/audit.sh`                                                 | No: findings make the build unstable                                                    |
 | SonarQube           | `jenkins/sonar-scan.sh`                                            | No: a failed gate or an unreachable server makes the build unstable                     |
 
 The branches after Migrations share nothing but the checkout, so they run side by side with `failFast`: the build costs its longest branch, and a red suite stops the others. Red stays reserved for broken code and tests; the advisory audit and SonarQube can only make a build yellow.
+
+### The accessibility stage
+
+`Web Accessibility` runs `jenkins/web-a11y.sh` in the web branch, after the SEO checks and on the same production build. It starts a tiny stub API (`apps/web/scripts/lib/api-stub.mjs`, loopback port 8010) that answers the web server and the check with the sample answers of the screenshots, starts `next start` on port 3188, and drives Chromium through the DevTools protocol with axe-core (WCAG 2.2 AA) on the scene, the cookie screen, sign-in and «ملفي», in both themes at 375 and 1440 px. It sets `A11Y_FAIL_ON=any`: any violation, whatever its impact, fails the stage and the build. Nothing comes from a database or a real API, and axe-core is a pinned dev dependency, so nothing is fetched.
+
+What the agent needs, beyond the rest of this file:
+
+- A Chromium or Chrome the agent user can run: `chromium` or `google-chrome` on the `PATH`, or `CHROME_PATH` set (in `jenkins/jenkins.env`, on the job or globally), or Playwright's headless shell in the agent user's `~/.cache/ms-playwright` (`pnpm dlx playwright install chromium-headless-shell`). The pipeline does not install it, because a build cannot add system packages.
+- A browser started as root or inside a container without user namespaces needs `CHROME_NO_SANDBOX=1`.
+- Free loopback ports 3188 (web), 8010 (stub) and 9333 (DevTools; `A11Y_WEB_PORT`, `A11Y_API_PORT`, `CHROME_DEBUG_PORT` change them). Two builds on one agent at the same time would collide on them: keep one executor, or give each build its own ports.
+
+The agent's Chromium cannot be assumed, so the stage sits behind the build parameter `RUN_A11Y`, which defaults to ticked. On an agent without a browser, untick it on the job (or set a default there): the build then shows a warning badge, never a silent pass. Run it by hand with `bash jenkins/web-a11y.sh` after `pnpm build`; `--dry-run` prints the plan.
 
 ### The per-build services
 
@@ -99,6 +112,9 @@ Every setting has a default in [`jenkins/jenkins.env`](../jenkins/jenkins.env), 
 | `CI_SWEEP_MAX_AGE`            | `4h`                                       | file, job, global            | Age after which a container is a leftover (`90m`, `4h`, `2d`)                                      |
 | `CI_PYTEST_WORKERS`           | `0`                                        | file, job, global, parameter | Parallel pytest workers; 0 is serial. See the note below                                           |
 | `RUN_SONAR`, `RUN_AUDIT`      | `false`, `true`                            | build parameters only        | Analyse a branch other than `SONAR_BRANCH`; run the advisory audit                                 |
+| `RUN_A11Y`                    | `true`                                     | build parameter only         | Run the accessibility check; untick only on an agent without Chromium                              |
+| `CHROME_PATH`                 | blank                                      | file, job, global            | Chromium or Chrome binary for the accessibility check; blank finds one                             |
+| `CHROME_NO_SANDBOX`           | blank                                      | file, job, global            | `1` runs the browser with `--no-sandbox` (root or container)                                       |
 
 Set by the pipeline for every build, never by hand:
 

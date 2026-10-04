@@ -2,7 +2,7 @@
 // `checkout scm`, so it works with the Gitea server Jenkins clones from).
 //
 //   Checkout -> Prepare -> Services -> Install -> Migrations
-//     -> in parallel: API tests | Vision tests | Web build and tests | Lint | Security gate | Audit
+//     -> in parallel: API tests | Vision tests | Web build, checks, accessibility and tests | Lint | Security gate | Audit
 //     -> SonarQube (on main, or when RUN_SONAR is ticked)
 //     -> Deploy (only when DEPLOY is ticked, on DEPLOY_BRANCH) -> archive -> notify -> clean up
 //
@@ -157,6 +157,11 @@ properties([
             name: 'RUN_AUDIT',
             defaultValue: true,
             description: 'Run the advisory audit (SAST, dependency advisories, hygiene). It never fails the build; findings make it unstable.'
+        ),
+        booleanParam(
+            name: 'RUN_A11Y',
+            defaultValue: true,
+            description: 'Run the accessibility check (axe-core in Chromium, fails on any violation). Untick only on an agent without a Chromium.'
         ),
         booleanParam(
             name: 'DEPLOY',
@@ -342,8 +347,7 @@ node {
                         stage('Web SEO Checks') {
                             // docs/SEO.md section 7: check:seo and check:site against the production
                             // build, started on loopback with no analytics id (so no Google code
-                            // can exist). check:a11y (axe) needs a Chromium and the API's sample
-                            // answers at the built API address: run it by hand for now.
+                            // can exist). check:a11y has its own stage below.
                             sh '''#!/bin/bash
                                 set -euo pipefail
                                 mkdir -p .ci_logs
@@ -362,6 +366,28 @@ node {
                                 export SITE_URL="${NEXT_PUBLIC_SITE_URL:-${SITE_URL:-https://tabsira.test}}"
                                 { pnpm check:seo && pnpm check:site; } 2>&1 | tee ../../.ci_logs/web-seo-checks.log
                             '''
+                        }
+                        // axe-core in a real Chromium against the same build, with a stub API
+                        // (jenkins/web-a11y.sh). Any violation fails it. A parameter that was
+                        // never registered reads as null, hence != false.
+                        if (params.RUN_A11Y != false) {
+                            stage('Web Accessibility') {
+                                try {
+                                    sh '''#!/bin/bash
+                                        set -euo pipefail
+                                        mkdir -p .ci_logs
+                                        bash jenkins/web-a11y.sh
+                                    '''
+                                } finally {
+                                    archiveArtifacts(
+                                        artifacts: '.ci_logs/web-a11y*.log',
+                                        allowEmptyArchive: true
+                                    )
+                                }
+                            }
+                        } else {
+                            echo 'RUN_A11Y is not ticked: the accessibility check is skipped.'
+                            buildNote('warning', 'Accessibility check skipped (RUN_A11Y)')
                         }
                         stage('Web Tests') {
                             try {

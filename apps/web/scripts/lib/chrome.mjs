@@ -9,11 +9,19 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-const PORT = 9333;
+const PORT = Number(process.env.CHROME_DEBUG_PORT ?? 9333);
 
 function findChrome() {
   if (process.env.CHROME_PATH) {
     return process.env.CHROME_PATH;
+  }
+  const onPath = ['chromium', 'chromium-browser', 'google-chrome-stable', 'google-chrome']
+    .flatMap((name) =>
+      (process.env.PATH ?? '').split(path.delimiter).map((dir) => path.join(dir, name))
+    )
+    .find((candidate) => existsSync(candidate));
+  if (onPath !== undefined) {
+    return onPath;
   }
   const cache = path.join(homedir(), '.cache/ms-playwright');
   const shell = existsSync(cache)
@@ -86,6 +94,7 @@ export async function withPage(run) {
       '--hide-scrollbars',
       '--ignore-certificate-errors',
       '--disable-gpu',
+      ...(process.env.CHROME_NO_SANDBOX === '1' ? ['--no-sandbox'] : []),
       'about:blank',
     ],
     { stdio: 'ignore' }

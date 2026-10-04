@@ -10,7 +10,7 @@ Google Analytics and heatmaps only after consent; pages that search engines and 
 | Google Analytics after consent, with product events      | ✅     | No personal data in events; paused on account pages. |
 | Heatmaps (Microsoft Clarity) after consent               | ✅     | All text masked; to verify with a real project id.   |
 | Search metadata, structured data, robots rules, llms.txt | ✅     |                                                      |
-| Automatic SEO and site checks in Jenkins                 | ✅     | Accessibility check run by hand for now.             |
+| Automatic SEO and site checks in Jenkins                 | ✅     | Accessibility check in its own stage (RUN_A11Y).     |
 | Sitemap served at /sitemap.xml by the web app            | ⬜     | Next.                                                |
 
 **Waiting on the owners**
@@ -33,8 +33,8 @@ Google Analytics and heatmaps only after consent; pages that search engines and 
 
 ### 11.2 Accessibility check in CI
 
-- **Status:** 🔄 main machine
+- **Status:** ✅ 2026-10-04 15:19
 - **Goal:** Run check:a11y in Jenkins with Chromium and sample API answers.
 - **Depends on:** —
-- **Touches:** Jenkinsfile, apps/web scripts.
+- **Touches:** Jenkinsfile, jenkins/web-a11y.sh, jenkins/jenkins.env, apps/web scripts, docs/JENKINS_SETUP.md.
 - **Done when:** The Jenkins stage fails on any violation.

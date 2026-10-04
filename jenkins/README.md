@@ -22,7 +22,7 @@ The scanner's scope is [`../sonar-project.properties`](../sonar-project.properti
 
 ```text
 Checkout -> Prepare -> Services -> Install -> Migrations
-  -> in parallel: API tests | Vision tests | Web build and tests | Lint | Security gate | Audit
+  -> in parallel: API tests | Vision tests | Web build, accessibility and tests | Lint | Security gate | Audit
   -> SonarQube (main, or RUN_SONAR) -> archive -> notify -> remove the services
 ```
 

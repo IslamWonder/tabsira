@@ -92,7 +92,7 @@ function reply(status, body) {
 }
 
 /** The answer to one API request in a given state ('guest' or 'signed-in'). */
-function answer(method, pathname, state) {
+export function answer(method, pathname, state) {
   const route = `${method} ${pathname}`;
   if (route === 'GET /auth/providers') {
     return reply(200, {
