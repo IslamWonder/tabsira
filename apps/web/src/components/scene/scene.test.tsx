@@ -76,9 +76,12 @@ describe('SceneStarter', () => {
     expect(zone).toHaveClass('extra');
     const photo = new File(['x'], 'scene.jpg', { type: 'image/jpeg' });
     await userEvent.upload(screen.getByLabelText('اختر صورة'), photo);
-    await userEvent.upload(screen.getByLabelText(/التقط بالكاميرا/), photo);
+    // jsdom has no camera: the live camera falls back to the phone's camera picker.
+    await userEvent.click(screen.getByRole('button', { name: /التقط بالكاميرا/ }));
+    const camera = await screen.findByLabelText(/التقط بالكاميرا/);
+    expect(camera).toHaveAttribute('capture', 'environment');
+    await userEvent.upload(camera, photo);
     expect(onFile).toHaveBeenCalledTimes(2);
-    expect(screen.getByLabelText(/التقط بالكاميرا/)).toHaveAttribute('capture', 'environment');
   });
 
   it('refuses a file that is not an image, plainly, and ignores a cancelled picker', () => {
