@@ -81,7 +81,10 @@ async def paths(client: Any, section: str, page: int = 0) -> list[str]:
 # ─── The index ────────────────────────────────────────────────────────────────
 
 
-async def test_the_index_names_every_section_and_only_the_static_one_has_pages(client):
+async def test_the_index_names_every_section_and_only_the_static_one_has_pages(client, providers):
+    # The posts and profiles sections list what the database holds (tests/test_social_sitemap.py);
+    # here every section but the static one is left as it is before its feature lists anything.
+    providers.update({s: EmptyProvider(s) for s in Section if s is not Section.STATIC})
     response = await client.get("/sitemap")
 
     assert response.status_code == 200
@@ -284,10 +287,12 @@ async def test_a_registered_provider_replaces_the_one_before_it(providers):
 
 
 async def test_the_default_providers_list_nothing_until_their_feature_exists(db_session):
+    # The defaults, before any feature registers its own (the social network registers two).
+    defaults = sitemap_service._default_providers()
     for section in Section:
         if section is Section.STATIC:
             continue
-        provider = sitemap_service.PROVIDERS[section]
+        provider = defaults[section]
         assert isinstance(provider, EmptyProvider)
         assert provider.section is section
         assert await provider.pages(db_session, 10_000) == []

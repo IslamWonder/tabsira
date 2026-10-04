@@ -37,6 +37,7 @@ from src.routers import (
     scripture,
     sitemap,
 )
+from src.services import social_sitemap  # noqa: F401 - registers the posts and profiles sitemaps
 from src.services.insight_source import InsightSource
 
 API_VERSION = "0.1.0"
