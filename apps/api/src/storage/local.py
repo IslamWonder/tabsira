@@ -30,6 +30,7 @@ from src.storage.base import (
     ObjectNotFoundError,
     check_key,
     check_object,
+    check_ttl,
     is_public_key,
     split_key,
 )
@@ -112,7 +113,7 @@ class LocalStorage:
 
     def signed_url(self, key: str, *, ttl_seconds: int | None = None) -> str:
         check_key(key)
-        ttl = self.default_ttl_seconds if ttl_seconds is None else ttl_seconds
+        ttl = check_ttl(self.default_ttl_seconds if ttl_seconds is None else ttl_seconds)
         expires = int(clock.utcnow().timestamp()) + ttl
         query = urlencode({"expires": expires, "signature": self._signature(key, expires)})
         return f"{self.base_url}{MEDIA_ROUTE}/{key}?{query}"

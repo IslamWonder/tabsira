@@ -13,6 +13,7 @@ import pytest
 from src.storage import base, local
 from src.storage.base import (
     InvalidKeyError,
+    InvalidTtlError,
     ObjectNotFoundError,
     StorageError,
     check_key,
@@ -274,6 +275,13 @@ def test_a_link_cannot_be_changed_or_moved_to_another_photo_or_installation(stor
     assert not store.verify_signature(key, expires, "")
     assert not elsewhere.verify_signature(key, expires, signature)
     assert not store.verify_signature("../x", expires, signature)
+
+
+def test_a_link_lives_at_least_a_second_and_at_most_an_hour(store):
+    assert store.signed_url(new_private_key(), ttl_seconds=3600)
+    for bad in (0, -5, 3601):
+        with pytest.raises(InvalidTtlError):
+            store.signed_url(new_private_key(), ttl_seconds=bad)
 
 
 def test_no_link_is_made_for_what_is_not_a_key(store):

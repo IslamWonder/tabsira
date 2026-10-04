@@ -38,6 +38,10 @@ dependencies = [
   "pillow>=12.3.0",
   # Error tracking: GlitchTip speaks the Sentry protocol. Off unless GLITCHTIP_DSN is set.
   "sentry-sdk>=2.71.0",
+  # Photo storage in an S3-compatible bucket. boto3, run in threads, rather than aioboto3: that
+  # one last released in October 2025 and pins an old aiobotocore, while boto3 ships almost
+  # daily and moto (the tests' fake S3) can only intercept botocore.
+  "boto3>=1.43.108",
 ]
 
 [dependency-groups]
@@ -51,6 +55,7 @@ dev = [
   "mypy>=2.4.0",
   "types-openpyxl>=3.1.5",
   "hypothesis>=6.168.3",
+  "moto[s3]>=5.2.3",
 ]
 
 [tool.ruff]
@@ -180,6 +185,11 @@ warn_return_any = true
 warn_unused_ignores = true
 show_error_codes = true
 plugins = ["pydantic.mypy"]
+
+# boto3 and botocore ship no type information.
+[[tool.mypy.overrides]]
+module = ["boto3", "boto3.*", "botocore", "botocore.*"]
+ignore_missing_imports = true
 
 [tool.uv]
 package = false

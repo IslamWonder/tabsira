@@ -1,1 +1,34 @@
-"""Photo storage: the interface, the local-disk implementation and, later, S3."""
+"""
+Photo storage: the interface (`base`), the local-disk store, and the S3 store.
+
+`build_storage(settings)` returns the one `STORAGE_BACKEND` names.
+"""
+
+from __future__ import annotations
+
+from src.config import Settings
+from src.storage.base import Storage, StorageConfigError
+from src.storage.local import LocalStorage, default_media_root
+
+
+def build_storage(settings: Settings) -> Storage:
+    """
+    Build the photo store the settings describe.
+
+    S3 is imported only when it is chosen, so a development machine that keeps photos on disk
+    never loads boto3. Production refuses the local store: a photo on the disk of one web
+    server would be lost with it and invisible to the others.
+    """
+    if settings.storage_backend == "s3":
+        from src.storage.s3 import S3Storage
+
+        return S3Storage.from_settings(settings)
+    if settings.is_production:
+        message = "production keeps photos in S3: set STORAGE_BACKEND=s3 and the S3_* keys"
+        raise StorageConfigError(message)
+    return LocalStorage(
+        default_media_root(),
+        base_url=settings.api_url,
+        signing_key=settings.hash_key,
+        default_ttl_seconds=settings.signed_url_ttl_seconds,
+    )

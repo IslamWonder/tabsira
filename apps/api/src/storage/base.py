@@ -27,6 +27,8 @@ PUBLIC_PREFIX = "public"
 CONTENT_TYPE = "image/jpeg"
 # Images are re-encoded to JPEG before they are kept (`src/services/image_service.py`).
 KEY = re.compile(r"^(?P<prefix>private|public)/(?P<id>[0-9a-f]{32})\.jpg$")
+# The longest a signed link may live, whatever a caller asks for.
+MAX_SIGNED_URL_TTL_SECONDS = 3600
 # The most one object may hold: a re-encoded photo is a few megabytes at most.
 MAX_OBJECT_BYTES = 20 * 1024 * 1024
 
@@ -41,6 +43,10 @@ class InvalidKeyError(StorageError, ValueError):
 
 class ObjectNotFoundError(StorageError, LookupError):
     """There is no object under that key."""
+
+
+class InvalidTtlError(StorageError, ValueError):
+    """A signed link asked to live for no time at all, or longer than an hour."""
 
 
 class StorageUnavailableError(StorageError):
@@ -87,6 +93,14 @@ def check_key(key: str) -> str:
 def is_public_key(key: str) -> bool:
     """Whether `key` is under the public prefix. The key is checked first."""
     return split_key(key)[0] == PUBLIC_PREFIX
+
+
+def check_ttl(seconds: int) -> int:
+    """Return the life of a signed link in seconds when it is between 1 and an hour."""
+    if not 1 <= seconds <= MAX_SIGNED_URL_TTL_SECONDS:
+        message = f"a signed link lives between 1 and {MAX_SIGNED_URL_TTL_SECONDS} seconds"
+        raise InvalidTtlError(message)
+    return seconds
 
 
 def check_object(key: str, data: bytes, content_type: str) -> None:
