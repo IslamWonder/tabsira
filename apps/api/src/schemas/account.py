@@ -7,6 +7,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from src.schemas.cookie_consent import CookieConsentExport
 from src.schemas.profile import ConsentOut, ProfileOut
 
 
@@ -57,3 +58,5 @@ class AccountExport(BaseModel):
     sessions: list[SessionExport]
     profile: ProfileOut
     consents: list[ConsentOut]
+    # The cookie choices made while signed in, never the anonymous ones of the same browser.
+    cookie_consents: list[CookieConsentExport]

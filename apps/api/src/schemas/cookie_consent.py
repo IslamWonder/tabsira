@@ -69,3 +69,17 @@ class ConsentPolicyOut(BaseModel):
     policy_version: str
     reask_days: int
     categories: list[ConsentCategoryOut]
+
+
+class CookieConsentExport(BaseModel):
+    """One recorded choice, as the account export shows it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    consent_id: uuid.UUID
+    policy_version: str
+    necessary: bool
+    analytics: bool
+    behaviour: bool
+    user_agent_family: str
+    created_at: datetime

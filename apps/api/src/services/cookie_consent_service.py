@@ -122,3 +122,13 @@ def in_force(row: CookieConsent, settings: Settings, now: datetime) -> CookieCon
             analytics=row.analytics and not lapsed, behaviour=row.behaviour and not lapsed
         ),
     )
+
+
+async def choices_of(db: AsyncSession, user: User) -> list[CookieConsent]:
+    """Return every choice made while `user` was signed in, oldest first."""
+    rows = await db.scalars(
+        select(CookieConsent)
+        .where(CookieConsent.user_id == user.id)
+        .order_by(CookieConsent.created_at, CookieConsent.id)
+    )
+    return list(rows)
