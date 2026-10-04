@@ -90,7 +90,7 @@ export function declareAction(id: string, choice: ActionChoice): Promise<Result<
   );
 }
 
-/** «تمّ»: saved once, however many times it is sent. */
+/** the done action: saved once, however many times it is sent. */
 export function completeInsight(id: string): Promise<Result<Completion>> {
   return attempt(
     api.POST('/insights/{insight_id}/complete', { params: { path: { insight_id: id } } })

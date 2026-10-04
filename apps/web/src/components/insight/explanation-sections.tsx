@@ -4,7 +4,7 @@ import type { Insight } from '@/lib/scan/api';
 /**
  * The platform's own explanation, apart from the two quoted texts and marked
  * as the API tags it (tajriba LUX-03: what is quoted and what is explained
- * never blur). «ما ظهر» is shown elsewhere, as what the photo shows; each
+ * never blur). what was seen is shown elsewhere, as what the photo shows; each
  * other part keeps the API's own label and wording.
  */
 export function ExplanationSections({

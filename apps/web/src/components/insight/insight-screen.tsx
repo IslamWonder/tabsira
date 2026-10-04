@@ -64,8 +64,8 @@ function Photo({
 /**
  * The insight (tajriba S02, §6): title and glimpse, what the photo shows, the
  * Quran and the Sunnah exactly as the API returns them, the platform's
- * explanation apart from them, «لماذا ظهر هذا؟», the chat, the small step, and
- * the one primary «تمّ» in the thumb zone. The photo stays beside or above the
+ * explanation apart from them, the why-this sheet, the chat, the small step, and
+ * the one primary the done action in the thumb zone. The photo stays beside or above the
  * text. What the API labels (a prepared example, a simulation, a relation, the
  * step's kind) is shown as it labels it.
  */

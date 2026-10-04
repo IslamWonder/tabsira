@@ -179,7 +179,7 @@ export function ExplanationBlock({ text }: { text: string }) {
 export interface InsightToolsProps {
   onWhy: () => void;
   onDiscuss: () => void;
-  /** How much of the chat is used, e.g. «استُعمل 1 من 3»; the plain limit before it is known. */
+  /** How much of the chat is used, e.g. used 1 of 3; the plain limit before it is known. */
   discussNote?: string;
 }
 

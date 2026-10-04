@@ -12,7 +12,7 @@ const SHORT_TEXT = 280;
  * The verse and the hadith of an insight, exactly as the API returns them:
  * the stored text is passed through untouched (never trimmed, joined,
  * shortened or normalised), with the reference, the source link, the ruling
- * and the «تحقق في الدرر» link the API gives. A verse whose hadith still waits
+ * and the the dorar verification link the API gives. A verse whose hadith still waits
  * for its ruling stands alone, with the API's notice beside it, so the reader
  * is told why and never shown a hadith that has not been ruled on.
  */

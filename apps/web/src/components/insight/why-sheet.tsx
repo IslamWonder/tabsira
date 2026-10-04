@@ -32,7 +32,7 @@ export interface WhySheetProps {
 }
 
 /**
- * «لماذا ظهر هذا؟» (tajriba S03, LUX-04, LUX-16): the scene first, then the
+ * the why-this sheet (tajriba S03, LUX-04, LUX-16): the scene first, then the
  * meaning, then the source, in that order, with what each source matched on and
  * how it relates, then the limits of the link and whether a personal choice
  * shaped it. No confidence number is shown as certainty. The title of the

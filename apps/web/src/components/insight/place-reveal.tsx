@@ -3,7 +3,7 @@ import { cx } from '@/lib/cx';
 
 /**
  * The world's growth, shown where it is said: a khatam star at the new place,
- * with a veil of fog that lifts from it once (the fog lifting after «تمّ»,
+ * with a veil of fog that lifts from it once (the fog lifting after the done action,
  * DESIGN_DECISION.md). The veil only plays for a place made by this
  * completion, and only on display; the star is there either way, and the
  * place's name beside it says the same in words.

@@ -10,7 +10,7 @@ import type { ChatReply, Completion, Insight, Progress, Scan, Tutorial } from '@
  */
 
 /** A stand-in verse with an escape for a Uthmani mark: the source file never holds one raw. */
-export const VERSE_TEXT = `[آية للاختبار]ٰ  بين فراغين ‏ `;
+export const VERSE_TEXT = `[آية للاختبار]\u0670  بين فراغين \u200F `;
 /** The SHA-256 the API stores beside a text: of its UTF-8 bytes. */
 export const sha256 = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
 

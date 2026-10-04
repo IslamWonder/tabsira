@@ -10,7 +10,7 @@ export type StepStatus = 'idle' | 'saving' | 'saved' | 'deferred';
 export interface StepCardProps {
   /** The step itself, from the learning path. */
   body: string;
-  /** What kind of step it is, «من السنة» or «اقتراح عملي», exactly as the API labels it. */
+  /** What kind of step it is, the from-the-Sunnah or practical-suggestion label, exactly as the API labels it. */
   label?: string;
   /** The reader's own statement, named by what it records (tajriba §7, the rain scene's example). */
   confirmLabel: string;

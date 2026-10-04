@@ -17,7 +17,7 @@ export interface CompletionPanelProps {
   completion: Completion;
   /** The learner's practice after this completion; null while it loads or when it could not be read. */
   progress: Progress | null;
-  /** The practice could not be read: say so, and keep what «تمّ» itself returned. */
+  /** The practice could not be read: say so, and keep what the done action itself returned. */
   progressFailed: boolean;
   /** Where the reader comes back to after creating an account: this insight. */
   returnTo: Route;
@@ -27,7 +27,7 @@ export interface CompletionPanelProps {
 }
 
 /**
- * What «تمّ» earned, each thing only once the save has succeeded (tajriba §7,
+ * What the done action earned, each thing only once the save has succeeded (tajriba §7,
  * A04): the place the fog lifted from, the day's quest, a practice badge,
  * then the way on: the world first, another scene next. Practice, never
  * piety: the disclaimer stands wherever a badge does (decision 27). Focus

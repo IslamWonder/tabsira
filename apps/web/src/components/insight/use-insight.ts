@@ -41,7 +41,7 @@ export interface StepState {
 export interface FinishState {
   status: 'idle' | 'saving' | 'done';
   error?: string;
-  /** What «تمّ» returned, only in the visit that completed it. */
+  /** What the done action returned, only in the visit that completed it. */
   completion: Completion | null;
   progress: Progress | null;
   progressFailed: boolean;

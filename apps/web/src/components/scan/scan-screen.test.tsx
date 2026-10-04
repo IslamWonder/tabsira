@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Failure } from '@/lib/api/result';
@@ -263,8 +263,17 @@ describe('ScanScreen: the single question', () => {
   it('does not send a second answer while one is on its way', async () => {
     const { clarify } = renderQuestion({ acting: true });
     expect(screen.getByRole('button', { name: 'أرسل جوابك…' })).toBeDisabled();
-    await userEvent.type(screen.getByLabelText('جوابك'), 'جواب{Enter}');
+    await userEvent.type(screen.getByLabelText('جوابك'), 'جواب');
+    fireEvent.submit(screen.getByLabelText('جوابك').closest('form') as HTMLFormElement);
     expect(clarify).not.toHaveBeenCalled();
+  });
+
+  it('still shows the form when the API sent no question text', () => {
+    setControls(
+      ready({ outcome: 'needs_clarification', insights: [], clarification_question: null })
+    );
+    render(<ScanScreen scanId="1" />);
+    expect(screen.getByLabelText('جوابك')).toBeInTheDocument();
   });
 });
 
