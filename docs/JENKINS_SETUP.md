@@ -58,6 +58,22 @@ The Community Build keeps a single branch, which is why only `SONAR_BRANCH` is a
 
 On the SonarQube server: create the project with the key in `SONAR_PROJECT_KEY` (default `tabsira`), and a token allowed to run analyses on it. A project analysis token is enough.
 
+## Deploy stage
+
+Off by default. Tick `DEPLOY` on a build of `DEPLOY_BRANCH` (`main`): after the build the stage runs `deploy/remote-deploy.sh`, which connects over ssh to `DEPLOY_USER@DEPLOY_HOST` and runs `tabsira-deploy --ref <this commit>` there (`docs/OPERATIONS.md`). `DEPLOY_DRY_RUN` prints the steps on the host and changes nothing. An unstable build (advisory audit, Sonar gate) is deployed with a warning badge, because ticking `DEPLOY` is the approval; a failed build never reaches the stage.
+
+| Name                       | Default          | Set in                 | Meaning                                                                 |
+| -------------------------- | ---------------- | ---------------------- | ----------------------------------------------------------------------- |
+| `DEPLOY_HOST`              | blank            | job, global, parameter | The application host. The stage fails when blank                        |
+| `DEPLOY_USER`              | blank            | job, global, parameter | The application user on that host                                       |
+| `DEPLOY_HOST_KEY`          | blank            | job, global            | The host's public ssh key line (`ssh-keyscan -t ed25519`), checked once |
+| `DEPLOY_PORT`              | `22`             | file, job, global      | ssh port                                                                |
+| `DEPLOY_CREDENTIALS_ID`    | `DEPLOY_SSH_KEY` | file, job, global      | Id of the "SSH Username with private key" credential                    |
+| `DEPLOY_BRANCH`            | `main`           | file, job, global      | The only branch that may deploy                                         |
+| `DEPLOY`, `DEPLOY_DRY_RUN` | `false`          | build parameters only  | Deploy this build; only print the steps                                 |
+
+The key is a Jenkins credential, bound to a file for the one step; the host, user and host key are variables, never in the repository.
+
 ## Environment variables
 
 Every setting has a default in [`jenkins/jenkins.env`](../jenkins/jenkins.env), which is committed and holds no secret. Precedence, highest first:
@@ -210,5 +226,5 @@ Three layers, so a container never outlives its build for long:
 
 ## Not part of this setup
 
-- Deployment. The pipeline builds and tests; it does not deploy.
+- Deployment by default. The pipeline builds and tests. An optional `Deploy` stage (below) runs only when the `DEPLOY` parameter is ticked on `DEPLOY_BRANCH`; nothing deploys on its own.
 - An end-to-end pipeline (the `Jenkinsfile.e2e` of the project this one is ported from). There is no end-to-end suite yet.
