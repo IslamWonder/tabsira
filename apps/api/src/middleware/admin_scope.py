@@ -16,7 +16,7 @@ a page of the web app away from it. Three rules do:
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Sequence
 
 from starlette.datastructures import Headers
 from starlette.middleware.cors import CORSMiddleware
@@ -54,9 +54,24 @@ class AdminHostMiddleware:
 class NoCorsForAdminMiddleware:
     """CORS for the whole API except `/admin`, which never gets a CORS header."""
 
-    def __init__(self, app: ASGIApp, **cors_options: Any) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        allow_origins: Sequence[str],
+        allow_headers: Sequence[str],
+        expose_headers: Sequence[str],
+    ) -> None:
         self.app = app
-        self.cors = CORSMiddleware(app, **cors_options)
+        # Credentials and every method: the API's one CORS policy, kept here so it exists once.
+        self.cors = CORSMiddleware(
+            app,
+            allow_origins=allow_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=allow_headers,
+            expose_headers=expose_headers,
+        )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http" and is_admin_path(scope):
