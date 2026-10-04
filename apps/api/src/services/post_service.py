@@ -231,8 +231,8 @@ async def withdraw(db: AsyncSession, row: PostRow) -> None:
     post.status_reason = None
     post.removal_source = RemovalSource.OWNER
     post.removed_at = now
-    post.publication_id = None
+    publication_id, post.publication_id = post.publication_id, None
     moderation_service.log_action(db, post, ModerationActionKind.WITHDRAWN, ModerationSource.OWNER)
-    if row.publication is not None:
-        await db.delete(row.publication)
     await db.flush()
+    # After the post stops pointing at it, so the foreign key has nothing left to set to NULL.
+    await db.execute(delete(InsightPublication).where(InsightPublication.id == publication_id))
