@@ -86,6 +86,16 @@
   --point-emerald-core: #0f4c3a;
   --point-emerald-halo: #8fd9b6;
   --point-ring: #ffffff;
+  /* The atlas basemap in the app's own colours (components/atlas/basemap.ts). */
+  --map-land: #eef5f0;
+  --map-park: #dcefe3;
+  --map-water: #cfe6e4;
+  --map-building: #e2ebe5;
+  --map-road: #ffffff;
+  --map-road-major: #f7ecd2;
+  --map-boundary: #9fb8ad;
+  --map-label: #4a635c;
+  --map-label-halo: #f6faf7;
   --panel-shadow: 0 18px 40px -24px rgba(15, 76, 58, 0.28), 0 2px 6px rgba(22, 48, 42, 0.06);
   --stage-aurora:
     radial-gradient(60% 40% at 85% -5%, rgba(191, 234, 217, 0.75), rgba(191, 234, 217, 0) 70%),
@@ -206,6 +216,16 @@
     --point-emerald-core: #e9fff5;
     --point-emerald-halo: #3fd69a;
     --point-ring: rgba(255, 255, 255, 0);
+    /* The atlas basemap in the app's own colours (components/atlas/basemap.ts). */
+    --map-land: #0e1714;
+    --map-park: #10221b;
+    --map-water: #0a1f22;
+    --map-building: #15211d;
+    --map-road: #1c2a25;
+    --map-road-major: #3a3322;
+    --map-boundary: #3d564c;
+    --map-label: #9fb8ad;
+    --map-label-halo: #0b1210;
     --panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 48px -28px rgba(0, 0, 0, 0.7);
     --stage-aurora:
       radial-gradient(60% 40% at 85% -5%, rgba(63, 214, 154, 0.16), rgba(63, 214, 154, 0) 70%),
@@ -326,6 +346,16 @@
   --point-emerald-core: #e9fff5;
   --point-emerald-halo: #3fd69a;
   --point-ring: rgba(255, 255, 255, 0);
+  /* The atlas basemap in the app's own colours (components/atlas/basemap.ts). */
+  --map-land: #0e1714;
+  --map-park: #10221b;
+  --map-water: #0a1f22;
+  --map-building: #15211d;
+  --map-road: #1c2a25;
+  --map-road-major: #3a3322;
+  --map-boundary: #3d564c;
+  --map-label: #9fb8ad;
+  --map-label-halo: #0b1210;
   --panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 48px -28px rgba(0, 0, 0, 0.7);
   --stage-aurora:
     radial-gradient(60% 40% at 85% -5%, rgba(63, 214, 154, 0.16), rgba(63, 214, 154, 0) 70%),

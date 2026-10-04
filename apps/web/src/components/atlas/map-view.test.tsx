@@ -156,4 +156,37 @@ describe('MapView', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(FakeMap.instances).toHaveLength(0);
   });
+
+  it('paints the basemap and the points in the theme colours, and repaints on a theme switch', async () => {
+    const root = document.documentElement;
+    root.style.setProperty('--map-water', '#123456');
+    root.style.setProperty('--point-emerald-halo', '#00aa66');
+    render(<MapView features={[FEATURE]} />);
+    const map = await loadedMap();
+
+    expect(map.paint.get('water:fill-color')).toBe('#123456');
+    expect(map.paint.get('background:background-color')).toBeTruthy();
+    expect(map.layout.get('poi_r1:visibility')).toBe('none');
+    expect(map.paint.get('clusters:circle-color')).toBe('#00aa66');
+    // The app's own layers are never repainted as basemap.
+    expect(map.paint.has('points:line-color')).toBe(false);
+
+    root.style.setProperty('--map-water', '#654321');
+    root.setAttribute('data-theme', 'dark');
+    await vi.waitFor(() => expect(map.paint.get('water:fill-color')).toBe('#654321'));
+
+    root.removeAttribute('data-theme');
+    root.style.removeProperty('--map-water');
+    root.style.removeProperty('--point-emerald-halo');
+  });
+
+  it('waits for the map to load before following a theme switch', async () => {
+    render(<MapView features={[FEATURE]} />);
+    await vi.waitFor(() => expect(FakeMap.instances).toHaveLength(1));
+    const map = FakeMap.instances[0] as FakeMap;
+    document.documentElement.setAttribute('data-theme', 'dark');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(map.setPaintProperty).not.toHaveBeenCalled();
+    document.documentElement.removeAttribute('data-theme');
+  });
 });

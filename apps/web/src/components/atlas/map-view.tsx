@@ -3,12 +3,19 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import type { FeatureCollection, Polygon } from 'geojson';
-import type { GeoJSONSource, LngLatLike, Map as MapLibreMap } from 'maplibre-gl';
+import type {
+  ExpressionSpecification,
+  FilterSpecification,
+  GeoJSONSource,
+  LngLatLike,
+  Map as MapLibreMap,
+} from 'maplibre-gl';
 import { useEffect, useRef, useState } from 'react';
 import type { AtlasFeature, Window } from '@/atlas/types';
 import { DEFAULT_VIEW, lngLatOf, MAP_STYLE_URL } from '@/atlas/types';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
+import { basemapColours, type ThemableMap, themeBasemap } from './basemap';
 
 const A = messages.atlas;
 
@@ -77,6 +84,56 @@ function token(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#3fd69a';
 }
 
+/** The app's own layers: the basemap theming leaves them to `paintOwnLayers`. */
+const OWN_LAYERS: ReadonlySet<string> = new Set([
+  'cluster-halo',
+  'clusters',
+  'cluster-count',
+  'point-halo',
+  'points',
+  'cell-fill',
+  'cell-line',
+  'marker-halo',
+  'marker',
+]);
+
+const SELECTED: ExpressionSpecification = ['boolean', ['feature-state', 'selected'], false];
+
+/**
+ * Paint the insight points the way the scene photo draws its points (a soft
+ * halo, a core, a thin ring), emerald, and gold for the one selected; a
+ * cluster is an emerald disc in a gold ring. Every colour is a theme token.
+ */
+function paintOwnLayers(map: MapLibreMap): void {
+  // The same narrow surface the basemap uses: a layer id, a paint property, a value.
+  // Every layer named here was added before the first paint.
+  const paint = map as unknown as ThemableMap;
+  const set = (layer: string, property: string, value: unknown) =>
+    paint.setPaintProperty(layer, property, value);
+  const emeraldHalo = token('--point-emerald-halo');
+  const emeraldCore = token('--point-emerald-core');
+  const goldHalo = token('--point-gold-halo');
+  const goldCore = token('--point-gold-core');
+  const ring = token('--point-ring');
+  set('cluster-halo', 'circle-color', emeraldHalo);
+  set('clusters', 'circle-color', emeraldHalo);
+  set('clusters', 'circle-stroke-color', goldHalo);
+  set('point-halo', 'circle-color', ['case', SELECTED, goldHalo, emeraldHalo]);
+  set('points', 'circle-color', ['case', SELECTED, goldCore, emeraldCore]);
+  set('points', 'circle-stroke-color', ring);
+  set('cell-fill', 'fill-color', goldHalo);
+  set('cell-line', 'line-color', goldHalo);
+  set('marker-halo', 'circle-color', goldHalo);
+  set('marker', 'circle-color', goldCore);
+  set('marker', 'circle-stroke-color', ring);
+}
+
+/** Repaint the basemap and the app's layers from the theme in force. */
+function applyTheme(map: MapLibreMap): void {
+  themeBasemap(map as unknown as ThemableMap, basemapColours(token), OWN_LAYERS);
+  paintOwnLayers(map);
+}
+
 /**
  * The real map (decision 9: MapLibre with OpenFreeMap tiles, the one third-party
  * request besides consented analytics). Clusters at far zooms, single points
@@ -139,9 +196,6 @@ export function MapView({
         if (cancelled) {
           return;
         }
-        const emerald = token('--glow-emerald');
-        const gold = token('--glow-gold');
-        const ring = token('--point-ring');
         instance.addSource(SOURCE, {
           type: 'geojson',
           data: collection(latest.current.features),
@@ -150,41 +204,65 @@ export function MapView({
           clusterMaxZoom: 15,
           promoteId: 'id',
         });
+        const clustered: FilterSpecification = ['has', 'point_count'];
+        const single: FilterSpecification = ['!', ['has', 'point_count']];
+        const clusterSize: ExpressionSpecification = [
+          'step',
+          ['get', 'point_count'],
+          15,
+          10,
+          19,
+          50,
+          24,
+        ];
+        instance.addLayer({
+          id: 'cluster-halo',
+          type: 'circle',
+          source: SOURCE,
+          filter: clustered,
+          paint: {
+            'circle-radius': ['+', clusterSize, 9],
+            'circle-blur': 0.9,
+            'circle-opacity': 0.45,
+          },
+        });
         instance.addLayer({
           id: 'clusters',
           type: 'circle',
           source: SOURCE,
-          filter: ['has', 'point_count'],
+          filter: clustered,
           paint: {
-            'circle-color': emerald,
-            'circle-opacity': 0.85,
-            'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 50, 26],
-            'circle-stroke-color': gold,
-            'circle-stroke-width': 1.5,
+            'circle-radius': clusterSize,
+            'circle-opacity': 0.95,
+            'circle-stroke-width': 2,
           },
         });
         instance.addLayer({
           id: 'cluster-count',
           type: 'symbol',
           source: SOURCE,
-          filter: ['has', 'point_count'],
+          filter: clustered,
           layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 13 },
           paint: { 'text-color': '#04130d' },
+        });
+        instance.addLayer({
+          id: 'point-halo',
+          type: 'circle',
+          source: SOURCE,
+          filter: single,
+          paint: {
+            'circle-radius': ['case', SELECTED, 20, 14],
+            'circle-blur': 0.85,
+            'circle-opacity': 0.6,
+          },
         });
         instance.addLayer({
           id: 'points',
           type: 'circle',
           source: SOURCE,
-          filter: ['!', ['has', 'point_count']],
+          filter: single,
           paint: {
-            'circle-color': [
-              'case',
-              ['boolean', ['feature-state', 'selected'], false],
-              gold,
-              emerald,
-            ],
-            'circle-radius': ['case', ['boolean', ['feature-state', 'selected'], false], 10, 7],
-            'circle-stroke-color': ring,
+            'circle-radius': ['case', SELECTED, 8, 6],
             'circle-stroke-width': 2,
           },
         });
@@ -196,29 +274,31 @@ export function MapView({
           id: 'cell-fill',
           type: 'fill',
           source: CELL_SOURCE,
-          paint: { 'fill-color': gold, 'fill-opacity': 0.18 },
+          paint: { 'fill-opacity': 0.18 },
         });
         instance.addLayer({
           id: 'cell-line',
           type: 'line',
           source: CELL_SOURCE,
-          paint: { 'line-color': gold, 'line-width': 1.5 },
+          paint: { 'line-width': 1.5 },
         });
         instance.addSource(MARKER_SOURCE, {
           type: 'geojson',
           data: { type: 'FeatureCollection', features: [] },
         });
         instance.addLayer({
+          id: 'marker-halo',
+          type: 'circle',
+          source: MARKER_SOURCE,
+          paint: { 'circle-radius': 20, 'circle-blur': 0.85, 'circle-opacity': 0.6 },
+        });
+        instance.addLayer({
           id: 'marker',
           type: 'circle',
           source: MARKER_SOURCE,
-          paint: {
-            'circle-color': gold,
-            'circle-radius': 9,
-            'circle-stroke-color': ring,
-            'circle-stroke-width': 2,
-          },
+          paint: { 'circle-radius': 8, 'circle-stroke-width': 2 },
         });
+        applyTheme(instance);
         ready.current = true;
         applyMarker(instance, latest.current.marker, latest.current.cell);
         applySelection(instance, latest.current.features, latest.current.selectedId);
@@ -269,6 +349,27 @@ export function MapView({
       ready.current = false;
       map.current?.remove();
       map.current = null;
+    };
+  }, []);
+
+  // The map follows the app's theme: a switch in the settings or in the system repaints it.
+  useEffect(() => {
+    const repaint = () => {
+      const instance = map.current;
+      if (instance !== null && ready.current) {
+        applyTheme(instance);
+      }
+    };
+    const observer = new MutationObserver(repaint);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+    const scheme = window.matchMedia('(prefers-color-scheme: dark)');
+    scheme.addEventListener('change', repaint);
+    return () => {
+      observer.disconnect();
+      scheme.removeEventListener('change', repaint);
     };
   }, []);
 

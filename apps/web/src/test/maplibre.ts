@@ -68,8 +68,32 @@ export class FakeMap {
     return this.sources.get(id);
   }
 
+  /** The basemap's layers, as a style would list them; a test may replace them. */
+  styleLayers: { id: string; type: string }[] = [
+    { id: 'background', type: 'background' },
+    { id: 'water', type: 'fill' },
+    { id: 'road_primary', type: 'line' },
+    { id: 'poi_r1', type: 'symbol' },
+  ];
+  paint = new Map<string, unknown>();
+  layout = new Map<string, unknown>();
+  setPaintProperty = vi.fn((layer: string, property: string, value: unknown) => {
+    this.paint.set(`${layer}:${property}`, value);
+  });
+  setLayoutProperty = vi.fn((layer: string, property: string, value: unknown) => {
+    this.layout.set(`${layer}:${property}`, value);
+  });
+
   addLayer(layer: { id: string }): void {
     this.layers.push(layer.id);
+  }
+
+  getLayer(id: string): { id: string } | undefined {
+    return this.layers.includes(id) ? { id } : undefined;
+  }
+
+  getStyle(): { layers: { id: string; type: string }[] } {
+    return { layers: [...this.styleLayers, ...this.layers.map((id) => ({ id, type: 'circle' }))] };
   }
 
   setFeatureState(target: { id: string | number }, state: Record<string, unknown>): void {
