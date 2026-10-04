@@ -45,6 +45,8 @@ The order in which TABSIRA is built. Each line becomes one or more atomic commit
 - [ ] Admin area (sqladmin) with two-factor sign-in, audit log, moderation queue; scripture read-only.
 - [ ] TimescaleDB hypertables for scan events, AI calls, exposures, impressions, moderation and audit.
 - [ ] Gold scenes and the twelve official cases (`make eval`), smoke tests, developer inspector.
-- [ ] Terms and privacy page matching every data flow; robots, sitemap, metadata, icons.
+- [ ] Terms and privacy page matching every data flow; robots, metadata, icons.
+- [ ] Dynamic sitemap index and section sitemaps from the API (decision 29).
+- [ ] Google Analytics with Consent Mode v2, off when `GA_MEASUREMENT_ID` is empty (decision 28).
 - [ ] Reviews: scripture integrity, privacy and security.
 - [ ] Delivery documents: sources and licences, benchmark, evaluation report, operations.
