@@ -168,3 +168,19 @@ def test_the_csrf_token_follows_the_session_token_and_the_server_key(make_settin
     assert token != service.csrf_token_for(settings, "another-session-token")
     assert token != service.csrf_token_for(other, "session-token")
     assert "session-token" not in token
+
+
+async def test_a_credential_change_ends_the_admin_sessions_with_the_ordinary_ones(
+    db_session, make_user
+):
+    from src.services import session_service
+
+    admin = await make_user("admin@example.com", is_admin=True)
+    other = await make_user("other@example.com", is_admin=True)
+    mine = await sign_in(db_session, admin)
+    theirs = await sign_in(db_session, other)
+
+    await session_service.revoke_every_session(db_session, admin.id)
+
+    assert await service.find(db_session, mine) is None
+    assert await service.find(db_session, theirs) is not None

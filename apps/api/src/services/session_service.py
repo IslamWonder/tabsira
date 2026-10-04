@@ -21,6 +21,7 @@ from src import clock, security
 from src.config import Settings
 from src.models.session import Session
 from src.models.user import User
+from src.services import admin_session_service
 
 # `last_seen_at` is written at most this often, so reading does not mean writing.
 TOUCH_INTERVAL = timedelta(minutes=5)
@@ -161,3 +162,16 @@ async def revoke_all(
     if keep_token is not None:
         condition.append(Session.token_hash != security.hash_token(keep_token))
     await db.execute(delete(Session).where(*condition))
+
+
+async def revoke_every_session(
+    db: AsyncSession, user_id: uuid.UUID, *, keep_token: str | None = None
+) -> None:
+    """
+    End the user's ordinary sessions (but `keep_token`) and every admin session.
+
+    For a change of credential: a password reset, or the removal of a password. An admin
+    session is never kept: whoever holds one must sign in again with the new credential.
+    """
+    await revoke_all(db, user_id, keep_token=keep_token)
+    await admin_session_service.revoke_all(db, user_id)

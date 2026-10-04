@@ -223,6 +223,22 @@ async def test_linking_an_unverified_password_account_removes_the_password_and_e
     assert refused.status_code == 401
 
 
+async def test_linking_an_unverified_password_account_ends_its_admin_sessions_too(
+    web, db_session, google, make_user
+):
+    from src.services import admin_session_service
+
+    user = await make_user(verified=False, is_admin=True)
+    admin_token = await admin_session_service.create(
+        db_session, user_id=user.id, ip_hash="ip", user_agent=None
+    )
+    state, nonce, _ = await begin(web)
+
+    await finish(web, google, state, nonce)
+
+    assert await admin_session_service.find(db_session, admin_token) is None
+
+
 async def test_a_google_only_account_that_was_never_verified_just_becomes_verified(
     web, google, make_user
 ):

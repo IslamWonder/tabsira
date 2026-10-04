@@ -180,6 +180,23 @@ async def test_the_reset_mail_is_arabic_and_its_link_sets_a_new_password(web, ma
     ).status_code == 200
 
 
+async def test_a_password_reset_ends_the_admin_sessions_too(web, make_user, mailbox, db_session):
+    from src.services import admin_session_service
+
+    user = await make_user(is_admin=True)
+    admin_token = await admin_session_service.create(
+        db_session, user_id=user.id, ip_hash="ip", user_agent=None
+    )
+    _, token = await request_reset(web, mailbox)
+
+    reset = await web.post(
+        "/auth/reset-password", json={"token": token, "password": "a brand new password"}
+    )
+
+    assert reset.status_code == 200
+    assert await admin_session_service.find(db_session, admin_token) is None
+
+
 async def test_a_reset_token_works_once(web, make_user, mailbox):
     await make_user()
     _, token = await request_reset(web, mailbox)

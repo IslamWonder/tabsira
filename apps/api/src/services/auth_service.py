@@ -244,7 +244,7 @@ async def _link_or_create(db: AsyncSession, identity: GoogleIdentity) -> User:
     elif user.email_verified_at is None:
         if user.password_hash is not None:
             user.password_hash = None
-            await session_service.revoke_all(db, user.id)
+            await session_service.revoke_every_session(db, user.id)
         user.email_verified_at = now
     try:
         async with db.begin_nested():

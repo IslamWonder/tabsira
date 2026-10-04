@@ -154,7 +154,7 @@ async def reset_password(
     if user.email_verified_at is None:
         user.email_verified_at = clock.utcnow()
     await email_token_service.cancel_unused(db, user.id, TokenPurpose.PASSWORD_RESET)
-    await session_service.revoke_all(
+    await session_service.revoke_every_session(
         db, user.id, keep_token=session_service.cookie_token(request, settings)
     )
     await db.commit()
