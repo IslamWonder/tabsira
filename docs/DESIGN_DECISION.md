@@ -71,3 +71,27 @@ The hadith is shown whole, exactly as stored. The chain of narrators and the clo
 ### Motion and sound
 
 Motion on display and on events only, never on hover: the points breathe on first view, the insight sheet rises, the fog lifts from a place after «تمّ». Everything stops under reduced motion. Sound effects are off by default.
+
+### Responsive web application (added 4 October 2026)
+
+TABSIRA is a web application first, installable as a PWA, and works from a 320 px phone to a 1920 px desktop. The phone mockups above are one breakpoint, not the product. Layout changes with the space; tokens, components and copy stay the same.
+
+| Breakpoint | Width       | Navigation                                                                                                            | Layout principle                            |
+| ---------- | ----------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Phone      | < 768 px    | Floating pill bar at the bottom, capture in the centre                                                                | One column; sheets rise from the bottom     |
+| Tablet     | 768–1199 px | Top bar: wordmark at the start (right), the four sections as tabs, «صوّر مشهدًا» as the one primary button at the end | Two columns where the content has two parts |
+| Desktop    | ≥ 1200 px   | Same top bar, content up to 1440 px wide, centred                                                                     | Stage and reading side by side              |
+
+Per screen:
+
+- **Scene (`/`)** — desktop: the photo is the stage on the larger side (about 60 %, full height under the top bar), with its glowing points; the start side holds the wordmark line, «المس البصيرة التي لفتتك», the same insights as a short list (the screen-reader list made visible — Common Region, Serial Position), and the new-scene actions: drag-and-drop a photo, choose a file, paste a link, use the camera when the device has one (Postel's law: accept every input form). Phone: full-bleed photo as in the mockup.
+- **Analysis** — the photo stays on screen while the honest stages run beside it (StageOrbit on desktop, a compact line on phones); nothing jumps when the result arrives (Doherty threshold: feedback under 400 ms, then calm).
+- **Insight** — desktop: the photo is sticky on one side with the focused point highlighted, the reading column (680 px measure) on the other: title, «ما ظهر», Quran, Sunnah, «شرح تبصرة», «لماذا ظهر هذا؟», the step, the chat; the primary «تمّ» sits at the end of the reading column and in a sticky footer of that column. On screens ≥ 1440 px the Quran and Sunnah cards may sit side by side only when both texts are short (under ~280 characters); long texts always stack (tajriba §6: never force two long texts into narrow columns).
+- **World** — desktop: the fog map fills the main area; the places list is a visible side panel (the accessible alternative becomes a feature), selecting in either highlights the other.
+- **Atlas** — desktop: MapLibre map with a results side panel (insight cards in the visible area, filters on top); phone: full map with a bottom sheet. The camera discovery is offered only on devices with a camera and orientation sensors; on desktop the button explains it is a phone feature.
+- **Community** — desktop: a centred feed column (≤ 640 px) with a side column for the «لك» / «أتابع» tabs and filters; phone: tabs on top of the feed.
+- **Me** — a settings layout with a section list on the start side on desktop, a single list on phones.
+
+Kept from the earlier prototype's look: the eight-point star mark beside the gilded wordmark, the soft aurora with a faint geometric pattern behind light-theme pages (it becomes a deep night aurora in dark), slow light motes (never pointer-driven), StageOrbit and QuestLog for progress, the burst on «تمّ», and event-only sound effects, off by default. Not kept: the bottom navigation on wide screens and the narrow centred column on desktop.
+
+Desktop interactions: every action reachable by keyboard with visible focus; hover may change colour or reveal a tooltip but never moves or resizes anything; drag-and-drop has a button equivalent.
