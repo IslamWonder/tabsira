@@ -100,6 +100,19 @@ export const scanMessages = {
     },
   },
 
+  /** The public page of a published insight (master prompt v2 §18). */
+  publicInsight: {
+    /** The breadcrumb and the fallback name of the page. */
+    name: 'بصيرة منشورة',
+    byAuthor: (name: string) => `نشرها ${name}`,
+    publishedOn: 'نُشرت في',
+    tryIt: 'جرّب تبصرة بمشهدك',
+    tryItHint: 'صوّر مشهدًا من حولك، وانظر ما تقوله الآية والحديث عنه.',
+    /** Before the glimpse in search results: what the page is. */
+    descriptionPrefix: 'بصيرة من تبصرة:',
+    /** Between the clues of one list. */
+    listSeparator: '، ',
+  },
   insightPage: {
     metaTitle: 'بصيرتك',
     loading: 'نفتح بصيرتك…',

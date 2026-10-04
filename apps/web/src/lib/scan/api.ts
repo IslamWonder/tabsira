@@ -15,6 +15,8 @@ export type ScanEntity = Schemas['ScanEntityOut'];
 export type InsightSummary = Schemas['InsightSummary'];
 export type Tutorial = Schemas['TutorialOut'];
 export type Insight = Schemas['InsightDetailOut'];
+/** A published insight as anyone reads it (`GET /public/insights/{id}`). */
+export type PublicInsight = Schemas['PublicInsightOut'];
 export type ChatReply = Schemas['ChatReply'];
 export type ChatMessage = Schemas['ChatMessageOut'];
 export type Completion = Schemas['CompletionOut'];

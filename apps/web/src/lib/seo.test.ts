@@ -172,6 +172,10 @@ describe('structured data', () => {
         dateModified: '2026-10-05',
       })
     ).toMatchObject({ dateModified: '2026-10-05' });
+    // Without a public name the organisation is the author: no person is named.
+    expect(
+      articleJsonLd({ path: '/insights/x', headline: 'عنوان', datePublished: '2026-10-04' })
+    ).toMatchObject({ author: { '@id': expect.stringMatching(/#organization$/) } });
   });
 });
 

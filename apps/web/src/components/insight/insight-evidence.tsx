@@ -16,7 +16,11 @@ const SHORT_TEXT = 280;
  * for its ruling stands alone, with the API's notice beside it, so the reader
  * is told why and never shown a hadith that has not been ruled on.
  */
-export function InsightEvidence({ insight }: { insight: Insight }) {
+/** The owner's insight, or a public one, which carries no status and no notice (nothing waits). */
+type Evidence = Pick<Insight, 'quran' | 'hadith'> &
+  Partial<Pick<Insight, 'hadith_status' | 'notice'>>;
+
+export function InsightEvidence({ insight }: { insight: Evidence }) {
   const { quran, hadith } = insight;
   const verse = quran?.verse;
   const narration = hadith?.hadith;
@@ -62,7 +66,7 @@ export function InsightEvidence({ insight }: { insight: Insight }) {
   return (
     <div className="flex flex-col gap-3">
       <EvidencePair quran={quranCard} sunnah={sunnahCard} sideBySide={short} />
-      {insight.hadith_status === 'awaiting_verification' && insight.notice !== null ? (
+      {insight.hadith_status === 'awaiting_verification' && insight.notice != null ? (
         <div role="status">
           <Notice tone="info">{insight.notice}</Notice>
         </div>

@@ -1,5 +1,13 @@
 import { createHash } from 'node:crypto';
-import type { ChatReply, Completion, Insight, Progress, Scan, Tutorial } from '@/lib/scan/api';
+import type {
+  ChatReply,
+  Completion,
+  Insight,
+  Progress,
+  PublicInsight,
+  Scan,
+  Tutorial,
+} from '@/lib/scan/api';
 
 /*
  * Sample answers of the scan, insight and tutorial routes, in the shapes the
@@ -185,10 +193,35 @@ export function insightOut(overrides: Partial<Insight> = {}): Insight {
     action: { state: null, at: null, means: null },
     chat: { enabled: true, used: 0, limit: 3, remaining: 3, messages: [] },
     image: { sensitive: false, url: '/scans/110000000000000001/image' },
+    publication: { published: false, published_at: null, path: null },
     completed_at: null,
     place_id: null,
     created_at: '2026-10-04T08:00:10Z',
     disclosure: 'تبصرة أداة مدعومة بالذكاء الاصطناعي، وليست مفتيًا ولا عالمًا',
+    ...overrides,
+  };
+}
+
+/** A published insight as the public route returns it: the owner's view without anything private. */
+export function publicInsightOut(overrides: Partial<PublicInsight> = {}): PublicInsight {
+  const own = insightOut();
+  return {
+    id: own.id,
+    path: `/i/${own.id}`,
+    title: own.title,
+    glimpse: own.glimpse,
+    label: null,
+    relation: own.relation,
+    relation_label: own.relation_label,
+    quran: own.quran,
+    hadith: own.hadith,
+    explanation_tag: own.explanation_tag,
+    explanation: own.explanation,
+    why: { visible_clues: own.why.visible_clues, concept: own.why.concept, limits: own.why.limits },
+    small_step: own.small_step,
+    author: { public_name: 'قارئ' },
+    published_at: '2026-10-04T09:00:00Z',
+    disclosure: own.disclosure,
     ...overrides,
   };
 }
