@@ -28,10 +28,21 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from src.config import Settings
 from src.database import get_db
 from src.main import create_app
-from src.models import Hadith, HadithClassification, QuranSurah, QuranVerse, User
+from src.models import (
+    Hadith,
+    HadithClassification,
+    HadithSearch,
+    QuranSurah,
+    QuranVerse,
+    QuranVerseSearch,
+    User,
+)
 from src.schemas.learning_path import LearningPathFile
 from src.scripture.guard import WritePurpose, allow_scripture_writes
+from src.scripture.guard_fold import guard_fold
+from src.scripture.quran import refresh_verse_spans
 from src.scripture.rulings import RulingInput, find_hadith, record_ruling
+from src.scripture.text import search_copy
 from src.services.masar_import import import_path
 from tests.conftest import browser_for
 from tests.fakes import FakeModelClient
@@ -56,11 +67,29 @@ async def store_extra(session: AsyncSession) -> None:
     for surah in extra["surahs"]:
         session.add(QuranSurah(**surah))
     await session.flush()
-    for verse in extra["verses"]:
-        session.add(QuranVerse(**verse))
-    for hadith in extra["hadiths"]:
-        session.add(Hadith(**hadith))
+    verses = [QuranVerse(**verse) for verse in extra["verses"]]
+    hadiths = [Hadith(**hadith) for hadith in extra["hadiths"]]
+    session.add_all([*verses, *hadiths])
     await session.flush()
+    # Their search copies, as the importers write them, so the store-wide guard sees them.
+    session.add_all(
+        QuranVerseSearch(
+            verse_id=verse.id,
+            normalized_text=search_copy(verse.text),
+            guard_text=guard_fold(verse.text),
+        )
+        for verse in verses
+    )
+    session.add_all(
+        HadithSearch(
+            hadith_id=hadith.id,
+            normalized_text=search_copy(hadith.text),
+            guard_text=guard_fold(hadith.text),
+        )
+        for hadith in hadiths
+    )
+    await session.flush()
+    await refresh_verse_spans(session)
 
 
 async def store_path(session: AsyncSession) -> None:

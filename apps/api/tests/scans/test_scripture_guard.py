@@ -22,9 +22,9 @@ from tests.scripture.fixtures import hadith_text, load_json, store_quran, verse_
 
 API_DIR = Path(__file__).resolve().parents[2]
 TRIGRAM_INDEXES = (
-    "ix_quran_verse_search_normalized_text_trgm",
-    "ix_quran_verse_spans_normalized_text_trgm",
-    "ix_hadith_search_normalized_text_trgm",
+    "ix_quran_verse_search_guard_text_trgm",
+    "ix_quran_verse_spans_guard_text_trgm",
+    "ix_hadith_search_guard_text_trgm",
 )
 
 
@@ -157,16 +157,24 @@ async def test_the_spans_are_rebuilt_when_a_verse_is_corrected(store):
         assert await overlap.repeats_store(db, [quoted])
 
 
-def test_the_migration_writes_the_spans_the_models_write():
-    path = API_DIR / "alembic" / "versions" / "20261004_191000_create_quran_verse_spans.py"
+def _migration(name: str):
+    path = API_DIR / "alembic" / "versions" / name
     spec = importlib.util.spec_from_file_location(path.stem, path)
     assert spec is not None
     assert spec.loader is not None
-    migration = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(migration)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
-    assert migration.VERSE_SPAN_STATEMENTS == scripture_models.VERSE_SPAN_STATEMENTS
-    assert migration.DROP_VERSE_SPANS == scripture_models.DROP_VERSE_SPANS
+
+def test_the_migration_writes_the_spans_the_models_write():
+    guard = _migration("20261004_192000_add_scripture_guard_text.py")
+    first = _migration("20261004_191000_create_quran_verse_spans.py")
+
+    assert guard.VERSE_SPAN_STATEMENTS == scripture_models.VERSE_SPAN_STATEMENTS
+    assert guard.DROP_VERSE_SPANS == scripture_models.DROP_VERSE_SPANS
+    # Its downgrade puts back the spans of the revision before it.
+    assert guard.PREVIOUS_SPAN_STATEMENTS == first.VERSE_SPAN_STATEMENTS
 
 
 async def test_a_chat_answer_that_copies_any_stored_text_is_refused(

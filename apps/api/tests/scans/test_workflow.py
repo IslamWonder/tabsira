@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -37,9 +38,23 @@ from src.pipeline.schemas import BBox, DetectorRequest, DetectorResult, ImageUpl
 from src.scans import buffer, progress, workflow
 from src.scans.engines import DemoEngine, EngineDeps
 from src.scans.workflow import ScanServices, apply_focus, run_scan
+from src.scripture.text import search_copy
 from tests.fakes import FakeModelClient
 from tests.scans.builders import entity, proposed, scan_row, scene
-from tests.scans.conftest import photo
+from tests.scans.conftest import DATA, photo
+from tests.scripture.fixtures import verse_text
+from tests.scripture.spelling import standard
+
+# Stored texts the scene tests quote: one from the scripture fixture, two from the extras.
+STORED = {
+    (30, 50): verse_text(30, 50),
+    **{
+        (verse["surah"], verse["ayah"]): verse["text"]
+        for verse in json.loads((DATA / "extra-scripture.json").read_text(encoding="utf-8"))[
+            "verses"
+        ]
+    },
+}
 
 GUEST = "f" * 64
 
@@ -279,9 +294,14 @@ async def test_a_scan_already_run_elsewhere_or_of_another_run_is_left_alone(
         ),
         # Seven words of a stored verse, without any mark of quotation.
         (
-            scene_answer(description="نبتة و فانظر الى اثر رحمت الله كيف يحي الارض"),
+            scene_answer(description=f"نبتة و {' '.join(search_copy(STORED[30, 50]).split()[:7])}"),
             "VISION_FAILED",
             "leak",
+        ),
+        # Whole verses in today's spelling, built from the stored texts.
+        *(
+            (scene_answer(description=f"نبتة {standard(STORED[ref])}"), "VISION_FAILED", "leak")
+            for ref in ((2, 43), (3, 190), (30, 50))
         ),
     ],
 )

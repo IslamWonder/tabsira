@@ -14,7 +14,8 @@ every free-text field a model returns and reports what looks like a quotation:
 - a run of fully vocalised words, the way scripture is written and prose is not.
 
 Detectors are pluggable: `ShingleOverlapDetector` compares the text with a
-corpus by word n-grams, and is added to the guard once the scripture store
+corpus by word n-grams of their guard skeletons (`src.scripture.guard_fold`: a
+stored verse in the mushaf's spelling and the same words in today's fold alike), and is added to the guard once the scripture store
 exists (`LeakGuard([PatternLeakDetector(), ShingleOverlapDetector(verses)])`).
 A finding names its kind and never copies the suspected text.
 """
@@ -29,6 +30,7 @@ from enum import StrEnum
 from pydantic import computed_field
 
 from src.pipeline.schemas import FrozenModel
+from src.scripture.guard_fold import guard_fold
 
 # Harakat, superscript alef and the Quranic annotation marks; removed to compare text.
 _DIACRITICS = re.compile(r"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u08D3-\u08FF\u0640]")
@@ -184,14 +186,12 @@ class ShingleOverlapDetector(LeakDetector):
     def __init__(self, corpus: Iterable[str], *, window: int = SHINGLE_WORDS) -> None:
         self._window = window
         self._shingles = {
-            shingle for text in corpus for shingle in _shingles(normalize_arabic(text), window)
+            shingle for text in corpus for shingle in _shingles(guard_fold(text), window)
         }
 
     def find(self, text: str) -> list[LeakFinding]:
         shared = sum(
-            1
-            for shingle in _shingles(normalize_arabic(text), self._window)
-            if shingle in self._shingles
+            1 for shingle in _shingles(guard_fold(text), self._window) if shingle in self._shingles
         )
         if not shared:
             return []

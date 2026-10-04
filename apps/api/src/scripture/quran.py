@@ -37,6 +37,7 @@ from src.models import (
 )
 from src.models.scripture import quran_verse_spans
 from src.scripture.errors import ScriptureError
+from src.scripture.guard_fold import guard_fold
 from src.scripture.quranpedia import MUSHAF_ID
 from src.scripture.text import search_copy, sha256_hex
 
@@ -197,7 +198,7 @@ async def apply_correction(
     await session.execute(
         update(QuranVerseSearch)
         .where(QuranVerseSearch.verse_id == verse.id)
-        .values(normalized_text=search_copy(text))
+        .values(normalized_text=search_copy(text), guard_text=guard_fold(text))
     )
     await refresh_verse_spans(session)
     session.add(
@@ -309,7 +310,11 @@ async def reconcile_verses(
         await session.execute(
             insert(QuranVerseSearch),
             [
-                {"verse_id": verse_id, "normalized_text": search_copy(text)}
+                {
+                    "verse_id": verse_id,
+                    "normalized_text": search_copy(text),
+                    "guard_text": guard_fold(text),
+                }
                 for verse_id, text in inserted
             ],
         )

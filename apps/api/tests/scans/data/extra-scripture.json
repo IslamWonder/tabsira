@@ -1,5 +1,5 @@
 {
-  "description": "Rows copied from a store imported by make data (quranpedia dump 2026-10-03, fawazahmed0 hadith-api): the verses 3:190 and 6:99 with their surahs, and al-Bukhari 2320. Never typed by hand; the database checks every hash.",
+  "description": "Rows copied from a store imported by make data (quranpedia dump 2026-10-03, fawazahmed0 hadith-api): the verses 2:43, 3:190 and 6:99 (with the surahs the scripture fixture lacks), and al-Bukhari 2320. Never typed by hand; the database checks every hash.",
   "surahs": [
     {
       "number": 3,
@@ -21,6 +21,17 @@
     }
   ],
   "verses": [
+    {
+      "surah": 2,
+      "ayah": 43,
+      "quranpedia_ayah_id": 62300,
+      "mushaf_id": 2,
+      "page": 7,
+      "juz": 1,
+      "text": "وَأَقِيمُواْ ٱلصَّلَوٰةَ وَءَاتُواْ ٱلزَّكَوٰةَ وَٱرۡكَعُواْ مَعَ ٱلرَّٰكِعِينَ",
+      "text_sha256": "32939386c70545d86ea1f8449aba8b9978cd3db74f202ad9ad8c527560731cc9",
+      "source_version": "dump:2026-10-03"
+    },
     {
       "surah": 3,
       "ayah": 190,

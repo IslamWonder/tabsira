@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models import Hadith, HadithCollection, HadithSearch, ScriptureAudit
 from src.scripture.errors import ScriptureError
 from src.scripture.files import check_bytes, is_verified, write_atomically
+from src.scripture.guard_fold import guard_fold
 from src.scripture.text import search_copy, sha256_hex
 
 FAWAZ_DATASET = "fawazahmed0/hadith-api"
@@ -321,7 +322,11 @@ async def import_collection(
         await session.execute(
             insert(HadithSearch),
             [
-                {"hadith_id": hadith_id, "normalized_text": search_copy(text)}
+                {
+                    "hadith_id": hadith_id,
+                    "normalized_text": search_copy(text),
+                    "guard_text": guard_fold(text),
+                }
                 for hadith_id, text in inserted
             ],
         )
