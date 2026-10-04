@@ -9,6 +9,7 @@ export const UNLISTED_ROUTES = [
   '/community',
   '/community/publish',
   '/atlas',
+  '/atlas/publish',
   '/me',
   '/offline',
   '/signin',

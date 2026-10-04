@@ -16,7 +16,8 @@ export function PostEvidence({
   insight,
   headingLevel = 3,
 }: {
-  insight: PostInsight;
+  /** What a post or an atlas entry cites: the verses and the hadiths, as the API returned them. */
+  insight: Pick<PostInsight, 'quran' | 'hadith'>;
   headingLevel?: 2 | 3;
 }) {
   const verses = insight.quran.map((verse) => (

@@ -716,6 +716,138 @@ export const ar = {
    * insights; the author's own words are always labelled as theirs. A like is
    * an «أثر», a gentle glow, never a score (DESIGN_DECISION.md «Game feel»).
    */
+  /** «أطلس بصائر العالم» (docs/spec/extension-atlas-camera.md): published insights at approximate points. */
+  atlas: {
+    title: 'أطلس بصائر العالم',
+    lead: 'بصائر نشرها أصحابها في أماكنها التقريبية. تصفّح العالم دون أن تمنح موقعك.',
+    mapLabel: 'خريطة الأطلس',
+    /** Joins a place's labels (place, region, country) the way Arabic lists them. */
+    joinLabels: (parts: readonly (string | null | undefined)[]) => parts.filter(Boolean).join('، '),
+    attribution: 'بلاط الخريطة من OpenFreeMap، بيانات OpenStreetMap.',
+    searchHere: 'ابحث في هذه المنطقة',
+    nearMe: 'قريب مني',
+    nearMeHint: 'يحرّك الخريطة إلى موضعك على جهازك فقط؛ لا يُرسل موضعك إلى تبصرة.',
+    nearMeDenied: 'لم يُمنح إذن الموقع، فتبقى الخريطة حيث هي. يمكنك البحث عن مكان.',
+    nearMeUnavailable: 'لا يستطيع هذا الجهاز تحديد موضعه الآن.',
+    search: 'ابحث عن مدينة أو مكان',
+    searchForm: 'البحث عن مكان',
+    searchPlaceholder: 'اسم مدينة أو مكان',
+    searching: 'نبحث…',
+    noPlaces: 'لم نجد مكانًا بهذا الاسم.',
+    loading: 'نحمّل البصائر…',
+    failed: 'تعذّر تحميل البصائر الآن.',
+    retry: 'أعد المحاولة',
+    empty: 'لا توجد بصائر منشورة في هذه المنطقة بعد.',
+    emptyHint: 'وسّع المنطقة أو أضف بصيرة من عالمك.',
+    truncated: 'في هذه المنطقة بصائر أكثر مما نعرضه؛ قرّب الخريطة لترى المزيد.',
+    count: (count: number) => {
+      if (count === 0) {
+        return 'لا بصائر';
+      }
+      if (count === 1) {
+        return 'بصيرة واحدة';
+      }
+      return count === 2 ? 'بصيرتان' : count <= 10 ? `${count} بصائر` : `${count} بصيرة`;
+    },
+    inView: 'في هذه المنطقة',
+    filters: {
+      label: 'المرشحات',
+      period: 'الفترة',
+      periods: { all: 'كل الوقت', week: 'آخر أسبوع', month: 'آخر شهر', year: 'آخر سنة' },
+      country: 'البلد',
+      anyCountry: 'كل البلدان',
+      concept: 'الموضوع',
+      anyConcept: 'كل المواضيع',
+      clear: 'امسح المرشحات',
+    },
+    list: 'قائمة البصائر في المنطقة',
+    marker: (title: string) => `افتح ${title}`,
+    cluster: (count: number) => `مجموعة من ${count} بصائر، قرّب لتفصلها`,
+    card: {
+      open: 'افتح البصيرة',
+      openPost: 'افتح المنشور في تواصل',
+      place: 'المكان',
+      by: (name: string) => `نشرها ${name}`,
+      publishedAt: (when: string) => `نُشرت في ${when}`,
+      close: 'أغلق',
+      placePage: 'ذاكرة المكان',
+    },
+    entry: {
+      back: 'العودة إلى الأطلس',
+      notFound: { title: 'لم نجد هذه البصيرة', description: 'ربما لم تُنشر بعد، أو لا تُعرض.' },
+      gone: {
+        title: 'سُحبت هذه البصيرة من الأطلس',
+        description: 'سحبها صاحبها، فلم يبق منها إلا هذا العنوان.',
+      },
+      mapLabel: 'موضع البصيرة التقريبي',
+      locationNote:
+        'النقطة مركز منطقة تقريبية حُسب على الخادم، لا موضع التصوير الحقيقي. الموقع قرينة جغرافية لا دليل ديني.',
+      explanation: 'شرح تبصرة',
+      step: 'خطوة صغيرة',
+      reveal: 'اعرض الآية والحديث',
+    },
+    /** The share line of a place page. */
+    placeDescription: (label: string) => `البصائر التي نشرها الناس في ${label} على أطلس تبصرة.`,
+    place: {
+      title: (label: string) => `ذاكرة المكان: ${label}`,
+      lead: 'ما رآه الناس من معانٍ في هذا المكان، كل بصيرة بما تضيفه.',
+      loading: 'نحمّل المكان…',
+      notFound: {
+        title: 'لا بصائر في هذا المكان بعد',
+        description: 'حين تُنشر بصيرة فيه تظهر هنا.',
+      },
+      more: 'اعرض المزيد',
+      end: 'هذا كل ما نُشر في هذا المكان حتى الآن.',
+      showOnMap: 'اعرض على الخريطة',
+    },
+    publish: {
+      title: 'أضف بصيرتك إلى الأطلس',
+      lead: 'تُعرض بصيرتك على خريطة العالم في موضع تقريبي يحسبه الخادم؛ موضعك الدقيق يبقى لك وحدك.',
+      noInsight: {
+        title: 'اختر بصيرة أولًا',
+        description: 'يبدأ النشر من بصيرة محفوظة في عالمك.',
+        world: 'افتح عالمي',
+      },
+      signIn: 'ادخل لتضيف بصيرتك إلى الأطلس.',
+      verify: 'أكّد بريدك قبل أن تنشر شيئًا للناس.',
+      identityFirst: 'اختر هويتك العامة أولًا؛ يظهر اسمك العام مع البصيرة على الخريطة.',
+      where: 'أين التُقطت الصورة؟',
+      whereHint: 'لا نعيّن موقعك الحالي تلقائيًا لصورة قديمة. اختر بنفسك.',
+      useDevice: 'استعمل موضعي الآن',
+      useDeviceHint: 'لصورة التُقطت هنا الآن. يُحفظ الموضع لك وحدك.',
+      searchPlace: 'ابحث عن مكان',
+      tapMap: 'أو المس الخريطة لتحدد الموضع',
+      chosen: 'الموضع المختار',
+      meaning: 'ما الذي تشير إليه النقطة؟',
+      meanings: { capture_point: 'موضع التقاط الصورة', public_place: 'مكان عام أسمّيه' },
+      preview: 'هكذا يظهر موضعك للناس',
+      previewHint: 'المنطقة المظللة هي ما يُنشر؛ النقطة الدقيقة لا تغادر الخادم.',
+      precision: 'الدقة',
+      placeLabel: 'يُسمّى المكان',
+      noPlace: 'لا مكان مأهول قريب في بيانات الخريطة؛ تُعرض النقطة بلا اسم.',
+      save: 'احسب الموضع التقريبي',
+      saving: 'أحسب…',
+      saved: 'حُسب موضعك التقريبي. راجعه ثم انشر.',
+      publish: 'انشر على الأطلس',
+      publishing: 'أنشر…',
+      published: 'نُشرت بصيرتك على الأطلس.',
+      withdraw: 'اسحب من الأطلس',
+      withdrawing: 'أسحب…',
+      withdrawn: 'سُحبت بصيرتك من الأطلس ونُسي موضعها الدقيق.',
+      withdrawTitle: 'سحب البصيرة من الأطلس؟',
+      withdrawLead:
+        'تختفي النقطة من الخريطة والبحث في الحال، ويُنسى موضعها الدقيق. تبقى البصيرة في عالمك.',
+      withdrawConfirm: 'اسحب',
+      cancel: 'تراجع',
+      status: { draft: 'موضع محفوظ، لم يُنشر', published: 'منشورة على الأطلس', withdrawn: 'مسحوبة' },
+      notPublishable:
+        'لا يمكن وضع هذه البصيرة على الأطلس: تُنشر البصائر المتحقَّقة التي تملكها وحدها.',
+      open: 'افتحها على الأطلس',
+      loadingMine: 'نتحقق مما حفظته…',
+      noLocation: 'لم تحدد موضعًا بعد.',
+    },
+  },
+
   community: {
     title: 'تبصرة تواصل',
     lead: 'بصائر موثّقة ينشرها أصحابها؛ تتابعهم، وتحفظ ما ينفعك، وتعلّق بأدب.',

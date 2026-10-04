@@ -20,9 +20,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 describe('placeholder routes', () => {
-  it.each<[string, () => ReactElement, Metadata, string, string]>([
-    ['/atlas', AtlasPage, atlasMetadata, 'أطلس بصائر العالم', '/atlas'],
-  ])(
+  it.each<[string, () => ReactElement, Metadata, string, string]>([])(
     '%s says «قريبًا» honestly and has its canonical address',
     (_route, Page, metadata, title, canonical) => {
       render(<Page />);
@@ -42,6 +40,16 @@ describe('placeholder routes', () => {
     ]);
     expect(communityMetadata.alternates?.canonical).toBe('/community');
     expect(communityMetadata.robots).toEqual({ index: false, follow: false });
+  });
+
+  it('opens the atlas on its map and list, outside the sitemap', () => {
+    render(<AtlasPage />);
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'أطلس بصائر العالم' })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'خريطة الأطلس' })).toBeInTheDocument();
+    expect(atlasMetadata.alternates?.canonical).toBe('/atlas');
+    expect(atlasMetadata.robots).toEqual({ index: false, follow: false });
   });
 
   it('keeps the personal spaces out of search engines', () => {
