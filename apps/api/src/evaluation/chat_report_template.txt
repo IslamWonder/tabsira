@@ -17,4 +17,6 @@ $case_table
 
 ### Answers shown
 
+The questions are in `cases.json`; an answer the scripture guard flags is withheld here.
+
 $answers

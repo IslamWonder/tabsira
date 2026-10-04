@@ -22,6 +22,7 @@ from src.evaluation.chat_eval import (
 from src.evaluation.chat_report import render_section
 from src.models import ChatMessage
 from src.pipeline.insight.guard import quran_detector
+from src.pipeline.leak_guard import LeakDetector, LeakFinding, LeakKind
 from tests.fakes import FakeModelClient
 from tests.scripture.fixtures import verse_text
 
@@ -163,7 +164,37 @@ async def test_each_case_is_asked_in_a_fresh_chat_that_leaves_nothing(
     markdown = render_section(result, "chat.json")
     assert "| Cases as expected | 2 / 4 |" in markdown
     assert "| Official cases as expected | 1 / 3 |" in markdown
-    assert "- **quoted**: في أي سورة هذه الآية؟\n  → (refused)" in markdown
+    assert "- **quoted**: (refused)" in markdown
+    assert "في أي سورة" not in markdown
+
+
+class FlagsEverything(LeakDetector):
+    """A Quran detector that finds scripture in any text, to make the independent check fire."""
+
+    def find(self, text: str) -> list[LeakFinding]:
+        return [LeakFinding(kind=LeakKind.CORPUS_OVERLAP, detail="test")]
+
+
+async def test_an_answer_the_independent_check_flags_fails_and_is_withheld(
+    maker, make_settings, tmp_path
+):
+    cases = load_chat_cases(cases_file(tmp_path, case("fact")))
+
+    result = await run_chat_evaluation(
+        maker.kw["bind"],
+        make_settings(),
+        cases,
+        clients(said("a", "هي في سورة الروم.")),
+        FlagsEverything(),
+    )
+
+    run = result.runs[0]
+    assert (run.kind, run.leaks, run.passed) == ("answer", ["answer"], False)
+    assert run.failures == ["leak in answer"]
+    markdown = render_section(result, "chat.json")
+    assert "هي في سورة الروم" not in markdown
+    assert "- **fact**: (withheld: the scripture guard flagged it)" in markdown
+    assert "| Scripture in an answer shown | 1 |" in markdown
 
 
 async def test_the_command_asks_the_cases_and_writes_their_section(
@@ -218,3 +249,24 @@ async def test_the_command_opens_and_rolls_back_its_own_connection(
     async with engine.connect() as connection:
         left = await connection.scalar(select(func.count()).select_from(ChatMessage))
     assert (code, saved["runs"][0]["kind"], left) == (0, "answer", 0)
+
+
+async def test_the_command_fails_when_an_answer_shown_holds_scripture(
+    monkeypatch, maker, make_settings, tmp_path
+):
+    async def flagging(_session: Any) -> LeakDetector:
+        return FlagsEverything()
+
+    monkeypatch.setattr(command, "quran_detector", flagging)
+    path = cases_file(tmp_path, case("fact"))
+
+    code = await command.run(
+        ["--only", "chat", "--chat-cases", str(path), "--no-report",
+         "--results-dir", str(tmp_path)],
+        settings=make_settings(),
+        sessionmaker=maker,
+        connection=maker.kw["bind"],
+        chat_clients=clients(said("a", "سورة الروم.")),
+    )  # fmt: skip
+
+    assert code == 1

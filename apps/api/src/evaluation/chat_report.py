@@ -44,12 +44,21 @@ def _passed(runs: list[ChatCaseRun], source: str | None = None) -> str:
     return f"{sum(run.passed for run in chosen)} / {len(chosen)}"
 
 
+# A question may hold a learner's wrong wording of a verse, so it stays in cases.json.
+WITHHELD = "(withheld: the scripture guard flagged it)"
+
+
 def _answers(runs: list[ChatCaseRun]) -> str:
     """List the text each case showed, so a person can judge what the rules cannot."""
     lines = []
     for run in runs:
-        shown = " ".join(run.answer.split()) if run.answer else f"({run.kind})"
-        lines.append(f"- **{run.case}**: {run.question}\n  → {shown}")
+        if run.leaks:
+            shown = WITHHELD
+        elif run.answer:
+            shown = " ".join(run.answer.split())
+        else:
+            shown = f"({run.kind})"
+        lines.append(f"- **{run.case}**: {shown}")
     return "\n".join(lines)
 
 
