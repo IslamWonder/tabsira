@@ -363,6 +363,7 @@ async def test_every_foreign_key_to_users_cascades_so_deleting_an_account_leaves
         "scans",
         "insights",
         "world_places",
+        "map_entries",
     }
     assert {row.confdeltype for row in rows} == {"c"}
 
@@ -426,6 +427,9 @@ def test_every_table_lives_in_the_app_schema():
         "scan_events",
         "ai_calls",
         "evidence_exposures",
+        # The atlas
+        "map_entries",
+        "map_capture_points",
     }
 
     assert {name.removeprefix(f"{APP_SCHEMA}.") for name in Base.metadata.tables} == tables

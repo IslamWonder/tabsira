@@ -16,19 +16,53 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.geo.privacy import approximate
-from src.models import MapCapturePoint, MapEntry
+from src.models import HadithClassification, MapCapturePoint, MapEntry
 from src.owner import Owner
+from src.scripture.rulings import RulingInput, find_hadith, record_ruling
+from src.scripture.text import sha256_hex
 from src.services import sitemap_service
 from src.services.sitemap_service import Section
 from tests import geo_dataset as world_data
 from tests.geo_dataset import TUNIS, TUNIS_CITY
 from tests.scans.builders import insight_row, scan_row
+from tests.scripture.fixtures import hadith_text, verse_text
 from tests.support_social import Member
 
 # Where the owner says the photo was taken: a point inside Tunis, given to the exact metre.
 EXACT = (36.806512, 10.181534)
 CELL_M = 1000
-PRIVATE_KEYS = {"latitude", "longitude", "capture", "accuracy_m", "captured_at", "measured_at"}
+# No private field, and no timestamp: an insight id or a time to the second would say when the
+# photo was taken or when its owner was there.
+PRIVATE_KEYS = {
+    "latitude",
+    "longitude",
+    "capture",
+    "accuracy_m",
+    "captured_at",
+    "measured_at",
+    "insight_id",
+    "published_at",
+    "created_at",
+}
+
+
+# What the fixture store holds with an eligible ruling: 112:1 and bukhari 1 (صحيح); bukhari 8 is ضعيف
+# and bukhari 1032 has no ruling at all.
+EVIDENCE: dict[str, Any] = {
+    "quran_surah": 112,
+    "quran_ayah": 1,
+    "hadith_collection": "bukhari",
+    "hadith_number": "1",
+    "explanation": [
+        {"section": "seen", "text": "قطرات على ورق نبتة.", "sources": []},
+        {"section": "sunnah", "text": "[ما يضيفه الحديث]", "sources": ["hadith:bukhari:1"]},
+    ],
+    "small_step": {
+        "text": "احفظ الدعاء الوارد في الحديث.",
+        "kind": "text_grounded",
+        "grounded_in": ["hadith:bukhari:1"],
+    },
+}
 
 
 async def _insight(db: AsyncSession, member: Member, **values: Any) -> int:
@@ -36,7 +70,7 @@ async def _insight(db: AsyncSession, member: Member, **values: Any) -> int:
     scan = scan_row(owner)
     db.add(scan)
     await db.flush()
-    insight = insight_row(owner, scan_id=scan.id, **values)
+    insight = insight_row(owner, scan_id=scan.id, **{**EVIDENCE, **values})
     db.add(insight)
     await db.flush()
     return insight.id
@@ -74,12 +108,33 @@ def keys_of(value: Any) -> set[str]:
     return found
 
 
+def coordinates_of(value: Any) -> list[list[float]]:
+    """Every GeoJSON point in a document."""
+    found: list[list[float]] = []
+    if isinstance(value, dict):
+        if value.get("type") == "Point" and isinstance(value.get("coordinates"), list):
+            found.append(value["coordinates"])
+        for child in value.values():
+            found += coordinates_of(child)
+    elif isinstance(value, list):
+        for child in value:
+            found += coordinates_of(child)
+    return found
+
+
 def assert_public(response: Any) -> None:
-    """A public answer holds neither the exact point nor any field that could name one."""
+    """
+    A public answer holds neither the exact point nor any field that could name one.
+
+    Every point in it is the centre of an approximation cell: rounding it again changes nothing.
+    """
     body = response.json()
     assert not (keys_of(body) & PRIVATE_KEYS), keys_of(body) & PRIVATE_KEYS
     assert str(EXACT[0]) not in response.text
     assert str(EXACT[1]) not in response.text
+    for lng, lat in coordinates_of(body):
+        if (lng, lat) != (TUNIS[1], TUNIS[0]) and "place" not in body:
+            assert tuple(approximate(lat, lng, CELL_M)) == (lat, lng), (lat, lng)
 
 
 @pytest.fixture
@@ -132,6 +187,12 @@ async def test_only_the_owner_s_pipeline_insight_can_be_placed(
     refused = await _place(author, demo_id)
     assert (refused.status_code, refused.json()["error"]) == (409, "INSIGHT_NOT_PUBLISHABLE")
     assert (await _place(author, insight_id + 1)).status_code == 404
+    # The other owner-only routes answer the same for an insight that is not one's own.
+    assert (await _place(author, insight_id)).status_code == 200
+    assert (await other.http.get(f"/insights/{insight_id}/map")).status_code == 404
+    assert (await other.http.post(f"/insights/{insight_id}/map/publish")).status_code == 404
+    assert (await other.http.delete(f"/insights/{insight_id}/map")).status_code == 404
+    assert (await author.http.get(f"/insights/{insight_id}/map")).status_code == 200
 
 
 async def test_placing_needs_a_verified_address_and_a_public_identity(
@@ -145,6 +206,7 @@ async def test_placing_needs_a_verified_address_and_a_public_identity(
     assert (await _place(unverified, insight_id)).status_code == 403
     assert (await _place(nameless, insight_id)).status_code == 409
     assert (await guest.http.get("/me/map-entries")).status_code == 401
+    assert (await _place(guest, insight_id)).status_code == 401
 
 
 async def test_a_bad_point_is_refused_before_anything_is_stored(
@@ -172,11 +234,6 @@ async def test_publishing_and_withdrawing_follow_the_states(
     mine = await author.http.get("/me/map-entries")
     assert [item["status"] for item in mine.json()] == ["published"]
 
-    # Placing again changes what is shown, so the entry is a draft again.
-    moved = await _place(author, insight_id, latitude=36.80, longitude=10.18)
-    assert moved.json()["status"] == "draft"
-    assert (await author.http.get(f"/atlas/entries/{entry_id}")).status_code == 404
-
     assert (await author.http.delete(f"/insights/{insight_id}/map")).status_code == 204
     gone = await author.http.get(f"/atlas/entries/{entry_id}")
     assert (gone.status_code, gone.json()["error"]) == (410, "GONE")
@@ -184,10 +241,36 @@ async def test_publishing_and_withdrawing_follow_the_states(
     entry = await db_session.get(MapEntry, int(entry_id))
     assert entry is not None and entry.status.value == "withdrawn"
     assert (entry.public_lat, entry.public_lng, entry.public_geom) == (None, None, None)
-    withdrawn = await author.http.get(f"/insights/{insight_id}/map")
-    assert withdrawn.json()["capture"] is None and withdrawn.json()["public"] is None
-    # Withdrawing again changes nothing.
+    # Nothing of the location survives the tombstone: not even the place it was labelled with.
+    assert (entry.place_geoname_id, entry.place_label, entry.country_iso2) == (None, None, None)
+    # The owner has no live entry any more; withdrawing again changes nothing.
+    assert (await author.http.get(f"/insights/{insight_id}/map")).status_code == 404
     assert (await author.http.delete(f"/insights/{insight_id}/map")).status_code == 204
+
+    # Placing the insight again gives it a new address; the old one stays gone.
+    again = await _place(author, insight_id)
+    assert again.status_code == 200 and again.json()["id"] != entry_id
+    assert (await author.http.get(f"/atlas/entries/{entry_id}")).status_code == 410
+    new_id = str(again.json()["id"])
+    assert (await author.http.post(f"/insights/{insight_id}/map/publish")).status_code == 200
+    # Placing a published entry again changes what is shown, so it is a draft again, off the map.
+    moved = await _place(author, insight_id, latitude=36.80, longitude=10.18)
+    assert moved.json()["status"] == "draft" and moved.json()["id"] == new_id
+    assert (await author.http.get(f"/atlas/entries/{new_id}")).status_code == 404
+
+
+async def test_a_draft_withdrawn_before_it_was_public_leaves_nothing_behind(
+    db_session, make_member, make_insight, world
+):
+    author = await make_member("author")
+    insight_id = await _insight(db_session, author)
+    draft_id = (await _place(author, insight_id)).json()["id"]
+
+    assert (await author.http.delete(f"/insights/{insight_id}/map")).status_code == 204
+
+    # An id that was never public says nothing: 404, not 410.
+    assert (await author.http.get(f"/atlas/entries/{draft_id}")).status_code == 404
+    assert await db_session.get(MapEntry, int(draft_id)) is None
 
 
 # ─── The public side ───
@@ -241,10 +324,15 @@ async def test_the_window_filters_and_crosses_the_antimeridian(
     assert [f["id"] for f in by_concept.json()["features"]] == [tunis]
     by_country = await guest.http.get("/atlas/entries", params={**whole, "country": "tn"})
     assert [f["id"] for f in by_country.json()["features"]] == [tunis]
-    since = await guest.http.get(
-        "/atlas/entries", params={**whole, "since": "2099-01-01T00:00:00Z"}
-    )
+    since = await guest.http.get("/atlas/entries", params={**whole, "since": "2099-01-01"})
     assert since.json()["features"] == []
+    # The filter takes a day, never a time.
+    assert (
+        await guest.http.get("/atlas/entries", params={**whole, "since": "2026-10-04T10:00:00Z"})
+    ).status_code == 422
+    # And what comes back is a day, never a time.
+    feature = (await guest.http.get("/atlas/entries", params=whole)).json()["features"][0]
+    assert len(feature["properties"]["published_on"]) == 10
     # A window that crosses the antimeridian: west > east.
     crossing = await guest.http.get(
         "/atlas/entries", params={"west": 179, "south": -1, "east": -179, "north": 1}
@@ -265,14 +353,7 @@ async def test_an_entry_s_page_shows_the_insight_by_reference_and_its_place(
 ):
     author = await make_member("author")
     guest = await make_member(signed_in=False)
-    insight_id = await _insight(
-        db_session,
-        author,
-        quran_surah=112,
-        quran_ayah=1,
-        hadith_collection="bukhari",
-        hadith_number="1",
-    )
+    insight_id = await _insight(db_session, author)
     entry_id = await _published(author, insight_id)
 
     response = await guest.http.get(f"/atlas/entries/{entry_id}")
@@ -280,9 +361,8 @@ async def test_an_entry_s_page_shows_the_insight_by_reference_and_its_place(
     assert response.status_code == 200, response.text
     assert_public(response)
     body = response.json()
-    assert body["insight_id"] == str(insight_id)
     assert body["title"] == "الحياة في قطرة"
-    assert body["explanation"] == "قطرات على ورق نبتة."
+    assert body["explanation"] == "قطرات على ورق نبتة. [ما يضيفه الحديث]"
     assert body["step"] == "احفظ الدعاء الوارد في الحديث."
     assert body["author"]["handle"] == "author"
     assert body["location"]["point"]["coordinates"] == list(approximate(*EXACT, CELL_M))[::-1]
@@ -291,9 +371,17 @@ async def test_an_entry_s_page_shows_the_insight_by_reference_and_its_place(
     assert [verse["ayah"] for verse in body["quran"]] == [1]
     assert [hadith["number"] for hadith in body["hadith"]] == ["1"]
     assert body["post_id"] is None
-    # The verse is shown exactly as stored, with its hash.
+    assert len(body["published_on"]) == 10
+    # The verse and the hadith are shown exactly as stored, with the hash of what is shown.
     verse = body["quran"][0]
-    assert verse["verified"] is True and len(verse["sha256"]) == 64
+    assert verse["text"] == verse_text(112, 1)
+    assert verse["sha256"] == sha256_hex(verse["text"])
+    hadith = body["hadith"][0]
+    assert hadith["text"] == hadith_text("bukhari", 1)
+    assert hadith["sha256"] == sha256_hex(hadith["text"])
+    assert hadith["classification"] == "صحيح" and hadith["verification_url"].startswith(
+        "https://dorar.net/"
+    )
 
     assert (await guest.http.get(f"/atlas/entries/{int(entry_id) + 1}")).status_code == 404
 
@@ -422,3 +510,153 @@ def test_public_schemas_have_no_field_for_a_private_location():
     )
     for schema in public:
         assert not (set(schema.model_fields) & PRIVATE_KEYS), schema.__name__
+
+
+# ─── The scripture rule: nothing is shown or published that rests on a text not shown ───
+
+
+async def test_an_insight_without_eligible_evidence_cannot_be_placed(
+    db_session, make_member, make_insight, world
+):
+    author = await make_member("author")
+    weak = await _insight(db_session, author, hadith_number="8")
+    unruled = await _insight(db_session, author, hadith_number="1032")
+    missing_verse = await _insight(db_session, author, quran_surah=2, quran_ayah=999)
+    nothing = await _insight(
+        db_session,
+        author,
+        quran_surah=None,
+        quran_ayah=None,
+        hadith_collection=None,
+        hadith_number=None,
+        explanation=[{"section": "seen", "text": "x", "sources": []}],
+        small_step=None,
+    )
+
+    for insight_id in (weak, unruled, missing_verse, nothing):
+        response = await _place(author, insight_id)
+        assert (response.status_code, response.json()["error"]) == (
+            409,
+            "INSIGHT_NOT_PUBLISHABLE",
+        ), response.text
+    assert await db_session.scalar(select(MapEntry)) is None
+
+
+async def test_a_hadith_whose_ruling_changes_leaves_the_page_with_what_rested_on_it(
+    db_session, make_member, make_insight, world
+):
+    author = await make_member("author")
+    guest = await make_member(signed_in=False)
+    insight_id = await _insight(db_session, author)
+    entry_id = await _published(author, insight_id)
+
+    hadith = await find_hadith(db_session, "bukhari", "1")
+    assert hadith is not None
+    await record_ruling(
+        db_session,
+        hadith.id,
+        RulingInput(
+            ruling_text="[ضعيف]",
+            scholar="s",
+            source_book="b",
+            page="2",
+            dorar_url="https://dorar.net/h/y",
+            classification=HadithClassification.DAIF,
+            editor_name="editor",
+        ),
+    )
+
+    body = (await guest.http.get(f"/atlas/entries/{entry_id}")).json()
+    assert body["hadith"] == []
+    assert [verse["ayah"] for verse in body["quran"]] == [1]
+    # The sunnah part and the step rested on the hadith: gone with it; the verse's own line stays.
+    assert body["explanation"] == "قطرات على ورق نبتة."
+    assert body["step"] is None
+    # And placing it again, or publishing it again, is refused until the ruling allows it.
+    assert (await _place(author, insight_id)).status_code == 409
+
+
+async def test_a_block_hides_the_atlas_both_ways(db_session, make_member, make_insight, world):
+    author = await make_member("author")
+    reader = await make_member("reader")
+    guest = await make_member(signed_in=False)
+    entry_id = await _published(author, await _insight(db_session, author))
+    whole = {"west": -180, "south": -90, "east": 180, "north": 90}
+    assert (await reader.http.put("/blocks/author")).status_code == 204
+
+    assert (await reader.http.get("/atlas/entries", params=whole)).json()["features"] == []
+    assert (await reader.http.get(f"/atlas/entries/{entry_id}")).status_code == 404
+    assert (await reader.http.get(f"/atlas/places/{TUNIS_CITY}")).status_code == 404
+    # The one who was blocked does not see the other either; everyone else still does.
+    reader_entry = await _published(reader, await _insight(db_session, reader))
+    assert (await author.http.get(f"/atlas/entries/{reader_entry}")).status_code == 404
+    assert (await guest.http.get(f"/atlas/entries/{entry_id}")).status_code == 200
+
+
+async def test_an_account_that_said_it_is_under_13_places_nothing(
+    db_session, make_member, make_insight, world
+):
+    author = await make_member("author")
+    insight_id = await _insight(db_session, author)
+    assert (await author.http.patch("/profile", json={"age_range": "under_13"})).status_code == 200
+
+    refused = await _place(author, insight_id)
+
+    assert (refused.status_code, refused.json()["error"]) == (409, "INSIGHT_NOT_PUBLISHABLE")
+
+
+async def test_a_text_that_reads_like_scripture_is_never_placed(
+    db_session, make_member, make_insight, world
+):
+    author = await make_member("author")
+    insight_id = await _insight(db_session, author, title=verse_text(112, 1))
+
+    refused = await _place(author, insight_id)
+
+    assert (refused.status_code, refused.json()["error"]) == (409, "INSIGHT_NOT_PUBLISHABLE")
+
+
+async def test_enough_reports_hide_an_entry_until_a_moderator_decides(
+    db_session, make_member, make_insight, world
+):
+    from src.services import moderation_service
+
+    author = await make_member("author")
+    reporters = [await make_member(f"reader{n}") for n in range(3)]
+    insight_id = await _insight(db_session, author)
+    entry_id = await _published(author, insight_id)
+    whole = {"west": -180, "south": -90, "east": 180, "north": 90}
+
+    for reporter in reporters:
+        filed = await reporter.http.post(
+            "/reports",
+            json={
+                "target_type": "map_entry",
+                "target_id": entry_id,
+                "reason": "private_information",
+            },
+        )
+        assert filed.status_code == 201, filed.text
+
+    # Hidden from everyone at the threshold, and its owner is told why.
+    assert (await reporters[0].http.get(f"/atlas/entries/{entry_id}")).status_code == 404
+    assert (await reporters[0].http.get("/atlas/entries", params=whole)).json()["features"] == []
+    mine = (await author.http.get(f"/insights/{insight_id}/map")).json()
+    assert mine["status"] == "pending_review"
+    assert mine["status_message"] == "وصلتنا عنه بلاغات، فأُخفي مؤقتًا حتى يراجعه مشرف."
+    # Nor can the owner place it again to slip past the decision.
+    assert (await _place(author, insight_id)).status_code == 409
+
+    # A moderator approves: back on the map, reports dismissed.
+    entry = await db_session.get(MapEntry, int(entry_id))
+    assert entry is not None
+    await moderation_service.approve(db_session, entry, reporters[0].user.id)
+    await db_session.flush()
+    assert (await reporters[0].http.get(f"/atlas/entries/{entry_id}")).status_code == 200
+    # A moderator removes: gone for everyone but the owner, who sees the reason.
+    await moderation_service.remove(db_session, entry, reporters[0].user.id, "private_information")
+    await db_session.flush()
+    assert (await reporters[0].http.get(f"/atlas/entries/{entry_id}")).status_code == 404
+    mine = (await author.http.get(f"/insights/{insight_id}/map")).json()
+    assert mine["status"] == "removed" and "معلومات خاصة" in mine["status_message"]
+    assert (await _place(author, insight_id)).status_code == 409

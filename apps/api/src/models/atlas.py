@@ -34,6 +34,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Uuid,
     func,
     text,
 )
@@ -46,10 +47,17 @@ PLACE_LABEL_MAX = 200
 
 
 class MapEntryStatus(StrEnum):
-    """Placed but not shown, shown, or taken down by its owner."""
+    """
+    Where an entry is in its life.
+
+    Placed but not shown; shown; hidden by reports until a moderator decides; taken down by a
+    moderator (kept for an appeal); or withdrawn by its owner (a tombstone with no location).
+    """
 
     DRAFT = "draft"
     PUBLISHED = "published"
+    PENDING_REVIEW = "pending_review"
+    REMOVED = "removed"
     WITHDRAWN = "withdrawn"
 
 
@@ -100,12 +108,26 @@ class MapEntry(Base):
             postgresql_where=text("status = 'published'"),
         ),
         Index("ix_map_entries_user_id", "user_id"),
+        # One live entry per insight; a withdrawn tombstone stays beside the next one, so an
+        # address shared before a withdrawal never comes back to life.
+        Index(
+            "uq_map_entries_live_insight",
+            "insight_id",
+            unique=True,
+            postgresql_where=text("status <> 'withdrawn'"),
+        ),
+        # The moderation queue.
+        Index(
+            "ix_map_entries_pending_review",
+            "created_at",
+            postgresql_where=text("status = 'pending_review'"),
+        ),
     )
 
     id: Mapped[int] = public_id_pk("map_entries")
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     insight_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("insights.id", ondelete="CASCADE"), unique=True
+        BigInteger, ForeignKey("insights.id", ondelete="CASCADE")
     )
     # The published point: the centre of the grid cell, never the capture point itself.
     public_lat: Mapped[float | None] = mapped_column(Float)
@@ -128,7 +150,13 @@ class MapEntry(Base):
         default=MapEntryStatus.DRAFT,
         server_default=MapEntryStatus.DRAFT.value,
     )
+    # A code the owner is shown with the outcome (see src/messages.py), never a moderator's words.
+    status_reason: Mapped[str | None] = mapped_column(String(64))
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The moderator's account. No foreign key: the decision outlives their account.
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     withdrawn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = mapped_column(

@@ -8,12 +8,12 @@ time of capture (extension §10). Everything sits behind FEATURE_ATLAS.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Response, status
 
-from src.deps import CurrentUser, DbDep, PublicMember, SettingsDep, limited
+from src.deps import CurrentUser, DbDep, OptionalUser, PublicMember, SettingsDep, limited
 from src.scans.deps import PublicIdPath, feature
 from src.schemas.atlas import (
     AtlasEntryOut,
@@ -102,11 +102,12 @@ async def my_entries(user: CurrentUser, db: DbDep) -> list[MapEntryOwnerOut]:
 @router.get("/atlas/entries", summary="The published entries inside a map window")
 async def entries_in_window(
     db: DbDep,
+    viewer: OptionalUser,
     west: Degrees,
     south: Latitude,
     east: Degrees,
     north: Latitude,
-    since: datetime | None = None,
+    since: date | None = None,
     country: Country = None,
     concept: Concept = None,
     limit: WindowLimit = atlas_service.WINDOW_DEFAULT,
@@ -115,30 +116,34 @@ async def entries_in_window(
     Return a GeoJSON FeatureCollection of the published entries in the window, newest first.
 
     Every geometry is a public point: the centre of an approximation cell, never where a photo
-    was taken. A window with `west > east` crosses the antimeridian. `truncated` says more
-    entries lie in the window than `limit` allowed; ask for a smaller window.
+    was taken, and `published_on` is a day, never a time. A window with `west > east` crosses
+    the antimeridian. `truncated` says more entries lie in the window than `limit` allowed; ask
+    for a smaller window. For a signed-in viewer, entries of members a block stands between
+    are left out.
     """
     features, truncated = await atlas_service.features_in(
         db,
         Window(west=west, south=south, east=east, north=north),
         Filters(since=since, country=country, concept=concept),
         limit,
+        viewer,
     )
     return AtlasFeatureCollection(features=features, truncated=truncated)
 
 
 @router.get("/atlas/entries/{entry_id}", summary="One published entry")
-async def entry(entry_id: PublicIdPath, db: DbDep) -> AtlasEntryOut:
+async def entry(entry_id: PublicIdPath, db: DbDep, viewer: OptionalUser) -> AtlasEntryOut:
     """Return the entry's page: the insight with its scripture from the store, the public point and its place; 410 once withdrawn."""
-    return await atlas_service.entry_detail(db, entry_id)
+    return await atlas_service.entry_detail(db, entry_id, viewer)
 
 
 @router.get("/atlas/places/{geoname_id}", summary="A place and the entries labelled with it")
 async def place_entries(
     geoname_id: Annotated[int, Path(ge=1)],
     db: DbDep,
+    viewer: OptionalUser,
     cursor: str | None = None,
     limit: PageLimit = atlas_service.PLACE_PAGE_DEFAULT,
 ) -> AtlasPlaceOut:
     """«ذاكرة المكان»: the place from GeoNames and its published entries, newest first; 404 without any."""
-    return await atlas_service.place_page(db, geoname_id, cursors.decode(cursor), limit)
+    return await atlas_service.place_page(db, geoname_id, cursors.decode(cursor), limit, viewer)

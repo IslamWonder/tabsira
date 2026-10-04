@@ -15,7 +15,7 @@ an account with a public identity publishes, since the atlas names the author as
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, date, datetime, time
 
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import func, or_, select
@@ -29,7 +29,8 @@ from src.geo.privacy import approximate, cell_polygon
 from src.messages import messages_for
 from src.models.atlas import LocationMeaning, MapCapturePoint, MapEntry, MapEntryStatus
 from src.models.geonames import GeoName
-from src.models.scan import Insight
+from src.models.profile import AgeRange, Profile
+from src.models.scan import Insight, Scan
 from src.models.social import InsightPublication, Post, PostStatus, PostVisibility
 from src.models.user import User
 from src.schemas.atlas import (
@@ -48,9 +49,12 @@ from src.schemas.atlas import (
 from src.schemas.geo import GeoJsonPoint
 from src.schemas.social import MemberOut
 from src.services import cursor as cursors
-from src.services import geo_service
+from src.services import geo_service, publication_service
+from src.services.block_service import blocked_with
 from src.services.evidence_view import load_evidence
-from src.services.insight_table_source import PUBLISHABLE_ENGINE, explanation_excerpt
+from src.services.insight_table_source import explanation_excerpt, snapshot_of
+from src.services.insight_view import visible_parts, visible_step
+from src.services.post_view import outcome_message
 
 # Entries returned for one map window at most; the client asks again for a smaller window.
 WINDOW_DEFAULT = 300
@@ -71,7 +75,7 @@ class Window:
 
 @dataclass(frozen=True)
 class Filters:
-    since: datetime | None = None
+    since: date | None = None
     country: str | None = None
     concept: str | None = None
 
@@ -141,9 +145,29 @@ async def _own_insight(db: AsyncSession, user: User, insight_id: int) -> Insight
     return insight
 
 
+async def _check_publishable(db: AsyncSession, user: User, insight: Insight) -> None:
+    """
+    Apply the posts' rule here too: verified, texts clean, evidence in the store and eligible.
+
+    And one rule of the map alone (extension §10): an account that declared itself under 13
+    places no location at all. A declared fact, never an inference.
+    """
+    scan = await db.get(Scan, insight.scan_id) if insight.scan_id is not None else None
+    await publication_service.check_publishable(db, snapshot_of(insight, scan))
+    profile = await db.scalar(select(Profile).where(Profile.user_id == user.id))
+    if profile is not None and profile.age_range is AgeRange.UNDER_13:
+        message = "This insight cannot be placed on the map: the account declared it is under 13."
+        raise AppError(ErrorCode.INSIGHT_NOT_PUBLISHABLE, message, status_code=409)
+
+
+def _live(insight_id: int) -> ColumnElement[bool]:
+    """Select the one entry of an insight that is not a withdrawn tombstone."""
+    return (MapEntry.insight_id == insight_id) & (MapEntry.status != MapEntryStatus.WITHDRAWN)
+
+
 async def _own_entry(db: AsyncSession, user: User, insight_id: int) -> tuple[MapEntry, Insight]:
     insight = await _own_insight(db, user, insight_id)
-    entry = await db.scalar(select(MapEntry).where(MapEntry.insight_id == insight.id))
+    entry = await db.scalar(select(MapEntry).where(_live(insight.id)))
     if entry is None:
         raise not_found()
     return entry, insight
@@ -180,14 +204,17 @@ async def place(
     the time of placing, kept with the entry.
     """
     insight = await _own_insight(db, user, insight_id)
-    if insight.engine != PUBLISHABLE_ENGINE:
-        message = "Only an insight of the real pipeline can be placed on the atlas."
-        raise AppError(ErrorCode.INSIGHT_NOT_PUBLISHABLE, message, status_code=409)
+    await _check_publishable(db, user, insight)
     cell_m = int(settings.geo_approx_cell_meters)
     centre = approximate(body.latitude, body.longitude, cell_m)
     labels = await _label(db, centre.lat, centre.lng)
-    entry = await db.scalar(select(MapEntry).where(MapEntry.insight_id == insight.id))
+    entry = await db.scalar(select(MapEntry).where(_live(insight.id)))
+    decided = {MapEntryStatus.PENDING_REVIEW, MapEntryStatus.REMOVED}
+    if entry is not None and entry.status in decided:
+        message = "A moderator's decision stands on this entry; it cannot be placed again."
+        raise _wrong_state(message)
     if entry is None:
+        # A withdrawn tombstone may stand beside it: the new entry takes a new address.
         entry = MapEntry(user_id=user.id, insight_id=insight.id, cell_m=cell_m)
         db.add(entry)
     entry.public_lat = centre.lat
@@ -198,6 +225,7 @@ async def place(
     for column, value in labels.items():
         setattr(entry, column, value)
     entry.status = MapEntryStatus.DRAFT
+    entry.status_reason = None
     entry.published_at = None
     entry.withdrawn_at = None
     await db.flush()
@@ -232,6 +260,7 @@ def owner_view(
         insight_id=entry.insight_id,
         title=insight.title,
         status=entry.status,
+        status_message=outcome_message(entry.status.value, entry.status_reason),
         capture=(
             None
             if point is None
@@ -275,6 +304,8 @@ async def publish(db: AsyncSession, user: User, insight_id: int) -> MapEntryOwne
     if entry.status is not MapEntryStatus.DRAFT or entry.public_lat is None:
         message = "Only a placed draft can be published."
         raise _wrong_state(message)
+    # Checked again: a ruling may have changed since the entry was placed.
+    await _check_publishable(db, user, insight)
     entry.status = MapEntryStatus.PUBLISHED
     entry.published_at = clock.utcnow()
     await db.flush()
@@ -288,17 +319,33 @@ async def withdraw(db: AsyncSession, user: User, insight_id: int) -> None:
     The public point is cleared too: nothing of the location survives but the tombstone that
     makes the entry's address answer 410.
     """
-    entry, _ = await _own_entry(db, user, insight_id)
-    if entry.status is MapEntryStatus.WITHDRAWN:
+    insight = await _own_insight(db, user, insight_id)
+    entry = await db.scalar(select(MapEntry).where(_live(insight.id)))
+    if entry is None:
+        # Nothing live: withdrawn already, or never placed. The same answer either way.
         return
     point = await db.get(MapCapturePoint, entry.id)
     if point is not None:
         await db.delete(point)
+    if entry.published_at is None:
+        # Never public: no address to keep, so no tombstone that would say it existed.
+        await db.delete(entry)
+        await db.flush()
+        return
     entry.status = MapEntryStatus.WITHDRAWN
+    entry.status_reason = None
     entry.withdrawn_at = clock.utcnow()
     entry.public_lat = None
     entry.public_lng = None
     entry.public_geom = None
+    for column in (
+        "place_geoname_id",
+        "place_label",
+        "admin_label",
+        "country_iso2",
+        "country_label",
+    ):
+        setattr(entry, column, None)
     await db.flush()
 
 
@@ -327,37 +374,46 @@ def _envelopes(window: Window) -> ColumnElement[bool]:
     )
 
 
+def _published_on(entry: MapEntry) -> date:
+    """Return the day an entry was published, in UTC: a day, never an hour, so no trail is drawn."""
+    moment = entry.published_at if entry.published_at is not None else entry.created_at
+    return moment.astimezone(UTC).date()
+
+
 def _feature(entry: MapEntry, insight: Insight, author: User) -> AtlasFeature:
     # A published entry always has its point (a database constraint); the checks keep mypy honest.
     lat = entry.public_lat if entry.public_lat is not None else 0.0
     lng = entry.public_lng if entry.public_lng is not None else 0.0
-    published_at = entry.published_at if entry.published_at is not None else entry.created_at
     return AtlasFeature(
         id=entry.id,
         geometry=_point(lat, lng),
         properties=AtlasFeatureProperties(
             id=entry.id,
-            insight_id=entry.insight_id,
             title=insight.title,
             glimpse=insight.glimpse,
             author=_author(author),
             place=_place_of(entry),
             cell_m=entry.cell_m,
             precision_label=precision_label(entry.cell_m),
-            published_at=published_at,
+            published_on=_published_on(entry),
         ),
     )
 
 
-def _published_rows(filters: Filters):  # type: ignore[no-untyped-def]
+def _published_rows(filters: Filters, viewer: User | None):  # type: ignore[no-untyped-def]
     statement = (
         select(MapEntry, Insight, User)
         .join(Insight, Insight.id == MapEntry.insight_id)
         .join(User, User.id == MapEntry.user_id)
         .where(MapEntry.status == MapEntryStatus.PUBLISHED, *_visible_author())
     )
+    if viewer is not None:
+        # A block hides each of the two from the other here as everywhere.
+        statement = statement.where(User.id.not_in(blocked_with(viewer.id)))
     if filters.since is not None:
-        statement = statement.where(MapEntry.published_at >= filters.since)
+        statement = statement.where(
+            MapEntry.published_at >= datetime.combine(filters.since, time.min, tzinfo=UTC)
+        )
     if filters.country is not None:
         statement = statement.where(MapEntry.country_iso2 == filters.country.upper())
     if filters.concept is not None:
@@ -366,18 +422,25 @@ def _published_rows(filters: Filters):  # type: ignore[no-untyped-def]
 
 
 async def features_in(
-    db: AsyncSession, window: Window, filters: Filters, limit: int
+    db: AsyncSession, window: Window, filters: Filters, limit: int, viewer: User | None = None
 ) -> tuple[list[AtlasFeature], bool]:
     """Return the published entries inside the window, newest first, and whether more were left out."""
     rows = (
-        await db.execute(_published_rows(filters).where(_envelopes(window)).limit(limit + 1))
+        await db.execute(
+            _published_rows(filters, viewer).where(_envelopes(window)).limit(limit + 1)
+        )
     ).all()
     features = [_feature(entry, insight, author) for entry, insight, author in rows[:limit]]
     return features, len(rows) > limit
 
 
-async def published_entry(db: AsyncSession, entry_id: int) -> MapEntry:
-    """Return a published entry, or 404; 410 once withdrawn, so the address says it was there."""
+async def published_entry(db: AsyncSession, entry_id: int, viewer: User | None = None) -> MapEntry:
+    """
+    Return a published entry, or 404; 410 once withdrawn, so the address says it was there.
+
+    A held or removed entry, and one of an author a block stands between, answer 404 like one
+    that never existed: an id grants nothing.
+    """
     entry = await db.get(MapEntry, entry_id)
     if entry is None:
         raise not_found()
@@ -393,12 +456,18 @@ async def published_entry(db: AsyncSession, entry_id: int) -> MapEntry:
         or author.handle is None
     ):
         raise not_found()
+    if viewer is not None and await db.scalar(
+        select(User.id).where(User.id == author.id, User.id.in_(blocked_with(viewer.id)))
+    ):
+        raise not_found()
     return entry
 
 
-async def entry_detail(db: AsyncSession, entry_id: int) -> AtlasEntryOut:
+async def entry_detail(
+    db: AsyncSession, entry_id: int, viewer: User | None = None
+) -> AtlasEntryOut:
     """Return an entry's page: the insight by reference, its scripture from the store, the public point."""
-    entry = await published_entry(db, entry_id)
+    entry = await published_entry(db, entry_id, viewer)
     insight = await db.get(Insight, entry.insight_id)
     author = await db.get(User, entry.user_id)
     location = public_location(entry)
@@ -415,6 +484,11 @@ async def entry_detail(db: AsyncSession, entry_id: int) -> AtlasEntryOut:
         else []
     )
     evidence = await load_evidence(db, quran, hadith)
+    # Only what rests on a text shown here is said here (the owner's own view applies the same rule).
+    shown = {f"quran:{s}:{a}" for s, a in quran if (s, a) in evidence.quran} | {
+        f"hadith:{c}:{n}" for c, n in hadith if (c, n) in evidence.hadith
+    }
+    step = visible_step(insight.small_step, shown) or {}
     post_id = await db.scalar(
         select(Post.id)
         .join(InsightPublication, InsightPublication.id == Post.publication_id)
@@ -426,14 +500,12 @@ async def entry_detail(db: AsyncSession, entry_id: int) -> AtlasEntryOut:
         .order_by(Post.published_at.desc())
         .limit(1)
     )
-    step = insight.small_step or {}
     return AtlasEntryOut(
         id=entry.id,
-        insight_id=insight.id,
         title=insight.title,
         glimpse=insight.glimpse,
         relation_type=insight.relation,
-        explanation=explanation_excerpt(insight.explanation),
+        explanation=explanation_excerpt(visible_parts(insight.explanation, shown)),
         step=str(step["text"]) if step.get("text") else None,
         concepts=list(insight.entity_ids or []),
         author=_author(author),
@@ -442,15 +514,19 @@ async def entry_detail(db: AsyncSession, entry_id: int) -> AtlasEntryOut:
         quran=[evidence.quran[key] for key in quran if key in evidence.quran],
         hadith=[evidence.hadith[key] for key in hadith if key in evidence.hadith],
         post_id=post_id,
-        published_at=entry.published_at if entry.published_at is not None else entry.created_at,
+        published_on=_published_on(entry),
     )
 
 
 async def place_page(
-    db: AsyncSession, geoname_id: int, cursor: cursors.Cursor | None, limit: int
+    db: AsyncSession,
+    geoname_id: int,
+    cursor: cursors.Cursor | None,
+    limit: int,
+    viewer: User | None = None,
 ) -> AtlasPlaceOut:
     """Return a place and the published entries labelled with it, newest first; 404 without any."""
-    statement = _published_rows(Filters()).where(MapEntry.place_geoname_id == geoname_id)
+    statement = _published_rows(Filters(), viewer).where(MapEntry.place_geoname_id == geoname_id)
     if cursor is not None:
         statement = statement.where(
             (MapEntry.published_at < cursor.at)

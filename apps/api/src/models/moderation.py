@@ -45,6 +45,7 @@ CHUNK_INTERVAL_DAYS = 7
 class ModerationTarget(StrEnum):
     POST = "post"
     COMMENT = "comment"
+    MAP_ENTRY = "map_entry"
 
 
 class ModerationActionKind(StrEnum):

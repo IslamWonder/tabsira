@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import clock
 from src.errors import AppError, ErrorCode
 from src.messages import messages_for
+from src.models.atlas import MapEntry, MapEntryStatus
 from src.models.moderation import (
     ModerationAction,
     ModerationActionKind,
@@ -42,13 +43,38 @@ from src.models.social import (
 )
 from src.services.moderation_guard import GuardVerdict, Outcome
 
-type Item = Post | Comment
+type Item = Post | Comment | MapEntry
 
 HELD_BY_REPORTS = "reported"
 
 
 def _target(item: Item) -> ModerationTarget:
-    return ModerationTarget.POST if isinstance(item, Post) else ModerationTarget.COMMENT
+    if isinstance(item, Post):
+        return ModerationTarget.POST
+    return ModerationTarget.MAP_ENTRY if isinstance(item, MapEntry) else ModerationTarget.COMMENT
+
+
+type ItemStatus = PostStatus | CommentStatus | MapEntryStatus
+
+
+def _published(item: Item) -> ItemStatus:
+    if isinstance(item, Post):
+        return PostStatus.PUBLISHED
+    return MapEntryStatus.PUBLISHED if isinstance(item, MapEntry) else CommentStatus.PUBLISHED
+
+
+def _held(item: Item) -> ItemStatus:
+    if isinstance(item, Post):
+        return PostStatus.PENDING_REVIEW
+    if isinstance(item, MapEntry):
+        return MapEntryStatus.PENDING_REVIEW
+    return CommentStatus.PENDING_REVIEW
+
+
+def _removed(item: Item) -> ItemStatus:
+    if isinstance(item, Post):
+        return PostStatus.REMOVED
+    return MapEntryStatus.REMOVED if isinstance(item, MapEntry) else CommentStatus.REMOVED
 
 
 def log_action(
@@ -75,10 +101,8 @@ def log_action(
     )
 
 
-def _set_state(
-    item: Item, status: PostStatus | CommentStatus, reason: str | None, now: datetime
-) -> None:
-    # Post and comment states share the five values they use, so one assignment serves both.
+def _set_state(item: Item, status: ItemStatus, reason: str | None, now: datetime) -> None:
+    # The three kinds share the state names they use, so one assignment serves them all.
     item.status = status
     item.status_reason = reason
     item.reviewed_at = now
@@ -151,7 +175,9 @@ async def _lock(db: AsyncSession, item: Item, allowed: set[str]) -> None:
     any set of states a decision applies to.
     """
     await db.refresh(item, with_for_update=True)
-    owner_withdrew = isinstance(item, Post) and item.removal_source is RemovalSource.OWNER
+    owner_withdrew = (isinstance(item, Post) and item.removal_source is RemovalSource.OWNER) or (
+        isinstance(item, MapEntry) and item.status is MapEntryStatus.WITHDRAWN
+    )
     if owner_withdrew or item.status not in allowed:
         raise _wrong_state()
 
@@ -165,12 +191,12 @@ async def approve(db: AsyncSession, item: Item, actor_id: uuid.UUID) -> None:
     )
     was = item.status
     now = clock.utcnow()
-    is_post = isinstance(item, Post)
-    _set_state(item, PostStatus.PUBLISHED if is_post else CommentStatus.PUBLISHED, None, now)
+    _set_state(item, _published(item), None, now)
     item.reviewed_by = actor_id
-    if isinstance(item, Post):
+    if isinstance(item, Post | MapEntry):
         item.published_at = item.published_at or now
         item.removed_at = None
+    if isinstance(item, Post):
         item.removal_source = None
     restored = was in {PostStatus.REMOVED.value, PostStatus.REJECTED.value}
     action = ModerationActionKind.RESTORED if restored else ModerationActionKind.PUBLISHED
@@ -181,12 +207,18 @@ async def approve(db: AsyncSession, item: Item, actor_id: uuid.UUID) -> None:
 async def reject(db: AsyncSession, item: Item, actor_id: uuid.UUID, reason: str) -> None:
     """Refuse a held item; its author is told why."""
     await _lock(db, item, {PostStatus.PENDING_REVIEW.value})
-    _set_state(
-        item,
-        PostStatus.REJECTED if isinstance(item, Post) else CommentStatus.REJECTED,
-        reason,
-        clock.utcnow(),
-    )
+    now = clock.utcnow()
+    # A map entry has no words to refuse: a held one that is not approved is removed.
+    if isinstance(item, MapEntry):
+        _set_state(item, MapEntryStatus.REMOVED, reason, now)
+        item.removed_at = now
+    else:
+        _set_state(
+            item,
+            PostStatus.REJECTED if isinstance(item, Post) else CommentStatus.REJECTED,
+            reason,
+            now,
+        )
     item.reviewed_by = actor_id
     log_action(
         db,
@@ -203,12 +235,11 @@ async def remove(db: AsyncSession, item: Item, actor_id: uuid.UUID, reason: str)
     """Take a published item down; everyone but the moderators stops seeing it at once."""
     await _lock(db, item, {PostStatus.PUBLISHED.value})
     now = clock.utcnow()
-    _set_state(
-        item, PostStatus.REMOVED if isinstance(item, Post) else CommentStatus.REMOVED, reason, now
-    )
+    _set_state(item, _removed(item), reason, now)
     item.reviewed_by = actor_id
-    if isinstance(item, Post):
+    if isinstance(item, Post | MapEntry):
         item.removed_at = now
+    if isinstance(item, Post):
         item.removal_source = RemovalSource.MODERATOR
     log_action(
         db,
@@ -231,10 +262,7 @@ async def hold_if_reported(db: AsyncSession, item: Item, threshold: int) -> bool
     It is hidden until a moderator decides, which a brigade of reports could abuse, so the
     number is a setting and 0 turns this off. Returns whether the item was held.
     """
-    published = (
-        PostStatus.PUBLISHED.value if isinstance(item, Post) else CommentStatus.PUBLISHED.value
-    )
-    if threshold <= 0 or item.status != published:
+    if threshold <= 0 or item.status != _published(item).value:
         return False
     reporters = await db.scalar(
         select(func.count(func.distinct(Report.reporter_id))).where(
@@ -245,8 +273,7 @@ async def hold_if_reported(db: AsyncSession, item: Item, threshold: int) -> bool
     )
     if (reporters or 0) < threshold:
         return False
-    held = PostStatus.PENDING_REVIEW if isinstance(item, Post) else CommentStatus.PENDING_REVIEW
-    _set_state(item, held, HELD_BY_REPORTS, clock.utcnow())
+    _set_state(item, _held(item), HELD_BY_REPORTS, clock.utcnow())
     log_action(
         db,
         item,

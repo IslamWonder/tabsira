@@ -11,7 +11,7 @@ schema here, so adding one fails the build until it is justified.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -91,6 +91,7 @@ class MapEntryOwnerOut(BaseModel):
     insight_id: PublicId
     title: str
     status: MapEntryStatus
+    status_message: str | None = Field(description="What happened to it, in Arabic, for its owner")
     capture: CapturePointOut | None = Field(description="Null once the entry is withdrawn")
     public: PublicLocationPreview | None = Field(description="Null once the entry is withdrawn")
     place: PlaceRef | None
@@ -103,15 +104,16 @@ class MapEntryOwnerOut(BaseModel):
 
 
 class AtlasFeatureProperties(BaseModel):
+    """No insight id here: a public id is a timestamp, and the scan time is nobody's business."""
+
     id: PublicId
-    insight_id: PublicId
     title: str
     glimpse: str
     author: MemberOut
     place: PlaceRef | None
     cell_m: int
     precision_label: str
-    published_at: datetime
+    published_on: date = Field(description="The day, never the time: no trail of a person's hours")
 
 
 class AtlasFeature(BaseModel):
@@ -133,7 +135,6 @@ class AtlasEntryOut(BaseModel):
     """A published entry on its own page: the insight by reference, the public point, its place."""
 
     id: PublicId
-    insight_id: PublicId
     title: str
     glimpse: str
     relation_type: str
@@ -148,7 +149,7 @@ class AtlasEntryOut(BaseModel):
     post_id: PublicId | None = Field(
         description="The public post of the same insight, if one is published"
     )
-    published_at: datetime
+    published_on: date
 
 
 class AtlasPlaceOut(BaseModel):

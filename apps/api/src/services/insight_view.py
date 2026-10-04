@@ -104,9 +104,34 @@ def shown_ids(verse: QuranVerseOut | None, hadith: HadithOut | None) -> set[str]
     return shown
 
 
-def _rests_on_hidden(refs: list[str], shown: set[str]) -> bool:
+def rests_on_hidden(refs: list[str], shown: set[str]) -> bool:
     """Tell whether any reference is not a text shown here or a learning unit: unknown is hidden."""
     return any(ref not in shown and not UNIT_REFERENCE.fullmatch(ref) for ref in refs)
+
+
+def visible_parts(parts: list[dict[str, Any]], shown: set[str]) -> list[dict[str, Any]]:
+    """
+    Return the explanation parts that may show beside the texts in `shown`.
+
+    What the verse or the hadith adds is said only beside it, and a part that rests on a text
+    not shown (a hadith whose ruling is missing or no longer eligible) waits with it.
+    """
+    absent = {"quran"} if not any(ref.startswith("quran:") for ref in shown) else set()
+    absent |= {"sunnah"} if not any(ref.startswith("hadith:") for ref in shown) else set()
+    return [
+        part
+        for part in parts
+        if part["section"] not in absent
+        and not rests_on_hidden([str(ref) for ref in part.get("sources", [])], shown)
+    ]
+
+
+def visible_step(step: dict[str, Any] | None, shown: set[str]) -> dict[str, Any] | None:
+    """Return the small step unless it rests on a text that is not shown."""
+    if not step:
+        return None
+    grounded = [str(ref) for ref in step.get("grounded_in", [])]
+    return None if rests_on_hidden(grounded, shown) else step
 
 
 def explanation_out(
@@ -118,18 +143,13 @@ def explanation_out(
     What the verse or the hadith adds is said only beside it, and a part that
     rests on a text not shown (a hadith waiting for its ruling) waits with it.
     """
-    shown = shown_ids(verse, hadith)
-    absent = {"quran"} if verse is None else set()
-    absent |= {"sunnah"} if hadith is None else set()
     return [
         ExplanationOut(
             section=part["section"],
             label=messages_for().explanation_labels[part["section"]],
             text=part["text"],
         )
-        for part in parts
-        if part["section"] not in absent
-        and not _rests_on_hidden([str(ref) for ref in part.get("sources", [])], shown)
+        for part in visible_parts(parts, shown_ids(verse, hadith))
     ]
 
 
@@ -143,12 +163,10 @@ def step_out(
     (`text_grounded`) and rests on a hadith shown with it (v2 §14, masar
     §11.3); anything else is «اقتراح عملي».
     """
-    if not step:
+    step = visible_step(step, shown_ids(verse, hadith))
+    if step is None:
         return None
-    shown = shown_ids(verse, hadith)
     grounded = [str(ref) for ref in step.get("grounded_in", [])]
-    if _rests_on_hidden(grounded, shown):
-        return None
     from_sunnah = step["kind"] == "text_grounded" and any(
         ref.startswith("hadith:") for ref in grounded
     )

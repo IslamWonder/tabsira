@@ -106,6 +106,20 @@ async def _photo_ref(
     return None if facts.refusal(settings) else reference
 
 
+async def check_publishable(db: AsyncSession, snapshot: InsightSnapshot) -> None:
+    """
+    Refuse, with the reason, an insight that may not be shown to strangers.
+
+    The one rule for a post and for an entry of the atlas: the insight is verified, every
+    text fits and none reads like scripture, and its evidence resolves in the store, a hadith
+    only with an eligible ruling (decision 18).
+    """
+    if not snapshot.verified:
+        _refuse("it is not verified")
+    _check_texts(snapshot)
+    await _check_evidence(db, snapshot)
+
+
 async def create_publication(
     db: AsyncSession, source: InsightSource, author: User, insight_id: int, settings: Settings
 ) -> InsightPublication:
@@ -113,10 +127,7 @@ async def create_publication(
     snapshot = await source.load_for_publishing(db, insight_id, author.id)
     if snapshot is None or snapshot.owner_id != author.id or snapshot.insight_id != insight_id:
         raise AppError(ErrorCode.NOT_FOUND, "No such insight.", status_code=404)
-    if not snapshot.verified:
-        _refuse("it is not verified")
-    _check_texts(snapshot)
-    await _check_evidence(db, snapshot)
+    await check_publishable(db, snapshot)
     publication = InsightPublication(
         author_id=author.id,
         insight_id=snapshot.insight_id,

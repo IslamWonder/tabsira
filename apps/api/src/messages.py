@@ -200,7 +200,7 @@ ARABIC = Messages(
     atlas_precision="موقع تقريبي ضمن نحو {metres} م",
     atlas_meanings={
         "capture_point": "موضع الالتقاط، تقريبًا",
-        "public_place": "مكان عام",
+        "public_place": "مكان عام اختاره صاحبها",
     },
     question_specify_before_search="ما نوع «{label}» الذي تقصده، أو ما الذي يحدث هنا بالضبط؟",
     question_confirm_scene_meaning="ما الذي يحدث في هذا المشهد كما تراه أنت؟",

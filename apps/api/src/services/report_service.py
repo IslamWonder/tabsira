@@ -29,7 +29,7 @@ async def _target(
 ) -> Post | Comment | MapEntry:
     """Load what is reported, or raise 404 when the reporter may not read it."""
     if target_type is ReportTarget.MAP_ENTRY:
-        entry = await atlas_service.published_entry(db, target_id)
+        entry = await atlas_service.published_entry(db, target_id, reporter)
         if entry.user_id == reporter.id:
             raise _own()
         return entry
@@ -76,9 +76,7 @@ async def file_report(
         .returning(Report.id)
     )
     if created is not None:
-        # An entry of the atlas has no text a guard judged; the moderators read its reports.
-        if not isinstance(target, MapEntry):
-            await moderation_service.hold_if_reported(db, target, hold_threshold)
+        await moderation_service.hold_if_reported(db, target, hold_threshold)
         return created
     first: int = (
         await db.execute(
