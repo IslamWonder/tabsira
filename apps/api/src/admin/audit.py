@@ -20,16 +20,19 @@ from __future__ import annotations
 import re
 import uuid
 from collections.abc import Iterable
+from datetime import timedelta
 
 from sqladmin.audit import AuditBackend, AuditEntry
 from sqladmin.authentication import get_current_user_id
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.requests import Request
 
+from src import clock
 from src.config import Settings
 from src.models.admin_audit import AuditAction
 from src.services import admin_audit_service, auth_service
 
+RATE_LIMITED = "rate_limited"
 # The attribute of `request.state` that holds the names of the fields that changed.
 CHANGED_FIELDS_ATTR = "admin_changed_fields"
 # What an admin request's path says it does, relative to the admin's own base URL.
@@ -90,6 +93,25 @@ class AuditTrail:
                 user_agent=user_agent,
             )
             await db.commit()
+
+    async def write_rate_limited(self, request: Request) -> None:
+        """
+        Log a sign-in refused for too many attempts, once per window per address.
+
+        The log is append-only and anyone can reach the sign-in form, so one row per refused
+        request would let a stranger grow it without limit. The first refusal of a window says
+        what happened; the rest of that window adds nothing.
+        """
+        ip_hash, _ = client_of(self.settings, request)
+        since = clock.utcnow() - timedelta(seconds=self.settings.auth_attempt_window_seconds)
+        async with self.session_maker() as db:
+            if await admin_audit_service.has_refusal_since(
+                db, ip_hash=ip_hash, reason=RATE_LIMITED, since=since
+            ):
+                return
+        await self.write(
+            request, AuditAction.SIGN_IN_FAILED, admin_user_id=None, reason=RATE_LIMITED
+        )
 
     async def access(self, request: Request, admin_user_id: uuid.UUID) -> None:
         """Record a list page, a record page or a bulk action, if that is what `request` is."""

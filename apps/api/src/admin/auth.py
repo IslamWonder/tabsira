@@ -134,9 +134,7 @@ class AdminAuth(AuthenticationBackend):
                     db, self.settings, AttemptKind.LOGIN, ip_hash=ip_hash, email_hash=email_hash
                 )
             except AppError as limited:
-                await self.trail.write(
-                    request, AuditAction.SIGN_IN_FAILED, admin_user_id=None, reason="rate_limited"
-                )
+                await self.trail.write_rate_limited(request)
                 return await self.render_login(
                     request,
                     error=RATE_LIMITED_MESSAGE,

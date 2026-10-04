@@ -124,3 +124,24 @@ def test_only_something_shaped_like_a_column_name_is_a_field_name(name, valid):
 
 def test_a_reason_may_hold_digits():
     assert details_of(reason="step_2") == {"reason": "step_2"}
+
+
+async def test_a_refusal_is_found_only_for_its_address_reason_and_window(db_session):
+    from datetime import timedelta
+
+    from src import clock
+
+    await record(
+        db_session, action=AuditAction.SIGN_IN_FAILED, ip_hash="a" * 64, reason="rate_limited"
+    )
+    now = clock.utcnow()
+
+    async def found(ip_hash="a" * 64, reason="rate_limited", since=now - timedelta(hours=1)):
+        return await admin_audit_service.has_refusal_since(
+            db_session, ip_hash=ip_hash, reason=reason, since=since
+        )
+
+    assert await found()
+    assert not await found(ip_hash="b" * 64)
+    assert not await found(reason="bad_password")
+    assert not await found(since=now + timedelta(hours=1))

@@ -542,3 +542,29 @@ async def test_the_audit_row_of_a_failed_sign_in_names_no_typed_value(anon, make
     )
     assert "typo@example.com" not in serialized
     assert "hunter2" not in serialized
+
+
+async def test_a_flood_of_refused_sign_ins_writes_one_audit_row_per_window(
+    make_admin_app, make_admin, db_session
+):
+    await make_admin()
+    app = make_admin_app(auth_max_attempts_per_email=1)
+    async with browser(app) as http:
+        assert (await sign_in(http, password="wrong")).status_code == 401
+        for _ in range(5):
+            assert (await sign_in(http)).status_code == 429
+
+    rows = await audit_rows(db_session)
+    assert [row.details for row in rows] == [{"reason": "bad_password"}, {"reason": "rate_limited"}]
+
+
+async def test_a_failed_sign_in_keeps_at_most_128_characters_of_the_user_agent(
+    admin_app, make_admin, db_session
+):
+    await make_admin()
+    async with browser(admin_app) as http:
+        http.headers["User-Agent"] = "a" * 500
+        await sign_in(http, password="wrong")
+
+    (row,) = await audit_rows(db_session)
+    assert row.user_agent == "a" * 128

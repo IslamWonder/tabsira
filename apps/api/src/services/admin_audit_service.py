@@ -12,13 +12,16 @@ from __future__ import annotations
 import re
 import uuid
 from collections.abc import Iterable
+from datetime import datetime
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.admin_audit import AdminAuditLog, AuditAction
 
-USER_AGENT_MAX = 256
+# What a sign-in failure needs to be recognised, and no more: anyone can fill it in without signing in.
+USER_AGENT_MAX = 128
 # The columns' own lengths. A request can name any view or record in its address, so what
 # is longer is cut here instead of failing the insert, which would turn a 404 into a 500.
 MODEL_MAX = 64
@@ -96,3 +99,20 @@ async def record(
     db.add(row)
     await db.flush()
     return row
+
+
+async def has_refusal_since(
+    db: AsyncSession, *, ip_hash: str, reason: str, since: datetime
+) -> bool:
+    """Whether a failed sign-in with this reason, from this address, is already logged since `since`."""
+    found = await db.scalar(
+        select(AdminAuditLog.id)
+        .where(
+            AdminAuditLog.action == AuditAction.SIGN_IN_FAILED,
+            AdminAuditLog.ip_hash == ip_hash,
+            AdminAuditLog.details["reason"].as_string() == reason,
+            AdminAuditLog.at >= since,
+        )
+        .limit(1)
+    )
+    return found is not None
