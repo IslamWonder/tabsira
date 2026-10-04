@@ -150,10 +150,10 @@ fi
 ok "Redis is ready on $LISTEN_ADDR:$REDIS_PORT (password in $CREDENTIALS_FILE)"
 cat <<EOF
 
-For the application host's environment file:
+For the application host's environment file (deploy/show-env-lines.sh prints these lines again):
 
   REDIS_URL=redis://$LISTEN_ADDR:$REDIS_PORT/0
-  REDIS_PASSWORD=<REDIS_PASSWORD>
+  REDIS_PASSWORD=$REDIS_PASSWORD
 
-The URL carries no password: the API refuses one. The password is in $CREDENTIALS_FILE.
+The URL carries no password: the API refuses one. The password is also in $CREDENTIALS_FILE (root only).
 EOF

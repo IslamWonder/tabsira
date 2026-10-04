@@ -32,6 +32,8 @@
 # PG_VERSION (18), DB_NAME (tabsira), DB_USER (tabsira), DB_RO_USER (none),
 # PG_LOCALE (en_US.UTF-8), PG_MAX_CONNECTIONS (100), BACKUP_DIR
 # (/var/backups/tabsira), BACKUP_KEEP_DAYS (14), BACKUP_KEEP_MIN (3).
+# The run ends by printing DATABASE_URL and SYNC_DATABASE_URL, password included,
+# to paste into the application host's environment file.
 
 set -Eeuo pipefail
 # shellcheck disable=SC1091
@@ -327,10 +329,12 @@ pg_isready -q -h "$LISTEN_ADDR" -p "$PG_PORT" || die "Nothing answers on $LISTEN
 ok "PostgreSQL $PG_VERSION is ready on $LISTEN_ADDR:$PG_PORT"
 cat <<EOF
 
-For the application host's environment file (the passwords are also in $CREDENTIALS_FILE):
+For the application host's environment file ($APP_ROOT/shared/.env). The password is
+generated as hex, so it sits in a URL unescaped. It is also in $CREDENTIALS_FILE (root
+only); deploy/show-env-lines.sh prints these lines again.
 
-  DATABASE_URL=postgresql+asyncpg://$DB_USER:<DB_PASSWORD>@$LISTEN_ADDR:$PG_PORT/$DB_NAME
-  SYNC_DATABASE_URL=postgresql+psycopg://$DB_USER:<DB_PASSWORD>@$LISTEN_ADDR:$PG_PORT/$DB_NAME
+  DATABASE_URL=postgresql+asyncpg://$DB_USER:$DB_PASSWORD@$LISTEN_ADDR:$PG_PORT/$DB_NAME
+  SYNC_DATABASE_URL=postgresql+psycopg://$DB_USER:$DB_PASSWORD@$LISTEN_ADDR:$PG_PORT/$DB_NAME
 
 Firewall: run deploy/provision-data.sh to restrict $PG_PORT and Redis to $APP_HOST_VPN_IP.
 EOF
