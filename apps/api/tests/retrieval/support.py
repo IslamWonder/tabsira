@@ -38,7 +38,7 @@ async def store_world(session: AsyncSession) -> None:
 def fake_vector(text: str, dimensions: int = 8) -> list[float]:
     """A unit vector made from the text's hash: equal texts meet, others scatter."""
     digest = hashlib.sha256(text.encode("utf-8")).digest()
-    raw = [digest[index] - 127.5 for index in range(dimensions)]
+    raw = [digest[index % len(digest)] - 127.5 + index % 7 for index in range(dimensions)]
     norm = math.sqrt(sum(value * value for value in raw))
     return [value / norm for value in raw]
 
