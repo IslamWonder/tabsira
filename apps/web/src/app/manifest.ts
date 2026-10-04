@@ -1,20 +1,20 @@
 import type { MetadataRoute } from 'next';
-import { ar } from '@/messages/ar';
+import { messages, siteLanguage } from '@/messages';
 import { THEME_BACKGROUND } from '@/theme/colors';
 
 /**
- * The installable app. The icons are TEMPORARY, drawn by scripts/make-icons.mjs
- * from a simple glyph until the designer delivers the logo (master prompt §20).
- * No orientation lock: the app must work held either way (WCAG 1.3.4).
+ * The installable app. Its icons are drawn from the logo in brand/ by
+ * scripts/make-icons.mjs, each declared at its exact size. No orientation
+ * lock: the app must work held either way (WCAG 1.3.4).
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: '/',
-    name: ar.meta.siteName,
-    short_name: ar.meta.siteName,
-    description: ar.meta.shortDescription,
-    lang: 'ar',
-    dir: 'rtl',
+    name: messages.meta.siteName,
+    short_name: messages.meta.siteName,
+    description: messages.meta.shortDescription,
+    lang: siteLanguage.tag,
+    dir: siteLanguage.dir,
     start_url: '/',
     scope: '/',
     display: 'standalone',
@@ -26,7 +26,7 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
       {
-        src: '/icons/icon-maskable-512.png',
+        src: '/icons/maskable-512.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',

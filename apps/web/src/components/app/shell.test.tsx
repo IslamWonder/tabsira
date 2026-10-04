@@ -9,7 +9,6 @@ import { SkipLink } from './skip-link';
 import { patternFor, StageBackdrop } from './stage-backdrop';
 import { StatusScreen } from './status-screen';
 import { ThemeSync } from './theme-sync';
-import { Wordmark } from './wordmark';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/atlas' }));
 
@@ -39,6 +38,16 @@ describe('StatusScreen and ComingSoon', () => {
     expect(screen.getByRole('heading', { level: 1, name: '[عنوان]' })).toBeInTheDocument();
     expect(screen.getByText('[وصف]')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '[فعل]' })).toBeInTheDocument();
+  });
+
+  it('shows the full logo or no emblem at all when asked', () => {
+    const { container, rerender } = render(
+      <StatusScreen emblem="logo" title="[عنوان]" description="[وصف]" />
+    );
+    expect(container.querySelectorAll('svg path').length).toBeGreaterThan(10);
+    rerender(<StatusScreen emblem="none" align="start" title="[عنوان]" description="[وصف]" />);
+    expect(container.querySelector('svg')).toBeNull();
+    expect(container.querySelector('section')).toHaveClass('items-start');
   });
 
   it('says «قريبًا» for a route that is not built yet, at the heading level asked', () => {
@@ -100,13 +109,7 @@ describe('ThemeSync', () => {
   });
 });
 
-describe('Wordmark and StageBackdrop', () => {
-  it('writes the name with its point hidden from screen readers', () => {
-    const { container } = render(<Wordmark className="extra" />);
-    expect(container.textContent).toBe('تَبْصِرَة.');
-    expect(container.querySelector('[aria-hidden="true"]')?.textContent).toBe('.');
-  });
-
+describe('StageBackdrop', () => {
   it('draws a decorative living stage with the tiling of the screen', () => {
     const { container } = render(<StageBackdrop />);
     expect(container.firstElementChild).toHaveAttribute('aria-hidden', 'true');

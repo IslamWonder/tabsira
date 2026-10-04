@@ -1,10 +1,12 @@
 import { type ReactNode, useId } from 'react';
+import { Logo } from '@/components/brand/logo';
 import { Chip } from '@/components/ui/chip';
 import { cx } from '@/lib/cx';
 import { Beacon } from './beacon';
 
 export interface StatusScreenProps {
-  icon: ReactNode;
+  /** The state's icon, inside the beacon. */
+  icon?: ReactNode;
   title: string;
   description: string;
   /** A short state above the title, e.g. coming soon. */
@@ -13,8 +15,12 @@ export interface StatusScreenProps {
   headingLevel?: 1 | 2;
   /** Centred on its own; aligned to the start inside a panel. */
   align?: 'center' | 'start';
-  /** Shows the emblem; off when the page draws its own beside it. */
-  emblem?: boolean;
+  /**
+   * Above the title: the beacon around the icon, the full logo for the
+   * screens that stand alone (not found, offline, an error), or nothing when
+   * the page draws its own beside it.
+   */
+  emblem?: 'beacon' | 'logo' | 'none';
   className?: string;
   /** Actions or a follow-up line. */
   children?: ReactNode;
@@ -32,7 +38,7 @@ export function StatusScreen({
   badge,
   headingLevel = 1,
   align = 'center',
-  emblem = true,
+  emblem = 'beacon',
   className,
   children,
 }: StatusScreenProps) {
@@ -47,9 +53,10 @@ export function StatusScreen({
         className
       )}
     >
-      {emblem ? <Beacon>{icon}</Beacon> : null}
+      {emblem === 'beacon' ? <Beacon>{icon}</Beacon> : null}
+      {emblem === 'logo' ? <Logo className="mb-2 h-32" /> : null}
       {badge === undefined ? null : <Chip tone="primary">{badge}</Chip>}
-      <Heading id={titleId} className="m-0 font-bold text-[1.75rem] text-gilded">
+      <Heading id={titleId} className="m-0 font-bold font-display text-[1.75rem] text-gilded">
         {title}
       </Heading>
       <p className="m-0 text-fg-soft leading-[1.9]">{description}</p>

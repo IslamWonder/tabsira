@@ -1,9 +1,8 @@
 'use client';
 
 import { StatusScreen } from '@/components/app/status-screen';
-import { SparkIcon } from '@/components/icons';
 import { Button, LinkButton } from '@/components/ui/button';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 
 export interface ErrorPageProps {
   error: Error & { digest?: string };
@@ -18,16 +17,16 @@ export interface ErrorPageProps {
  */
 export default function ErrorPage({ retry }: ErrorPageProps) {
   return (
-    <div className="pt-[max(40px,env(safe-area-inset-top))] pb-nav">
+    <div className="pt-[max(40px,env(safe-area-inset-top))] pb-6">
       <StatusScreen
-        icon={<SparkIcon width="28" height="28" />}
-        title={ar.pages.error.title}
-        description={ar.pages.error.description}
+        emblem="logo"
+        title={messages.pages.error.title}
+        description={messages.pages.error.description}
       >
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button onClick={retry}>{ar.pages.error.retry}</Button>
+          <Button onClick={retry}>{messages.pages.error.retry}</Button>
           <LinkButton href="/" variant="ghost">
-            {ar.pages.error.home}
+            {messages.pages.error.home}
           </LinkButton>
         </div>
       </StatusScreen>

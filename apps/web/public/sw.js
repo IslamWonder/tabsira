@@ -9,7 +9,7 @@
  *
  * Bump VERSION to drop every cache of the previous release.
  */
-const VERSION = 'tabsira-v1';
+const VERSION = 'tabsira-v2';
 const OFFLINE_URL = '/offline';
 const PRECACHE = [OFFLINE_URL, '/manifest.webmanifest', '/icons/icon-192.png', '/favicon.ico'];
 

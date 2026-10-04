@@ -151,7 +151,7 @@ describe('the service worker lifecycle', () => {
   it('stores the offline page and what it needs on install', async () => {
     const { listeners, caches, self } = load();
     await dispatch(listeners.install);
-    const store = caches.stores.get('tabsira-v1');
+    const store = caches.stores.get('tabsira-v2');
     expect(Array.from(store?.keys() ?? []).sort()).toEqual(
       [
         '/_next/static/chunks/main.js',
@@ -178,17 +178,17 @@ describe('the service worker lifecycle', () => {
   });
 
   it('drops the caches of older releases on activate', async () => {
-    const caches = fakeCaches({ 'tabsira-v0': {}, 'tabsira-v1': {} });
+    const caches = fakeCaches({ 'tabsira-v1': {}, 'tabsira-v2': {} });
     const { listeners, self } = load(caches);
     await dispatch(listeners.activate);
-    expect(Array.from(caches.stores.keys())).toEqual(['tabsira-v1']);
+    expect(Array.from(caches.stores.keys())).toEqual(['tabsira-v2']);
     expect(self.clients.claim).toHaveBeenCalledOnce();
   });
 });
 
 describe('the service worker answers', () => {
   it('serves a cached static file without the network', async () => {
-    const caches = fakeCaches({ 'tabsira-v1': { '/icons/icon-192.png': new Response('cached') } });
+    const caches = fakeCaches({ 'tabsira-v2': { '/icons/icon-192.png': new Response('cached') } });
     const { listeners, fetch } = load(caches);
     const response = await dispatch(listeners.fetch, request('/icons/icon-192.png'));
     expect(await response?.text()).toBe('cached');
@@ -204,13 +204,13 @@ describe('the service worker answers', () => {
       'fresh'
     );
     await dispatch(listeners.fetch, request('/_next/static/b.js'));
-    const store = caches.stores.get('tabsira-v1');
+    const store = caches.stores.get('tabsira-v2');
     expect(store?.has('/_next/static/a.js')).toBe(true);
     expect(store?.has('/_next/static/b.js')).toBe(false);
   });
 
   it('goes to the network for pages and shows /offline when it cannot', async () => {
-    const caches = fakeCaches({ 'tabsira-v1': { '/offline': new Response('offline page') } });
+    const caches = fakeCaches({ 'tabsira-v2': { '/offline': new Response('offline page') } });
     const { listeners, fetch } = load(caches);
     fetch
       .mockResolvedValueOnce(new Response('live page'))
@@ -221,7 +221,7 @@ describe('the service worker answers', () => {
     expect(
       await (await dispatch(listeners.fetch, request('/world', { mode: 'navigate' })))?.text()
     ).toBe('offline page');
-    expect(caches.stores.get('tabsira-v1')?.has('/world')).toBe(false);
+    expect(caches.stores.get('tabsira-v2')?.has('/world')).toBe(false);
   });
 
   it('returns a network error when even /offline is missing', async () => {
