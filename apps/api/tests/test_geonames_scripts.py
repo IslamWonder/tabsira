@@ -189,12 +189,27 @@ async def test_running_the_seed_again_replaces_what_it_loaded(engine, seed):
         for table in TABLES
     ]
 
-    assert seed().returncode == 0
+    assert seed("--force").returncode == 0
 
     assert [
         await scalar(engine, f"SELECT count(*) FROM {table}")  # noqa: S608
         for table in TABLES
     ] == first
+
+
+async def test_a_filled_table_is_left_alone_unless_forced(engine, seed):
+    assert seed("--limit", "3").returncode == 0
+    before = await geoname_ids(engine)
+
+    result = seed()
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "nothing to do" in result.stdout
+    assert "--force" in result.stdout
+    assert await geoname_ids(engine) == before
+    # DATA_FORCE=true (what `make data DATA_FORCE=true` passes) imports again, like --force.
+    assert seed(DATA_FORCE="true").returncode == 0
+    assert await geoname_ids(engine) == ALL_IDS
 
 
 async def test_the_seed_with_a_limit_keeps_countries_and_regions_then_the_most_populated(
@@ -266,7 +281,7 @@ async def test_postal_codes_are_skipped_unless_asked_for(engine, seed, cache):
     assert seed().returncode == 0
     assert await scalar(engine, "SELECT count(*) FROM geodata.geonames_postal_codes") == 0
 
-    result = seed("--postal-codes")
+    result = seed("--postal-codes", "--force")
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert await query(
@@ -275,7 +290,7 @@ async def test_postal_codes_are_skipped_unless_asked_for(engine, seed, cache):
         "ORDER BY postal_code",
     ) == [("1000", "Tunis", 36.8, 4), ("1001", "Tunis RP", 36.8, 4)]
     # A later run without the flag leaves them alone.
-    assert seed().returncode == 0
+    assert seed("--force").returncode == 0
     assert await scalar(engine, "SELECT count(*) FROM geodata.geonames_postal_codes") == 2
 
 
@@ -285,7 +300,7 @@ async def test_a_failed_load_changes_nothing(engine, seed, cache):
     # The postal file is loaded last, after the tables were emptied and refilled.
     write_postal_codes(cache, "TN\t1000\tTunis\tTunis\t36\t\t\t\t\t36.8\t10.18\tnot-a-number\n")
 
-    result = seed("--postal-codes", "--limit", "4")
+    result = seed("--postal-codes", "--limit", "4", "--force")
 
     assert result.returncode != 0
     # One transaction: the first import is still there, whole, and not the limited one.
