@@ -134,6 +134,7 @@ export function MapPublishScreen() {
   };
 
   const save = () => {
+    /* v8 ignore next: narrows the type; the button is disabled without a point and the form needs a valid id */
     if (chosen === null || insightId === null) {
       return;
     }
@@ -153,6 +154,7 @@ export function MapPublishScreen() {
   };
 
   const withdraw = async () => {
+    /* v8 ignore next: narrows the type; the sheet exists only under a valid id */
     if (insightId === null) {
       return;
     }

@@ -200,6 +200,7 @@ export function CameraScreen() {
   }, [centre, radiusM, fetchAround]);
 
   const retry = () => {
+    /* v8 ignore next: narrows the type; a request fails only once a centre asked for it */
     if (centre !== null) {
       void fetchAround(centre.point, radiusM);
     }

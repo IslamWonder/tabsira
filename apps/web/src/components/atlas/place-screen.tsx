@@ -66,6 +66,7 @@ export function PlaceScreen({ geonameId }: { geonameId: number }) {
   }, [geonameId, attempt]);
 
   const loadMore = async () => {
+    /* v8 ignore next: narrows the type; the button exists only while a page is ready with a cursor */
     if (load.kind !== 'ready' || load.cursor === null) {
       return;
     }
