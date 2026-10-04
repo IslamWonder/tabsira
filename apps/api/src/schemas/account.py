@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -48,6 +49,127 @@ class SessionExport(BaseModel):
     user_agent: str | None
 
 
+# ─── The scan workflow: what a learner saved, by reference; never a photo ───
+
+
+class ScanExport(BaseModel):
+    """A scan without its photo, which is never kept beyond the hour it is needed."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    source: str
+    status: str
+    outcome: str | None
+    engine: str
+    sensitive: bool
+    scene: dict[str, Any] | None
+    focus: dict[str, Any] | None
+    clarification_question: str | None
+    clarification_answer: str | None
+    created_at: datetime
+    finished_at: datetime | None
+
+
+class InsightExport(BaseModel):
+    """An insight with its evidence by reference: the texts themselves are public, in the store."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    scan_id: uuid.UUID | None
+    origin: str
+    tutorial_slug: str | None
+    engine: str
+    title: str
+    glimpse: str
+    relation: str
+    quran_surah: int | None
+    quran_ayah: int | None
+    hadith_collection: str | None
+    hadith_number: str | None
+    explanation: list[dict[str, Any]]
+    why: dict[str, Any]
+    small_step: dict[str, Any] | None
+    learning_unit_id: str | None
+    action_state: str | None
+    action_at: datetime | None
+    completed_at: datetime | None
+    place_id: uuid.UUID | None
+    created_at: datetime
+
+
+class ChatMessageExport(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    insight_id: uuid.UUID
+    question: str
+    answer: str | None
+    level: str | None
+    created_at: datetime
+
+
+class PlaceExport(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    region_id: str
+    created_at: datetime
+    last_visited_at: datetime | None
+
+
+class TreasureExport(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    insight_id: uuid.UUID
+    kind: str
+    quran_surah: int | None
+    quran_ayah: int | None
+    hadith_collection: str | None
+    hadith_number: str | None
+    learning_unit_id: str
+    created_at: datetime
+    revealed_at: datetime | None
+
+
+class LearnerUnitExport(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    path_version: str
+    unit_id: str
+    seen_count: int
+    opened_count: int
+    completed_count: int
+    created_at: datetime
+    last_at: datetime
+
+
+class ExposureExport(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    at: datetime
+    kind: str
+    insight_id: uuid.UUID | None
+    quran_surah: int | None
+    quran_ayah: int | None
+    hadith_collection: str | None
+    hadith_number: str | None
+    concept: str | None
+    learning_unit_id: str | None
+
+
+class LearningExport(BaseModel):
+    """Everything the scan workflow keeps for the account."""
+
+    scans: list[ScanExport]
+    insights: list[InsightExport]
+    chat_messages: list[ChatMessageExport]
+    places: list[PlaceExport]
+    treasures: list[TreasureExport]
+    learner_units: list[LearnerUnitExport]
+    exposures: list[ExposureExport]
+
+
 class AccountExport(BaseModel):
     """
     Everything the account owns so far, for its owner.
@@ -66,3 +188,4 @@ class AccountExport(BaseModel):
     cookie_consents: list[CookieConsentExport]
     # What the account wrote and did on the social network.
     social: SocialExport
+    learning: LearningExport

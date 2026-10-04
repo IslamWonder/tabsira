@@ -9,6 +9,12 @@ What the web app can rely on, and what the API requires of it. Code: `apps/api/s
 - The expiry is fixed at sign-in; there is no sliding renewal. Signing out, resetting a password or deleting the account deletes the rows, so a copied cookie is dead at once. Every sign-in issues a new token and ends the session the browser held (no session fixation).
 - The web app calls the API with `credentials: "include"`; `CORS_ORIGINS` lists the web origin.
 
+## Guests
+
+- A visitor without an account gets a second cookie, `GUEST_COOKIE_NAME` (default `__Secure-tabsira_guest`), on the first route that saves something (`POST /scans`, `POST /tutorial/rain/insights/{slug}`): 256 random bits and their HMAC under the server key, httpOnly, Secure, SameSite=Lax, on the session cookie's domain, for `GUEST_TTL_DAYS` (90). A value the server did not sign is ignored. The database keeps only the SHA-256 of the random part (`guests.key`).
+- The scan workflow (`/scans`, `/insights`, `/world`, `/me`) resolves every caller to its owner: the signed-in account, else the live guest of the cookie. Every query is filtered by that owner, so another owner's scan or insight answers the same 404 as one that does not exist. A signed-in caller is always the account.
+- Every sign-in (`session_service.start_for_request`: password, sign-up, Google) merges the guest the browser holds into the account, and the session cookie it sets clears the guest cookie. Responses of the scan workflow carry `Cache-Control: no-store`.
+
 ## CSRF: the Origin check
 
 SameSite=Lax keeps the cookie off cross-site POSTs, but the web app and the API are sibling subdomains of one site, and Lax does not stop a request from another sibling. So every `POST`, `PUT`, `PATCH` and `DELETE` also passes `OriginCheckMiddleware` (`src/middleware/origin_check.py`):

@@ -21,7 +21,7 @@ from src import clock, security
 from src.config import Settings
 from src.models.session import Session
 from src.models.user import User
-from src.services import admin_session_service
+from src.services import admin_session_service, guest_service
 
 # `last_seen_at` is written at most this often, so reading does not mean writing.
 TOUCH_INTERVAL = timedelta(minutes=5)
@@ -42,7 +42,8 @@ def set_cookie(response: Response, settings: Settings, token: str) -> None:
 
     The domain is shared by the web and api subdomains, so the browser sends the
     cookie to the API from pages of the web app. Lax keeps it off cross-site
-    POSTs; the Origin check covers the sibling subdomains Lax does not.
+    POSTs; the Origin check covers the sibling subdomains Lax does not. The
+    guest cookie is cleared at the same time: its guest was merged at sign-in.
     """
     response.set_cookie(
         settings.session_cookie_name,
@@ -54,6 +55,7 @@ def set_cookie(response: Response, settings: Settings, token: str) -> None:
         httponly=True,
         samesite="lax",
     )
+    guest_service.clear_cookie(response, settings)
 
 
 def clear_cookie(response: Response, settings: Settings) -> None:
@@ -108,18 +110,25 @@ async def start_for_request(
     Sign a user in from a request: end the session the browser held, open a new one.
 
     A fresh token at every sign-in means a token planted in the browser before
-    it is never the one that ends up signed in (session fixation).
+    it is never the one that ends up signed in (session fixation). The guest
+    this browser was, if any, is merged into the account here: the one place
+    every sign-in (password, sign-up, Google) goes through.
     """
     previous = cookie_token(request, settings)
     if previous is not None:
         await revoke(db, previous)
-    return await create(
+    token = await create(
         db,
         settings,
         user_id=user_id,
         ip_hash=ip_hash,
         user_agent=request.headers.get("user-agent"),
     )
+    # What this browser saved as a guest joins the account (v2 §15).
+    guest = guest_service.cookie_token(request, settings)
+    if guest is not None:
+        await guest_service.merge_into_user(db, guest_service.key_of(guest), user_id)
+    return token
 
 
 async def find(db: AsyncSession, token: str) -> tuple[Session, User] | None:
