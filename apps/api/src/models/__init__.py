@@ -40,6 +40,13 @@ from src.models.profile import (
     Theme,
 )
 from src.models.public_id import public_id_pk
+from src.models.retrieval import (
+    EmbeddedCorpus,
+    EmbeddingRun,
+    EmbeddingRunStatus,
+    HadithEmbedding,
+    QuranVerseEmbedding,
+)
 from src.models.scripture import (
     Hadith,
     HadithClassification,
@@ -94,6 +101,9 @@ __all__ = [
     "ConsentKind",
     "CookieConsent",
     "EmailToken",
+    "EmbeddedCorpus",
+    "EmbeddingRun",
+    "EmbeddingRunStatus",
     "Follow",
     "Gender",
     "GeoAlternateName",
@@ -106,6 +116,7 @@ __all__ = [
     "Hadith",
     "HadithClassification",
     "HadithCollection",
+    "HadithEmbedding",
     "HadithRuling",
     "HadithSearch",
     "HadithSignal",
@@ -133,6 +144,7 @@ __all__ = [
     "QuranAnnotation",
     "QuranSurah",
     "QuranVerse",
+    "QuranVerseEmbedding",
     "QuranVerseHistory",
     "QuranVerseSearch",
     "ReligiousBackground",

@@ -24,6 +24,7 @@ from sqlalchemy import (
     DDL,
     BigInteger,
     CheckConstraint,
+    Computed,
     Date,
     DateTime,
     Enum,
@@ -41,12 +42,15 @@ from sqlalchemy import (
     event,
     func,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base
 
 SHA256_LENGTH = 64
+# The words of a search copy for full-text search: the `simple` configuration
+# keeps every word as it is (no stemmer; the copy is folded already).
+SEARCH_VECTOR = "to_tsvector('simple'::regconfig, normalized_text)"
 # The text column and its hash agree, or the row does not exist.
 HASH_MATCHES_TEXT = "text_sha256 = encode(sha256(convert_to(text, 'UTF8')), 'hex')"
 
@@ -144,12 +148,15 @@ class QuranVerseSearch(Base):
             postgresql_using="gin",
             postgresql_ops={"normalized_text": "gin_trgm_ops"},
         ),
+        Index("ix_quran_verse_search_search_vector", "search_vector", postgresql_using="gin"),
     )
 
     verse_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("quran_verses.id", ondelete="CASCADE"), primary_key=True
     )
     normalized_text: Mapped[str] = mapped_column(Text)
+    # Computed by the database from the copy, so no importer has to keep it.
+    search_vector: Mapped[str] = mapped_column(TSVECTOR, Computed(SEARCH_VECTOR, persisted=True))
 
 
 class QuranAnnotation(Base):
@@ -242,12 +249,15 @@ class HadithSearch(Base):
             postgresql_using="gin",
             postgresql_ops={"normalized_text": "gin_trgm_ops"},
         ),
+        Index("ix_hadith_search_search_vector", "search_vector", postgresql_using="gin"),
     )
 
     hadith_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("hadiths.id", ondelete="CASCADE"), primary_key=True
     )
     normalized_text: Mapped[str] = mapped_column(Text)
+    # Computed by the database from the copy, so no importer has to keep it.
+    search_vector: Mapped[str] = mapped_column(TSVECTOR, Computed(SEARCH_VECTOR, persisted=True))
 
 
 class HadithSignal(Base):
