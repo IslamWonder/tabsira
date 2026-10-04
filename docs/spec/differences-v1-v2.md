@@ -4,7 +4,7 @@ Three inputs were merged into `tabsira_master_prompt_v2.md`:
 
 - **v1** — `tabsira_master_prompt_updated.md` with its companions «مسار.md» and «تجربة.md».
 - **Comments** — Ghazi's notes in `comments.md`.
-- **Built** — the version developed before the contest (`the earlier prototype`): what worked, what broke, and what the contest files require.
+- **Built** — the version developed before the contest (the earlier prototype): what worked, what broke, and what the contest files require.
 
 Decisions taken on 2 October 2026 are marked **decided**. The code is rewritten from scratch when the contest starts; nothing here is code.
 

@@ -227,4 +227,4 @@ Three layers, so a container never outlives its build for long:
 ## Not part of this setup
 
 - Deployment by default. The pipeline builds and tests. An optional `Deploy` stage (below) runs only when the `DEPLOY` parameter is ticked on `DEPLOY_BRANCH`; nothing deploys on its own.
-- An end-to-end pipeline (the `Jenkinsfile.e2e` of the project this one is ported from). There is no end-to-end suite yet.
+- An end-to-end pipeline (a `Jenkinsfile.e2e`). There is no end-to-end suite yet.

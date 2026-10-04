@@ -1,6 +1,6 @@
 # Operations
 
-How TABSIRA runs in production, and how to deploy, roll back and provision it. Ported from the reference project's `docs/DEPLOYMENT.md` and deploy scripts. No Docker in production (decision 20): systemd, gunicorn, pm2, nginx.
+How TABSIRA runs in production, and how to deploy, roll back and provision it. No Docker in production (decision 20): systemd, gunicorn, pm2, nginx.
 
 Everything below lives in `deploy/` and `nginx/production/`. No real host, address, key or password is in git; the owners supply them (see [What the owners must supply](#what-the-owners-must-supply)). Production files never contain the development domain.
 
@@ -95,13 +95,13 @@ On a failure after the switch `current` goes back to the previous release and th
 
 ### The API roll (gunicorn)
 
-`deploy/api-roll.sh`, ported from the reference project's `api-rolling-reload.sh`. The unit starts gunicorn through the `current` link (its python, its `--chdir`), so a worker forked after the link moves imports the new release. For each running worker: `TTIN` adds one, the script waits until it has stayed up for eight seconds and `/health/ready` answers, checks that the new worker really loaded files of the new release (from `/proc/<pid>/maps`; a worker that kept the old code stops the roll), then `TTOU` retires the oldest, which finishes its requests within `--graceful-timeout` (30 s). At least N workers serve at every moment. Afterwards the pool is brought to `API_WORKERS`.
+`deploy/api-roll.sh` replaces the workers one at a time. The unit starts gunicorn through the `current` link (its python, its `--chdir`), so a worker forked after the link moves imports the new release. For each running worker: `TTIN` adds one, the script waits until it has stayed up for eight seconds and `/health/ready` answers, checks that the new worker really loaded files of the new release (from `/proc/<pid>/maps`; a worker that kept the old code stops the roll), then `TTOU` retires the oldest, which finishes its requests within `--graceful-timeout` (30 s). At least N workers serve at every moment. Afterwards the pool is brought to `API_WORKERS`.
 
 A first start, or a changed Python, is a `systemctl restart tabsira-api` (workers keep the master's interpreter). The master keeps its start release alive on disk; the prune never deletes it and the deploy tells you when to restart the unit in a quiet hour.
 
 ### The web roll (pm2)
 
-`deploy/web-roll.sh`, ported from `web-rolling-deploy.sh`. `deploy/ecosystem.config.cjs` runs `current/web/apps/web/server.js` in cluster mode (`WEB_INSTANCES`, default 2). `pm2 reload` runs one instance at a time; each must be online, up for five seconds and answer before the next is touched. The shared static folder keeps the files of older builds for seven days, because a tab opened before a deploy still asks for the old chunk names.
+`deploy/web-roll.sh` puts the new build live. `deploy/ecosystem.config.cjs` runs `current/web/apps/web/server.js` in cluster mode (`WEB_INSTANCES`, default 2). `pm2 reload` runs one instance at a time; each must be online, up for five seconds and answer before the next is touched. The shared static folder keeps the files of older builds for seven days, because a tab opened before a deploy still asks for the old chunk names.
 
 ## nginx and TLS
 

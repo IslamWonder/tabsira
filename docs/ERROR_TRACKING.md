@@ -1,6 +1,6 @@
 # Error tracking with GlitchTip
 
-Decision 24 of `docs/spec/DECISIONS.md`. Optional: it is on only when `GLITCHTIP_DSN` is set. This page says what is collected, when, how it is cleaned, and how the browser's errors get to GlitchTip without a key in the bundle. It is ported from the reference project's `docs/ERROR_TRACKING.md` and trimmed to what TABSIRA needs; what is stored about people is in `docs/PRIVACY.md`.
+Decision 24 of `docs/spec/DECISIONS.md`. Optional: it is on only when `GLITCHTIP_DSN` is set. This page says what is collected, when, how it is cleaned, and how the browser's errors get to GlitchTip without a key in the bundle. It covers only what TABSIRA needs; what is stored about people is in `docs/PRIVACY.md`.
 
 GlitchTip speaks the Sentry protocol, so the official `sentry-sdk` (2.71 at the time of writing, from PyPI) does the sending on the API. The web app has no SDK.
 
