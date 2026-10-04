@@ -19,6 +19,7 @@ from src.models import (
     LoginAttempt,
     OAuthAccount,
     OAuthState,
+    ReducedMotion,
     ReligiousBackground,
     Session,
     Theme,
@@ -116,13 +117,15 @@ async def test_a_profile_starts_with_every_answer_unknown_and_the_switches_at_th
     assert profile.memory_enabled is True
     assert profile.photo_storage_consent is False
     assert profile.theme is Theme.SYSTEM
+    assert profile.reduced_motion is ReducedMotion.SYSTEM
     assert profile.sound_enabled is False
     assert profile.consent_version is None
     assert profile.updated_at is not None
 
 
 @pytest.mark.parametrize(
-    "column", ["age_range", "religious_background", "gender", "knowledge_level", "theme"]
+    "column",
+    ["age_range", "religious_background", "gender", "knowledge_level", "theme", "reduced_motion"],
 )
 async def test_the_database_refuses_an_answer_outside_the_enum(db_session, column):
     user = await make(db_session)

@@ -49,6 +49,7 @@ async def test_a_new_profile_has_every_answer_unknown_and_nothing_assumed(web, r
         "memory_enabled": True,
         "photo_storage_consent": False,
         "theme": "system",
+        "reduced_motion": "system",
         "sound_enabled": False,
         "consent_version": None,
     }
@@ -64,6 +65,12 @@ async def test_a_profile_is_created_on_first_read_for_an_account_that_has_none(
 
     assert response.status_code == 200
     assert await db_session.scalar(select(Profile)) is not None
+
+
+async def test_the_motion_preference_is_saved_and_read_back(web, reader):
+    await web.patch("/profile", json={"reduced_motion": "on"})
+
+    assert (await web.get("/profile")).json()["reduced_motion"] == "on"
 
 
 async def test_a_patch_changes_only_the_fields_it_sends(web, reader):
@@ -139,6 +146,7 @@ async def test_an_answer_can_be_given_back_to_unknown(web, reader):
         ({"gender": "other"}, "gender"),
         ({"knowledge_level": "expert"}, "knowledge_level"),
         ({"theme": "sepia"}, "theme"),
+        ({"reduced_motion": "maybe"}, "reduced_motion"),
         ({"goals": ["wealth"]}, "goals"),
         ({"goals": "curiosity"}, "goals"),
         ({"goals": ["curiosity"] * 8}, "goals"),
@@ -156,7 +164,8 @@ async def test_a_patch_validates_every_enum_and_value(web, reader, body, field):
 
 
 @pytest.mark.parametrize(
-    "field", ["age_range", "gender", "theme", "goals", "language", "sound_enabled"]
+    "field",
+    ["age_range", "gender", "theme", "reduced_motion", "goals", "language", "sound_enabled"],
 )
 async def test_a_null_is_refused_and_unknown_is_how_an_answer_is_cleared(web, reader, field):
     response = await web.patch("/profile", json={field: None})

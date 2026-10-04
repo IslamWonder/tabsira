@@ -79,6 +79,14 @@ class Theme(StrEnum):
     DARK = "dark"
 
 
+class ReducedMotion(StrEnum):
+    """Whether decorative motion is reduced: `system` follows the device setting."""
+
+    SYSTEM = "system"
+    ON = "on"
+    OFF = "off"
+
+
 _GOALS_SQL = "goals <@ ARRAY[" + ", ".join(f"'{goal.value}'" for goal in Goal) + "]::text[]"
 
 
@@ -129,6 +137,11 @@ class Profile(Base):
     )
     theme: Mapped[Theme] = mapped_column(
         string_enum(Theme, "theme"), default=Theme.SYSTEM, server_default=Theme.SYSTEM.value
+    )
+    reduced_motion: Mapped[ReducedMotion] = mapped_column(
+        string_enum(ReducedMotion, "reduced_motion"),
+        default=ReducedMotion.SYSTEM,
+        server_default=ReducedMotion.SYSTEM.value,
     )
     sound_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     # Version of the latest consent text the user answered.

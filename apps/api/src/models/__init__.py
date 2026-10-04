@@ -36,6 +36,7 @@ from src.models.profile import (
     Goal,
     KnowledgeLevel,
     Profile,
+    ReducedMotion,
     ReligiousBackground,
     Theme,
 )
@@ -163,6 +164,7 @@ __all__ = [
     "QuranVerse",
     "QuranVerseHistory",
     "QuranVerseSearch",
+    "ReducedMotion",
     "RelationReason",
     "ReligiousBackground",
     "RemovalSource",

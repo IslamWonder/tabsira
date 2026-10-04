@@ -23,7 +23,15 @@ from pydantic import (
 )
 
 from src.models.consent import ConsentKind
-from src.models.profile import AgeRange, Gender, Goal, KnowledgeLevel, ReligiousBackground, Theme
+from src.models.profile import (
+    AgeRange,
+    Gender,
+    Goal,
+    KnowledgeLevel,
+    ReducedMotion,
+    ReligiousBackground,
+    Theme,
+)
 
 _LANGUAGE = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$")
 LANGUAGE_MAX = 35
@@ -43,6 +51,7 @@ class ProfileOut(BaseModel):
     memory_enabled: bool
     photo_storage_consent: bool
     theme: Theme
+    reduced_motion: ReducedMotion
     sound_enabled: bool
     consent_version: str | None
     updated_at: datetime
@@ -66,6 +75,7 @@ class ProfilePatch(BaseModel):
     gender: Gender | None = None
     language: Annotated[str, Field(max_length=LANGUAGE_MAX)] | None = None
     theme: Theme | None = None
+    reduced_motion: ReducedMotion | None = None
     sound_enabled: bool | None = None
 
     @field_validator("goals")
