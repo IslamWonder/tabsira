@@ -47,8 +47,7 @@ describe('SceneStarter', () => {
     expect(zone).toHaveClass('extra');
     const photo = new File(['x'], 'scene.jpg', { type: 'image/jpeg' });
     await userEvent.upload(screen.getByLabelText('اختر صورة'), photo);
-    // jsdom has no camera: the live camera falls back to the phone's camera picker.
-    await userEvent.click(screen.getByRole('button', { name: /التقط بالكاميرا/ }));
+    // jsdom has no camera, which the starter sees at once: the phone's camera picker shows.
     const camera = await screen.findByLabelText(/التقط بالكاميرا/);
     expect(camera).toHaveAttribute('capture', 'environment');
     await userEvent.upload(camera, photo);

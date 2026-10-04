@@ -1,6 +1,6 @@
 'use client';
 
-import { type ChangeEvent, useId, useState } from 'react';
+import { type ChangeEvent, useEffect, useId, useState } from 'react';
 import { useCameraStream } from '@/components/atlas/camera-sensors';
 import { CameraIcon } from '@/components/icons';
 import { Button, buttonClasses } from '@/components/ui/button';
@@ -53,6 +53,63 @@ export async function frameToFile(
  * http page), the native picker with `capture` takes over, which on a phone
  * opens its camera app.
  */
+export type CameraAvailability = 'unknown' | 'available' | 'none' | 'denied';
+
+/**
+ * What the device says before any camera is asked for: whether a video input
+ * exists (`enumerateDevices` lists devices without their labels until a
+ * permission is given) and whether the camera permission was already refused.
+ * A machine without a webcam, or a refusal remembered by the browser, is then
+ * known at once and the fallback shows without a tap that would fail.
+ */
+export function useCameraAvailability(secure: boolean): CameraAvailability {
+  const [availability, setAvailability] = useState<CameraAvailability>('unknown');
+
+  useEffect(() => {
+    const devices = typeof navigator === 'undefined' ? undefined : navigator.mediaDevices;
+    if (!secure || devices === undefined || typeof devices.getUserMedia !== 'function') {
+      setAvailability('none');
+      return;
+    }
+    let cancelled = false;
+    const look = async () => {
+      let found: CameraAvailability = 'unknown';
+      if (typeof devices.enumerateDevices === 'function') {
+        try {
+          const list = await devices.enumerateDevices();
+          found = list.some((device) => device.kind === 'videoinput') ? 'available' : 'none';
+        } catch {
+          found = 'unknown';
+        }
+      }
+      if (found !== 'none' && typeof navigator.permissions?.query === 'function') {
+        try {
+          // Not every browser knows the camera permission name; a refusal here means nothing.
+          const status = await navigator.permissions.query({ name: 'camera' as PermissionName });
+          if (status.state === 'denied') {
+            found = 'denied';
+          }
+        } catch {
+          // Unknown permission name: the tap decides.
+        }
+      }
+      if (!cancelled) {
+        setAvailability(found);
+      }
+    };
+    void look();
+    // A webcam plugged in or removed changes the answer.
+    const onChange = () => void look();
+    devices.addEventListener?.('devicechange', onChange);
+    return () => {
+      cancelled = true;
+      devices.removeEventListener?.('devicechange', onChange);
+    };
+  }, [secure]);
+
+  return availability;
+}
+
 export function CameraCapture({ onFile, onPick }: CameraCaptureProps) {
   const camera = useCameraStream();
   const [taking, setTaking] = useState(false);
@@ -60,7 +117,9 @@ export function CameraCapture({ onFile, onPick }: CameraCaptureProps) {
   const inputId = useId();
   const text = messages.scene.starter;
   const secure = typeof window === 'undefined' || window.isSecureContext !== false;
-  const fallback = camera.state === 'unavailable' || camera.state === 'denied' || !secure;
+  const availability = useCameraAvailability(secure);
+  const denied = camera.state === 'denied' || availability === 'denied';
+  const fallback = !secure || denied || camera.state === 'unavailable' || availability === 'none';
 
   const shoot = async () => {
     const video = camera.videoRef.current;
@@ -100,11 +159,7 @@ export function CameraCapture({ onFile, onPick }: CameraCaptureProps) {
           />
         </label>
         <p className="m-0 text-fg-muted text-sm leading-relaxed" role="status">
-          {!secure
-            ? text.cameraNeedsHttps
-            : camera.state === 'denied'
-              ? text.cameraDenied
-              : text.cameraUnavailable}
+          {!secure ? text.cameraNeedsHttps : denied ? text.cameraDenied : text.cameraUnavailable}
         </p>
       </div>
     );

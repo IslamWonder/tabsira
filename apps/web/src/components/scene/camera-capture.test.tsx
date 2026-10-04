@@ -18,8 +18,31 @@ function withFrame(video: HTMLVideoElement, width: number, height: number) {
   Object.defineProperty(video, 'videoHeight', { value: height, configurable: true });
 }
 
+/** The device list and the remembered permission a page can read before asking for the camera. */
+function withDevices(kinds: string[], permission: PermissionState | 'unsupported' = 'prompt') {
+  const current = navigator.mediaDevices as MediaDevices | undefined;
+  Object.defineProperty(navigator, 'mediaDevices', {
+    value: {
+      ...current,
+      getUserMedia: current?.getUserMedia,
+      enumerateDevices: vi.fn(async () => kinds.map((kind) => ({ kind }) as MediaDeviceInfo)),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    },
+    configurable: true,
+  });
+  Object.defineProperty(navigator, 'permissions', {
+    value:
+      permission === 'unsupported'
+        ? undefined
+        : { query: vi.fn(async () => ({ state: permission }) as PermissionStatus) },
+    configurable: true,
+  });
+}
+
 afterEach(() => {
   forgetDevice();
+  Reflect.deleteProperty(navigator, 'permissions');
   vi.restoreAllMocks();
 });
 
@@ -80,27 +103,33 @@ describe('CameraCapture', () => {
     expect(onFile).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ['denied', 'لم يُسمح بالكاميرا'],
-    ['none', 'لا كاميرا متاحة'],
-  ] as const)(
-    'falls back to the phone camera picker when the camera is %s',
-    async (outcome, hint) => {
-      stubCamera(outcome);
-      const onPick = vi.fn();
-      render(<CameraCapture onFile={vi.fn()} onPick={onPick} />);
+  it('falls back to the phone camera picker when the camera is refused at the tap', async () => {
+    stubCamera('denied');
+    const onPick = vi.fn();
+    render(<CameraCapture onFile={vi.fn()} onPick={onPick} />);
 
-      fireEvent.click(screen.getByRole('button', { name: /التقط بالكاميرا/ }));
+    fireEvent.click(screen.getByRole('button', { name: /التقط بالكاميرا/ }));
 
-      const input = await screen.findByLabelText(/التقط بالكاميرا/);
-      expect(input).toHaveAttribute('capture', 'environment');
-      expect(screen.getByRole('status')).toHaveTextContent(hint);
-      fireEvent.change(input, {
-        target: { files: [new File(['x'], 'x.jpg', { type: 'image/jpeg' })] },
-      });
-      expect(onPick).toHaveBeenCalledOnce();
-    }
-  );
+    const input = await screen.findByLabelText(/التقط بالكاميرا/);
+    expect(input).toHaveAttribute('capture', 'environment');
+    expect(screen.getByRole('status')).toHaveTextContent('لم يُسمح بالكاميرا');
+    fireEvent.change(input, {
+      target: { files: [new File(['x'], 'x.jpg', { type: 'image/jpeg' })] },
+    });
+    expect(onPick).toHaveBeenCalledOnce();
+  });
+
+  it('shows the phone camera picker at once when the browser has no media devices', async () => {
+    stubCamera('none');
+    render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
+
+    expect(await screen.findByLabelText(/التقط بالكاميرا/)).toHaveAttribute(
+      'capture',
+      'environment'
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('لا كاميرا متاحة');
+    expect(screen.queryByRole('button', { name: /التقط بالكاميرا/ })).toBeNull();
+  });
 
   it('falls back at once on a page that is not secure', () => {
     stubCamera('granted');
@@ -118,5 +147,47 @@ describe('CameraCapture', () => {
     withFrame(video, 10, 10);
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
     expect(await frameToFile(video, () => 1)).toBeNull();
+  });
+
+  it('shows the phone picker at once when the machine has no camera', async () => {
+    stubCamera('granted');
+    withDevices(['audioinput'], 'unsupported');
+    render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
+
+    const input = await screen.findByLabelText(/التقط بالكاميرا/);
+    expect(input).toHaveAttribute('capture', 'environment');
+    expect(screen.getByRole('status')).toHaveTextContent('لا كاميرا متاحة');
+    expect(screen.queryByRole('button', { name: /التقط بالكاميرا/ })).toBeNull();
+  });
+
+  it('shows the phone picker at once when the camera permission was refused before', async () => {
+    stubCamera('granted');
+    withDevices(['videoinput'], 'denied');
+    render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
+
+    await screen.findByLabelText(/التقط بالكاميرا/);
+    expect(screen.getByRole('status')).toHaveTextContent('لم يُسمح بالكاميرا');
+  });
+
+  it('offers the live camera when a camera is listed and the permission is open', async () => {
+    const { getUserMedia } = stubCamera('granted');
+    withDevices(['videoinput'], 'prompt');
+    render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
+
+    const button = await screen.findByRole('button', { name: /التقط بالكاميرا/ });
+    fireEvent.click(button);
+    await waitFor(() => expect(getUserMedia).toHaveBeenCalledOnce());
+    expect(await screen.findByLabelText('معاينة الكاميرا')).toBeInTheDocument();
+  });
+
+  it('keeps the button when the device list cannot be read', async () => {
+    stubCamera('granted');
+    withDevices([], 'prompt');
+    (navigator.mediaDevices.enumerateDevices as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('no')
+    );
+    render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
+
+    expect(await screen.findByRole('button', { name: /التقط بالكاميرا/ })).toBeInTheDocument();
   });
 });
