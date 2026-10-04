@@ -10,11 +10,13 @@ import httpx
 import pytest
 from sqlalchemy import func, select
 
+from src.ai.client import ModelImage
 from src.ai.errors import AiCallError, AiErrorCode
 from src.ai.records import CallLog
 from src.cli import evaluate as command
 from src.evaluation.chat_eval import (
     CaseExpectation,
+    _Recorder,
     load_chat_cases,
     run_chat_evaluation,
     score,
@@ -344,3 +346,17 @@ async def test_the_command_fails_when_an_answer_shown_holds_scripture(
     )  # fmt: skip
 
     assert code == 1
+
+
+async def test_the_recorder_passes_every_other_call_through_unchanged():
+    inner = FakeModelClient(moderations=[(True, ["violence"])])
+    recorder = _Recorder(inner)
+
+    assert (recorder.provider, recorder.settings) == (inner.provider, inner.settings)
+    verdict = await recorder.moderate_image(ModelImage(data=b"jpeg"), model="guard-x")
+    assert (verdict.flagged, verdict.categories) == (True, ["violence"])
+    assert inner.moderated == [ModelImage(data=b"jpeg")]
+    # The fake has no embeddings; the recorder adds nothing of its own on the way.
+    with pytest.raises(NotImplementedError):
+        await recorder.embed(["نص"], model="embed-x", dimensions=8)
+    assert recorder.last is None

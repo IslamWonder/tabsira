@@ -56,6 +56,7 @@ from src.models.social import (
 )
 from src.services import moderation_service
 from src.services.atlas_service import meaning_label, precision_label
+from src.storage.photos import build_photo_store
 
 if TYPE_CHECKING:
     from src.admin.app import TabsiraAdmin
@@ -396,12 +397,17 @@ class ModerationQueueView(BaseView):
                     request, db, kind, item, error=UNKNOWN_REASON, status_code=400
                 )
             try:
+                photos = build_photo_store(self.admin.settings)
                 if decision == "approve":
-                    await moderation_service.approve(db, item, admin_id)
+                    await moderation_service.approve(db, item, admin_id, photos=photos)
                 elif decision == "reject":
-                    await moderation_service.reject(db, item, admin_id, cast("str", reason))
+                    await moderation_service.reject(
+                        db, item, admin_id, cast("str", reason), photos=photos
+                    )
                 else:
-                    await moderation_service.remove(db, item, admin_id, cast("str", reason))
+                    await moderation_service.remove(
+                        db, item, admin_id, cast("str", reason), photos=photos
+                    )
             except AppError:
                 # The service read the item fresh and changed nothing: show it as it is now.
                 await self._refused(request, admin_id, record_id)

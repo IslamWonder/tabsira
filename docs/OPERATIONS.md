@@ -12,7 +12,7 @@ Internet ──► app host (public)                         data host (no publi
              pm2  web   127.0.0.1:3000                   Redis          :6379 ┘ app host's VPN address only
              gunicorn   127.0.0.1:8000  ── Netbird VPN (wt0) ──►
              vision     127.0.0.1:8100
-             timers     sync-quran, audit-retention
+             timers     sync-quran, audit-retention, reconcile-photos
 Admins ──► Netbird DNS ──► app host VPN address :443  admin.tabsira.me (VPN only)
 ```
 
@@ -24,6 +24,7 @@ Admins ──► Netbird DNS ──► app host VPN address :443  admin.tabsira.
 | scan worker (`apps/api`)   | `current/apps/api`, `tabsira-worker.service`  | systemd, exactly one process, no port |
 | daily Quran sync           | `tabsira-sync-quran.timer`                    | systemd, 02:30 UTC, one process       |
 | audit retention policy     | `tabsira-audit-retention.timer`               | systemd, 03:40 UTC, one process       |
+| public photo copies        | `tabsira-reconcile-photos.timer`              | systemd, hourly, one process          |
 | database dumps             | `tabsira-pg-backup.timer` on the data host    | systemd, 03:15 UTC                    |
 | IndexNow                   | last step of `deploy.sh`, production only     | the deploy, never a timer             |
 | error tracking             | GlitchTip, only when `GLITCHTIP_DSN` is set   | the API (decision 24)                 |
@@ -33,13 +34,15 @@ Scheduled work runs in exactly one process: timers on the one application host, 
 ## Layout on the application host
 
 ```text
-/opt/tabsira/repo               git clone every release is cut from
-/opt/tabsira/releases/<id>      one folder per deploy (UTC time and short commit), never edited
-/opt/tabsira/current            symlink to the live release
-/opt/tabsira/previous           symlink to the release before it
-/opt/tabsira/shared/.env        production environment (0600, owned by the app user)
-/opt/tabsira/shared/{state,cache,vision-weights,corpus}
-/opt/tabsira/static/_next/static  every recent build's static files, served by nginx
+/opt/tabsira                    the git clone, as on the earlier prototype: deploys run from it
+                                (cd /opt/tabsira && ./deploy/deploy.sh) and each one first resets
+                                it to its upstream branch; releases are cut from a commit
+/opt/tabsira/.env               production environment (0600, owned by devops, ignored by git)
+/srv/tabsira/releases/<id>      one folder per deploy (UTC time and short commit), never edited
+/srv/tabsira/current            symlink to the live release
+/srv/tabsira/previous           symlink to the release before it
+/srv/tabsira/shared/{state,cache,vision-weights,corpus,vectors}
+/srv/tabsira/static/_next/static  every recent build's static files, served by nginx
 /var/log/tabsira                web logs (pm2); the API and timers log to the journal
 ```
 
@@ -50,14 +53,21 @@ A release holds the sources, the API's and vision's virtual environments, and `w
 Order matters: the data host first, because the first deploy migrates the database.
 
 1. **Netbird** on both hosts (interface `wt0`). Note each host's VPN address. The scripts read the interface from `VPN_IFACE` (default `wt0`) and fail with "No address on wt0" when it is missing; on a machine without Netbird name the interface that carries the private network and pass `DATA_HOST_VPN_IP`.
-2. **Data host** (as root, from a checkout):
+2. **Database host and Redis host.** `deploy/provision-postgres.sh` and `deploy/provision-redis.sh` are standalone, like the earlier prototype's installers: copy the one file to its host and run it as root; neither needs the repository. Each is idempotent, `--check` prints the plan and changes nothing, and each ends by printing the lines for the application host's `.env`, passwords included.
 
    ```bash
-   APP_HOST_VPN_IP=<app host VPN address> deploy/provision-data.sh --dry-run
-   APP_HOST_VPN_IP=<app host VPN address> deploy/provision-data.sh
+   # database host (db.tabsira.me)
+   sudo ./provision-postgres.sh --check
+   sudo APP_HOST_VPN_IP=<app host VPN address> ./provision-postgres.sh   # without it: the VPN subnet
+
+   # Redis host (redis.tabsira.me)
+   sudo ./provision-redis.sh --check
+   sudo ./provision-redis.sh
    ```
 
-   It installs PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, creates the role `tabsira` and the database `tabsira` with `search_path = app, geodata, public` and the nine extensions (`postgis`, `vector`, `timescaledb`, `pg_trgm`, `unaccent`, `pgcrypto`, `btree_gin`, `btree_gist`, `pg_stat_statements`), and installs Redis 8 with a password and protected mode. Both listen on `127.0.0.1` and the `wt0` address only (`DATA_HOST_VPN_IP` to name it). The script first sets `net.ipv4.ip_nonlocal_bind=1` (`/etc/sysctl.d/90-tabsira-nonlocal-bind.conf`), so a reboot that starts them before Netbird has given the address does not leave them down. `pg_hba.conf` has one managed block: the application role from `APP_HOST_VPN_IP/32` with `scram-sha-256`, no ranges, no trust. The firewall step adds `ufw` rules that allow 5432 and 6379 from the app host on `wt0` and deny them elsewhere; it does not enable `ufw` (a wrong default over ssh locks you out) unless `FIREWALL_ENABLE=true`. Passwords are generated into `/etc/tabsira/postgres.env` and `/etc/tabsira/redis.env` (root only); the script ends by printing the values to paste into the application host's `.env`: the two database URLs with the password left as a placeholder, and for Redis `REDIS_URL` without a password plus `REDIS_PASSWORD`. The API refuses a Redis URL that carries a password.
+   Neither manages the firewall: allow 5432 and 6379 from the application host in the firewall you use. When both run on one data host, `deploy/provision-data.sh` (from a checkout) runs the two and adds the `ufw` rules described below.
+
+   It installs PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, creates the role `tabsira` and the database `tabsira` with `search_path = app, geodata, public` and the nine extensions (`postgis`, `vector`, `timescaledb`, `pg_trgm`, `unaccent`, `pgcrypto`, `btree_gin`, `btree_gist`, `pg_stat_statements`), and installs Redis 8 with a password and protected mode. Both listen on `127.0.0.1` and the `wt0` address only (`DATA_HOST_VPN_IP` to name it). The script first sets `net.ipv4.ip_nonlocal_bind=1` (`/etc/sysctl.d/90-tabsira-nonlocal-bind.conf`), so a reboot that starts them before Netbird has given the address does not leave them down. `pg_hba.conf` has one managed block: the application role from `APP_HOST_VPN_IP/32` with `scram-sha-256`, no ranges, no trust. The firewall step adds `ufw` rules that allow 5432 and 6379 from the app host on `wt0` and deny them elsewhere; it does not enable `ufw` (a wrong default over ssh locks you out) unless `FIREWALL_ENABLE=true`. Passwords are generated into `/etc/tabsira/postgres.env` and `/etc/tabsira/redis.env` (root only); each script ends by printing the lines to paste into the application host's `.env`: `DATABASE_URL` and `SYNC_DATABASE_URL` with the generated password in them (48 hex characters, so no escaping), and for Redis `REDIS_URL` without a password plus `REDIS_PASSWORD`. `sudo deploy/show-env-lines.sh` prints all four again from the root-only files. Treat that output as a secret. The API refuses a Redis URL that carries a password.
 
 3. **Application host** (as root, from a checkout):
 
@@ -66,10 +76,10 @@ Order matters: the data host first, because the first deploy migrates the databa
      APP_REPO=<git url> deploy/provision-app.sh --dry-run
    ```
 
-   Run it without `--dry-run` once the plan reads right. The certificates are issued by certbot during the run, so the three names must already resolve to this host. A certificate that exists (made with `certbot` by hand) is kept. Where they cannot yet (a rehearsal, a host before the DNS change), run it with `--skip-tls`: it does everything else but the certificates and `apply-config.sh`. Put a certificate and its key at `/etc/letsencrypt/live/<name>/{fullchain,privkey}.pem` for `tabsira.me`, `api.tabsira.me` and `admin.tabsira.me` (self-signed ones will do for a rehearsal), then run `APP_HOST_VPN_IP=<this host's VPN address> deploy/apply-config.sh` as root. Do not leave self-signed files where certbot will write: delete `/etc/letsencrypt/live/<name>` before the real issue. It uses the existing `devops` account (the one that ran `sudo`; it creates it when missing), builds the layout under `/opt/tabsira`, installs in that user's home nvm, the Node of `.nvmrc`, the pnpm that `package.json` pins, pm2 (started at boot), uv and the Python of `apps/api/.python-version` (`deploy/install-toolchain.sh`, pinned versions, `--check` to preview), nginx, certbot, the narrow sudoers file and `/usr/local/bin/tabsira-deploy`, and applies `deploy/apply-config.sh`. It writes `/opt/tabsira/shared/.env` from `deploy/env.production.example` when none exists and generates `HASH_SECRET`; every other `CHANGE_ME` is left for the owners.
+   Run it without `--dry-run` once the plan reads right. The certificates are issued by certbot during the run, so the three names must already resolve to this host. A certificate that exists (made with `certbot` by hand) is kept. Where they cannot yet (a rehearsal, a host before the DNS change), run it with `--skip-tls`: it does everything else but the certificates and `apply-config.sh`. Put a certificate and its key at `/etc/letsencrypt/live/<name>/{fullchain,privkey}.pem` for `tabsira.me`, `api.tabsira.me` and `admin.tabsira.me` (self-signed ones will do for a rehearsal), then run `APP_HOST_VPN_IP=<this host's VPN address> deploy/apply-config.sh` as root. Do not leave self-signed files where certbot will write: delete `/etc/letsencrypt/live/<name>` before the real issue. It uses the existing `devops` account (the one that ran `sudo`; it creates it when missing), builds the layout under `/opt/tabsira`, installs in that user's home nvm, the Node of `.nvmrc`, the pnpm that `package.json` pins, pm2 (started at boot), uv and the Python of `apps/api/.python-version` (`deploy/install-toolchain.sh`, pinned versions, `--check` to preview), nginx, certbot, the narrow sudoers file and `/usr/local/bin/tabsira-deploy`, and applies `deploy/apply-config.sh`. It writes `/opt/tabsira/.env` from `deploy/env.production.example` when none exists and generates `HASH_SECRET`; every other `CHANGE_ME` is left for the owners.
 
-4. Fill `/opt/tabsira/shared/.env` (every `CHANGE_ME`, the S3 keys of [Photos](#photos), `REDIS_PASSWORD`). Then check the data host from the application host before the first deploy: `psql "<the DATABASE_URL without +asyncpg>" -c 'select current_user'` must answer (the data host cannot test this login itself, `pg_hba` admits the application host only), and Redis must refuse a client without the password. Then `tabsira-deploy --dry-run` and `tabsira-deploy` as the app user. The first deploy builds the web app, installs the Python environments and downloads the detector weights (about 630 MB, once; written from the scripts, not exercised in the rehearsal); the first build takes a few minutes.
-5. After the first deploy, as the app user: `deploy/load-data.sh`. The database has three schemas, one Alembic chain each (`app`, `geodata`, `vectors`); the first deploy migrated them and this fills them. The two corpus files are not in git, so copy them to `/opt/tabsira/shared/corpus/` first (`docs/ASSET_MANIFEST.md` has their SHA-256). It checks the schemas and the nine extensions, runs `scripts/data.sh` from the current release (the scripture store, then the scripture vectors downloaded from the owners' bucket and verified against their `.sha256`, docs/EMBEDDINGS.md, so no vector is ever computed on the server; the world ontology and the learning path), with `--geonames` also the places of the atlas, and ends by counting what the three schemas hold (6,236 verses, hadiths, annotations, signals, ontology, vectors covering the store) and failing when a count is wrong. `--check` only prints the state. Data that is there is left alone; `--force` imports it again. Then `cd /opt/tabsira/current/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.make_admin <email>` makes an existing account the first admin (`docs/ADMIN.md`). Keep `UV_NO_SYNC=1` on every `uv run` in a release: without it uv installs the development dependencies into the production environment.
+4. Fill `/opt/tabsira/.env` (every `CHANGE_ME`, the S3 keys of [Photos](#photos), `REDIS_PASSWORD`). Then check the data host from the application host before the first deploy: `psql "<the DATABASE_URL without +asyncpg>" -c 'select current_user'` must answer (the data host cannot test this login itself, `pg_hba` admits the application host only), and Redis must refuse a client without the password. Then `tabsira-deploy --dry-run` and `tabsira-deploy` as the app user. The first deploy builds the web app, installs the Python environments and downloads the detector weights (about 630 MB, once; written from the scripts, not exercised in the rehearsal); the first build takes a few minutes.
+5. After the first deploy, as the app user: `deploy/load-data.sh`. The database has three schemas, one Alembic chain each (`app`, `geodata`, `vectors`); the first deploy migrated them and this fills them. The two corpus files are not in git, so copy them to `/srv/tabsira/shared/corpus/` first (`docs/ASSET_MANIFEST.md` has their SHA-256). It checks the schemas and the nine extensions, runs `scripts/data.sh` from the current release (the scripture store, then the scripture vectors downloaded from the owners' bucket and verified against their `.sha256`, docs/EMBEDDINGS.md, so no vector is ever computed on the server; the world ontology and the learning path), with `--geonames` also the places of the atlas, and ends by counting what the three schemas hold (6,236 verses, hadiths, annotations, signals, ontology, vectors covering the store) and failing when a count is wrong. `--check` only prints the state. Data that is there is left alone; `--force` imports it again. Then `cd /srv/tabsira/current/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.make_admin <email>` makes an existing account the first admin (`docs/ADMIN.md`). Keep `UV_NO_SYNC=1` on every `uv run` in a release: without it uv installs the development dependencies into the production environment.
 
 ## Checking the host before a deploy
 
@@ -82,19 +92,23 @@ Order matters: the data host first, because the first deploy migrates the databa
 `--live` also tries the services: the database, Redis (the password, and that it keeps nothing on disk), the AI provider's key (a listing of its models: no tokens spent), the detector, the mail server (a login, never a message) and that this host resolves the site and the API names. `--env-file PATH` checks another file. The deploy runs it in a new release before the migrations; run it by hand from any release:
 
 ```bash
-cd /opt/tabsira/releases/<id>/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.check_config --live
+cd /srv/tabsira/releases/<id>/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.check_config --live
 ```
 
 ## Deploying
 
+As devops, from the clone, as on the earlier prototype:
+
 ```bash
-tabsira-deploy --dry-run            # print every step with its values, run nothing
-tabsira-deploy                      # deploy origin/main
-tabsira-deploy --ref v1.2.0         # a tag, branch or commit
-tabsira-deploy --rollback           # back to the previous release, no rebuild
+cd /opt/tabsira
+./deploy/deploy.sh --check              # read-only: tools, clone, runtime, .env, database, Redis, certificates
+./deploy/deploy.sh --dry-run            # print every step with its values, run nothing
+./deploy/deploy.sh                      # deploy origin/main
+./deploy/deploy.sh --ref v1.2.0         # a tag, branch or commit
+./deploy/deploy.sh --rollback           # back to the previous release, no rebuild
 ```
 
-`tabsira-deploy` fetches the clone, checks out the commit, and runs that commit's `deploy/deploy.sh`. The steps:
+A deploy first fetches the clone and resets it to its upstream branch, then runs again from the updated copy, so the deploy that runs is always the latest; the release itself is cut from the commit `--ref` names. `/usr/local/bin/tabsira-deploy` does the same from anywhere (Jenkins calls it over ssh). The steps:
 
 1. Take the lock; check the host and that `.env` says `ENVIRONMENT=production` and names no development address.
 2. Optional dump (`PRE_DEPLOY_BACKUP=true`).
@@ -151,7 +165,7 @@ The admin area is served only at `https://admin.tabsira.me`, over the VPN.
 
 ## Backups
 
-On the data host `tabsira-pg-backup.timer` runs nightly at 03:15 UTC (`/usr/local/bin/tabsira-pg-backup`): a custom-format dump of `tabsira` into `/var/backups/tabsira`, verified with `pg_restore --list`, plus a globals file (roles and their `search_path`). Dumps older than 14 days are deleted, but the newest three are always kept (`BACKUP_KEEP_DAYS`, `BACKUP_KEEP_MIN`). Run one now: `systemctl start tabsira-pg-backup.service`, or `deploy/backup-db.sh` as root (it runs itself as `postgres`). `deploy/backup-db.sh --url <url>` takes one from the app host before a risky deploy (`PRE_DEPLOY_BACKUP=true`); the application user cannot write `/var/backups`, so that dump goes to `/opt/tabsira/shared/backups` (`BACKUP_DIR` overrides it), on the application host, which the loss of the data host does not touch but a compromise of the application host does. `pg_dump` prints a warning about circular foreign keys on `continuous_agg`: it belongs to TimescaleDB's own catalog, and the restore script handles it.
+On the data host `tabsira-pg-backup.timer` runs nightly at 03:15 UTC (`/usr/local/bin/tabsira-pg-backup`): a custom-format dump of `tabsira` into `/var/backups/tabsira`, verified with `pg_restore --list`, plus a globals file (roles and their `search_path`). Dumps older than 14 days are deleted, but the newest three are always kept (`BACKUP_KEEP_DAYS`, `BACKUP_KEEP_MIN`). Run one now: `systemctl start tabsira-pg-backup.service`, or `deploy/backup-db.sh` as root (it runs itself as `postgres`). `deploy/backup-db.sh --url <url>` takes one from the app host before a risky deploy (`PRE_DEPLOY_BACKUP=true`); the application user cannot write `/var/backups`, so that dump goes to `/srv/tabsira/shared/backups` (`BACKUP_DIR` overrides it), on the application host, which the loss of the data host does not touch but a compromise of the application host does. `pg_dump` prints a warning about circular foreign keys on `continuous_agg`: it belongs to TimescaleDB's own catalog, and the restore script handles it.
 
 These are local copies: they do not survive the loss of the data host. Copying `/var/backups/tabsira` off the machine is the owners' decision (listed below).
 
@@ -164,7 +178,9 @@ Decision 44. Production keeps consented photos in a private S3-compatible bucket
 - **Start-up check.** The API will not start in production when it cannot use the bucket. At boot it probes with a 5-second timeout: a HeadBucket, then a put and delete of a small probe object under `private/` with a random name, which proves the keys can write. A failure names the bucket and the endpoint host (never a key); the uvicorn worker exits with gunicorn's boot-error status and the master halts. `deploy/api-roll.sh smoke` boots the new release once on a spare port before any live worker is touched: it sees the master die, prints the last lines of its log and aborts with "Pre-flight failed; no live worker was touched", so a wrong key, a missing bucket or an unreachable endpoint stops the deploy there. The probe runs again whenever a worker is added or replaced (a roll, `max_requests` recycling): a storage outage at that moment makes the new worker fail to boot and halts the master, and systemd restarts it (`Restart=on-failure`) until the bucket is back, so the API is down while the storage is.
 - **Check by hand.** `python -m src.cli.check_config` runs the same probe and prints `storage: ok` or `storage: FAILED, <reason>` (exit 1 in production); run it with the production environment file after changing any `S3_*` key.
 - **Development and test.** With no `S3_BUCKET`, photos go to `LOCAL_MEDIA_DIR` (`data/media` of the checkout by default) and the API logs "No S3 bucket: photos go to `<dir>`; production requires S3". A failing probe is a warning there, never a refusal, so `make dev` works offline.
+- **A deletion the store refused.** A withdrawal or a moderator's removal answers the person even when the store fails; the public copy it should have deleted is then reconciled: the API asks the scan worker (`photos.reconcile`, run 30 s later in that one process), and `tabsira-reconcile-photos.timer` runs `python -m src.cli.reconcile_photos` every hour, which deletes every public copy nothing shows any more and exits 1 while the store still refuses one. Two runs never overlap (an advisory lock). Run one now: `systemctl start tabsira-reconcile-photos.service`.
 - **Serving.** No route serves stored photos yet, so nginx has no location for them. Published copies are served from `S3_PUBLIC_BASE_URL` with `Cache-Control: public, max-age=300`; private photos only through signed links.
+- **Sound effects.** The 1,000 MP3 files of the ontology (one per entity, `E001.mp3` to `E1000.mp3`) are static files, not photos. Upload them once to the same bucket under `static/ontology/audio/`, for example `aws s3 sync out/ontology/audio/ s3://<bucket>/static/ontology/audio/ --content-type audio/mpeg`. The API reads them with the bucket's own keys and serves them at `GET /sounds/ontology/<id>` with `Cache-Control: public, max-age=86400`, so the bucket stays private and the browser talks to the API only. Nothing under `static/` is ever a photo. With no bucket, the same path under `LOCAL_MEDIA_DIR` is read (`data/media/static/ontology/audio/` by default). A missing file is a 404 and the page plays nothing.
 
 ## Day to day
 

@@ -2,18 +2,21 @@
 # Provision the production APPLICATION host (Ubuntu 24.04 or 26.04): the account the
 # application runs as (devops), nvm with Node, pnpm and pm2, uv and Python, nginx
 # with HTTPS from certbot, the systemd units, log rotation and the layout
-# deploy/deploy.sh expects under /opt/tabsira. No Docker.
+# deploy/deploy.sh expects: the git clone at /opt/tabsira with its .env, as on the
+# earlier prototype, and the releases under /srv/tabsira. No Docker.
 #
 # What it does, in order:
 #   1. apt packages: nginx, certbot (and its DNS plugin), git, curl,
 #      postgresql-client-18 from PGDG (psql and pg_dump for migrations and dumps).
-#   2. The application user (no login password) and the layout under APP_ROOT:
-#      repo, releases, shared (.env, state, cache), static; /var/log/tabsira.
+#   2. The application user and the layout: the clone at REPO_DIR (/opt/tabsira,
+#      cloned from APP_REPO when it is not there yet), and under APP_ROOT
+#      (/srv/tabsira) the releases, shared (state, cache, weights, corpus,
+#      vectors) and static folders; /var/log/tabsira.
 #   3. The toolchain, in the application user's home (deploy/install-toolchain.sh):
 #      nvm with the Node of .nvmrc, the pnpm package.json pins, pm2, uv and the
 #      Python apps/api/.python-version names as uv builds it (never the system
 #      Python); pm2 starts at boot for the application user.
-#   5. The production environment file from deploy/env.production.example, only
+#   5. The production environment file, REPO_DIR/.env, from deploy/env.production.example, only
 #      when none exists (mode 0600); HASH_SECRET is generated when still a
 #      placeholder. Every other CHANGE_ME stays for the owners.
 #   6. TLS: one certbot lineage per name (tabsira.me with www, api.tabsira.me,
@@ -33,8 +36,8 @@
 # CERTBOT_DNS_PLUGIN and CERTBOT_DNS_CREDENTIALS (optional: issue the admin
 # certificate by DNS-01 instead of HTTP; the credentials file is mode 0600, supplied
 # by the owners, never in git), APP_USER (the account that ran sudo, else devops;
-# created when missing), APP_ROOT (/opt/tabsira), APP_REPO (git URL to clone on the
-# first run), VPN_SUBNET, PG_CLIENT_VERSION (18).
+# created when missing), APP_ROOT (/srv/tabsira), REPO_DIR (/opt/tabsira), APP_REPO (git URL to clone
+# into REPO_DIR when it is not a clone yet), VPN_SUBNET, PG_CLIENT_VERSION (18).
 
 set -Eeuo pipefail
 # shellcheck disable=SC1091
@@ -66,10 +69,10 @@ require_app_host
 
 if is_dry; then
 	banner "DRY RUN: application host"
-	log "user          $APP_USER; layout $APP_ROOT/{repo,releases,shared,static}; logs /var/log/tabsira"
+	log "user          $APP_USER; clone $REPO_DIR (with its .env); runtime $APP_ROOT/{releases,shared,static}; logs /var/log/tabsira"
 	log "packages      nginx certbot${CERTBOT_DNS_PLUGIN:+ python3-certbot-dns-$CERTBOT_DNS_PLUGIN} git curl postgresql-client-$PG_CLIENT_VERSION"
 	log "toolchain     deploy/install-toolchain.sh as $APP_USER: nvm, Node (.nvmrc), pnpm (package.json), pm2, uv, Python (apps/api/.python-version); pm2 at boot"
-	log "env file      $APP_ROOT/shared/.env from deploy/env.production.example when missing (0600)"
+	log "env file      $ENV_FILE from deploy/env.production.example when missing (0600)"
 	log "tls           one certbot lineage each: $WEB_NAME (+www), $API_NAME, $ADMIN_NAME, by HTTP through the webroot${CERTBOT_DNS_PLUGIN:+ ($ADMIN_NAME by DNS-01, plugin $CERTBOT_DNS_PLUGIN)}; existing lineages kept, nginx-plugin renewals moved to the webroot"
 	log "config        deploy/apply-config.sh: nginx (nginx -t, restore on failure), systemd units (api, vision, scan worker) and timers, logrotate"
 	log "sudoers       $APP_USER may restart tabsira-api, tabsira-vision and tabsira-worker, nothing else; launcher /usr/local/bin/tabsira-deploy"
@@ -108,18 +111,26 @@ id -u "$APP_USER" >/dev/null 2>&1 || useradd --create-home --shell /bin/bash "$A
 APP_GROUP="$(id -gn "$APP_USER")"
 APP_HOME="$(getent passwd "$APP_USER" | cut -d: -f6)"
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$APP_ROOT" "$APP_ROOT/releases" "$APP_ROOT/shared" \
-	"$APP_ROOT/shared/state" "$APP_ROOT/shared/cache" "$APP_ROOT/shared/vision-weights" "$APP_ROOT/shared/corpus"
+	"$APP_ROOT/shared/state" "$APP_ROOT/shared/cache" "$APP_ROOT/shared/vision-weights" "$APP_ROOT/shared/corpus" \
+	"$APP_ROOT/shared/vectors"
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 0755 "$APP_ROOT/static" /var/log/tabsira
 install -d -m 0755 /var/www/certbot /etc/tabsira
 # nginx (www-data) reads the static files; it needs to traverse APP_ROOT.
 chmod o+x "$APP_ROOT"
-if [[ -n "$APP_REPO" && ! -d "$APP_ROOT/repo/.git" ]]; then
-	log "Cloning the repository"
-	as_user git clone "$APP_REPO" "$APP_ROOT/repo"
+if [[ ! -d "$REPO_DIR/.git" ]]; then
+	[[ -n "$APP_REPO" ]] || die "$REPO_DIR is not a git clone. Clone the repository there first, or set APP_REPO."
+	log "Cloning the repository into $REPO_DIR"
+	install -d -o "$APP_USER" -g "$APP_GROUP" -m 0755 "$REPO_DIR"
+	as_user git clone "$APP_REPO" "$REPO_DIR"
 fi
+[[ "$(stat -c %U "$REPO_DIR")" == "$APP_USER" ]] || chown -R "$APP_USER:$APP_GROUP" "$REPO_DIR"
+[[ "$(cd "$REPO_ROOT" && pwd -P)" == "$(cd "$REPO_DIR" && pwd -P)" ]] ||
+	warn "This script runs from $REPO_ROOT, not from the clone $REPO_DIR; deploys run from $REPO_DIR."
 cat >/etc/tabsira/deploy.env <<EOF
-# Read by deploy/deploy.sh. No secret: addresses and names only.
+# Read by deploy/deploy.sh and deploy/check.sh. No secret: addresses and names only.
 APP_ROOT=$APP_ROOT
+REPO_DIR=$REPO_DIR
+ENV_FILE=$ENV_FILE
 APP_HOST_VPN_IP=$APP_HOST_VPN_IP
 VPN_SUBNET=${VPN_SUBNET:-100.64.0.0/10}
 APP_USER=$APP_USER
@@ -137,7 +148,7 @@ env PATH="$PATH:$NODE_BIN" "$NODE_BIN/pm2" startup systemd -u "$APP_USER" --hp "
 ok "pm2 starts at boot (pm2-$APP_USER.service)"
 
 # ─── 5. Environment file ────────────────────────────────────────────
-ENV_TARGET="$APP_ROOT/shared/.env"
+ENV_TARGET="$ENV_FILE"
 if [[ ! -f "$ENV_TARGET" ]]; then
 	install -o "$APP_USER" -g "$APP_GROUP" -m 0600 "$DEPLOY_DIR/env.production.example" "$ENV_TARGET"
 	warn "Wrote $ENV_TARGET from the template: replace every CHANGE_ME and placeholder before the first deploy."
@@ -226,24 +237,15 @@ sed "s#@APP_USER@#$APP_USER#g" "$DEPLOY_DIR/sudoers/tabsira" >"$SUDOERS_TMP"
 visudo -cf "$SUDOERS_TMP" >/dev/null || die "The sudoers file does not parse; nothing installed."
 install -m 0440 "$SUDOERS_TMP" /etc/sudoers.d/tabsira
 rm -f "$SUDOERS_TMP"
-# The launcher is root-owned and small, so it does not change with the
-# repository: it brings the clone to the commit, then runs that commit's deploy.
+# The launcher Jenkins calls over ssh: the clone's own deploy, which brings the
+# clone up to date itself (deploy/deploy.sh), as `cd /opt/tabsira && ./deploy/deploy.sh` does.
 cat >/usr/local/bin/tabsira-deploy <<EOF
 #!/usr/bin/env bash
-# Installed by deploy/provision-app.sh. Usage: tabsira-deploy [--ref REF] [--dry-run] | --rollback
+# Installed by deploy/provision-app.sh. Usage: tabsira-deploy [--ref REF] [--dry-run] | --rollback | --check
 set -Eeuo pipefail
-cd "$APP_ROOT/repo"
-ref=origin/main
-args=("\$@")
-for ((i = 0; i < \${#args[@]}; i++)); do
-	[[ "\${args[i]}" == "--ref" ]] && ref="\${args[i + 1]:-origin/main}"
-done
-if [[ " \$* " != *" --rollback "* ]]; then
-	git fetch --prune origin
-	git checkout --detach "\$(git rev-parse --verify "\$ref^{commit}")"
-fi
+cd "$REPO_DIR"
 exec bash deploy/deploy.sh "\$@"
 EOF
 chmod 0755 /usr/local/bin/tabsira-deploy
 
-ok "Application host provisioned. Next: fill $ENV_TARGET, then as $APP_USER: tabsira-deploy --dry-run, then tabsira-deploy"
+ok "Application host provisioned. Next, as $APP_USER in $REPO_DIR: fill .env, then ./deploy/deploy.sh --check, ./deploy/deploy.sh --dry-run, ./deploy/deploy.sh"

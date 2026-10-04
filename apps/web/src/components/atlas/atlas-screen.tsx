@@ -273,7 +273,7 @@ type MineLoad =
   | { kind: 'failed'; message: string };
 
 /**
- * The owner's own entries in every state («بصائري المنشورة», extension §4):
+ * The owner's own entries in every state (the published-insights list, extension §4):
  * what is public opens on the atlas; the rest leads back to the placing screen.
  * The private capture point is never shown here; the public point only moves the map.
  */
@@ -389,7 +389,7 @@ function viewFromAddress(): View | null {
  * move; the near-me button moves the map with the device's own position and sends
  * nothing. An empty window says so and invents no point. What the page looks at
  * (centre, zoom, selection, filters) lives in the address's fragment, so the
- * camera's «اعرض على الخريطة» opens the same view and coming back restores it;
+ * camera's show-on-map link opens the same view and coming back restores it;
  * a fragment never reaches a server.
  */
 export function AtlasScreen({

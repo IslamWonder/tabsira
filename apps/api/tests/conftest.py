@@ -22,7 +22,8 @@ Strategy:
 from __future__ import annotations
 
 import os
-from collections.abc import AsyncIterator, Callable
+import tempfile
+from collections.abc import AsyncIterator, Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -112,7 +113,17 @@ _WORKER_URL: URL = (
 
 _scrub_environment()
 os.environ["ENVIRONMENT"] = "test"
+# Photos a test keeps go to a directory of this run, never to data/media of the checkout.
+os.environ["LOCAL_MEDIA_DIR"] = tempfile.mkdtemp(prefix="tabsira-test-media-")
 os.environ["DATABASE_URL"] = _WORKER_URL.render_as_string(hide_password=False)
+# The code's defaults are the plain-http development addresses (decision 49). The
+# suite runs as production does, over https, so the Secure cookies and their
+# `__Secure-` names are what every test exercises.
+os.environ["SITE_URL"] = "https://tabsira.test"
+os.environ["API_URL"] = "https://api.tabsira.test"
+os.environ["ADMIN_URL"] = "https://admin.tabsira.test"
+os.environ["CORS_ORIGINS"] = "https://tabsira.test"
+os.environ["GOOGLE_REDIRECT_URI"] = "https://api.tabsira.test/auth/google/callback"
 
 from src.database import dispose_engine  # noqa: E402
 from src.main import create_app  # noqa: E402
@@ -170,6 +181,27 @@ async def _drop_worker_database() -> None:
         await admin.execute(f'DROP DATABASE IF EXISTS "{_WORKER_URL.database}" WITH (FORCE)')
     finally:
         await admin.close()
+
+
+class RecordedRetries:
+    """The retry queue of the tests: counts the reconcile requests instead of kicking the worker."""
+
+    def __init__(self) -> None:
+        self.requests = 0
+
+    async def request(self) -> None:
+        self.requests += 1
+
+
+@pytest.fixture(autouse=True)
+def retry_requests() -> Iterator[RecordedRetries]:
+    """No test asks the real worker to reconcile the photo copies; the requests are counted."""
+    from src.services import photo_reconcile
+
+    recorded = RecordedRetries()
+    photo_reconcile.use_retry_queue(recorded)
+    yield recorded
+    photo_reconcile.use_retry_queue(None)
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)

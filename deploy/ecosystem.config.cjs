@@ -16,8 +16,8 @@
  * time, and a build never bakes them in.
  *
  * Settings (environment of the shell that runs `pm2 start`), all optional:
- *   APP_ROOT        production root (default: /opt/tabsira)
- *   ENV_FILE        environment file (default: $APP_ROOT/shared/.env)
+ *   APP_ROOT        runtime root: releases, current, shared, static (default: /srv/tabsira)
+ *   ENV_FILE        environment file (default: /opt/tabsira/.env, at the root of the clone)
  *   WEB_INSTANCES   number of processes (default: 2), or `max` for one per CPU
  *   WEB_PORT        shared port nginx proxies to (default: 3000)
  *   WEB_HOST        address to bind (default: 127.0.0.1, nginx is local)
@@ -26,8 +26,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const appRoot = process.env.APP_ROOT || '/opt/tabsira';
-const envFile = process.env.ENV_FILE || path.join(appRoot, 'shared', '.env');
+const appRoot = process.env.APP_ROOT || '/srv/tabsira';
+const envFile = process.env.ENV_FILE || '/opt/tabsira/.env';
 const logDir = process.env.LOG_DIR || '/var/log/tabsira';
 
 /** KEY=VALUE lines, # comments, optional quotes; enough for our environment file. */

@@ -13,7 +13,15 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Response, status
 
-from src.deps import CurrentUser, DbDep, OptionalUser, PublicMember, SettingsDep, limited
+from src.deps import (
+    CurrentUser,
+    DbDep,
+    OptionalUser,
+    PhotoStoreDep,
+    PublicMember,
+    SettingsDep,
+    limited,
+)
 from src.scans.deps import PublicIdPath, feature
 from src.schemas.atlas import (
     AtlasEntryOut,
@@ -48,6 +56,7 @@ async def place_insight(
     user: PublicMember,
     db: DbDep,
     settings: SettingsDep,
+    photos: PhotoStoreDep,
 ) -> MapEntryOwnerOut:
     """
     Keep the exact point privately and answer with what the map will show.
@@ -55,8 +64,9 @@ async def place_insight(
     The public point is the centre of the grid cell (GEO_APPROX_CELL_METERS), labelled with
     the nearest populated place; the answer carries the cell as a polygon, so the owner reviews
     it before publishing. 409 INSIGHT_NOT_PUBLISHABLE for an insight that is not the pipeline's.
+    Placing a published entry again takes it off the map, and its photo's public copy with it.
     """
-    result = await atlas_service.place(db, settings, user, insight_id, body)
+    result = await atlas_service.place(db, settings, user, insight_id, body, photos=photos)
     await db.commit()
     return result
 
@@ -73,10 +83,10 @@ async def my_entry(insight_id: PublicIdPath, user: CurrentUser, db: DbDep) -> Ma
     dependencies=[limited(WriteKind.POST)],
 )
 async def publish_entry(
-    insight_id: PublicIdPath, user: PublicMember, db: DbDep
+    insight_id: PublicIdPath, user: PublicMember, db: DbDep, photos: PhotoStoreDep
 ) -> MapEntryOwnerOut:
     """Publish a placed draft; 409 for an entry that is not a draft."""
-    result = await atlas_service.publish(db, user, insight_id)
+    result = await atlas_service.publish(db, user, insight_id, photos=photos)
     await db.commit()
     return result
 
@@ -87,9 +97,11 @@ async def publish_entry(
     summary="Withdraw the entry from the atlas",
     dependencies=[limited(WriteKind.POST)],
 )
-async def withdraw_entry(insight_id: PublicIdPath, user: CurrentUser, db: DbDep) -> Response:
+async def withdraw_entry(
+    insight_id: PublicIdPath, user: CurrentUser, db: DbDep, photos: PhotoStoreDep
+) -> Response:
     """Take the entry off the map and forget its exact point; its address answers 410 from then on."""
-    await atlas_service.withdraw(db, user, insight_id)
+    await atlas_service.withdraw(db, user, insight_id, photos=photos)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -132,9 +144,11 @@ async def entries_in_window(
 
 
 @router.get("/atlas/entries/{entry_id}", summary="One published entry")
-async def entry(entry_id: PublicIdPath, db: DbDep, viewer: OptionalUser) -> AtlasEntryOut:
+async def entry(
+    entry_id: PublicIdPath, db: DbDep, viewer: OptionalUser, photos: PhotoStoreDep
+) -> AtlasEntryOut:
     """Return the entry's page: the insight with its scripture from the store, the public point and its place; 410 once withdrawn."""
-    return await atlas_service.entry_detail(db, entry_id, viewer)
+    return await atlas_service.entry_detail(db, entry_id, viewer, photos=photos)
 
 
 @router.get("/atlas/places/{geoname_id}", summary="A place and the entries labelled with it")

@@ -166,6 +166,26 @@ export function AutoThemeIcon(props: IconProps) {
   );
 }
 
+/** A speaker with sound waves: the sound effect is on. */
+export function SoundOnIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+      <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />
+    </Icon>
+  );
+}
+
+/** The same speaker with a cross: the sound effect is off. */
+export function SoundOffIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+      <path d="m16 9.5 5 5M21 9.5l-5 5" />
+    </Icon>
+  );
+}
+
 export function SparkIcon(props: IconProps) {
   return (
     <Icon {...props}>

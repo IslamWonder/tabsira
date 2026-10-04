@@ -1,0 +1,10 @@
+[Unit]
+Description=Hourly: reconcile the public photo copies with what is published
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

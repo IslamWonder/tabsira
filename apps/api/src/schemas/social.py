@@ -136,8 +136,10 @@ class InsightOut(BaseModel):
     concepts: list[str]
     explanation: str = Field(description="The app's explanation, shortened; written by the app")
     step: str | None = Field(description="The small step the insight suggests")
-    has_photo: bool = Field(
-        description="The owner agreed to publish a photo with it; its address is not here yet"
+    has_photo: bool = Field(description="The owner chose to show a photo with it")
+    photo_url: str | None = Field(
+        description="The address of the photo's public copy, only on a published public post "
+        "while the copy exists; null otherwise. Never a storage key."
     )
     insight_version: int
     quran: list[QuranEvidenceOut]
@@ -198,6 +200,11 @@ class PostCreateIn(BaseModel):
     insight_id: PublicId
     reflection: Annotated[str, Field(max_length=REFLECTION_MAX * 2)] | None = None
     visibility: PostVisibility = PostVisibility.PUBLIC
+    photo: bool = Field(
+        default=False,
+        description="Show the insight's kept photo with the post; nothing without a kept photo "
+        "and the owner's photo consent (v2 §19)",
+    )
 
     @field_validator("reflection")
     @classmethod

@@ -18,16 +18,17 @@ DEPLOY_DIR="$REPO_ROOT/deploy"
 export DEPLOY_DIR
 
 # ─── Layout on the application host ─────────────────────────────────
-#   $APP_ROOT/repo               the git clone every release is cut from
+#   $REPO_DIR (/opt/tabsira)     the git clone every release is cut from, as on the
+#                                earlier prototype; deploys are run from it (./deploy/deploy.sh)
+#   $REPO_DIR/.env               the production environment file (0600, secrets, never in git)
 #   $APP_ROOT/releases/<id>      one folder per deploy, never edited afterwards
 #   $APP_ROOT/current            symlink to the live release
 #   $APP_ROOT/previous           symlink to the release before it (rollback)
-#   $APP_ROOT/shared/.env        the production environment file (secrets, never in git)
 #   $APP_ROOT/shared/state       what outlives a release (IndexNow's memory)
 #   $APP_ROOT/shared/cache       uv and pnpm caches, on the same disk as the releases
 #   $APP_ROOT/static             every build's /_next/static files, served by nginx
-APP_ROOT="${APP_ROOT:-/opt/tabsira}"
-REPO_DIR="${REPO_DIR:-$APP_ROOT/repo}"
+APP_ROOT="${APP_ROOT:-/srv/tabsira}"
+REPO_DIR="${REPO_DIR:-/opt/tabsira}"
 RELEASES_DIR="${RELEASES_DIR:-$APP_ROOT/releases}"
 CURRENT_LINK="${CURRENT_LINK:-$APP_ROOT/current}"
 PREVIOUS_LINK="${PREVIOUS_LINK:-$APP_ROOT/previous}"
@@ -35,7 +36,7 @@ SHARED_DIR="${SHARED_DIR:-$APP_ROOT/shared}"
 STATE_DIR="${STATE_DIR:-$SHARED_DIR/state}"
 CACHE_DIR="${CACHE_DIR:-$SHARED_DIR/cache}"
 STATIC_DIR="${STATIC_DIR:-$APP_ROOT/static}"
-ENV_FILE="${ENV_FILE:-$SHARED_DIR/.env}"
+ENV_FILE="${ENV_FILE:-$REPO_DIR/.env}"
 
 API_UNIT="${API_UNIT:-tabsira-api.service}"
 VISION_UNIT="${VISION_UNIT:-tabsira-vision.service}"

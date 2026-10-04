@@ -196,7 +196,7 @@ async def test_a_save_that_fails_says_so(browser, store, flow_settings, monkeypa
     owner = await as_guest(browser, store, flow_settings)
     (insight_id,) = await insights(store, owner, {})
 
-    async def broken(*_args):
+    async def broken(*_args, **_kwargs):
         message = "connection lost"
         raise SQLAlchemyError(message)
 

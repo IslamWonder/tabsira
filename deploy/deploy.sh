@@ -21,7 +21,7 @@
 #   On a failure after the switch: `current` goes back to the previous release
 #   and the API and the web are rolled again. Nothing is rebuilt.
 #
-# Usage (on the application host, as the application user):
+# Usage (on the application host, as the application user, from the clone: cd /opt/tabsira):
 #   deploy/deploy.sh [--ref REF] [--dry-run]
 #   deploy/deploy.sh --rollback [--dry-run]
 #   deploy/deploy.sh --check
@@ -48,6 +48,7 @@ if [[ -f "$DEPLOY_ENV_FILE" ]]; then
 	set +a
 fi
 
+ORIGINAL_ARGS=("$@")
 REF="origin/main"
 ROLLBACK=false
 while [[ $# -gt 0 ]]; do
@@ -75,6 +76,27 @@ while [[ $# -gt 0 ]]; do
 	*) die "Unknown option: $1 (see --help)" ;;
 	esac
 done
+
+# Like the earlier prototype, the clone brings itself up to date first (fetch, then
+# reset to its upstream branch), and the deploy that runs is the one it now holds.
+# Releases are still cut from the commit REF names, never from the working tree.
+update_clone() {
+	is_dry && return 0
+	$ROLLBACK && return 0
+	[[ -z "${TABSIRA_CLONE_UPDATED:-}" ]] || return 0
+	[[ "$(cd "$REPO_ROOT" && pwd -P)" == "$(real_dir "$REPO_DIR" || true)" ]] || return 0
+	git -C "$REPO_DIR" fetch --prune origin
+	git -C "$REPO_DIR" rev-parse --verify -q '@{u}' >/dev/null || {
+		warn "$REPO_DIR has no upstream branch; deploying without updating the clone."
+		return 0
+	}
+	if [[ "$(git -C "$REPO_DIR" rev-parse HEAD)" != "$(git -C "$REPO_DIR" rev-parse '@{u}')" ]]; then
+		log "Bringing $REPO_DIR to $(git -C "$REPO_DIR" rev-parse --abbrev-ref '@{u}') ($(git -C "$REPO_DIR" rev-parse --short '@{u}'))"
+		git -C "$REPO_DIR" reset --hard '@{u}' >/dev/null
+		exec env TABSIRA_CLONE_UPDATED=1 bash "$REPO_DIR/deploy/deploy.sh" "${ORIGINAL_ARGS[@]}"
+	fi
+}
+update_clone
 
 KEEP_RELEASES="${KEEP_RELEASES:-5}"
 PRE_DEPLOY_BACKUP="${PRE_DEPLOY_BACKUP:-false}"
@@ -157,7 +179,7 @@ preflight() {
 	have curl || die "curl is not installed."
 	if is_dry; then
 		echo "      would require: uv, pnpm, node, pm2, $ENV_FILE with ENVIRONMENT=production and no development address"
-		echo "      layout: $APP_ROOT/{repo,releases,current,previous,shared,static}"
+		echo "      clone: $REPO_DIR (with its .env); runtime: $APP_ROOT/{releases,current,previous,shared,static}"
 		return
 	fi
 	local tool

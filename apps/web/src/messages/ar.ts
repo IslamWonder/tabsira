@@ -190,6 +190,17 @@ export const ar = {
       label: 'الحركة الزخرفية',
       hint: 'نقاط الضوء في الخلفية واحتفال «تمّ». تتوقف دائمًا إن طلب جهازك تقليل الحركة.',
     },
+    sound: {
+      label: 'المؤثر الصوتي',
+      hint: 'صوت قصير يُسمع عند فتح البصيرة. يُحفظ اختيارك على هذا الجهاز وحده.',
+    },
+  },
+
+  sound: {
+    toggle: 'المؤثر الصوتي',
+    on: 'مفعّل',
+    off: 'مُوقَف',
+    state: (current: string) => `المؤثر الصوتي: ${current}`,
   },
 
   sheet: {
@@ -818,6 +829,7 @@ export const ar = {
       explanation: 'شرح تبصرة',
       step: 'خطوة صغيرة',
       sameMeaning: 'بصائر بالمعنى نفسه على الخريطة',
+      photoAlt: (title: string) => `صورة المشهد الذي وُلدت منه البصيرة «${title}»`,
     },
     /** The share line of a place page. */
     placeDescription: (label: string) => `البصائر التي نشرها الناس في ${label} على أطلس تبصرة.`,
@@ -885,6 +897,10 @@ export const ar = {
       open: 'افتحها على الأطلس',
       loadingMine: 'نتحقق مما حفظته…',
       noLocation: 'لم تحدد موضعًا بعد.',
+      photo: 'أرفق الصورة',
+      photoHint:
+        'تصير صورة مشهدك عامة مع النقطة على الأطلس لكل من يفتحها، وتُحذف نسختها العامة حين تسحبها.',
+      withPhoto: 'تُعرض الصورة مع النقطة',
     },
     /**
      * «اكتشف البصائر حولك» (extension §5–7): published entries near the device,
@@ -1038,6 +1054,7 @@ export const ar = {
       statusHint: 'لا يرى هذه الحالة غيرك.',
       publishedAt: (when: string) => `نُشر في ${when}`,
       createdAt: (when: string) => `أُنشئ في ${when}`,
+      photoAlt: (title: string) => `صورة المشهد الذي وُلدت منه البصيرة «${title}»`,
       authorLink: (name: string) => `صفحة ${name}`,
       quranReference: (surahName: string, ayah: number) => `سورة ${surahName} · ${ayah}`,
       hadithReference: (collectionName: string, number: string) => `${collectionName} · ${number}`,
@@ -1203,6 +1220,9 @@ export const ar = {
       withdrawn: 'سُحب المنشور من تواصل.',
       notPublishable: 'لا يمكن نشر هذه البصيرة: تُنشر البصائر المتحقَّقة التي تملكها وحدها.',
       unavailable: 'النشر غير متاح الآن. أعد المحاولة بعد قليل.',
+      photo: 'أرفق الصورة',
+      photoHint:
+        'تصير صورة مشهدك عامة مع المنشور لكل من يفتحه، وتُحذف نسختها العامة حين تسحبه. لا تُعرض مع منشور للمتابعين فقط.',
       outcome: {
         published: 'نُشرت بصيرتك في تواصل.',
         pending_review: 'وصلت بصيرتك، ويراجعها مشرف قبل أن يراها الناس.',

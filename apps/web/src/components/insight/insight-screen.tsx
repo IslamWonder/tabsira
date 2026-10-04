@@ -31,6 +31,7 @@ import { PhotoPlaceholder } from './photo-placeholder';
 import { NO_TARGETS, type PublishTargets, ShareSheet } from './share-sheet';
 import { StepCard } from './step-card';
 import { type PhotoView, useInsight } from './use-insight';
+import { useInsightSound } from './use-insight-sound';
 import { WhySheet } from './why-sheet';
 
 const T = messages.insightPage;
@@ -88,6 +89,7 @@ export function InsightScreen({
 }) {
   const controls = useInsight(insightId);
   const { load, photo, step, finish } = controls;
+  useInsightSound(load.phase === 'ready' ? load.insight : null);
   const [whyOpen, setWhyOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);

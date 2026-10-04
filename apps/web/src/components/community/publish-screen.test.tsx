@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { apiError, mockApi, type Route } from '@/test/api';
 import { USER } from '@/test/fixtures';
+import { insightOut } from '@/test/scan';
 import { IDENTITY, MY_POST, NO_IDENTITY } from '@/test/social';
 import { PublishScreen } from './publish-screen';
 
@@ -65,7 +66,12 @@ describe('PublishScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: 'أنشئ المسودة' }));
     expect(await screen.findByText(/أُنشئت المسودة/)).toBeInTheDocument();
     expect(await api.bodies('POST', '/posts')).toEqual([
-      { insight_id: '7000000000000000001', reflection: 'ما تعلمته', visibility: 'followers' },
+      {
+        insight_id: '7000000000000000001',
+        reflection: 'ما تعلمته',
+        visibility: 'followers',
+        photo: false,
+      },
     ]);
     expect(screen.getByRole('heading', { level: 2, name: 'هكذا يظهر منشورك' })).toBeInTheDocument();
     expect(screen.getByText('مسودة')).toBeInTheDocument();
@@ -127,5 +133,68 @@ describe('PublishScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: 'احذف المسودة' }));
     await userEvent.click(screen.getByRole('button', { name: 'اسحب' }));
     await waitFor(() => expect(screen.getByText('سُحب المنشور من تواصل.')).toBeInTheDocument());
+  });
+
+  it('offers the photo only when the insight kept one, off by default, for a public post', async () => {
+    const kept = insightOut({
+      id: '7000000000000000001',
+      image: { sensitive: false, url: null, has_photo: true },
+    });
+    const api = member({
+      'GET /insights/7000000000000000001': { body: kept },
+      'POST /posts': { status: 201, body: DRAFT },
+    });
+    render(<PublishScreen />);
+    const box = await screen.findByRole('checkbox', { name: 'أرفق الصورة' });
+    expect(box).not.toBeChecked();
+    expect(box).toHaveAccessibleDescription(/تصير صورة مشهدك عامة مع المنشور/);
+    // A post for followers never shows the photo, so the choice is not offered there.
+    await userEvent.click(screen.getByRole('radio', { name: 'للمتابعين' }));
+    expect(screen.queryByRole('checkbox', { name: 'أرفق الصورة' })).toBeNull();
+    await userEvent.click(screen.getByRole('radio', { name: 'للجميع' }));
+    await userEvent.click(screen.getByRole('checkbox', { name: 'أرفق الصورة' }));
+    await userEvent.click(screen.getByRole('button', { name: 'أنشئ المسودة' }));
+    expect(await api.bodies('POST', '/posts')).toEqual([
+      { insight_id: '7000000000000000001', reflection: null, visibility: 'public', photo: true },
+    ]);
+  });
+
+  it('ticks the photo then chooses followers: the choice is not sent', async () => {
+    const api = member({
+      'GET /insights/7000000000000000001': {
+        body: insightOut({ image: { sensitive: false, url: null, has_photo: true } }),
+      },
+      'POST /posts': { status: 201, body: DRAFT },
+    });
+    render(<PublishScreen />);
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'أرفق الصورة' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'للمتابعين' }));
+    await userEvent.click(screen.getByRole('button', { name: 'أنشئ المسودة' }));
+    expect(await api.bodies('POST', '/posts')).toEqual([
+      {
+        insight_id: '7000000000000000001',
+        reflection: null,
+        visibility: 'followers',
+        photo: false,
+      },
+    ]);
+  });
+
+  it('offers no photo when none is kept, or when the insight cannot be read', async () => {
+    member({
+      'GET /insights/7000000000000000001': {
+        body: insightOut({ image: { sensitive: false, url: null, has_photo: false } }),
+      },
+    });
+    render(<PublishScreen />);
+    await screen.findByRole('button', { name: 'أنشئ المسودة' });
+    expect(screen.queryByRole('checkbox', { name: 'أرفق الصورة' })).toBeNull();
+
+    member({ 'GET /insights/7000000000000000001': apiError(404, 'NOT_FOUND') });
+    render(<PublishScreen />);
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: 'أنشئ المسودة' })).toHaveLength(2)
+    );
+    expect(screen.queryByRole('checkbox', { name: 'أرفق الصورة' })).toBeNull();
   });
 });

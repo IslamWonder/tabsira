@@ -18,7 +18,7 @@ export interface FirstInsightQuestionsProps {
 type Keeper = 'account' | 'device';
 
 /**
- * The optional questions, in the journey: after «تمّ» on a first insight only
+ * The optional questions, in the journey: after the done step on a first insight only
  * (master prompt v2 §4.7, §5). An account is asked when its profile says the
  * questions were never offered; a guest, when this device has no record of
  * them. Each answer or skip marks them asked, so a returning person finds

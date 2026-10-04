@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { apiError, mockApi, type Route } from '@/test/api';
@@ -118,5 +118,126 @@ describe('Comments', () => {
     });
     await userEvent.click(screen.getByRole('button', { name: 'أعد المحاولة' }));
     expect(await screen.findByText('لا تعليقات بعد.')).toBeInTheDocument();
+  });
+
+  it('refuses to send an empty comment and shows why a comment or a deletion failed', async () => {
+    member({
+      [`POST /posts/${POST_ID}/comments`]: apiError(429, 'RATE_LIMITED'),
+      [`DELETE /posts/${POST_ID}/comments/${MINE.id}`]: 'network-error',
+    });
+    render(<Comments postId={POST_ID} />);
+    await screen.findByText('[تعليق]');
+    const field = screen.getByLabelText('اكتب تعليقًا');
+    await waitFor(() => expect(field).toBeEnabled());
+
+    // Enter in an empty form sends nothing.
+    fireEvent.submit(field.closest('form') as HTMLFormElement);
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    await userEvent.type(field, 'تعليق');
+    await userEvent.click(screen.getByRole('button', { name: 'أرسل' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(field).toHaveValue('تعليق');
+
+    const mine = screen.getByText('[تعليقي]').closest('[data-comment-id]') as HTMLElement;
+    await userEvent.click(within(mine).getByRole('button', { name: 'احذف' }));
+    expect(await within(mine).findByRole('alert')).toHaveTextContent(/تعذّر/);
+    expect(screen.getByText('[تعليقي]')).toBeInTheDocument();
+  });
+
+  it('opens and closes the report and block sheets of a comment, and cancels a reply', async () => {
+    member();
+    render(<Comments postId={POST_ID} />);
+    await screen.findByText('[تعليق]');
+    const thread = screen.getByText('[تعليق]').closest('[data-comment-id]') as HTMLElement;
+
+    await userEvent.click(within(thread).getByRole('button', { name: 'بلّغ' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('بلّغ عن هذا');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    await userEvent.click(within(thread).getByRole('button', { name: 'احجب' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('حجب [عضو آخر]؟');
+    await userEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'تراجع' })
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    await userEvent.click(within(thread).getByRole('button', { name: 'ردّ' }));
+    expect(screen.getByLabelText('اكتب ردًا على [عضو آخر]')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'ألغِ الرد' }));
+    expect(screen.queryByLabelText('اكتب ردًا على [عضو آخر]')).toBeNull();
+  });
+
+  it("deletes the viewer's own reply and tells the post when its author is blocked from a reply", async () => {
+    const myReply = { ...MINE, id: '7345678901234567894', body: '[ردي]' };
+    const authorReply = {
+      ...REPLY,
+      id: '7345678901234567895',
+      author: { handle: 'rain_reader', public_name: '[اسم عام]' },
+      body: '[رد الكاتب]',
+    };
+    member({
+      [`GET /posts/${POST_ID}/comments`]: {
+        body: page([
+          { ...COMMENT, replies: [myReply, authorReply] },
+          {
+            ...MINE,
+            id: '7345678901234567896',
+            author: { handle: 'rain_reader', public_name: '[اسم عام]' },
+            is_mine: false,
+            body: '[تعليق الكاتب]',
+          },
+        ]),
+      },
+      [`DELETE /posts/${POST_ID}/comments/${myReply.id}`]: { status: 204 },
+      'PUT /blocks/rain_reader': { status: 204 },
+    });
+    const onAuthorBlocked = vi.fn();
+    render(
+      <Comments postId={POST_ID} authorHandle="rain_reader" onAuthorBlocked={onAuthorBlocked} />
+    );
+    await screen.findByText('[ردي]');
+
+    const reply = screen.getByText('[ردي]').closest('[data-comment-id]') as HTMLElement;
+    await userEvent.click(within(reply).getByRole('button', { name: 'احذف' }));
+    await waitFor(() => expect(screen.queryByText('[ردي]')).toBeNull());
+    expect(screen.getByText('حُذف تعليقك.')).toBeInTheDocument();
+    expect(screen.getByText('[رد الكاتب]')).toBeInTheDocument();
+
+    const authors = screen.getByText('[رد الكاتب]').closest('[data-comment-id]') as HTMLElement;
+    await userEvent.click(within(authors).getByRole('button', { name: 'احجب' }));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'احجب' }));
+    await waitFor(() => expect(screen.queryByText('[رد الكاتب]')).toBeNull());
+    expect(screen.queryByText('[تعليق الكاتب]')).toBeNull();
+    expect(screen.getByText('[تعليق]')).toBeInTheDocument();
+    expect(onAuthorBlocked).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads more comments, and retries from where it stopped when the next page fails', async () => {
+    let calls = 0;
+    mockApi({
+      'GET /auth/me': apiError(401, 'UNAUTHORIZED'),
+      [`GET /posts/${POST_ID}/comments`]: (request) => {
+        calls += 1;
+        const cursor = new URL(request.url).searchParams.get('cursor');
+        if (cursor === null) {
+          return { body: page([COMMENT], 'c1') };
+        }
+        if (calls === 2) {
+          return apiError(503, 'SERVICE_UNAVAILABLE');
+        }
+        return { body: page([{ ...COMMENT, id: '7345678901234567899', body: '[تعليق ثان]' }]) };
+      },
+    });
+    render(<Comments postId={POST_ID} />);
+    await screen.findByText('[تعليق]');
+    await userEvent.click(screen.getByRole('button', { name: 'اعرض مزيدًا من التعليقات' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByText('[تعليق]')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'أعد المحاولة' }));
+    expect(await screen.findByText('[تعليق ثان]')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'اعرض مزيدًا من التعليقات' })).toBeNull();
+    expect(calls).toBe(3);
   });
 });

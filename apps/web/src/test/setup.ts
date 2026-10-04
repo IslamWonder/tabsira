@@ -31,6 +31,12 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // Unmount before the stores forget: unmounting flushes the effects still queued
+  // by the test's tree, and one that found the session already forgotten would
+  // ask the API again with this test's mock, for the next test to inherit.
+  if (typeof window !== 'undefined') {
+    cleanup();
+  }
   // What the page learnt from the API, as a fresh page load would have it.
   forgetSession();
   forgetProviders();
@@ -41,7 +47,6 @@ afterEach(() => {
   if (typeof window === 'undefined') {
     return;
   }
-  cleanup();
   window.localStorage.clear();
   window.sessionStorage.clear();
   for (const cookie of document.cookie.split(';')) {

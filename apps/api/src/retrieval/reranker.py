@@ -53,7 +53,9 @@ class RerankOutcome:
 class Reranker(Protocol):
     """Scores passages against a query; never raises, says why when it has no scores."""
 
-    async def rerank(self, query: str, passages: Sequence[str]) -> RerankOutcome: ...
+    async def rerank(  # pragma: no cover - a protocol declares the call; both rerankers are tested
+        self, query: str, passages: Sequence[str]
+    ) -> RerankOutcome: ...
 
 
 class _Answer(BaseModel):

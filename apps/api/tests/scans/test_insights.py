@@ -63,7 +63,11 @@ async def test_an_insight_shows_its_verse_exactly_as_stored_and_waits_for_its_ha
     assert body["label"] is None
     assert body["chat"] == {"enabled": True, "used": 0, "limit": 3, "remaining": 3, "messages": []}
     assert body["learning_unit"]["domain_id"] == "T01"
-    assert body["image"] == {"sensitive": False, "url": f"/scans/{body['scan_id']}/image"}
+    assert body["image"] == {
+        "sensitive": False,
+        "url": f"/scans/{body['scan_id']}/image",
+        "has_photo": False,
+    }
     assert body["disclosure"].startswith("تبصرة أداة مدعومة")
     for private in ("religious_background", "gender", "age_range", "goals"):
         assert private not in response.text
@@ -209,7 +213,7 @@ async def test_an_insight_of_a_sensitive_scene_has_no_photo_and_one_without_sour
     second = (await browser.get(f"/insights/{bare}")).json()
     third = (await browser.get(f"/insights/{other_path}")).json()
 
-    assert first["image"] == {"sensitive": True, "url": None}
+    assert first["image"] == {"sensitive": True, "url": None, "has_photo": False}
     assert (second["quran"], second["hadith"], second["small_step"]) == (None, None, None)
     assert second["anchor"] == {"x": 0.1, "y": 0.1, "width": 0.2, "height": 0.2}
     assert second["learning_unit"] is None
@@ -304,3 +308,19 @@ def test_the_chat_talks_to_the_active_provider_on_one_shared_client(flow_setting
     assert isinstance(client, ProviderClient)
     assert client.provider == flow_settings.ai_provider
     assert again(CallLog())._http is app.state.http
+
+
+async def test_an_insight_names_the_sound_of_its_first_ontology_entity(
+    browser, store, flow_settings
+):
+    owner = await as_guest(browser, store, flow_settings)
+    why = {"visible_clues": [], "concept": "الإحياء", "limits": []}
+    with_sound = await keep(
+        store, owner, why={**why, "ontology_entity_ids": ["not-an-id", "E006", "E007"]}
+    )
+    without_sound = await keep(store, owner, why=why)
+
+    assert (await browser.get(f"/insights/{with_sound}")).json()["sound_url"] == (
+        "/sounds/ontology/E006"
+    )
+    assert (await browser.get(f"/insights/{without_sound}")).json()["sound_url"] is None

@@ -29,7 +29,6 @@ from src.geo.privacy import approximate, cell_polygon
 from src.messages import messages_for
 from src.models.atlas import LocationMeaning, MapCapturePoint, MapEntry, MapEntryStatus
 from src.models.geonames import GeoName
-from src.models.profile import AgeRange, Profile
 from src.models.scan import Insight, Scan
 from src.models.social import InsightPublication, Post, PostStatus, PostVisibility
 from src.models.user import User
@@ -49,12 +48,13 @@ from src.schemas.atlas import (
 from src.schemas.geo import GeoJsonPoint
 from src.schemas.social import MemberOut
 from src.services import cursor as cursors
-from src.services import geo_service, publication_service
+from src.services import geo_service, photo_service, publication_service
 from src.services.block_service import blocked_with
 from src.services.evidence_view import load_evidence
 from src.services.insight_table_source import explanation_excerpt, snapshot_of
 from src.services.insight_view import visible_parts, visible_step
 from src.services.post_view import outcome_message
+from src.storage.photos import PhotoStore
 
 # Entries returned for one map window at most; the client asks again for a smaller window.
 WINDOW_DEFAULT = 300
@@ -145,19 +145,16 @@ async def _own_insight(db: AsyncSession, user: User, insight_id: int) -> Insight
     return insight
 
 
-async def _check_publishable(db: AsyncSession, user: User, insight: Insight) -> None:
+async def _check_publishable(db: AsyncSession, insight: Insight) -> None:
     """
-    Apply the posts' rule here too: verified, texts clean, evidence in the store and eligible.
+    Apply the posts' rule here too: not under 13, verified, texts clean, evidence eligible.
 
-    And one rule of the map alone (extension §10): an account that declared itself under 13
-    places no location at all. A declared fact, never an inference.
+    An account that declared itself under 13 places no location at all (extension §10, v2 §5):
+    `publication_service` refuses it with `UNDER_13_CANNOT_PUBLISH`, a declared fact, never
+    an inference.
     """
     scan = await db.get(Scan, insight.scan_id) if insight.scan_id is not None else None
     await publication_service.check_publishable(db, snapshot_of(insight, scan))
-    profile = await db.scalar(select(Profile).where(Profile.user_id == user.id))
-    if profile is not None and profile.age_range is AgeRange.UNDER_13:
-        message = "This insight cannot be placed on the map: the account declared it is under 13."
-        raise AppError(ErrorCode.INSIGHT_NOT_PUBLISHABLE, message, status_code=409)
 
 
 def _live(insight_id: int) -> ColumnElement[bool]:
@@ -194,17 +191,24 @@ async def _label(db: AsyncSession, lat: float, lng: float) -> dict[str, object]:
 
 
 async def place(
-    db: AsyncSession, settings: Settings, user: User, insight_id: int, body: CapturePointIn
+    db: AsyncSession,
+    settings: Settings,
+    user: User,
+    insight_id: int,
+    body: CapturePointIn,
+    *,
+    photos: PhotoStore | None = None,
 ) -> MapEntryOwnerOut:
     """
     Keep the owner's exact point privately and compute what the map will show.
 
     The entry is a draft until the owner publishes it; placing a published entry again
     makes it a draft again, since what is shown changed. The cell size is the setting's at
-    the time of placing, kept with the entry.
+    the time of placing, kept with the entry. With `photos`, a public copy that only the
+    entry showed is deleted with the draft, whatever the new choice of photo.
     """
     insight = await _own_insight(db, user, insight_id)
-    await _check_publishable(db, user, insight)
+    await _check_publishable(db, insight)
     cell_m = int(settings.geo_approx_cell_meters)
     centre = approximate(body.latitude, body.longitude, cell_m)
     labels = await _label(db, centre.lat, centre.lng)
@@ -222,6 +226,7 @@ async def place(
     entry.public_geom = WKTElement(f"POINT({centre.lng} {centre.lat})", srid=4326)
     entry.cell_m = cell_m
     entry.location_meaning = body.meaning
+    entry.with_photo = body.photo
     for column, value in labels.items():
         setattr(entry, column, value)
     entry.status = MapEntryStatus.DRAFT
@@ -242,6 +247,8 @@ async def place(
     point.measured_at = body.measured_at
     point.confirmed_at = clock.utcnow()
     await db.flush()
+    if photos is not None:
+        await photo_service.sync_public_copy(db, photos, insight.id)
     return owner_view(entry, insight, point)
 
 
@@ -277,6 +284,7 @@ def owner_view(
         ),
         public=preview,
         place=_place_of(entry),
+        photo=entry.with_photo,
         published_at=entry.published_at,
         withdrawn_at=entry.withdrawn_at,
         created_at=entry.created_at,
@@ -299,26 +307,36 @@ async def list_mine(db: AsyncSession, user: User) -> list[MapEntryOwnerOut]:
     return [owner_view(entry, insight, point) for entry, insight, point in rows]
 
 
-async def publish(db: AsyncSession, user: User, insight_id: int) -> MapEntryOwnerOut:
-    """Show the entry on the atlas; a draft with a point only."""
+async def publish(
+    db: AsyncSession, user: User, insight_id: int, *, photos: PhotoStore
+) -> MapEntryOwnerOut:
+    """
+    Show the entry on the atlas; a draft with a point only.
+
+    When the owner chose to show the photo, its public copy is made now under the photo rules
+    checked again (`photo_service`); the public map says nothing of it yet.
+    """
     entry, insight = await _own_entry(db, user, insight_id)
     if entry.status is not MapEntryStatus.DRAFT or entry.public_lat is None:
         message = "Only a placed draft can be published."
         raise _wrong_state(message)
     # Checked again: a ruling may have changed since the entry was placed.
-    await _check_publishable(db, user, insight)
+    await _check_publishable(db, insight)
     entry.status = MapEntryStatus.PUBLISHED
     entry.published_at = clock.utcnow()
     await db.flush()
+    if entry.with_photo:
+        await photo_service.sync_public_copy(db, photos, insight.id)
     return owner_view(entry, insight, await db.get(MapCapturePoint, entry.id))
 
 
-async def withdraw(db: AsyncSession, user: User, insight_id: int) -> None:
+async def withdraw(db: AsyncSession, user: User, insight_id: int, *, photos: PhotoStore) -> None:
     """
     Take the entry off the atlas and forget the exact point.
 
     The public point is cleared too: nothing of the location survives but the tombstone that
-    makes the entry's address answer 410.
+    makes the entry's address answer 410. The public copy of the photo goes unless a live post
+    still shows it.
     """
     insight = await _own_insight(db, user, insight_id)
     entry = await db.scalar(select(MapEntry).where(_live(insight.id)))
@@ -334,6 +352,14 @@ async def withdraw(db: AsyncSession, user: User, insight_id: int) -> None:
         await db.delete(entry)
         await db.flush()
         return
+    _clear_public_side(entry)
+    await db.flush()
+    if entry.with_photo:
+        await photo_service.sync_public_copy(db, photos, insight.id)
+
+
+def _clear_public_side(entry: MapEntry) -> None:
+    """Leave the withdrawn tombstone: no point, no label, no place."""
     entry.status = MapEntryStatus.WITHDRAWN
     entry.status_reason = None
     entry.withdrawn_at = clock.utcnow()
@@ -348,7 +374,6 @@ async def withdraw(db: AsyncSession, user: User, insight_id: int) -> None:
         "country_label",
     ):
         setattr(entry, column, None)
-    await db.flush()
 
 
 # ─── The public side ───
@@ -480,9 +505,14 @@ async def published_entry(db: AsyncSession, entry_id: int, viewer: User | None =
 
 
 async def entry_detail(
-    db: AsyncSession, entry_id: int, viewer: User | None = None
+    db: AsyncSession, entry_id: int, viewer: User | None = None, *, photos: PhotoStore
 ) -> AtlasEntryOut:
-    """Return an entry's page: the insight by reference, its scripture from the store, the public point."""
+    """
+    Return an entry's page: the insight by reference, its scripture from the store, the public point.
+
+    The photo's public address comes only when the owner chose to show it with the entry and the
+    copy exists now (v2 §19); the keys never leave the server.
+    """
     entry = await published_entry(db, entry_id, viewer)
     insight = await db.get(Insight, entry.insight_id)
     author = await db.get(User, entry.user_id)
@@ -530,6 +560,9 @@ async def entry_detail(
         quran=[evidence.quran[key] for key in quran if key in evidence.quran],
         hadith=[evidence.hadith[key] for key in hadith if key in evidence.hadith],
         post_id=post_id,
+        photo_url=(
+            photo_service.public_url(photos, insight.photo_public_key) if entry.with_photo else None
+        ),
         published_on=_published_on(entry),
     )
 

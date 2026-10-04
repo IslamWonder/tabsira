@@ -27,6 +27,7 @@ from typing import Any
 from geoalchemy2 import Geometry
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     DateTime,
     Float,
@@ -35,6 +36,7 @@ from sqlalchemy import (
     Integer,
     String,
     Uuid,
+    false,
     func,
     text,
 )
@@ -152,6 +154,9 @@ class MapEntry(Base):
     )
     # A code the owner is shown with the outcome (see src/messages.py), never a moderator's words.
     status_reason: Mapped[str | None] = mapped_column(String(64))
+    # The owner chose to show the insight's photo with the entry (v2 §19); the public copy
+    # exists only while the entry is published and the photo rules still allow it.
+    with_photo: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The moderator's account. No foreign key: the decision outlives their account.

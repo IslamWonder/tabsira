@@ -340,7 +340,8 @@ export interface paths {
      * @description Change the fields sent and no others.
      *
      *     Enums are validated; a null is refused (send `unknown` to clear an answer).
-     *     The three consent switches change through `POST /consents` only.
+     *     The three consent switches change through `POST /consents` only; declaring under 13
+     *     withdraws the photo consent and deletes the kept photos (503 when the store is down).
      */
     patch: operations['patch_profile_profile_patch'];
     trace?: never;
@@ -359,7 +360,8 @@ export interface paths {
      * @description Append the answer to the user's consent history, and update the matching switch.
      *
      *     A consent is withdrawn by recording the same kind with `granted` false. The
-     *     history is never edited.
+     *     history is never edited. Withdrawing the photo consent deletes the kept photos
+     *     first; 503 STORAGE_UNAVAILABLE, with nothing recorded, when the store is down.
      */
     post: operations['post_consent_consents_post'];
     delete?: never;
@@ -400,10 +402,11 @@ export interface paths {
     post?: never;
     /**
      * Delete the account and everything it owns
-     * @description Delete the user, their profile, consents, identities, sessions and everything they saved.
+     * @description Delete the user, their profile, consents, identities, sessions, photos and everything they saved.
      *
      *     Idempotent: without a valid session there is nothing left to delete, and the
-     *     answer is the same 204 that clears the cookie.
+     *     answer is the same 204 that clears the cookie. 503 STORAGE_UNAVAILABLE, with nothing
+     *     deleted, when the photo store cannot be reached.
      */
     delete: operations['delete_account_account_delete'];
     options?: never;
@@ -828,8 +831,9 @@ export interface paths {
      * Withdraw a post
      * @description Withdraw a post, a draft or a published one.
      *
-     *     Its reflection, its comments, its likes and its saves are erased at once, it leaves every
-     *     feed and every profile, and its address answers 410 Gone from then on (this route too).
+     *     Its reflection, its comments, its likes and its saves are erased at once, with the public
+     *     copy of its photo, it leaves every feed and every profile, and its address answers 410 Gone
+     *     from then on (this route too).
      */
     delete: operations['delete_post_posts__post_id__delete'];
     options?: never;
@@ -1026,7 +1030,8 @@ export interface paths {
      *     permission, a place that is not right and a location or photo that gives away private
      *     information. 404 for what the caller may not read, and for a target whose feature is switched
      *     off, 400 for their own words. Reporting the same thing twice answers with the first report. Enough different reporters send a published
-     *     item back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`).
+     *     item back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`), and the public copy of a
+     *     photo it showed is deleted until a moderator approves it.
      */
     post: operations['report_reports_post'];
     delete?: never;
@@ -1369,6 +1374,9 @@ export interface paths {
     /**
      * «تمّ»: complete the insight, once
      * @description Complete the insight; a second call saves nothing more and answers the same place.
+     *
+     *     The first «تمّ» of a signed-in owner who consented to keep photos also keeps the scan's
+     *     photo privately (v2 §19); nothing is kept for a guest or a sensitive scene.
      */
     post: operations['complete_insight_insights__insight_id__complete_post'];
     delete?: never;
@@ -1533,6 +1541,7 @@ export interface paths {
      *     The public point is the centre of the grid cell (GEO_APPROX_CELL_METERS), labelled with
      *     the nearest populated place; the answer carries the cell as a polygon, so the owner reviews
      *     it before publishing. 409 INSIGHT_NOT_PUBLISHABLE for an insight that is not the pipeline's.
+     *     Placing a published entry again takes it off the map, and its photo's public copy with it.
      */
     put: operations['place_insight_insights__insight_id__map_put'];
     post?: never;
@@ -1649,6 +1658,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/media/public/{name}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * A photo's public copy (local disk only)
+     * @description Return the published copy under `public/<name>`; 404 when the store is S3 or there is none.
+     */
+    get: operations['public_photo_media_public__name__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/tutorial/rain': {
     parameters: {
       query?: never;
@@ -1686,6 +1715,26 @@ export interface paths {
      * @description Return the caller's copy of the insight (made once), labelled «مثال موثّق مُعدّ».
      */
     post: operations['keep_rain_insight_tutorial_rain_insights__slug__post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/sounds/ontology/{entity_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The sound effect of one ontology entity, as MP3
+     * @description Return `static/ontology/audio/<entity_id>.mp3` of the bucket; 404 when it was not uploaded.
+     */
+    get: operations['ontology_sound_sounds_ontology__entity_id__get'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1812,6 +1861,11 @@ export interface components {
        */
       post_id: string | null;
       /**
+       * Photo Url
+       * @description The address of the photo's public copy, only when the owner chose to show it with the entry and the copy exists; null otherwise. Never a storage key.
+       */
+      photo_url: string | null;
+      /**
        * Published On
        * Format: date
        */
@@ -1936,6 +1990,12 @@ export interface components {
       captured_at?: string | null;
       /** Measured At */
       measured_at?: string | null;
+      /**
+       * Photo
+       * @description Show the insight's kept photo with the entry; nothing without a kept photo and the owner's photo consent (v2 §19)
+       * @default false
+       */
+      photo: boolean;
     };
     /**
      * CapturePointOut
@@ -2813,6 +2873,11 @@ export interface components {
       relation: components['schemas']['RelationType'];
       /** Relation Label */
       relation_label: string;
+      /**
+       * Sound Url
+       * @description Path on this API of the sound effect of the insight's main ontology entity
+       */
+      sound_url: string | null;
       quran: components['schemas']['InsightQuran'] | null;
       hadith: components['schemas']['InsightHadith'] | null;
       /**
@@ -2935,6 +3000,11 @@ export interface components {
       sensitive: boolean;
       /** Url */
       url: string | null;
+      /**
+       * Has Photo
+       * @description The owner's own copy was kept at «تمّ» (v2 §19), so a publication may offer to show it; the key itself is never served
+       */
+      has_photo: boolean;
     };
     /**
      * InsightOrigin
@@ -2966,9 +3036,14 @@ export interface components {
       step: string | null;
       /**
        * Has Photo
-       * @description The owner agreed to publish a photo with it; its address is not here yet
+       * @description The owner chose to show a photo with it
        */
       has_photo: boolean;
+      /**
+       * Photo Url
+       * @description The address of the photo's public copy, only on a published public post while the copy exists; null otherwise. Never a storage key.
+       */
+      photo_url: string | null;
       /** Insight Version */
       insight_version: number;
       /** Quran */
@@ -3063,6 +3138,8 @@ export interface components {
       learner_units: components['schemas']['LearnerUnitExport'][];
       /** Exposures */
       exposures: components['schemas']['ExposureExport'][];
+      /** Photos */
+      photos: components['schemas']['PhotoExport'][];
     };
     /** LearningUnitOut */
     LearningUnitOut: {
@@ -3151,6 +3228,11 @@ export interface components {
       /** @description Null once the entry is withdrawn */
       public: components['schemas']['PublicLocationPreview'] | null;
       place: components['schemas']['PlaceRef'] | null;
+      /**
+       * Photo
+       * @description The owner chose to show the insight's photo with it
+       */
+      photo: boolean;
       /** Published At */
       published_at: string | null;
       /** Withdrawn At */
@@ -3264,6 +3346,22 @@ export interface components {
        */
       created_at: string;
     };
+    /**
+     * PhotoExport
+     * @description A photo «تمّ» kept with the owner's consent (v2 §19): which insight, and whether a copy is public.
+     *
+     *     The export says that the photo exists; the image itself is not in the file, and neither are
+     *     the keys of its copies.
+     */
+    PhotoExport: {
+      /** Insight Id */
+      insight_id: string;
+      /**
+       * Published
+       * @description A post or a map entry shows a public copy right now
+       */
+      published: boolean;
+    };
     /** PlaceExport */
     PlaceExport: {
       /** Id */
@@ -3365,6 +3463,12 @@ export interface components {
       reflection?: string | null;
       /** @default public */
       visibility: components['schemas']['PostVisibility'];
+      /**
+       * Photo
+       * @description Show the insight's kept photo with the post; nothing without a kept photo and the owner's photo consent (v2 §19)
+       * @default false
+       */
+      photo: boolean;
     };
     /** PostExport */
     PostExport: {
@@ -3681,6 +3785,9 @@ export interface components {
     /**
      * PublicationExport
      * @description The copy of an insight a post published: references to the evidence, never scripture.
+     *
+     *     The photo is stated as two facts, like `learning.photos`: whether the owner chose to show
+     *     it with this publication, and whether a public copy exists right now. Never a key.
      */
     PublicationExport: {
       /** Id */
@@ -3709,8 +3816,16 @@ export interface components {
       explanation_excerpt: string;
       /** Step Text */
       step_text: string | null;
-      /** Photo Ref */
-      photo_ref: string | null;
+      /**
+       * Has Photo
+       * @description The owner chose to show the insight's photo with this post
+       */
+      has_photo: boolean;
+      /**
+       * Published
+       * @description A public copy of the photo exists right now
+       */
+      published: boolean;
       /**
        * Created At
        * Format: date-time
@@ -7366,6 +7481,37 @@ export interface operations {
       };
     };
   };
+  public_photo_media_public__name__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'image/jpeg': unknown;
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
   rain_tutorial_rain_get: {
     parameters: {
       query?: never;
@@ -7413,6 +7559,38 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['InsightDetailOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  ontology_sound_sounds_ontology__entity_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description An ontology id such as E001 */
+        entity_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'audio/mpeg': unknown;
         };
       };
       /** @description An error */

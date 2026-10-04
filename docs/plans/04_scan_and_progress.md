@@ -20,19 +20,6 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 | Chat request for another text re-runs retrieval and verification                 | ✅     | Found text read from the store.    |
 | Found text shown under the chat answer, with the insight's evidence cards        | ✅     | Task 04.15.                        |
 
-### 04.15 Show the text a chat answer found, beside the answer
-
-- **Status:** ✅ 2026-10-04 21:08
-- **Goal:** Follow-up of 04.14 for the web (v2 §14): when a chat message carries `quran` or `hadith`, the insight screen shows that text under the answer with the same evidence cards as the insight (`InsightEvidence`, so `EvidenceCard` stays the only rendering of scripture): the store's text byte for byte, the fixed tags «القرآن» and «السنة», the reference, the quranpedia link, the ruling and the «تحقق في الدرر» link, and the verified chip when the API matched the text to its hash. The cards take heading level 3 under the sheet's own title. A message without texts renders as before; nothing else about the chat changes.
-- **Depends on:** 04.14
-- **Touches:** apps/web/src/components/insight/{chat-sheet.tsx,insight-evidence.tsx} (an optional `headingLevel`) and their tests.
-- **Done when:** A test renders a message with both texts and compares what is shown byte for byte with the API's text and with its stored hash; one text alone shows one card without a notice; a message without texts shows no card. `make lint` passes.
-
-**How we check it**
-
-- A live run end to end on `https://tabsira.test`.
-- Scripture and privacy reviews passed.
-
 ## Tasks
 
 ### 04.1 Scan workflow: scripture fixes and merge
@@ -140,3 +127,16 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 - **Depends on:** 04.4, 05.1
 - **Touches:** apps/api/src/services/{chat_service,chat_retrieval,insight_view}.py, routers/insights.py, schemas/insight.py (`ChatMessageOut.quran`, `ChatMessageOut.hadith`), messages.py, prompts/insight_chat_system.v4.txt, evaluation/chat_eval.py (an optional `scene` per case insight), tests/scans/test_chat.py, tests/insight/test_chat_cases.py, tests/evaluation/chat/cases.json, the generated web client.
 - **Done when:** A test asks for another text on an insight with a scene and gets the found verse from the store with its hash, a found hadith without a ruling is queued and not shown, a ruled-out found hadith withdraws the answer, and the twelve cases accept `answer` or `new_search` for the new-text case; scripture review passes. Not done here: the web shows `quran` and `hadith` on a chat message (a follow-up for the web).
+
+### 04.15 Show the text a chat answer found, beside the answer
+
+- **Status:** ✅ 2026-10-04 21:08
+- **Goal:** Follow-up of 04.14 for the web (v2 §14): when a chat message carries `quran` or `hadith`, the insight screen shows that text under the answer with the same evidence cards as the insight (`InsightEvidence`, so `EvidenceCard` stays the only rendering of scripture): the store's text byte for byte, the fixed tags «القرآن» and «السنة», the reference, the quranpedia link, the ruling and the «تحقق في الدرر» link, and the verified chip when the API matched the text to its hash. The cards take heading level 3 under the sheet's own title. A message without texts renders as before; nothing else about the chat changes.
+- **Depends on:** 04.14
+- **Touches:** apps/web/src/components/insight/{chat-sheet.tsx,insight-evidence.tsx} (an optional `headingLevel`) and their tests.
+- **Done when:** A test renders a message with both texts and compares what is shown byte for byte with the API's text and with its stored hash; one text alone shows one card without a notice; a message without texts shows no card. `make lint` passes.
+
+**How we check it**
+
+- A live run end to end on `https://tabsira.test`.
+- Scripture and privacy reviews passed.

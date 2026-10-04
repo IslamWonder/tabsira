@@ -85,6 +85,7 @@ export const ENTRY: AtlasEntry = {
     },
   ],
   post_id: '7345678901234567890',
+  photo_url: null,
   published_on: '2026-10-04',
 };
 
@@ -130,6 +131,7 @@ export const OWNER_ENTRY: MapEntryOwner = {
     },
   },
   place: PLACE,
+  photo: false,
   published_at: null,
   withdrawn_at: null,
   created_at: '2026-10-04T08:00:00Z',

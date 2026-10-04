@@ -59,14 +59,19 @@ export interface DraftInput {
   insightId: string;
   reflection: string | null;
   visibility: PostVisibility;
+  /** The owner's choice to show the kept photo with the post (v2 §19); off unless ticked. */
+  photo: boolean;
 }
 
 export function createDraft({
   insightId,
   reflection,
   visibility,
+  photo,
 }: DraftInput): Promise<Result<Post>> {
-  return attempt(api.POST('/posts', { body: { insight_id: insightId, reflection, visibility } }));
+  return attempt(
+    api.POST('/posts', { body: { insight_id: insightId, reflection, visibility, photo } })
+  );
 }
 
 export function editDraft(

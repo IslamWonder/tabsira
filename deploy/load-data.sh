@@ -31,10 +31,10 @@ if [[ -f "$DEPLOY_ENV_FILE" ]]; then
 	. "$DEPLOY_ENV_FILE"
 	set +a
 fi
-APP_ROOT="${APP_ROOT:-/opt/tabsira}"
+APP_ROOT="${APP_ROOT:-/srv/tabsira}"
 CURRENT_LINK="${CURRENT_LINK:-$APP_ROOT/current}"
 SHARED_DIR="${SHARED_DIR:-$APP_ROOT/shared}"
-ENV_FILE="${ENV_FILE:-$SHARED_DIR/.env}"
+ENV_FILE="${ENV_FILE:-${REPO_DIR:-/opt/tabsira}/.env}"
 CORPUS_DIR="${CORPUS_DIR:-$SHARED_DIR/corpus}"
 VECTORS_DIR="${VECTORS_DIR:-$SHARED_DIR/vectors}"
 EXTENSIONS="postgis vector timescaledb pg_trgm unaccent pgcrypto btree_gin btree_gist pg_stat_statements"

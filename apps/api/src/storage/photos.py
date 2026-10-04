@@ -21,8 +21,8 @@ scene is never published, and neither is a photo of someone who has since said t
 
 Whether the caller may touch a given key at all, that is, that the key belongs to the person
 asking, is the route's check and comes first: a key is a random string, not a permission.
-Nothing here is a route yet; no photo is kept by anything until the scan and publish routes
-are written against it.
+`src/services/photo_service.py` is the one caller: it keeps the photo at «تمّ», makes and
+removes the public copy with the publications, and deletes everything with the account.
 """
 
 from __future__ import annotations

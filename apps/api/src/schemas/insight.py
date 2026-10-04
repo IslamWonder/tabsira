@@ -119,6 +119,10 @@ class InsightImageOut(BaseModel):
 
     sensitive: bool
     url: str | None
+    has_photo: bool = Field(
+        description="The owner's own copy was kept at «تمّ» (v2 §19), so a publication may "
+        "offer to show it; the key itself is never served"
+    )
 
 
 class InsightDetailOut(BaseModel):
@@ -134,6 +138,9 @@ class InsightDetailOut(BaseModel):
     anchor: BBox | None
     relation: RelationType
     relation_label: str
+    sound_url: str | None = Field(
+        description="Path on this API of the sound effect of the insight's main ontology entity"
+    )
     quran: InsightQuran | None
     hadith: InsightHadith | None
     hadith_status: Literal["shown", "awaiting_verification", "none"]

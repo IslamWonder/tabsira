@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query, Response, status
 
-from src.deps import CurrentUser, DbDep, VerifiedUser, limited, require_social
+from src.deps import CurrentUser, DbDep, PhotoStoreDep, VerifiedUser, limited, require_social
 from src.schemas.social import FeedPage, PostIdPath, ReactionOut
 from src.services import cursor as cursors
 from src.services import feed_service, post_service, post_view, reaction_service
@@ -83,6 +83,7 @@ async def unbookmark_post(post_id: PostIdPath, user: CurrentUser, db: DbDep) -> 
 async def my_bookmarks(
     user: CurrentUser,
     db: DbDep,
+    photos: PhotoStoreDep,
     cursor: str | None = None,
     limit: int = Query(PAGE_DEFAULT, ge=1, le=PAGE_MAX),
 ) -> FeedPage:
@@ -92,7 +93,7 @@ async def my_bookmarks(
     A post that was withdrawn, removed or hidden by a block is no longer listed.
     """
     page = await feed_service.bookmarked(db, user, cursors.decode(cursor), limit)
-    items = await post_view.build_posts(db, page.rows, user)
+    items = await post_view.build_posts(db, page.rows, user, photos=photos)
     return FeedPage(
         items=items,
         next_cursor=page.next_cursor,

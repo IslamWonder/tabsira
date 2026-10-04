@@ -117,4 +117,27 @@ describe('EntryScreen', () => {
       await screen.findByRole('heading', { level: 1, name: '[عنوان البصيرة]' })
     ).toBeInTheDocument();
   });
+
+  it('shows the public photo when the entry carries its address, and nothing otherwise', async () => {
+    const url = 'https://media.tabsira.test/public/0123456789abcdef0123456789abcdef.jpg';
+    mockApi({
+      'GET /auth/me': apiError(401, 'UNAUTHORIZED'),
+      [`GET /atlas/entries/${ENTRY.id}`]: { body: { ...ENTRY, photo_url: url } },
+    });
+    const { unmount } = render(<EntryScreen entryId={ENTRY.id} />);
+    expect(
+      await screen.findByRole('img', {
+        name: 'صورة المشهد الذي وُلدت منه البصيرة «[عنوان البصيرة]»',
+      })
+    ).toHaveAttribute('src', url);
+    unmount();
+
+    mockApi({
+      'GET /auth/me': apiError(401, 'UNAUTHORIZED'),
+      [`GET /atlas/entries/${ENTRY.id}`]: { body: ENTRY },
+    });
+    render(<EntryScreen entryId={ENTRY.id} />);
+    await screen.findByRole('heading', { level: 1, name: '[عنوان البصيرة]' });
+    expect(screen.queryByTestId('public-photo')).toBeNull();
+  });
 });

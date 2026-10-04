@@ -55,16 +55,21 @@ def errors_of(**values: object) -> str:
     return format_validation_error(caught.value)
 
 
-def test_development_defaults(make_settings):
+def test_development_defaults(make_settings, monkeypatch):
+    # The suite pins https addresses; the code's own defaults are plain http (decision 49).
+    for key in ("SITE_URL", "API_URL", "ADMIN_URL", "CORS_ORIGINS", "GOOGLE_REDIRECT_URI"):
+        monkeypatch.delenv(key)
     settings = make_settings(environment="development", database_url=DATABASE_URL)
 
     assert settings.environment is Environment.DEVELOPMENT
     assert (settings.api_host, settings.api_port) == ("127.0.0.1", 8000)
-    assert settings.site_url == "https://tabsira.test"
-    assert settings.api_url == "https://api.tabsira.test"
-    assert settings.admin_url == "https://admin.tabsira.test"
+    assert settings.site_url == "http://tabsira.test"
+    assert settings.api_url == "http://api.tabsira.test"
+    assert settings.admin_url == "http://admin.tabsira.test"
     assert settings.admin_host == "admin.tabsira.test"
-    assert settings.cors_origins == ["https://tabsira.test"]
+    assert settings.cors_origins == ["http://tabsira.test"]
+    assert settings.google_redirect_uri == "http://api.tabsira.test/auth/google/callback"
+    assert settings.cookie_secure is False
     assert settings.db_connect_timeout == 3.0
     assert settings.sync_database_url is None
     assert settings.test_database_url is None

@@ -9,6 +9,7 @@ import { EMPTY_FILTERS, lngLatOf } from '@/atlas/types';
 import { atlasHref } from '@/atlas/view-state';
 import { StatusScreen } from '@/components/app/status-screen';
 import { PostEvidence } from '@/components/community/evidence';
+import { PublicPhoto } from '@/components/community/public-photo';
 import { ReportSheet } from '@/components/community/sheets';
 import { AtlasIcon } from '@/components/icons';
 import { PageContainer } from '@/components/layout/layouts';
@@ -123,6 +124,7 @@ export function EntryScreen({ entryId }: { entryId: string }) {
                 )}
               </p>
             </header>
+            <PublicPhoto url={load.entry.photo_url} alt={A.entry.photoAlt(load.entry.title)} />
             <section aria-label={A.entry.mapLabel} className="flex flex-col gap-2">
               <div className="h-56 overflow-hidden rounded-[var(--radius-card)] border border-line">
                 <MapView

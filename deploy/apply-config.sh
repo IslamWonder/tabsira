@@ -25,7 +25,7 @@
 #   --dry-run   print the plan
 #
 # Environment: APP_USER (devops, the existing account the application runs as), APP_GROUP (its group), APP_ROOT
-# (/opt/tabsira), APP_HOME (the user's home), APP_HOST_VPN_IP (required),
+# (/srv/tabsira), ENV_FILE (/opt/tabsira/.env), APP_HOME (the user's home), APP_HOST_VPN_IP (required),
 # VPN_SUBNET (100.64.0.0/10, Netbird's default), TLS_NAME (tabsira.me),
 # API_TLS_NAME (api.tabsira.me), ADMIN_TLS_NAME (admin.tabsira.me), LE_DIR
 # (/etc/letsencrypt/live). One certbot lineage per name, as `certbot certonly -d NAME` makes them.
@@ -71,7 +71,7 @@ add() { FILES+=("$1|$2"); }
 # fill NAME DEST: substitute the placeholders of a tracked template.
 fill() {
 	sed -e "s#@APP_USER@#$APP_USER#g" -e "s#@APP_GROUP@#$APP_GROUP#g" \
-		-e "s#@APP_ROOT@#$APP_ROOT#g" -e "s#@APP_HOME@#$APP_HOME#g" "$1" >"$2"
+		-e "s#@APP_ROOT@#$APP_ROOT#g" -e "s#@APP_HOME@#$APP_HOME#g" -e "s#@ENV_FILE@#$ENV_FILE#g" "$1" >"$2"
 }
 
 # ─── Build every file aside ─────────────────────────────────────────

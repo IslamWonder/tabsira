@@ -86,7 +86,15 @@ def test_provider_blocks_name_one_model_per_stage():
 def test_the_development_defaults_in_the_file_are_the_defaults_in_the_code(
     make_settings, monkeypatch
 ):
-    for key in ("ENVIRONMENT",):
+    # The suite pins the https addresses; here only the code's own defaults count.
+    for key in (
+        "ENVIRONMENT",
+        "SITE_URL",
+        "API_URL",
+        "ADMIN_URL",
+        "CORS_ORIGINS",
+        "GOOGLE_REDIRECT_URI",
+    ):
         monkeypatch.delenv(key)
 
     from_file = Settings(_env_file=EXAMPLE, database_url="postgresql+asyncpg://u:p@127.0.0.1/db")

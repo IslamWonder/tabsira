@@ -19,6 +19,7 @@ import { setBookmark, setLike } from '@/social/api';
 import { postPath, profilePath } from '@/social/identity';
 import type { Post } from '@/social/types';
 import { PostEvidence } from './evidence';
+import { PublicPhoto } from './public-photo';
 import { BlockSheet, ReportSheet, WithdrawSheet } from './sheets';
 import { WhySheet } from './why-sheet';
 
@@ -194,6 +195,10 @@ export function PostCard({
         </Heading>
         <p className="m-0 text-[1.0625rem] text-fg-soft leading-[1.85]">{post.insight.glimpse}</p>
       </header>
+
+      {variant === 'full' ? (
+        <PublicPhoto url={post.insight.photo_url} alt={M.photoAlt(post.insight.title)} />
+      ) : null}
 
       <section aria-label={M.explanation} className="flex flex-col items-start gap-2">
         <Chip tone="primary">{M.explanation}</Chip>

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useSession } from '@/account/session';
 import { CameraIcon } from '@/components/icons';
 import { LinkButton } from '@/components/ui/button';
+import { SoundToggle } from '@/components/ui/sound-toggle';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
@@ -59,6 +60,7 @@ export function TopBar() {
           </ul>
         </nav>
         <div className="flex shrink-0 items-center gap-2">
+          <SoundToggle />
           <ThemeToggle />
           {/* Shown until the API says someone is signed in: most visitors are guests. */}
           {session.status === 'signed-in' ? null : (

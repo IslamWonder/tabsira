@@ -13,6 +13,7 @@ import { IdentityForm } from '@/components/community/identity-section';
 import { AtlasIcon } from '@/components/icons';
 import { PageContainer } from '@/components/layout/layouts';
 import { Button, LinkButton } from '@/components/ui/button';
+import { CheckboxField } from '@/components/ui/checkbox-field';
 import { ChoiceGroup } from '@/components/ui/choice-group';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { Notice } from '@/components/ui/notice';
@@ -20,6 +21,7 @@ import { Sheet } from '@/components/ui/sheet';
 import { TextField } from '@/components/ui/text-field';
 import { failureMessage } from '@/lib/api/failure-message';
 import type { Failure } from '@/lib/api/result';
+import { useKeptPhoto } from '@/lib/scan/kept-photo';
 import { messages } from '@/messages';
 import { useAccess } from '@/social/access';
 import { entryPath } from './atlas-screen';
@@ -65,6 +67,8 @@ export function MapPublishScreen() {
   const [existing, setExisting] = useState<'unknown' | 'none' | MapEntryOwner>('unknown');
   const [chosen, setChosen] = useState<Chosen | null>(null);
   const [meaning, setMeaning] = useState<LocationMeaning>('capture_point');
+  // The photo is the owner's choice, off until ticked, and offered only when a photo is kept.
+  const [photo, setPhoto] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -72,6 +76,7 @@ export function MapPublishScreen() {
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<PlaceHit[] | null>(null);
   const validId = insightId !== null && PUBLIC_ID.test(insightId);
+  const photoKept = useKeptPhoto(validId ? insightId : null, access === 'member');
 
   useEffect(() => {
     if (!validId || access !== 'member' || insightId === null) {
@@ -141,6 +146,7 @@ export function MapPublishScreen() {
           source: chosen.source,
           meaning,
           measured_at: chosen.measuredAt,
+          photo: photoKept && photo,
         }),
       P.saved
     );
@@ -317,6 +323,14 @@ export function MapPublishScreen() {
                 value={meaning}
                 onChange={setMeaning}
               />
+              {photoKept ? (
+                <CheckboxField
+                  label={P.photo}
+                  hint={P.photoHint}
+                  checked={photo}
+                  onChange={setPhoto}
+                />
+              ) : null}
               {failure === null ? null : (
                 <div role="alert">
                   <Notice tone="error">{failure}</Notice>
@@ -373,6 +387,11 @@ export function MapPublishScreen() {
                 <div className="flex gap-2">
                   <dd className="m-0 text-fg-soft">{entry.public?.meaning_label}</dd>
                 </div>
+                {entry.photo ? (
+                  <div className="flex gap-2">
+                    <dd className="m-0 text-fg-soft">{P.withPhoto}</dd>
+                  </div>
+                ) : null}
               </dl>
               {failure === null ? null : (
                 <div role="alert">

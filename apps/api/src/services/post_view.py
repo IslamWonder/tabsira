@@ -22,6 +22,7 @@ from src.models.social import (
     InsightPublication,
     PostLike,
     PostStatus,
+    PostVisibility,
 )
 from src.models.user import User
 from src.schemas.social import (
@@ -32,9 +33,11 @@ from src.schemas.social import (
     ViewerPostOut,
     WhyOut,
 )
+from src.services import photo_service
 from src.services.evidence_view import Evidence, load_evidence
 from src.services.moderation_service import known_reason
 from src.services.post_service import PostRow
+from src.storage.photos import PhotoStore
 
 
 def outcome_message(status: str, reason: str | None) -> str | None:
@@ -52,7 +55,9 @@ def outcome_message(status: str, reason: str | None) -> str | None:
     return None
 
 
-def insight_of(publication: InsightPublication, evidence: Evidence) -> InsightOut:
+def insight_of(
+    publication: InsightPublication, evidence: Evidence, *, photo_url: str | None = None
+) -> InsightOut:
     """Show the publication as a reader sees it, its scripture read from the store by reference."""
     quran = [
         evidence.quran[key]
@@ -72,6 +77,7 @@ def insight_of(publication: InsightPublication, evidence: Evidence) -> InsightOu
         explanation=publication.explanation_excerpt,
         step=publication.step_text,
         has_photo=publication.photo_ref is not None,
+        photo_url=photo_url,
         insight_version=publication.insight_version,
         quran=quran,
         hadith=hadith,
@@ -97,24 +103,37 @@ async def _comment_counts(db: AsyncSession, post_ids: list[int]) -> dict[int, in
     return dict(rows.all())
 
 
+def _shows_photo_publicly(row: PostRow, publication: InsightPublication) -> bool:
+    """Only a published public post that asked for the photo gives its public address away."""
+    return (
+        publication.photo_ref is not None
+        and row.post.status is PostStatus.PUBLISHED
+        and row.post.visibility is PostVisibility.PUBLIC
+    )
+
+
 def _post_out(
     row: PostRow,
     publication: InsightPublication,
     *,
     evidence: Evidence,
+    photo_urls: dict[int, str],
     viewer: User | None,
     counts: tuple[dict[int, int], dict[int, int]],
     flags: tuple[set[int], set[int]],
     why: WhyOut | None,
 ) -> PostOut:
     post = row.post
+    photo_url = (
+        photo_urls.get(publication.insight_id) if _shows_photo_publicly(row, publication) else None
+    )
     is_author = viewer is not None and viewer.id == post.author_id
     likes, comments = counts
     liked, saved = flags
     return PostOut(
         id=post.id,
         author=MemberOut(handle=row.author.handle or "", public_name=row.author.public_name or ""),
-        insight=insight_of(publication, evidence),
+        insight=insight_of(publication, evidence, photo_url=photo_url),
         reflection=(
             ReflectionOut(
                 text=post.reflection, looks_like_scripture=post.reflection_looks_like_scripture
@@ -146,9 +165,15 @@ async def build_posts(
     rows: Sequence[PostRow],
     viewer: User | None,
     *,
+    photos: PhotoStore,
     why: dict[int, WhyOut] | None = None,
 ) -> list[PostOut]:
-    """Build the responses for a page of posts; a post without a publication is not shown."""
+    """
+    Build the responses for a page of posts; a post without a publication is not shown.
+
+    `photos` gives the address of a photo's public copy (v2 §19), carried only by a published
+    public post whose owner chose the photo and whose copy exists now.
+    """
     shown = [row for row in rows if row.publication is not None]
     if not shown:
         return []
@@ -177,11 +202,22 @@ async def build_posts(
         [(r["collection"], r["number"]) for p in publications for r in p.hadith_refs],
     )
     counts = (await _like_counts(db, post_ids), await _comment_counts(db, post_ids))
+    photo_urls = await photo_service.public_urls(
+        db,
+        photos,
+        {
+            publication.insight_id
+            for row in shown
+            if (publication := row.publication) is not None
+            and _shows_photo_publicly(row, publication)
+        },
+    )
     return [
         _post_out(
             row,
             publication,
             evidence=evidence,
+            photo_urls=photo_urls,
             viewer=viewer,
             counts=counts,
             flags=(liked, saved),

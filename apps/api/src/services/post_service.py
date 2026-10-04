@@ -33,8 +33,9 @@ from src.models.social import (
 )
 from src.models.user import User
 from src.pipeline.leak_guard import LeakGuard
-from src.services import block_service, moderation_service
+from src.services import block_service, moderation_service, photo_service
 from src.services.moderation_guard import NO_TEXT, TextGuard
+from src.storage.photos import PhotoStore
 
 _LEAK_GUARD = LeakGuard()
 
@@ -200,13 +201,14 @@ def update_draft(
     post.status_reason = None
 
 
-async def submit(db: AsyncSession, row: PostRow, guard: TextGuard) -> Post:
+async def submit(db: AsyncSession, row: PostRow, guard: TextGuard, *, photos: PhotoStore) -> Post:
     """
     Run a draft through the guard and settle it: published, refused with a reason, or held.
 
     The guard is a network call, so the transaction is committed before it and the post is
     locked and re-read after it: a draft edited or submitted twice in the meantime is refused
-    rather than settled on a verdict about other words.
+    rather than settled on a verdict about other words. A published post that shows the photo
+    gets its public copy made now (`photo_service`), under the photo rules checked again.
     """
     post = row.post
     if post.status is not PostStatus.DRAFT:
@@ -229,14 +231,26 @@ async def submit(db: AsyncSession, row: PostRow, guard: TextGuard) -> Post:
         )
     locked.submitted_at = clock.utcnow()
     moderation_service.settle(db, locked, verdict)
+    settled: PostStatus = locked.status
+    if settled is PostStatus.PUBLISHED:
+        await _sync_photo(db, row.publication, photos)
     return locked
 
 
-async def withdraw(db: AsyncSession, row: PostRow) -> None:
+async def _sync_photo(
+    db: AsyncSession, publication: InsightPublication | None, photos: PhotoStore
+) -> None:
+    """Bring the public copy of the photo in line with the post's state, when it shows one."""
+    if publication is not None and publication.photo_ref is not None:
+        await photo_service.sync_public_copy(db, photos, publication.insight_id)
+
+
+async def withdraw(db: AsyncSession, row: PostRow, *, photos: PhotoStore) -> None:
     """
     Take a post back: its address answers 410, every feed drops it, and its content is erased.
 
-    The reflection, the publication, the comments, the likes and the bookmarks go; what stays
+    The reflection, the publication, the comments, the likes and the bookmarks go, and so does
+    the public copy of the photo unless another live publication still shows it; what stays
     is the tombstone that makes the address answer 410, and the moderation log, which holds
     no text. A draft goes the same way, so it needs no special case.
     """
@@ -256,3 +270,4 @@ async def withdraw(db: AsyncSession, row: PostRow) -> None:
     await db.flush()
     # After the post stops pointing at it, so the foreign key has nothing left to set to NULL.
     await db.execute(delete(InsightPublication).where(InsightPublication.id == publication_id))
+    await _sync_photo(db, row.publication, photos)

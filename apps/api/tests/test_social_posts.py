@@ -251,7 +251,10 @@ async def test_a_photo_is_kept_only_when_its_owner_agreed_and_the_scene_is_not_s
     await agree_to_photos(author)
     cases = {
         "agreed": ({"photo_ref": "photos/a", "photo_consent": True}, "photos/a"),
-        "no consent for this insight": ({"photo_ref": "photos/b", "photo_consent": False}, None),
+        "no photo kept for this insight": (
+            {"photo_ref": "photos/b", "photo_consent": False},
+            None,
+        ),
         "sensitive": (
             {"photo_ref": "photos/c", "photo_consent": True, "scene_sensitive": True},
             None,
@@ -261,7 +264,7 @@ async def test_a_photo_is_kept_only_when_its_owner_agreed_and_the_scene_is_not_s
     }
 
     for name, (overrides, expected) in cases.items():
-        response = await create(author, make_insight(author, **overrides))
+        response = await create(author, make_insight(author, **overrides), photo=True)
         body = response.json()
         stored = await db_session.scalar(
             select(InsightPublication).order_by(InsightPublication.id.desc())
@@ -271,43 +274,58 @@ async def test_a_photo_is_kept_only_when_its_owner_agreed_and_the_scene_is_not_s
         # The reference is the private key of the owner's copy: no response carries it.
         assert "photos/" not in response.text, name
 
+    # Without the owner's choice in the request, a kept photo is not offered either.
+    not_chosen = await create(author, make_insight(author, **cases["agreed"][0]))
+    stored = await db_session.scalar(
+        select(InsightPublication).order_by(InsightPublication.id.desc())
+    )
+    assert not_chosen.json()["insight"]["has_photo"] is False
+    assert stored.photo_ref is None
+
 
 async def test_the_photo_rules_are_checked_again_when_the_post_is_made(
     make_member, make_insight, account_app, account_settings
 ):
     offered = {"photo_ref": "photos/a", "photo_consent": True}
     switched_off = await make_member("off")
-    young = await make_member("young")
     no_storage = await make_member("nostorage")
     off_feature = await make_member("feature")
     await agree_to_photos(switched_off)
     await switched_off.http.post(
         "/consents", json={"kind": "photo_storage", "version": "v2", "granted": False}
     )
-    await agree_to_photos(young, age_range="under_13")
     await agree_to_photos(off_feature)
 
     # Nobody answered the photo question for `no_storage`: the account never agreed.
     results = {
         "withdrew the consent": (
-            await create(switched_off, make_insight(switched_off, **offered))
+            await create(switched_off, make_insight(switched_off, **offered), photo=True)
         ).json(),
-        "under 13": (await create(young, make_insight(young, **offered))).json(),
-        "never agreed": (await create(no_storage, make_insight(no_storage, **offered))).json(),
+        "never agreed": (
+            await create(no_storage, make_insight(no_storage, **offered), photo=True)
+        ).json(),
     }
     account_app.state.settings = account_settings.model_copy(
         update={"feature_photo_storage": False}
     )
     results["feature off"] = (
-        await create(off_feature, make_insight(off_feature, **offered))
+        await create(off_feature, make_insight(off_feature, **offered), photo=True)
     ).json()
 
     assert {name: body["insight"]["has_photo"] for name, body in results.items()} == {
         "withdrew the consent": False,
-        "under 13": False,
         "never agreed": False,
         "feature off": False,
     }
+
+
+async def test_an_account_that_said_it_is_under_13_publishes_no_post(make_member, make_insight):
+    young = await make_member("young")
+    assert (await young.http.patch("/profile", json={"age_range": "under_13"})).status_code == 200
+
+    refused = await create(young, make_insight(young))
+
+    assert (refused.status_code, refused.json()["error"]) == (409, "UNDER_13_CANNOT_PUBLISH")
 
 
 async def test_concepts_are_trimmed_and_capped(make_member, make_insight):
@@ -615,8 +633,19 @@ async def test_a_published_post_is_public_to_a_guest_without_the_authors_private
     assert (body["like_count"], body["comment_count"]) == (0, 0)
     assert (body["status_reason"], body["status_message"], body["why"]) == (None, None, None)
     assert body["status"] == "published"
+    assert body["insight"]["photo_url"] is None
     for private in ("Secret Real Name", "author@example.com", str(author.user.id)):
         assert private not in response.text
+
+
+def test_public_social_schemas_have_no_field_for_a_photo_s_storage_key():
+    """A public copy is named by `photo_url` alone; a key of either copy never has a field."""
+    from src.schemas import social
+
+    for schema in (social.PostOut, social.InsightOut, social.FeedPage, social.MyPostsPage):
+        assert not (set(schema.model_fields) & {"photo_key", "photo_public_key", "photo_ref"}), (
+            schema.__name__
+        )
 
 
 async def test_a_followers_only_post_is_for_its_author_and_followers_and_otherwise_a_404(

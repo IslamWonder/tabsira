@@ -13,6 +13,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import clock
+from src.errors import AppError, ErrorCode
 from src.models.consent import Consent
 from src.models.learning import LearnerUnitState
 from src.models.scan import ChatMessage, ChatStatus, Insight, Scan
@@ -21,11 +22,19 @@ from src.models.timeseries import EvidenceExposure
 from src.models.user import OAuthAccount, User
 from src.models.world import Treasure, WorldPlace
 from src.scans import buffer
-from src.schemas.account import AccountExport, LearningExport
+from src.schemas.account import AccountExport, LearningExport, PhotoExport
 from src.schemas.cookie_consent import CookieConsentExport
 from src.schemas.profile import ConsentOut, ProfileOut
-from src.services import atlas_service, cookie_consent_service, profile_service, social_export
+from src.services import (
+    atlas_service,
+    cookie_consent_service,
+    photo_service,
+    profile_service,
+    social_export,
+)
 from src.services.insight_view import answer_is_shown, shown_evidence, shown_ids
+from src.storage.base import StorageError
+from src.storage.photos import PhotoStore
 
 log = logging.getLogger("tabsira.account")
 
@@ -54,7 +63,7 @@ async def _chat_export(
 
 
 async def export_learning(db: AsyncSession, user_id: uuid.UUID) -> LearningExport:
-    """Collect what the scan workflow keeps for an account: no photo, scripture by reference."""
+    """Collect what the scan workflow keeps: scripture by reference, kept photos by insight."""
     scans = (
         await db.scalars(select(Scan).where(Scan.user_id == user_id).order_by(Scan.created_at))
     ).all()
@@ -107,6 +116,11 @@ async def export_learning(db: AsyncSession, user_id: uuid.UUID) -> LearningExpor
             "treasures": treasures,
             "learner_units": units,
             "exposures": exposures,
+            "photos": [
+                PhotoExport(insight_id=insight.id, published=insight.photo_public_key is not None)
+                for insight in insights
+                if insight.photo_key is not None
+            ],
         },
         from_attributes=True,
     )
@@ -150,7 +164,7 @@ async def export_account(db: AsyncSession, user: User) -> AccountExport:
     )
 
 
-async def delete_account(db: AsyncSession, user: User, *, redis: Redis) -> None:
+async def delete_account(db: AsyncSession, user: User, *, redis: Redis, photos: PhotoStore) -> None:
     """
     Delete the user and, by ON DELETE CASCADE, everything that references them.
 
@@ -162,9 +176,19 @@ async def delete_account(db: AsyncSession, user: User, *, redis: Redis) -> None:
     and its guard lets exactly this cascade through. The evidence exposures name
     the user without a foreign key and are deleted here; the photos still in the
     temporary store are deleted from Redis first (they would expire within the
-    hour anyway). Anything a later feature stores outside the database (photos in
-    object storage) must be removed here too.
+    hour anyway). The photos kept in object storage (both copies of each) are
+    deleted before the rows that know their keys; a store that cannot be reached
+    stops the deletion with 503, so no photo is ever left behind without its
+    account, and the person can ask again.
     """
+    try:
+        await photo_service.remove_all(db, photos, user.id)
+    except StorageError:
+        raise AppError(
+            ErrorCode.STORAGE_UNAVAILABLE,
+            "The account's photos could not be deleted; nothing was deleted. Try again.",
+            status_code=503,
+        ) from None
     scan_ids = (await db.scalars(select(Scan.id).where(Scan.user_id == user.id))).all()
     try:
         for scan_id in scan_ids:

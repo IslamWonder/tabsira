@@ -10,7 +10,7 @@ User=@APP_USER@
 Group=@APP_GROUP@
 WorkingDirectory=@APP_ROOT@/current/apps/api
 Environment=UV_PYTHON_PREFERENCE=only-managed
-Environment=ENV_FILE=@APP_ROOT@/shared/.env
+Environment=ENV_FILE=@ENV_FILE@
 ExecStart=@APP_HOME@/.local/bin/uv run --no-sync python -m src.cli.sync_quran
 TimeoutStartSec=30min
 NoNewPrivileges=true

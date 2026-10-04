@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.models.scan import Insight
 from src.models.social import (
     Block,
     Bookmark,
@@ -37,11 +38,27 @@ async def _handles(db: AsyncSession, statement: Select[str | None, datetime]) ->
     ]
 
 
+PHOTO_FACTS = frozenset({"has_photo", "published"})
+
+
+def _publication(publication: InsightPublication, copy_exists: bool | None) -> PublicationExport:
+    """Return the publication for its owner, the photo as facts: the choice made, a copy existing now."""
+    chosen = publication.photo_ref is not None
+    columns = {
+        name: getattr(publication, name)
+        for name in PublicationExport.model_fields
+        if name not in PHOTO_FACTS
+    }
+    return PublicationExport(**columns, has_photo=chosen, published=chosen and bool(copy_exists))
+
+
 async def collect(db: AsyncSession, user: User) -> SocialExport:
     """Gather the user's posts, comments, follows, blocks, likes, bookmarks and reports."""
+    # The insight's public key says whether a copy exists now; the key itself never leaves.
     posts = await db.execute(
-        select(Post, InsightPublication)
+        select(Post, InsightPublication, Insight.photo_public_key.is_not(None))
         .outerjoin(InsightPublication, InsightPublication.id == Post.publication_id)
+        .outerjoin(Insight, Insight.id == InsightPublication.insight_id)
         .where(Post.author_id == user.id)
         .order_by(Post.created_at, Post.id)
     )
@@ -75,10 +92,10 @@ async def collect(db: AsyncSession, user: User) -> SocialExport:
                 removed_at=post.removed_at,
                 removal_source=post.removal_source,
                 publication=(
-                    None if publication is None else PublicationExport.model_validate(publication)
+                    None if publication is None else _publication(publication, copy_exists)
                 ),
             )
-            for post, publication in posts
+            for post, publication, copy_exists in posts
         ],
         comments=[
             CommentExport(

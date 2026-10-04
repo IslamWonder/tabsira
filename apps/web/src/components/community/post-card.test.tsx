@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { apiError, mockApi } from '@/test/api';
 import { USER } from '@/test/fixtures';
 import { HADITH_TEXT, IDENTITY, MY_POST, POST, QURAN_TEXT, sha256 } from '@/test/social';
-import { PostCard } from './post-card';
+import { PostCard, revealLabel } from './post-card';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/community' }));
 
@@ -212,5 +212,102 @@ describe('PostCard reactions', () => {
       'href',
       '/me#settings'
     );
+  });
+
+  it('tells an unverified account to confirm its address, with no link, and shows a refused reaction', async () => {
+    const onChange = vi.fn();
+    mockApi({
+      'GET /auth/me': { body: { ...USER, email_verified: false } },
+    });
+    render(<PostCard post={POST} onChange={onChange} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: /^أثر/ })).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /^أثر/ }));
+    expect(await screen.findByRole('status')).toHaveTextContent('أكّد بريدك لتترك أثرًا.');
+    expect(screen.queryByRole('link', { name: 'ادخل' })).toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('says when a like or a save is refused and keeps the post as it was', async () => {
+    const onChange = vi.fn();
+    const api = member({
+      'DELETE /posts/7345678901234567890/like': apiError(429, 'RATE_LIMITED'),
+      'DELETE /posts/7345678901234567890/bookmark': 'network-error',
+    });
+    render(
+      <PostCard
+        post={{
+          ...POST,
+          like_count: 0,
+          visibility: 'followers',
+          viewer: { liked: true, bookmarked: true, is_author: false },
+        }}
+        onChange={onChange}
+      />
+    );
+    await waitFor(() =>
+      expect(api.requests.some((r) => r.url.endsWith('/me/public-identity'))).toBe(true)
+    );
+    expect(screen.getByText('للمتابعين')).toBeInTheDocument();
+    const like = screen.getByRole('button', { name: 'تركت أثرًا' });
+    expect(like).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(like);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'محفوظ' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/تعذّر/));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('what a card leaves out', () => {
+  it('names the reveal by what the post holds', () => {
+    const only = (quran: number, hadith: number) => ({
+      ...POST.insight,
+      quran: POST.insight.quran.slice(0, quran),
+      hadith: POST.insight.hadith.slice(0, hadith),
+    });
+    expect(revealLabel(only(1, 1))).toBe('اعرض الآية والحديث');
+    expect(revealLabel(only(1, 0))).toBe('اعرض الآية');
+    expect(revealLabel(only(0, 1))).toBe('اعرض الحديث');
+    expect(revealLabel(only(0, 0))).toBe('اعرض الدليل');
+  });
+
+  it('shows no reflection block and no step when the post has none', () => {
+    guest();
+    render(
+      <PostCard
+        post={{ ...POST, reflection: null, insight: { ...POST.insight, step: null } }}
+        onChange={vi.fn()}
+      />
+    );
+    expect(screen.queryByRole('region', { name: 'كلمات الكاتب' })).toBeNull();
+    expect(screen.queryByText(/خطوة/)).toBeNull();
+  });
+
+  it('shows the public photo on the full card only, from the address the API gave', () => {
+    guest();
+    const url = 'https://media.tabsira.test/public/0123456789abcdef0123456789abcdef.jpg';
+    const withPhoto = { ...POST, insight: { ...POST.insight, has_photo: true, photo_url: url } };
+    const { unmount } = render(<PostCard post={withPhoto} onChange={vi.fn()} variant="full" />);
+    const photo = screen.getByRole('img', {
+      name: 'صورة المشهد الذي وُلدت منه البصيرة «[عنوان البصيرة]»',
+    });
+    expect(photo).toHaveAttribute('src', url);
+    expect(photo).toHaveAttribute('loading', 'lazy');
+    unmount();
+
+    render(<PostCard post={withPhoto} onChange={vi.fn()} />);
+    expect(screen.queryByTestId('public-photo')).toBeNull();
+  });
+
+  it('shows no photo without an address, whatever the owner chose', () => {
+    guest();
+    render(
+      <PostCard
+        post={{ ...POST, insight: { ...POST.insight, has_photo: true, photo_url: null } }}
+        onChange={vi.fn()}
+        variant="full"
+      />
+    );
+    expect(screen.queryByTestId('public-photo')).toBeNull();
   });
 });

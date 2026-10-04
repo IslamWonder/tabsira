@@ -8,6 +8,9 @@ CASCADE). No photo is stored here: a scan keeps the meaning of its scene, the
 photo lives only in the temporary store for an hour (never for a sensitive
 scene). An insight keeps its evidence by reference only; the text of a verse or
 a hadith is always read from the scripture store when the insight is shown.
+When «تمّ» keeps the photo with its owner's consent (v2 §19, `photo_service`),
+the insight holds only the random keys of the copies in the photo store, never
+the image.
 """
 
 from __future__ import annotations
@@ -41,6 +44,8 @@ from src.models.base import Base, created_at_column, string_enum
 from src.models.public_id import public_id_pk
 
 GUEST_KEY_LENGTH = 64
+# `private/` or `public/`, 32 hex digits and `.jpg` (src/storage/base.py): 44 characters.
+PHOTO_KEY_LENGTH = 64
 ONE_OWNER = "num_nonnulls(user_id, guest_key) = 1"
 
 
@@ -260,6 +265,11 @@ class Insight(Base):
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The last time the owner took it down; kept for the owner's history, never public.
     withdrawn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The owner's private copy in the photo store (`private/<random>.jpg`), kept at «تمّ» under
+    # the rules of v2 §19, and the one public copy made while a post or a map entry shows it.
+    # Random keys, never a path that names the owner; neither is ever in a public response.
+    photo_key: Mapped[str | None] = mapped_column(String(PHOTO_KEY_LENGTH))
+    photo_public_key: Mapped[str | None] = mapped_column(String(PHOTO_KEY_LENGTH))
     created_at: Mapped[datetime] = created_at_column()
 
 

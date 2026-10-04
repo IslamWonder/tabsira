@@ -20,8 +20,8 @@ from src.models import HadithClassification, MapCapturePoint, MapEntry
 from src.owner import Owner
 from src.scripture.rulings import RulingInput, find_hadith, record_ruling
 from src.scripture.text import sha256_hex
+from src.services import atlas_service, sitemap_service
 from src.services import cursor as cursors
-from src.services import sitemap_service
 from src.services.sitemap_service import Section
 from tests import geo_dataset as world_data
 from tests.geo_dataset import TUNIS, TUNIS_CITY
@@ -33,7 +33,8 @@ from tests.support_social import Member
 EXACT = (36.806512, 10.181534)
 CELL_M = 1000
 # No private field, and no timestamp: an insight id or a time to the second would say when the
-# photo was taken or when its owner was there.
+# photo was taken or when its owner was there. A photo's storage keys stay on the server: the
+# public copy is named by `photo_url` alone.
 PRIVATE_KEYS = {
     "latitude",
     "longitude",
@@ -44,6 +45,9 @@ PRIVATE_KEYS = {
     "insight_id",
     "published_at",
     "created_at",
+    "photo_key",
+    "photo_public_key",
+    "photo_ref",
 }
 
 
@@ -244,6 +248,11 @@ async def test_publishing_and_withdrawing_follow_the_states(
     assert (entry.public_lat, entry.public_lng, entry.public_geom) == (None, None, None)
     # Nothing of the location survives the tombstone: not even the place it was labelled with.
     assert (entry.place_geoname_id, entry.place_label, entry.country_iso2) == (None, None, None)
+    # The owner still sees the withdrawn entry in the list, with nothing of its location left.
+    withdrawn = (await author.http.get("/me/map-entries")).json()
+    assert [(item["status"], item["public"], item["place"]) for item in withdrawn] == [
+        ("withdrawn", None, None)
+    ]
     # The owner has no live entry any more; withdrawing again changes nothing.
     assert (await author.http.get(f"/insights/{insight_id}/map")).status_code == 404
     assert (await author.http.delete(f"/insights/{insight_id}/map")).status_code == 204
@@ -658,7 +667,7 @@ async def test_an_account_that_said_it_is_under_13_places_nothing(
 
     refused = await _place(author, insight_id)
 
-    assert (refused.status_code, refused.json()["error"]) == (409, "INSIGHT_NOT_PUBLISHABLE")
+    assert (refused.status_code, refused.json()["error"]) == (409, "UNDER_13_CANNOT_PUBLISH")
 
 
 async def test_a_text_that_reads_like_scripture_is_never_placed(
@@ -716,3 +725,56 @@ async def test_enough_reports_hide_an_entry_until_a_moderator_decides(
     mine = (await author.http.get(f"/insights/{insight_id}/map")).json()
     assert mine["status"] == "removed" and "معلومات خاصة" in mine["status_message"]
     assert (await _place(author, insight_id)).status_code == 409
+
+
+# ─── Rows the normal flow never leaves behind ───
+
+
+async def test_withdrawing_an_entry_whose_exact_point_is_already_gone(
+    db_session, make_member, make_insight, world
+):
+    author = await make_member("author")
+    insight_id = await _insight(db_session, author)
+    entry_id = await _published(author, insight_id)
+    point = await db_session.get(MapCapturePoint, int(entry_id))
+    assert point is not None
+    await db_session.delete(point)
+    await db_session.flush()
+
+    assert (await author.http.delete(f"/insights/{insight_id}/map")).status_code == 204
+
+    entry = await db_session.get(MapEntry, int(entry_id))
+    assert entry is not None and entry.status.value == "withdrawn"
+    assert (entry.public_lat, entry.public_lng) == (None, None)
+
+
+async def test_an_entry_page_without_a_public_point_is_not_found(
+    db_session, make_member, make_insight, world, monkeypatch
+):
+    author = await make_member("author")
+    guest = await make_member(signed_in=False)
+    entry_id = await _published(author, await _insight(db_session, author))
+    # A published row always has its public point; should one ever lose it, the page says nothing.
+    monkeypatch.setattr(atlas_service, "public_location", lambda entry: None)
+
+    response = await guest.http.get(f"/atlas/entries/{entry_id}")
+
+    assert response.status_code == 404
+    assert_public(response)
+
+
+async def test_a_place_page_whose_entries_lost_their_label_is_not_found(
+    db_session, make_member, make_insight, world
+):
+    author = await make_member("author")
+    guest = await make_member(signed_in=False)
+    entry_id = await _published(author, await _insight(db_session, author))
+    entry = await db_session.get(MapEntry, int(entry_id))
+    assert entry is not None and entry.place_geoname_id == TUNIS_CITY
+    entry.place_label = None
+    await db_session.flush()
+
+    response = await guest.http.get(f"/atlas/places/{TUNIS_CITY}")
+
+    assert response.status_code == 404
+    assert_public(response)

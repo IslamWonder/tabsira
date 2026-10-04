@@ -591,7 +591,7 @@
       "patch": {
         "tags": ["profile"],
         "summary": "Change some answers of the caller's profile",
-        "description": "Change the fields sent and no others.\n\nEnums are validated; a null is refused (send `unknown` to clear an answer).\nThe three consent switches change through `POST /consents` only.",
+        "description": "Change the fields sent and no others.\n\nEnums are validated; a null is refused (send `unknown` to clear an answer).\nThe three consent switches change through `POST /consents` only; declaring under 13\nwithdraws the photo consent and deletes the kept photos (503 when the store is down).",
         "operationId": "patch_profile_profile_patch",
         "requestBody": {
           "content": {
@@ -631,7 +631,7 @@
       "post": {
         "tags": ["profile"],
         "summary": "Record an answer to a consent question",
-        "description": "Append the answer to the user's consent history, and update the matching switch.\n\nA consent is withdrawn by recording the same kind with `granted` false. The\nhistory is never edited.",
+        "description": "Append the answer to the user's consent history, and update the matching switch.\n\nA consent is withdrawn by recording the same kind with `granted` false. The\nhistory is never edited. Withdrawing the photo consent deletes the kept photos\nfirst; 503 STORAGE_UNAVAILABLE, with nothing recorded, when the store is down.",
         "operationId": "post_consent_consents_post",
         "requestBody": {
           "content": {
@@ -701,7 +701,7 @@
       "delete": {
         "tags": ["account"],
         "summary": "Delete the account and everything it owns",
-        "description": "Delete the user, their profile, consents, identities, sessions and everything they saved.\n\nIdempotent: without a valid session there is nothing left to delete, and the\nanswer is the same 204 that clears the cookie.",
+        "description": "Delete the user, their profile, consents, identities, sessions, photos and everything they saved.\n\nIdempotent: without a valid session there is nothing left to delete, and the\nanswer is the same 204 that clears the cookie. 503 STORAGE_UNAVAILABLE, with nothing\ndeleted, when the photo store cannot be reached.",
         "operationId": "delete_account_account_delete",
         "responses": {
           "204": {
@@ -1635,7 +1635,7 @@
       "delete": {
         "tags": ["posts"],
         "summary": "Withdraw a post",
-        "description": "Withdraw a post, a draft or a published one.\n\nIts reflection, its comments, its likes and its saves are erased at once, it leaves every\nfeed and every profile, and its address answers 410 Gone from then on (this route too).",
+        "description": "Withdraw a post, a draft or a published one.\n\nIts reflection, its comments, its likes and its saves are erased at once, with the public\ncopy of its photo, it leaves every feed and every profile, and its address answers 410 Gone\nfrom then on (this route too).",
         "operationId": "delete_post_posts__post_id__delete",
         "parameters": [
           {
@@ -2157,7 +2157,7 @@
       "post": {
         "tags": ["reports"],
         "summary": "Report a post, a comment or a map entry",
-        "description": "Tell the moderators about something the caller may read.\n\nThe reasons include a false attribution of a religious claim, a photo published without\npermission, a place that is not right and a location or photo that gives away private\ninformation. 404 for what the caller may not read, and for a target whose feature is switched\noff, 400 for their own words. Reporting the same thing twice answers with the first report. Enough different reporters send a published\nitem back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`).",
+        "description": "Tell the moderators about something the caller may read.\n\nThe reasons include a false attribution of a religious claim, a photo published without\npermission, a place that is not right and a location or photo that gives away private\ninformation. 404 for what the caller may not read, and for a target whose feature is switched\noff, 400 for their own words. Reporting the same thing twice answers with the first report. Enough different reporters send a published\nitem back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`), and the public copy of a\nphoto it showed is deleted until a moderator approves it.",
         "operationId": "report_reports_post",
         "requestBody": {
           "content": {
@@ -2960,7 +2960,7 @@
       "post": {
         "tags": ["insights"],
         "summary": "«تمّ»: complete the insight, once",
-        "description": "Complete the insight; a second call saves nothing more and answers the same place.",
+        "description": "Complete the insight; a second call saves nothing more and answers the same place.\n\nThe first «تمّ» of a signed-in owner who consented to keep photos also keeps the scan's\nphoto privately (v2 §19); nothing is kept for a guest or a sensitive scene.",
         "operationId": "complete_insight_insights__insight_id__complete_post",
         "parameters": [
           {
@@ -3285,7 +3285,7 @@
       "put": {
         "tags": ["atlas"],
         "summary": "Place one of the caller's insights on the atlas, as a draft",
-        "description": "Keep the exact point privately and answer with what the map will show.\n\nThe public point is the centre of the grid cell (GEO_APPROX_CELL_METERS), labelled with\nthe nearest populated place; the answer carries the cell as a polygon, so the owner reviews\nit before publishing. 409 INSIGHT_NOT_PUBLISHABLE for an insight that is not the pipeline's.",
+        "description": "Keep the exact point privately and answer with what the map will show.\n\nThe public point is the centre of the grid cell (GEO_APPROX_CELL_METERS), labelled with\nthe nearest populated place; the answer carries the cell as a polygon, so the owner reviews\nit before publishing. 409 INSIGHT_NOT_PUBLISHABLE for an insight that is not the pipeline's.\nPlacing a published entry again takes it off the map, and its photo's public copy with it.",
         "operationId": "place_insight_insights__insight_id__map_put",
         "parameters": [
           {
@@ -3736,6 +3736,44 @@
         }
       }
     },
+    "/media/public/{name}": {
+      "get": {
+        "tags": ["media"],
+        "summary": "A photo's public copy (local disk only)",
+        "description": "Return the published copy under `public/<name>`; 404 when the store is S3 or there is none.",
+        "operationId": "public_photo_media_public__name__get",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}\\.jpg$",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/tutorial/rain": {
       "get": {
         "tags": ["tutorial"],
@@ -3793,6 +3831,46 @@
                   "$ref": "#/components/schemas/InsightDetailOut"
                 }
               }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sounds/ontology/{entity_id}": {
+      "get": {
+        "tags": ["sounds"],
+        "summary": "The sound effect of one ontology entity, as MP3",
+        "description": "Return `static/ontology/audio/<entity_id>.mp3` of the bucket; 404 when it was not uploaded.",
+        "operationId": "ontology_sound_sounds_ontology__entity_id__get",
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^E[0-9]{3,4}$",
+              "description": "An ontology id such as E001",
+              "title": "Entity Id"
+            },
+            "description": "An ontology id such as E001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "audio/mpeg": {}
             }
           },
           "default": {
@@ -4077,6 +4155,18 @@
             "title": "Post Id",
             "description": "The public post of the same insight, if one is published"
           },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url",
+            "description": "The address of the photo's public copy, only when the owner chose to show it with the entry and the copy exists; null otherwise. Never a storage key."
+          },
           "published_on": {
             "type": "string",
             "format": "date",
@@ -4098,6 +4188,7 @@
           "quran",
           "hadith",
           "post_id",
+          "photo_url",
           "published_on"
         ],
         "title": "AtlasEntryOut",
@@ -4368,6 +4459,12 @@
               }
             ],
             "title": "Measured At"
+          },
+          "photo": {
+            "type": "boolean",
+            "title": "Photo",
+            "description": "Show the insight's kept photo with the entry; nothing without a kept photo and the owner's photo consent (v2 §19)",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -6303,6 +6400,18 @@
             "type": "string",
             "title": "Relation Label"
           },
+          "sound_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sound Url",
+            "description": "Path on this API of the sound effect of the insight's main ontology entity"
+          },
           "quran": {
             "anyOf": [
               {
@@ -6446,6 +6555,7 @@
           "anchor",
           "relation",
           "relation_label",
+          "sound_url",
           "quran",
           "hadith",
           "hadith_status",
@@ -6745,10 +6855,15 @@
               }
             ],
             "title": "Url"
+          },
+          "has_photo": {
+            "type": "boolean",
+            "title": "Has Photo",
+            "description": "The owner's own copy was kept at «تمّ» (v2 §19), so a publication may offer to show it; the key itself is never served"
           }
         },
         "type": "object",
-        "required": ["sensitive", "url"],
+        "required": ["sensitive", "url", "has_photo"],
         "title": "InsightImageOut",
         "description": "Whether the photo of the insight's scan may be shown; never for a sensitive scene."
       },
@@ -6798,7 +6913,19 @@
           "has_photo": {
             "type": "boolean",
             "title": "Has Photo",
-            "description": "The owner agreed to publish a photo with it; its address is not here yet"
+            "description": "The owner chose to show a photo with it"
+          },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url",
+            "description": "The address of the photo's public copy, only on a published public post while the copy exists; null otherwise. Never a storage key."
           },
           "insight_version": {
             "type": "integer",
@@ -6828,6 +6955,7 @@
           "explanation",
           "step",
           "has_photo",
+          "photo_url",
           "insight_version",
           "quran",
           "hadith"
@@ -7039,6 +7167,13 @@
             },
             "type": "array",
             "title": "Exposures"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/PhotoExport"
+            },
+            "type": "array",
+            "title": "Photos"
           }
         },
         "type": "object",
@@ -7049,7 +7184,8 @@
           "places",
           "treasures",
           "learner_units",
-          "exposures"
+          "exposures",
+          "photos"
         ],
         "title": "LearningExport",
         "description": "Everything the scan workflow keeps for the account."
@@ -7228,6 +7364,11 @@
               }
             ]
           },
+          "photo": {
+            "type": "boolean",
+            "title": "Photo",
+            "description": "The owner chose to show the insight's photo with it"
+          },
           "published_at": {
             "anyOf": [
               {
@@ -7268,6 +7409,7 @@
           "capture",
           "public",
           "place",
+          "photo",
           "published_at",
           "withdrawn_at",
           "created_at"
@@ -7505,6 +7647,24 @@
         "type": "object",
         "required": ["provider", "subject", "created_at"],
         "title": "OAuthAccountExport"
+      },
+      "PhotoExport": {
+        "properties": {
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id"
+          },
+          "published": {
+            "type": "boolean",
+            "title": "Published",
+            "description": "A post or a map entry shows a public copy right now"
+          }
+        },
+        "type": "object",
+        "required": ["insight_id", "published"],
+        "title": "PhotoExport",
+        "description": "A photo «تمّ» kept with the owner's consent (v2 §19): which insight, and whether a copy is public.\n\nThe export says that the photo exists; the image itself is not in the file, and neither are\nthe keys of its copies."
       },
       "PlaceExport": {
         "properties": {
@@ -7779,6 +7939,12 @@
           "visibility": {
             "$ref": "#/components/schemas/PostVisibility",
             "default": "public"
+          },
+          "photo": {
+            "type": "boolean",
+            "title": "Photo",
+            "description": "Show the insight's kept photo with the post; nothing without a kept photo and the owner's photo consent (v2 §19)",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -8724,16 +8890,15 @@
             ],
             "title": "Step Text"
           },
-          "photo_ref": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Photo Ref"
+          "has_photo": {
+            "type": "boolean",
+            "title": "Has Photo",
+            "description": "The owner chose to show the insight's photo with this post"
+          },
+          "published": {
+            "type": "boolean",
+            "title": "Published",
+            "description": "A public copy of the photo exists right now"
           },
           "created_at": {
             "type": "string",
@@ -8754,11 +8919,12 @@
           "hadith_refs",
           "explanation_excerpt",
           "step_text",
-          "photo_ref",
+          "has_photo",
+          "published",
           "created_at"
         ],
         "title": "PublicationExport",
-        "description": "The copy of an insight a post published: references to the evidence, never scripture."
+        "description": "The copy of an insight a post published: references to the evidence, never scripture.\n\nThe photo is stated as two facts, like `learning.photos`: whether the owner chose to show\nit with this publication, and whether a public copy exists right now. Never a key."
       },
       "PublicationOut": {
         "properties": {
