@@ -346,6 +346,8 @@ async def test_every_foreign_key_to_users_cascades_so_deleting_an_account_leaves
         "cookie_consents",
         "email_tokens",
         "learner_unit_states",
+        "admin_sessions",
+        "admin_totp",
     }
     assert {row.confdeltype for row in rows} == {"c"}
 
@@ -385,6 +387,8 @@ def test_every_table_lives_in_the_app_schema():
         "scripture_audit",
         # The admin area
         "admin_audit_log",
+        "admin_sessions",
+        "admin_totp",
     }
 
     assert {name.removeprefix(f"{APP_SCHEMA}.") for name in Base.metadata.tables} == tables
