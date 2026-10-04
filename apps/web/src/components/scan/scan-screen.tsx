@@ -3,7 +3,6 @@
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
-import { EdgeGlow } from '@/components/fx/edge-glow';
 import { DisclosureLine } from '@/components/insight/disclosure-line';
 import { EngineLabel } from '@/components/insight/engine-label';
 import { SeenNote } from '@/components/insight/insight-frame';
@@ -205,36 +204,33 @@ export function ScanScreen({ scanId }: { scanId: string }) {
   }
 
   return (
-    <>
-      <EdgeGlow active={running} />
-      <StageLayout
-        stageFirstOnPhone
-        stageLabel={T.photoAlt}
-        stageClassName="h-[52dvh] min-h-[320px]"
-        panel={
-          <div className="flex flex-col gap-6 px-4 pt-5 pb-8 tablet:p-0">
-            <h1 className="m-0 font-bold font-display text-[2rem] text-gilded leading-[1.3]">
-              {T.metaTitle}
-            </h1>
-            <Announce>{announcement}</Announce>
-            {scan === null ? null : <EngineLabel engine={scan.engine} label={scan.engine_label} />}
-            {body}
-            <DisclosureLine />
-          </div>
-        }
-        stage={
-          <ScanStage
-            scan={scan}
-            running={running}
-            focusing={focusing && scan !== null}
-            selectedEntity={selectedEntity}
-            onSelectEntity={setSelectedEntity}
-            points={points.onPhoto}
-            onSelectPoint={openInsight}
-            backHref="/"
-          />
-        }
-      />
-    </>
+    <StageLayout
+      stageFirstOnPhone
+      stageLabel={T.photoAlt}
+      stageClassName="h-[52dvh] min-h-[320px]"
+      panel={
+        <div className="flex flex-col gap-6 px-4 pt-5 pb-8 tablet:p-0">
+          <h1 className="m-0 font-bold font-display text-[2rem] text-gilded leading-[1.3]">
+            {T.metaTitle}
+          </h1>
+          <Announce>{announcement}</Announce>
+          {scan === null ? null : <EngineLabel engine={scan.engine} label={scan.engine_label} />}
+          {body}
+          <DisclosureLine />
+        </div>
+      }
+      stage={
+        <ScanStage
+          scan={scan}
+          running={running}
+          focusing={focusing && scan !== null}
+          selectedEntity={selectedEntity}
+          onSelectEntity={setSelectedEntity}
+          points={points.onPhoto}
+          onSelectPoint={openInsight}
+          backHref="/"
+        />
+      }
+    />
   );
 }

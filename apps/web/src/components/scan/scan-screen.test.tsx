@@ -93,7 +93,6 @@ describe('ScanScreen: the stages', () => {
     expect(
       within(stages).getByText('ما زلنا نعمل على طلبك، وقد يستغرق وقتًا أطول من المعتاد.')
     ).toBeInTheDocument();
-    expect(document.querySelector('[data-edge-glow="active"]')).not.toBeNull();
   });
 
   it('says it waits its turn before any stage has begun', () => {

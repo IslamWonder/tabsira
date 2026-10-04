@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { BURST_EVENT } from './burst';
 import { celebrate, VICTORY_EVENT } from './celebrate';
-import { EdgeGlow } from './edge-glow';
 import { Flash } from './flash';
 import { FocusMarker } from './focus-marker';
 import { GeometricPattern } from './geometric-pattern';
@@ -130,14 +129,7 @@ describe('OrnamentDivider', () => {
   });
 });
 
-describe('EdgeGlow and Flash', () => {
-  it('glow at the edges only while active', () => {
-    const { container, rerender } = render(<EdgeGlow active={false} />);
-    expect(container.firstChild).toBeNull();
-    rerender(<EdgeGlow active />);
-    expect(container.querySelector('[data-edge-glow]')).toHaveAttribute('aria-hidden', 'true');
-  });
-
+describe('Flash', () => {
   it('flash once per new trigger, never for zero', () => {
     const { container, rerender } = render(<Flash trigger={0} />);
     expect(container.firstChild).toBeNull();

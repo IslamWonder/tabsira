@@ -310,7 +310,6 @@
   }
 }
 
-
 @keyframes fx-drift-a {
   0%,
   100% {
@@ -499,12 +498,3 @@
   }
 }
 
-@keyframes fx-breathe-edge {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
-}

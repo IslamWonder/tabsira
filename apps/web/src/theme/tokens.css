@@ -132,7 +132,6 @@
   --cursor-core: #fff4d6;
   --cursor-glow: rgba(198, 161, 91, 0.9);
   --sweep-band: rgba(255, 244, 214, 0.85);
-  --edge-glow: rgba(198, 161, 91, 0.45);
   --banner-ground: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.94) 18%, rgba(255, 255, 255, 0.96) 82%, transparent);
   --shimmer: linear-gradient(110deg, #7a5a1c 0%, #9a7430 35%, #c6a15b 50%, #9a7430 65%, #7a5a1c 100%);
   /* the call to capture: gold light by day (the earlier prototype's primary), the glowing emerald by night */
@@ -262,7 +261,6 @@
     --cursor-core: #fff4d6;
     --cursor-glow: rgba(230, 199, 127, 0.95);
     --sweep-band: rgba(255, 244, 214, 0.7);
-    --edge-glow: rgba(230, 199, 127, 0.4);
     --banner-ground: linear-gradient(90deg, transparent, rgba(11, 18, 16, 0.9) 18%, rgba(11, 18, 16, 0.92) 82%, transparent);
     --shimmer: linear-gradient(110deg, #c6a15b 0%, #e6c77f 35%, #fff4d6 50%, #e6c77f 65%, #c6a15b 100%);
     /* the call to capture: gold light by day (the earlier prototype's primary), the glowing emerald by night */
@@ -392,7 +390,6 @@
   --cursor-core: #fff4d6;
   --cursor-glow: rgba(230, 199, 127, 0.95);
   --sweep-band: rgba(255, 244, 214, 0.7);
-  --edge-glow: rgba(230, 199, 127, 0.4);
   --banner-ground: linear-gradient(90deg, transparent, rgba(11, 18, 16, 0.9) 18%, rgba(11, 18, 16, 0.92) 82%, transparent);
   --shimmer: linear-gradient(110deg, #c6a15b 0%, #e6c77f 35%, #fff4d6 50%, #e6c77f 65%, #c6a15b 100%);
   /* the call to capture: gold light by day (the earlier prototype's primary), the glowing emerald by night */
