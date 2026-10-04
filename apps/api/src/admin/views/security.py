@@ -167,7 +167,6 @@ class TwoFactorView(BaseView):
             correct = await admin_totp_service.verify(db, settings, user, code)
             if correct:
                 await rate_limit.settle(db, attempt)
-            if correct:
                 await admin_totp_service.disable(db, user.id)
             await db.commit()
         if not correct:
