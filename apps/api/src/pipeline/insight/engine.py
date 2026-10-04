@@ -7,14 +7,19 @@ UNDERSTANDING   the ontology resolves the scene and applies its constraints (a
                 planner proposes up to three candidates with concept queries.
 SEARCHING       hybrid search, Quran and hadith apart, then the reranker
                 (decision 41) over every list at once.
-VERIFYING       the verifier judges every shortlisted text; the gate keeps the
-                eligible and relevant ones (decision 18 for hadith), queues a
-                wanted hadith without a ruling, prefers a text the learner has
-                not seen at equal strength. A candidate with no evidence goes
-                back to the planner with what failed: two refinement rounds
-                at most, then it is dropped.
-COMPOSING       the composer writes the explanation; scripture never leaves the
-                store through it.
+VERIFYING       the verifier judges every shortlisted text, one call per
+                candidate, all at once; the gate keeps the eligible and
+                relevant ones (decision 18 for hadith), queues a wanted hadith
+                without a ruling, prefers a text the learner has not seen at
+                equal strength. When no candidate found evidence, the failed
+                ones go back to the planner with what failed: two refinement
+                rounds at most. Once one insight holds, the others are dropped
+                instead (a refinement round took about ten seconds and brought
+                weaker texts).
+COMPOSING       the composer writes the explanation, one call per insight, all
+                at once; scripture never leaves the store through it. A
+                general reminder is kept only when nothing stronger holds
+                (v2 §8).
 
 The result is honest about what happened: `needs_clarification` with one
 question, `no_relevant_evidence` when nothing passed the gate (abstaining is a
@@ -48,6 +53,7 @@ from src.pipeline.engine import (
     EngineStatus,
     HadithRef,
     ProgressCallback,
+    RelationType,
 )
 from src.pipeline.insight.composer import InsightComposer
 from src.pipeline.insight.context import SceneContext, build_context
@@ -340,7 +346,7 @@ class PipelineInsightEngine:
                     passed.append(result)
                 else:
                     failed.append(shortlist.candidate)
-            if not failed or refinements == self._rounds:
+            if passed or not failed or refinements == self._rounds:
                 break
             refinements += 1
             await clock.enter(EngineStage.SEARCHING)
@@ -438,7 +444,10 @@ class PipelineInsightEngine:
             if pair not in pairs:
                 pairs.add(pair)
                 kept.append(result)
-        return kept[: request.max_insights]
+        # v2 §8: a general reminder is the last rung, for when nothing above it holds, so it
+        # never sits beside a stronger insight and comes once.
+        stronger = [r for r in kept if r.relation is not RelationType.THEMATIC_REMINDER]
+        return (stronger or kept[:1])[: request.max_insights]
 
 
 # One per process: every engine the factory builds shares the indexes and the shingles.

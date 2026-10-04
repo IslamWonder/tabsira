@@ -119,10 +119,16 @@ class GateResult:
 
     @property
     def relation(self) -> RelationType:
-        """The weaker of the planned relation and the main text's own relation to the scene."""
+        """
+        The weaker of the planned relation and the main text's own relation to the scene.
+
+        A main text the verifier called weak (a general or remote link) makes a general
+        reminder, whatever relation was claimed for it.
+        """
         main = self.quran or self.hadith
-        found = main.relation if main else RelationType.THEMATIC_REMINDER
-        return max(self.candidate.relation, found, key=RELATION_ORDER.__getitem__)
+        if main is None or main.strength == "weak":
+            return RelationType.THEMATIC_REMINDER
+        return max(self.candidate.relation, main.relation, key=RELATION_ORDER.__getitem__)
 
 
 def verifier_message(scene: SceneAnalysis, shortlists: Sequence[Shortlist]) -> str:

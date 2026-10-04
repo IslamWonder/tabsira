@@ -292,6 +292,24 @@ async def test_a_refined_candidate_that_finds_evidence_is_kept(maker):
     assert result.status is EngineStatus.OK
 
 
+async def test_once_one_candidate_holds_the_failed_ones_are_not_refined(maker):
+    engine, client = make_engine(
+        maker,
+        [
+            plan_answer(planned(), planned(title="ثانية", quran_queries=["خلق السماوات"])),
+            verify_all(),
+            verify_none,
+            compose_answer(composed(0)),
+        ],
+    )
+
+    result = await engine.propose(EngineRequest(scan_id="s15", scene=rain_scene()))
+
+    assert result.status is EngineStatus.OK
+    stages = [call["stage"].value for call in client.calls]
+    assert stages == ["planner", "verify", "verify", "compose"]
+
+
 async def test_two_candidates_on_the_same_texts_make_one_insight(maker):
     engine, _ = make_engine(
         maker,

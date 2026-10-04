@@ -28,7 +28,7 @@ from src.pipeline.insight.composer import (
     cites_only_its_own,
 )
 from src.pipeline.insight.context import SceneContext, build_context
-from src.pipeline.insight.engine import scene_texts
+from src.pipeline.insight.engine import PipelineInsightEngine, scene_texts
 from src.pipeline.insight.evidence import (
     Chosen,
     GateResult,
@@ -501,6 +501,15 @@ async def test_each_candidate_is_verified_in_its_own_call_and_a_failure_is_raise
         await verify(failing, rain_scene(), shortlists, LeakGuard())
 
 
+def test_a_weak_main_text_makes_a_general_reminder():
+    weak = Chosen(found(1), RelationType.DIRECT, "", review=False, unseen_preferred=False,
+                  strength="weak")  # fmt: skip
+    result = GateResult(candidate(), quran=weak, quran_ref=QuranRef(surah=1, ayah=1))
+
+    assert result.relation is RelationType.THEMATIC_REMINDER
+    assert GateResult(candidate()).relation is RelationType.THEMATIC_REMINDER
+
+
 async def test_the_guard_compares_with_the_hadiths_shown_without_the_honorific():
     text = hadith_text("bukhari", 1032)
     guard = scripture_guard(None, [text])
@@ -573,3 +582,24 @@ def test_an_insight_citing_anything_but_its_own_texts_and_unit_is_refused():
     assert not cites_only_its_own(free_form)
     assert not cites_only_its_own(unit_as_ground)
     assert citation(HadithRef(collection="muslim", number="93")) == "hadith:muslim:93"
+
+
+def test_a_general_reminder_is_kept_only_when_nothing_stronger_holds():
+    def result(ayah: int, relation: RelationType) -> GateResult:
+        return GateResult(
+            candidate(relation=relation), quran=chosen(ayah), quran_ref=QuranRef(surah=2, ayah=ayah)
+        )
+
+    request = EngineRequest(scan_id="r", scene=rain_scene())
+    mixed = [
+        result(1, RelationType.THEMATIC_REMINDER),
+        result(2, RelationType.CLOSE_CONCEPTUAL),
+        result(3, RelationType.THEMATIC_REMINDER),
+    ]
+    general = [result(4, RelationType.THEMATIC_REMINDER), result(5, RelationType.THEMATIC_REMINDER)]
+
+    kept = PipelineInsightEngine._ranked(request, mixed, None)
+    alone = PipelineInsightEngine._ranked(request, general, None)
+
+    assert [r.quran_ref.ayah for r in kept] == [2]
+    assert [r.quran_ref.ayah for r in alone] == [4]
