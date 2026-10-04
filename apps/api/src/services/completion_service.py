@@ -100,7 +100,7 @@ async def _remember(db: AsyncSession, owner: Owner, insight: Insight) -> None:
     db.add(
         learner_service.exposure(
             owner,
-            kind="completed",
+            kind=learner_service.KIND_COMPLETED,
             at=completed_at,
             insight_id=insight.id,
             quran=QuranRef(surah=verse.surah, ayah=verse.ayah) if verse else None,

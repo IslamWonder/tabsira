@@ -407,7 +407,7 @@ async def reveal(
             db.add(
                 learner_service.exposure(
                     owner,
-                    kind="treasure",
+                    kind=learner_service.KIND_TREASURE,
                     at=item.revealed_at,
                     insight_id=insight.id,
                     quran=QuranRef(surah=verse.surah, ayah=verse.ayah) if verse else None,

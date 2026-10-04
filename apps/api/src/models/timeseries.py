@@ -11,7 +11,7 @@ holds a photo, a profile field, a typed text, a prompt or an answer.
   anonymous timings behind.
 - `ai_calls`: one row per `CallRecord` (provider, model, stage, attempts,
   tokens, cost, latency, error code), for the cost and latency views.
-- `evidence_exposures`: what a learner completed and was shown (the verse and
+- `evidence_exposures`: what a learner was shown and completed (the verse and
   hadith by reference, the concept, the unit), which the engine reads to vary
   the texts it shows (v2 §11). It names its owner, so it is deleted with the
   account and merged with the guest's rows at the first sign-in.
@@ -122,7 +122,8 @@ class EvidenceExposure(Base):
     user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     guest_key: Mapped[str | None] = mapped_column(String(GUEST_KEY_LENGTH))
     insight_id: Mapped[int | None] = mapped_column(BigInteger)
-    # `completed` («تمّ») or `treasure` (a revealed treasure).
+    # `shown` (a text first rendered to its owner), `completed` («تمّ») or `treasure`
+    # (a revealed treasure).
     kind: Mapped[str] = mapped_column(String(16))
     quran_surah: Mapped[int | None] = mapped_column(SmallInteger)
     quran_ayah: Mapped[int | None] = mapped_column(SmallInteger)

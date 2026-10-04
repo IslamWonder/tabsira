@@ -8,6 +8,10 @@ A hadith is shown only when its ruling in force is صحيح or حسن (decision 
 without a ruling the insight says it waits for verification and shows the
 verse alone; with any other ruling it is not shown at all. A small step that
 rests on a text that is not shown is not shown either.
+
+Rendering to the owner is recorded: `describe` writes a `shown` exposure the first
+time each text of the insight reaches its owner (v2 §11, masar §10.5), unless memory
+is off. A stranger's reading of a public insight records nothing.
 """
 
 from __future__ import annotations
@@ -18,10 +22,12 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src import clock
 from src.config import Settings
 from src.messages import messages_for
 from src.models import ChatMessage, ChatStatus, Insight, LearningUnit, Scan
-from src.pipeline.engine import RelationType
+from src.owner import Owner
+from src.pipeline.engine import HadithRef, QuranRef, RelationType
 from src.pipeline.schemas import BBox
 from src.routers.scripture import HadithOut, QuranVerseOut, read_hadith, read_verse
 from src.schemas.insight import (
@@ -40,6 +46,7 @@ from src.schemas.insight import (
     PublicQuran,
     StepOut,
 )
+from src.services import learner_service
 
 
 def action_means(state: str) -> str:
@@ -291,9 +298,36 @@ def shown_fields(
     }
 
 
-async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> InsightDetailOut:
-    """Return the owner's insight, its scripture hydrated from the store."""
+async def record_display(
+    db: AsyncSession,
+    owner: Owner,
+    insight: Insight,
+    verse: QuranVerseOut | None,
+    hadith: HadithOut | None,
+) -> None:
+    """Write the `shown` exposure of the texts rendered now, once per insight and text."""
+    written = await learner_service.record_shown(
+        db,
+        owner,
+        insight_id=insight.id,
+        at=clock.utcnow(),
+        quran=QuranRef(surah=verse.surah, ayah=verse.ayah) if verse else None,
+        hadith=HadithRef(collection=hadith.collection.slug, number=hadith.number)
+        if hadith
+        else None,
+        concept=str(insight.why.get("concept") or "") or None,
+        unit_id=insight.learning_unit_id,
+    )
+    if written:
+        await db.commit()
+
+
+async def describe(
+    db: AsyncSession, settings: Settings, insight: Insight, owner: Owner
+) -> InsightDetailOut:
+    """Return the owner's insight, its scripture hydrated from the store, and record the display."""
     verse, hadith, awaiting = await shown_evidence(db, insight)
+    await record_display(db, owner, insight, verse, hadith)
     scan = await db.get(Scan, insight.scan_id) if insight.scan_id is not None else None
     sensitive = bool(scan and scan.sensitive)
     return InsightDetailOut(

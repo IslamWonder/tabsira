@@ -41,4 +41,4 @@ async def keep_rain_insight(
 ) -> InsightDetailOut:
     """Return the caller's copy of the insight (made once), labelled «مثال موثّق مُعدّ»."""
     kept = await tutorial_service.keep(db, owner, load_tutorial(), slug)
-    return await insight_view.describe(db, settings, kept)
+    return await insight_view.describe(db, settings, kept, owner)

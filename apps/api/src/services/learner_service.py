@@ -7,6 +7,12 @@ memory is on (v2 §5). A guest has no profile: the engine gets the neutral
 defaults, `unknown` everywhere, and nothing is assumed. A completion counts in
 `learner_unit_states` as a completion, never as mastery, and records what was
 shown in `evidence_exposures`; with memory off, neither is written.
+
+What was shown is recorded when it is shown (v2 §11, masar §10.5 `after_display`),
+not only on «تمّ»: the first time an insight's texts are rendered to their owner a
+`shown` exposure is written, once per insight and text, so a hadith that becomes
+eligible later is recorded on its first display too. The engine's diversity reads
+every kind alike.
 """
 
 from __future__ import annotations
@@ -23,6 +29,10 @@ from src.pipeline.engine import HadithRef, LearnerContext, QuranRef
 
 # The engine is told about this many of the latest texts at most.
 HISTORY_LIMIT = 200
+# The kinds of an exposure: «تمّ», a revealed treasure, and the first display of a text.
+KIND_COMPLETED = "completed"
+KIND_TREASURE = "treasure"
+KIND_SHOWN = "shown"
 
 
 async def _profile(db: AsyncSession, owner: Owner) -> Profile | None:
@@ -115,6 +125,60 @@ async def record_completion(
             },
         )
     )
+
+
+async def record_shown(
+    db: AsyncSession,
+    owner: Owner,
+    *,
+    insight_id: int,
+    at: datetime,
+    quran: QuranRef | None,
+    hadith: HadithRef | None,
+    concept: str | None,
+    unit_id: str | None,
+) -> bool:
+    """
+    Record that the owner was shown these texts of this insight, once per insight and text.
+
+    Returns whether a row was written: nothing when there is no text, when memory is off, or
+    when every text given was already recorded as shown for this insight.
+    """
+    if (quran is None and hadith is None) or not await memory_enabled(db, owner):
+        return False
+    rows = (
+        await db.scalars(
+            select(EvidenceExposure).where(
+                owner.where(EvidenceExposure),
+                EvidenceExposure.insight_id == insight_id,
+                EvidenceExposure.kind == KIND_SHOWN,
+            )
+        )
+    ).all()
+    if quran is not None and any(
+        (row.quran_surah, row.quran_ayah) == (quran.surah, quran.ayah) for row in rows
+    ):
+        quran = None
+    if hadith is not None and any(
+        (row.hadith_collection, row.hadith_number) == (hadith.collection, hadith.number)
+        for row in rows
+    ):
+        hadith = None
+    if quran is None and hadith is None:
+        return False
+    db.add(
+        exposure(
+            owner,
+            kind=KIND_SHOWN,
+            at=at,
+            insight_id=insight_id,
+            quran=quran,
+            hadith=hadith,
+            concept=concept,
+            unit_id=unit_id,
+        )
+    )
+    return True
 
 
 def exposure(

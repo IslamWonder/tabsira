@@ -28,7 +28,8 @@ async def test_signing_in_merges_what_the_browser_saved_as_a_guest(browser, stor
         assert (await db.scalars(select(Guest))).all() == []
         assert (await db.get(Insight, int(kept["id"]))).user_id == user.id
         assert (await db.get(Scan, int(scan["id"]))).user_id == user.id
-        assert (await db.scalars(select(EvidenceExposure.user_id))).all() == [user.id]
+        # The kept insight was shown, then completed: both exposures move to the account.
+        assert (await db.scalars(select(EvidenceExposure.user_id))).all() == [user.id] * 2
     assert (await browser.get(f"/insights/{kept['id']}")).status_code == 200
     world = (await browser.get("/world")).json()
     assert [place["region_id"] for place in world["places"]] == ["T01"]
@@ -67,7 +68,10 @@ async def test_the_export_holds_everything_the_learner_saved_and_never_a_photo(
     ]
     assert [place["region_id"] for place in learning["places"]] == ["T01"]
     assert [unit["unit_id"] for unit in learning["learner_units"]] == ["T01_06"]
-    assert [exposure["quran_surah"] for exposure in learning["exposures"]] == [30]
+    assert [(e["kind"], e["quran_surah"]) for e in learning["exposures"]] == [
+        ("shown", 30),
+        ("completed", 30),
+    ]
     assert learning["treasures"] == []
 
 

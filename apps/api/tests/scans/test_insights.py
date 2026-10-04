@@ -5,9 +5,11 @@ from __future__ import annotations
 import hashlib
 
 import pytest
+from sqlalchemy import select
 
-from src.models import HadithClassification
+from src.models import EvidenceExposure, HadithClassification, Profile
 from src.owner import Owner
+from src.services import learner_service
 from tests.scans.builders import insight_row, scan_row
 from tests.scans.conftest import as_guest, make_account, rule, sign_in
 from tests.scripture.fixtures import hadith_text, verse_text
@@ -65,6 +67,74 @@ async def test_an_insight_shows_its_verse_exactly_as_stored_and_waits_for_its_ha
     assert body["disclosure"].startswith("تبصرة أداة مدعومة")
     for private in ("religious_background", "gender", "age_range", "goals"):
         assert private not in response.text
+
+
+async def test_reading_an_insight_records_each_text_as_shown_once(
+    browser, other, store, flow_settings
+):
+    """v2 §11 and masar §10.5: what was shown is recorded when it is shown, once per text."""
+    owner = await as_guest(browser, store, flow_settings)
+    insight_id = await keep(store, owner)
+
+    assert (await browser.get(f"/insights/{insight_id}")).status_code == 200
+    assert (await browser.get(f"/insights/{insight_id}")).status_code == 200
+    async with store() as db:
+        await rule(db, "bukhari", "1032")
+        await db.commit()
+    assert (await browser.get(f"/insights/{insight_id}")).json()["hadith_status"] == "shown"
+    assert (await browser.get(f"/insights/{insight_id}")).status_code == 200
+    assert (await other.get(f"/insights/{insight_id}")).status_code == 404
+
+    async with store() as db:
+        rows = (await db.scalars(select(EvidenceExposure).order_by(EvidenceExposure.at))).all()
+        context = await learner_service.learner_context(db, owner)
+    # One row for the verse on the first display, one for the hadith once its ruling shows it.
+    assert [
+        (r.kind, r.insight_id, r.quran_surah, r.quran_ayah, r.hadith_collection, r.hadith_number)
+        for r in rows
+    ] == [
+        ("shown", insight_id, 30, 50, None, None),
+        ("shown", insight_id, None, None, "bukhari", "1032"),
+    ]
+    assert {r.guest_key for r in rows} == {owner.guest_key}
+    assert [(r.concept, r.learning_unit_id) for r in rows] == [("الإحياء", "T01_06")] * 2
+    # The engine's diversity reads the displayed texts, not only the completed ones.
+    assert [(ref.surah, ref.ayah) for ref in context.seen_quran] == [(30, 50)]
+    assert [(ref.collection, ref.number) for ref in context.seen_hadith] == [("bukhari", "1032")]
+
+
+async def test_no_display_is_recorded_while_memory_is_off_or_nothing_shows(
+    browser, store, flow_settings
+):
+    user = await make_account(store)
+    await sign_in(browser)
+    owner = Owner(user_id=user.id)
+    async with store() as db:
+        (await db.get(Profile, user.id)).memory_enabled = False
+        await db.commit()
+    remembered = await keep(store, owner)
+    async with store() as db:
+        await rule(db, "bukhari", "1032", HadithClassification.DAIF)
+        await db.commit()
+    bare = await keep(
+        store,
+        owner,
+        quran_surah=None,
+        quran_ayah=None,
+        quran_evidence=None,
+        explanation=[],
+        small_step=None,
+    )
+
+    assert (await browser.get(f"/insights/{remembered}")).status_code == 200
+    async with store() as db:
+        assert (await db.scalars(select(EvidenceExposure))).all() == []
+        (await db.get(Profile, user.id)).memory_enabled = True
+        await db.commit()
+    assert (await browser.get(f"/insights/{bare}")).json()["quran"] is None
+
+    async with store() as db:
+        assert (await db.scalars(select(EvidenceExposure))).all() == []
 
 
 async def test_a_ruled_hadith_is_shown_whole_with_its_spans_ruling_and_links(

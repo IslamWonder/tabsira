@@ -58,6 +58,55 @@ async def test_a_guest_gets_neutral_defaults_and_its_own_history(store):
     assert await learner_service.memory_enabled(db, owner)
 
 
+async def test_a_shown_text_is_recorded_once_per_insight_and_counts_as_seen(store):
+    owner = Owner(guest_key="b" * 64)
+    verse = QuranRef(surah=30, ayah=50)
+    hadith = HadithRef(collection="bukhari", number="1032")
+    async with store() as db:
+        db.add(Guest(key=owner.guest_key))
+        await db.flush()
+
+        def show(insight_id: int, quran: QuranRef | None, found: HadithRef | None):
+            return learner_service.record_shown(
+                db,
+                owner,
+                insight_id=insight_id,
+                at=clock.utcnow(),
+                quran=quran,
+                hadith=found,
+                concept="الإحياء",
+                unit_id="T01_06",
+            )
+
+        first = await show(1, verse, None)
+        again = await show(1, verse, None)
+        later = await show(1, verse, hadith)
+        complete = await show(1, verse, hadith)
+        nothing = await show(1, None, None)
+        other_insight = await show(2, verse, hadith)
+        rows = (await db.scalars(select(EvidenceExposure).order_by(EvidenceExposure.id))).all()
+        context = await learner_service.learner_context(db, owner)
+
+    assert (first, again, later, complete, nothing, other_insight) == (
+        True,
+        False,
+        True,
+        False,
+        False,
+        True,
+    )
+    assert [(r.kind, r.insight_id, r.quran_ayah, r.hadith_number) for r in rows] == [
+        ("shown", 1, 50, None),
+        ("shown", 1, None, "1032"),
+        ("shown", 2, 50, "1032"),
+    ]
+    assert (context.seen_quran, context.seen_hadith) == ([verse], [hadith])
+    assert (learner_service.KIND_COMPLETED, learner_service.KIND_TREASURE) == (
+        "completed",
+        "treasure",
+    )
+
+
 async def test_an_account_shares_its_profile_only_while_personalization_is_on(store):
     user = await make_account(store)
     owner = Owner(user_id=user.id)

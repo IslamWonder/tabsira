@@ -81,8 +81,8 @@ async def get_insight(
     insight_id: PublicIdPath, db: DbDep, settings: SettingsDep, owner: OptionalOwner
 ) -> InsightDetailOut:
     """Return the insight: its verse and hadith exactly as stored, the explanation apart."""
-    _owner, insight = await owned_insight(db, owner, insight_id)
-    return await insight_view.describe(db, settings, insight)
+    holder, insight = await owned_insight(db, owner, insight_id)
+    return await insight_view.describe(db, settings, insight, holder)
 
 
 @router.post(
