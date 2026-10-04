@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import text
+from sqlalchemy.dialects import postgresql
 
 from src.models import HadithClassification
 from src.pipeline.engine import ExplanationPart, SmallStep
@@ -13,6 +15,11 @@ from tests.scans.builders import hadith, insight_row, proposed, scan_row, scene
 from tests.scans.conftest import as_guest, rule
 from tests.scans.test_chat import an_insight, ask, said
 from tests.scripture.fixtures import hadith_text, verse_text
+
+TRIGRAM_INDEXES = (
+    "ix_quran_verse_search_normalized_text_trgm",
+    "ix_hadith_search_normalized_text_trgm",
+)
 
 
 def words_of(text: str, start: int, count: int) -> str:
@@ -97,11 +104,29 @@ async def test_the_store_overlap_compares_runs_of_seven_folded_words(store):
         assert not await overlap.repeats_store(db, [words_of(verse, 0, 6)])
         assert not await overlap.repeats_store(db, ["الماء سبب للحياة والمطر نعمة تُرى آثارها هنا"])
         assert not await overlap.repeats_store(db, [])
+        # A run whose first word lost the conjunction glued to it is the same quotation.
+        assert await overlap.repeats_store(db, ["انظر الي اثر رحمت الله كيف يحي"])
 
     assert overlap.patterns(["كتب درس علم شرح نظر سمع بصر قلب"]) == [
-        "% درس علم شرح نظر سمع بصر قلب %",
-        "% كتب درس علم شرح نظر سمع بصر %",
+        "%درس علم شرح نظر سمع بصر قلب%",
+        "%كتب درس علم شرح نظر سمع بصر%",
     ]
+
+
+async def test_the_store_check_is_served_by_the_trigram_indexes(store):
+    wanted = overlap.patterns(["قل هو الله احد الله الصمد لم يلد ولم يولد"])
+    async with store() as db:
+        await db.execute(text("SET LOCAL enable_seqscan = off"))
+        plans = []
+        for statement in overlap.statements(wanted):
+            compiled = statement.compile(
+                dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
+            )
+            plans.append("\n".join((await db.scalars(text(f"EXPLAIN {compiled}"))).all()))
+
+    assert [any(index in plan for index in TRIGRAM_INDEXES) for plan in plans] == [True] * len(
+        plans
+    )
 
 
 async def test_a_chat_answer_that_copies_any_stored_text_is_refused(
