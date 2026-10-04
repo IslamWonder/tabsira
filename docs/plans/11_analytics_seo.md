@@ -1,6 +1,6 @@
 # 11 · Analytics and search engines
 
-**Phase:** 1 · **Priority:** Medium · **Status:** 🔄 · **Updated:** 2026-10-04 14:51 (Tunis)
+**Phase:** 1 · **Priority:** Medium · **Status:** ✅ · **Updated:** 2026-10-04 15:20 (Tunis)
 
 Google Analytics and heatmaps only after consent; pages that search engines and AI crawlers read well.
 
@@ -11,7 +11,7 @@ Google Analytics and heatmaps only after consent; pages that search engines and 
 | Heatmaps (Microsoft Clarity) after consent               | ✅     | All text masked; to verify with a real project id.   |
 | Search metadata, structured data, robots rules, llms.txt | ✅     |                                                      |
 | Automatic SEO and site checks in Jenkins                 | ✅     | Accessibility check in its own stage (RUN_A11Y).     |
-| Sitemap served at /sitemap.xml by the web app            | ⬜     | Next.                                                |
+| Sitemap served at /sitemap.xml by the web app            | ✅     | Index and children from the API; 503 if it is down.  |
 
 **Waiting on the owners**
 
@@ -25,7 +25,7 @@ Google Analytics and heatmaps only after consent; pages that search engines and 
 
 ### 11.1 Serve /sitemap.xml from the web app
 
-- **Status:** 🔄 main machine
+- **Status:** ✅ 2026-10-04 15:16
 - **Goal:** The web app serves the sitemap index and sections from the API; the static list drops pages that do not exist (/about, /cookies) or they get pages.
 - **Depends on:** —
 - **Touches:** apps/web sitemap route, apps/api sitemap static list.

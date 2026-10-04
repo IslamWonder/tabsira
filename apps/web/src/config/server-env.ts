@@ -1,4 +1,4 @@
-import { apiOrigin } from '@/lib/site';
+import { apiOrigin, siteOrigin } from '@/lib/site';
 
 /**
  * Configuration the web server reads at request time, never at build time
@@ -45,3 +45,19 @@ export function serverApiOrigin(env: Env = process.env): string {
 
 /** How long the server waits for the API before rendering without it (AGENTS.md lessons). */
 export const SERVER_API_TIMEOUT_MS = 1500;
+
+/**
+ * The public address of the site, read from SITE_URL when a request comes in
+ * (never baked at build time), for what is written outside a page: the
+ * sitemap. A missing or malformed value falls back to the build's own address.
+ */
+export function serverSiteOrigin(env: Env = process.env): URL {
+  try {
+    return new URL(env.SITE_URL?.trim() ?? '');
+  } catch {
+    return siteOrigin();
+  }
+}
+
+/** How long the sitemap waits for the API: a page of 10 000 entries is more than a consent check. */
+export const SITEMAP_TIMEOUT_MS = 10_000;
