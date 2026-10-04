@@ -4,15 +4,16 @@
 
 A person takes or uploads a photo. They see honest stages (understanding, searching, verifying, composing), can point at what matters and answer one question.
 
-| Step                                                                    | Status | Notes                       |
-| ----------------------------------------------------------------------- | ------ | --------------------------- |
-| Upload or link, size and safety checks                                  | ✅     | Built; merges after review. |
-| Queue with one worker, progress that resumes after a drop               | ✅     | Built; merges after review. |
-| Photo shown only after the safety verdict; sensitive scenes never shown | ✅     |                             |
-| Focus and one clarifying question                                       | ✅     |                             |
-| Rain tutorial, labelled as prepared                                     | ✅     |                             |
-| Scripture review fixes, then merge                                      | 🔄     | In progress.                |
-| Screens: capture, progress, focus, question                             | 🔄     | In progress.                |
+| Step                                                                    | Status | Notes                            |
+| ----------------------------------------------------------------------- | ------ | -------------------------------- |
+| Upload or link, size and safety checks                                  | ✅     | Built; merges after review.      |
+| Queue with one worker, progress that resumes after a drop               | ✅     | Built; merges after review.      |
+| Photo shown only after the safety verdict; sensitive scenes never shown | ✅     |                                  |
+| Focus and one clarifying question                                       | ✅     |                                  |
+| Rain tutorial, labelled as prepared                                     | ✅     |                                  |
+| Scan worker unit, graceful restart, Redis persistence off               | ✅     | Dry-run only; no server touched. |
+| Scripture review fixes, then merge                                      | 🔄     | In progress.                     |
+| Screens: capture, progress, focus, question                             | 🔄     | In progress.                     |
 
 **How we check it**
 
@@ -39,7 +40,7 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 
 ### 04.3 Run the scan worker in production
 
-- **Status:** 🔄 main machine
+- **Status:** ✅ 2026-10-04 15:13
 - **Goal:** A systemd unit for the single scan worker, enabled by provisioning, restarted gracefully by the deploy; Redis persistence off for the scan database.
 - **Depends on:** 04.1
 - **Touches:** deploy/systemd/tabsira-worker.service, deploy/provision-app.sh, deploy/deploy.sh, deploy/provision-redis.sh, docs/OPERATIONS.md.

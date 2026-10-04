@@ -39,6 +39,7 @@ ENV_FILE="${ENV_FILE:-$SHARED_DIR/.env}"
 
 API_UNIT="${API_UNIT:-tabsira-api.service}"
 VISION_UNIT="${VISION_UNIT:-tabsira-vision.service}"
+WORKER_UNIT="${WORKER_UNIT:-tabsira-worker.service}"
 PM2_APP="${PM2_APP:-tabsira-web}"
 
 # ─── Dry run ────────────────────────────────────────────────────────

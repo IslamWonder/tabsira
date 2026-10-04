@@ -70,8 +70,8 @@ if is_dry; then
 	log "uv, python    uv for $APP_USER; Python from apps/api/.python-version, uv-managed"
 	log "env file      $APP_ROOT/shared/.env from deploy/env.production.example when missing (0600)"
 	log "tls           ${TLS_NAMES[*]} by HTTP (webroot); $ADMIN_NAME by DNS-01 (plugin: ${CERTBOT_DNS_PLUGIN:-NOT SET})"
-	log "config        deploy/apply-config.sh: nginx (nginx -t, restore on failure), systemd units and timers, logrotate"
-	log "sudoers       $APP_USER may restart tabsira-api and tabsira-vision, nothing else; launcher /usr/local/bin/tabsira-deploy"
+	log "config        deploy/apply-config.sh: nginx (nginx -t, restore on failure), systemd units (api, vision, scan worker) and timers, logrotate"
+	log "sudoers       $APP_USER may restart tabsira-api, tabsira-vision and tabsira-worker, nothing else; launcher /usr/local/bin/tabsira-deploy"
 	ok "Dry run complete: nothing was changed."
 	exit 0
 fi

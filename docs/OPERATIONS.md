@@ -21,6 +21,7 @@ Admins ──► Netbird DNS ──► app host VPN address :443  admin.tabsira.
 | web (`apps/web`)           | `current/web`, pm2 app `tabsira-web`, cluster | pm2, started at boot by `pm2-<user>`  |
 | API (`apps/api`)           | `current/apps/api`, `tabsira-api.service`     | systemd, gunicorn and uvicorn workers |
 | vision (`services/vision`) | `current/services/vision`, `tabsira-vision`   | systemd, one worker, `127.0.0.1:8100` |
+| scan worker (`apps/api`)   | `current/apps/api`, `tabsira-worker.service`  | systemd, exactly one process, no port |
 | daily Quran sync           | `tabsira-sync-quran.timer`                    | systemd, 02:30 UTC, one process       |
 | audit retention policy     | `tabsira-audit-retention.timer`               | systemd, 03:40 UTC, one process       |
 | database dumps             | `tabsira-pg-backup.timer` on the data host    | systemd, 03:15 UTC                    |
@@ -88,10 +89,22 @@ tabsira-deploy --rollback           # back to the previous release, no rebuild
 4. `check_config --live`, then the migrations: the `geodata` chain, then the `app` chain (`scripts/migrate.sh`), then the audit policy.
 5. Pre-flight: boot the new API and the new web build on spare ports (18000, 3100) and wait until they answer. A release that cannot start is removed and the live one was never touched.
 6. Switch `current` with one atomic rename.
-7. Roll the API, then the web, then restart vision when `services/vision` changed.
+7. Roll the API, restart the scan worker, roll the web, then restart vision when `services/vision` changed.
 8. Health gate; compare the host's nginx and units with the release (a warning); IndexNow (`node scripts/indexnow.mjs`, production only, never fails the deploy); prune old releases (five kept).
 
 On a failure after the switch `current` goes back to the previous release and the API and web are rolled again. **Migrations are not reverted**: write migrations that the previous release can run against (add before you remove), and restore a dump (`deploy/restore-db.sh`) only as a last resort.
+
+### The scan worker
+
+`tabsira-worker.service` runs `python -m src.cli.scan_worker` from the `current` link, as the application user, with the API's `.env` (including `REDIS_URL` and `REDIS_PASSWORD`). It is the only consumer of the scan queue: never start a second one, and never run it inside the API workers. `deploy/apply-config.sh` installs and enables it (`provision-app.sh` runs that); the sudoers file lets the deploy user restart and status it.
+
+The deploy restarts it right after the API rolls, once the migrations have run. A restart is a `SIGTERM`: the worker stops taking jobs, lets running scans finish for up to `SCAN_JOB_TIMEOUT_SECONDS` (240 s), then exits. `TimeoutStopSec=300` covers that, so a deploy can wait up to five minutes for the worker; raise `TimeoutStopSec` if you raise the job timeout. A restart does not drop in-flight jobs: the queue is idempotent, a job that was cut short stays unacknowledged on the Redis stream and is delivered again (after ten minutes), and running a scan twice changes nothing. `Restart=on-failure` brings it back after a crash. A rollback restarts it onto the previous release the same way.
+
+Check: `systemctl status tabsira-worker`, `journalctl -u tabsira-worker -f`. Rehearse without changing anything: `deploy/deploy.sh --dry-run` prints the restart step, `deploy/provision-app.sh --dry-run` the sudoers line, `sudo deploy/apply-config.sh --dry-run` the unit file to install.
+
+### Redis persistence is off
+
+The scan workflow keeps each photo in Redis, sealed with AES-GCM (the key comes from `HASH_SECRET`, which Redis never holds) and expiring after `SCAN_IMAGE_TTL_SECONDS` (one hour), next to the job queue and the progress events, all in the one database of `REDIS_URL`. Redis can switch persistence on or off only for the whole instance, not per database, so `deploy/provision-redis.sh` turns it off: `appendonly no` and `save ""`, and it deletes any `dump.rdb` or `appendonlydir` an earlier run left. The other option, keeping persistence because the photos are sealed and expire, was rejected: a photo is the most sensitive thing we hold, and the safest copy on disk is none. The price is that a Redis restart empties the queue, the progress events and the rate-limit counters: a scan caught by it fails and the person scans again. Everything that must last is in PostgreSQL. Check with `redis-cli CONFIG GET appendonly` (`no`) and `CONFIG GET save` (empty). `deploy/provision-redis.sh --dry-run` prints the persistence line.
 
 ### The API roll (gunicorn)
 
@@ -134,7 +147,7 @@ Restore: `deploy/restore-db.sh <dump>` restores into a new database (`tabsira_re
 ## Day to day
 
 ```bash
-systemctl status tabsira-api tabsira-vision        # units
+systemctl status tabsira-api tabsira-vision tabsira-worker  # units
 journalctl -u tabsira-api -f                       # API logs
 pm2 status; pm2 logs tabsira-web                   # web
 systemctl list-timers 'tabsira-*'                  # the scheduled work

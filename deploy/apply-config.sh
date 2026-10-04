@@ -174,8 +174,8 @@ if ! nginx -t; then
 fi
 
 systemctl daemon-reload
-systemctl enable tabsira-api.service tabsira-vision.service >/dev/null
+systemctl enable tabsira-api.service tabsira-vision.service tabsira-worker.service >/dev/null
 systemctl enable --now tabsira-sync-quran.timer tabsira-audit-retention.timer >/dev/null
 log "Reloading nginx (graceful)"
 systemctl reload nginx
-ok "Host configuration applied. The API and vision units pick up a changed unit at their next restart."
+ok "Host configuration applied. The API, vision and worker units pick up a changed unit at their next restart."

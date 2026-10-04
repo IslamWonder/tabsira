@@ -4,7 +4,7 @@
 #
 #   1. deploy/provision-postgres.sh   packages, extensions, roles, database,
 #                                      pg_hba for APP_HOST_VPN_IP/32, nightly dump
-#   2. deploy/provision-redis.sh      password, protected mode, AOF
+#   2. deploy/provision-redis.sh      password, protected mode, no persistence
 #   3. the firewall: with ufw, allow 5432 and 6379 in on the VPN interface from
 #      APP_HOST_VPN_IP only and deny them from everywhere else. The rules are
 #      added; ufw is not enabled and its defaults are not changed, because a

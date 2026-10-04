@@ -2,4 +2,4 @@
 # deploy/provision-app.sh to /etc/sudoers.d/tabsira (mode 0440, checked with
 # visudo -c). The deploy never writes nginx or unit files as root: that is
 # deploy/apply-config.sh, run by an administrator.
-@APP_USER@ ALL=(root) NOPASSWD: /usr/bin/systemctl restart tabsira-api.service, /usr/bin/systemctl restart tabsira-vision.service, /usr/bin/systemctl start tabsira-api.service, /usr/bin/systemctl status tabsira-api.service, /usr/bin/systemctl status tabsira-vision.service
+@APP_USER@ ALL=(root) NOPASSWD: /usr/bin/systemctl restart tabsira-api.service, /usr/bin/systemctl restart tabsira-vision.service, /usr/bin/systemctl restart tabsira-worker.service, /usr/bin/systemctl start tabsira-api.service, /usr/bin/systemctl status tabsira-api.service, /usr/bin/systemctl status tabsira-vision.service, /usr/bin/systemctl status tabsira-worker.service

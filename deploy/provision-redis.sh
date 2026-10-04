@@ -12,7 +12,14 @@
 #     (root only); a later run re-applies it.
 #   - maxmemory 60 % of RAM, volatile-lru: only keys with a TTL (caches,
 #     counters) are evicted; queue keys without one are never touched.
-#   - AOF on, fsync every second, plus the default RDB snapshots.
+#   - Persistence OFF for the whole instance (no AOF, no RDB). Redis cannot
+#     persist one database and not another, and the scan workflow keeps users'
+#     photos here (sealed with AES-GCM, expiring after an hour) beside its job
+#     queue. The conservative choice is that nothing of them ever reaches a
+#     disk, sealed or not. The price: a Redis restart empties the queue, the
+#     progress events and the rate-limit counters; a scan caught by it ends as
+#     failed and the person scans again. Durable state is in PostgreSQL. Any
+#     dump.rdb or append-only file left by an earlier run is deleted.
 #   The host firewall rule for the application host is deploy/provision-data.sh.
 #
 # Usage (as root, on the data host):
@@ -47,7 +54,7 @@ if is_dry; then
 	log "bind          127.0.0.1 and ${DATA_HOST_VPN_IP:-the address on $VPN_IFACE}, port $REDIS_PORT, protected-mode yes"
 	log "auth          requirepass, generated into $CREDENTIALS_FILE (root only)"
 	log "memory        ${REDIS_MAXMEMORY_MB:-60 % of RAM} MB, $REDIS_MAXMEMORY_POLICY"
-	log "persistence   AOF everysec and RDB snapshots in $REDIS_DATA_DIR"
+	log "persistence   OFF for the whole instance (no AOF, no RDB: scan photos live here); old files in $REDIS_DATA_DIR deleted"
 	ok "Dry run complete: nothing was changed."
 	exit 0
 fi
@@ -64,7 +71,7 @@ MEM_MB=$(($(awk '/^MemTotal:/ { print $2 }' /proc/meminfo) / 1024))
 REDIS_MAXMEMORY_MB="${REDIS_MAXMEMORY_MB:-$((MEM_MB * 60 / 100))}"
 [[ "$REDIS_MAXMEMORY_MB" =~ ^[0-9]+$ ]] || die "REDIS_MAXMEMORY_MB must be a number of megabytes."
 ((REDIS_MAXMEMORY_MB < MEM_MB * 85 / 100)) ||
-	die "REDIS_MAXMEMORY_MB=$REDIS_MAXMEMORY_MB leaves no room for the AOF rewrite on ${MEM_MB} MB; keep it under 85 % of RAM."
+	die "REDIS_MAXMEMORY_MB=$REDIS_MAXMEMORY_MB leaves no room for the system on ${MEM_MB} MB; keep it under 85 % of RAM."
 
 REDIS_PASSWORD=""
 [[ -r "$CREDENTIALS_FILE" ]] && REDIS_PASSWORD="$(sed -n 's/^REDIS_PASSWORD=//p' "$CREDENTIALS_FILE" | tail -n 1)"
@@ -103,11 +110,8 @@ tcp-keepalive 300
 maxmemory ${REDIS_MAXMEMORY_MB}mb
 maxmemory-policy $REDIS_MAXMEMORY_POLICY
 dir $REDIS_DATA_DIR
-appendonly yes
-appendfsync everysec
-aof-use-rdb-preamble yes
-auto-aof-rewrite-percentage 100
-auto-aof-rewrite-min-size 64mb
+appendonly no
+save ""
 slowlog-log-slower-than 10000
 EOF
 )
@@ -130,7 +134,10 @@ install -d -m 0750 "$(dirname "$CREDENTIALS_FILE")"
 chmod 0600 "$CREDENTIALS_FILE"
 
 systemctl enable redis-server >/dev/null 2>&1 || true
-systemctl restart redis-server
+# Stopped first so a shutdown snapshot is not written, then the old files go.
+systemctl stop redis-server
+rm -rf "${REDIS_DATA_DIR:?}/dump.rdb" "${REDIS_DATA_DIR:?}/appendonlydir" "${REDIS_DATA_DIR:?}"/temp-*.rdb
+systemctl start redis-server
 redis_up() { rcli -h 127.0.0.1 -p "$REDIS_PORT" PING 2>/dev/null | grep -q PONG; }
 wait_until 30 redis_up || die "Redis did not come back; see journalctl -u redis-server."
 
@@ -138,7 +145,8 @@ rcli -h "$LISTEN_ADDR" -p "$REDIS_PORT" PING | grep -q PONG || die "Nothing answ
 if redis-cli -h "$LISTEN_ADDR" -p "$REDIS_PORT" PING 2>/dev/null | grep -q PONG; then
 	die "Redis answers without a password; requirepass did not apply."
 fi
-[[ "$(rcli -h 127.0.0.1 CONFIG GET appendonly | tail -n 1)" == yes ]] || die "appendonly is not on; $MANAGED_CONF was not applied."
+[[ "$(rcli -h 127.0.0.1 CONFIG GET appendonly | tail -n 1)" == no ]] || die "appendonly is not off; $MANAGED_CONF was not applied."
+[[ -z "$(rcli -h 127.0.0.1 CONFIG GET save | tail -n 1)" ]] || die "RDB snapshots are not off; $MANAGED_CONF was not applied."
 ok "Redis is ready on $LISTEN_ADDR:$REDIS_PORT (password in $CREDENTIALS_FILE)"
 cat <<EOF
 

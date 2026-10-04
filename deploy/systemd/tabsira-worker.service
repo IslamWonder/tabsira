@@ -1,0 +1,37 @@
+# TABSIRA scan worker: the one process that runs scan jobs from the Redis queue
+# (apps/api, src.cli.scan_worker). Installed by deploy/apply-config.sh, which
+# fills @APP_USER@, @APP_GROUP@ and @APP_ROOT@.
+#
+# Exactly one instance, never one per API worker (AGENTS.md). Spelled through the
+# `current` link like the API, so a restart after a deploy imports the new release.
+# SIGTERM makes it stop taking jobs and let the running ones finish for up to
+# SCAN_JOB_TIMEOUT_SECONDS (240 s by default); TimeoutStopSec covers that plus a
+# margin, so systemd does not SIGKILL a scan that is about to finish. If you raise
+# SCAN_JOB_TIMEOUT_SECONDS, raise TimeoutStopSec above it. A job cut short stays
+# unacknowledged on the queue and is delivered again; running it twice changes nothing.
+[Unit]
+Description=TABSIRA scan worker (Redis queue consumer)
+After=network-online.target tabsira-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@APP_USER@
+Group=@APP_GROUP@
+WorkingDirectory=@APP_ROOT@/current/apps/api
+Environment=ENV_FILE=@APP_ROOT@/shared/.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=@APP_ROOT@/current/apps/api/.venv/bin/python -m src.cli.scan_worker
+KillSignal=SIGTERM
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=300
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

@@ -14,8 +14,9 @@
 #      compatible with the release that is still serving while it runs.
 #   5. Pre-flight: boot the new API and the new web build on spare ports.
 #   6. Switch `current` (one atomic rename; `previous` keeps the old one).
-#   7. Roll the API (gunicorn TTIN/TTOU), the web (pm2, one instance at a time)
-#      and restart vision when its code changed. Each step is checked healthy.
+#   7. Roll the API (gunicorn TTIN/TTOU), restart the scan worker (graceful:
+#      running jobs finish, the rest are re-delivered), roll the web (pm2, one
+#      instance at a time) and restart vision when its code changed. Each step is checked healthy.
 #   8. Health gate; IndexNow last, production only; prune old releases.
 #   On a failure after the switch: `current` goes back to the previous release
 #   and the API and the web are rolled again. Nothing is rebuilt.
@@ -94,6 +95,7 @@ release_lock() { rmdir "$LOCK_DIR" 2>/dev/null || true; }
 # Roll the services onto whatever `current` points at now.
 roll_services() {
 	bash "$CURRENT_LINK/deploy/api-roll.sh" roll
+	sudo systemctl restart "$WORKER_UNIT"
 	bash "$CURRENT_LINK/deploy/web-roll.sh" roll
 }
 
@@ -131,9 +133,9 @@ rollback_only() {
 		atomic_link "$target" "$CURRENT_LINK"
 		log "current -> $(basename "$target")"
 	fi
-	step "Roll the API and the web onto it"
+	step "Roll the API, restart the worker, roll the web onto it"
 	if is_dry; then
-		echo "      would run: $DEPLOY_DIR/api-roll.sh roll and web-roll.sh roll"
+		echo "      would run: $DEPLOY_DIR/api-roll.sh roll, sudo systemctl restart $WORKER_UNIT, web-roll.sh roll"
 	else
 		roll_services
 	fi
@@ -290,6 +292,20 @@ roll_api() {
 	fi
 }
 
+# One process, so a restart, not a roll. SIGTERM lets running scans finish (up
+# to TimeoutStopSec of the unit); a job cut short is delivered again.
+restart_worker() {
+	step "Restart the scan worker (graceful; jobs are idempotent and re-delivered)"
+	if is_dry; then
+		echo "      would run: sudo systemctl restart $WORKER_UNIT (waits for running scans, up to its TimeoutStopSec)"
+		return
+	fi
+	sudo systemctl restart "$WORKER_UNIT"
+	# It has no port: running for a few seconds without a crash loop is the check.
+	sleep 5
+	systemctl is-active --quiet "$WORKER_UNIT" || die "$WORKER_UNIT is not running; see journalctl -u ${WORKER_UNIT%.service}."
+}
+
 roll_web() {
 	step "Roll the web instances, one at a time"
 	run bash "$CURRENT_LINK/deploy/web-roll.sh" roll
@@ -391,6 +407,7 @@ if is_dry; then
 	log "api          127.0.0.1:${API_PORT}, ${API_WORKERS:-2} worker(s) ($API_UNIT)"
 	log "web          127.0.0.1:${WEB_PORT}, ${WEB_INSTANCES} instance(s) (pm2 $PM2_APP)"
 	log "vision       $DETECTOR_URL ($VISION_UNIT)"
+	log "scan worker  one process ($WORKER_UNIT), restarted after the API rolls"
 fi
 
 if $ROLLBACK; then
@@ -412,6 +429,7 @@ check_and_migrate
 preflight_boot
 switch_release
 roll_api
+restart_worker
 roll_web
 restart_vision_if_needed
 health_gate
