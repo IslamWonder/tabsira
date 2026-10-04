@@ -430,6 +430,10 @@ def test_every_table_lives_in_the_app_schema():
         # The atlas
         "map_entries",
         "map_capture_points",
+        # The vectors of the scripture store
+        "quran_verse_embeddings",
+        "hadith_embeddings",
+        "embedding_runs",
     }
 
     assert {name.removeprefix(f"{APP_SCHEMA}.") for name in Base.metadata.tables} == tables

@@ -76,8 +76,14 @@ APP_TABLES = {
     "scan_events",
     "ai_calls",
     "evidence_exposures",
+<<<<<<< HEAD
     "map_entries",
     "map_capture_points",
+=======
+    "quran_verse_embeddings",
+    "hadith_embeddings",
+    "embedding_runs",
+>>>>>>> 6f2f6ac (api: store scripture vectors per model and full-text vectors of copies)
 }
 
 
@@ -215,7 +221,11 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
         *(f"app.{table}" for table in APP_TABLES),
     } == tables
     assert set(EXTENSIONS) <= extensions
+<<<<<<< HEAD
     assert versions == {"app": "20261004_200000", "geodata": "20261004_130000"}
+=======
+    assert versions == {"app": "20261004_193000", "geodata": "20261004_130000"}
+>>>>>>> 6f2f6ac (api: store scripture vectors per model and full-text vectors of copies)
     # alembic check cannot see a materialized view either.
     assert views == {"app.quran_verse_spans true"}
     # The models and the migrations describe the same database.
