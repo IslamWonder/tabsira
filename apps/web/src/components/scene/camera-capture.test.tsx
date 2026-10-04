@@ -1,4 +1,6 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { hydrateRoot, type Root } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { forgetDevice, stubCamera } from '@/test/camera';
 import { CameraCapture, frameToFile } from './camera-capture';
@@ -43,6 +45,7 @@ function withDevices(kinds: string[], permission: PermissionState | 'unsupported
 afterEach(() => {
   forgetDevice();
   Reflect.deleteProperty(navigator, 'permissions');
+  Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true });
   vi.restoreAllMocks();
 });
 
@@ -138,7 +141,27 @@ describe('CameraCapture', () => {
 
     expect(screen.getByLabelText(/التقط بالكاميرا/)).toHaveAttribute('capture', 'environment');
     expect(screen.getByRole('status')).toHaveTextContent('https');
-    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true });
+  });
+
+  it('hydrates an insecure page without a mismatch, then falls back', async () => {
+    stubCamera('granted');
+    const html = renderToString(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
+    Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true });
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    document.body.append(container);
+    const errors = vi.fn();
+    let root: Root | undefined;
+    await act(async () => {
+      root = hydrateRoot(container, <CameraCapture onFile={vi.fn()} onPick={vi.fn()} />, {
+        onRecoverableError: errors,
+      });
+    });
+
+    expect(within(container).getByRole('status')).toHaveTextContent('https');
+    expect(errors).not.toHaveBeenCalled();
+    act(() => root?.unmount());
+    container.remove();
   });
 
   it('frameToFile gives nothing for an empty frame or a canvas without a context', async () => {

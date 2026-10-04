@@ -1,6 +1,6 @@
 'use client';
 
-import { type ChangeEvent, useEffect, useId, useState } from 'react';
+import { type ChangeEvent, useEffect, useId, useState, useSyncExternalStore } from 'react';
 import { useCameraStream } from '@/components/atlas/camera-sensors';
 import { CameraIcon } from '@/components/icons';
 import { Button, buttonClasses } from '@/components/ui/button';
@@ -110,13 +110,19 @@ export function useCameraAvailability(secure: boolean): CameraAvailability {
   return availability;
 }
 
+const neverChanges = () => () => {};
+const pageIsSecure = () => window.isSecureContext !== false;
+// The server cannot know the page's scheme: it renders the secure branch and the
+// client corrects it right after hydration, so both first renders match.
+const serverIsSecure = () => true;
+
 export function CameraCapture({ onFile, onPick }: CameraCaptureProps) {
   const camera = useCameraStream();
   const [taking, setTaking] = useState(false);
   const [failed, setFailed] = useState(false);
   const inputId = useId();
   const text = messages.scene.starter;
-  const secure = typeof window === 'undefined' || window.isSecureContext !== false;
+  const secure = useSyncExternalStore(neverChanges, pageIsSecure, serverIsSecure);
   const availability = useCameraAvailability(secure);
   const denied = camera.state === 'denied' || availability === 'denied';
   const fallback = !secure || denied || camera.state === 'unavailable' || availability === 'none';
