@@ -39,6 +39,7 @@ from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverl
 from src.pipeline.prompt import load_prompt
 from src.scans.workflow import call_rows
 from src.schemas.insight import ChatReply
+from src.scripture.overlap import repeats_store
 from src.services.insight_view import message_out, shown_evidence
 
 SYSTEM_PROMPT = "insight_chat_system.v1"
@@ -217,7 +218,10 @@ async def _answer(
     output = result.value
     text, kind = _compose(output)
     guard = LeakGuard([PatternLeakDetector(), ShingleOverlapDetector(corpus)])
-    if not text.strip() or (kind != "new_search" and guard.check(output.answer).leaked):
+    leaked = kind != "new_search" and (
+        guard.check(output.answer).leaked or await repeats_store(db, [output.answer])
+    )
+    if not text.strip() or leaked:
         await _give_back(db, row, log, insight.id)
         raise _refused(ErrorCode.CHAT_ANSWER_REJECTED, "The answer was refused.", 502)
     row.status = ChatStatus.ANSWERED

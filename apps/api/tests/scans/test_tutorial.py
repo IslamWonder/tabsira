@@ -12,6 +12,7 @@ from sqlalchemy import select
 from src import messages
 from src.models import HadithClassification, WorldRelation
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
+from src.scripture.overlap import repeats_store
 from src.services import tutorial_service
 from src.services.content import REGIONS_PATH, Regions, load_regions, load_tutorial
 from tests.scans.conftest import DATA, rule
@@ -140,11 +141,11 @@ async def test_a_tutorial_insight_without_a_hadith_shows_its_verse_alone(store, 
 
 async def test_the_platform_words_of_the_tutorial_pass_the_leak_guard(store):
     async with store() as db:
+        shown = await tutorial_service.describe(db, load_tutorial())
+        corpus = [shown.insights[0].quran.verse.text, shown.insights[1].quran.verse.text]
+        corpus += [hadith_text("bukhari", 1032), *(row["text"] for row in EXTRA["hadiths"])]
+        guard = LeakGuard([PatternLeakDetector(), ShingleOverlapDetector(corpus)])
         for insight in load_tutorial().insights:
-            shown = await tutorial_service.describe(db, load_tutorial())
-            corpus = [shown.insights[0].quran.verse.text, shown.insights[1].quran.verse.text]
-            corpus += [hadith_text("bukhari", 1032)]
-            guard = LeakGuard([PatternLeakDetector(), ShingleOverlapDetector(corpus)])
             texts = [
                 insight.title,
                 insight.glimpse,
@@ -155,6 +156,7 @@ async def test_the_platform_words_of_the_tutorial_pass_the_leak_guard(store):
                 insight.small_step.text if insight.small_step else "",
             ]
             assert [text for text in texts if guard.check(text).leaked] == []
+            assert not await repeats_store(db, texts)
 
 
 def test_the_map_has_one_region_per_domain_and_never_moves_one():
