@@ -78,6 +78,10 @@ MAX_SITEMAP_PAGE_SIZE = 50_000
 OVH_BASE_URL = "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1"
 OPENAI_BASE_URL = "https://api.openai.com/v1"
 
+# The moderation log's retention and compression, in days, as they are before anyone sets them.
+DEFAULT_MODERATION_RETENTION_DAYS = 730
+DEFAULT_MODERATION_COMPRESS_AFTER_DAYS = 30
+
 ASYNC_DRIVER = "postgresql+asyncpg"
 SYNC_DRIVER = "postgresql+psycopg"
 
@@ -528,8 +532,12 @@ class Settings(BaseSettings):
     social_report_hold_threshold: Annotated[int, Field(ge=0, le=100)] = 3
     # The moderation log is a TimescaleDB hypertable (decision 13): chunks older than
     # the retention are dropped, chunks older than the compression age are compressed.
-    moderation_log_retention_days: Annotated[int, Field(ge=30, le=3650)] = 730
-    moderation_log_compress_after_days: Annotated[int, Field(ge=1, le=365)] = 30
+    moderation_log_retention_days: Annotated[int, Field(ge=30, le=3650)] = (
+        DEFAULT_MODERATION_RETENTION_DAYS
+    )
+    moderation_log_compress_after_days: Annotated[int, Field(ge=1, le=365)] = (
+        DEFAULT_MODERATION_COMPRESS_AFTER_DAYS
+    )
 
     @field_validator("cors_origins", mode="before")
     @classmethod

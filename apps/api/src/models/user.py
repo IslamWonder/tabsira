@@ -7,6 +7,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -23,6 +24,14 @@ from src.models.base import Base, created_at_column, uuid_pk
 
 GOOGLE = "google"
 
+# A public handle: three to thirty letters (Latin or Arabic, no marks), digits and
+# underscores, starting with a letter. The same text is the database constraint, so a
+# handle the API accepts is one the database accepts. Arabic range: ء to غ and ف to ي,
+# which leaves out the tatweel (U+0640) and every diacritic.
+HANDLE_PATTERN = r"^[A-Za-z\u0621-\u063A\u0641-\u064A][A-Za-z0-9_\u0621-\u063A\u0641-\u064A]{2,29}$"
+HANDLE_MAX = 30
+PUBLIC_NAME_MAX = 40
+
 
 class User(Base):
     """
@@ -37,12 +46,22 @@ class User(Base):
     # Read the database-set `updated_at` back with the UPDATE: no lazy load in async code.
     __mapper_args__ = {"eager_defaults": True}  # noqa: RUF012
     __tablename__ = "users"
-    __table_args__ = (Index("uq_users_email_lower", text("lower(email)"), unique=True),)
+    __table_args__ = (
+        Index("uq_users_email_lower", text("lower(email)"), unique=True),
+        # Two spellings of one handle are never two accounts.
+        Index("uq_users_handle_lower", text("lower(handle)"), unique=True),
+        CheckConstraint(f"handle ~ '{HANDLE_PATTERN}'", name="handle_format"),
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     email: Mapped[str] = mapped_column(String(320))
     password_hash: Mapped[str | None] = mapped_column(String(255))
     display_name: Mapped[str] = mapped_column(String(60))
+    # The public identity of an account that publishes, chosen on purpose and never
+    # derived from the account's own name, which may be a real or a Google name.
+    # Both stay empty until the person picks them; nothing is public without them.
+    handle: Mapped[str | None] = mapped_column(String(HANDLE_MAX))
+    public_name: Mapped[str | None] = mapped_column(String(PUBLIC_NAME_MAX))
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
     # Set when the address is proven: by Google, which verified it, or later by a mailed link.

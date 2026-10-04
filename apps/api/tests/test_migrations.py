@@ -57,6 +57,15 @@ APP_TABLES = {
     "admin_audit_log",
     "admin_sessions",
     "admin_totp",
+    "follows",
+    "blocks",
+    "insight_publications",
+    "posts",
+    "post_likes",
+    "bookmarks",
+    "comments",
+    "reports",
+    "moderation_actions",
 }
 
 
