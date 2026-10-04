@@ -922,7 +922,7 @@ export const ar = {
       sectors: { ahead: 'أمامك', right: 'عن يمينك', behind: 'خلفك', left: 'عن يسارك' },
       toward: (sector: string) => `الاتجاه التقريبي: ${sector}`,
       arrow: (sector: string) => `سهم نحو منطقة البصيرة، ${sector}`,
-      inViewMark: 'في مجال الرؤية',
+      inViewMark: 'في اتجاه الكاميرا',
       list: 'قائمة البصائر القريبة',
       listHeading: 'الأقرب إليك',
       showAll: (count: number) => `اعرض الكل (${count})`,

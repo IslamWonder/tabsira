@@ -150,7 +150,7 @@ describe('CameraScreen', () => {
     expect(
       within(far).getByRole('img', { name: 'سهم نحو منطقة البصيرة، أمامك' })
     ).toBeInTheDocument();
-    expect(within(far).getByText('في مجال الرؤية')).toBeInTheDocument();
+    expect(within(far).getByText('في اتجاه الكاميرا')).toBeInTheDocument();
     // Entries inside their own cell get no arrow: a cell centre is not a target.
     const near = within(list).getByRole('link', { name: /^\[عنوان البصيرة\]/ });
     expect(within(near).queryByRole('img')).toBeNull();
