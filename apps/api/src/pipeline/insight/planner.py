@@ -30,8 +30,9 @@ from src.ai.client import ModelClient
 from src.config import AiStage
 from src.pipeline.engine import EngineRequest, LearnerContext, RelationType
 from src.pipeline.insight.context import SceneContext
+from src.pipeline.insight.guard import EngineGuard
 from src.pipeline.insight.learning import UnitOption
-from src.pipeline.leak_guard import LeakGuard, ScriptureLeakError
+from src.pipeline.leak_guard import ScriptureLeakError
 from src.pipeline.prompt import load_prompt
 from src.pipeline.schemas import EvidenceStatus, SceneAnalysis
 
@@ -266,7 +267,7 @@ class InsightPlanner:
         request: EngineRequest,
         context: SceneContext,
         options: Sequence[UnitOption],
-        guard: LeakGuard,
+        guard: EngineGuard,
         refine: Sequence[FailedSearch] = (),
     ) -> Plan:
         """Ask for a plan, refuse leaking answers within the bound, then check it against the scene."""
@@ -281,7 +282,7 @@ class InsightPlanner:
                 max_output_tokens=MAX_OUTPUT_TOKENS,
             )
             try:
-                guard.ensure_clean(planner_texts(result.value))
+                await guard.ensure_clean(planner_texts(result.value))
             except ScriptureLeakError as error:
                 if attempt == self._attempts:
                     raise PlannerLeakError(str(error)) from None

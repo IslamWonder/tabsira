@@ -36,7 +36,12 @@ from src.pipeline.insight.evidence import (
     seen_ids,
     verify,
 )
-from src.pipeline.insight.guard import scripture_guard, without_honorific
+from src.pipeline.insight.guard import (
+    STORE_FINDING,
+    EngineGuard,
+    scripture_guard,
+    without_honorific,
+)
 from src.pipeline.insight.learning import (
     LearningPath,
     RankedInsight,
@@ -54,6 +59,7 @@ from src.pipeline.leak_guard import LeakGuard
 from src.pipeline.schemas import EvidenceStatus, SceneAction
 from src.retrieval.concepts import ConceptIndex
 from src.retrieval.documents import RetrievalDocument
+from src.scripture.text import without_marks
 from tests.fakes import FakeModelClient
 from tests.insight.support import (
     compose_answer,
@@ -237,7 +243,7 @@ async def test_the_planner_checks_every_candidate_against_the_scene(store):
         learner=LearnerContext(goals=["reflection"], knowledge_level="beginner"),
     )
 
-    plan = await InsightPlanner(client).plan(request, context, [], LeakGuard())
+    plan = await InsightPlanner(client).plan(request, context, [], EngineGuard(LeakGuard(), None))
 
     assert [c.relation for c in plan.candidates] == [
         RelationType.CLOSE_CONCEPTUAL,
@@ -264,7 +270,7 @@ async def test_the_planner_drops_candidates_off_the_focus_or_without_queries(sto
     )
     request = EngineRequest(scan_id="s", scene=rain_scene(), focus_entity_id="e1")
 
-    plan = await InsightPlanner(client).plan(request, context, [], LeakGuard())
+    plan = await InsightPlanner(client).plan(request, context, [], EngineGuard(LeakGuard(), None))
 
     assert plan.candidates == []
     assert plan.dropped == ["candidate 0: not about the focus", "candidate 1: no usable query"]
@@ -278,10 +284,10 @@ async def test_a_leaking_plan_is_asked_again_then_refused(store):
 
     recovered = await InsightPlanner(
         FakeModelClient(answers=[leaking, plan_answer(planned())])
-    ).plan(request, context, [], LeakGuard())
+    ).plan(request, context, [], EngineGuard(LeakGuard(), None))
     with pytest.raises(PlannerLeakError):
         await InsightPlanner(FakeModelClient(answers=[leaking, leaking])).plan(
-            request, context, [], LeakGuard()
+            request, context, [], EngineGuard(LeakGuard(), None)
         )
 
     assert len(recovered.candidates) == 1
@@ -341,7 +347,7 @@ async def test_the_verifier_keeps_known_labels_of_known_candidates_only():
         ]
     )
 
-    verdicts = await verify(client, rain_scene(), [shortlist], LeakGuard())
+    verdicts = await verify(client, rain_scene(), [shortlist], EngineGuard(LeakGuard(), None))
 
     assert set(verdicts) == {0}
     assert set(verdicts[0]) == {"Q1", "H1"}
@@ -360,7 +366,10 @@ async def test_a_leaking_verifier_is_asked_again_then_refused():
 
     with pytest.raises(VerifierLeakError):
         await verify(
-            FakeModelClient(answers=[leaking, leaking]), rain_scene(), [shortlist], LeakGuard()
+            FakeModelClient(answers=[leaking, leaking]),
+            rain_scene(),
+            [shortlist],
+            EngineGuard(LeakGuard(), None),
         )
 
 
@@ -449,7 +458,7 @@ async def test_the_composer_drops_an_insight_that_keeps_leaking_and_ignores_unkn
     )
 
     composition = await InsightComposer(client).compose(
-        rain_scene(), results, LearnerContext(), LeakGuard(), "v1"
+        rain_scene(), results, LearnerContext(), EngineGuard(LeakGuard(), None), "v1"
     )
 
     assert len(composition.insights) == 1
@@ -457,14 +466,27 @@ async def test_the_composer_drops_an_insight_that_keeps_leaking_and_ignores_unkn
     assert len(client.calls) == 2
 
 
-def test_the_guard_compares_with_the_hadiths_shown_without_the_honorific():
+async def test_the_guard_compares_with_the_hadiths_shown_without_the_honorific():
     text = hadith_text("bukhari", 1032)
     guard = scripture_guard(None, [text])
 
-    assert "صلي الله عليه وسلم" not in without_honorific("قال النبي صلى الله عليه وسلم")
-    assert guard.check(text).leaked
-    assert not guard.check("يعلمنا النبي صلى الله عليه وسلم أدب الدعاء عند المطر").leaked
-    assert not scripture_guard(None).check("نص عادي عن المطر والأرض").leaked
+    assert without_honorific("قال النبي صلى الله عليه وسلم") == without_honorific("قال النبي")
+    assert await guard.leaks([text])
+    assert not await guard.leaks(["يعلمنا النبي صلى الله عليه وسلم أدب الدعاء عند المطر"])
+    assert not await scripture_guard(None).leaks(["نص عادي عن المطر والأرض"])
+
+
+async def test_the_store_wide_check_names_only_the_field_that_repeats_a_stored_text(store):
+    # Unvocalised, as a model writes: the pattern rules alone see plain prose.
+    words = " ".join(without_marks(hadith_text("bukhari", 1032)).split()[-12:])
+    guard = scripture_guard(None, session=store)
+
+    refused = await guard.refused({"plain": "نص عادي عن المطر والأرض", "copied": f"تذكر {words}"})
+
+    assert list(refused) == ["copied"]
+    assert refused["copied"].findings == [STORE_FINDING]
+    assert await guard.leaks([f"تذكر {words}"])
+    assert await scripture_guard(None).refused({"copied": f"تذكر {words}"}) == {}
 
 
 def test_a_hadith_alone_makes_an_insight_without_a_verse_part():

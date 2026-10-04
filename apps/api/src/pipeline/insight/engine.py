@@ -238,7 +238,7 @@ class PipelineInsightEngine:
             request.scene,
             ranked,
             request.learner,
-            scripture_guard(resources.quran, hadith_texts),
+            scripture_guard(resources.quran, hadith_texts, session),
             resources.path.version if resources.path else None,
         )
         clock.stop()
@@ -273,7 +273,9 @@ class PipelineInsightEngine:
             if resources.path
             else []
         )
-        plan = await self._planner.plan(request, context, options, scripture_guard(resources.quran))
+        plan = await self._planner.plan(
+            request, context, options, scripture_guard(resources.quran, session=session)
+        )
         example = None if scene.is_sensitive else scene.description
         await record_unresolved(
             session, context.unresolved, source=SOURCE_VISION_MODEL, example=example
@@ -285,8 +287,10 @@ class PipelineInsightEngine:
             question = plan.question or context.question_for(plan.waiting_on)
             if question is None and request.clarification_answer is None:
                 question = scene.clarification_question
-            # The scene's question was written by the vision model: it meets the Quran too.
-            if question and scripture_guard(resources.quran).check(question).leaked:
+            # The scene's question was written by the vision model: it meets the store too.
+            if question and await scripture_guard(resources.quran, session=session).leaks(
+                [question]
+            ):
                 question = None
             if question:
                 raise _Stopped(EngineStatus.NEEDS_CLARIFICATION, question)
@@ -317,7 +321,10 @@ class PipelineInsightEngine:
             await clock.enter(EngineStage.VERIFYING)
             texts = [found.document.text for item in shortlists for found in item.hadith]
             verdicts = await verify(
-                self._client, request.scene, shortlists, scripture_guard(resources.quran, texts)
+                self._client,
+                request.scene,
+                shortlists,
+                scripture_guard(resources.quran, texts, session),
             )
             failed: list[PlannedCandidate] = []
             for index, shortlist in enumerate(shortlists):
@@ -341,7 +348,7 @@ class PipelineInsightEngine:
                 request,
                 context,
                 options,
-                scripture_guard(resources.quran),
+                scripture_guard(resources.quran, session=session),
                 refine=[
                     FailedSearch(c.concept, c.relation, c.quran_queries + c.hadith_queries)
                     for c in failed

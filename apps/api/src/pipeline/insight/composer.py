@@ -40,9 +40,9 @@ from src.pipeline.engine import (
     WhyThis,
 )
 from src.pipeline.insight.evidence import TEXT_CHARS, Chosen, GateResult
+from src.pipeline.insight.guard import EngineGuard
 from src.pipeline.insight.learning import personalised_reason
 from src.pipeline.insight.planner import learner_payload
-from src.pipeline.leak_guard import LeakGuard
 from src.pipeline.prompt import load_prompt
 from src.pipeline.schemas import BBox, SceneAnalysis
 
@@ -98,11 +98,6 @@ def composer_texts(item: ComposedInsight) -> dict[str, str]:
     if item.small_step is not None:
         texts["small_step"] = item.small_step.text
     return texts
-
-
-def leaks(guard: LeakGuard, texts: dict[str, str]) -> bool:
-    """Whether any of these texts looks like scripture."""
-    return any(guard.check(text).leaked for text in texts.values())
 
 
 def composer_message(
@@ -258,7 +253,7 @@ class InsightComposer:
         scene: SceneAnalysis,
         results: Sequence[GateResult],
         learner: LearnerContext,
-        guard: LeakGuard,
+        guard: EngineGuard,
         path_version: str | None,
     ) -> Composition:
         system = load_prompt(SYSTEM_PROMPT)
@@ -274,7 +269,11 @@ class InsightComposer:
             )
             for item in output.value.insights:
                 valid = 0 <= item.insight < len(results)
-                if valid and item.insight not in clean and not leaks(guard, composer_texts(item)):
+                if (
+                    valid
+                    and item.insight not in clean
+                    and not await guard.leaks(composer_texts(item).values())
+                ):
                     clean[item.insight] = item
             if len(clean) == len(results):
                 break
