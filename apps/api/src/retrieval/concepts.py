@@ -37,6 +37,10 @@ class ConceptIndex:
 
     def __init__(self, corpus: EmbeddedCorpus, concepts: Mapping[int, Sequence[str]]) -> None:
         self.corpus = corpus
+        # The concepts of each text, as given: a search's documents are built from them.
+        self.concepts: dict[int, tuple[str, ...]] = {
+            key: tuple(items) for key, items in concepts.items()
+        }
         self._postings: dict[str, set[int]] = defaultdict(set)
         self._pairs: dict[tuple[str, str], set[int]] = defaultdict(set)
         for key, items in concepts.items():

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import hashlib
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -171,9 +171,15 @@ async def hadith_documents(
     *,
     collections: Sequence[str] | None = None,
     hadith_ids: Sequence[int] | None = None,
+    concepts: Mapping[int, Sequence[str]] | None = None,
 ) -> list[RetrievalDocument]:
-    """Return the document of every stored hadith of the given books (or ids), in store order."""
-    concepts = await hadith_concepts(session)
+    """
+    Return the document of every stored hadith of the given books (or ids), in store order.
+
+    `concepts` spares reading every signal again when the caller holds them already.
+    """
+    if concepts is None:
+        concepts = await hadith_concepts(session)
     query = select(Hadith.id, Hadith.text).order_by(Hadith.id)
     if collections is not None:
         query = query.where(Hadith.collection.in_(collections))
