@@ -49,6 +49,15 @@ else
 	skip "services/vision does not exist yet"
 fi
 
+# Node scripts (IndexNow): node's own test runner, no dependency, with the 100 % gate on the script.
+if compgen -G "scripts/*.test.mjs" >/dev/null; then
+	require_cmd node "Run: make install"
+	suite "scripts" node --test --experimental-test-coverage \
+		--test-coverage-include=scripts/indexnow.mjs \
+		--test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \
+		"scripts/*.test.mjs"
+fi
+
 if [[ -f apps/web/package.json ]]; then
 	require_cmd pnpm "Run: make install"
 	suite "apps/web" pnpm test
