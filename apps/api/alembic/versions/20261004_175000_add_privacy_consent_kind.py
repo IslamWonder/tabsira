@@ -36,7 +36,14 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # The narrower constraint cannot hold a privacy row; the append-only guard
-    # refuses updates but not deletes, so the rows of the new kind are removed.
+    """
+    Remove every `privacy` row, then narrow the constraint again.
+
+    This deletes history that is otherwise append-only, on purpose: the narrower constraint
+    cannot hold the new kind, and the append-only guard refuses updates but not deletes. A
+    downgrade is a development tool; running it in production loses the privacy acceptances,
+    and every account is then asked again. (Also noted for the support form: a filled
+    honeypot returns before the limit is counted, so a bot's answer is quick and uncounted.)
+    """
     op.execute(f"DELETE FROM {SCHEMA}.consents WHERE kind = 'privacy'")
     _replace_constraint(BEFORE)
