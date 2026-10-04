@@ -21,9 +21,15 @@ Real rows copied from the downloaded sources, for the scripture tests. Nothing h
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.scripture.guard import WritePurpose, allow_scripture_writes
+from src.scripture.quran import import_quran, parse_mushaf, parse_surahs
 
 FIXTURES = Path(__file__).resolve().parent / "data"
 
@@ -52,3 +58,21 @@ def hadith_text(book: str, number: float) -> str:
         if entry["hadithnumber"] == number:
             return str(entry["text"])
     raise KeyError((book, number))
+
+
+async def store_quran(session: AsyncSession, *, text_30_50: str | None = None) -> None:
+    """Import the fixture mushaf as the importer does, optionally with another real text of 30:50."""
+    raw = copy.deepcopy(load_json("quranpedia-mushafs-2.json"))
+    if text_30_50 is not None:
+        for surah in raw["data"]["surahs"]:
+            for verse in surah["ayahs"]:
+                if (surah["id"], verse["number"]) == (30, 50):
+                    verse["text"] = text_30_50
+    await allow_scripture_writes(session, WritePurpose.IMPORT)
+    await import_quran(
+        session,
+        parse_mushaf(raw),
+        parse_surahs(load_json("quranpedia-surahs.json")),
+        dump_sha256="0" * 64,
+        source=str(fixture_path("quranpedia-mushafs-2.json")),
+    )

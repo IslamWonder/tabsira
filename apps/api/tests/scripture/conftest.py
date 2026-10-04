@@ -7,9 +7,7 @@ from collections.abc import AsyncIterator
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from src.scripture.guard import WritePurpose, allow_scripture_writes
-from src.scripture.quran import import_quran, parse_mushaf, parse_surahs
-from tests.scripture.fixtures import fixture_path, load_json
+from tests.scripture.fixtures import store_quran
 
 
 @pytest_asyncio.fixture
@@ -34,12 +32,5 @@ async def scripture_maker(engine: AsyncEngine) -> AsyncIterator[async_sessionmak
 @pytest_asyncio.fixture
 async def quran_session(db_session: AsyncSession) -> AsyncSession:
     """A session holding the fixture verses of quranpedia mushaf 2, imported as the importer does."""
-    await allow_scripture_writes(db_session, WritePurpose.IMPORT)
-    await import_quran(
-        db_session,
-        parse_mushaf(load_json("quranpedia-mushafs-2.json")),
-        parse_surahs(load_json("quranpedia-surahs.json")),
-        dump_sha256="0" * 64,
-        source=str(fixture_path("quranpedia-mushafs-2.json")),
-    )
+    await store_quran(db_session)
     return db_session

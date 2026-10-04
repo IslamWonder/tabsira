@@ -5,12 +5,14 @@ Import the scripture store from its verified sources.
 
 Steps run in the order given; with none, all of them in this order:
 
-    download   fetch quranpedia's current dump, checked against its manifest
-    quran      import mushaf 2 from the newest verified dump in the cache
+    download     fetch quranpedia's current dump, checked against its manifest
+    quran        import mushaf 2 from the newest verified dump in the cache
+    annotations  import the annotations of data/corpus/quran-annotations.json
 
 Every step can run again: what is already stored and unchanged stays as it is.
-Each step writes in one transaction with the scripture guard open, so a step
-that fails leaves the database as it was. Exit 0 on success, 1 on failure.
+Each step writes in one transaction (the scripture steps with the guard open),
+so a step that fails leaves the database as it was. Exit 0 on success, 1 on
+failure.
 """
 
 from __future__ import annotations
@@ -27,7 +29,14 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.database import dispose_engine, get_sessionmaker
+from src.scripture.annotations import (
+    ANNOTATIONS_FILE,
+    ANNOTATIONS_SHA256,
+    import_annotations,
+    parse_annotations,
+)
 from src.scripture.errors import ScriptureError
+from src.scripture.files import require_verified
 from src.scripture.guard import WritePurpose, allow_scripture_writes
 from src.scripture.paths import DEFAULT_CACHE_DIR, DEFAULT_CORPUS_DIR
 from src.scripture.quran import QuranImportError, import_quran, load_json_file, parse_mushaf
@@ -98,9 +107,18 @@ async def step_quran(context: Context) -> None:
     )
 
 
+async def step_annotations(context: Context) -> None:
+    path = require_verified(context.corpus_dir / ANNOTATIONS_FILE, ANNOTATIONS_SHA256)
+    rows = parse_annotations(load_json_file(path), ANNOTATIONS_SHA256)
+    async with context.sessionmaker() as session, session.begin():
+        count = await import_annotations(session, rows)
+    _say(f"annotations: {count} verses annotated, verse text of the corpus not read")
+
+
 STEPS: dict[str, Callable[[Context], Awaitable[None]]] = {
     "download": step_download,
     "quran": step_quran,
+    "annotations": step_annotations,
 }
 
 

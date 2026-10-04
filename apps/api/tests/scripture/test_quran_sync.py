@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 from datetime import date
 
 import httpx
@@ -13,11 +12,10 @@ from src.cli import sync_quran as sync_command
 from src.models import QuranVerse, QuranVerseHistory, ScriptureAudit, ScriptureSyncState
 from src.scripture import quran, quran_sync
 from src.scripture.guard import WritePurpose, allow_scripture_writes
-from src.scripture.quran import import_quran, parse_mushaf, parse_surahs
 from src.scripture.quran_sync import SyncError, collect_changes, sync_quran
 from src.scripture.text import sha256_hex
 from tests.scripture.fake_http import FakeQuranpedia, dump_routes, json_response
-from tests.scripture.fixtures import fixture_path, load_json, verse_text
+from tests.scripture.fixtures import fixture_path, load_json, store_quran, verse_text
 
 EARLIER_30_50 = load_json("kfgqpc-v13-30-50.json")["text"]
 UNTIL = "2026-10-05T03:00:00+00:00"
@@ -64,20 +62,8 @@ def _verse_answer(surah: int, ayah: int) -> httpx.Response:
 
 
 async def _store(session, *, stale_30_50: bool = True) -> None:
-    raw = copy.deepcopy(load_json("quranpedia-mushafs-2.json"))
-    if stale_30_50:
-        for surah in raw["data"]["surahs"]:
-            for verse in surah["ayahs"]:
-                if (surah["id"], verse["number"]) == (30, 50):
-                    verse["text"] = EARLIER_30_50
+    await store_quran(session, text_30_50=EARLIER_30_50 if stale_30_50 else None)
     await allow_scripture_writes(session, WritePurpose.SYNC)
-    await import_quran(
-        session,
-        parse_mushaf(raw),
-        parse_surahs(load_json("quranpedia-surahs.json")),
-        dump_sha256="0" * 64,
-        source="test",
-    )
 
 
 async def _verse_30_50(session) -> QuranVerse:
