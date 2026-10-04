@@ -1,13 +1,14 @@
 """
-Which insight engine a scan runs, and the one place where the real engine is plugged in.
+Which insight engine a scan runs, and the one place where the engines are plugged in.
 
 The scan workflow calls `InsightEngine.propose` (src/pipeline/engine.py) and
 nothing else of the engine. `ENGINE_FACTORIES` maps SCAN_ENGINE to a factory
 that builds an engine from `EngineDeps`; the job builds one engine per run.
 
-- `pipeline`: the real engine of src/pipeline. Until it is wired here, the
-  factory gives `UnavailableEngine`, and a scan ends honestly with
-  MODEL_UNAVAILABLE instead of an invented result.
+- `pipeline`: the real engine of src/pipeline/insight (`build_engine`), built
+  with the scan's own client so every model call it makes is recorded with
+  the scan's. A provider that fails ends the scan with MODEL_UNAVAILABLE, never
+  with an invented result.
 - `demo`: `DemoEngine`, a declared simulation for development and smoke
   tests (production refuses it). It never calls a model; it cites one verse
   the store holds, as a general reminder, and every insight it makes says so.
@@ -38,6 +39,7 @@ from src.pipeline.engine import (
     SmallStep,
     WhyThis,
 )
+from src.pipeline.insight.engine import build_engine
 
 
 @dataclass(frozen=True)
@@ -51,16 +53,6 @@ class EngineDeps:
 
 
 EngineFactory = Callable[[EngineDeps], InsightEngine]
-
-
-class UnavailableEngine:
-    """The answer while no engine is wired: the model side is unavailable, nothing is invented."""
-
-    async def propose(
-        self, request: EngineRequest, on_stage: ProgressCallback | None = None
-    ) -> EngineResult:
-        del request, on_stage
-        return EngineResult(status=EngineStatus.MODEL_UNAVAILABLE)
 
 
 # The reminder the simulation cites: Al Imran 3:190, the first verse of unit T01_01.
@@ -131,18 +123,17 @@ class DemoEngine:
         return EngineResult(status=EngineStatus.OK, insights=[insight])
 
 
-def unavailable_engine(_deps: EngineDeps) -> InsightEngine:
-    return UnavailableEngine()
+def pipeline_engine(deps: EngineDeps) -> InsightEngine:
+    """Build the src/pipeline engine for one scan, on the scan's client, database and HTTP."""
+    return build_engine(deps.settings, deps.http, deps.sessionmaker, client=deps.client)
 
 
 def demo_engine(_deps: EngineDeps) -> InsightEngine:
     return DemoEngine()
 
 
-# THE INJECTION POINT. Replace `unavailable_engine` with the factory of the
-# src/pipeline engine (a function of `EngineDeps` returning an `InsightEngine`).
 ENGINE_FACTORIES: dict[ScanEngine, EngineFactory] = {
-    ScanEngine.PIPELINE: unavailable_engine,
+    ScanEngine.PIPELINE: pipeline_engine,
     ScanEngine.DEMO: demo_engine,
 }
 

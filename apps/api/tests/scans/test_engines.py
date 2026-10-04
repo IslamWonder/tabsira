@@ -1,27 +1,40 @@
-"""The engine injection point, the honest placeholder and the declared simulation."""
+"""The engine injection point: the real engine and the declared simulation."""
 
 from __future__ import annotations
 
+import httpx
+
 from src.config import ScanEngine
 from src.pipeline.engine import EngineRequest, EngineStage, EngineStatus, RelationType
+from src.pipeline.insight.engine import PipelineInsightEngine
 from src.scans import engines
-from src.scans.engines import DemoEngine, UnavailableEngine
+from src.scans.engines import DemoEngine, EngineDeps
+from tests.fakes import FakeModelClient
 from tests.scans.builders import entity, scene
 
 
-async def test_without_a_wired_engine_a_scan_says_the_model_side_is_unavailable():
-    result = await UnavailableEngine().propose(EngineRequest(scan_id="s", scene=scene()))
-
-    assert result.status is EngineStatus.MODEL_UNAVAILABLE
-    assert result.insights == []
-
-
 def test_the_setting_chooses_the_factory(make_settings):
-    assert engines.engine_factory(make_settings()) is engines.unavailable_engine
+    assert engines.engine_factory(make_settings()) is engines.pipeline_engine
     assert engines.engine_factory(make_settings(scan_engine="demo")) is engines.demo_engine
     assert set(engines.ENGINE_FACTORIES) == set(ScanEngine)
-    assert isinstance(engines.unavailable_engine(None), UnavailableEngine)  # type: ignore[arg-type]
     assert isinstance(engines.demo_engine(None), DemoEngine)  # type: ignore[arg-type]
+
+
+async def test_the_pipeline_engine_runs_on_the_scan_s_own_client(make_settings):
+    client = FakeModelClient()
+    async with httpx.AsyncClient() as http:
+        deps = EngineDeps(
+            settings=make_settings(),
+            client=client,
+            sessionmaker=None,  # type: ignore[arg-type]
+            http=http,
+        )
+
+        engine = engines.pipeline_engine(deps)
+
+    assert isinstance(engine, PipelineInsightEngine)
+    # Every call the engine makes is recorded with the scan's calls.
+    assert engine._client is client
 
 
 async def test_the_simulation_reports_its_stages_and_cites_a_stored_reference():
