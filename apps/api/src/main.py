@@ -159,6 +159,7 @@ def create_app(
             "/client-errors": client_errors.MAX_BODY_BYTES,
             "/consent": cookie_consent.MAX_BODY_BYTES,
             "/support": support.MAX_BODY_BYTES,
+            "/scans": scans.upload_body_limit(settings),
         },
     )
     app.add_middleware(

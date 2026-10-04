@@ -110,18 +110,56 @@ async def test_a_photo_that_cannot_be_used_says_why(browser, queue, data, status
     assert queue.runs == []
 
 
-async def test_a_photo_over_the_limit_is_refused(browser, flow_app, make_settings):
-    flow_app.state.settings = make_settings(image_max_bytes=1000)
+async def test_a_photo_over_the_limit_is_refused(browser, flow_app, flow_settings, make_settings):
+    from src.routers.scans import upload_body_limit
 
     declared = await browser.post(
         "/scans",
         content=b"x" * 10,
-        headers={"content-type": "image/jpeg", "content-length": "99999"},
+        headers={
+            "content-type": "multipart/form-data; boundary=x",
+            "content-length": str(upload_body_limit(flow_settings) + 1),
+        },
     )
+    flow_app.state.settings = make_settings(image_max_bytes=1000)
     read = await upload(browser, photo(400, 400))
 
-    assert (declared.status_code, declared.json()["error"]) == (413, "IMAGE_TOO_LARGE")
+    assert (declared.status_code, declared.json()["error"]) == (413, "PAYLOAD_TOO_LARGE")
     assert (read.status_code, read.json()["error"]) == (413, "IMAGE_TOO_LARGE")
+
+
+async def test_an_upload_that_does_not_parse_is_refused(browser):
+    response = await browser.post(
+        "/scans",
+        content=b"--x\r\nContent-Disposition: form-data; name=image; filename=a.jpg\r\n",
+        headers={"content-type": "multipart/form-data"},
+    )
+
+    assert (response.status_code, response.json()["error"]) == (400, "IMAGE_INVALID")
+
+
+async def test_an_upload_is_read_in_memory_never_from_a_temporary_file(browser, store, monkeypatch):
+    import tempfile
+
+    def no_disk(*_args, **_kwargs):
+        message = "the upload went to disk"
+        raise AssertionError(message)
+
+    monkeypatch.setattr(tempfile, "TemporaryFile", no_disk)
+    monkeypatch.setattr(tempfile, "NamedTemporaryFile", no_disk)
+
+    import io
+    import os
+
+    from PIL import Image
+
+    noisy = io.BytesIO()
+    Image.frombytes("RGB", (900, 900), os.urandom(900 * 900 * 3)).save(noisy, format="PNG")
+    assert len(noisy.getvalue()) > 2 * 1024 * 1024
+
+    response = await upload(browser, noisy.getvalue())
+
+    assert response.status_code == 202
 
 
 async def test_a_request_that_is_neither_a_photo_nor_an_address_is_refused(browser):

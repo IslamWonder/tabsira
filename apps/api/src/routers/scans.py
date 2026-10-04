@@ -25,6 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette import EventSourceResponse
 from starlette.datastructures import UploadFile
+from starlette.formparsers import MultiPartException, MultiPartParser
 
 from src import clock, messages
 from src.config import Settings
@@ -98,21 +99,10 @@ def _queue_unavailable() -> AppError:
 async def _photo_bytes(
     request: Request, settings: Settings, fetch: FetcherDep
 ) -> tuple[bytes, ScanSource]:
+    # A body over the limit was refused before this route (`upload_body_limit`).
     content_type = request.headers.get("content-type", "").lower()
-    declared = request.headers.get("content-length", "")
-    if declared.isdigit() and int(declared) > settings.image_max_bytes + ENVELOPE_BYTES:
-        raise AppError(
-            ErrorCode.IMAGE_TOO_LARGE,
-            "The photo is larger than the limit.",
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-        )
     if content_type.startswith("multipart/form-data"):
-        async with request.form(max_files=1, max_fields=1) as form:
-            upload = form.get("image")
-            if not isinstance(upload, UploadFile):
-                raise AppError(ErrorCode.IMAGE_EMPTY, "Send the photo in the field `image`.")
-            data = await upload.read(settings.image_max_bytes + 1)
-        return data, ScanSource.UPLOAD
+        return await _uploaded(request, settings), ScanSource.UPLOAD
     if content_type.startswith("application/json"):
         try:
             body = ScanFromUrl.model_validate_json(await request.body())
@@ -127,6 +117,34 @@ async def _photo_bytes(
         "Send a multipart photo or a JSON {url}.",
         status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
     )
+
+
+async def _uploaded(request: Request, settings: Settings) -> bytes:
+    """
+    Read the photo of a multipart upload, in memory only.
+
+    The upload still carries its EXIF and GPS, so it is never spooled to a
+    temporary file: the parser keeps up to the size limit in memory, and the
+    body limit of the route cuts off anything larger before it arrives.
+    """
+    parser = MultiPartParser(request.headers, request.stream(), max_files=1, max_fields=1)
+    parser.spool_max_size = settings.image_max_bytes + ENVELOPE_BYTES
+    try:
+        form = await parser.parse()
+    except MultiPartException:
+        raise AppError(ErrorCode.IMAGE_INVALID, "The upload does not parse.") from None
+    try:
+        upload = form.get("image")
+        if not isinstance(upload, UploadFile):
+            raise AppError(ErrorCode.IMAGE_EMPTY, "Send the photo in the field `image`.")
+        return await upload.read(settings.image_max_bytes + 1)
+    finally:
+        await form.close()
+
+
+def upload_body_limit(settings: Settings) -> int:
+    """Return the largest body `POST /scans` reads: the largest photo and its envelope."""
+    return settings.image_max_bytes + ENVELOPE_BYTES
 
 
 def _fetch_error(refusal: FetchError) -> AppError:
