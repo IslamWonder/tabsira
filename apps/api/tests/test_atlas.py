@@ -413,6 +413,10 @@ async def test_a_place_page_lists_its_entries_newest_first_with_a_cursor(
     assert [entry["id"] for entry in rest.json()["entries"]] == [first]
     assert rest.json()["next_cursor"] is None
     assert (await guest.http.get("/atlas/places/999")).status_code == 404
+    # Nothing of the atlas is cached: the answer depends on the viewer, and a withdrawal must
+    # leave every cache at once.
+    for response in (page, rest):
+        assert response.headers["cache-control"] == "no-store"
 
 
 async def test_a_blocked_or_nameless_author_and_a_switched_off_atlas_show_nothing(

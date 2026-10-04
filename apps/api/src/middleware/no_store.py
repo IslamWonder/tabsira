@@ -30,6 +30,9 @@ PRIVATE_PREFIXES = (
     "/insights",
     # Public, but a withdrawal must show at once, in a browser and in any cache.
     "/public/insights",
+    # The atlas answers vary by viewer (a block hides an author) and a withdrawal must leave
+    # every cache at once (extension §10).
+    "/atlas",
     "/world",
     "/tutorial/rain/insights",
 )
