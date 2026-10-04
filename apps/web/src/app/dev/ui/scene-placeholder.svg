@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1600" viewBox="0 0 1200 1600">
+  <title>Development placeholder</title>
+  <!-- Not a scene: a night sky over hills, drawn by hand, for the /dev/ui gallery only. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1a24"/>
+      <stop offset="0.55" stop-color="#1d3b3a"/>
+      <stop offset="1" stop-color="#3b5a3f"/>
+    </linearGradient>
+    <radialGradient id="moon" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff4d6"/>
+      <stop offset="0.6" stop-color="#e6c77f" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#e6c77f" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="1600" fill="url(#sky)"/>
+  <circle cx="860" cy="330" r="190" fill="url(#moon)"/>
+  <circle cx="860" cy="330" r="62" fill="#fff4d6"/>
+  <g fill="#e9fff5" opacity="0.7">
+    <circle cx="180" cy="220" r="3"/><circle cx="420" cy="140" r="2"/><circle cx="560" cy="420" r="2.5"/>
+    <circle cx="1040" cy="620" r="2"/><circle cx="300" cy="560" r="2"/><circle cx="690" cy="250" r="1.6"/>
+  </g>
+  <path d="M0 1080 C 220 960 420 1000 620 1080 S 980 1180 1200 1040 V1600 H0Z" fill="#1f3a2c"/>
+  <path d="M0 1240 C 260 1140 520 1200 760 1260 S 1060 1300 1200 1220 V1600 H0Z" fill="#162b21"/>
+  <path d="M0 1420 C 300 1360 640 1400 900 1440 S 1120 1460 1200 1430 V1600 H0Z" fill="#0f1f18"/>
+</svg>
