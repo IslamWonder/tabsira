@@ -24,7 +24,7 @@ Production at tabsira.me without Docker, with no downtime on deploy and data rea
 
 ### 14.1 Rehearse the deploy on a scratch server
 
-- **Status:** 🔄 rehearsed in local containers on 2026-10-04 18:04, real servers pending
+- **Status:** 🔄 rehearsed in local containers on 2026-10-04 18:04, real servers pending; review before the first real deploy added the boot-order guard for the VPN address, the shared corpus folder and the full production template
 - **Goal:** Provision a scratch app host and data host, deploy, roll back, restore a backup.
 - **Depends on:** A scratch VM pair.
 - **Touches:** deploy/ fixes only, docs/OPERATIONS.md.
