@@ -1,0 +1,30 @@
+-- The CI database server, part 1 of 3: the role and the three databases.
+--
+-- The SQL equivalent of scripts/setup-db.sh for a throwaway server, run by
+-- jenkins/ci-services.sh as the postgres superuser. Keep the two in step: the
+-- role, the three databases and the search_path must read the same in both.
+--
+-- Expects the psql variable app_password, set by ci-services.sh over stdin so
+-- the password never sits on a command line.
+--
+--   role      tabsira  login, not a superuser, CREATEDB (pytest-xdist copies a
+--             template per worker), search_path app, geodata, public
+--   databases tabsira           the database the migrations run against
+--             tabsira_test      the API test suite
+--             tabsira_template  an empty copy of the setup, closed to connections
+\set ON_ERROR_STOP on
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'tabsira') THEN
+    CREATE ROLE tabsira LOGIN;
+  END IF;
+END
+$$;
+
+ALTER ROLE tabsira WITH LOGIN CREATEDB PASSWORD :'app_password';
+ALTER ROLE tabsira SET search_path = app, geodata, public;
+
+CREATE DATABASE tabsira OWNER tabsira ENCODING 'UTF8' TEMPLATE template0;
+CREATE DATABASE tabsira_test OWNER tabsira ENCODING 'UTF8' TEMPLATE template0;
+CREATE DATABASE tabsira_template OWNER tabsira ENCODING 'UTF8' TEMPLATE template0;
