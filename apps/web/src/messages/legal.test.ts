@@ -103,6 +103,8 @@ describe('legal documents', () => {
       'Clarity',
       'OpenFreeMap',
       'S3',
+      'nginx',
+      'خمس دقائق',
       'SMTP',
       'GeoNames',
       'bcrypt',
