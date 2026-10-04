@@ -271,7 +271,9 @@ def test_a_link_cannot_be_changed_or_moved_to_another_photo_or_installation(stor
 
     assert not store.verify_signature(key, expires + 1000, signature)
     assert not store.verify_signature(other, expires, signature)
-    assert not store.verify_signature(key, expires, signature[:-1] + "0")
+    # A different last character, whatever the real one is (a fixed "0" matched one link in 16).
+    tampered = signature[:-1] + ("1" if signature.endswith("0") else "0")
+    assert not store.verify_signature(key, expires, tampered)
     assert not store.verify_signature(key, expires, "")
     assert not elsewhere.verify_signature(key, expires, signature)
     assert not store.verify_signature("../x", expires, signature)
