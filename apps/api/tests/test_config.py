@@ -185,6 +185,15 @@ def test_ai_call_limits_default_and_are_bounded(make_settings):
     assert "AI_RETRY_BACKOFF_SECONDS" in errors_of(ai_retry_backoff_seconds=-1)
 
 
+def test_the_profile_questions_count_defaults_to_three_and_stays_between_zero_and_three(
+    make_settings,
+):
+    assert make_settings().profile_questions_max == 3
+    assert make_settings(profile_questions_max=0).profile_questions_max == 0
+    assert "PROFILE_QUESTIONS_MAX" in errors_of(profile_questions_max=4)
+    assert "PROFILE_QUESTIONS_MAX" in errors_of(profile_questions_max=-1)
+
+
 def test_each_provider_carries_its_price_table(make_settings, monkeypatch):
     settings = make_settings()
 

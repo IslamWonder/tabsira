@@ -1,5 +1,6 @@
 /**
- * The two public addresses the browser needs, resolved once, at build time.
+ * The public addresses the browser needs, and the one public number, resolved
+ * once, at build time.
  *
  * `NEXT_PUBLIC_*` values are baked into every page and every share tag, so a
  * build made with a local URL would carry it to production. `resolvePublicEnv`
@@ -9,6 +10,8 @@
  * `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_API_URL` win; without them the
  * repository's shared `SITE_URL` and `API_URL` (root .env, also read by the
  * API) are used. The `.test` defaults apply outside production only.
+ * `PROFILE_QUESTIONS_MAX` (master prompt v2 §5) is read the same way, so the
+ * API and the web agree on how many of the three questions are asked.
  */
 
 export type Environment = 'development' | 'test' | 'production';
@@ -19,12 +22,15 @@ export interface PublicEnv {
   readonly siteUrl: string;
   /** Origin of the API, without a trailing slash. */
   readonly apiUrl: string;
+  /** How many of the three optional profile questions are asked, 0 to 3. */
+  readonly profileQuestionsMax: number;
 }
 
 export type EnvSource = Readonly<Record<string, string | undefined>>;
 
 export const DEVELOPMENT_SITE_URL = 'https://tabsira.test';
 export const DEVELOPMENT_API_URL = 'https://api.tabsira.test';
+export const DEFAULT_PROFILE_QUESTIONS_MAX = 3;
 
 const ENV_KEYS = [
   'ENVIRONMENT',
@@ -32,6 +38,8 @@ const ENV_KEYS = [
   'API_URL',
   'NEXT_PUBLIC_SITE_URL',
   'NEXT_PUBLIC_API_URL',
+  'PROFILE_QUESTIONS_MAX',
+  'NEXT_PUBLIC_PROFILE_QUESTIONS_MAX',
 ] as const;
 
 export class PublicEnvError extends Error {
@@ -105,6 +113,18 @@ export function resolveOrigin(
   return url.origin;
 }
 
+/** A whole number from 0 to 3; empty means the default of 3. */
+export function resolveProfileQuestionsMax(value: string | undefined): number {
+  const raw = value?.trim() ?? '';
+  if (raw === '') {
+    return DEFAULT_PROFILE_QUESTIONS_MAX;
+  }
+  if (!/^[0-3]$/.test(raw)) {
+    throw new PublicEnvError(`PROFILE_QUESTIONS_MAX must be 0, 1, 2 or 3, not "${raw}".`);
+  }
+  return Number(raw);
+}
+
 export function resolvePublicEnv(source: EnvSource): PublicEnv {
   const environment = resolveEnvironment(source.ENVIRONMENT);
   return {
@@ -120,6 +140,9 @@ export function resolvePublicEnv(source: EnvSource): PublicEnv {
       source.NEXT_PUBLIC_API_URL || source.API_URL,
       DEVELOPMENT_API_URL,
       environment
+    ),
+    profileQuestionsMax: resolveProfileQuestionsMax(
+      source.NEXT_PUBLIC_PROFILE_QUESTIONS_MAX || source.PROFILE_QUESTIONS_MAX
     ),
   };
 }

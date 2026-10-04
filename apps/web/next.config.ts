@@ -53,6 +53,7 @@ export default function nextConfig(phase: string): NextConfig {
     env: {
       NEXT_PUBLIC_SITE_URL: publicEnv.siteUrl,
       NEXT_PUBLIC_API_URL: publicEnv.apiUrl,
+      NEXT_PUBLIC_PROFILE_QUESTIONS_MAX: String(publicEnv.profileQuestionsMax),
     },
     async redirects() {
       return [

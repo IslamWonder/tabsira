@@ -12,6 +12,7 @@ import { Notice } from '@/components/ui/notice';
 import type { Insight } from '@/lib/scan/api';
 import { journeyFailureMessage } from '@/lib/scan/failure';
 import { centre } from '@/lib/scan/spans';
+import { profileQuestionsMax } from '@/lib/site';
 import { messages } from '@/messages';
 import { ChatSheet } from './chat-sheet';
 import { CompletionPanel } from './completion-panel';
@@ -183,7 +184,9 @@ export function InsightScreen({ insightId }: { insightId: string }) {
             invitationClosed={invitationClosed}
           />
         )}
-        {finish.completion?.first_time ? <FirstInsightQuestions max={3} /> : null}
+        {finish.completion?.first_time ? (
+          <FirstInsightQuestions max={profileQuestionsMax()} />
+        ) : null}
         {finish.status === 'done' && finish.completion === null ? (
           <div className="flex flex-col items-start gap-2">
             <p className="m-0 font-semibold text-fg">{T.done.alreadyTitle}</p>

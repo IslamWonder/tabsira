@@ -699,6 +699,10 @@ class Settings(BaseSettings):
     # Chat (v2 §14): successful user messages allowed per insight.
     max_chat_user_messages: Annotated[int, Field(ge=0, le=10)] = 3
 
+    # The optional questions (v2 §5): how many of the three the web asks after
+    # the first insight, 0 to 3. The web build reads the same key from the root .env.
+    profile_questions_max: Annotated[int, Field(ge=0, le=3)] = 3
+
     # The hidden treasure (v2 §17) shows on return: after this many days, on a
     # visit to its place this many hours after it was hidden, or after a related insight.
     treasure_reveal_after_days: Annotated[int, Field(ge=0, le=365)] = 3
