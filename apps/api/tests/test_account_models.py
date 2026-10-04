@@ -357,6 +357,9 @@ async def test_every_foreign_key_to_users_cascades_so_deleting_an_account_leaves
         "bookmarks",
         "comments",
         "reports",
+        "scans",
+        "insights",
+        "world_places",
     }
     assert {row.confdeltype for row in rows} == {"c"}
 
@@ -408,6 +411,18 @@ def test_every_table_lives_in_the_app_schema():
         "comments",
         "reports",
         "moderation_actions",
+        # The scan workflow
+        "guests",
+        "scans",
+        "insights",
+        "insight_chat_messages",
+        "world_places",
+        "world_relations",
+        "treasures",
+        # Time series (TimescaleDB hypertables)
+        "scan_events",
+        "ai_calls",
+        "evidence_exposures",
     }
 
     assert {name.removeprefix(f"{APP_SCHEMA}.") for name in Base.metadata.tables} == tables
