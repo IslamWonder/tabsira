@@ -1,5 +1,4 @@
-// SEO and machine-readability audit (docs/SEO.md §7), ported from
-// the reference site/scripts/check-seo.mjs and adapted to one language and to the
+// SEO and machine-readability audit (docs/SEO.md §7) for one language and the
 // routes of TABSIRA. It reads a running server:
 //
 //   BASE_URL=http://127.0.0.1:3000 SITE_URL=https://tabsira.me pnpm --filter @tabsira/web check:seo

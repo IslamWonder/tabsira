@@ -1,5 +1,4 @@
-// Site checks over HTTP (docs/SEO.md §7), ported from
-// the reference site/scripts/check-site.mjs. Start the server first:
+// Site checks over HTTP (docs/SEO.md §7). Start the server first:
 //
 //   BASE_URL=http://127.0.0.1:3000 pnpm --filter @tabsira/web check:site
 //
