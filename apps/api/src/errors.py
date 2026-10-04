@@ -112,17 +112,34 @@ def error_response(
     )
 
 
+def _expect[E: Exception](exc: Exception, kind: type[E]) -> E:
+    """
+    Return `exc` as a `kind`, or raise when a handler was registered for the wrong one.
+
+    Starlette types every handler's exception as `Exception`; this narrows it
+    with a check that still runs under `python -O`, unlike an `assert`.
+    """
+    if not isinstance(exc, kind):
+        message = f"{type(exc).__name__} was routed to the handler of {kind.__name__}"
+        raise TypeError(message)
+    return exc
+
+
 async def handle_app_error(request: Request, exc: Exception) -> Response:
     """Answer a deliberate `AppError`."""
-    assert isinstance(exc, AppError)
-    return error_response(request, exc.status_code, exc.code, exc.detail, headers=exc.headers)
+    error = _expect(exc, AppError)
+    return error_response(
+        request, error.status_code, error.code, error.detail, headers=error.headers
+    )
 
 
 async def handle_http_exception(request: Request, exc: Exception) -> Response:
     """Answer an `HTTPException`, such as the 404 of an unknown path."""
-    assert isinstance(exc, StarletteHTTPException)
-    code = _CODE_BY_STATUS.get(exc.status_code, ErrorCode.HTTP_ERROR)
-    return error_response(request, exc.status_code, code, str(exc.detail), headers=exc.headers)
+    error = _expect(exc, StarletteHTTPException)
+    code = _CODE_BY_STATUS.get(error.status_code, ErrorCode.HTTP_ERROR)
+    return error_response(
+        request, error.status_code, code, str(error.detail), headers=error.headers
+    )
 
 
 async def handle_validation_error(request: Request, exc: Exception) -> Response:
@@ -132,10 +149,10 @@ async def handle_validation_error(request: Request, exc: Exception) -> Response:
     The fields are listed by location and reason only. The rejected values are
     left out: they can hold a password or a private note.
     """
-    assert isinstance(exc, RequestValidationError)
+    error = _expect(exc, RequestValidationError)
     fields = [
         FieldError(loc=list(item["loc"]), message=item["msg"], type=item["type"])
-        for item in exc.errors()
+        for item in error.errors()
     ]
     return error_response(
         request,

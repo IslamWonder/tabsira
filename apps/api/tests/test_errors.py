@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 from starlette.requests import Request
 
+from src import errors
 from src.errors import AppError, ErrorCode, error_response
 from src.main import create_app
 from tests.helpers import client_for
@@ -174,3 +175,20 @@ async def test_a_response_built_without_the_request_id_middleware_has_no_id_head
 
     assert "x-request-id" not in response.headers
     assert response.headers["x-a"] == "1"
+
+
+@pytest.mark.parametrize(
+    ("handler", "expected"),
+    [
+        (errors.handle_app_error, "AppError"),
+        (errors.handle_http_exception, "HTTPException"),
+        (errors.handle_validation_error, "RequestValidationError"),
+    ],
+)
+async def test_a_handler_given_the_wrong_kind_of_exception_raises_instead_of_answering(
+    handler, expected
+):
+    bare = Request({"type": "http", "method": "GET", "path": "/", "headers": []})
+
+    with pytest.raises(TypeError, match=f"RuntimeError was routed to the handler of {expected}"):
+        await handler(bare, RuntimeError("not mine"))
