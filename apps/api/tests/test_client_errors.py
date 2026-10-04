@@ -47,7 +47,13 @@ async def open_client(make_settings: Callable[..., Settings]) -> AsyncIterator[A
 async def forwarding(
     make_settings: Callable[..., Settings], recorder: Any
 ) -> AsyncIterator[tuple[AsyncClient, FastAPI, Any]]:
-    """The application with a web DSN, and what GlitchTip would have received."""
+    """
+    The application with a web DSN, and what GlitchTip would have received.
+
+    The API's own SDK is started first, as in production, so its request processors are
+    live and a browser report must not pick them up.
+    """
+    create_app(make_settings(glitchtip_dsn="https://api-key@glitchtip.example.com/7"))
     application = create_app(make_settings(glitchtip_web_dsn=WEB_DSN, glitchtip_release="1.0.0"))
     async with client_of(application) as http:
         yield http, application, recorder

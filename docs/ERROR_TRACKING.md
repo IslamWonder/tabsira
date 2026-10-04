@@ -115,7 +115,7 @@ The web bundle carries **no DSN**: a key in client code is a key anyone can floo
    - **Size**: a body over 256 KiB is refused with `413 PAYLOAD_TOO_LARGE` from its `Content-Length`; without a length (chunked) it is cut at the cap and then fails the schema.
    - **Rate**: 60 reports per 5 minutes per address (a keyed hash of it, never the address), and 600 per 5 minutes over all addresses; then `429 RATE_LIMITED` with `Retry-After`. The counters are in the memory of each worker, so with N workers the budget is N times that: a spam bound, and it costs no database write when the database is the thing that is failing.
    - **Origin**: like every state-changing request it must come from `CORS_ORIGINS`.
-3. Each report becomes an event on the web project: `platform: javascript`, `area: web`, the browser family, the API's `request_id`, the page URL without its query, the stack parsed into frames (V8 and Gecko shapes) or kept as text, and the breadcrumbs. The client has its own scope, so nothing from the API request leaks into it.
+3. Each report becomes an event on the web project: `platform: javascript`, `area: web`, the browser family, the API's `request_id`, the page URL without its query, the stack parsed into frames (V8 and Gecko shapes) or kept as text, and the breadcrumbs. Events are captured with no scope, so none of the API request processors (its URL, headers, breadcrumbs, transaction) can touch them, even when the API SDK is running.
 
 The answer is `204 No Content` in every accepted case, and also when no DSN is set, so a stale tab never errors on its own error report.
 

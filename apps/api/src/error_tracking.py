@@ -630,8 +630,8 @@ class WebReporter:
     """
     Forwards the errors browsers post to the GlitchTip project of the web app.
 
-    The client is built on first use, once. It has no integrations and its own
-    scope, so nothing of the API request that carried the report (its
+    The client is built on first use, once. It has no integrations and events are
+    captured with no scope, so nothing of the API request that carried the report (its
     breadcrumbs, its transaction) leaks into a browser event.
     """
 
@@ -671,11 +671,13 @@ class WebReporter:
         client = self._get_client()
         if client is None:
             return 0
-        scope = sentry_sdk.Scope()
         sent = 0
         for item in items:
             event = web_event(item, request_id=request_id, user_agent=user_agent)
-            if client.capture_event(cast("Event", event), scope=scope) is not None:
+            # No scope at all: any scope the SDK merges in carries the API request's event
+            # processors once the API SDK has started, and they would replace the report's
+            # own page address with this endpoint's and add its headers.
+            if client.capture_event(cast("Event", event)) is not None:
                 sent += 1
         return sent
 
