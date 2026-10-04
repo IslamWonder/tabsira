@@ -11,11 +11,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.config import Settings, get_settings
 from src.database import dispose_engine
 from src.errors import ErrorResponse, register_error_handlers
+from src.middleware.no_store import NoStoreMiddleware
+from src.middleware.origin_check import OriginCheckMiddleware
 from src.middleware.request_id import REQUEST_ID_HEADER, RequestIdMiddleware
 from src.responses import OrjsonResponse
 from src.routers import health
 
 API_VERSION = "0.1.0"
+
+OPENAPI_TAGS = [
+    {"name": "health", "description": "Liveness and readiness probes."},
+    {
+        "name": "auth",
+        "description": "Sign up, sign in, sign out, Google, e-mail verification, password reset.",
+    },
+    {"name": "profile", "description": "The optional profile and the consent records."},
+    {"name": "account", "description": "Export and deletion of everything an account owns."},
+]
 
 
 @asynccontextmanager
@@ -38,6 +50,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # types the error body once. It also replaces FastAPI's own 422 schema,
         # which is not what this API returns.
         responses={"default": {"model": ErrorResponse, "description": "An error"}},
+        openapi_tags=OPENAPI_TAGS,
         lifespan=lifespan,
         # The schema is the contract the web client types are generated from, so
         # it is served everywhere. The interactive pages are for development.
@@ -49,6 +62,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     register_error_handlers(app)
 
+    # Innermost of the three, so a refusal still carries the request id and the CORS headers.
+    app.add_middleware(OriginCheckMiddleware, allowed_origins=settings.allowed_origins)
+    app.add_middleware(NoStoreMiddleware)
     app.add_middleware(RequestIdMiddleware)
     # Added last, so it is the outermost layer: a preflight is answered before
     # anything else runs, and every response carries the CORS headers.

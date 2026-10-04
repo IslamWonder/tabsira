@@ -234,3 +234,134 @@ async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """A client of the suite's application."""
     async with client_for(app) as http:
         yield http
+
+
+# ─── Accounts: an application on the rolled-back test session, a browser, a mailbox ───
+
+BROWSER_ORIGIN = "https://tabsira.test"
+API_HOST = "https://api.tabsira.test"
+PASSPHRASE = "correct horse battery"
+
+
+@pytest.fixture
+def mailbox(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
+    """Every message the application tries to send, instead of sending it."""
+    from src.services import email_service
+
+    sent: list[Any] = []
+    monkeypatch.setattr(email_service, "deliver", lambda _settings, message: sent.append(message))
+    return sent
+
+
+@pytest.fixture
+def account_settings(make_settings: Callable[..., Settings]) -> Settings:
+    """Settings with Google and SMTP switched on, and bcrypt at its cheapest."""
+    return make_settings(
+        password_bcrypt_rounds=4,
+        google_client_id="test-client-id.apps.googleusercontent.com",
+        google_client_secret="test-client-secret",
+        smtp_host="smtp.example.com",
+        smtp_username="mailer",
+        smtp_password="mailer-password",
+    )
+
+
+@pytest.fixture
+def account_app(
+    account_settings: Settings, db_session: AsyncSession, mailbox: list[Any]
+) -> FastAPI:
+    """
+    The application on `account_settings`, its requests served by the test's own session.
+
+    It depends on `mailbox`, so no test that uses it can reach a real mail server.
+    """
+    from src.database import get_db
+
+    application = create_app(account_settings)
+
+    async def use_the_test_session() -> AsyncIterator[AsyncSession]:
+        yield db_session
+
+    application.dependency_overrides[get_db] = use_the_test_session
+    return application
+
+
+def browser_for(application: FastAPI) -> AsyncClient:
+    """A client that behaves like the web app's page: HTTPS, its origin, a cookie jar."""
+    from httpx import ASGITransport
+
+    return AsyncClient(
+        transport=ASGITransport(app=application, raise_app_exceptions=False),
+        base_url=API_HOST,
+        headers={"Origin": BROWSER_ORIGIN},
+    )
+
+
+@pytest.fixture
+async def web(account_app: FastAPI) -> AsyncIterator[AsyncClient]:
+    async with browser_for(account_app) as http:
+        yield http
+
+
+@pytest.fixture
+async def make_user(db_session: AsyncSession, account_settings: Settings) -> Callable[..., Any]:
+    """Create an account straight in the database; `password` None makes a Google-only one."""
+    from src import security
+    from src.models.user import User
+    from src.services import profile_service
+
+    async def create(
+        email: str = "reader@example.com",
+        password: str | None = PASSPHRASE,
+        *,
+        display_name: str = "Reader",
+        verified: bool = False,
+        **columns: Any,
+    ) -> User:
+        user = User(
+            email=email,
+            password_hash=(
+                None
+                if password is None
+                else security.hash_password(password, account_settings.password_bcrypt_rounds)
+            ),
+            display_name=display_name,
+            **columns,
+        )
+        if verified:
+            from src import clock
+
+            user.email_verified_at = clock.utcnow()
+        db_session.add(user)
+        await db_session.flush()
+        await profile_service.ensure_profile(db_session, user.id)
+        return user
+
+    return create
+
+
+class MovingClock:
+    """A clock a test moves by hand; both of `src.clock`'s readings follow it."""
+
+    def __init__(self) -> None:
+        from datetime import UTC, datetime
+
+        self.now = datetime(2026, 10, 4, 12, 0, tzinfo=UTC)
+        self.monotonic = 1000.0
+
+    def advance(self, **delta: float) -> None:
+        from datetime import timedelta
+
+        step = timedelta(**delta)
+        self.now += step
+        self.monotonic += step.total_seconds()
+
+
+@pytest.fixture
+def moving_clock(monkeypatch: pytest.MonkeyPatch) -> MovingClock:
+    from src import clock
+
+    moving = MovingClock()
+    monkeypatch.setattr(clock, "utcnow", lambda: moving.now)
+    monkeypatch.setattr(clock, "monotonic", lambda: moving.monotonic)
+    return moving
