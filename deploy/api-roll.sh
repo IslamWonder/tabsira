@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Replace the API's gunicorn workers one at a time, never all at once.
-# Ported from the reference project's scripts/api-rolling-reload.sh (TTIN, health check,
-# TTOU), adapted to release folders.
+# The sequence is TTIN, health check, TTOU, run against release folders.
 #
 # gunicorn runs N workers behind one listening socket. The unit starts it from
 # the `current` link (its --chdir and its python are both spelled through that

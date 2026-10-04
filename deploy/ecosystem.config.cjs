@@ -8,8 +8,7 @@
  * The processes run the standalone build under `current/web`, a folder
  * assembled once per deploy, never the checkout: a deploy builds elsewhere
  * while the live processes keep reading their own finished copy, and the
- * `current` link is switched with one atomic rename. Ported from the reference project's
- * scripts/pm2/web.config.cjs.
+ * `current` link is switched with one atomic rename.
  *
  * The environment comes from the production environment file, read here
  * rather than inherited from whichever shell started pm2: the web server

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Put a new web build live with no downtime. Ported from the reference project's
-# scripts/web-rolling-deploy.sh, with the release folders owned by deploy.sh.
+# Put a new web build live with no downtime. The release folders are owned by
+# deploy.sh.
 #
 #   assemble RELEASE  copy the standalone build of RELEASE/apps/web/.next into
 #                     RELEASE/web, and its static files into the shared static
@@ -46,7 +46,7 @@ export_env_file() {
 healthy() { curl -fsS --max-time 5 -o /dev/null "http://127.0.0.1:$1${WEB_HEALTH_PATH}" 2>/dev/null; }
 
 # pm2's process list as JSON and nothing else: the first pm2 command of a user
-# prints a banner before the JSON (it once stopped a the reference project deploy).
+# prints a banner before the JSON (it once stopped a deploy).
 pm2_jlist() {
 	pm2 ping >/dev/null 2>&1 || true
 	pm2 jlist 2>/dev/null | grep -E '^\[(\{|\])' | tail -n 1

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Deploy TABSIRA to the production application host, as an atomic release.
-# Ported from the reference project's scripts/deploy.sh, with releases/<id> and a
-# `current` link in place of its in-place `git reset`.
+# Each deploy is a releases/<id> folder and a `current` link, never an in-place
+# `git reset`.
 #
 # Order, and why:
 #   1. Lock, resolve the commit, check the host and the environment file.

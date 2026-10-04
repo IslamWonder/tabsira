@@ -2,7 +2,7 @@
 # Provision the production APPLICATION host (Ubuntu 24.04 or 26.04): the user,
 # Node and pnpm and pm2, uv and Python 3.12, nginx with HTTPS from certbot, the
 # systemd units, log rotation and the layout deploy/deploy.sh expects.
-# Ported from the reference project's scripts/provision-prod.sh. No Docker.
+# No Docker.
 #
 # What it does, in order:
 #   1. apt packages: nginx, certbot (and its DNS plugin), git, curl,

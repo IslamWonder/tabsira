@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Provision Redis on the production DATA host (Ubuntu 24.04 or 26.04).
-# Ported from the reference project's provision/install-redis-production.sh: native
-# packages from packages.redis.io, no Docker.
+# Native packages from packages.redis.io, no Docker.
 #
 # Redis holds what PostgreSQL does poorly (decision 21): scan-progress pub/sub,
 # the background job queue, short-lived caches and rate-limit counters. Durable

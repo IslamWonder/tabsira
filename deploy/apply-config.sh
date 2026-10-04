@@ -4,7 +4,6 @@
 # root, by an administrator, from the release you want to apply; deploy.sh never
 # does this (the deploy user has no right to write /etc), it only warns when
 # the host differs from the checkout.
-# Ported from the reference project's scripts/setup-nginx-prod.sh.
 #
 # nginx: every file is built aside, the current ones are kept, `nginx -t` runs
 # on the new set, and when it fails the previous files are put back and nginx is

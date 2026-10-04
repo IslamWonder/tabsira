@@ -3,8 +3,7 @@
 # Source it after the script's own `set -Eeuo pipefail`:
 #   source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 #
-# Ported from the reference project's scripts/lib.sh, deploy.sh and web-rolling-deploy.sh,
-# on top of scripts/lib.sh (log, ok, warn, die, have, the user's own tools).
+# Built on scripts/lib.sh (log, ok, warn, die, have, the user's own tools).
 # These scripts run on the production hosts (Linux); the helpers here avoid
 # GNU-only flags where that costs nothing, so --dry-run behaves the same on
 # macOS and in Docker.

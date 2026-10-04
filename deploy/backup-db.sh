@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Dump the TABSIRA database to a local directory and rotate old dumps.
-# Ported from the reference project's scripts/backup-db.sh and the nightly dump timer of
-# provision/install-postgres-production.sh; the off-site upload is left out:
-# backups here are local, with rotation.
+# Backups are local, with rotation; there is no off-site upload.
 #
 # A compressed custom-format dump (restorable selectively with pg_restore) is
 # verified with pg_restore --list before it is kept; an unreadable dump is

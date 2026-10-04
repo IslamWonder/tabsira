@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Provision PostgreSQL 18 on the production DATA host (Ubuntu 24.04 or 26.04).
-# Ported from the reference project's provision/install-postgres-production.sh: native
-# packages, no Docker, listens on loopback and the Netbird address only,
+# Native packages, no Docker, listens on loopback and the Netbird address only,
 # one pg_hba line for the application host, a nightly local dump with rotation.
 #
 # What it does, in order:

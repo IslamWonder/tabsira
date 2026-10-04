@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Restore a dump made by deploy/backup-db.sh into a database.
-# Ported from the reference project's scripts/restore-db.sh.
 #
 # It restores into a database you name. By default that is a NEW database
 # (tabsira_restore), so the live one is never overwritten by accident; check it
