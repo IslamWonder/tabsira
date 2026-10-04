@@ -66,6 +66,26 @@ async def test_sigterm_stops_the_worker_gracefully(shutdowns):
     assert shutdowns == [True]
 
 
+async def test_a_loop_without_signal_handlers_still_stops_on_sigterm(shutdowns, monkeypatch):
+    """Windows: the event loop refuses signal handlers; a plain one takes over."""
+    loop = asyncio.get_running_loop()
+
+    def refuse(*_args, **_kwargs):
+        raise NotImplementedError
+
+    monkeypatch.setattr(loop, "add_signal_handler", refuse)
+    before = {
+        stop_signal: signal.getsignal(stop_signal) for stop_signal in scan_worker.STOP_SIGNALS
+    }
+    receiver = FakeReceiver(on_listen=lambda _stop: signal.raise_signal(signal.SIGTERM))
+
+    assert await scan_worker.run(receiver_factory=receiver) == 0
+
+    assert receiver.stopped
+    assert shutdowns == [True]
+    assert {s: signal.getsignal(s) for s in scan_worker.STOP_SIGNALS} == before
+
+
 def test_main_runs_the_worker(monkeypatch):
     async def run() -> int:
         return 0
