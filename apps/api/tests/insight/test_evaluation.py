@@ -317,6 +317,7 @@ async def test_the_command_writes_results_and_report_and_fails_on_a_leak(maker, 
     )
     http = httpx.AsyncClient(transport=httpx.MockTransport(lambda _r: httpx.Response(503)))
     arguments = [
+        "--only", "scenes",
         "--scenes", "rain",
         "--results-dir", str(tmp_path / "results"),
         "--report", str(tmp_path / "EVALUATION.md"),
@@ -382,7 +383,7 @@ async def test_the_command_builds_the_real_engine_and_closes_its_own(
     monkeypatch.setattr(command, "dispose_engine", dispose)
     monkeypatch.setattr(command, "prepare_scenes", boom)
     with pytest.raises(RuntimeError):
-        await command.run(["--no-report"], settings=settings)
+        await command.run(["--only", "scenes", "--no-report"], settings=settings)
     assert disposed == [True]
     assert engine is not again
 
