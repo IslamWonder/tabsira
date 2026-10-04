@@ -28,7 +28,7 @@ The stack: `apps/web` (Next.js, React, TypeScript, Tailwind), `apps/api` (Python
 make install     # all dependencies: web, api, vision, git hooks
 make dev         # api + web (+ vision) with reload against tabsira.test
 make migrate     # geodata chain, then app chain, then vectors chain
-make data        # import corpora, ontology, learning path and vectors, once (DATA_FORCE=true to redo)
+make data        # install GeoNames (when configured), the corpus and the vectors, once (DATA_FORCE=true to redo)
 make test        # unit tests, web and api
 make coverage    # tests with the 100 % threshold and HTML reports
 make lint        # format check, lint, type check (web and api)

@@ -22,7 +22,7 @@
 #      placeholder. Every other CHANGE_ME stays for the owners.
 #   6. TLS: one certbot lineage per name (tabsira.me with www, api.tabsira.me,
 #      admin.tabsira.me), each by an HTTP challenge through the webroot; existing
-#      lineages are kept and moved to webroot renewal; a renewal hook runs
+#      lineages are kept with their own renewal (certbot --nginx too); a renewal hook runs
 #      `nginx -t` before it reloads.
 #   7. deploy/apply-config.sh: the nginx site and snippets, the systemd units
 #      and timers, log rotation.
@@ -33,7 +33,7 @@
 #   CERTBOT_EMAIL=<address> \
 #     deploy/provision-app.sh [--dry-run | --check] [--skip-tls]
 #
-# Environment: APP_HOST_VPN_IP (default: this host's address on wt0, found by itself), CERTBOT_EMAIL (required for TLS),
+# Environment: APP_HOST_VPN_IP (default: this host's address on wt0, found by itself), CERTBOT_EMAIL (only when a certificate must be issued; existing ones in /etc/letsencrypt/live are kept),
 # CERTBOT_DNS_PLUGIN and CERTBOT_DNS_CREDENTIALS (optional: issue the admin
 # certificate by DNS-01 instead of HTTP; the credentials file is mode 0600, supplied
 # by the owners, never in git), APP_USER (the account that ran sudo, else devops;
@@ -75,7 +75,7 @@ if is_dry; then
 	log "packages      nginx certbot${CERTBOT_DNS_PLUGIN:+ python3-certbot-dns-$CERTBOT_DNS_PLUGIN} git curl postgresql-client-$PG_CLIENT_VERSION"
 	log "toolchain     deploy/install-toolchain.sh as $APP_USER: nvm, Node (.nvmrc), pnpm (package.json), pm2, uv, Python (apps/api/.python-version); pm2 at boot"
 	log "env file      $ENV_FILE from deploy/env.production.example when missing (0600)"
-	log "tls           one certbot lineage each: $WEB_NAME (+www), $API_NAME, $ADMIN_NAME, by HTTP through the webroot${CERTBOT_DNS_PLUGIN:+ ($ADMIN_NAME by DNS-01, plugin $CERTBOT_DNS_PLUGIN)}; existing lineages kept, nginx-plugin renewals moved to the webroot"
+	log "tls           one certbot lineage each: $WEB_NAME (+www), $API_NAME, $ADMIN_NAME, by HTTP through the webroot${CERTBOT_DNS_PLUGIN:+ ($ADMIN_NAME by DNS-01, plugin $CERTBOT_DNS_PLUGIN)}; existing lineages kept with their own renewal"
 	log "config        deploy/apply-config.sh: nginx (nginx -t, restore on failure), systemd units (api, vision, scan worker) and timers, logrotate"
 	log "sudoers       $APP_USER may restart tabsira-api, tabsira-vision and tabsira-worker, nothing else; launcher /usr/local/bin/tabsira-deploy"
 	ok "Dry run complete: nothing was changed."
@@ -163,8 +163,8 @@ fi
 # ─── 6. TLS ─────────────────────────────────────────────────────────
 # One certbot lineage per name: tabsira.me (with www), api.tabsira.me and
 # admin.tabsira.me, each by an HTTP challenge through the webroot, so renewals need
-# no nginx plugin and no DNS credential. A lineage that already exists is left alone
-# (but moved to webroot renewal when certbot --nginx made it). The admin name needs
+# no nginx plugin and no DNS credential. A lineage that already exists is left alone,
+# whatever renews it (certbot --nginx included). The admin name needs
 # a public A record for the challenge; nginx still serves the admin area on the VPN
 # address only. CERTBOT_DNS_PLUGIN and CERTBOT_DNS_CREDENTIALS issue the admin
 # certificate by DNS-01 instead, for a host with no public record.
@@ -178,7 +178,6 @@ issue_lineage() {
 }
 
 issue_tls() {
-	[[ -n "$CERTBOT_EMAIL" ]] || die "Set CERTBOT_EMAIL (or pass --skip-tls)."
 	# Reload only a configuration that passes nginx -t.
 	install -D -m 0755 /dev/stdin /etc/letsencrypt/renewal-hooks/deploy/tabsira-nginx-reload.sh <<'HOOK'
 #!/bin/sh
@@ -187,6 +186,8 @@ HOOK
 	local webroot=(--webroot -w /var/www/certbot) name
 	if [[ ! -s "/etc/letsencrypt/live/$WEB_NAME/fullchain.pem" || ! -s "/etc/letsencrypt/live/$API_NAME/fullchain.pem" ||
 		(-z "$CERTBOT_DNS_PLUGIN" && ! -s "/etc/letsencrypt/live/$ADMIN_NAME/fullchain.pem") ]]; then
+		# Certificates made by hand are kept: the e-mail is only needed when one must be issued.
+		[[ -n "$CERTBOT_EMAIL" ]] || die "A certificate is missing in /etc/letsencrypt/live (one per name: $WEB_NAME, $API_NAME, $ADMIN_NAME): set CERTBOT_EMAIL to issue it, or pass --skip-tls."
 		# Nothing else answers port 80 yet: a bootstrap block serves the challenge files.
 		cat >/etc/nginx/conf.d/tabsira-bootstrap.conf <<EOF
 server {
@@ -205,22 +206,15 @@ EOF
 			issue_lineage "$ADMIN_NAME" "${webroot[@]}" -d "$ADMIN_NAME"
 		fi
 	fi
-	if [[ -n "$CERTBOT_DNS_PLUGIN" ]]; then
+	if [[ -n "$CERTBOT_DNS_PLUGIN" && ! -s "/etc/letsencrypt/live/$ADMIN_NAME/fullchain.pem" ]]; then
+		[[ -n "$CERTBOT_EMAIL" ]] || die "Set CERTBOT_EMAIL to issue the certificate of $ADMIN_NAME."
 		[[ -f "$CERTBOT_DNS_CREDENTIALS" ]] || die "CERTBOT_DNS_PLUGIN is set: give CERTBOT_DNS_CREDENTIALS, a 0600 file the owners supply."
 		chmod 0600 "$CERTBOT_DNS_CREDENTIALS"
 		issue_lineage "$ADMIN_NAME" "--dns-$CERTBOT_DNS_PLUGIN" "--dns-$CERTBOT_DNS_PLUGIN-credentials" "$CERTBOT_DNS_CREDENTIALS" -d "$ADMIN_NAME"
 	fi
-	# Lineages made with `certbot --nginx` renew through the nginx plugin, which edits the live
-	# configuration and cannot find the admin name. Renew them through the webroot instead.
-	for name in "$WEB_NAME" "$API_NAME" "$ADMIN_NAME"; do
-		if grep -q '^authenticator = nginx' "/etc/letsencrypt/renewal/$name.conf" 2>/dev/null; then
-			log "Moving the renewal of $name to the webroot"
-			certbot reconfigure --cert-name "$name" --authenticator webroot --webroot-path /var/www/certbot \
-				--installer none --non-interactive >/dev/null
-		fi
-	done
 	systemctl enable --now certbot.timer >/dev/null 2>&1 || true
 }
+
 if $SKIP_TLS; then
 	warn "--skip-tls: no certificate issued; deploy/apply-config.sh refuses to run without one."
 else

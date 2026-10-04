@@ -36,7 +36,7 @@ def _statement(corpus: EmbeddedCorpus, dimensions: int, *, by_collection: bool) 
     join = ""
     where = "e.model = :model AND e.dimensions = :dimensions"
     if by_collection:
-        join = " JOIN app.hadiths h ON h.id = e.hadith_id"
+        join = " JOIN corpus.hadiths h ON h.id = e.hadith_id"
         where += " AND h.collection IN :collections"
     sql = (
         f"SELECT e.{key} AS key, 1 - ({cast} <=> :query) AS similarity "  # noqa: S608 - fixed names

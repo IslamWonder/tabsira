@@ -23,18 +23,18 @@ $apiDir = Join-Path $RepoRoot 'apps\api'
 $psqlUrl = if ($env:SYNC_DATABASE_URL) { $env:SYNC_DATABASE_URL } else { $env:DATABASE_URL }
 $psqlUrl = $psqlUrl -replace '\+asyncpg', '' -replace '\+psycopg', ''
 
-# The three schemas must exist before Alembic runs: each chain keeps its version
-# table in its own schema. A schema that exists is left alone.
+# The schemas must exist before Alembic runs: each chain keeps its version
+# table in its own schema, and the app chain also fills `corpus` (decision 57). A schema that exists is left alone.
 if (Test-Command psql) {
-    Write-Log 'Ensuring the app, geodata and vectors schemas exist...'
-    foreach ($schema in 'app', 'geodata', 'vectors') {
+    Write-Log 'Ensuring the app, corpus, geodata and vectors schemas exist...'
+    foreach ($schema in 'app', 'corpus', 'geodata', 'vectors') {
         $exists = (Invoke-Capture 'psql' @($psqlUrl, '-X', '-tA', '-c', "SELECT 1 FROM pg_namespace WHERE nspname = '$schema'")).Output
         if ($exists -ne '1') {
             Invoke-Native 'psql' @($psqlUrl, '-X', '-q', '-v', 'ON_ERROR_STOP=1', '-c', "CREATE SCHEMA $schema")
         }
     }
 } else {
-    Write-Warn 'psql not found; assuming the app, geodata and vectors schemas already exist'
+    Write-Warn 'psql not found; assuming the app, corpus, geodata and vectors schemas already exist'
 }
 
 if ($Message) {

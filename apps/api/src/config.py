@@ -28,6 +28,7 @@ from pydantic import (
     Field,
     SecretStr,
     ValidationError,
+    ValidationInfo,
     field_validator,
     model_validator,
 )
@@ -143,6 +144,15 @@ class AiProvider(StrEnum):
 
     OVH = "ovh"
     OPENAI = "openai"
+
+
+class GeonamesSource(StrEnum):
+    """Where scripts/geodata/ensure.sh takes GeoNames from (decision 57)."""
+
+    # The verified 2026-10-04 snapshot in the owners' bucket (GEODATA_DUMP, GEODATA_DUMP_URL).
+    DUMP = "dump"
+    # A fresh import from geonames.org with scripts/seed-geonames.sh: about 600 MB, 15 minutes.
+    GEONAMES = "geonames"
 
 
 class AiStage(StrEnum):
@@ -661,6 +671,22 @@ class Settings(BaseSettings):
     vectors_archive_url: str = (
         "https://s3-v2.riastorage.com/tabsira/vectors/tabsira-vectors-2026-10-04.tar.gz"
     )
+    # The scripture store, the world ontology and the learning path (the `corpus` schema,
+    # decision 57, docs/CORPUS.md): a local tabsira-corpus-<date>.tar.gz, else the archive
+    # in the owners' bucket, downloaded once by scripts/corpus/ensure.sh and checked
+    # against its .sha256. An empty URL means "never download": make data then builds
+    # the store from the third-party sources and the two corpus files.
+    corpus_archive: str = ""
+    corpus_archive_url: str = (
+        "https://s3-v2.riastorage.com/tabsira/corpus/tabsira-corpus-2026-10-04.tar.gz"
+    )
+    # GeoNames as one pg_dump of the `geodata` schema (scripts/geodata/ensure.sh): a local
+    # file, else this address. Empty by default, so `make data` on a development machine
+    # skips the atlas places; the production example names the owners' bucket.
+    geodata_dump: str = ""
+    geodata_dump_url: str = ""
+    # Which of the two the GeoNames step uses; --geonames-source overrides it.
+    geonames_source: GeonamesSource = GeonamesSource.DUMP
 
     # The object detector (services/vision), reached over HTTP only. A detector
     # that does not answer in time is skipped and the scan goes on without boxes.
@@ -869,17 +895,18 @@ class Settings(BaseSettings):
     def _check_detector_url(cls, value: str) -> str:
         return _origin(value)
 
-    @field_validator("vectors_archive")
+    @field_validator("vectors_archive", "corpus_archive", "geodata_dump")
     @classmethod
-    def _strip_vectors_archive(cls, value: str) -> str:
+    def _strip_local_archive(cls, value: str) -> str:
         return value.strip()
 
-    @field_validator("vectors_archive_url")
+    @field_validator("vectors_archive_url", "corpus_archive_url", "geodata_dump_url")
     @classmethod
-    def _check_vectors_archive_url(cls, value: str) -> str:
+    def _check_archive_url(cls, value: str, info: ValidationInfo) -> str:
         value = value.strip()
         if value and not value.startswith("https://"):
-            message = "VECTORS_ARCHIVE_URL must be an https address, or empty to never download"
+            key = (info.field_name or "").upper()
+            message = f"{key} must be an https address, or empty to never download"
             raise ValueError(message)
         return value
 

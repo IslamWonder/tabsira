@@ -252,7 +252,7 @@ verify_as_application_role() {
 	export PGPASSWORD="$password"
 	path="$(docker exec --env PGPASSWORD "$CONTAINER" psql -X -tA -h 127.0.0.1 -U tabsira -d tabsira_test -c 'SHOW search_path' 2>&1)" ||
 		die "the role tabsira cannot connect to tabsira_test: ${path//$password/***}"
-	[[ "$path" == "app, geodata, public" ]] || die "the search_path of tabsira is '$path', not 'app, geodata, public'"
+	[[ "$path" == "app, corpus, geodata, vectors, public" ]] || die "the search_path of tabsira is '$path', not 'app, corpus, geodata, vectors, public'"
 	docker exec --env PGPASSWORD "$CONTAINER" psql -X -q -v ON_ERROR_STOP=1 -h 127.0.0.1 -U tabsira -d postgres \
 		-c 'CREATE DATABASE tabsira_ci_probe TEMPLATE tabsira_template' \
 		-c 'DROP DATABASE tabsira_ci_probe' >/dev/null ||

@@ -1,6 +1,11 @@
 """
 The scripture store: Quran verses and hadiths kept letter by letter as their source gives them.
 
+The reference tables (verses, surahs, history, hadiths, collections, the search
+copies, the annotations and the signals) live in the `corpus` schema, which ships
+as a verified archive (docs/CORPUS.md); what editors and the production jobs write
+(rulings, the verification queue, the audit log, the sync state) stays in `app`.
+
 Displayed text lives in `quran_verses.text` and `hadiths.text`, each with the
 SHA-256 of its UTF-8 bytes. The database checks that hash on every row and
 refuses any insert, update or delete of scripture unless the transaction set
@@ -47,7 +52,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.models.base import Base
+from src.models.base import APP_SCHEMA, CORPUS_SCHEMA, Base
 
 SHA256_LENGTH = 64
 # The words of a search copy for full-text search: the `simple` configuration
@@ -82,6 +87,7 @@ class QuranSurah(Base):
     """One surah of quranpedia's mushaf 2, with the facts the insight pages show."""
 
     __tablename__ = "quran_surahs"
+    __table_args__ = ({"schema": CORPUS_SCHEMA},)
 
     number: Mapped[int] = mapped_column(SmallInteger, primary_key=True, autoincrement=False)
     # As the mushaf names it, e.g. «سورة الفاتحة».
@@ -105,10 +111,11 @@ class QuranVerse(Base):
         CheckConstraint(HASH_MATCHES_TEXT, name="text_hash"),
         CheckConstraint("text <> ''", name="text_not_empty"),
         CheckConstraint("ayah >= 1", name="ayah_positive"),
+        {"schema": CORPUS_SCHEMA},
     )
 
     id: Mapped[int] = _identity_pk()
-    surah: Mapped[int] = mapped_column(SmallInteger, ForeignKey("quran_surahs.number"))
+    surah: Mapped[int] = mapped_column(SmallInteger, ForeignKey("corpus.quran_surahs.number"))
     ayah: Mapped[int] = mapped_column(SmallInteger)
     quranpedia_ayah_id: Mapped[int] = mapped_column(Integer, unique=True)
     mushaf_id: Mapped[int] = mapped_column(SmallInteger)
@@ -128,10 +135,11 @@ class QuranVerseHistory(Base):
     __table_args__ = (
         CheckConstraint(HASH_MATCHES_TEXT, name="text_hash"),
         Index("ix_quran_verse_history_verse_id", "verse_id"),
+        {"schema": CORPUS_SCHEMA},
     )
 
     id: Mapped[int] = _identity_pk()
-    verse_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("quran_verses.id"))
+    verse_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("corpus.quran_verses.id"))
     surah: Mapped[int] = mapped_column(SmallInteger)
     ayah: Mapped[int] = mapped_column(SmallInteger)
     text: Mapped[str] = mapped_column(Text)
@@ -161,10 +169,11 @@ class QuranVerseSearch(Base):
         ),
         Index("ix_quran_verse_search_guard_words", "guard_words"),
         Index("ix_quran_verse_search_search_vector", "search_vector", postgresql_using="gin"),
+        {"schema": CORPUS_SCHEMA},
     )
 
     verse_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("quran_verses.id", ondelete="CASCADE"), primary_key=True
+        BigInteger, ForeignKey("corpus.quran_verses.id", ondelete="CASCADE"), primary_key=True
     )
     normalized_text: Mapped[str] = mapped_column(Text)
     # The leak guard's skeleton of the text (`src.scripture.guard_fold`), for no other use.
@@ -184,7 +193,7 @@ class QuranVerseSearch(Base):
 # it writes the same statements out; a test keeps the two identical.
 VERSE_SPAN_STATEMENTS = (
     """
-    CREATE MATERIALIZED VIEW app.quran_verse_spans AS
+    CREATE MATERIALIZED VIEW corpus.quran_verse_spans AS
     SELECT s.verse_id,
            concat_ws(
                ' ',
@@ -194,25 +203,25 @@ VERSE_SPAN_STATEMENTS = (
                    ' '
                )
            ) AS guard_text
-    FROM app.quran_verse_search AS s
-    JOIN app.quran_verses AS v ON v.id = s.verse_id
+    FROM corpus.quran_verse_search AS s
+    JOIN corpus.quran_verses AS v ON v.id = s.verse_id
     WINDOW following AS (
         PARTITION BY v.surah ORDER BY v.ayah ROWS BETWEEN 1 FOLLOWING AND 6 FOLLOWING
     )
     """,
-    "CREATE UNIQUE INDEX ix_quran_verse_spans_verse_id ON app.quran_verse_spans (verse_id)",
+    "CREATE UNIQUE INDEX ix_quran_verse_spans_verse_id ON corpus.quran_verse_spans (verse_id)",
     """
     CREATE INDEX ix_quran_verse_spans_guard_text_trgm
-    ON app.quran_verse_spans USING gin (guard_text gin_trgm_ops)
+    ON corpus.quran_verse_spans USING gin (guard_text gin_trgm_ops)
     """,
 )
-DROP_VERSE_SPANS = "DROP MATERIALIZED VIEW IF EXISTS app.quran_verse_spans"
+DROP_VERSE_SPANS = "DROP MATERIALIZED VIEW IF EXISTS corpus.quran_verse_spans"
 
 quran_verse_spans = table(
     "quran_verse_spans",
     column("verse_id", BigInteger),
     column("guard_text", Text),
-    schema="app",
+    schema=CORPUS_SCHEMA,
 )
 
 for _statement in VERSE_SPAN_STATEMENTS:
@@ -238,9 +247,10 @@ class QuranAnnotation(Base):
     __table_args__ = (
         ForeignKeyConstraint(
             ["surah", "ayah"],
-            ["quran_verses.surah", "quran_verses.ayah"],
+            ["corpus.quran_verses.surah", "corpus.quran_verses.ayah"],
             name="fk_quran_annotations_surah_ayah_quran_verses",
         ),
+        {"schema": CORPUS_SCHEMA},
     )
 
     surah: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
@@ -262,6 +272,7 @@ class HadithCollection(Base):
     """One of the nine books, with the dataset, licence and version its text came from."""
 
     __tablename__ = "hadith_collections"
+    __table_args__ = ({"schema": CORPUS_SCHEMA},)
 
     slug: Mapped[str] = mapped_column(String(32), primary_key=True)
     name_ar: Mapped[str] = mapped_column(Text)
@@ -284,10 +295,13 @@ class Hadith(Base):
         UniqueConstraint("collection", "number", name="uq_hadiths_collection_number"),
         CheckConstraint(HASH_MATCHES_TEXT, name="text_hash"),
         CheckConstraint("text <> ''", name="text_not_empty"),
+        {"schema": CORPUS_SCHEMA},
     )
 
     id: Mapped[int] = _identity_pk()
-    collection: Mapped[str] = mapped_column(String(32), ForeignKey("hadith_collections.slug"))
+    collection: Mapped[str] = mapped_column(
+        String(32), ForeignKey("corpus.hadith_collections.slug")
+    )
     # The dataset's own number, kept as text: «402.2» is not the float 402.2.
     number: Mapped[str] = mapped_column(String(32))
     # fawazahmed0's second numbering (Abd al-Baqi's for Muslim), when there is one.
@@ -323,10 +337,11 @@ class HadithSearch(Base):
             postgresql_ops={"guard_text": "gin_trgm_ops"},
         ),
         Index("ix_hadith_search_search_vector", "search_vector", postgresql_using="gin"),
+        {"schema": CORPUS_SCHEMA},
     )
 
     hadith_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("hadiths.id", ondelete="CASCADE"), primary_key=True
+        BigInteger, ForeignKey("corpus.hadiths.id", ondelete="CASCADE"), primary_key=True
     )
     normalized_text: Mapped[str] = mapped_column(Text)
     # The leak guard's skeleton of the text (`src.scripture.guard_fold`), for no other use.
@@ -345,12 +360,15 @@ class HadithSignal(Base):
     """
 
     __tablename__ = "hadith_signals"
-    __table_args__ = (Index("ix_hadith_signals_hadith_id", "hadith_id"),)
+    __table_args__ = (
+        Index("ix_hadith_signals_hadith_id", "hadith_id"),
+        {"schema": CORPUS_SCHEMA},
+    )
 
     id: Mapped[int] = _identity_pk()
     source_record_id: Mapped[str] = mapped_column(String(16), unique=True)
     hadith_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("hadiths.id"), nullable=True
+        BigInteger, ForeignKey("corpus.hadiths.id"), nullable=True
     )
     match_coverage: Mapped[float | None] = mapped_column(Float, nullable=True)
     # Every hadith that matched above the threshold, best first: [{hadith_id, coverage}].
@@ -387,7 +405,7 @@ class HadithRuling(Base):
     )
 
     id: Mapped[int] = _identity_pk()
-    hadith_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("hadiths.id"))
+    hadith_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("corpus.hadiths.id"))
     ruling_text: Mapped[str] = mapped_column(Text)
     scholar: Mapped[str] = mapped_column(Text)
     source_book: Mapped[str] = mapped_column(Text)
@@ -417,7 +435,7 @@ class HadithVerificationQueue(Base):
     __table_args__ = (Index("ix_hadith_verification_queue_demand_count", "demand_count"),)
 
     hadith_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("hadiths.id", ondelete="CASCADE"), primary_key=True
+        BigInteger, ForeignKey("corpus.hadiths.id", ondelete="CASCADE"), primary_key=True
     )
     demand_count: Mapped[int] = mapped_column(Integer)
     first_requested_at: Mapped[datetime] = _now()
@@ -485,14 +503,25 @@ GUARDED_TABLES = {
 }
 
 
+# The guarded tables that are reference data (`corpus`); the others are written in production (`app`).
+CORPUS_GUARDED_TABLES = frozenset({"quran_verses", "quran_verse_history", "hadiths"})
+
+
+def guarded_table_name(table: str) -> str:
+    """Return the schema-qualified name of a guarded table."""
+    schema = CORPUS_SCHEMA if table in CORPUS_GUARDED_TABLES else APP_SCHEMA
+    return f"{schema}.{table}"
+
+
 def guard_trigger_statements(table: str, events: str) -> tuple[str, str]:
     """Return the row trigger and the TRUNCATE trigger that guard `table`."""
+    name = guarded_table_name(table)
     row = (
-        f"CREATE TRIGGER {table}_write_guard BEFORE {events} ON app.{table} "
+        f"CREATE TRIGGER {table}_write_guard BEFORE {events} ON {name} "
         "FOR EACH ROW EXECUTE FUNCTION app.scripture_write_guard()"
     )
     truncate = (
-        f"CREATE TRIGGER {table}_truncate_guard BEFORE TRUNCATE ON app.{table} "
+        f"CREATE TRIGGER {table}_truncate_guard BEFORE TRUNCATE ON {name} "
         "FOR EACH STATEMENT EXECUTE FUNCTION app.scripture_write_guard()"
     )
     return row, truncate
@@ -506,7 +535,7 @@ for _table, _events in GUARDED_TABLES.items():
     for _statement in guard_trigger_statements(_table, _events):
         _ddl = DDL(_statement)  # type: ignore[no-untyped-call]
         event.listen(
-            Base.metadata.tables[f"app.{_table}"],
+            Base.metadata.tables[guarded_table_name(_table)],
             "after_create",
             _ddl.execute_if(dialect="postgresql"),
         )

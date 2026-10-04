@@ -10,7 +10,7 @@
 #   import_masar
 #
 # import_ontology  reads data/world-ontology.xlsx (never modified), refreshes the generated
-#                  data/ontology/world-ontology.json and loads app.ontology_entities.
+#                  data/ontology/world-ontology.json and loads corpus.ontology_entities.
 # import_masar     checks that data/masar/tabsira-masar-1.0.json is what docs/spec/masar.md
 #                  produces, then imports every data/masar/*.json, oldest first. The first
 #                  version becomes the active one; a later release waits unless the importer

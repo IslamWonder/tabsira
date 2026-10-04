@@ -91,11 +91,11 @@ async def account(session) -> uuid.UUID:
     return user.id
 
 
-def test_every_table_lives_in_the_app_schema():
+def test_the_path_is_reference_data_and_the_learner_state_is_app_data():
     assert {
-        "app.learning_path_versions",
-        "app.learning_domains",
-        "app.learning_units",
+        "corpus.learning_path_versions",
+        "corpus.learning_domains",
+        "corpus.learning_units",
         "app.learner_unit_states",
     } <= set(Base.metadata.tables)
 
@@ -196,10 +196,10 @@ async def test_a_position_starts_at_one(path, model):
 
 
 async def test_deleting_a_version_removes_its_domains_and_units(path):
-    await path.execute(text("DELETE FROM app.learning_path_versions"))
+    await path.execute(text("DELETE FROM corpus.learning_path_versions"))
 
     for table in ("learning_domains", "learning_units"):
-        count = await path.scalar(select(func.count()).select_from(text(f"app.{table}")))
+        count = await path.scalar(select(func.count()).select_from(text(f"corpus.{table}")))
         assert count == 0, table
 
 
@@ -325,7 +325,7 @@ async def test_a_unit_that_learners_have_state_for_cannot_be_deleted_from_under_
     await path.flush()
 
     with pytest.raises(IntegrityError, match="fk_learner_unit_states_unit"):
-        await path.execute(text("DELETE FROM app.learning_units"))
+        await path.execute(text("DELETE FROM corpus.learning_units"))
 
 
 async def test_the_database_says_that_completed_is_not_mastery(path):

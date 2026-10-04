@@ -35,7 +35,7 @@ Keep every one working; never rename them.
 make install     # all dependencies: web, api, vision, git hooks
 make dev         # api + web (+ vision) with reload against tabsira.test
 make migrate     # geodata chain, then app chain
-make data        # import corpora, ontology, learning path and vectors, once (DATA_FORCE=true to redo)
+make data        # install GeoNames (when configured), the corpus and the vectors, once (DATA_FORCE=true to redo)
 make test        # unit tests, web and api
 make coverage    # tests with the 100 % threshold and HTML reports
 make lint        # format check, lint, type check (web and api)
@@ -120,6 +120,7 @@ Project subagents live in `.claude/agents/`. Each one sets its model and reasoni
 One Mac, two Windows laptops that develop inside Linux virtual machines, one Windows laptop for testing.
 
 - Every command must behave the same on Linux, macOS and inside Docker. No PowerShell-only or macOS-only steps.
+- `scripts/data.ps1` mirrors `scripts/data.sh` for a native Windows machine (an extra entry point, not a replacement): change both together.
 - Never rely on case-insensitive paths.
 - Bind servers to `127.0.0.1`; connect to the database on `127.0.0.1`, not `localhost`.
 - Scheduled work runs in exactly one process, never once per worker.

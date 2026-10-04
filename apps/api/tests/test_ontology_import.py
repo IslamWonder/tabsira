@@ -436,4 +436,4 @@ async def test_a_load_is_split_in_batches_below_the_parameter_limit(db_session, 
     result = await load_ontology(db_session, parsed)
 
     assert result.inserted == 5
-    assert await db_session.scalar(text("SELECT count(*) FROM app.ontology_entities")) == 5
+    assert await db_session.scalar(text("SELECT count(*) FROM corpus.ontology_entities")) == 5

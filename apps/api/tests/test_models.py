@@ -82,6 +82,6 @@ def test_the_scripture_vectors_live_in_the_vectors_schema_keyed_to_app_rows():
         for key in table.foreign_keys
     }
     assert keys == {
-        ("quran_verse_embeddings", "app.quran_verses", "CASCADE"),
-        ("hadith_embeddings", "app.hadiths", "CASCADE"),
+        ("quran_verse_embeddings", "corpus.quran_verses", "CASCADE"),
+        ("hadith_embeddings", "corpus.hadiths", "CASCADE"),
     }

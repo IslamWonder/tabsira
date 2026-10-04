@@ -4,7 +4,7 @@ Import the world ontology workbook (`data/world-ontology.xlsx`).
 `parse_workbook` reads and validates the file and returns the entities; it never
 touches the database and never writes to the workbook. `export_json` writes the
 generated `data/ontology/world-ontology.json`, and `load_ontology` puts the
-entities in `app.ontology_entities`. The Arabic text of every cell is kept exactly
+entities in `corpus.ontology_entities`. The Arabic text of every cell is kept exactly
 as the workbook has it; only list columns are split, and the search forms that sit
 beside the text are made by `src.arabic`.
 
@@ -440,7 +440,7 @@ def _batches(values: list[dict[str, Any]]) -> Iterator[list[dict[str, Any]]]:
 
 async def load_ontology(session: AsyncSession, parsed: ParsedOntology) -> LoadResult:
     """
-    Make `app.ontology_entities` hold exactly the entities of `parsed`.
+    Make `corpus.ontology_entities` hold exactly the entities of `parsed`.
 
     Entities are inserted or updated by id, and the ones the workbook no longer
     has are removed (a candidate that was folded into one keeps its row). The

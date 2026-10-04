@@ -84,8 +84,8 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        # As in the app chain: with the role's search_path (app, geodata, vectors)
-        # the keys to `app` tables reflect without their schema and never match the
+        # As in the app chain: with the role's search_path (app, corpus, geodata, vectors)
+        # the keys to `corpus` tables reflect without their schema and never match the
         # models. With the extensions' schema as the default, every schema is named.
         connect_args={"server_settings": {"search_path": "public"}},
     )

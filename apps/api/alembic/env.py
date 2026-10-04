@@ -15,6 +15,8 @@ from src.config import get_settings
 from src.models import Base
 
 APP_SCHEMA = "app"
+# Reference data in the same metadata and the same chain (docs/CORPUS.md).
+CORPUS_SCHEMA = "corpus"
 
 config = context.config
 
@@ -31,14 +33,14 @@ target_metadata = Base.metadata
 
 def include_name(name: str | None, type_: str, parent_names: Any) -> bool:
     """
-    Look only at the `app` schema when comparing models with the database.
+    Look only at the `app` and `corpus` schemas when comparing models with the database.
 
     The geodata schema belongs to the other chain (alembic_geodata), and the
     default schema holds what the extensions installed (PostGIS tables, for one),
     which no model describes and no autogenerate run should propose to drop.
     """
     if type_ == "schema":
-        return name == APP_SCHEMA
+        return name in {APP_SCHEMA, CORPUS_SCHEMA}
     return True
 
 

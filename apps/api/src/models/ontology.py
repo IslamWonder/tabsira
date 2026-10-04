@@ -1,5 +1,5 @@
 """
-The world ontology (`app.ontology_entities`) and the terms it did not know (`app.ontology_candidates`).
+The world ontology (`corpus.ontology_entities`) and the terms it did not know (`app.ontology_candidates`).
 
 The ontology is imported from `data/world-ontology.xlsx` and is never edited by the
 application. What the application learns goes into the candidates table, where a
@@ -33,7 +33,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.models.base import Base
+from src.models.base import CORPUS_SCHEMA, Base
 
 
 class CandidateKind(StrEnum):
@@ -79,6 +79,8 @@ class OntologyEntity(Base):
             postgresql_ops={"search_text": "gin_trgm_ops"},
         ),
         Index("ix_ontology_entities_domain", "domain"),
+        # Reference data, installed with the scripture store (docs/CORPUS.md).
+        {"schema": CORPUS_SCHEMA},
     )
 
     id: Mapped[str] = mapped_column(String(16), primary_key=True)
@@ -129,7 +131,7 @@ class OntologyCandidate(Base):
     examples: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'::text[]"))
     status: Mapped[str] = mapped_column(String(16), server_default=text("'new'"))
     entity_id: Mapped[str | None] = mapped_column(
-        String(16), ForeignKey("ontology_entities.id", ondelete="SET NULL")
+        String(16), ForeignKey("corpus.ontology_entities.id", ondelete="SET NULL")
     )
     first_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

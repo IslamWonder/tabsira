@@ -36,21 +36,8 @@ APP_TABLES = {
     "email_tokens",
     "login_attempts",
     "oauth_states",
-    "ontology_entities",
     "ontology_candidates",
-    "learning_path_versions",
-    "learning_domains",
-    "learning_units",
     "learner_unit_states",
-    "quran_surahs",
-    "quran_verses",
-    "quran_verse_history",
-    "quran_verse_search",
-    "quran_annotations",
-    "hadith_collections",
-    "hadiths",
-    "hadith_search",
-    "hadith_signals",
     "hadith_rulings",
     "hadith_verification_queue",
     "scripture_audit",
@@ -79,6 +66,22 @@ APP_TABLES = {
     "evidence_exposures",
     "map_entries",
     "map_capture_points",
+}
+# Decision 57: the reference data, filled by the app chain in its own schema.
+CORPUS_TABLES = {
+    "quran_surahs",
+    "quran_verses",
+    "quran_verse_history",
+    "quran_verse_search",
+    "quran_annotations",
+    "hadith_collections",
+    "hadiths",
+    "hadith_search",
+    "hadith_signals",
+    "ontology_entities",
+    "learning_path_versions",
+    "learning_domains",
+    "learning_units",
 }
 # Decision 48: derived, rebuildable, in their own schema and chain.
 VECTORS_TABLES = {"quran_verse_embeddings", "hadith_embeddings", "embedding_runs"}
@@ -163,7 +166,7 @@ async def test_the_three_chains_build_the_database_and_match_the_models(migrated
                 await connection.execute(
                     text(
                         "SELECT schemaname || '.' || tablename FROM pg_tables "
-                        "WHERE schemaname IN ('app', 'geodata', 'vectors')"
+                        "WHERE schemaname IN ('app', 'corpus', 'geodata', 'vectors')"
                     )
                 )
             ).scalars()
@@ -191,7 +194,7 @@ async def test_the_three_chains_build_the_database_and_match_the_models(migrated
                 await connection.execute(
                     text(
                         "SELECT schemaname || '.' || matviewname || ' ' || ispopulated "
-                        "FROM pg_matviews WHERE schemaname IN ('app', 'geodata')"
+                        "FROM pg_matviews WHERE schemaname IN ('app', 'corpus', 'geodata')"
                     )
                 )
             ).scalars()
@@ -203,7 +206,7 @@ async def test_the_three_chains_build_the_database_and_match_the_models(migrated
                         "SELECT c.relname || '.' || t.tgname FROM pg_trigger t "
                         "JOIN pg_class c ON c.oid = t.tgrelid "
                         "JOIN pg_namespace n ON n.oid = c.relnamespace "
-                        "WHERE n.nspname = 'app' AND NOT t.tgisinternal"
+                        "WHERE n.nspname IN ('app', 'corpus') AND NOT t.tgisinternal"
                     )
                 )
             ).scalars()
@@ -218,17 +221,18 @@ async def test_the_three_chains_build_the_database_and_match_the_models(migrated
         "geodata.alembic_version",
         "app.alembic_version",
         *(f"app.{table}" for table in APP_TABLES),
+        *(f"corpus.{table}" for table in CORPUS_TABLES),
         "vectors.alembic_version",
         *(f"vectors.{table}" for table in VECTORS_TABLES),
     } == tables
     assert set(EXTENSIONS) <= extensions
     assert versions == {
-        "app": "20261004_208000",
+        "app": "20261004_209000",
         "geodata": "20261004_130000",
         "vectors": "20261004_200000",
     }
     # alembic check cannot see a materialized view either.
-    assert views == {"app.quran_verse_spans true"}
+    assert views == {"corpus.quran_verse_spans true"}
     # The models and the migrations describe the same database.
     assert {"ix_geonames_name_trgm", "ix_geonames_location_geom", "pk_geonames"} <= indexes
     # The scripture write guard exists after the migrations too, not only in a schema built
@@ -246,6 +250,68 @@ async def test_the_three_chains_build_the_database_and_match_the_models(migrated
     for config in (GEODATA_CONFIG, APP_CONFIG, VECTORS_CONFIG):
         check = alembic(config, "check")
         assert check.returncode == 0, check.stdout + check.stderr
+
+
+async def test_the_move_to_corpus_keeps_every_row_and_key_and_its_downgrade_puts_them_back(
+    migrated,
+):
+    assert alembic(APP_CONFIG, "upgrade", "20261004_208000").returncode == 0
+    async with migrated.begin() as connection:
+        await connection.execute(text("SET LOCAL tabsira.scripture_write = 'import'"))
+        await connection.execute(
+            text(
+                "INSERT INTO app.hadith_collections (slug, name_ar, source_dataset, source_url, "
+                "licence, source_version, source_file, source_sha256, display_order) "
+                "VALUES ('bukhari', 'صحيح البخاري', 'd', 'https://example.org', 'l', 'v', 'f', "
+                ":sha, 1)"
+            ),
+            {"sha": "0" * 64},
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO app.hadiths (collection, number, text, text_sha256, "
+                "source_dataset, source_version) VALUES ('bukhari', '1', 'نص', "
+                "encode(sha256(convert_to('نص', 'UTF8')), 'hex'), 'd', 'v')"
+            )
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO app.hadith_rulings (hadith_id, ruling_text, scholar, source_book, "
+                "page, dorar_url, classification, editor_name) SELECT id, 'صحيح', 's', 'b', '1', "
+                "'https://dorar.net/h/1', 'صحيح', 'e' FROM app.hadiths"
+            )
+        )
+
+    up = alembic(APP_CONFIG, "upgrade", "head")
+    assert up.returncode == 0, up.stderr
+    async with migrated.connect() as connection:
+        moved = (
+            await connection.execute(
+                text(
+                    "SELECT h.number, r.ruling_text, "
+                    "(SELECT n.nspname FROM pg_constraint c "
+                    " JOIN pg_class t ON t.oid = c.confrelid "
+                    " JOIN pg_namespace n ON n.oid = t.relnamespace "
+                    " WHERE c.conname = 'fk_hadith_rulings_hadith_id_hadiths') "
+                    "FROM corpus.hadiths h JOIN app.hadith_rulings r ON r.hadith_id = h.id"
+                )
+            )
+        ).one()
+    assert tuple(moved) == ("1", "صحيح", "corpus")
+
+    down = alembic(APP_CONFIG, "downgrade", "20261004_208000")
+    assert down.returncode == 0, down.stderr
+    async with migrated.connect() as connection:
+        back = (
+            await connection.execute(
+                text(
+                    "SELECT (SELECT count(*) FROM app.hadiths), "
+                    "(SELECT count(*) FROM pg_tables WHERE schemaname = 'corpus'), "
+                    "(SELECT schemaname FROM pg_matviews WHERE matviewname = 'quran_verse_spans')"
+                )
+            )
+        ).one()
+    assert tuple(back) == (1, 0, "app")
 
 
 async def test_the_geodata_chain_downgrades_and_upgrades_again(migrated):
@@ -304,7 +370,7 @@ async def test_alembic_check_sees_a_difference_between_the_models_and_the_databa
     assert alembic(APP_CONFIG, "upgrade", "head").returncode == 0
     async with migrated.begin() as connection:
         await connection.execute(text("ALTER TABLE app.users ADD COLUMN drift integer"))
-        await connection.execute(text("ALTER TABLE app.quran_surahs ADD COLUMN drift integer"))
+        await connection.execute(text("ALTER TABLE corpus.quran_surahs ADD COLUMN drift integer"))
 
     check = alembic(APP_CONFIG, "check")
 

@@ -10,8 +10,8 @@ scripts/setup-db.sh does, for a Windows PostgreSQL (install-postgres.ps1).
               tabsira_test     the API test suite; not in production
               tabsira_template development and test only: an empty copy of the
                                setup, marked as a template, closed to connections
-  schemas     app, geodata, vectors   owned by the role, in every database
-  search_path app, geodata, vectors, public   set on the role
+  schemas     app, corpus, geodata, vectors   owned by the role, in every database
+  search_path app, corpus, geodata, vectors, public   set on the role
   extensions  postgis pg_trgm unaccent pgcrypto btree_gin btree_gist
               pg_stat_statements vector timescaledb   in every database,
               WITH SCHEMA public, the way the API migrations expect them
@@ -38,7 +38,7 @@ $DbUser = 'tabsira'
 $DbName = 'tabsira'
 $TestDbName = 'tabsira_test'
 $TemplateDbName = 'tabsira_template'
-$Schemas = @('app', 'geodata', 'vectors')
+$Schemas = @('app', 'corpus', 'geodata', 'vectors')
 $Extensions = @('postgis', 'pg_trgm', 'unaccent', 'pgcrypto', 'btree_gin', 'btree_gist', 'pg_stat_statements', 'vector', 'timescaledb')
 
 $environment = if ($env:ENVIRONMENT) { $env:ENVIRONMENT } else { Get-EnvValue $EnvFile 'ENVIRONMENT' }
@@ -107,7 +107,7 @@ END
 "@)
 # The password goes in through stdin: never on a command line.
 [void](Invoke-Psql -InputSql "ALTER ROLE $DbUser WITH LOGIN PASSWORD '$dbPassword';")
-[void](Invoke-Psql -Sql "ALTER ROLE $DbUser SET search_path = app, geodata, vectors, public;")
+[void](Invoke-Psql -Sql "ALTER ROLE $DbUser SET search_path = app, corpus, geodata, vectors, public;")
 # CREATEDB lets pytest-xdist copy a template database per worker; it is a
 # development convenience that a production role must not have.
 [void](Invoke-Psql -Sql "ALTER ROLE $DbUser $roleFlags;")
@@ -169,10 +169,10 @@ foreach ($db in $connectable) {
     } catch {
         Fail "role $DbUser cannot connect to $db over ${PgHost}:${PgPort}: $("$_" -replace [regex]::Escape($dbPassword), '***')"
     }
-    if ($path -ne 'app, geodata, vectors, public') { Fail "search_path of $DbUser on $db is '$path'" }
+    if ($path -ne 'app, corpus, geodata, vectors, public') { Fail "search_path of $DbUser on $db is '$path'" }
 }
 foreach ($db in $connectable) {
     Write-Log "$db extensions: $(Invoke-Psql -Database $db -Tuples -Sql "SELECT string_agg(extname || ' ' || extversion, ', ' ORDER BY extname) FROM pg_extension WHERE extname <> 'plpgsql'")"
 }
-Write-Ok "Database setup complete: $($databases -join ' '), role $DbUser, search_path app, geodata, vectors, public"
+Write-Ok "Database setup complete: $($databases -join ' '), role $DbUser, search_path app, corpus, geodata, vectors, public"
 exit 0

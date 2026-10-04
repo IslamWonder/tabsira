@@ -5,6 +5,7 @@ Required by v2 §3 and decisions 6, 16 and 17. One row per asset: status, where 
 - Audit date: 4 October 2026. Nothing listed here was modified.
 - Import: the scripture store was built from these sources on 4 October 2026; §9 records what was imported, and docs/SOURCES-AND-LICENSES.md the licences.
 - `data/cache/` is a download cache for importers and audits, ignored by git (`.gitignore`: `data/cache/`).
+- Installations do not rebuild the store from these sources: they import the `corpus` schema from the verified archive in the owners' bucket (docs/CORPUS.md, decision 57). The sources below are what the archive was built from, and `make data` still rebuilds from them when `CORPUS_ARCHIVE_URL` is empty.
 - Status: `available` (present and parsed), `missing` (not obtainable from the named source), `invalid` (present but unusable as is).
 
 ## 1. Summary
@@ -47,7 +48,7 @@ Required by v2 §3 and decisions 6, 16 and 17. One row per asset: status, where 
 
 - **Source.** quranpedia's official dumps, `https://api.quranpedia.net/dumps/manifest.json`, version **2026-10-03** (generated 2026-10-03T06:00:47Z). `mushafs-2.json.gz`: 414,537 bytes, built 2026-10-03T06:00:02Z, sha256 `cc9da99d6683de55bfebebc0cd7cd9c824982c7d3c8fd962203e9391c9458df1`. `surahs.json.gz`: 192,635 bytes, built 2026-10-03T02:00:02Z, sha256 `3b8196a13bc7b6000880ec70315c45b1a64d90b66f5ee33d84ce6beb8614dccc`. Both equal the manifest; the importer refuses a file that does not, and keeps the manifest beside the files in the cache.
 - **Content.** Schema `/v1/mushafs/2`, «مصحف حفص نسخة نصية», described by quranpedia as the King Fahd Complex Uthmani Hafs text, font `UthmanicHafs_V22.ttf`. 114 surahs, 6,236 verses, quranpedia ayah ids 62251–68486, `number_in_hafs` equal to the verse number everywhere. No leading or trailing whitespace. The marks follow the King Fahd encoding: sukun mostly as U+06E1 (37,148; U+0652 3,988), open tanween as U+065E, U+0656 and U+0657 (1,807, 1,935, 2,901), pause marks U+06D6–U+06DC, small letters U+06E5–U+06E8, rub el hizb (199) and sajdah (15) signs.
-- **Stored.** `app.quran_verses`: the text exactly as in the dump, the SHA-256 of its UTF-8 bytes (also checked by a database constraint on every row), quranpedia ayah id, page, juz and `source_version` `dump:2026-10-03`. `app.quran_surahs`: the surah name as the mushaf gives it («سورة الفاتحة»), «مكية»/«مدنية», revelation order, Kufan verse count and word count from `surahs.json.gz`. The folded search copy is in `app.quran_verse_search`, with the leak guard's skeleton of the text (`guard_text`, the same for the Uthmani text and today's spelling), never displayed.
+- **Stored.** `corpus.quran_verses`: the text exactly as in the dump, the SHA-256 of its UTF-8 bytes (also checked by a database constraint on every row), quranpedia ayah id, page, juz and `source_version` `dump:2026-10-03`. `corpus.quran_surahs`: the surah name as the mushaf gives it («سورة الفاتحة»), «مكية»/«مدنية», revelation order, Kufan verse count and word count from `surahs.json.gz`. The folded search copy is in `corpus.quran_verse_search`, with the leak guard's skeleton of the text (`guard_text`, the same for the Uthmani text and today's spelling), never displayed.
 - **Check.** 30:50 has sha256 `a6593778d3e8b38a5229c3ac7fd445e8b607658d4c34dc71b9bfa56302bb1d9e` in the dump, in the database and in `GET /scripture/quran/30/50`. The KFGQPC v13 text of the same verse (fawazahmed0 `ara-quranuthmanihaf`) differs in encoding but folds to the same search copy.
 - **Verse link.** `https://quranpedia.net/surah/2/{surah}#verse-{quranpedia ayah id}`. The surah page of mushaf 2 has the canonical URL `/surah/2/{surah}`, and the first line of each verse carries `id="verse-{id}"` (checked on `/surah/2/30`, 4 October 2026). The per-verse page `/ayahs/{surah}/{ayah}` redirects to `/tafsir/{slug}/{ayah}`, a tafsir page that does not show mushaf 2's text, so it is not used.
 - **Corrections.** `GET https://api.quranpedia.net/v1/changes?since=YYYY-MM-DD` (a date, not a time; verse tracking since 2026-08-07; each list capped at 1,000 rows sorted by `changed_at`, flagged `truncated`; a `refetch` path per row). On 4 October 2026 the feed held no change to mushaf 2: since 2026-08-08 it listed 1,000 rows (mushaf 4 ×1, mushaf 6 ×999, truncated on 2026-08-25) and nothing since 2026-08-26. `uv run python -m src.cli.sync_quran` applies the changes daily (see `src/scripture/quran_sync.py`).
@@ -214,7 +215,7 @@ The compiler's reference numbers agree with the dataset's numbering only for som
 
 The importer repeats the repair (every string proved by re-encoding) and the matching of §4.3 against the nine stored books, with two differences: Musnad Ahmad and Sunan al-Darimi are now in the store, and among matches above 0.5 a book the compiler cites ranks before one it does not. The audit's map in `data/cache/` is not read.
 
-- 3,920 records stored in `app.hadith_signals`; **3,613 linked** to a hadith (92.2 %), 307 without a match (they cite books outside the nine, have no usable narration, or did not match).
+- 3,920 records stored in `corpus.hadith_signals`; **3,613 linked** to a hadith (92.2 %), 307 without a match (they cite books outside the nine, have no usable narration, or did not match).
 - Links by book: Bukhari 1,538, Muslim 613, Abu Dawud 511, Tirmidhi 310, Ibn Majah 172, Darimi 150, Ahmad 148, Malik 89, Nasa'i 82.
 - Of the linked records that cite one of the nine books, 3,521 / 3,549 (99.2 %) link into a cited book. Where both the audit and the importer found a match, they agree on the hadith for 3,270 records and differ for 51 (mostly a cited book preferred over a slightly higher coverage elsewhere).
 - `summary` and `modern_rephrase` are stored as `model_written_summary` and `model_written_rephrase`; the record's own abridged narration is not stored at all. None of them is ever returned by the scripture API.
@@ -278,16 +279,16 @@ Downloaded on 4 October 2026. Tanzil served the file without accepting its downl
 
 | Table                           |       Rows | Notes                                                                                             |
 | ------------------------------- | ---------: | ------------------------------------------------------------------------------------------------- |
-| `app.quran_surahs`              |        114 |                                                                                                   |
-| `app.quran_verses`              |      6,236 | quranpedia dump 2026-10-03, every hash checked by the database                                    |
-| `app.quran_verse_search`        |      6,236 | folded copies for search; guard skeletons and their word counts for the leak guard                |
-| `app.quran_verse_spans`         |      6,236 | each verse's guard skeleton with the next six words of its surah, leak guard only (mat. view)     |
-| `app.quran_verse_history`       |          0 | no correction applied yet                                                                         |
-| `app.quran_annotations`         |      6,236 | seven annotation keys per verse; 514 strings repeating the verse left out; `text_ar` not stored   |
-| `app.hadith_collections`        |          9 |                                                                                                   |
-| `app.hadiths`                   |     65,712 | §3.5                                                                                              |
-| `app.hadith_search`             |     65,712 | folded copies for search, and guard skeletons for the leak guard                                  |
-| `app.hadith_signals`            |      3,920 | 3,613 linked to a hadith (§4.4)                                                                   |
+| `corpus.quran_surahs`           |        114 |                                                                                                   |
+| `corpus.quran_verses`           |      6,236 | quranpedia dump 2026-10-03, every hash checked by the database                                    |
+| `corpus.quran_verse_search`     |      6,236 | folded copies for search; guard skeletons and their word counts for the leak guard                |
+| `corpus.quran_verse_spans`      |      6,236 | each verse's guard skeleton with the next six words of its surah, leak guard only (mat. view)     |
+| `corpus.quran_verse_history`    |          0 | no correction applied yet                                                                         |
+| `corpus.quran_annotations`      |      6,236 | seven annotation keys per verse; 514 strings repeating the verse left out; `text_ar` not stored   |
+| `corpus.hadith_collections`     |          9 |                                                                                                   |
+| `corpus.hadiths`                |     65,712 | §3.5                                                                                              |
+| `corpus.hadith_search`          |     65,712 | folded copies for search, and guard skeletons for the leak guard                                  |
+| `corpus.hadith_signals`         |      3,920 | 3,613 linked to a hadith (§4.4)                                                                   |
 | `app.hadith_rulings`            |          0 | recorded by editors (decision 18)                                                                 |
 | `app.hadith_verification_queue` |          0 | filled by the pipeline's demand                                                                   |
 | `app.scripture_audit`           | 10 per run | one import row per dump and per book                                                              |

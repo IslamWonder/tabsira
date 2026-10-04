@@ -30,8 +30,8 @@ def entity(entity_id: str = "E001", **columns) -> OntologyEntity:
     return OntologyEntity(**{**values, **columns})
 
 
-def test_both_tables_live_in_the_app_schema():
-    assert {"app.ontology_entities", "app.ontology_candidates"} <= set(Base.metadata.tables)
+def test_the_entities_are_reference_data_and_the_candidates_are_app_data():
+    assert {"corpus.ontology_entities", "app.ontology_candidates"} <= set(Base.metadata.tables)
 
 
 def test_the_entity_table_declares_a_trigram_index_on_the_search_column():
@@ -107,7 +107,7 @@ async def test_the_trigram_operator_can_use_the_index(db_session):
     plan = "\n".join(
         (
             await db_session.execute(
-                text("EXPLAIN SELECT id FROM app.ontology_entities WHERE 'سماء' <% search_text")
+                text("EXPLAIN SELECT id FROM corpus.ontology_entities WHERE 'سماء' <% search_text")
             )
         ).scalars()
     )
@@ -189,7 +189,7 @@ async def test_deleting_an_entity_keeps_the_candidate_that_was_folded_into_it(db
     )
     await db_session.flush()
 
-    await db_session.execute(text("DELETE FROM app.ontology_entities WHERE id = 'E001'"))
+    await db_session.execute(text("DELETE FROM corpus.ontology_entities WHERE id = 'E001'"))
     db_session.expire_all()
     stored = await db_session.scalar(select(OntologyCandidate))
 

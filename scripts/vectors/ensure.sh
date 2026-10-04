@@ -49,7 +49,7 @@ url="${DATABASE_URL/postgresql+asyncpg:/postgresql:}"
 url="${url/postgresql+psycopg:/postgresql:}"
 query() { psql -X -q -tA -v ON_ERROR_STOP=1 "$url" -c "$1"; }
 
-for table in vectors.quran_verse_embeddings vectors.hadith_embeddings app.quran_verses app.hadiths; do
+for table in vectors.quran_verse_embeddings vectors.hadith_embeddings corpus.quran_verses corpus.hadiths; do
 	[[ "$(query "SELECT to_regclass('$table') IS NOT NULL")" == "t" ]] ||
 		die "$table is missing: run make migrate, then the scripture store import (make data)."
 done
@@ -58,11 +58,11 @@ covered="$(query "
 	SELECT count(*) FROM (
 		SELECT model FROM vectors.quran_verse_embeddings
 		WHERE model IN ($DEFAULT_MODELS) GROUP BY model
-		HAVING count(*) >= (SELECT count(*) FROM app.quran_verses)
+		HAVING count(*) >= (SELECT count(*) FROM corpus.quran_verses)
 		INTERSECT
 		SELECT model FROM vectors.hadith_embeddings
 		WHERE model IN ($DEFAULT_MODELS) GROUP BY model
-		HAVING count(*) >= (SELECT count(*) FROM app.hadiths)
+		HAVING count(*) >= (SELECT count(*) FROM corpus.hadiths)
 	) full_models")"
 if [[ "$covered" != "0" && "$FORCE" != "true" ]]; then
 	ok "Scripture vectors are already in the database: nothing to import. Use --force to import again."
