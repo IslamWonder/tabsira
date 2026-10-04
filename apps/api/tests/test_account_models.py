@@ -344,6 +344,7 @@ async def test_every_foreign_key_to_users_cascades_so_deleting_an_account_leaves
         "profiles",
         "consents",
         "email_tokens",
+        "learner_unit_states",
     }
     assert {row.confdeltype for row in rows} == {"c"}
 

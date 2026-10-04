@@ -14,6 +14,7 @@ from src.models import (
     LearningDomain,
     LearningPathVersion,
     LearningUnit,
+    User,
 )
 
 SHA = "0" * 64
@@ -80,6 +81,14 @@ async def path(db_session):
 def state(**columns) -> LearnerUnitState:
     values = {"guest_key": GUEST, "path_version": "tabsira-masar-1.0", "unit_id": "T00_01"}
     return LearnerUnitState(**{**values, **columns})
+
+
+async def account(session) -> uuid.UUID:
+    """An account, flushed, whose id a state can name."""
+    user = User(email=f"{uuid.uuid4()}@example.com", display_name="Reader")
+    session.add(user)
+    await session.flush()
+    return user.id
 
 
 def test_every_table_lives_in_the_app_schema():
@@ -209,7 +218,7 @@ async def test_a_state_starts_at_zero_and_is_owned_by_a_guest(path):
 
 
 async def test_a_state_can_belong_to_an_account(path):
-    owner = uuid.uuid4()
+    owner = await account(path)
     path.add(state(guest_key=None, user_id=owner, seen_count=3, opened_count=2, completed_count=1))
     await path.flush()
 
@@ -221,10 +230,12 @@ async def test_a_state_can_belong_to_an_account(path):
 
 @pytest.mark.parametrize(
     "owners",
-    [{"guest_key": None}, {"guest_key": GUEST, "user_id": uuid.UUID(int=1)}],
+    [{"guest_key": None}, {"guest_key": GUEST, "user_id": "an account"}],
     ids=["no owner", "two owners"],
 )
 async def test_a_state_has_exactly_one_owner(path, owners):
+    if owners.get("user_id") == "an account":
+        owners = {**owners, "user_id": await account(path)}
     path.add(state(**owners))
 
     with pytest.raises(IntegrityError, match="one_owner"):
@@ -248,7 +259,7 @@ async def test_a_count_is_never_negative(path, column):
 
 
 async def test_a_guest_has_one_state_per_unit_of_a_version_and_an_account_too(path):
-    owner = uuid.uuid4()
+    owner = await account(path)
     path.add_all([state(), state(guest_key=None, user_id=owner)])
     await path.flush()
     # The same guest on the same unit of another version, or another guest, is a different row.
@@ -269,13 +280,37 @@ async def test_a_guest_has_one_state_per_unit_of_a_version_and_an_account_too(pa
 
 
 async def test_an_account_has_one_state_per_unit_of_a_version(path):
-    owner = uuid.uuid4()
+    owner = await account(path)
     path.add(state(guest_key=None, user_id=owner))
     await path.flush()
     path.add(state(guest_key=None, user_id=owner))
 
     with pytest.raises(IntegrityError, match="uq_learner_unit_states_user"):
         await path.flush()
+
+
+async def test_a_state_names_an_account_that_exists(path):
+    path.add(state(guest_key=None, user_id=uuid.uuid4()))
+
+    with pytest.raises(IntegrityError, match="fk_learner_unit_states_user_id_users"):
+        await path.flush()
+
+
+async def test_deleting_an_account_deletes_its_learning_state_and_only_its_own(path):
+    owner, other = await account(path), await account(path)
+    path.add_all(
+        [
+            state(guest_key=None, user_id=owner, completed_count=2),
+            state(guest_key=None, user_id=other),
+            state(),
+        ]
+    )
+    await path.flush()
+
+    await path.execute(text("DELETE FROM app.users WHERE id = :id"), {"id": owner})
+
+    remaining = (await path.scalars(select(LearnerUnitState.user_id))).all()
+    assert sorted(map(str, remaining), key=str) == sorted([str(other), "None"], key=str)
 
 
 async def test_a_state_names_a_unit_that_exists_in_that_version(path):

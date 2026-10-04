@@ -73,6 +73,6 @@ The parser is for the Markdown of `masar.md`. A later release can be written dir
 - **Counts.** `seen_count`, `opened_count` and `completed_count`, with `last_at`.
 - **`completed_count` is completion, never mastery.** It counts the times the learner pressed «تمّ» on an insight of that unit. It does not say the learner understood anything, and it is never turned into a score, a level or a percentage (master prompt v2, rules 9 and 13). What the learner understood is evidence of another kind (section 9.2 of the reference) and is recorded elsewhere, from answers, when the routes exist. The database says so in the comment of the column.
 - **The unit is named with its version.** When a unit's meaning changes it is a new unit or a new version, and old evidence is not carried over (section 14 of the reference, rule 7). A state keeps its unit: a unit with learner state cannot be deleted from under it.
-- **Accounts.** `user_id` has no foreign key yet because the accounts tables are created by another change. When they are in the same chain it gets `REFERENCES app.users (id) ON DELETE CASCADE`, so deleting an account deletes its learning state (master prompt v2, section 15).
+- **Accounts.** `user_id` is `REFERENCES app.users (id) ON DELETE CASCADE`, so deleting an account deletes its learning state (master prompt v2, section 15).
 
 There are no routes yet, and no deletion of the learning record from the screen; those come with the account and profile routes.

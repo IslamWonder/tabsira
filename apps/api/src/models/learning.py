@@ -28,7 +28,6 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    Uuid,
     false,
     func,
     text,
@@ -177,9 +176,8 @@ class LearnerUnitState(Base):
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-    # TODO(accounts): a foreign key to users.id with ON DELETE CASCADE, once the accounts
-    # migration is in this chain, so deleting an account deletes its learning state.
-    user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # Deleting an account deletes its learning state (master prompt v2, section 15).
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     guest_key: Mapped[str | None] = mapped_column(String(64))
     path_version: Mapped[str] = mapped_column(String(64))
     unit_id: Mapped[str] = mapped_column(String(16))
