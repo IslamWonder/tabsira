@@ -8,6 +8,7 @@ person reviews it and merges the accepted terms into a new version of the file.
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
@@ -24,6 +25,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    Uuid,
     false,
     func,
     text,
@@ -136,4 +138,7 @@ class OntologyCandidate(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The admin who accepted or rejected it last. A plain id with no foreign key, so that
+    # deleting that account neither fails nor changes the review; it then names nobody.
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     review_note: Mapped[str | None] = mapped_column(Text)

@@ -124,7 +124,30 @@ async def test_a_candidate_starts_new_with_one_sighting(db_session):
     assert stored.id >= 1
     assert (stored.count, stored.status, stored.examples, stored.sources) == (1, "new", [], [])
     assert stored.entity_id is None
+    assert stored.reviewed_by is None
     assert stored.first_seen_at <= stored.last_seen_at
+
+
+async def test_the_reviewer_is_an_admin_id_that_outlives_the_account(db_session):
+    from src.models import User
+
+    admin = User(email="reviewer@example.com", display_name="R", is_admin=True)
+    db_session.add(admin)
+    await db_session.flush()
+    db_session.add(
+        OntologyCandidate(
+            kind="label", term="طائرة", term_norm="طايره", status="accepted", reviewed_by=admin.id
+        )
+    )
+    await db_session.flush()
+
+    await db_session.execute(text("DELETE FROM app.users WHERE id = :id"), {"id": admin.id})
+
+    # Deleting the account neither failed nor rewrote the review.
+    kept = (
+        await db_session.execute(text("SELECT reviewed_by FROM app.ontology_candidates"))
+    ).scalar_one()
+    assert kept == admin.id
 
 
 async def test_a_candidate_is_one_row_per_kind_and_normalised_term(db_session):
