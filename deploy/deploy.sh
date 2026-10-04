@@ -24,9 +24,12 @@
 # Usage (on the application host, as the application user):
 #   deploy/deploy.sh [--ref REF] [--dry-run]
 #   deploy/deploy.sh --rollback [--dry-run]
+#   deploy/deploy.sh --check
 #   --ref REF     commit, tag or branch to deploy (default: origin/main)
 #   --dry-run     print every step with its values and run nothing
 #   --rollback    switch to the previous release and roll again, no build
+#   --check       read-only readiness check of the host, the environment file, the
+#                 data host and the certificates (deploy/check.sh); installs nothing
 #
 # Environment (all optional, see deploy/env.production.example):
 #   APP_ROOT KEEP_RELEASES PRE_DEPLOY_BACKUP SKIP_VISION SKIP_INDEXNOW
@@ -61,6 +64,9 @@ while [[ $# -gt 0 ]]; do
 	--rollback)
 		ROLLBACK=true
 		shift
+		;;
+	--check)
+		exec bash "$DEPLOY_DIR/check.sh"
 		;;
 	-h | --help)
 		sed -n '2,/^set -Eeuo/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//'
