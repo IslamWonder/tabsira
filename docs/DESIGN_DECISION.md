@@ -15,16 +15,16 @@ The three directions are drawn on one canvas, three phone screens each (the rain
 
 ## The directions
 
-| | A · نهار مزهر | B · مخطوطة مذهّبة | C · ليل الأنوار |
-| --- | --- | --- | --- |
-| Feeling | Joyful daylight, airy, familiar | Heritage, calm, scholarly | Immersive, contemplative, cinematic |
-| Ground | White and mint `#F6FAF7` | Parchment `#F3EBD8` with a hairline lattice | Night `#0B1210` |
-| Accents | Emerald `#0F4C3A`, gold `#C6A15B` (text gold `#7A5A1C`) | Emerald, gold leaf `#A8812F`, vermilion rubrics `#9E3324` | Glow emerald `#3FD69A`, light gold `#E6C77F` |
-| Type | El Messiri titles, IBM Plex Sans Arabic text, Noto Naskh hadith | Amiri titles and hadith, Markazi Text interface | Reem Kufi titles, Readex Pro text, Noto Naskh hadith |
-| Photo | Rounded card, white pills with pins | Mihrab-arch gilded frame, cartouches, eight-point stars | Full bleed, glowing points, dark glass labels |
-| Quran | Mint card, Uthmani script | Centred like a mushaf page under a framed heading | Ivory script on a soft gold glow |
-| Strength | Clearest and most familiar; the safest for first-time users | The most distinctive and the closest to the subject | The strongest "wow" for the video; photos shine |
-| Risk | Can look like many apps | Dense; harder to keep light on small phones | Dark UI is harder for long reading and in daylight |
+|          | A · نهار مزهر                                                   | B · مخطوطة مذهّبة                                         | C · ليل الأنوار                                      |
+| -------- | --------------------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------- |
+| Feeling  | Joyful daylight, airy, familiar                                 | Heritage, calm, scholarly                                 | Immersive, contemplative, cinematic                  |
+| Ground   | White and mint `#F6FAF7`                                        | Parchment `#F3EBD8` with a hairline lattice               | Night `#0B1210`                                      |
+| Accents  | Emerald `#0F4C3A`, gold `#C6A15B` (text gold `#7A5A1C`)         | Emerald, gold leaf `#A8812F`, vermilion rubrics `#9E3324` | Glow emerald `#3FD69A`, light gold `#E6C77F`         |
+| Type     | El Messiri titles, IBM Plex Sans Arabic text, Noto Naskh hadith | Amiri titles and hadith, Markazi Text interface           | Reem Kufi titles, Readex Pro text, Noto Naskh hadith |
+| Photo    | Rounded card, white pills with pins                             | Mihrab-arch gilded frame, cartouches, eight-point stars   | Full bleed, glowing points, dark glass labels        |
+| Quran    | Mint card, Uthmani script                                       | Centred like a mushaf page under a framed heading         | Ivory script on a soft gold glow                     |
+| Strength | Clearest and most familiar; the safest for first-time users     | The most distinctive and the closest to the subject       | The strongest "wow" for the video; photos shine      |
+| Risk     | Can look like many apps                                         | Dense; harder to keep light on small phones               | Dark UI is harder for long reading and in daylight   |
 
 All three use the KFGQPC Uthmanic Hafs font for the Quran.
 
@@ -42,25 +42,25 @@ All three use the KFGQPC Uthmanic Hafs font for the Quran.
 
 The theme follows the device (`prefers-color-scheme`) and can be set to light, dark or automatic in «ملفي». Both themes share every layout and component; only tokens change.
 
-| Token | Dark (C) | Light (A colours) |
-| --- | --- | --- |
-| `bg` | `#0B1210` | `#F6FAF7` |
-| `surface` | `rgba(255,255,255,.05)` | `#FFFFFF` |
-| `surface-glass` | `rgba(20,32,28,.72)` + blur 16 px | `rgba(255,255,255,.86)` + blur 16 px |
-| `border` | `rgba(255,255,255,.14)` | `#DCE7E1` |
-| `text` | `#EEF3EF` | `#16302A` |
-| `text-soft` | `#C3D4CC` | `#4A635C` |
-| `text-muted` | `#93A79E` | `#5F6F69` |
-| `primary` | `#3FD69A` | `#0F4C3A` |
-| `primary-fill` | gradient `#4FDCA3 → #1F9E6E`, glow | `#0F4C3A`, soft shadow |
-| `on-primary` | `#04130D` | `#FFFFFF` |
-| `quran-accent` (label, frame, brackets) | `#E6C77F` | `#9A7430` (brackets), label on `#0F4C3A` |
-| `quran-surface` | gold wash `rgba(230,199,127,.12 → .03)` | mint `#EEF7F2`, border `#CFE6DA` |
-| `sunnah-accent` | `#8FEAC2` | `#7A5A1C` |
-| `sunnah-surface` | emerald wash `rgba(63,214,154,.10 → .02)` | warm `#FBF8F0`, border `#EFE4CB` |
-| `link` | `#7FE3B8` | `#0F4C3A` |
-| `photo-scrim` | night gradients | white gradients |
-| `glow` (points) | gold `#E6C77F` and emerald `#3FD69A` halos | emerald dot, gold `#FFD978` halo |
+| Token                                   | Dark (C)                                   | Light (A colours)                        |
+| --------------------------------------- | ------------------------------------------ | ---------------------------------------- |
+| `bg`                                    | `#0B1210`                                  | `#F6FAF7`                                |
+| `surface`                               | `rgba(255,255,255,.05)`                    | `#FFFFFF`                                |
+| `surface-glass`                         | `rgba(20,32,28,.72)` + blur 16 px          | `rgba(255,255,255,.86)` + blur 16 px     |
+| `border`                                | `rgba(255,255,255,.14)`                    | `#DCE7E1`                                |
+| `text`                                  | `#EEF3EF`                                  | `#16302A`                                |
+| `text-soft`                             | `#C3D4CC`                                  | `#4A635C`                                |
+| `text-muted`                            | `#93A79E`                                  | `#5F6F69`                                |
+| `primary`                               | `#3FD69A`                                  | `#0F4C3A`                                |
+| `primary-fill`                          | gradient `#4FDCA3 → #1F9E6E`, glow         | `#0F4C3A`, soft shadow                   |
+| `on-primary`                            | `#04130D`                                  | `#FFFFFF`                                |
+| `quran-accent` (label, frame, brackets) | `#E6C77F`                                  | `#9A7430` (brackets), label on `#0F4C3A` |
+| `quran-surface`                         | gold wash `rgba(230,199,127,.12 → .03)`    | mint `#EEF7F2`, border `#CFE6DA`         |
+| `sunnah-accent`                         | `#8FEAC2`                                  | `#7A5A1C`                                |
+| `sunnah-surface`                        | emerald wash `rgba(63,214,154,.10 → .02)`  | warm `#FBF8F0`, border `#EFE4CB`         |
+| `link`                                  | `#7FE3B8`                                  | `#0F4C3A`                                |
+| `photo-scrim`                           | night gradients                            | white gradients                          |
+| `glow` (points)                         | gold `#E6C77F` and emerald `#3FD69A` halos | emerald dot, gold `#FFD978` halo         |
 
 Every text pair is checked at 4.5:1 (3:1 for 24 px and larger) in both themes before it ships; gold is never used for small text in light mode.
 
