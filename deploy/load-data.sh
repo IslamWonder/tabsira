@@ -1,25 +1,34 @@
 #!/usr/bin/env bash
 # Load the reference data into the production database, once, after the first
-# deploy has migrated it: the scripture store, the scripture vectors, the world
-# ontology and the learning path (scripts/data.sh), and with --geonames the places
-# of the atlas. Then prove it by counting what is in the three schemas.
+# deploy has migrated it, in this order (scripts/data.sh): GeoNames, the corpus
+# (the scripture store, the world ontology and the learning path), the scripture
+# vectors. Then prove it by counting what is in the four schemas.
 #
-# The database has three schemas, one Alembic chain each: `app` (the application),
-# `geodata` (GeoNames, reference data) and `vectors` (the scripture embeddings).
-# The first deploy runs the migrations; this script fills them.
+# The database has four schemas: `app` (the application) and `corpus` (the
+# reference data, decision 57) share the app chain; `geodata` (GeoNames) and
+# `vectors` (the scripture embeddings) have one Alembic chain each. The first
+# deploy runs the migrations; this script fills them.
 #
 # Run as the application user, on the application host:
-#   deploy/load-data.sh [--check] [--geonames] [--force]
-#   --check      print the state of the schemas and what is loaded; change nothing
-#   --geonames   also import GeoNames (several million rows, long; only for the atlas)
-#   --force      import again what is already there
+#   deploy/load-data.sh [--check] [--no-geonames] [--geonames-source=dump|geonames] [--force]
+#   --check            print the state of the schemas and what is loaded; change nothing
+#   --no-geonames      leave GeoNames out (the atlas then finds no place)
+#   --geonames-source  dump (default): the verified 2026-10-04 snapshot from the owners'
+#                      bucket, about 340 MB; geonames: a fresh import from geonames.org,
+#                      about 600 MB to download and about 15 minutes. GEONAMES_SOURCE in
+#                      the .env sets the same.
+#   --force            install again what is already there
+#   (--geonames, the old switch, is accepted: GeoNames is now loaded by default)
 #
-# Idempotent: data that is there is left alone. The two corpus files are not in git
-# (docs/ASSET_MANIFEST.md): put them in CORPUS_DIR (default /opt/tabsira/data/corpus,
-# ignored by git).
-# The vectors are downloaded from the owners' bucket and checked against their
-# .sha256, never computed here (docs/EMBEDDINGS.md); VECTORS_DIR (default
-# ~/tabsira-data/vectors) keeps the download outside the clone.
+# Idempotent: data that is there is left alone. Nothing is fetched from the
+# third-party sources: the corpus archive (CORPUS_ARCHIVE_URL), the GeoNames dump
+# (GEODATA_DUMP_URL) and the vectors (VECTORS_ARCHIVE_URL) come from the owners'
+# bucket and are checked against their .sha256 (docs/CORPUS.md, docs/EMBEDDINGS.md).
+# They are downloaded once into ~/tabsira-data/{corpus,geodata,vectors}, outside
+# the clone (CORPUS_ARCHIVE_DIR, GEODATA_DIR, VECTORS_DIR). Only with
+# CORPUS_ARCHIVE_URL empty is the store built from its sources, and then the two
+# corpus files must be in CORPUS_DIR (default /opt/tabsira/data/corpus,
+# docs/ASSET_MANIFEST.md).
 
 set -Eeuo pipefail
 # shellcheck disable=SC1091
@@ -35,21 +44,26 @@ fi
 ENV_FILE="${ENV_FILE:-$REPO_DIR/.env}"
 CORPUS_DIR="${CORPUS_DIR:-$REPO_DIR/data/corpus}"
 VECTORS_DIR="${VECTORS_DIR:-$HOME/tabsira-data/vectors}"
+CORPUS_ARCHIVE_DIR="${CORPUS_ARCHIVE_DIR:-$HOME/tabsira-data/corpus}"
+GEODATA_DIR="${GEODATA_DIR:-$HOME/tabsira-data/geodata}"
 EXTENSIONS="postgis vector timescaledb pg_trgm unaccent pgcrypto btree_gin btree_gist pg_stat_statements"
 
 CHECK=false
-GEONAMES=false
+GEONAMES=true
+GEONAMES_SOURCE_ARG=""
 FORCE=false
 for arg in "$@"; do
 	case "$arg" in
 	--check) CHECK=true ;;
 	--geonames) GEONAMES=true ;;
+	--no-geonames) GEONAMES=false ;;
+	--geonames-source=*) GEONAMES_SOURCE_ARG="${arg#*=}" ;;
 	--force) FORCE=true ;;
 	-h | --help)
 		sed -n '2,/^set -Eeuo/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//'
 		exit 0
 		;;
-	*) die "usage: load-data.sh [--check] [--geonames] [--force]" ;;
+	*) die "usage: load-data.sh [--check] [--no-geonames] [--geonames-source=dump|geonames] [--force]" ;;
 	esac
 done
 
@@ -71,10 +85,10 @@ bad() {
 	PROBLEMS=$((PROBLEMS + 1))
 }
 
-# ─── The three schemas and the extensions ───────────────────────────
+# ─── The four schemas and the extensions ────────────────────────────
 banner "Schemas and extensions"
 query "SELECT 1" >/dev/null || die "The database does not accept this login (see deploy/check.sh)."
-for schema in app geodata vectors; do
+for schema in app corpus geodata vectors; do
 	if [[ "$(query "SELECT count(*) FROM pg_namespace WHERE nspname = '$schema'")" == 1 ]]; then
 		ok "schema $schema ($(query "SELECT count(*) FROM information_schema.tables WHERE table_schema = '$schema'") tables)"
 	else
@@ -91,19 +105,27 @@ ok "all nine extensions present; the migrations have run"
 
 # ─── Load ───────────────────────────────────────────────────────────
 if ! $CHECK; then
-	for corpus in quran-annotations.json sunnah-enriched.json; do
-		[[ -f "$CORPUS_DIR/$corpus" ]] ||
-			die "$CORPUS_DIR/$corpus is missing. Copy it there (docs/ASSET_MANIFEST.md names its source and SHA-256)."
-	done
-	mkdir -p "$VECTORS_DIR"
-	banner "Scripture store, vectors, ontology and learning path"
-	force_arg=()
-	$FORCE && force_arg=(--force)
-	(cd "$REPO_DIR" && CORPUS_DIR="$CORPUS_DIR" VECTORS_DIR="$VECTORS_DIR" bash scripts/data.sh "${force_arg[@]}")
-	if $GEONAMES; then
-		banner "GeoNames"
-		(cd "$REPO_DIR" && bash scripts/seed-geonames.sh "${force_arg[@]}")
+	# The corpus files are needed only when the store is built from its sources.
+	# A .env without CORPUS_ARCHIVE_URL gets the bucket's default; an empty one means "never download".
+	if [[ -z "$(env_get "$ENV_FILE" CORPUS_ARCHIVE)" ]] && grep -q '^CORPUS_ARCHIVE_URL=' "$ENV_FILE" &&
+		[[ -z "$(env_get "$ENV_FILE" CORPUS_ARCHIVE_URL)" ]]; then
+		for corpus in quran-annotations.json sunnah-enriched.json; do
+			[[ -f "$CORPUS_DIR/$corpus" ]] ||
+				die "$CORPUS_DIR/$corpus is missing and CORPUS_ARCHIVE_URL is empty. Set CORPUS_ARCHIVE_URL (docs/CORPUS.md), or copy the file there (docs/ASSET_MANIFEST.md)."
+		done
 	fi
+	mkdir -p "$VECTORS_DIR" "$CORPUS_ARCHIVE_DIR" "$GEODATA_DIR"
+	banner "GeoNames, corpus, vectors"
+	data_args=()
+	$FORCE && data_args+=(--force)
+	if $GEONAMES; then
+		data_args+=(--geonames)
+		[[ -n "$GEONAMES_SOURCE_ARG" ]] && data_args+=("--geonames-source=$GEONAMES_SOURCE_ARG")
+	else
+		data_args+=(--no-geonames)
+	fi
+	(cd "$REPO_DIR" && CORPUS_DIR="$CORPUS_DIR" VECTORS_DIR="$VECTORS_DIR" CORPUS_ARCHIVE_DIR="$CORPUS_ARCHIVE_DIR" \
+		GEODATA_DIR="$GEODATA_DIR" bash scripts/data.sh "${data_args[@]}")
 fi
 
 # ─── What is in the database now ────────────────────────────────────
@@ -123,11 +145,14 @@ log "hadith signals        $signals"
 log "ontology entities     $ontology"
 log "Quran vectors         $quran_vectors (all models)"
 log "hadith vectors        $hadith_vectors (all models)"
-log "GeoNames places       $places$($GEONAMES || echo ' (not requested)')"
+learning="$(query "SELECT CASE WHEN to_regclass('corpus.learning_path_versions') IS NULL THEN '' ELSE coalesce((SELECT path_version FROM corpus.learning_path_versions WHERE is_active), '') END")"
+log "learning path         ${learning:-none active}"
+log "GeoNames places       $places$($GEONAMES || echo ' (--no-geonames)')"
 ((verses == 6236)) || bad "The Quran store holds $verses verses, not 6236."
 ((hadiths > 0)) || bad "No hadith is stored."
 ((annotations > 0 && signals > 0)) || bad "The annotations or hadith signals are missing."
 ((ontology > 0)) || bad "The world ontology is not loaded."
+[[ -n "$learning" ]] || bad "No learning path version is active."
 ((quran_vectors >= verses && hadith_vectors >= hadiths)) || bad "The vectors do not cover the store: import them (VECTORS_ARCHIVE_URL in $ENV_FILE)."
 if $GEONAMES; then
 	((places > 0)) || bad "GeoNames is empty."

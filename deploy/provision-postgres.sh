@@ -801,7 +801,7 @@ is hex, so it sits in the URL unescaped; it is also in $CREDENTIALS_FILE.
 Next, on the application host, as devops:
   deploy/deploy.sh --check    the environment file, this database's port and login
   tabsira-deploy              the first deploy migrates the four schemas (app, corpus, geodata, vectors)
-  deploy/load-data.sh         scripture, vectors, ontology, learning path (--geonames for the atlas)
+  deploy/load-data.sh         GeoNames, the corpus archive, vectors (--no-geonames, --geonames-source)
 
 Firewall:     not configured here; allow $PG_PORT/tcp from the application host. pg_hba admits $DB_USER from $HBA_SOURCE only.
 Tuning:       $TUNING_FILE
