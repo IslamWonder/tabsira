@@ -671,3 +671,72 @@ def test_production_refuses_a_development_web_base_url():
     message = errors_of(**{**PRODUCTION, "web_base_url": "https://tabsira.test"})
 
     assert "WEB_BASE_URL points at the development host https://tabsira.test" in message
+
+
+# ─── Error tracking ────────────────────────────────────────────────
+
+DSN = "https://public-key@glitchtip.example.com/7"
+
+
+def test_error_tracking_is_off_by_default(make_settings):
+    settings = make_settings()
+
+    assert settings.glitchtip_configured is False
+    assert settings.glitchtip_web_dsn_value == ""
+    assert settings.glitchtip_traces_sample_rate == 0.0
+    assert settings.glitchtip_release == ""
+
+
+def test_a_dsn_turns_reporting_on_and_the_web_project_falls_back_to_it(make_settings):
+    api_only = make_settings(glitchtip_dsn=f" {DSN} ")
+    assert api_only.glitchtip_configured
+    assert api_only.glitchtip_dsn.get_secret_value() == DSN
+    assert api_only.glitchtip_web_dsn_value == DSN
+
+    both = make_settings(glitchtip_dsn=DSN, glitchtip_web_dsn="https://k@glitchtip.example.com/8")
+    assert both.glitchtip_web_dsn_value == "https://k@glitchtip.example.com/8"
+
+    web_only = make_settings(glitchtip_web_dsn=DSN)
+    assert web_only.glitchtip_configured is False
+    assert web_only.glitchtip_web_dsn_value == DSN
+
+
+@pytest.mark.parametrize("key", ["glitchtip_dsn", "glitchtip_web_dsn"])
+def test_a_malformed_dsn_is_refused_without_being_echoed(key):
+    message = errors_of(**{key: "https://secret-key-not-a-dsn"})
+
+    assert key.upper() in message
+    assert "must be empty or a DSN" in message
+    assert "secret-key-not-a-dsn" not in message
+
+
+def test_the_dsn_is_a_secret(make_settings):
+    settings = make_settings(glitchtip_dsn=DSN)
+
+    assert "public-key" not in repr(settings) + settings.model_dump_json()
+
+
+@pytest.mark.parametrize("rate", [-0.1, 1.5])
+def test_the_trace_rate_is_a_share_between_zero_and_one(rate):
+    assert "GLITCHTIP_TRACES_SAMPLE_RATE" in errors_of(glitchtip_traces_sample_rate=rate)
+
+
+def test_the_release_override_is_a_plain_version():
+    assert "GLITCHTIP_RELEASE" in errors_of(glitchtip_release="1.0 beta")
+
+
+def test_production_refuses_a_development_error_tracker_host():
+    message = errors_of(
+        **{
+            **PRODUCTION,
+            "glitchtip_dsn": "https://k@errors.tabsira.test/1",
+            "glitchtip_web_dsn": "https://k@errors.tabsira.test/2",
+        }
+    )
+
+    assert "GLITCHTIP_DSN points at a development host" in message
+    assert "GLITCHTIP_WEB_DSN points at a development host" in message
+
+
+def test_production_accepts_a_real_error_tracker_host(make_settings):
+    assert make_settings(**PRODUCTION, glitchtip_dsn=DSN).glitchtip_configured

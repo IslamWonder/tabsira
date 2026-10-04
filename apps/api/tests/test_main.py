@@ -108,8 +108,44 @@ async def test_the_lifespan_closes_the_database_connections_on_shutdown(app, mon
         calls.append("disposed")
 
     monkeypatch.setattr(main, "dispose_engine", fake_dispose)
+    monkeypatch.setattr(main, "shutdown_error_tracking", lambda: calls.append("flushed"))
 
     async with app.router.lifespan_context(app):
         assert calls == []
 
-    assert calls == ["disposed"]
+    # The error reports go out before the connections are dropped.
+    assert calls == ["flushed", "disposed"]
+
+
+async def test_the_lifespan_also_flushes_the_forwarder_of_browser_reports(
+    make_settings, monkeypatch
+):
+    application = main.create_app(make_settings())
+    flushed: list[str] = []
+
+    class Reporter:
+        def flush(self) -> None:
+            flushed.append("web")
+
+    application.state.web_reporter = Reporter()
+
+    async def fake_dispose() -> None:
+        return None
+
+    monkeypatch.setattr(main, "dispose_engine", fake_dispose)
+    async with application.router.lifespan_context(application):
+        pass
+
+    assert flushed == ["web"]
+
+
+def test_the_application_starts_error_tracking_before_it_is_built(make_settings, monkeypatch):
+    started: list[tuple[Settings, str]] = []
+    monkeypatch.setattr(
+        main, "init_error_tracking", lambda settings, version: started.append((settings, version))
+    )
+    settings = make_settings()
+
+    main.create_app(settings)
+
+    assert started == [(settings, main.API_VERSION)]

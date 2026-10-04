@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.config import Settings, get_settings
 from src.database import dispose_engine
+from src.error_tracking import WebReporter, init_error_tracking, shutdown_error_tracking
 from src.errors import ErrorResponse, register_error_handlers
 from src.middleware.no_store import NoStoreMiddleware
 from src.middleware.origin_check import OriginCheckMiddleware
@@ -33,15 +34,21 @@ OPENAPI_TAGS = [
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Release the database connections when the process stops."""
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Let the last error reports out and release the database connections when the process stops."""
     yield
+    shutdown_error_tracking()
+    reporter: WebReporter | None = getattr(app.state, "web_reporter", None)
+    if reporter is not None:
+        reporter.flush()
     await dispose_engine()
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Build the application; `settings` defaults to the process-wide ones."""
     settings = settings or get_settings()
+    # Before the application exists: the SDK hooks the framework as it is assembled.
+    init_error_tracking(settings, API_VERSION)
 
     app = FastAPI(
         title="TABSIRA API",

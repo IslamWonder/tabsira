@@ -36,6 +36,8 @@ dependencies = [
   "openpyxl>=3.1.5",
   # Image checks before a photo reaches a model: format, size, EXIF orientation and GPS, metadata stripped
   "pillow>=12.3.0",
+  # Error tracking: GlitchTip speaks the Sentry protocol. Off unless GLITCHTIP_DSN is set.
+  "sentry-sdk>=2.71.0",
 ]
 
 [dependency-groups]

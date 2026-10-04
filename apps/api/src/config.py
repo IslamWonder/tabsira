@@ -30,6 +30,7 @@ from pydantic import (
     model_validator,
 )
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+from sentry_sdk.utils import BadDsn, Dsn
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 
@@ -408,6 +409,17 @@ class Settings(BaseSettings):
         DEFAULT_CELL_METERS
     )
 
+    # Error tracking: GlitchTip, which speaks the Sentry protocol. An empty DSN
+    # turns it off, and then no code path sends anything. The web DSN is the
+    # project that receives what browsers post to /client-errors; empty sends
+    # those to the API project, so one DSN is enough.
+    glitchtip_dsn: SecretStr = SecretStr("")
+    glitchtip_web_dsn: SecretStr = SecretStr("")
+    # Share of requests timed as well as errors; 0 keeps it to errors only.
+    glitchtip_traces_sample_rate: Annotated[float, Field(ge=0, le=1)] = 0.0
+    # Version part of the release name, for a checkout git cannot describe.
+    glitchtip_release: Annotated[str, Field(pattern=r"^[A-Za-z0-9._+-]{0,100}$")] = ""
+
     # AI providers: one active provider, one settings block each. In the
     # environment the blocks are AI_OVH__API_KEY, AI_OPENAI__VISION_MODEL, ...
     # OpenAI by measurement (docs/BENCHMARK.md): same quality as OVH's best on the
@@ -507,6 +519,18 @@ class Settings(BaseSettings):
     @classmethod
     def _check_detector_url(cls, value: str) -> str:
         return _origin(value)
+    @field_validator("glitchtip_dsn", "glitchtip_web_dsn")
+    @classmethod
+    def _check_glitchtip_dsn(cls, value: SecretStr) -> SecretStr:
+        """Accept an empty DSN (off) or one the Sentry SDK can read; never echo it."""
+        dsn = value.get_secret_value().strip()
+        if dsn:
+            try:
+                Dsn(dsn)
+            except BadDsn:
+                message = "must be empty or a DSN of the form https://key@host/project-id"
+                raise ValueError(message) from None
+        return SecretStr(dsn)
 
     @field_validator("sync_database_url", "test_database_url", mode="before")
     @classmethod
@@ -568,6 +592,12 @@ class Settings(BaseSettings):
             problems.append(f"PASSWORD_BCRYPT_ROUNDS is under {MIN_PRODUCTION_BCRYPT_ROUNDS}")
         if self.web_base_url and _host_is_test_domain(self.web_base_url):
             problems.append(f"WEB_BASE_URL points at the development host {self.web_base_url}")
+        for name, dsn in (
+            ("GLITCHTIP_DSN", self.glitchtip_dsn),
+            ("GLITCHTIP_WEB_DSN", self.glitchtip_web_dsn),
+        ):
+            if dsn.get_secret_value() and _host_is_test_domain(dsn.get_secret_value()):
+                problems.append(f"{name} points at a development host")
         if self.google_configured:
             if not self.google_client_secret.get_secret_value():
                 problems.append("GOOGLE_CLIENT_ID is set but GOOGLE_CLIENT_SECRET is empty")
@@ -585,6 +615,16 @@ class Settings(BaseSettings):
     def google_configured(self) -> bool:
         """Whether Google sign-in is switched on: it needs a client id."""
         return bool(self.google_client_id)
+
+    @property
+    def glitchtip_configured(self) -> bool:
+        """Whether errors are reported: only with a DSN."""
+        return bool(self.glitchtip_dsn.get_secret_value())
+
+    @property
+    def glitchtip_web_dsn_value(self) -> str:
+        """The DSN browser reports go to: the web project's, else the API project's; empty is off."""
+        return self.glitchtip_web_dsn.get_secret_value() or self.glitchtip_dsn.get_secret_value()
 
     @property
     def session_ttl(self) -> timedelta:

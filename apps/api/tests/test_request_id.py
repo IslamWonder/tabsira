@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 
+from src.middleware import request_id as request_id_module
 from src.middleware.request_id import REQUEST_ID_HEADER, RequestIdMiddleware
 
 
@@ -72,3 +73,13 @@ async def test_lifespan_and_websocket_scopes_pass_through_untouched():
         assert "state" not in scope
 
     assert calls == ["lifespan", "websocket"]
+
+
+async def test_the_id_is_given_to_the_error_tracker(client, monkeypatch):
+    tagged: list[str] = []
+    monkeypatch.setattr(request_id_module, "tag_request", tagged.append)
+
+    response = await client.get("/health", headers={REQUEST_ID_HEADER: "trace-2026-abc12345"})
+
+    assert tagged == ["trace-2026-abc12345"]
+    assert response.headers[REQUEST_ID_HEADER] == "trace-2026-abc12345"

@@ -8,6 +8,8 @@ import uuid
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from src.error_tracking import tag_request
+
 REQUEST_ID_HEADER = "X-Request-ID"
 
 # A caller may supply its own id so a trace can span services. Only a short,
@@ -35,6 +37,7 @@ class RequestIdMiddleware:
         supplied = Headers(scope=scope).get(REQUEST_ID_HEADER)
         request_id = supplied if supplied and _ACCEPTED_ID.match(supplied) else uuid.uuid4().hex
         scope.setdefault("state", {})["request_id"] = request_id
+        tag_request(request_id)
 
         async def send_with_request_id(message: Message) -> None:
             if message["type"] == "http.response.start":
