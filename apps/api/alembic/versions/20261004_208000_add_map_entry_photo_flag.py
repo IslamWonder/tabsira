@@ -1,8 +1,8 @@
 """add_map_entry_photo_flag
 
-Revision ID: 20261004_206000
-Revises: 20261004_205000
-Create Date: 2026-10-04 20:60:00.000000
+Revision ID: 20261004_208000
+Revises: 20261004_207000
+Create Date: 2026-10-04 21:20:00.000000
 
 A map entry records whether its owner chose to show the insight's photo with it.
 """
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "20261004_206000"
-down_revision: str | Sequence[str] | None = "20261004_205000"
+revision: str = "20261004_208000"
+down_revision: str | Sequence[str] | None = "20261004_207000"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
