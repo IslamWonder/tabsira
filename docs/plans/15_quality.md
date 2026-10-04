@@ -35,7 +35,7 @@ Every change is tested; nothing merges below 100 % coverage.
 
 ### 15.3 Phase 1 test task: back to 100 %
 
-- **Status:** ⬜ open, at the end of phase 1
+- **Status:** 🔄 2026-10-04 21:26 first pass merged; API 99.94 % → the atlas, recorder and reranker gaps closed, 8 failing tests fixed; web 97.79 % lines / 95.25 % branches → the community components at 100 %. Still open: the atlas components (atlas-screen, camera-screen, camera-sensors, entry-screen, map-publish-screen, map-view, place-screen), the two publish pages, empty-stage, account-preferences-sync, text-area branches, messages/ar.ts count functions, social/access, social/api, identity-store, use-pages, atlas/api myEntries and atlas/types; on main also legal-page.test.tsx and source-guards.test.ts (17.4); and a `SpooledTemporaryFile` ResourceWarning that five scans tests raise only under xdist (not reproduced serially, moto and the upload parser ruled out)
 - **Goal:** Write the tests that phase mode skipped (decision 42) and bring `make coverage` back to 100 % in web, API and vision before release.
 - **Depends on:** All phase 1 feature tasks merged.
 - **Touches:** Tests only, plus fixes for the bugs they find.

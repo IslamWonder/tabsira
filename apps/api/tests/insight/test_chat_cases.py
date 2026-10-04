@@ -10,10 +10,10 @@ import httpx
 import pytest
 from sqlalchemy import func, select
 
+from src.ai.client import ModelImage
 from src.ai.errors import AiCallError, AiErrorCode
 from src.ai.records import CallLog
 from src.cli import evaluate as command
-from src.ai.client import ModelImage
 from src.evaluation.chat_eval import (
     CaseExpectation,
     _Recorder,
