@@ -42,6 +42,12 @@ dependencies = [
   # one last released in October 2025 and pins an old aiobotocore, while boto3 ships almost
   # daily and moto (the tests' fake S3) can only intercept botocore.
   "boto3>=1.43.108",
+  # The admin area at /admin: sqladmin renders it, pyotp is its second factor and
+  # cryptography encrypts the second-factor secret at rest (already installed through
+  # pyjwt[crypto]; declared because the code imports it directly).
+  "sqladmin>=0.32.0",
+  "pyotp>=2.10.0",
+  "cryptography>=50.0.2",
 ]
 
 [dependency-groups]
