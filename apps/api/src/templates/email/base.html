@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>{% block title %}{{ site_name }}{% endblock %}</title>
+</head>
+<body style="margin:0;padding:0;background:#F6FAF7;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F6FAF7;">
+<tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border:1px solid #DCE7E1;border-radius:12px;">
+<tr><td dir="rtl" style="padding:28px 28px 8px 28px;font-family:'Segoe UI',Tahoma,'Noto Naskh Arabic',Arial,sans-serif;font-size:22px;font-weight:700;color:#0F4C3A;text-align:right;">{{ site_name }}</td></tr>
+<tr><td dir="rtl" style="padding:8px 28px 28px 28px;font-family:'Segoe UI',Tahoma,'Noto Naskh Arabic',Arial,sans-serif;font-size:16px;line-height:1.9;color:#16302A;text-align:right;">
+{% block body %}{% endblock %}
+</td></tr>
+<tr><td dir="rtl" style="padding:16px 28px;border-top:1px solid #DCE7E1;font-family:'Segoe UI',Tahoma,'Noto Naskh Arabic',Arial,sans-serif;font-size:13px;line-height:1.8;color:#4A635C;text-align:right;">
+هذه رسالة آلية من {{ site_name }}، فلا حاجة إلى الرد عليها.
+{% if support_email %}
+<br>للمساعدة اكتب إلى <a href="mailto:{{ support_email }}" style="color:#0F4C3A;">{{ support_email }}</a>
+{% endif %}
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>

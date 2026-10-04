@@ -1,0 +1,6 @@
+
+--
+هذه رسالة آلية من {{ site_name }}، فلا حاجة إلى الرد عليها.
+{% if support_email %}
+للمساعدة اكتب إلى {{ support_email }}
+{% endif %}
