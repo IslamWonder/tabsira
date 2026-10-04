@@ -49,7 +49,7 @@ A release holds the sources, the API's and vision's virtual environments, and `w
 
 Order matters: the data host first, because the first deploy migrates the database.
 
-1. **Netbird** on both hosts (interface `wt0`). Note each host's VPN address.
+1. **Netbird** on both hosts (interface `wt0`). Note each host's VPN address. The scripts read the interface from `VPN_IFACE` (default `wt0`) and fail with "No address on wt0" when it is missing; on a machine without Netbird name the interface that carries the private network and pass `DATA_HOST_VPN_IP`.
 2. **Data host** (as root, from a checkout):
 
    ```bash
@@ -57,7 +57,7 @@ Order matters: the data host first, because the first deploy migrates the databa
    APP_HOST_VPN_IP=<app host VPN address> deploy/provision-data.sh
    ```
 
-   It installs PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, creates the role `tabsira` and the database `tabsira` with `search_path = app, geodata, public` and the nine extensions (`postgis`, `vector`, `timescaledb`, `pg_trgm`, `unaccent`, `pgcrypto`, `btree_gin`, `btree_gist`, `pg_stat_statements`), and installs Redis 8 with a password and protected mode. Both listen on `127.0.0.1` and the `wt0` address only (`DATA_HOST_VPN_IP` to name it). `pg_hba.conf` has one managed block: the application role from `APP_HOST_VPN_IP/32` with `scram-sha-256`, no ranges, no trust. The firewall step adds `ufw` rules that allow 5432 and 6379 from the app host on `wt0` and deny them elsewhere; it does not enable `ufw` (a wrong default over ssh locks you out) unless `FIREWALL_ENABLE=true`. Passwords are generated into `/etc/tabsira/postgres.env` and `/etc/tabsira/redis.env` (root only); the script ends by printing the URLs, with the password left as a placeholder, to paste into the application host's `.env`.
+   It installs PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, creates the role `tabsira` and the database `tabsira` with `search_path = app, geodata, public` and the nine extensions (`postgis`, `vector`, `timescaledb`, `pg_trgm`, `unaccent`, `pgcrypto`, `btree_gin`, `btree_gist`, `pg_stat_statements`), and installs Redis 8 with a password and protected mode. Both listen on `127.0.0.1` and the `wt0` address only (`DATA_HOST_VPN_IP` to name it). `pg_hba.conf` has one managed block: the application role from `APP_HOST_VPN_IP/32` with `scram-sha-256`, no ranges, no trust. The firewall step adds `ufw` rules that allow 5432 and 6379 from the app host on `wt0` and deny them elsewhere; it does not enable `ufw` (a wrong default over ssh locks you out) unless `FIREWALL_ENABLE=true`. Passwords are generated into `/etc/tabsira/postgres.env` and `/etc/tabsira/redis.env` (root only); the script ends by printing the values to paste into the application host's `.env`: the two database URLs with the password left as a placeholder, and for Redis `REDIS_URL` without a password plus `REDIS_PASSWORD`. The API refuses a Redis URL that carries a password.
 
 3. **Application host** (as root, from a checkout):
 
@@ -67,10 +67,10 @@ Order matters: the data host first, because the first deploy migrates the databa
      APP_REPO=<git url> deploy/provision-app.sh --dry-run
    ```
 
-   Run it without `--dry-run` once the plan reads right. It creates the user and layout, installs Node 24 (latest 24.x from nodejs.org, checksum verified), pnpm through corepack, pm2 (started at boot), uv and the Python 3.12 of `apps/api/.python-version`, nginx, certbot, the narrow sudoers file and `/usr/local/bin/tabsira-deploy`, and applies `deploy/apply-config.sh`. It writes `/srv/tabsira/shared/.env` from `deploy/env.production.example` when none exists and generates `HASH_SECRET`; every other `CHANGE_ME` is left for the owners.
+   Run it without `--dry-run` once the plan reads right. The certificates are issued by certbot during the run, so the names must already resolve to this host and the DNS credential must work. Where they cannot yet (a rehearsal, a host before the DNS change), run it with `--skip-tls`: it does everything else but the certificates and `apply-config.sh`. Put a certificate and its key at `/etc/letsencrypt/live/tabsira.me/{fullchain,privkey}.pem` and `/etc/letsencrypt/live/admin.tabsira.me/{fullchain,privkey}.pem` (self-signed ones will do for a rehearsal), then run `APP_HOST_VPN_IP=<this host's VPN address> deploy/apply-config.sh` as root. Do not leave self-signed files where certbot will write: delete `/etc/letsencrypt/live/<name>` before the real issue. It creates the user and layout, installs Node 24 (latest 24.x from nodejs.org, checksum verified), pnpm through corepack, pm2 (started at boot), uv and the Python 3.12 of `apps/api/.python-version`, nginx, certbot, the narrow sudoers file and `/usr/local/bin/tabsira-deploy`, and applies `deploy/apply-config.sh`. It writes `/srv/tabsira/shared/.env` from `deploy/env.production.example` when none exists and generates `HASH_SECRET`; every other `CHANGE_ME` is left for the owners.
 
-4. Fill `/srv/tabsira/shared/.env`, then `tabsira-deploy --dry-run` and `tabsira-deploy` as the app user.
-5. After the first deploy, as the app user: `make data`-style imports are run from the release (`cd /srv/tabsira/current && bash scripts/data.sh`), and `uv run python -m src.cli.make_admin` creates the first admin (`docs/ADMIN.md`).
+4. Fill `/srv/tabsira/shared/.env` (every `CHANGE_ME`, the S3 keys of [Photos](#photos), `REDIS_PASSWORD`). Then check the data host from the application host before the first deploy: `psql "<the DATABASE_URL without +asyncpg>" -c 'select current_user'` must answer (the data host cannot test this login itself, `pg_hba` admits the application host only), and Redis must refuse a client without the password. Then `tabsira-deploy --dry-run` and `tabsira-deploy` as the app user. The first deploy builds the web app, installs the Python environments and downloads the detector weights (about 630 MB, once; written from the scripts, not exercised in the rehearsal); the first build takes a few minutes.
+5. After the first deploy, as the app user: the data imports are run from the release (`cd /srv/tabsira/current && bash scripts/data.sh`), and `cd /srv/tabsira/current/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.make_admin <email>` makes an existing account the first admin (`docs/ADMIN.md`). Keep `UV_NO_SYNC=1` on every `uv run` in a release: without it uv installs the development dependencies into the production environment.
 
 ## Deploying
 
@@ -138,11 +138,11 @@ The admin area is served only at `https://admin.tabsira.me`, over the VPN.
 
 ## Backups
 
-On the data host `tabsira-pg-backup.timer` runs nightly at 03:15 UTC (`/usr/local/bin/tabsira-pg-backup`): a custom-format dump of `tabsira` into `/var/backups/tabsira`, verified with `pg_restore --list`, plus a globals file (roles and their `search_path`). Dumps older than 14 days are deleted, but the newest three are always kept (`BACKUP_KEEP_DAYS`, `BACKUP_KEEP_MIN`). Run one now: `systemctl start tabsira-pg-backup.service`. `deploy/backup-db.sh --url <url>` takes one from the app host before a risky deploy (`PRE_DEPLOY_BACKUP=true`).
+On the data host `tabsira-pg-backup.timer` runs nightly at 03:15 UTC (`/usr/local/bin/tabsira-pg-backup`): a custom-format dump of `tabsira` into `/var/backups/tabsira`, verified with `pg_restore --list`, plus a globals file (roles and their `search_path`). Dumps older than 14 days are deleted, but the newest three are always kept (`BACKUP_KEEP_DAYS`, `BACKUP_KEEP_MIN`). Run one now: `systemctl start tabsira-pg-backup.service`, or `deploy/backup-db.sh` as root (it runs itself as `postgres`). `deploy/backup-db.sh --url <url>` takes one from the app host before a risky deploy (`PRE_DEPLOY_BACKUP=true`); the application user cannot write `/var/backups`, so that dump goes to `/srv/tabsira/shared/backups` (`BACKUP_DIR` overrides it), on the application host, which the loss of the data host does not touch but a compromise of the application host does. `pg_dump` prints a warning about circular foreign keys on `continuous_agg`: it belongs to TimescaleDB's own catalog, and the restore script handles it.
 
 These are local copies: they do not survive the loss of the data host. Copying `/var/backups/tabsira` off the machine is the owners' decision (listed below).
 
-Restore: `deploy/restore-db.sh <dump>` restores into a new database (`tabsira_restore`) so the live one is never overwritten by accident; `--into tabsira --yes-overwrite` replaces it.
+Restore, on the data host as root: `deploy/restore-db.sh <dump>` restores into a new database (`tabsira_restore`) owned by the application role, so the live one is never overwritten by accident; check it there. `--into tabsira --yes-overwrite` drops the live database and restores into its place. PostgreSQL refuses to drop a database that has sessions, so stop the API and the scan worker on the application host first (`sudo systemctl stop tabsira-worker tabsira-api`, as root; the sudoers file allows restart, start and status only) and start them again afterwards; a refused drop changes nothing. Everything written after the dump is lost. The restore only brings back the database: the role, its password and its `search_path` come from the provisioning (the globals file is there for a lost data host).
 
 ## Photos
 
@@ -178,6 +178,18 @@ Listed on the owners' board; none of it is in git.
 
 `ADMIN_REQUIRE_TWO_FACTOR` is `false` in the template by the owners' decision: an admin who has not enrolled the second factor is not forced to.
 
-## Not verified
+## Rehearsal
 
-Nothing here was run against a server. The scripts pass `shellcheck` and `shfmt`, every one has a `--dry-run` that was run, and the nginx file passes `nginx -t` with stand-in certificates. The package names and repositories (TimescaleDB, pgvector, redis.io), the Netbird behaviour and certbot's DNS plugin flags are written from the vendors' documentation and need a first run on a scratch machine.
+On 2026-10-04 the deployment was rehearsed following this document, on two systemd containers on one machine standing in for the two hosts (Ubuntu 24.04, a private network standing in for the VPN, a second network for the public address): provisioning of both, a first deploy and a second one, a rollback, a deploy with `PRE_DEPLOY_BACKUP=true`, a backup, a restore beside the live database and over it, and `make smoke` against the app host. Every gap it showed is fixed above or in `deploy/`.
+
+What a container rehearsal cannot show, and a run on two real servers still has to:
+
+- Netbird itself: the interface `wt0`, split DNS for `admin.tabsira.me`, the subnet `100.64.0.0/10`. The scripts were given the containers' own interface and addresses (`VPN_IFACE`, `DATA_HOST_VPN_IP`, `APP_HOST_VPN_IP`).
+- DNS and certbot: no certificate was issued; both host names were served with self-signed certificates (`--skip-tls`), and `provision-app.sh --dry-run` was the only run of the certbot step.
+- A real firewall: the `ufw` rules were written and listed, but `ufw` was not enabled, so nothing was blocked.
+- A real S3 bucket: the API's start-up refusal was seen (a missing bucket halts the master, with the bucket and endpoint named), and the deploy passed with a local S3-compatible stand-in; no real bucket, key or endpoint was tried.
+- The detector: the deploy ran with `SKIP_VISION=true`, so its environment, the weights download and its restart were not exercised, and IndexNow was skipped (`SKIP_INDEXNOW=true`), because it would contact the search engines.
+- The data imports (`scripts/data.sh`): not run. The deploy migrated an empty database, so the restore was checked on the schema and on a marker row, and `make smoke` fails its one check that needs scripture rows (`/scripture/quran/1/1`, 404).
+- Restore time and dump size at real data volumes, memory and disk of real hosts, and a reboot of real machines (when the containers were restarted every unit came back, `pm2` included; the API halted until the stand-in's bucket, which it keeps in memory, was created again, as designed).
+
+The package names and repositories (TimescaleDB, pgvector, redis.io) installed as written. The remaining vendor behaviour (Netbird, certbot's DNS plugin flags) is written from the vendors' documentation.
