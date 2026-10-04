@@ -277,6 +277,12 @@ async def test_a_scan_already_run_elsewhere_or_of_another_run_is_left_alone(
             "VISION_FAILED",
             "leak",
         ),
+        # Seven words of a stored verse, without any mark of quotation.
+        (
+            scene_answer(description="نبتة و فانظر الى اثر رحمت الله كيف يحي الارض"),
+            "VISION_FAILED",
+            "leak",
+        ),
     ],
 )
 async def test_a_scene_that_cannot_be_understood_fails_the_scan_honestly(
@@ -354,6 +360,14 @@ async def test_an_engine_that_cannot_answer_fails_the_scan_with_its_code(
             EngineResult(
                 status=EngineStatus.NEEDS_CLARIFICATION,
                 clarification_question="قال تعالى: «إنا أنزلناه في ليلة القدر»",
+            ),
+            ScanOutcome.NO_RELEVANT_EVIDENCE,
+            None,
+        ),
+        (
+            EngineResult(
+                status=EngineStatus.NEEDS_CLARIFICATION,
+                clarification_question="هل تقصد قل هو الله احد الله الصمد لم يلد؟",
             ),
             ScanOutcome.NO_RELEVANT_EVIDENCE,
             None,

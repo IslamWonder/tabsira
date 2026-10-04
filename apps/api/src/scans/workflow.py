@@ -49,7 +49,7 @@ from src.pipeline.engine import (
     ProposedInsight,
 )
 from src.pipeline.leak_guard import LeakGuard, ScriptureLeakError
-from src.pipeline.scene_analyzer import analyze_scene
+from src.pipeline.scene_analyzer import analyze_scene, scene_texts
 from src.pipeline.schemas import (
     DetectorRequest,
     DetectorResult,
@@ -65,6 +65,7 @@ from src.pipeline.sensitivity import check_sensitivity
 from src.scans import buffer, progress
 from src.scans.accept import accept
 from src.scans.engines import EngineDeps, EngineFactory
+from src.scripture.overlap import repeats_store
 from src.services.learner_service import learner_context
 
 log = logging.getLogger("tabsira.scans.workflow")
@@ -347,6 +348,12 @@ async def _understand(job: Run, client: ModelClient) -> SceneAnalysis:
     except ScriptureLeakError:
         job.trace.add("understand", "failed", started, "leak")
         raise ScanFailedError(ErrorCode.VISION_FAILED, "scripture-like text in the scene") from None
+    async with services.sessionmaker() as db:
+        # The scene's words are shown too: no run of a stored text in them, marked or not.
+        copied = await repeats_store(db, scene_texts(scene).values())
+    if copied:
+        job.trace.add("understand", "failed", started, "leak")
+        raise ScanFailedError(ErrorCode.VISION_FAILED, "scripture-like text in the scene")
     job.trace.add("understand", "done", started)
 
     started = services.timer()
@@ -416,7 +423,7 @@ async def _conclude(job: Run, scene: SceneAnalysis, result: EngineResult) -> str
             result.insights if result.status is EngineStatus.OK else [],
             awaiting_ruling=result.awaiting_ruling,
         )
-        question = _question(result)
+        question = await _question(db, result)
         if accepted.insights:
             outcome = ScanOutcome.INSIGHTS
         elif result.status is EngineStatus.NEEDS_CLARIFICATION and question:
@@ -436,9 +443,10 @@ async def _conclude(job: Run, scene: SceneAnalysis, result: EngineResult) -> str
     return outcome.value
 
 
-def _question(result: EngineResult) -> str | None:
+async def _question(db: AsyncSession, result: EngineResult) -> str | None:
+    """Return the engine's question to the learner, unless it carries scripture, marked or not."""
     question = (result.clarification_question or "").strip()
-    if not question or LeakGuard().check(question).leaked:
+    if not question or LeakGuard().check(question).leaked or await repeats_store(db, [question]):
         return None
     return question
 
