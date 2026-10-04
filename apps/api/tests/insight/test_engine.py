@@ -122,7 +122,11 @@ async def test_a_rain_scene_gets_an_insight_backed_by_its_verse_while_the_hadith
     # No hadith has an editor's ruling: the insight carries its verse alone.
     assert insight.hadith is None
     assert [part.section for part in insight.explanation] == ["seen", "value", "quran", "life"]
-    assert insight.explanation[0].sources == ["T01_06"]
+    assert insight.explanation[0].sources == ["masar:T01_06"]
+    assert insight.explanation[2].sources == [
+        f"quran:{insight.quran.ref.surah}:{insight.quran.ref.ayah}",
+        "masar:T01_06",
+    ]
     assert insight.small_step.kind == "ethical_application"
     assert insight.learning_unit_id == "T01_06"
     assert insight.learning_path_version == "tabsira-masar-1.0"
@@ -161,7 +165,7 @@ async def test_an_eligible_hadith_completes_the_pair_and_grounds_the_step(maker)
     assert isinstance(insight.hadith.ref, HadithRef)
     assert insight.small_step.kind == "text_grounded"
     assert insight.small_step.grounded_in == [
-        f"H:{insight.hadith.ref.collection}:{insight.hadith.ref.number}"
+        f"hadith:{insight.hadith.ref.collection}:{insight.hadith.ref.number}"
     ]
     assert [part.section for part in insight.explanation][2:4] == ["quran", "sunnah"]
     assert result.awaiting_ruling == []
