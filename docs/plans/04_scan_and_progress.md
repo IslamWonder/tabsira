@@ -1,6 +1,6 @@
 # 04 · Photo to scan, with honest progress
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 20:37 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 20:42 (Tunis)
 
 A person takes or uploads a photo. They see honest stages (understanding, searching, verifying, composing), can point at what matters and answer one question.
 
@@ -114,3 +114,11 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 - **Depends on:** 04.2
 - **Touches:** apps/web/src/components/scan/focus-picker.tsx, apps/web/src/lib/scan/use-scan.ts, apps/web/src/messages/scan.ts, their tests.
 - **Done when:** A test draws a box and the request carries `box` with ratios inside 0 to 1 and no entity id; the picker with no entities offers the box; accessibility check clean.
+
+### 04.13 Core audit (wave 3): the four API gaps
+
+- **Status:** ✅ 2026-10-04 20:42
+- **Goal:** Close the four API gaps of the wave 3 compliance audit of the core journey (report beside the checkout, `reviews/audit-wave3-core-2026-10-04.md`). (1) The composer's neutral-explanation rule keyed on a background the payload never sends (`exploring`/`other`); the prompt now rules on `muslim`, `non_muslim`, `unknown` or absent, the payload keeps the profile enum, and a non-Muslim or unshared background gets the «يعلّم الإسلام» framing (v2 §5). (2) An account that declared it is under 13 cannot publish an insight at all, not only its photo: `409 UNDER_13_CANNOT_PUBLISH`, named in the share sheet, the privacy policy and the terms (v2 §5). (3) `EvidenceExposure` records what was shown when it is shown: a `shown` row the first time each text of an insight reaches its owner (`GET /insights/{id}`, a kept tutorial insight), once per insight and text, unless memory is off; the engine's «seen» diversity reads it (v2 §11, masar §10.5). (4) A server-side guard replaces any word that names a person by religion, age or gender in the scene's labels and texts with «شخص» and records it in `rejected` (v2 §0.6, §6; `src/pipeline/person_words.py`).
+- **Depends on:** 04.1, 09.1
+- **Touches:** apps/api/src/pipeline/{prompts/insight_composer_system.v1.txt,insight/planner.py,scene_analyzer.py,person_words.py}, apps/api/src/services/{public_insight_service.py,insight_view.py,learner_service.py,completion_service.py,world_service.py}, apps/api/src/routers/{insights.py,tutorial.py}, apps/api/src/errors.py, apps/api/src/models/timeseries.py, their tests, apps/web/src/components/insight/share-sheet.tsx, apps/web/src/messages/{share.ts,legal.ts}, the generated web client, docs/PRIVACY.md.
+- **Done when:** The tests of each fix pass; `make lint` passes. Not done here: posts and atlas entries of an under-13 account still answer `INSIGHT_NOT_PUBLISHABLE` only for the photo (posts) or the location (atlas); the owners decide whether §5 closes those too.
