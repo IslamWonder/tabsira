@@ -1,24 +1,38 @@
 'use client';
 
-import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import type { Route } from 'next';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { LogoMark } from '@/components/brand/logo';
 import { OrnamentDivider } from '@/components/fx/ornament-divider';
 import { ScenePhoto, type ScenePoint } from '@/components/insight/scene-photo';
 import { StageLayout } from '@/components/layout/layouts';
+import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
+import { Notice } from '@/components/ui/notice';
 import { Sheet } from '@/components/ui/sheet';
+import {
+  getRainTutorial,
+  keepRainInsight,
+  startScanFromFile,
+  startScanFromLink,
+  type Tutorial,
+} from '@/lib/scan/api';
+import { journeyFailureMessage } from '@/lib/scan/failure';
+import { centre } from '@/lib/scan/spans';
 import { messages } from '@/messages';
+import { RAIN_PHOTO } from './rain-scene';
 import { SceneInsightList } from './scene-insight-list';
 import { SceneIntro } from './scene-intro';
 import { SceneStarter } from './scene-starter';
 
-const EXAMPLE = messages.scene.example;
-export const RAIN_PHOTO = { src: '/scene/rain-olive.jpg', width: 768, height: 1344 } as const;
+export { RAIN_PHOTO };
 
-// Where the two insights sit on the rain photo, as ratios of the photo: the
-// drops on the large leaf, and the young stem that will outlive its planter.
-// Both stay inside the crop of a landscape stage, a phone and a tablet.
+const EXAMPLE = messages.scene.example;
+
+// Where the two insights sit on the rain photo until the API's own anchors
+// arrive, as ratios of the photo. Both stay inside the crop of a landscape
+// stage, a phone and a tablet. The ids are the tutorial's own slugs.
 const POSITIONS = [
   { x: 0.24, y: 0.555, tone: 'gold' },
   { x: 0.5, y: 0.66, tone: 'emerald' },
@@ -29,47 +43,107 @@ export const RAIN_POINTS: readonly ScenePoint[] = EXAMPLE.insights.map((insight,
   ...(POSITIONS[index] as (typeof POSITIONS)[number]),
 }));
 
-type Received = { kind: 'photo'; url: string; name: string } | { kind: 'link'; url: string };
+/** The tutorial's insights as points of the photo, in the API's titles and anchors. */
+function pointsOf(tutorial: Tutorial): ScenePoint[] {
+  return tutorial.insights.map((insight, index) => ({
+    id: insight.slug,
+    ...centre(insight.anchor),
+    title: insight.title,
+    glimpse: insight.glimpse,
+    tone: index % 2 === 0 ? 'gold' : 'emerald',
+  }));
+}
+
+type Sending = { kind: 'file'; file: File } | { kind: 'link'; url: string };
 
 /**
- * The scene (S01): the prepared rain photo as the stage with its two
- * insights, the panel of the desktop reference beside it, the phone mockup's
- * overlays below 768 px. Until the API serves the curated scene, opening an
- * insight says what will appear there instead of showing anything unverified,
- * and a photo you bring stays on your device: nothing imitates an analysis.
+ * The scene (S01): the prepared rain photo first, before any account or
+ * permission, labelled as the prepared example the API says it is; its two
+ * insights open the API's own copy of them. A photo, a link or the camera
+ * starts a real scan, which is the only thing that is ever called analysis:
+ * the prepared example is never presented as one. The first paint never waits
+ * for the API: the photo and the insights' names are here already, and the
+ * API's own titles and places replace them when they arrive.
  */
 export function SceneExperience() {
+  const router = useRouter();
+  const [tutorial, setTutorial] = useState<Tutorial | null>(null);
   const [selected, setSelected] = useState<string | undefined>(undefined);
+  const [opening, setOpening] = useState<string | null>(null);
+  const [openError, setOpenError] = useState<string | null>(null);
   const [starterOpen, setStarterOpen] = useState(false);
-  const [received, setReceived] = useState<Received | null>(null);
-  const point = RAIN_POINTS.find((candidate) => candidate.id === selected);
+  const [sending, setSending] = useState<Sending | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const request = useRef<AbortController | null>(null);
 
-  // A chosen photo is shown from memory; release it once it is replaced or closed.
   useEffect(() => {
-    return () => {
-      if (received?.kind === 'photo') {
-        URL.revokeObjectURL(received.url);
+    const controller = new AbortController();
+    getRainTutorial(controller.signal).then((result) => {
+      if (result.ok && !controller.signal.aborted) {
+        setTutorial(result.data);
       }
-    };
-  }, [received]);
+    });
+    return () => controller.abort();
+  }, []);
 
-  const takeFile = (file: File) => {
-    setStarterOpen(false);
-    setReceived({ kind: 'photo', url: URL.createObjectURL(file), name: file.name });
+  const points = tutorial === null ? RAIN_POINTS : pointsOf(tutorial);
+  const label = tutorial?.label ?? messages.scene.prepared;
+  const alt = tutorial?.image.alt ?? EXAMPLE.alt;
+
+  const open = async (slug: string) => {
+    if (opening !== null) {
+      return;
+    }
+    setSelected(slug);
+    setOpening(slug);
+    setOpenError(null);
+    const result = await keepRainInsight(slug);
+    if (result.ok) {
+      router.push(`/insight/${result.data.id}` as Route);
+      return;
+    }
+    setOpening(null);
+    setOpenError(journeyFailureMessage(result));
   };
-  const takeLink = (url: string) => {
+
+  const send = async (input: Sending) => {
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
     setStarterOpen(false);
-    setReceived({ kind: 'link', url });
+    setSending(input);
+    setSendError(null);
+    const result =
+      input.kind === 'file'
+        ? await startScanFromFile(input.file, controller.signal)
+        : await startScanFromLink(input.url, controller.signal);
+    if (controller.signal.aborted) {
+      return;
+    }
+    if (result.ok) {
+      router.push(`/scan/${result.data.id}` as Route);
+      return;
+    }
+    setSendError(journeyFailureMessage(result));
   };
+
+  const leaveSending = () => {
+    request.current?.abort();
+    setSending(null);
+    setSendError(null);
+  };
+
+  const takeFile = (file: File) => void send({ kind: 'file', file });
+  const takeLink = (url: string) => void send({ kind: 'link', url });
 
   return (
     <>
       <StageLayout
-        stageLabel={EXAMPLE.alt}
+        stageLabel={alt}
         panel={
           <div className="hidden flex-col gap-7 pt-2 pb-6 tablet:flex">
-            <SceneIntro chip={<Chip>{messages.scene.prepared}</Chip>} />
-            <SceneInsightList points={RAIN_POINTS} selectedId={selected} onSelect={setSelected} />
+            <SceneIntro chip={<Chip>{label}</Chip>} />
+            <SceneInsightList points={points} selectedId={selected} onSelect={open} />
             <OrnamentDivider />
             <SceneStarter onFile={takeFile} onLink={takeLink} />
           </div>
@@ -77,12 +151,12 @@ export function SceneExperience() {
         stage={
           <ScenePhoto
             src={RAIN_PHOTO.src}
-            alt={EXAMPLE.alt}
+            alt={alt}
             width={RAIN_PHOTO.width}
             height={RAIN_PHOTO.height}
-            points={RAIN_POINTS}
+            points={points}
             selectedId={selected}
-            onSelect={setSelected}
+            onSelect={open}
             listInPanel
             priority
             className="h-full"
@@ -92,7 +166,17 @@ export function SceneExperience() {
               <div className="m-0">
                 <LogoMark title={messages.brand.name} className="h-14" />
               </div>
-              <Chip tone="glass">{messages.scene.prepared}</Chip>
+              <Chip tone="glass">{label}</Chip>
+            </div>
+            <div className="absolute inset-x-4 top-24 z-20 flex flex-col items-center gap-2 tablet:top-6">
+              <div role="status">
+                {opening === null ? null : <Notice tone="info">{messages.sending.opening}</Notice>}
+              </div>
+              {openError === null ? null : (
+                <div role="alert">
+                  <Notice tone="error">{openError}</Notice>
+                </div>
+              )}
             </div>
             <div className="absolute inset-x-0 bottom-[calc(var(--nav-clearance)+4px)] flex flex-col items-center gap-0.5 px-5 text-center tablet:hidden">
               <p className="m-0 font-semibold text-[1.3rem] text-fg">{messages.scene.hint}</p>
@@ -110,19 +194,6 @@ export function SceneExperience() {
       />
 
       <Sheet
-        open={point !== undefined}
-        onClose={() => setSelected(undefined)}
-        title={point?.title ?? ''}
-        description={point?.glimpse}
-      >
-        <div className="flex flex-col items-start gap-3 pb-2">
-          <Chip tone="primary">{messages.comingSoon.badge}</Chip>
-          <p className="m-0 text-fg leading-[1.9]">{EXAMPLE.opening}</p>
-          <p className="m-0 text-fg-muted text-sm">{EXAMPLE.pending}</p>
-        </div>
-      </Sheet>
-
-      <Sheet
         open={starterOpen}
         onClose={() => setStarterOpen(false)}
         title={messages.nav.captureScene}
@@ -130,35 +201,31 @@ export function SceneExperience() {
         <SceneStarter onFile={takeFile} onLink={takeLink} className="mb-2" />
       </Sheet>
 
-      <Sheet
-        open={received !== null}
-        onClose={() => setReceived(null)}
-        title={
-          received?.kind === 'link'
-            ? messages.scene.received.linkTitle
-            : messages.scene.received.photoTitle
-        }
-      >
+      <Sheet open={sending !== null} onClose={leaveSending} title={messages.sending.title}>
         <div className="flex flex-col gap-4 pb-2">
-          {received?.kind === 'photo' ? (
-            <div className="relative h-64 overflow-hidden rounded-[var(--radius-panel)]">
-              <Image
-                src={received.url}
-                alt={messages.scene.received.photoAlt}
-                fill
-                unoptimized
-                className="object-contain"
-              />
-            </div>
-          ) : (
-            <p
-              dir="ltr"
-              className="m-0 break-all rounded-[var(--radius-card)] bg-surface px-3 py-2 text-fg-soft text-sm"
-            >
-              {received?.url}
+          {sending === null ? null : (
+            <p role="status" className="m-0 text-fg leading-[1.9]">
+              {sendError === null
+                ? sending.kind === 'file'
+                  ? messages.sending.file(sending.file.name)
+                  : messages.sending.link
+                : null}
             </p>
           )}
-          <p className="m-0 text-fg-soft leading-[1.9]">{messages.scene.received.note}</p>
+          {sendError === null ? null : (
+            <div role="alert">
+              <Notice tone="error">{sendError}</Notice>
+            </div>
+          )}
+          <p className="m-0 text-fg-muted text-sm leading-[1.8]">{messages.sending.privacy}</p>
+          <div className="flex flex-wrap gap-2.5">
+            {sendError === null || sending === null ? null : (
+              <Button onClick={() => void send(sending)}>{messages.sending.retry}</Button>
+            )}
+            <Button variant="ghost" onClick={leaveSending}>
+              {sendError === null ? messages.sending.cancel : messages.sending.close}
+            </Button>
+          </div>
         </div>
       </Sheet>
     </>

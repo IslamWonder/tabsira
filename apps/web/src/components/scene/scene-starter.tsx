@@ -153,6 +153,8 @@ export function SceneStarter({ onFile, onLink, className }: SceneStarterProps) {
         </Button>
       </form>
 
+      <p className="m-0 text-fg-muted text-sm leading-[1.8]">{messages.sending.privacy}</p>
+
       <p id={errorId} role="alert" className="m-0 text-danger text-sm empty:hidden">
         {error}
       </p>

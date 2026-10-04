@@ -18,7 +18,7 @@ export const scanMessages = {
     link: 'أطلب الصورة من الرابط وأحلّلها…',
     cancel: 'ألغِ',
     retry: 'أعد المحاولة',
-    close: 'أغلق',
+    close: 'عد إلى المشهد',
     /** Said before the photo leaves the device (master prompt §19). */
     privacy:
       'تُرسل صورتك إلى مزوّد الذكاء الاصطناعي لتحليلها، وتبقى في خادمنا ساعة واحدة على الأكثر ثم تُمسح، ولا نعرضها عليك ولا نحفظها إن بدا المشهد حساسًا.',

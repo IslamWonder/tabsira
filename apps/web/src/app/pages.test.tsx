@@ -14,7 +14,10 @@ import OfflinePage, { metadata as offlineMetadata } from './offline/page';
 import ScenePage, { metadata as sceneMetadata } from './page';
 import WorldPage, { metadata as worldMetadata } from './world/page';
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/' }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/',
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 describe('placeholder routes', () => {
   it.each<[string, () => ReactElement, Metadata, string, string]>([

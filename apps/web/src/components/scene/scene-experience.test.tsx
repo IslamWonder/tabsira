@@ -1,12 +1,26 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { apiError, mockApi, type Route } from '@/test/api';
+import { insightOut, scanOut, tutorialOut } from '@/test/scan';
 import { RAIN_POINTS, SceneExperience } from './scene-experience';
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/' }));
+const push = vi.fn();
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/',
+  useRouter: () => ({ push }),
+}));
 
-describe('SceneExperience', () => {
-  it('opens on the prepared rain photo with its two insights, marked as an example', () => {
+beforeEach(() => {
+  push.mockClear();
+});
+
+const tutorial: Record<string, Route> = { 'GET /tutorial/rain': { body: tutorialOut() } };
+
+const image = () => new File(['x'], 'mine.jpg', { type: 'image/jpeg' });
+
+describe('SceneExperience: the prepared example', () => {
+  it('opens on the rain photo with its two insights at once, before the API answers, marked as an example', () => {
     render(<SceneExperience />);
     expect(
       screen.getByRole('img', { name: 'نبتة زيتون صغيرة تتلقى قطرات المطر' })
@@ -19,49 +33,159 @@ describe('SceneExperience', () => {
     expect(screen.getAllByText('مثال موثّق مُعدّ').length).toBeGreaterThan(0);
   });
 
-  it('opens an insight in a sheet that says what will appear there, without any text it cannot verify', async () => {
+  it('takes the titles, places, label and description of the photo from the API when they arrive', async () => {
+    mockApi(tutorial);
+    render(<SceneExperience />);
+    expect(await screen.findByRole('img', { name: 'نبتة تتلقى المطر' })).toBeInTheDocument();
+    expect(document.querySelector('[data-point-id="drop"]')).not.toBeNull();
+    expect(screen.getAllByText('كيف تُحيا الأرض').length).toBeGreaterThan(0);
+  });
+
+  it('keeps the example as it is when the API does not answer', async () => {
+    mockApi({ 'GET /tutorial/rain': apiError(503, 'SERVICE_UNAVAILABLE') });
+    render(<SceneExperience />);
+    await act(async () => undefined);
+    expect(document.querySelectorAll('[data-point-id]')).toHaveLength(2);
+  });
+
+  it('opens the API copy of an insight and goes to it', async () => {
+    const api = mockApi({
+      ...tutorial,
+      'POST /tutorial/rain/insights/drop': { body: insightOut({ id: '110000000000000077' }) },
+    });
     render(<SceneExperience />);
     await userEvent.click(document.querySelector('[data-point-id="drop"]') as HTMLElement);
-    const sheet = screen.getByRole('dialog', { name: 'الحياة في قطرة' });
-    expect(sheet).toHaveAccessibleDescription('كيف تُحيا الأرض بعد موتها');
-    expect(within(sheet).getByText(/لا نعرض نصًا قبل أن يأتي من مصدره/)).toBeInTheDocument();
-    await userEvent.click(within(sheet).getByRole('button', { name: 'أغلق' }));
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(push).toHaveBeenCalledWith('/insight/110000000000000077');
+    expect(api.requests.filter((request) => request.method === 'POST')).toHaveLength(1);
   });
 
-  it('keeps a photo you bring on your device and says so', async () => {
-    const createObjectURL = vi.fn(() => 'blob:local');
-    const revokeObjectURL = vi.fn();
-    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL }));
+  it('opens it from the list too, once, however many times it is tapped', async () => {
+    mockApi({
+      ...tutorial,
+      'POST /tutorial/rain/insights/drop': {
+        body: insightOut({ id: '110000000000000077' }),
+      },
+    });
     render(<SceneExperience />);
-    const [panelPicker] = screen.getAllByLabelText('اختر صورة');
-    await userEvent.upload(
-      panelPicker as HTMLElement,
-      new File(['x'], 'mine.jpg', { type: 'image/jpeg' })
+    const row = within(screen.getByRole('region', { name: 'المس البصيرة التي لفتتك' })).getByRole(
+      'button',
+      { name: /الحياة في قطرة/ }
     );
-    const sheet = screen.getByRole('dialog', { name: 'صورتك' });
-    expect(within(sheet).getByRole('img', { name: 'الصورة التي اخترتها' })).toHaveAttribute(
-      'src',
-      'blob:local'
-    );
-    expect(within(sheet).getByText(/لم يُرسَل شيء إلى أي مكان/)).toBeInTheDocument();
-    await userEvent.click(within(sheet).getByRole('button', { name: 'أغلق' }));
-    expect(revokeObjectURL).toHaveBeenCalledWith('blob:local');
-    vi.unstubAllGlobals();
+    await userEvent.dblClick(row);
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('أفتح البصيرة…')).toBeInTheDocument();
   });
 
-  it('starts a new scene from the phone overlay, and shows a pasted link without loading it', async () => {
+  it('says why an insight could not be opened, and lets the reader tap again', async () => {
+    mockApi({ ...tutorial, 'POST /tutorial/rain/insights/drop': 'network-error' });
+    render(<SceneExperience />);
+    await userEvent.click(document.querySelector('[data-point-id="drop"]') as HTMLElement);
+    expect(await screen.findByText(/تعذّر الوصول إلى تبصرة/)).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.queryByText('أفتح البصيرة…')).toBeNull();
+  });
+});
+
+describe('SceneExperience: a scene of the reader', () => {
+  it('says before anything is sent that the photo goes to the AI provider', () => {
+    render(<SceneExperience />);
+    expect(screen.getAllByText(/تُرسل صورتك إلى مزوّد الذكاء الاصطناعي/).length).toBeGreaterThan(0);
+  });
+
+  it('sends the photo, never shows it back, and goes to the scan', async () => {
+    const api = mockApi({
+      ...tutorial,
+      'POST /scans': { status: 202, body: scanOut({ id: '110000000000000099', status: 'queued' }) },
+    });
+    render(<SceneExperience />);
+    const [picker] = screen.getAllByLabelText('اختر صورة');
+    await userEvent.upload(picker as HTMLElement, image());
+    expect(push).toHaveBeenCalledWith('/scan/110000000000000099');
+    expect(screen.queryByRole('img', { name: 'الصورة التي اخترتها' })).toBeNull();
+    expect(api.requests.some((request) => request.url.endsWith('/scans'))).toBe(true);
+  });
+
+  it('sends a pasted link to the API, which fetches it; the browser never loads it', async () => {
+    const api = mockApi({
+      ...tutorial,
+      'POST /scans': { status: 202, body: scanOut({ id: '110000000000000098', status: 'queued' }) },
+    });
     render(<SceneExperience />);
     await userEvent.click(screen.getByRole('button', { name: 'أو صوّر مشهدك أنت' }));
     const starter = screen.getByRole('dialog', { name: 'صوّر مشهدًا' });
     await userEvent.click(within(starter).getByRole('button', { name: 'الصق رابط صورة' }));
     await userEvent.type(within(starter).getByLabelText('رابط الصورة'), 'example.org/rain.jpg');
-    await act(async () => {
-      await userEvent.click(within(starter).getByRole('button', { name: 'استخدم الرابط' }));
+    await userEvent.click(within(starter).getByRole('button', { name: 'استخدم الرابط' }));
+    expect(await api.bodies('POST', '/scans')).toEqual([{ url: 'https://example.org/rain.jpg' }]);
+    expect(push).toHaveBeenCalledWith('/scan/110000000000000098');
+    expect(document.querySelector('img[src*="example.org"]')).toBeNull();
+  });
+
+  it('says in Arabic why the API refused the photo, and offers to try again or to close', async () => {
+    let answers = 0;
+    mockApi({
+      ...tutorial,
+      'POST /scans': () => {
+        answers += 1;
+        return answers === 1
+          ? apiError(415, 'IMAGE_UNSUPPORTED')
+          : { status: 202, body: scanOut({ id: '110000000000000097', status: 'queued' }) };
+      },
     });
-    const sheet = screen.getByRole('dialog', { name: 'رابط صورتك' });
-    expect(within(sheet).getByText('https://example.org/rain.jpg')).toBeInTheDocument();
-    expect(within(sheet).queryByRole('img')).toBeNull();
+    render(<SceneExperience />);
+    const [picker] = screen.getAllByLabelText('اختر صورة');
+    await userEvent.upload(picker as HTMLElement, image());
+    const sheet = await screen.findByRole('dialog', { name: 'صورتك' });
+    expect(await within(sheet).findByRole('alert')).toHaveTextContent('هذه الصيغة غير مدعومة');
+    await userEvent.click(within(sheet).getByRole('button', { name: 'أعد المحاولة' }));
+    expect(push).toHaveBeenCalledWith('/scan/110000000000000097');
+  });
+
+  it('shows what is being sent, and leaving drops the answer that comes late', async () => {
+    let release: () => void = () => undefined;
+    mockApi({
+      ...tutorial,
+      'POST /scans': () =>
+        new Promise((resolve) => {
+          release = () => resolve({ status: 202, body: scanOut({ status: 'queued' }) });
+        }),
+    });
+    render(<SceneExperience />);
+    const [picker] = screen.getAllByLabelText('اختر صورة');
+    await userEvent.upload(picker as HTMLElement, image());
+    const sheet = screen.getByRole('dialog', { name: 'صورتك' });
+    expect(within(sheet).getByRole('status')).toHaveTextContent('أرسل «mine.jpg» لتحليلها…');
+    await userEvent.click(within(sheet).getByRole('button', { name: 'ألغِ' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await act(async () => release());
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('says a link is being fetched, and closes after a refusal', async () => {
+    mockApi({ ...tutorial, 'POST /scans': apiError(422, 'IMAGE_FETCH_FAILED') });
+    render(<SceneExperience />);
+    await userEvent.click(screen.getByRole('button', { name: 'أو صوّر مشهدك أنت' }));
+    const starter = screen.getByRole('dialog', { name: 'صوّر مشهدًا' });
+    await userEvent.click(within(starter).getByRole('button', { name: 'الصق رابط صورة' }));
+    await userEvent.type(within(starter).getByLabelText('رابط الصورة'), 'example.org/a.jpg');
+    await userEvent.click(within(starter).getByRole('button', { name: 'استخدم الرابط' }));
+    const sheet = await screen.findByRole('dialog', { name: 'صورتك' });
+    expect(await within(sheet).findByText(/تعذّر جلب الصورة من الرابط/)).toBeInTheDocument();
+    await userEvent.click(within(sheet).getByRole('button', { name: 'عد إلى المشهد' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('shows the link step while the link is being fetched', async () => {
+    mockApi({ ...tutorial, 'POST /scans': () => new Promise(() => undefined) });
+    render(<SceneExperience />);
+    await userEvent.click(screen.getByRole('button', { name: 'أو صوّر مشهدك أنت' }));
+    const starter = screen.getByRole('dialog', { name: 'صوّر مشهدًا' });
+    await userEvent.click(within(starter).getByRole('button', { name: 'الصق رابط صورة' }));
+    await userEvent.type(within(starter).getByLabelText('رابط الصورة'), 'example.org/a.jpg');
+    await userEvent.click(within(starter).getByRole('button', { name: 'استخدم الرابط' }));
+    expect(
+      within(await screen.findByRole('dialog', { name: 'صورتك' })).getByRole('status')
+    ).toHaveTextContent('أطلب الصورة من الرابط');
   });
 
   it('closes the phone starter without choosing anything', async () => {
