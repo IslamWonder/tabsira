@@ -52,3 +52,11 @@ The photo of a scan, kept with its owner's consent, shown to the public only by 
 - **What was built:** `place()` takes the store and syncs after the flush; `hold_if_reported` and `reject` take `photos` and sync (the report route and the admin view pass it). `sync_public_copy` returns whether the store did its part and, on a failure, asks the worker (`photos.reconcile`, run 30 s later in that one process) to run `photo_service.reconcile_public_copies`, which deletes every public copy nothing shows any more under an advisory lock; `tabsira-reconcile-photos.timer` runs `python -m src.cli.reconcile_photos` hourly. The person still gets 204. `PublicationExport.photo_ref` is replaced by `has_photo` and `published`.
 - **Reviews:** the four findings and the missing tests the review named are covered by `tests/test_photo_publication.py` and `tests/test_photo_reconcile.py`; no new setting.
 - **Left for the owners:** the privacy text's wording (`legal.ts`) was not changed: it already promises the deletion that now holds; the review's note on a legal version bump stays theirs to decide.
+
+### 19.4 Enable the photo reconcile timer in the host configuration
+
+- **Status:** ⬜ open
+- **Goal:** `deploy/apply-config.sh` must enable `tabsira-reconcile-photos.timer` next to the two other timers (`systemctl enable --now ... tabsira-reconcile-photos.timer`). Task 19.3 installed the unit and the timer files but left this one line out, because the main checkout held uncommitted edits to `deploy/apply-config.sh` at merge time and they were not to be overwritten.
+- **Depends on:** 19.3
+- **Touches:** deploy/apply-config.sh (one line), docs/OPERATIONS.md if the wording changes.
+- **Done when:** a fresh `apply-config.sh` run enables the timer; `systemctl list-timers` on the host shows it.
