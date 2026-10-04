@@ -57,12 +57,17 @@ Total **$2.03**, about 38 minutes of wall time. The archive's `manifest.json` ca
 - `manifest.json`: counts per model, fingerprints of the stored Quran and hadith texts, and the runs that made the vectors;
 - `SHA256SUMS`, `README.txt` and `import.sh`.
 
-Current archive: `tabsira-vectors-2026-10-04.tar.gz`, 929 MB, 165,072 vectors (18,708 verse rows, 146,364 hadith rows), SHA-256 `aca79a6d46eee5bed8d6b2a16c726f279c3af5a52651b3fc1ba362aac7c052d4`. It is kept in the owners' S3 storage, bucket `tabsira`, prefix `vectors/` (riastorage console, `tabsira/vectors`), next to its `.tar.gz.sha256`. It is never committed (AGENTS.md: no corpora over 5 MB in git). Ask the owners for read access.
+Current archive: `tabsira-vectors-2026-10-04.tar.gz`, 929 MB, 165,072 vectors (18,708 verse rows, 146,364 hadith rows), SHA-256 `aca79a6d46eee5bed8d6b2a16c726f279c3af5a52651b3fc1ba362aac7c052d4`. It is kept in the owners' S3 storage (MinIO, region europe), bucket `tabsira`, prefix `vectors/`, next to its `.tar.gz.sha256`, and is publicly readable:
+
+- `https://s3-v2.riastorage.com/tabsira/vectors/tabsira-vectors-2026-10-04.tar.gz`
+- `https://s3-v2.riastorage.com/tabsira/vectors/tabsira-vectors-2026-10-04.tar.gz.sha256`
+
+Verified 2026-10-04 16:37 (Tunis): the downloaded archive matches its SHA-256 and every file inside matches `SHA256SUMS` (task 05.5). The bucket also holds the unpacked folder `vectors/tabsira-vectors-2026-10-04/`; the archive alone is enough. It is never committed (AGENTS.md: no corpora over 5 MB in git).
 
 ## Import (development and production)
 
 1. The database has the scripture store (`make data`) and the app migrations, including the retrieval tables.
-2. Download `vectors/tabsira-vectors-2026-10-04.tar.gz` and its `.sha256` from the bucket, then `sha256sum -c tabsira-vectors-2026-10-04.tar.gz.sha256`.
+2. `curl -fO https://s3-v2.riastorage.com/tabsira/vectors/tabsira-vectors-2026-10-04.tar.gz -fO https://s3-v2.riastorage.com/tabsira/vectors/tabsira-vectors-2026-10-04.tar.gz.sha256 && sha256sum -c tabsira-vectors-2026-10-04.tar.gz.sha256` (about 1 min 30 s from Tunis).
 3. `tar -xzf tabsira-vectors-2026-10-04.tar.gz && cd tabsira-vectors-2026-10-04`
 4. `DATABASE_URL=postgresql://user:password@127.0.0.1:5432/tabsira ./import.sh` (the SQLAlchemy `postgresql+asyncpg://` form is accepted too).
 

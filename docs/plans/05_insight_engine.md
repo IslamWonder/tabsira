@@ -54,7 +54,7 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 
 ### 05.5 Verify the uploaded archive
 
-- **Status:** ⬜ open, ready once the owners' upload finishes (needs read access to the bucket)
+- **Status:** ✅ 2026-10-04 16:37: archive and every file inside verified from the public address
 - **Goal:** Download `vectors/tabsira-vectors-2026-10-04.tar.gz` and its `.sha256` from the owners' bucket, check the SHA-256 is `aca79a6d46eee5bed8d6b2a16c726f279c3af5a52651b3fc1ba362aac7c052d4`, extract it, and run `sha256sum -c SHA256SUMS` inside.
 - **Depends on:** the owners' upload.
 - **Touches:** nothing in the repository; record the result in docs/EMBEDDINGS.md ("Current archive") in one line.
