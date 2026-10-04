@@ -274,19 +274,31 @@ def _scrub_logentry(event: Any) -> None:
             logentry["params"] = scrub_value(logentry["params"])
 
 
+def _scrub_frames(value: dict[str, Any]) -> None:
+    stacktrace = value.get("stacktrace")
+    frames = stacktrace.get("frames") if isinstance(stacktrace, dict) else None
+    for frame in frames or []:
+        if isinstance(frame, dict):
+            for key in ("filename", "abs_path"):
+                if isinstance(frame.get(key), str):
+                    frame[key] = scrub_url(frame[key])
+            _scrub_str_keys(frame, ("function", "module"))
+
+
 def _scrub_exception_values(event: Any) -> None:
     exception = event.get("exception")
     if isinstance(exception, dict):
         for value in exception.get("values") or []:
             if isinstance(value, dict):
-                _scrub_str_keys(value, ("value",))
+                _scrub_str_keys(value, ("value", "type"))
+                _scrub_frames(value)
 
 
 def _scrub_each(items: Any, str_key: str) -> None:
-    """Scrub `str_key` and `data` of every dict in a breadcrumb or span list."""
+    """Scrub `str_key`, `category` and `data` of every dict in a breadcrumb or span list."""
     for item in items or []:
         if isinstance(item, dict):
-            _scrub_str_keys(item, (str_key,))
+            _scrub_str_keys(item, (str_key, "category"))
             _scrub_mapping_keys(item, ("data",))
 
 

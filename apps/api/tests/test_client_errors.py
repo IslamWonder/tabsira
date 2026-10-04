@@ -211,3 +211,19 @@ async def test_the_route_is_in_the_published_schema(open_client):
         "$ref": "#/components/schemas/ClientReportBatch"
     }
     assert "PAYLOAD_TOO_LARGE" in schema["components"]["schemas"]["ErrorCode"]["enum"]
+
+
+@pytest.mark.parametrize("field", ["name", "category"])
+@pytest.mark.parametrize(
+    "value", ["\u0645\u0634\u0643\u0644\u0629", "has space", "a" * 101, "a@b.co"]
+)
+async def test_a_type_or_category_outside_the_safe_alphabet_is_refused(open_client, field, value):
+    item = dict(REPORT["items"][0])
+    if field == "name":
+        item["name"] = value
+    else:
+        item["breadcrumbs"] = [{"category": value, "message": "m"}]
+
+    response = await open_client.post("/client-errors", json={"items": [item]})
+
+    assert response.status_code == 422

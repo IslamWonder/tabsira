@@ -762,3 +762,42 @@ def test_an_event_the_scrubber_drops_is_not_counted_as_sent(web_settings, record
 
     assert reporter.report([a_report()], request_id=None, user_agent=None) == 0
     assert recorder.events == []
+
+
+def test_the_exception_type_the_breadcrumb_category_and_the_frames_are_scrubbed():
+    event = {
+        "exception": {
+            "values": [
+                {
+                    "type": f"Error{BASMALA}",
+                    "value": "x",
+                    "stacktrace": {
+                        "frames": [
+                            {
+                                "filename": "https://u:p@tabsira.me/a.js?token=abc&mail=a@b.co",
+                                "function": f"handle{BASMALA}",
+                            }
+                        ]
+                    },
+                }
+            ]
+        },
+        "breadcrumbs": {"values": [{"category": f"ui.{BASMALA}", "message": "m"}]},
+    }
+
+    error_tracking.scrub_event(event)
+
+    value = event["exception"]["values"][0]
+    assert value["type"] == f"Error{ARABIC_FILTERED}"
+    frame = value["stacktrace"]["frames"][0]
+    assert frame["filename"] == "https://tabsira.me/a.js"
+    assert frame["function"] == f"handle{ARABIC_FILTERED}"
+    assert event["breadcrumbs"]["values"][0]["category"] == f"ui.{ARABIC_FILTERED}"
+
+
+def test_a_frame_without_text_fields_and_a_value_without_a_stack_are_left_alone():
+    event = {"exception": {"values": [{"type": "E", "stacktrace": {"frames": [{"lineno": 1}, 7]}}]}}
+
+    error_tracking.scrub_event(event)
+
+    assert event["exception"]["values"][0]["stacktrace"]["frames"] == [{"lineno": 1}, 7]

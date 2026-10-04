@@ -18,11 +18,16 @@ MAX_CONTEXT_KEYS = 20
 
 Scalar = str | int | float | bool | None
 
+# An exception type or a breadcrumb category is a code identifier (`TypeError`, `ui.click`),
+# never a person's words, so nothing else is accepted.
+IDENTIFIER = r"^[A-Za-z0-9_.$-]+$"
+MAX_IDENTIFIER = 100
+
 
 class ClientBreadcrumb(BaseModel):
     """One thing that happened before the error, as the page remembers it."""
 
-    category: str = Field(default="log", max_length=64)
+    category: str = Field(default="log", max_length=64, pattern=IDENTIFIER)
     level: Literal["debug", "info", "warning", "error"] = "info"
     message: str = Field(max_length=500)
     timestamp: float | None = None
@@ -34,7 +39,7 @@ class ClientReport(BaseModel):
     kind: Literal["error", "log"] = "error"
     level: Literal["warning", "error", "fatal"] = "error"
     message: str = Field(min_length=1, max_length=2000)
-    name: str | None = Field(default=None, max_length=200)
+    name: str | None = Field(default=None, max_length=MAX_IDENTIFIER, pattern=IDENTIFIER)
     stack: str | None = Field(default=None, max_length=16_000)
     url: str | None = Field(default=None, max_length=2000)
     handled: bool = True
