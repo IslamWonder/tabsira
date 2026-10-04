@@ -36,6 +36,8 @@ Other chat models on the same endpoint, not Qwen-VL, kept only as fallbacks: `Me
 
 **Thinking cannot be switched off on OVH today.** `chat_template_kwargs: {"enable_thinking": false}` is rejected with HTTP 400 ("feature 'extra arguments' is not currently supported") — verified live. The feature request is open: [ovh/public-cloud-roadmap#1170](https://github.com/ovh/public-cloud-roadmap/issues/1170). Reasoning text arrives in `message.reasoning`, separate from `content`, and is billed as completion tokens. The benchmark must measure the latency cost of thinking and try `reasoning_effort` and prompt-level switches before a stage relies on them.
 
+**Update, same day (benchmark):** `reasoning_effort: "none"` does switch thinking off for `Qwen3.8-27B` on OVH: the answer has no `reasoning` field and `completion_tokens_details.reasoning_tokens` is 0 (verified live, and on every call of the benchmark's `none` cells). `reasoning_effort: "low"` is accepted but changed nothing measurable on one image (397 against 384 reasoning tokens). A `/no_think` switch in the prompt is ignored (3,523 reasoning tokens). See §7.
+
 ### 2.2 Embeddings
 
 | Model id                  | Dimensions                              | Max input | Price (EUR; USD API) | Notes                                                                                                                                                 |
@@ -123,6 +125,16 @@ Open points for the benchmark owner:
 - Thinking on OVH: measure how much of each Qwen stage's latency is reasoning tokens; if it breaks the 5–12 s target, the speed tier (`Qwen3.5-9B`) or OpenAI with `reasoning_effort: none` may win stages regardless of quality.
 - `bge-multilingual-gemma2` is left out of the matrix because of its 3,584 dimensions; add it only with `halfvec`.
 - Qwen3Guard is text-only; image sensitivity must come from the vision stage's own schema field (or `omni-moderation-latest` on OpenAI).
+
+## 7. Verified while building the adapter and the benchmark (4 October 2026)
+
+Single live calls unless a number says otherwise; the benchmark's measurements are in `docs/BENCHMARK.md`.
+
+- **Thinking on OVH** can be switched off with `reasoning_effort: "none"` (see §2.1). With thinking on, `Qwen3.8-27B` spent 2,555 reasoning tokens on one scene analysis, which took 132 s and a second attempt; the same call without thinking took 18.7 s.
+- **Qwen-VL boxes are on a 0-1000 grid.** Asked for pixel boxes of a 1344x768 image with the size stated, `Qwen3.8-27B` and `Qwen3.5-9B` answered `[556, 752, 865, 998]` for an object at pixels `[750, 575, 1165, 768]`: the 0-1000 grid. With `reasoning_effort: "low"` it mixed the two systems in one box (x on the grid, y in pixels). `gpt-5.4-mini` answered in pixels, accurately. The API therefore states the coordinate system per provider (`AI_*__BOX_COORDINATES`) and converts on the server; the benchmark measures both systems for Qwen.
+- **OpenAI image moderation** (`omni-moderation-latest`): on an image input, `category_applied_input_types` lists only `sexual`, `self-harm` (three categories) and `violence` (two). It cannot see alcohol, drugs or gambling; a wine scene scored 8e-6 for violence and was not flagged. Image sensitivity therefore rests on the vision model's own `sensitive` field, with moderation as a second opinion for nudity and violence on OpenAI.
+- **`max_completion_tokens`** is accepted by both providers (OVH included), so the adapter sends that one name.
+- **The `openai` Python SDK** (3.24.0 on PyPI) depends on `httpx2`, a second HTTP stack beside the project's `httpx`, and retries on its own; the adapter talks to both providers with `httpx` directly so every attempt is counted in the call record.
 
 ## Sources
 
