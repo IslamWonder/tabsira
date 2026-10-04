@@ -10,6 +10,7 @@ from httpx import AsyncClient
 
 from src.database import get_db
 from src.models import HadithClassification
+from src.scripture.annotations import import_annotations
 from src.scripture.rulings import RulingInput, find_hadith, record_ruling
 from src.scripture.sunnah import import_signals, repair
 from src.scripture.text import sha256_hex
@@ -67,6 +68,26 @@ async def test_a_verse_carries_its_source_version_link_and_honest_status(api):
     assert body["links"] == {"quranpedia": "https://quranpedia.net/surah/2/30#verse-65709"}
     assert (body["page"], body["juz"], body["status"]) == (409, 21, "local_corpus")
     assert "normalized_text" not in body
+
+
+async def test_model_written_annotations_never_reach_the_verse_answer(api, db_session):
+    await import_annotations(db_session, load_json("quran-annotations.json"), "a" * 64)
+    annotation = next(
+        r["arabic_annotation"]
+        for r in load_json("quran-annotations.json")
+        if (r["surah_no"], r["ayah_no_surah"]) == (30, 50)
+    )
+
+    response = await api.get("/scripture/quran/30/50")
+
+    assert response.status_code == 200
+    written = [
+        annotation["search_retrieval_fields"]["context_window"],
+        *annotation["related_research_fields"],
+    ]
+    for sentence in written:
+        assert sentence not in response.text
+    assert not {"annotation", "keywords_ar", "categories"} & set(response.json())
 
 
 async def test_a_missing_or_impossible_verse_is_refused(api):

@@ -37,7 +37,6 @@ from src.scripture.annotations import (
     ANNOTATIONS_FILE,
     ANNOTATIONS_SHA256,
     import_annotations,
-    parse_annotations,
 )
 from src.scripture.errors import ScriptureError
 from src.scripture.files import require_verified
@@ -117,10 +116,13 @@ async def step_quran(context: Context) -> None:
 
 async def step_annotations(context: Context) -> None:
     path = require_verified(context.corpus_dir / ANNOTATIONS_FILE, ANNOTATIONS_SHA256)
-    rows = parse_annotations(load_json_file(path), ANNOTATIONS_SHA256)
+    raw = load_json_file(path)
     async with context.sessionmaker() as session, session.begin():
-        count = await import_annotations(session, rows)
-    _say(f"annotations: {count} verses annotated, verse text of the corpus not read")
+        report = await import_annotations(session, raw, ANNOTATIONS_SHA256)
+    _say(
+        f"annotations: {report.verses} verses annotated, {report.echoes_left_out} strings "
+        "repeating their verse left out"
+    )
 
 
 async def step_hadith(context: Context) -> None:

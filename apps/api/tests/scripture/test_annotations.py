@@ -1,8 +1,10 @@
-"""The annotated corpus: its annotations joined to the stored verses, its verse text never read."""
+"""The annotated corpus: its annotations joined to the stored verses, never carrying a verse."""
 
 from __future__ import annotations
 
 import shutil
+from collections.abc import Iterator
+from typing import Any
 
 import pytest
 from sqlalchemy import func, select
@@ -12,45 +14,68 @@ from src.models import QuranAnnotation, QuranVerse
 from src.scripture.annotations import (
     ANNOTATION_KEYS,
     AnnotationImportError,
+    annotation_row,
+    check_records,
     import_annotations,
-    parse_annotations,
 )
 from src.scripture.files import file_sha256
-from tests.scripture.fixtures import fixture_path, load_json, store_quran
+from src.scripture.text import search_copy
+from tests.scripture.fixtures import fixture_path, load_json, store_quran, verse_text
 
 SHA = "a" * 64
 
 
-def _rows() -> list[dict]:
-    return parse_annotations(load_json("quran-annotations.json"), SHA)
+def _strings(value: Any) -> Iterator[str]:
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, list):
+        for item in value:
+            yield from _strings(item)
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from _strings(item)
 
 
-async def test_annotations_are_stored_by_verse_without_the_corpus_text(quran_session):
-    count = await import_annotations(quran_session, _rows())
+def _echoes(text: str, verse: str) -> bool:
+    return f" {search_copy(verse)} " in f" {search_copy(text)} "
 
-    stored = {
-        (row.surah, row.ayah): row
-        for row in (await quran_session.scalars(select(QuranAnnotation))).all()
+
+def _records() -> dict[tuple[int, int], dict]:
+    return {(r["surah_no"], r["ayah_no_surah"]): r for r in load_json("quran-annotations.json")}
+
+
+async def _stored(session) -> dict[tuple[int, int], QuranAnnotation]:
+    return {
+        (row.surah, row.ayah): row for row in (await session.scalars(select(QuranAnnotation))).all()
     }
-    records = {(r["surah_no"], r["ayah_no_surah"]): r for r in load_json("quran-annotations.json")}
-    assert count == len(records) == len(stored)
+
+
+async def test_annotations_are_stored_by_verse_and_never_carry_the_verse(quran_session):
+    report = await import_annotations(quran_session, load_json("quran-annotations.json"), SHA)
+
+    stored = await _stored(quran_session)
+    records = _records()
+    echoing = 0
+    assert report.verses == len(records) == len(stored)
     for key, row in stored.items():
+        verses = (records[key]["text_ar"], verse_text(*key))
+        original = {k: records[key]["arabic_annotation"][k] for k in ANNOTATION_KEYS}
+        echoing += sum(
+            1 for text in _strings(original) if any(_echoes(text, verse) for verse in verses)
+        )
+        kept = [*_strings(row.annotation), *row.keywords_ar, *row.key_concepts, *row.semantic_tags]
+        assert not any(_echoes(text, verse) for text in kept for verse in verses)
         assert set(row.annotation) == set(ANNOTATION_KEYS)
-        assert row.annotation == {k: records[key]["arabic_annotation"][k] for k in ANNOTATION_KEYS}
-        assert row.source_ayah_id == records[key]["ayah_id"]
-        assert row.source_sha256 == SHA
-    assert "text_ar" not in QuranAnnotation.__table__.columns
-    assert "text" not in QuranAnnotation.__table__.columns
+        assert (row.source_ayah_id, row.source_sha256) == (records[key]["ayah_id"], SHA)
+    assert report.echoes_left_out == echoing > 0
+    plain = stored[(1, 1)]
+    assert plain.annotation == {k: records[(1, 1)]["arabic_annotation"][k] for k in ANNOTATION_KEYS}
+    assert not {"text", "text_ar"} & set(QuranAnnotation.__table__.columns.keys())
 
 
 async def test_keys_outside_the_seven_are_left_behind(quran_session):
-    await import_annotations(quran_session, _rows())
-    record = next(
-        r
-        for r in load_json("quran-annotations.json")
-        if (r["surah_no"], r["ayah_no_surah"]) == (2, 2)
-    )
-    extra = set(record["arabic_annotation"]) - set(ANNOTATION_KEYS)
+    await import_annotations(quran_session, load_json("quran-annotations.json"), SHA)
+    extra = set(_records()[(2, 2)]["arabic_annotation"]) - set(ANNOTATION_KEYS)
 
     row = await quran_session.get(QuranAnnotation, (2, 2))
 
@@ -60,7 +85,7 @@ async def test_keys_outside_the_seven_are_left_behind(quran_session):
 
 
 async def test_the_queried_fields_absorb_the_schema_drift(quran_session):
-    await import_annotations(quran_session, _rows())
+    await import_annotations(quran_session, load_json("quran-annotations.json"), SHA)
 
     misspelt = await quran_session.get(QuranAnnotation, (2, 49))
     lone_string = await quran_session.get(QuranAnnotation, (30, 2))
@@ -80,6 +105,28 @@ async def test_the_queried_fields_absorb_the_schema_drift(quran_session):
     assert plain.annotation_model == "gpt-4o-mini"
 
 
+def test_a_string_holding_the_verse_is_left_out_wherever_it_sits():
+    verse = verse_text(112, 1)
+    record = {
+        "ayah_id": 1,
+        "surah_no": 112,
+        "ayah_no_surah": 1,
+        "arabic_annotation": {
+            "categories": ["one", verse],
+            "search_retrieval_fields": {"keywords_ar": [verse], "context_window": verse},
+            "semantic_tags_entities": {"semantic_tags": ["two"]},
+        },
+    }
+
+    row, left_out = annotation_row(record, SHA, [search_copy(verse), ""])
+
+    assert left_out == 3
+    assert row["categories"] == ["one"]
+    assert row["keywords_ar"] == []
+    assert row["annotation"]["search_retrieval_fields"] == {"keywords_ar": []}
+    assert row["semantic_tags"] == ["two"]
+
+
 def test_odd_shapes_become_empty_or_single_lists():
     record = {
         "ayah_id": 1,
@@ -92,8 +139,9 @@ def test_odd_shapes_become_empty_or_single_lists():
         },
     }
 
-    (row,) = parse_annotations([record], SHA)
+    row, left_out = annotation_row(record, SHA, [])
 
+    assert left_out == 0
     assert row["islamic_domain"] is None
     assert row["categories"] == ["one"]
     assert row["key_concepts"] == ["a"]
@@ -111,26 +159,27 @@ def test_a_corpus_that_is_not_a_list_or_repeats_a_verse_is_refused():
     records = load_json("quran-annotations.json")
 
     with pytest.raises(AnnotationImportError, match="not a list"):
-        parse_annotations({"records": records}, SHA)
+        check_records({"records": records})
     with pytest.raises(AnnotationImportError, match="a verse twice"):
-        parse_annotations([records[0], records[0]], SHA)
+        check_records([records[0], records[0]])
 
 
 async def test_annotations_of_verses_not_in_the_store_are_refused(db_session):
     with pytest.raises(
         AnnotationImportError, match=r"7 annotated verses are not in the store \(1:1"
     ):
-        await import_annotations(db_session, _rows())
+        await import_annotations(db_session, load_json("quran-annotations.json"), SHA)
 
 
 async def test_importing_again_replaces_and_an_empty_corpus_empties(quran_session):
-    await import_annotations(quran_session, _rows())
-    await import_annotations(quran_session, _rows())
+    raw = load_json("quran-annotations.json")
+    await import_annotations(quran_session, raw, SHA)
+    await import_annotations(quran_session, raw, SHA)
     count = await quran_session.scalar(select(func.count()).select_from(QuranAnnotation))
 
-    await import_annotations(quran_session, [])
+    await import_annotations(quran_session, [], SHA)
 
-    assert count == len(_rows())
+    assert count == len(raw)
     assert await quran_session.scalar(select(func.count()).select_from(QuranAnnotation)) == 0
     assert await quran_session.scalar(select(func.count()).select_from(QuranVerse)) > 0
 
@@ -156,4 +205,5 @@ async def test_the_annotations_step_checks_the_file_before_importing(
     assert (missing, tampered, done) == (1, 1, 0)
     assert "quran-annotations.json is missing" in captured.err
     assert "has sha256" in captured.err
-    assert "annotations: 7 verses annotated" in captured.out
+    assert "annotations: 7 verses annotated," in captured.out
+    assert "strings repeating their verse left out" in captured.out
