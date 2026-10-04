@@ -5,13 +5,14 @@ from __future__ import annotations
 import hashlib
 import json
 
+import pytest
 from sqlalchemy import select
 
-from src.models import EvidenceExposure, Profile, WorldPlace
+from src.models import EvidenceExposure, HadithClassification, Profile, Treasure, WorldPlace
 from src.owner import Owner
 from src.services.content import load_regions
 from tests.scans.builders import insight_row, scan_row
-from tests.scans.conftest import DATA, as_guest, make_account, sign_in
+from tests.scans.conftest import DATA, as_guest, make_account, rule, sign_in
 
 EXTRA = json.loads((DATA / "extra-scripture.json").read_text(encoding="utf-8"))
 
@@ -136,6 +137,42 @@ async def test_an_insight_resting_on_one_text_also_hides_a_treasure(browser, sto
     ]
 
     assert [body["treasure_prepared"] for body in completed] == [True, True]
+
+
+async def hadith_treasure(store) -> str:
+    """Turn the treasure of a completed insight into hadith 2320, ruled صحيح."""
+    async with store() as db:
+        item = (await db.scalars(select(Treasure))).one()
+        item.quran_surah = item.quran_ayah = None
+        item.hadith_collection, item.hadith_number = "bukhari", "2320"
+        await rule(db, "bukhari", "2320", HadithClassification.SAHIH)
+        await db.commit()
+        return str(item.id)
+
+
+@pytest.mark.parametrize("revealed_first", [False, True])
+async def test_a_treasure_whose_hadith_was_ruled_out_reveals_nothing(
+    browser, store, flow_settings, moving_clock, revealed_first
+):
+    owner = await as_guest(browser, store, flow_settings)
+    await browser.post(f"/insights/{await kept(store, owner, **DEEPER)}/complete")
+    treasure_id = await hadith_treasure(store)
+    moving_clock.advance(days=4)
+    if revealed_first:
+        first = await browser.post(f"/world/treasures/{treasure_id}/reveal")
+        assert first.json()["hadith"]["hadith"]["number"] == "2320"
+    async with store() as db:
+        await rule(db, "bukhari", "2320", HadithClassification.DAIF)
+        await db.commit()
+
+    world = (await browser.get("/world")).json()
+    revealed = await browser.post(f"/world/treasures/{treasure_id}/reveal")
+
+    assert world["places"][0]["treasure"] is None
+    assert (revealed.status_code, revealed.json()["error"]) == (404, "NOT_FOUND")
+    async with store() as db:
+        kinds = (await db.scalars(select(EvidenceExposure.kind))).all()
+    assert sorted(kinds) == ["completed", *(["treasure"] if revealed_first else [])]
 
 
 async def test_a_treasure_also_shows_after_days_or_after_a_related_insight(

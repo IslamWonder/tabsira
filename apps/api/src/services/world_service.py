@@ -7,6 +7,10 @@ never inferred: two places are joined only when two completed insights came
 from the same scene, or when the learning path names the unit of one as a
 prerequisite of the unit of the other. The fog means "not discovered yet", not
 a lack in the learner; nothing here is a score.
+
+A treasure is read from the store when it shows, like any evidence: one whose
+text no longer shows (its hadith since ruled other than صحيح or حسن) is neither
+flagged nor revealed, and records no exposure.
 """
 
 from __future__ import annotations
@@ -33,6 +37,7 @@ from src.models import (
 )
 from src.owner import PLACE, TREASURE, Owner, not_found
 from src.pipeline.engine import HadithRef, QuranRef
+from src.routers.scripture import HadithOut, QuranVerseOut
 from src.schemas.insight import InsightHadith, InsightQuran
 from src.schemas.world import (
     PlaceInsightOut,
@@ -223,6 +228,9 @@ async def ready_treasures(
     now = clock.utcnow()
     ready: dict[int, Treasure] = {}
     for item in hidden:
+        verse, hadith = await _shown(db, item)
+        if verse is None and hadith is None:
+            continue
         source = insights.get(item.insight_id)
         concept = source.why.get("concept") if source is not None else None
         related = any(
@@ -382,6 +390,10 @@ async def reveal(
     if row is None:
         raise not_found(TREASURE)
     item, insight = row
+    verse, hadith = await _shown(db, item)
+    if verse is None and hadith is None:
+        # Its text no longer shows: there is nothing to reveal, now or again.
+        raise not_found(TREASURE)
     if item.revealed_at is None:
         place = await db.get(WorldPlace, item.place_id)
         ready = await ready_treasures(db, settings, owner, [place] if place else [])
@@ -390,16 +402,6 @@ async def reveal(
                 ErrorCode.TREASURE_NOT_READY, "The treasure shows on return.", status_code=409
             )
         item.revealed_at = clock.utcnow()
-        quran = (
-            QuranRef(surah=item.quran_surah, ayah=item.quran_ayah)
-            if item.quran_surah is not None and item.quran_ayah is not None
-            else None
-        )
-        hadith = (
-            HadithRef(collection=item.hadith_collection, number=item.hadith_number)
-            if item.hadith_collection is not None and item.hadith_number is not None
-            else None
-        )
         if await learner_service.memory_enabled(db, owner):
             db.add(
                 learner_service.exposure(
@@ -407,17 +409,22 @@ async def reveal(
                     kind="treasure",
                     at=item.revealed_at,
                     insight_id=insight.id,
-                    quran=quran,
-                    hadith=hadith,
+                    quran=QuranRef(surah=verse.surah, ayah=verse.ayah) if verse else None,
+                    hadith=(
+                        HadithRef(collection=hadith.collection.slug, number=hadith.number)
+                        if hadith
+                        else None
+                    ),
                     concept=None,
                     unit_id=item.learning_unit_id,
                 )
             )
         await db.commit()
-    return await treasure_out(db, item)
+    return await treasure_out(db, item, verse, hadith)
 
 
-async def treasure_out(db: AsyncSession, item: Treasure) -> TreasureOut:
+async def _shown(db: AsyncSession, item: Treasure) -> tuple[QuranVerseOut | None, HadithOut | None]:
+    """Return the treasure's verse or hadith as it shows now: a hadith only while eligible."""
     quran = (
         (item.quran_surah, item.quran_ayah)
         if item.quran_surah is not None and item.quran_ayah is not None
@@ -429,6 +436,12 @@ async def treasure_out(db: AsyncSession, item: Treasure) -> TreasureOut:
         else None
     )
     verse, hadith, _awaiting = await evidence(db, quran, hadith_ref)
+    return verse, hadith
+
+
+async def treasure_out(
+    db: AsyncSession, item: Treasure, verse: QuranVerseOut | None, hadith: HadithOut | None
+) -> TreasureOut:
     unit = await db.get(LearningUnit, (item.learning_path_version, item.learning_unit_id))
     return TreasureOut(
         id=item.id,
