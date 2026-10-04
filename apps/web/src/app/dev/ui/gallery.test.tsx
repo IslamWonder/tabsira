@@ -43,6 +43,25 @@ describe('the development gallery', () => {
     expect(half.getByRole('button', { name: /المظهر:/ })).toBeInTheDocument();
   });
 
+  it('shows the logo, the fields, the invitation and the questions, working', async () => {
+    render(<DevUiPage />);
+    const half = within(lightHalf());
+    expect(half.getAllByRole('img', { name: 'تبصرة' }).length).toBeGreaterThanOrEqual(2);
+    await userEvent.click(half.getByRole('switch', { name: '[خيار]' }));
+    expect(half.getByRole('switch', { name: '[خيار]' })).not.toBeChecked();
+    await userEvent.click(half.getByRole('radio', { name: '[جواب ثان]' }));
+    expect(half.getByRole('radio', { name: '[جواب ثان]' })).toBeChecked();
+    await userEvent.click(half.getByRole('checkbox', { name: /أوافق على/ }));
+    expect(half.getByRole('checkbox', { name: /أوافق على/ })).toBeChecked();
+    await userEvent.click(half.getByRole('button', { name: 'أتابع كضيف' }));
+    expect(half.getByText('اختار الضيف أن يتابع')).toBeInTheDocument();
+    await userEvent.click(half.getByRole('checkbox', { name: 'التفكر' }));
+    await userEvent.click(half.getByRole('button', { name: 'احفظ وتابع' }));
+    expect(half.getByText('السؤال 2 من 3')).toBeInTheDocument();
+    await userEvent.click(half.getByRole('button', { name: 'تخطَّ الأسئلة كلها' }));
+    expect(half.getByText(/نراعي اختياراتك في الشرح/)).toBeInTheDocument();
+  });
+
   it('uses marked placeholders and proves the hadith spans add back up', () => {
     render(<DevUiPage />);
     const half = lightHalf();

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 import { Gallery } from './gallery';
 
 /*
@@ -8,7 +8,7 @@ import { Gallery } from './gallery';
  */
 
 export const metadata: Metadata = {
-  title: ar.dev.title,
+  title: messages.dev.title,
   robots: { index: false, follow: false },
 };
 

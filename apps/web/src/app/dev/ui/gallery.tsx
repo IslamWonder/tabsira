@@ -2,9 +2,13 @@
 
 import Link from 'next/link';
 import { type ReactNode, useId, useState } from 'react';
+import { LegalConsent } from '@/components/account/legal-consent';
+import { ProfileQuestions } from '@/components/account/profile-questions';
+import { SaveInvitation } from '@/components/account/save-invitation';
 import { AppNav } from '@/components/app/app-nav';
 import { Brand } from '@/components/app/brand';
 import { TopBar } from '@/components/app/top-bar';
+import { Logo, LogoMark } from '@/components/brand/logo';
 import { ExternalIcon, ShareIcon } from '@/components/icons';
 import { DisclosureLine } from '@/components/insight/disclosure-line';
 import { DoneButton, type DoneStatus } from '@/components/insight/done-button';
@@ -34,19 +38,23 @@ import { SceneIntro } from '@/components/scene/scene-intro';
 import { SceneStarter } from '@/components/scene/scene-starter';
 import { Button, LinkButton } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
+import { ChoiceGroup } from '@/components/ui/choice-group';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { MotionSwitch } from '@/components/ui/motion-switch';
+import { Notice } from '@/components/ui/notice';
 import { Sheet } from '@/components/ui/sheet';
+import { SwitchRow } from '@/components/ui/switch-row';
+import { TextField } from '@/components/ui/text-field';
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 import scenePlaceholder from './scene-placeholder.svg';
 import { type Viewport, ViewportPreview } from './viewport-preview';
 
 type Theme = 'light' | 'dark';
 
-const S = ar.dev.samples;
-const P = ar.dev.placeholders;
+const S = messages.dev.samples;
+const P = messages.dev.placeholders;
 const THEMES: readonly Theme[] = ['light', 'dark'];
 const VIEWPORTS: readonly Viewport[] = ['phone', 'tablet', 'desktop'];
 const SCREEN_HEIGHT: Record<Viewport, number> = { phone: 760, tablet: 900, desktop: 900 };
@@ -71,8 +79,8 @@ export const HADITH_SPANS: readonly HadithSpan[] = HADITH_PARTS.reduce<HadithSpa
 );
 
 const POINTS: readonly ScenePoint[] = [
-  { id: 'first', x: 0.3, y: 0.56, tone: 'gold', ...ar.dev.points[0] },
-  { id: 'second', x: 0.66, y: 0.74, tone: 'emerald', ...ar.dev.points[1] },
+  { id: 'first', x: 0.3, y: 0.56, tone: 'gold', ...messages.dev.points[0] },
+  { id: 'second', x: 0.66, y: 0.74, tone: 'emerald', ...messages.dev.points[1] },
 ];
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -133,10 +141,10 @@ function SceneFrame() {
     <>
       <TopBar />
       <StageLayout
-        stageLabel={ar.pages.home.stageLabel}
+        stageLabel={messages.pages.home.stageLabel}
         panel={
           <div className="hidden flex-col gap-7 pt-2 tablet:flex">
-            <SceneIntro chip={<Chip>{ar.scene.prepared}</Chip>} />
+            <SceneIntro chip={<Chip>{messages.scene.prepared}</Chip>} />
             <SceneInsightList points={POINTS} selectedId={selected} onSelect={setSelected} />
             <SceneStarter onFile={setFile} onLink={setLink} />
           </div>
@@ -156,17 +164,13 @@ function SceneFrame() {
           >
             {/* The phone mockup's overlays: the name and the state on top, the hint at the bottom. */}
             <div className="absolute inset-x-0 top-0 flex items-center justify-between px-5 pt-5 tablet:hidden">
-              <span className="font-heading font-bold text-[1.7rem] text-glass-fg">
-                {ar.brand.wordmark}
-              </span>
-              <Chip tone="glass">{ar.scene.prepared}</Chip>
+              <LogoMark title={messages.brand.name} className="h-14" />
+              <Chip tone="glass">{messages.scene.prepared}</Chip>
             </div>
             <div className="absolute inset-x-0 bottom-[110px] flex flex-col items-center gap-0.5 text-center tablet:hidden">
-              <p className="m-0 font-heading font-semibold text-[1.3rem] text-fg">
-                {ar.scene.hint}
-              </p>
+              <p className="m-0 font-semibold text-[1.3rem] text-fg">{messages.scene.hint}</p>
               <Link href="/" className="flex min-h-12 items-center text-link">
-                {ar.scene.captureOwn}
+                {messages.scene.captureOwn}
               </Link>
             </div>
           </ScenePhoto>
@@ -192,7 +196,7 @@ function InsightFrame() {
             alt={S.scenePlaceholderAlt}
             width={1200}
             height={1600}
-            focus={{ x: 0.3, y: 0.56, title: ar.dev.points[0].title }}
+            focus={{ x: 0.3, y: 0.56, title: messages.dev.points[0].title }}
             backHref="/"
             unoptimized
           />
@@ -210,11 +214,11 @@ function InsightFrame() {
           chips={
             <>
               <Chip tone="primary">{S.chipRelation}</Chip>
-              <Chip>{ar.scene.prepared}</Chip>
+              <Chip>{messages.scene.prepared}</Chip>
             </>
           }
-          title={ar.dev.points[0].title}
-          glimpse={ar.dev.points[0].glimpse}
+          title={messages.dev.points[0].title}
+          glimpse={messages.dev.points[0].glimpse}
         />
         <SeenNote text={S.glassBody} />
         <QuranSample />
@@ -242,7 +246,7 @@ function MapFrame() {
     <>
       <TopBar />
       <MapLayout
-        mapLabel={ar.pages.world.mapLabel}
+        mapLabel={messages.pages.world.mapLabel}
         panel={<Placeholder label={P.mapPanel} className="m-4" />}
         map={<Placeholder label={P.map} className="h-full rounded-none" />}
       />
@@ -282,6 +286,9 @@ function Showcase({ theme }: { theme: Theme }) {
   const [step, setStep] = useState<StepStatus>('idle');
   const [done, setDone] = useState<DoneStatus>('idle');
   const [received, setReceived] = useState<string>(S.nothingYet);
+  const [switchOn, setSwitchOn] = useState(true);
+  const [choice, setChoice] = useState('0');
+  const [accepted, setAccepted] = useState(false);
 
   const nextStage = () => {
     setStage((current) => {
@@ -297,14 +304,44 @@ function Showcase({ theme }: { theme: Theme }) {
 
   return (
     <div className="flex flex-col gap-10">
-      <Section title={ar.dev.sections.brand}>
-        <div className="flex flex-wrap items-center gap-4">
+      <Section title={messages.dev.sections.brand}>
+        <div className="flex flex-wrap items-center gap-6">
           <Brand />
+          <Logo title={messages.brand.name} className="h-28" />
           <ThemeToggle />
         </div>
       </Section>
 
-      <Section title={ar.dev.sections.buttons}>
+      <Section title={messages.dev.sections.fields}>
+        <TextField label={S.fieldLabel} hint={S.fieldHint} />
+        <TextField label={S.fieldLabel} error={S.fieldError} type="password" revealable />
+        <Notice tone="success">{S.notice}</Notice>
+        <Notice tone="error">{S.notice}</Notice>
+        <Notice tone="info">{S.notice}</Notice>
+        <SwitchRow
+          label={S.switchLabel}
+          hint={S.switchHint}
+          checked={switchOn}
+          onChange={setSwitchOn}
+        />
+        <ChoiceGroup
+          legend={S.choiceLegend}
+          options={S.choices.map((label, index) => ({ value: String(index), label }))}
+          value={choice}
+          onChange={setChoice}
+        />
+        <LegalConsent checked={accepted} onChange={setAccepted} />
+      </Section>
+
+      <Section title={messages.dev.sections.invitation}>
+        <SaveInvitation returnTo="/" onContinueAsGuest={() => setReceived(S.guest)} />
+      </Section>
+
+      <Section title={messages.dev.sections.questions}>
+        <ProfileQuestions onAnswer={async () => true} onFinish={() => undefined} />
+      </Section>
+
+      <Section title={messages.dev.sections.buttons}>
         <div className="flex flex-wrap items-center gap-3">
           <Button size="lg">{S.primary}</Button>
           <Button variant="secondary">{S.secondary}</Button>
@@ -314,12 +351,12 @@ function Showcase({ theme }: { theme: Theme }) {
           </Button>
           <Button disabled>{S.disabled}</Button>
           <LinkButton href="/" variant="secondary">
-            {ar.pages.notFound.action}
+            {messages.pages.notFound.action}
           </LinkButton>
         </div>
       </Section>
 
-      <Section title={ar.dev.sections.done}>
+      <Section title={messages.dev.sections.done}>
         <DoneButton status={done} onDone={() => setDone('done')} />
         <div>
           <Button variant="ghost" onClick={() => setDone('idle')}>
@@ -328,34 +365,34 @@ function Showcase({ theme }: { theme: Theme }) {
         </div>
       </Section>
 
-      <Section title={ar.dev.sections.chips}>
+      <Section title={messages.dev.sections.chips}>
         <div className="flex flex-wrap items-center gap-2">
           <Chip tone="primary">{S.chipRelation}</Chip>
-          <Chip>{ar.comingSoon.badge}</Chip>
-          <Chip tone="quran">{ar.evidence.quran}</Chip>
-          <Chip tone="sunnah">{ar.evidence.sunnah}</Chip>
+          <Chip>{messages.comingSoon.badge}</Chip>
+          <Chip tone="quran">{messages.evidence.quran}</Chip>
+          <Chip tone="sunnah">{messages.evidence.sunnah}</Chip>
           <Chip tone="glass" icon={<ExternalIcon />}>
-            {ar.scene.prepared}
+            {messages.scene.prepared}
           </Chip>
         </div>
       </Section>
 
-      <Section title={ar.dev.sections.glass}>
+      <Section title={messages.dev.sections.glass}>
         <GlassPanel as="section" aria-label={S.glassTitle}>
           <p className="m-0 font-semibold text-fg">{S.glassTitle}</p>
           <p className="m-0 text-fg-soft text-sm">{S.glassBody}</p>
         </GlassPanel>
       </Section>
 
-      <Section title={ar.dev.sections.theme}>
+      <Section title={messages.dev.sections.theme}>
         <ThemeSwitcher />
       </Section>
 
-      <Section title={ar.dev.sections.motion}>
+      <Section title={messages.dev.sections.motion}>
         <MotionSwitch />
       </Section>
 
-      <Section title={ar.dev.sections.sheet}>
+      <Section title={messages.dev.sections.sheet}>
         <div>
           <Button variant="secondary" onClick={() => setSheetOpen(true)}>
             {S.openSheet}
@@ -371,7 +408,7 @@ function Showcase({ theme }: { theme: Theme }) {
         </Sheet>
       </Section>
 
-      <Section title={ar.dev.sections.scene}>
+      <Section title={messages.dev.sections.scene}>
         <ScenePhoto
           src={scenePlaceholder}
           alt={S.scenePlaceholderAlt}
@@ -384,7 +421,7 @@ function Showcase({ theme }: { theme: Theme }) {
           className="h-[520px] rounded-[28px]"
         >
           <div className="absolute inset-x-0 top-0 flex justify-start p-4">
-            <Chip tone="glass">{ar.scene.prepared}</Chip>
+            <Chip tone="glass">{messages.scene.prepared}</Chip>
           </div>
         </ScenePhoto>
         <p role="status" className="m-0 text-fg-soft text-sm">
@@ -392,11 +429,11 @@ function Showcase({ theme }: { theme: Theme }) {
         </p>
       </Section>
 
-      <Section title={ar.dev.sections.list}>
+      <Section title={messages.dev.sections.list}>
         <SceneInsightList points={POINTS} selectedId={selected} onSelect={setSelected} />
       </Section>
 
-      <Section title={ar.dev.sections.starter}>
+      <Section title={messages.dev.sections.starter}>
         <SceneStarter
           onFile={(file) => setReceived(`${S.picked} ${file.name}`)}
           onLink={(url) => setReceived(`${S.linked} ${url}`)}
@@ -406,12 +443,12 @@ function Showcase({ theme }: { theme: Theme }) {
         </p>
       </Section>
 
-      <Section title={ar.dev.sections.evidence}>
+      <Section title={messages.dev.sections.evidence}>
         <QuranSample />
         <SunnahSample />
       </Section>
 
-      <Section title={ar.dev.sections.progress}>
+      <Section title={messages.dev.sections.progress}>
         <ProgressStages current={stage} slow={slow} onCancel={() => setStage('scene')} />
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={nextStage}>
@@ -423,7 +460,7 @@ function Showcase({ theme }: { theme: Theme }) {
         </div>
       </Section>
 
-      <Section title={ar.dev.sections.step}>
+      <Section title={messages.dev.sections.step}>
         <StepCard
           body={S.stepBody}
           confirmLabel={S.stepConfirm}
@@ -445,7 +482,7 @@ function Showcase({ theme }: { theme: Theme }) {
         </div>
       </Section>
 
-      <Section title={ar.dev.sections.disclosure}>
+      <Section title={messages.dev.sections.disclosure}>
         <DisclosureLine />
       </Section>
     </div>
@@ -457,7 +494,7 @@ function FrameSection({ title, children }: { title: string; children: ReactNode 
   return (
     <PageContainer>
       <section aria-labelledby={id} className="flex flex-col gap-5">
-        <h2 id={id} className="m-0 font-bold text-2xl text-fg">
+        <h2 id={id} className="m-0 font-bold font-display text-2xl text-fg">
           {title}
         </h2>
         {children}
@@ -473,18 +510,18 @@ function FrameSection({ title, children }: { title: string; children: ReactNode 
  */
 export function Gallery() {
   return (
-    <div className="flex flex-col gap-12 pt-[max(28px,env(safe-area-inset-top))] pb-nav tablet:pb-12">
+    <div className="flex flex-col gap-12 pt-[max(28px,env(safe-area-inset-top))] pb-6 tablet:pb-12">
       <PageContainer>
         <header className="flex flex-col gap-1">
-          <h1 className="m-0 font-bold text-3xl text-fg">{ar.dev.title}</h1>
-          <p className="m-0 text-fg-soft">{ar.dev.description}</p>
+          <h1 className="m-0 font-bold font-display text-3xl text-fg">{messages.dev.title}</h1>
+          <p className="m-0 text-fg-soft">{messages.dev.description}</p>
         </header>
       </PageContainer>
 
-      <FrameSection title={ar.dev.frames.shell}>
+      <FrameSection title={messages.dev.frames.shell}>
         {THEMES.map((theme) => (
           <div key={theme} className="flex flex-col gap-3">
-            <h3 className="m-0 font-semibold text-fg-soft text-lg">{ar.dev.themes[theme]}</h3>
+            <h3 className="m-0 font-semibold text-fg-soft text-lg">{messages.dev.themes[theme]}</h3>
             <div className="grid gap-5 desktop:grid-cols-[1fr_1.6fr_2.4fr]">
               {VIEWPORTS.map((viewport) => (
                 <ViewportPreview
@@ -492,7 +529,7 @@ export function Gallery() {
                   viewport={viewport}
                   theme={theme}
                   height={SCREEN_HEIGHT[viewport]}
-                  label={ar.dev.viewports[viewport]}
+                  label={messages.dev.viewports[viewport]}
                 >
                   <SceneFrame />
                 </ViewportPreview>
@@ -502,13 +539,13 @@ export function Gallery() {
         ))}
       </FrameSection>
 
-      <FrameSection title={ar.dev.frames.insight}>
+      <FrameSection title={messages.dev.frames.insight}>
         <div className="grid gap-5 desktop:grid-cols-[1fr_3fr]">
           <ViewportPreview
             viewport="phone"
             theme="dark"
             height={1640}
-            label={ar.dev.viewports.phone}
+            label={messages.dev.viewports.phone}
           >
             <InsightFrame />
           </ViewportPreview>
@@ -516,42 +553,54 @@ export function Gallery() {
             viewport="desktop"
             theme="light"
             height={1500}
-            label={ar.dev.viewports.desktop}
+            label={messages.dev.viewports.desktop}
           >
             <InsightFrame />
           </ViewportPreview>
         </div>
       </FrameSection>
 
-      <FrameSection title={ar.dev.frames.layouts}>
+      <FrameSection title={messages.dev.frames.layouts}>
         <div className="grid gap-5 desktop:grid-cols-3">
-          <ViewportPreview viewport="desktop" theme="light" height={900} label={ar.dev.layouts.map}>
+          <ViewportPreview
+            viewport="desktop"
+            theme="light"
+            height={900}
+            label={messages.dev.layouts.map}
+          >
             <MapFrame />
           </ViewportPreview>
-          <ViewportPreview viewport="desktop" theme="dark" height={900} label={ar.dev.layouts.feed}>
+          <ViewportPreview
+            viewport="desktop"
+            theme="dark"
+            height={900}
+            label={messages.dev.layouts.feed}
+          >
             <FeedFrame />
           </ViewportPreview>
           <ViewportPreview
             viewport="desktop"
             theme="light"
             height={900}
-            label={ar.dev.layouts.settings}
+            label={messages.dev.layouts.settings}
           >
             <SettingsFrame />
           </ViewportPreview>
         </div>
       </FrameSection>
 
-      <FrameSection title={ar.dev.frames.components}>
+      <FrameSection title={messages.dev.frames.components}>
         <div className="grid gap-6 desktop:grid-cols-2">
           {THEMES.map((theme) => (
             <section
               key={theme}
               data-theme={theme}
-              aria-label={ar.dev.themes[theme]}
+              aria-label={messages.dev.themes[theme]}
               className="stage-aurora flex flex-col gap-6 rounded-[28px] border border-line p-4 tablet:p-6"
             >
-              <h3 className="m-0 font-bold text-2xl text-fg">{ar.dev.themes[theme]}</h3>
+              <h3 className="m-0 font-bold font-display text-2xl text-fg">
+                {messages.dev.themes[theme]}
+              </h3>
               <Showcase theme={theme} />
             </section>
           ))}
