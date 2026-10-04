@@ -1,0 +1,346 @@
+@import "tailwindcss";
+@import "../theme/tokens.css";
+@import "../components/fx/fx.css";
+
+/*
+ * Components style themes through tokens, never through `dark:`. The variant is
+ * kept pointing at the explicit attribute only, so a stray `dark:` cannot
+ * silently follow the device while the page shows the other theme.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Breakpoints (DESIGN_DECISION.md «Responsive web application»): phone below
+ * 768 px is the default, `tablet:` from 768 px, `desktop:` from 1200 px, and
+ * `wide:` from 1440 px. Tailwind's own sm/md/lg are cleared so only these
+ * exist. Each variant also answers to a [data-viewport] ancestor, which lets
+ * the /dev/ui gallery show the real shell at all three sizes in one page; in
+ * the app no element carries that attribute and the media query decides.
+ */
+@custom-variant tablet {
+  @media (width >= 48rem) {
+    &:where(:not([data-viewport], [data-viewport] *)) {
+      @slot;
+    }
+  }
+  &:where(
+      [data-viewport="tablet"],
+      [data-viewport="tablet"] *,
+      [data-viewport="desktop"],
+      [data-viewport="desktop"] *
+    ) {
+    @slot;
+  }
+}
+
+@custom-variant desktop {
+  @media (width >= 75rem) {
+    &:where(:not([data-viewport], [data-viewport] *)) {
+      @slot;
+    }
+  }
+  &:where([data-viewport="desktop"], [data-viewport="desktop"] *) {
+    @slot;
+  }
+}
+
+@custom-variant wide {
+  @media (width >= 90rem) {
+    &:where(:not([data-viewport], [data-viewport] *)) {
+      @slot;
+    }
+  }
+}
+
+/*
+ * Tailwind reads the tokens; nothing else. The default palette is cleared so a
+ * colour that is not a token cannot slip into a component.
+ */
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-canvas: var(--bg);
+  --color-surface: var(--surface);
+  --color-glass: var(--surface-glass);
+  --color-line: var(--border);
+  --color-fg: var(--text);
+  --color-fg-soft: var(--text-soft);
+  --color-fg-muted: var(--text-muted);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-link: var(--link);
+  --color-quran: var(--quran-accent);
+  --color-quran-text: var(--quran-text);
+  --color-sunnah: var(--sunnah-accent);
+  --color-glass-fg: var(--glass-text);
+  --color-glass-fg-soft: var(--glass-text-soft);
+  --color-nav-active: var(--nav-active);
+  --color-step-title: var(--step-title);
+  --color-danger: var(--danger);
+  --color-focus: var(--focus);
+
+  /* Headings Reem Kufi, interface Readex Pro, hadith Noto Naskh, Quran KFGQPC, ornate brackets Amiri. */
+  --font-sans: var(--font-readex-arabic), var(--font-readex-latin), system-ui, sans-serif;
+  --font-heading: var(--font-reem-kufi), var(--font-readex-latin), system-ui, sans-serif;
+  --font-hadith: var(--font-noto-naskh), serif;
+  --font-quran: var(--font-uthmanic-hafs), var(--font-noto-naskh), serif;
+  --font-ornament: var(--font-amiri), serif;
+}
+
+@theme {
+  --breakpoint-*: initial;
+
+  --radius-panel: 22px;
+  --radius-card: 16px;
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-breathe: breathe 2.4s ease-in-out 2;
+  --animate-rise: rise 420ms var(--ease-out-soft) both;
+  --animate-fade-in: fade-in 360ms var(--ease-out-soft) both;
+  --animate-orbit: orbit 48s linear infinite;
+  --animate-pulse-soft: pulse-soft 1.8s ease-in-out infinite;
+  --animate-draw: draw 600ms var(--ease-out-soft) both;
+
+  @keyframes breathe {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 0.75;
+    }
+    50% {
+      transform: scale(1.6);
+      opacity: 0.15;
+    }
+  }
+  @keyframes rise {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes orbit {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes draw {
+    from {
+      stroke-dashoffset: 24;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+}
+
+/* ─── Base ──────────────────────────────────────────────────────────── */
+
+@layer base {
+  html {
+    /* Room for the floating navigation: focused elements are never hidden under it (WCAG 2.4.11). */
+    --nav-height: 68px;
+    --nav-gap: max(14px, env(safe-area-inset-bottom));
+    --nav-clearance: calc(var(--nav-height) + var(--nav-gap) + 20px);
+    --topbar-height: 72px;
+    /* The height a full-screen layout may use; a preview frame in the gallery sets its own. */
+    --app-height: 100dvh;
+    scroll-padding-bottom: var(--nav-clearance);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* From tablet up the bar is at the top: keep focused elements clear of it instead. */
+  @media (width >= 48rem) {
+    html {
+      scroll-padding-bottom: 0;
+      scroll-padding-top: calc(var(--topbar-height) + 12px);
+    }
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    /* Arabic needs taller lines than Latin (tajriba §10: about 1.8). */
+    line-height: 1.8;
+    font-size: 1.0625rem;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+    line-height: 1.35;
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+  }
+
+  /* A themed subtree paints its own ground (the gallery's two halves read as two screens). */
+  [data-theme] {
+    background-color: var(--bg);
+    color: var(--text);
+  }
+
+  ::selection {
+    background-color: var(--chip-primary-bg);
+    color: var(--text);
+  }
+}
+
+/* ─── Utilities built from tokens ───────────────────────────────────── */
+
+/* Glass sits over photos and the night stage; its blur keeps text legible on busy pixels. */
+@utility glass {
+  background-color: var(--surface-glass);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid var(--border);
+}
+
+@utility fill-primary {
+  background-image: linear-gradient(180deg, var(--primary-fill-from), var(--primary-fill-to));
+  box-shadow: var(--primary-glow);
+  color: var(--on-primary);
+}
+
+@utility fill-cta {
+  background-image: linear-gradient(135deg, var(--cta-from), var(--cta-to));
+  box-shadow: var(--cta-glow);
+  color: var(--on-cta);
+}
+
+/* A quiet scrollbar for panels that scroll inside a full-height layout. */
+@utility scroll-quiet {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+@utility surface-quran {
+  background-image: linear-gradient(180deg, var(--quran-surface-from), var(--quran-surface-to));
+  border: 1px solid var(--quran-border);
+  box-shadow: var(--quran-glow);
+}
+
+@utility surface-sunnah {
+  background-image: linear-gradient(180deg, var(--sunnah-surface-from), var(--sunnah-surface-to));
+  border: 1px solid var(--sunnah-border);
+  box-shadow: var(--sunnah-glow);
+}
+
+@utility surface-step {
+  background-image: linear-gradient(160deg, var(--step-surface-from), var(--step-surface-to) 70%);
+  border: 1px solid var(--step-border);
+}
+
+@utility photo-scrim {
+  background-image: var(--photo-scrim);
+}
+
+@utility stage-aurora {
+  background-image: var(--stage-aurora);
+}
+
+/* The night sky: a few still stars, visible in the dark theme only (--stars-opacity is 0 in light). */
+@utility stage-stars {
+  background-image:
+    radial-gradient(1px 1px at 12% 22%, var(--text) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 84% 18%, var(--text) 50%, transparent 51%),
+    radial-gradient(1px 1px at 72% 48%, var(--text) 50%, transparent 51%),
+    radial-gradient(1px 1px at 18% 70%, var(--text) 50%, transparent 51%),
+    radial-gradient(0.8px 0.8px at 90% 76%, var(--text) 50%, transparent 51%),
+    radial-gradient(0.8px 0.8px at 54% 28%, var(--text) 50%, transparent 51%),
+    radial-gradient(1px 1px at 38% 88%, var(--text) 50%, transparent 51%);
+  opacity: var(--stars-opacity);
+}
+
+/* The capture button: the one glowing control of the navigation. */
+@utility capture-orb {
+  background-image: radial-gradient(circle at 50% 35%, var(--cta-from) 0%, var(--cta-to) 75%);
+  box-shadow: var(--cta-glow);
+  color: var(--on-cta);
+}
+
+@utility nav-glass {
+  background-color: var(--nav-glass);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid var(--border);
+  box-shadow: var(--panel-shadow);
+}
+
+/* Phone pages end above the floating bar; from tablet up the bar is at the top. */
+@utility pb-nav {
+  padding-bottom: var(--nav-clearance);
+}
+
+@utility topbar-glass {
+  background-color: var(--nav-glass);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+  border-bottom: 1px solid var(--border);
+}
+
+/* The gilded wordmark. A brand name has no contrast requirement (WCAG 1.4.3), but forced colours still win. */
+@utility text-gilded {
+  color: var(--gilded-fallback);
+  background-image: var(--gilded);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  @media (forced-colors: active) {
+    background-image: none;
+    -webkit-text-fill-color: currentColor;
+  }
+}
+
+/* ─── Reduced motion: everything stops, the composition stays ──────── */
+/* The device setting, or the reader's own choice in the profile page (data-motion on <html>). */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

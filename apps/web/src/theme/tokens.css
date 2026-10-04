@@ -1,0 +1,362 @@
+/*
+ * Design tokens. The values in the «Themes» table of docs/DESIGN_DECISION.md
+ * are binding: dark is direction C (night of lights), light uses direction A's
+ * colours. The tokens below the binding ones are this implementation's own and
+ * follow the approved mockups. Both themes share every layout and component;
+ * only these values change.
+ *
+ * src/theme/contrast.test.ts parses this file and fails when a text/background
+ * pair falls under WCAG 2.2 AA (4.5:1, or 3:1 for the large-text tokens).
+ *
+ * The light block also matches any [data-theme="light"] element and the dark
+ * block any [data-theme="dark"] element, so a subtree can show the other theme
+ * (the /dev/ui gallery does). Without an override the device decides.
+ */
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* binding (DESIGN_DECISION.md) */
+  --bg: #f6faf7;
+  --surface: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.86);
+  --border: #dce7e1;
+  --text: #16302a;
+  --text-soft: #4a635c;
+  --text-muted: #5f6f69;
+  --primary: #0f4c3a;
+  --primary-fill-from: #0f4c3a;
+  --primary-fill-to: #0f4c3a;
+  --on-primary: #ffffff;
+  --quran-accent: #9a7430;
+  --quran-surface-from: #eef7f2;
+  --quran-surface-to: #eef7f2;
+  --quran-border: #cfe6da;
+  --sunnah-accent: #7a5a1c;
+  --sunnah-surface-from: #fbf8f0;
+  --sunnah-surface-to: #fbf8f0;
+  --sunnah-border: #efe4cb;
+  --link: #0f4c3a;
+  --glow-gold: #ffd978;
+  --glow-emerald: #0f4c3a;
+  --photo-scrim: linear-gradient(
+    180deg,
+    rgba(246, 250, 247, 0.72) 0%,
+    rgba(246, 250, 247, 0) 24%,
+    rgba(246, 250, 247, 0) 58%,
+    rgba(246, 250, 247, 0.92) 84%,
+    #f6faf7 100%
+  );
+
+  /* implementation */
+  --primary-glow: 0 12px 24px -12px rgba(15, 76, 58, 0.8);
+  --glass-text: #16302a;
+  --glass-text-soft: #4a635c;
+  --nav-glass: rgba(255, 255, 255, 0.86);
+  --nav-active: #0f4c3a;
+  --quran-label: #ffffff;
+  --quran-label-bg: #0f4c3a;
+  --quran-text: #10241e;
+  --quran-glow: 0 18px 40px -26px rgba(15, 76, 58, 0.45);
+  --sunnah-label: #ffffff;
+  --sunnah-label-bg: #7a5a1c;
+  --sunnah-glow: 0 18px 40px -26px rgba(122, 90, 28, 0.45);
+  --hadith-words: #0f4c3a;
+  --hadith-highlight: #ffe9b0;
+  --hadith-words-glow: none;
+  --secondary-fg: #0f4c3a;
+  --secondary-border: #0f4c3a;
+  --secondary-bg: #ffffff;
+  --chip-primary-fg: #0f4c3a;
+  --chip-primary-bg: #e7f6ef;
+  --chip-primary-border: #cfe6da;
+  --step-title: #7a5a1c;
+  --step-surface-from: #fff7e2;
+  --step-surface-to: #ffffff;
+  --step-border: #f1e2b8;
+  --focus: #0f4c3a;
+  --danger: #9e3324;
+  --point-gold-core: #0f4c3a;
+  --point-gold-halo: #ffd978;
+  --point-emerald-core: #0f4c3a;
+  --point-emerald-halo: #8fd9b6;
+  --point-ring: #ffffff;
+  --panel-shadow: 0 18px 40px -24px rgba(15, 76, 58, 0.28), 0 2px 6px rgba(22, 48, 42, 0.06);
+  --stage-aurora:
+    radial-gradient(60% 40% at 85% -5%, rgba(191, 234, 217, 0.75), rgba(191, 234, 217, 0) 70%),
+    radial-gradient(45% 30% at 5% 30%, rgba(255, 233, 176, 0.5), rgba(255, 233, 176, 0) 70%),
+    radial-gradient(80% 45% at 50% 115%, rgba(207, 230, 218, 0.7), rgba(207, 230, 218, 0) 70%);
+  --stars-opacity: 0;
+  --gilded: linear-gradient(180deg, #ad873e 0%, #8a6526 55%, #6b4e15 100%);
+  --gilded-fallback: #7a5a1c;
+  --mark: #9a7430;
+  --mark-glow: rgba(154, 116, 48, 0.35);
+  --pattern-stroke: #9a7430;
+  --pattern-opacity: 0.07;
+  --mote: #c6a15b;
+  --mote-opacity: 0.55;
+  --stage-shadow: 0 30px 60px -30px rgba(15, 76, 58, 0.55), 0 0 0 1px #dce7e1;
+  --dropzone-border: rgba(15, 76, 58, 0.3);
+  /* game feel: the dawn aurora, the gold rules of RPG panels, the focus star */
+  --aurora-base: linear-gradient(180deg, #f6faf7 0%, #ffffff 55%, #fbf8f0 100%);
+  --aurora-a: rgba(191, 234, 217, 0.95);
+  --aurora-b: rgba(220, 237, 255, 0.9);
+  --aurora-c: rgba(246, 231, 191, 0.85);
+  --grain-opacity: 0.035;
+  --vignette: rgba(255, 255, 255, 0.55);
+  --rule-gradient: linear-gradient(
+    135deg,
+    rgba(154, 116, 48, 0.75) 0%,
+    rgba(198, 161, 91, 0.2) 38%,
+    rgba(198, 161, 91, 0.14) 62%,
+    rgba(154, 116, 48, 0.65) 100%
+  );
+  --rule-inner: rgba(154, 116, 48, 0.2);
+  --ornament: #9a7430;
+  --panel-inner-glow: rgba(255, 217, 120, 0.14);
+  --cursor-core: #fff4d6;
+  --cursor-glow: rgba(198, 161, 91, 0.9);
+  --sweep-band: rgba(255, 244, 214, 0.85);
+  --edge-glow: rgba(198, 161, 91, 0.45);
+  --banner-ground: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.94) 18%, rgba(255, 255, 255, 0.96) 82%, transparent);
+  --shimmer: linear-gradient(110deg, #7a5a1c 0%, #9a7430 35%, #c6a15b 50%, #9a7430 65%, #7a5a1c 100%);
+  /* the call to capture: gold light by day (the earlier prototype's primary), the glowing emerald by night */
+  --cta-from: #e6cb8a;
+  --cta-to: #b08a44;
+  --on-cta: #1a1508;
+  --cta-glow: 0 10px 30px rgba(198, 161, 91, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  --stage-fade: #f6faf7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    /* binding (DESIGN_DECISION.md) */
+    --bg: #0b1210;
+    --surface: rgba(255, 255, 255, 0.05);
+    --surface-glass: rgba(20, 32, 28, 0.72);
+    --border: rgba(255, 255, 255, 0.14);
+    --text: #eef3ef;
+    --text-soft: #c3d4cc;
+    --text-muted: #93a79e;
+    --primary: #3fd69a;
+    --primary-fill-from: #4fdca3;
+    --primary-fill-to: #1f9e6e;
+    --on-primary: #04130d;
+    --quran-accent: #e6c77f;
+    --quran-surface-from: rgba(230, 199, 127, 0.12);
+    --quran-surface-to: rgba(230, 199, 127, 0.03);
+    --quran-border: rgba(230, 199, 127, 0.32);
+    --sunnah-accent: #8feac2;
+    --sunnah-surface-from: rgba(63, 214, 154, 0.1);
+    --sunnah-surface-to: rgba(63, 214, 154, 0.02);
+    --sunnah-border: rgba(63, 214, 154, 0.3);
+    --link: #7fe3b8;
+    --glow-gold: #e6c77f;
+    --glow-emerald: #3fd69a;
+    --photo-scrim: linear-gradient(
+      180deg,
+      rgba(11, 18, 16, 0.78) 0%,
+      rgba(11, 18, 16, 0) 22%,
+      rgba(11, 18, 16, 0) 58%,
+      rgba(11, 18, 16, 0.92) 84%,
+      #0b1210 100%
+    );
+
+    /* implementation */
+    --primary-glow: 0 0 26px -2px rgba(63, 214, 154, 0.6);
+    --glass-text: #eef3ef;
+    --glass-text-soft: #dceae3;
+    --nav-glass: rgba(20, 32, 28, 0.86);
+    --nav-active: #8feac2;
+    --quran-label: #e6c77f;
+    --quran-label-bg: rgba(230, 199, 127, 0);
+    --quran-text: #fbf6e8;
+    --quran-glow: 0 0 40px -12px rgba(230, 199, 127, 0.35);
+    --sunnah-label: #8feac2;
+    --sunnah-label-bg: rgba(63, 214, 154, 0);
+    --sunnah-glow: 0 0 40px -14px rgba(63, 214, 154, 0.35);
+    --hadith-words: #ffffff;
+    --hadith-highlight: rgba(255, 233, 176, 0);
+    --hadith-words-glow: none;
+    --secondary-fg: #8feac2;
+    --secondary-border: rgba(143, 234, 194, 0.6);
+    --secondary-bg: rgba(143, 234, 194, 0);
+    --chip-primary-fg: #8feac2;
+    --chip-primary-bg: rgba(63, 214, 154, 0.14);
+    --chip-primary-border: rgba(63, 214, 154, 0.4);
+    --step-title: #e6c77f;
+    --step-surface-from: rgba(255, 255, 255, 0.05);
+    --step-surface-to: rgba(255, 255, 255, 0.05);
+    --step-border: rgba(255, 255, 255, 0.12);
+    --focus: #e6c77f;
+    --danger: #ff9c8a;
+    --point-gold-core: #fff4d6;
+    --point-gold-halo: #e6c77f;
+    --point-emerald-core: #e9fff5;
+    --point-emerald-halo: #3fd69a;
+    --point-ring: rgba(255, 255, 255, 0);
+    --panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 48px -28px rgba(0, 0, 0, 0.7);
+    --stage-aurora:
+      radial-gradient(60% 40% at 85% -5%, rgba(63, 214, 154, 0.16), rgba(63, 214, 154, 0) 70%),
+      radial-gradient(45% 30% at 5% 30%, rgba(230, 199, 127, 0.09), rgba(230, 199, 127, 0) 70%),
+      radial-gradient(80% 45% at 50% 115%, rgba(31, 158, 110, 0.16), rgba(31, 158, 110, 0) 70%);
+    --stars-opacity: 0.55;
+    --gilded: linear-gradient(180deg, #fff4d6 0%, #e6c77f 55%, #c6a15b 100%);
+    --gilded-fallback: #e6c77f;
+    --mark: #e6c77f;
+    --mark-glow: rgba(230, 199, 127, 0.55);
+    --pattern-stroke: #e6c77f;
+    --pattern-opacity: 0.035;
+    --mote: #e6c77f;
+    --mote-opacity: 0.8;
+    --stage-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    --dropzone-border: rgba(255, 255, 255, 0.22);
+    /* game feel: the night aurora, the gold rules of RPG panels, the focus star */
+    --aurora-base: linear-gradient(180deg, #0b1210 0%, #0e1a16 55%, #0b1210 100%);
+    --aurora-a: rgba(63, 214, 154, 0.2);
+    --aurora-b: rgba(31, 158, 110, 0.22);
+    --aurora-c: rgba(230, 199, 127, 0.12);
+    --grain-opacity: 0.05;
+    --vignette: rgba(0, 0, 0, 0.45);
+    --rule-gradient: linear-gradient(
+      135deg,
+      rgba(230, 199, 127, 0.85) 0%,
+      rgba(230, 199, 127, 0.18) 38%,
+      rgba(230, 199, 127, 0.12) 62%,
+      rgba(230, 199, 127, 0.75) 100%
+    );
+    --rule-inner: rgba(230, 199, 127, 0.16);
+    --ornament: #e6c77f;
+    --panel-inner-glow: rgba(230, 199, 127, 0.06);
+    --cursor-core: #fff4d6;
+    --cursor-glow: rgba(230, 199, 127, 0.95);
+    --sweep-band: rgba(255, 244, 214, 0.7);
+    --edge-glow: rgba(230, 199, 127, 0.4);
+    --banner-ground: linear-gradient(90deg, transparent, rgba(11, 18, 16, 0.9) 18%, rgba(11, 18, 16, 0.92) 82%, transparent);
+    --shimmer: linear-gradient(110deg, #c6a15b 0%, #e6c77f 35%, #fff4d6 50%, #e6c77f 65%, #c6a15b 100%);
+    /* the call to capture: gold light by day (the earlier prototype's primary), the glowing emerald by night */
+    --cta-from: #4fdca3;
+    --cta-to: #1f9e6e;
+    --on-cta: #04130d;
+    --cta-glow: 0 0 26px -2px rgba(63, 214, 154, 0.6);
+    --stage-fade: #0b1210;
+  }
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* binding (DESIGN_DECISION.md) */
+  --bg: #0b1210;
+  --surface: rgba(255, 255, 255, 0.05);
+  --surface-glass: rgba(20, 32, 28, 0.72);
+  --border: rgba(255, 255, 255, 0.14);
+  --text: #eef3ef;
+  --text-soft: #c3d4cc;
+  --text-muted: #93a79e;
+  --primary: #3fd69a;
+  --primary-fill-from: #4fdca3;
+  --primary-fill-to: #1f9e6e;
+  --on-primary: #04130d;
+  --quran-accent: #e6c77f;
+  --quran-surface-from: rgba(230, 199, 127, 0.12);
+  --quran-surface-to: rgba(230, 199, 127, 0.03);
+  --quran-border: rgba(230, 199, 127, 0.32);
+  --sunnah-accent: #8feac2;
+  --sunnah-surface-from: rgba(63, 214, 154, 0.1);
+  --sunnah-surface-to: rgba(63, 214, 154, 0.02);
+  --sunnah-border: rgba(63, 214, 154, 0.3);
+  --link: #7fe3b8;
+  --glow-gold: #e6c77f;
+  --glow-emerald: #3fd69a;
+  --photo-scrim: linear-gradient(
+    180deg,
+    rgba(11, 18, 16, 0.78) 0%,
+    rgba(11, 18, 16, 0) 22%,
+    rgba(11, 18, 16, 0) 58%,
+    rgba(11, 18, 16, 0.92) 84%,
+    #0b1210 100%
+  );
+
+  /* implementation */
+  --primary-glow: 0 0 26px -2px rgba(63, 214, 154, 0.6);
+  --glass-text: #eef3ef;
+  --glass-text-soft: #dceae3;
+  --nav-glass: rgba(20, 32, 28, 0.86);
+  --nav-active: #8feac2;
+  --quran-label: #e6c77f;
+  --quran-label-bg: rgba(230, 199, 127, 0);
+  --quran-text: #fbf6e8;
+  --quran-glow: 0 0 40px -12px rgba(230, 199, 127, 0.35);
+  --sunnah-label: #8feac2;
+  --sunnah-label-bg: rgba(63, 214, 154, 0);
+  --sunnah-glow: 0 0 40px -14px rgba(63, 214, 154, 0.35);
+  --hadith-words: #ffffff;
+  --hadith-highlight: rgba(255, 233, 176, 0);
+  --hadith-words-glow: none;
+  --secondary-fg: #8feac2;
+  --secondary-border: rgba(143, 234, 194, 0.6);
+  --secondary-bg: rgba(143, 234, 194, 0);
+  --chip-primary-fg: #8feac2;
+  --chip-primary-bg: rgba(63, 214, 154, 0.14);
+  --chip-primary-border: rgba(63, 214, 154, 0.4);
+  --step-title: #e6c77f;
+  --step-surface-from: rgba(255, 255, 255, 0.05);
+  --step-surface-to: rgba(255, 255, 255, 0.05);
+  --step-border: rgba(255, 255, 255, 0.12);
+  --focus: #e6c77f;
+  --danger: #ff9c8a;
+  --point-gold-core: #fff4d6;
+  --point-gold-halo: #e6c77f;
+  --point-emerald-core: #e9fff5;
+  --point-emerald-halo: #3fd69a;
+  --point-ring: rgba(255, 255, 255, 0);
+  --panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 48px -28px rgba(0, 0, 0, 0.7);
+  --stage-aurora:
+    radial-gradient(60% 40% at 85% -5%, rgba(63, 214, 154, 0.16), rgba(63, 214, 154, 0) 70%),
+    radial-gradient(45% 30% at 5% 30%, rgba(230, 199, 127, 0.09), rgba(230, 199, 127, 0) 70%),
+    radial-gradient(80% 45% at 50% 115%, rgba(31, 158, 110, 0.16), rgba(31, 158, 110, 0) 70%);
+  --stars-opacity: 0.55;
+  --gilded: linear-gradient(180deg, #fff4d6 0%, #e6c77f 55%, #c6a15b 100%);
+  --gilded-fallback: #e6c77f;
+  --mark: #e6c77f;
+  --mark-glow: rgba(230, 199, 127, 0.55);
+  --pattern-stroke: #e6c77f;
+  --pattern-opacity: 0.035;
+  --mote: #e6c77f;
+  --mote-opacity: 0.8;
+  --stage-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --dropzone-border: rgba(255, 255, 255, 0.22);
+  /* game feel: the night aurora, the gold rules of RPG panels, the focus star */
+  --aurora-base: linear-gradient(180deg, #0b1210 0%, #0e1a16 55%, #0b1210 100%);
+  --aurora-a: rgba(63, 214, 154, 0.2);
+  --aurora-b: rgba(31, 158, 110, 0.22);
+  --aurora-c: rgba(230, 199, 127, 0.12);
+  --grain-opacity: 0.05;
+  --vignette: rgba(0, 0, 0, 0.45);
+  --rule-gradient: linear-gradient(
+    135deg,
+    rgba(230, 199, 127, 0.85) 0%,
+    rgba(230, 199, 127, 0.18) 38%,
+    rgba(230, 199, 127, 0.12) 62%,
+    rgba(230, 199, 127, 0.75) 100%
+  );
+  --rule-inner: rgba(230, 199, 127, 0.16);
+  --ornament: #e6c77f;
+  --panel-inner-glow: rgba(230, 199, 127, 0.06);
+  --cursor-core: #fff4d6;
+  --cursor-glow: rgba(230, 199, 127, 0.95);
+  --sweep-band: rgba(255, 244, 214, 0.7);
+  --edge-glow: rgba(230, 199, 127, 0.4);
+  --banner-ground: linear-gradient(90deg, transparent, rgba(11, 18, 16, 0.9) 18%, rgba(11, 18, 16, 0.92) 82%, transparent);
+  --shimmer: linear-gradient(110deg, #c6a15b 0%, #e6c77f 35%, #fff4d6 50%, #e6c77f 65%, #c6a15b 100%);
+  /* the call to capture: gold light by day (the earlier prototype's primary), the glowing emerald by night */
+  --cta-from: #4fdca3;
+  --cta-to: #1f9e6e;
+  --on-cta: #04130d;
+  --cta-glow: 0 0 26px -2px rgba(63, 214, 154, 0.6);
+  --stage-fade: #0b1210;
+}
