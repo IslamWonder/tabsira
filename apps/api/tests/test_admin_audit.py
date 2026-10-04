@@ -218,6 +218,8 @@ async def test_the_hook_without_a_known_admin_writes_a_row_without_one(trail, db
         ("GET", "/admin/user/list", AuditAction.LIST),
         ("GET", "/admin/user/details/abc", AuditAction.VIEW),
         ("GET", "/admin/learning-unit/details/v1;U001", AuditAction.VIEW),
+        ("GET", "/admin/user/edit/abc", AuditAction.VIEW),
+        ("GET", "/admin/user/ajax/lookup", AuditAction.LIST),
         ("POST", "/admin/session/action/revoke", AuditAction.BULK_ACTION),
     ],
 )
@@ -239,7 +241,11 @@ async def test_the_trail_recognises_lists_records_and_actions_by_their_address(
         ("GET", "/admin/user/details"),
         ("GET", "/admin/session/action/revoke"),
         ("POST", "/admin/session/action"),
-        ("GET", "/admin/user/edit/abc"),
+        ("GET", "/admin/user/edit"),
+        ("GET", "/admin/user/ajax"),
+        ("GET", "/admin/user/ajax/other"),
+        ("POST", "/admin/user/ajax/lookup"),
+        ("POST", "/admin/user/edit/abc"),
         ("GET", "/admin"),
         ("GET", "/admin/"),
     ],
@@ -313,3 +319,28 @@ async def test_an_action_name_in_an_address_is_made_into_a_reason_code(
 
     (row,) = await audit_rows(db_session)
     assert row.details == ({"reason": reason} if reason else None)
+
+
+async def test_opening_the_edit_form_and_reading_a_lookup_leave_a_row_each(
+    admin, make_user, db_session
+):
+    http, me = admin
+    reader = await make_user("reader@example.com")
+
+    await http.get(f"/admin/user/edit/{reader.id}")
+    await http.get("/admin/user/ajax/lookup?name=anything&term=a")
+
+    edit, lookup = await after_sign_in(db_session)
+    assert (edit.action, edit.admin_user_id, edit.model, edit.record_id, edit.details) == (
+        AuditAction.VIEW,
+        me.id,
+        "user",
+        str(reader.id),
+        {"reason": "edit"},
+    )
+    assert (lookup.action, lookup.model, lookup.details) == (
+        AuditAction.LIST,
+        "user",
+        {"reason": "lookup"},
+    )
+    assert "term" not in repr(lookup.details)

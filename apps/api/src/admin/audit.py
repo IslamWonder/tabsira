@@ -36,7 +36,9 @@ RATE_LIMITED = "rate_limited"
 # The attribute of `request.state` that holds the names of the fields that changed.
 CHANGED_FIELDS_ATTR = "admin_changed_fields"
 # What an admin request's path says it does, relative to the admin's own base URL.
-_ACCESS = re.compile(r"^/(?P<identity>[^/]+)/(?P<kind>list|details|action)(?:/(?P<rest>.+))?$")
+_ACCESS = re.compile(
+    r"^/(?P<identity>[^/]+)/(?P<kind>list|details|edit|ajax|action)(?:/(?P<rest>.+))?$"
+)
 
 
 def _reason_of(slug: str) -> str | None:
@@ -128,6 +130,26 @@ class AuditTrail:
                 admin_user_id=admin_user_id,
                 model=identity,
                 record_id=rest,
+            )
+        elif kind == "edit" and rest is not None and request.method == "GET":
+            # Opening the form shows the record as much as its page does; the save itself is
+            # recorded by sqladmin's hook, with the names of the fields it changed.
+            await self.write(
+                request,
+                AuditAction.VIEW,
+                admin_user_id=admin_user_id,
+                model=identity,
+                record_id=rest,
+                reason="edit",
+            )
+        elif kind == "ajax" and rest == "lookup" and request.method == "GET":
+            # The options of a relation field: names of other records, read without a page.
+            await self.write(
+                request,
+                AuditAction.LIST,
+                admin_user_id=admin_user_id,
+                model=identity,
+                reason="lookup",
             )
         elif kind == "action" and rest is not None and request.method == "POST":
             pks = request.query_params.get("pks", "")
