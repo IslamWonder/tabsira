@@ -1,8 +1,8 @@
-# Benchmark: retrieval
+## Benchmark: retrieval
 
 Measured on $date by `uv run python -m src.cli.retrieval_benchmark` (`apps/api/src/evaluation/retrieval_benchmark.py`). Raw ranks: `$raw_path` (not committed). This section is rewritten by that command; the scene benchmark keeps it.
 
-## Method
+### Method
 
 - **Gold set**: `$gold_path`, $queries Arabic concept queries written the way the planner writes them ($quran_queries Quran, $hadith_queries hadith), each with the stored texts that answer it: the anchors of the learning path, the texts the gold scenes call for, and well-known hadiths whose stored numbers were found by searching their distinctive words. No query quotes scripture. Hadith queries are judged against $collections only, so every embedding model sees the same 14,940 hadiths and the whole Quran.
 - **Documents**: the folded search copy of each text (a hadith without its chain) followed by its model-written concepts (`src/retrieval/documents.py`); never displayed.
@@ -11,19 +11,19 @@ Measured on $date by `uv run python -m src.cli.retrieval_benchmark` (`apps/api/s
 
 $cells_table
 
-## Results (all queries)
+### Results (all queries)
 
 $overall_table
 
-## Results by corpus
+### Results by corpus
 
 $corpus_table
 
-## Latency (this machine, CPU)
+### Latency (this machine, CPU)
 
 $latency_table
 
-## Choices
+### Choices
 
 $choices_table
 
