@@ -97,7 +97,7 @@ Before you say a task is done: `make lint && make coverage` pass, and `make smok
 
 ## Testing
 
-**Fast loop, one gate.** While you work, run only the tests of what you touch (`uv run pytest -n 2 tests/<area>`, `pnpm --filter @tabsira/web exec vitest related --maxWorkers=2 <files>`); several agents share one machine, so never `-n auto` or an uncapped vitest; run the full suite with coverage once, at the end, before you hand over. No repeated full runs, no live demos unless the task asks for one, one screenshot pass per interface task. Before reporting, rebase your branch onto the latest `main` yourself, resolve the conflicts, re-chain your migration onto the current head, and run the gate once on the rebased branch.
+**Fast loop, one gate.** While you work, run only the tests of what you touch (`uv run pytest -n 1 tests/<area>`, `pnpm --filter @tabsira/web exec vitest related --maxWorkers=1 <files>`); several agents share one machine, so never `-n auto` or an uncapped vitest; run the full suite with coverage once, at the end, before you hand over, under the shared lock so two gates never overlap (`flock /tmp/tabsira-gate.lock make coverage` on Linux). No repeated full runs, no live demos unless the task asks for one, one screenshot pass per interface task. Before reporting, rebase your branch onto the latest `main` yourself, resolve the conflicts, re-chain your migration onto the current head, and run the gate once on the rebased branch.
 
 - 100 % line, branch and function coverage in `apps/web`, `apps/api` and `services/vision`. An exclusion needs a written reason in the coverage config.
 - Unit tests never touch the network, a model or a real external service. Mock at the provider boundary. Database tests use `tabsira_test` only.
