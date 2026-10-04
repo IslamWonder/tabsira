@@ -377,7 +377,7 @@ export interface paths {
     };
     /**
      * Download everything the account owns
-     * @description Return the account, its profile, consents, linked identities and sessions as JSON.
+     * @description Return the account, its profile, consents, identities, sessions and learning as JSON.
      */
     get: operations['export_account_account_export_get'];
     put?: never;
@@ -400,7 +400,7 @@ export interface paths {
     post?: never;
     /**
      * Delete the account and everything it owns
-     * @description Delete the user, their profile, consents, linked identities and every session.
+     * @description Delete the user, their profile, consents, identities, sessions and everything they saved.
      *
      *     Idempotent: without a valid session there is nothing left to delete, and the
      *     answer is the same 204 that clears the cookie.
@@ -1169,6 +1169,339 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/scans': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Start a scan of a photo or of a photo's address
+     * @description Check the photo, keep it for an hour, queue the scan and answer at once.
+     */
+    post: operations['create_scan_scans_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/scans/{scan_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * A scan and what it found
+     * @description Return the owner's scan: its state, its scene and its insights.
+     */
+    get: operations['get_scan_scans__scan_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/scans/{scan_id}/image': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The stripped photo of a scan, while it is kept
+     * @description Return the photo without its metadata to its owner, for the hour it is kept.
+     */
+    get: operations['get_scan_image_scans__scan_id__image_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/scans/{scan_id}/events': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The progress of a scan, as server-sent events
+     * @description Stream `queued`, `stage`, then `done` or `failed` for the scan's current run.
+     *
+     *     A reader that reconnects sends `Last-Event-ID` and gets only what it missed.
+     */
+    get: operations['scan_events_scans__scan_id__events_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/scans/{scan_id}/focus': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Point at one thing in the scene and look again
+     * @description Run the engine again on the thing the learner chose or the box they drew.
+     */
+    post: operations['focus_scan_scans__scan_id__focus_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/scans/{scan_id}/clarify': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Answer the one question the scan asked
+     * @description Run the engine again with the learner's answer.
+     */
+    post: operations['clarify_scan_scans__scan_id__clarify_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/insights/{insight_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * One insight, its scripture read from the store
+     * @description Return the insight: its verse and hadith exactly as stored, the explanation apart.
+     */
+    get: operations['get_insight_insights__insight_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/insights/{insight_id}/chat': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Ask one question about the insight (three at most)
+     * @description Answer a question classified by its content level, grounded in the insight.
+     *
+     *     The same `idempotencyKey` returns the same answer and counts once; the
+     *     fourth successful message answers 409 CHAT_LIMIT_REACHED.
+     */
+    post: operations['chat_insights__insight_id__chat_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/insights/{insight_id}/action': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Declare the small step done, or for later
+     * @description Record «نفّذته» or «سأفعله لاحقًا»: the learner's own statement, never a proof or a reward.
+     */
+    post: operations['declare_action_insights__insight_id__action_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/insights/{insight_id}/complete': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * «تمّ»: complete the insight, once
+     * @description Complete the insight; a second call saves nothing more and answers the same place.
+     */
+    post: operations['complete_insight_insights__insight_id__complete_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/world': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The map: regions under fog, the places that came out of it, threads
+     * @description Return every region with its fog, the caller's places, threads and ready treasures.
+     *
+     *     A newcomer gets the whole map under fog: there is nothing to hide and nothing to make.
+     */
+    get: operations['get_world_world_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/world/places/{place_id}/visit': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Open a place: a return can show its treasure
+     * @description Record the visit and return the place with its insights and a treasure that is ready.
+     */
+    post: operations['visit_place_world_places__place_id__visit_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/world/treasures/{treasure_id}/reveal': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Reveal a treasure that is ready
+     * @description Return the treasure's verified text from the store; 409 TREASURE_NOT_READY before the return.
+     */
+    post: operations['reveal_treasure_world_treasures__treasure_id__reveal_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/me/progress': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Practice, never piety: ranks, streak, quest, sky, badges
+     * @description Return what the learner's recorded practice adds up to, with the practice disclaimer.
+     *
+     *     Counted from looks, completions, declared steps, places, treasures and
+     *     questions only; never faith, never reward, never a comparison with anyone.
+     */
+    get: operations['progress_me_progress_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/tutorial/rain': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The prepared rain scene and its two insights
+     * @description Return the rain scene with «الحياة في قطرة» and «الغرس الذي يتعدّاك».
+     *
+     *     The verses come from the store; each hadith shows once an editor has
+     *     recorded its dorar.net ruling, and until then the insight says so.
+     */
+    get: operations['rain_tutorial_rain_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/tutorial/rain/insights/{slug}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Keep a copy of a tutorial insight, to complete it and ask about it
+     * @description Return the caller's copy of the insight (made once), labelled «مثال موثّق مُعدّ».
+     */
+    post: operations['keep_rain_insight_tutorial_rain_insights__slug__post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1197,7 +1530,32 @@ export interface components {
       /** Cookie Consents */
       cookie_consents: components['schemas']['CookieConsentExport'][];
       social: components['schemas']['SocialExport'];
+      learning: components['schemas']['LearningExport'];
     };
+    /**
+     * ActionIn
+     * @description «نفّذته» (`done`) or «سأفعله لاحقًا» (`later`).
+     */
+    ActionIn: {
+      choice: components['schemas']['ActionState'];
+    };
+    /**
+     * ActionOut
+     * @description What the learner declared about the small step: a statement, never a proof or a reward.
+     */
+    ActionOut: {
+      state: components['schemas']['ActionState'] | null;
+      /** At */
+      at: string | null;
+      /** Means */
+      means: string | null;
+    };
+    /**
+     * ActionState
+     * @description What the learner declared about the small step: a statement, never a proof (tajriba §9).
+     * @enum {string}
+     */
+    ActionState: 'done' | 'later';
     /**
      * AdminArea
      * @description The first-level administrative division (region, governorate, state) of a place.
@@ -1212,11 +1570,48 @@ export interface components {
       /** Label */
       label: string;
     };
+    /** AfterOption */
+    AfterOption: {
+      /**
+       * Id
+       * @enum {string}
+       */
+      id: 'open_world' | 'new_scan' | 'share';
+      /** Label */
+      label: string;
+    };
     /**
      * AgeRange
      * @enum {string}
      */
     AgeRange: 'under_13' | '13_17' | '18_24' | '25_39' | '40_59' | '60_plus' | 'unknown';
+    /**
+     * BBox
+     * @description A box as ratios of the image; `x` and `y` are its top-left corner.
+     */
+    BBox: {
+      /** X */
+      x: number;
+      /** Y */
+      y: number;
+      /** Width */
+      width: number;
+      /** Height */
+      height: number;
+    };
+    /** BadgeOut */
+    BadgeOut: {
+      /** Id */
+      id: string;
+      /** Title */
+      title: string;
+      /** Description */
+      description: string;
+      /** Earned */
+      earned: boolean;
+      /** Earned At */
+      earned_at: string | null;
+    };
     /** ChapterOut */
     ChapterOut: {
       /** Book Number */
@@ -1225,6 +1620,84 @@ export interface components {
       book_name: string | null;
       /** Number In Book */
       number_in_book: number | null;
+    };
+    /** ChatIn */
+    ChatIn: {
+      /** Message */
+      message: string;
+      /** Idempotencykey */
+      idempotencyKey: string;
+    };
+    /** ChatMessageExport */
+    ChatMessageExport: {
+      /** Insight Id */
+      insight_id: string;
+      /** Question */
+      question: string;
+      /** Answer */
+      answer: string | null;
+      /** Level */
+      level: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** ChatMessageOut */
+    ChatMessageOut: {
+      /** Question */
+      question: string;
+      /** Answer */
+      answer: string;
+      /**
+       * Level
+       * @enum {string}
+       */
+      level: 'a' | 'b' | 'c' | 'd';
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: 'answer' | 'referral' | 'new_search';
+      /**
+       * Answered At
+       * Format: date-time
+       */
+      answered_at: string;
+    };
+    /** ChatOut */
+    ChatOut: {
+      /** Enabled */
+      enabled: boolean;
+      /** Used */
+      used: number;
+      /** Limit */
+      limit: number;
+      /** Remaining */
+      remaining: number;
+      /** Messages */
+      messages: components['schemas']['ChatMessageOut'][];
+    };
+    /** ChatReply */
+    ChatReply: {
+      message: components['schemas']['ChatMessageOut'];
+      /** Used */
+      used: number;
+      /** Limit */
+      limit: number;
+      /** Remaining */
+      remaining: number;
+      /** Disclosure */
+      disclosure: string;
+    };
+    /**
+     * ClarifyIn
+     * @description The learner's answer to the one question the scan asked.
+     */
+    ClarifyIn: {
+      /** Answer */
+      answer: string;
     };
     /**
      * ClientBreadcrumb
@@ -1367,6 +1840,38 @@ export interface components {
      * @enum {string}
      */
     CommentStatus: 'pending_review' | 'published' | 'rejected' | 'removed';
+    /** CompletionOut */
+    CompletionOut: {
+      /** Insight Id */
+      insight_id: string;
+      /**
+       * Completed At
+       * Format: date-time
+       */
+      completed_at: string;
+      /**
+       * First Time
+       * @description False when «تمّ» was already recorded: nothing was saved twice
+       */
+      first_time: boolean;
+      place: components['schemas']['PlaceOut'] | null;
+      /**
+       * Treasure Prepared
+       * @description A hidden treasure waits; it shows on return
+       */
+      treasure_prepared: boolean;
+      /** Badges Earned */
+      badges_earned: string[];
+      /** Options */
+      options: components['schemas']['AfterOption'][];
+      /**
+       * Suggest Account
+       * @description Set for a guest after the first completion
+       */
+      suggest_account: string | null;
+      /** Disclosure */
+      disclosure: string;
+    };
     /**
      * ConsentCategories
      * @description Each category and whether it is on. The necessary one always is.
@@ -1554,6 +2059,31 @@ export interface components {
       /** Label */
       label: string;
     };
+    /** CountsOut */
+    CountsOut: {
+      /** Looks */
+      looks: number;
+      /** Completed */
+      completed: number;
+      /** Actions Done */
+      actions_done: number;
+      /** Places */
+      places: number;
+      /** Treasures */
+      treasures: number;
+      /** Questions */
+      questions: number;
+    };
+    /** DayOut */
+    DayOut: {
+      /**
+       * Day
+       * Format: date
+       */
+      day: string;
+      /** Looked */
+      looked: boolean;
+    };
     /**
      * EmailIn
      * @description An address, for the routes that mail a link to it.
@@ -1565,6 +2095,12 @@ export interface components {
        */
       email: string;
     };
+    /**
+     * EntityOrigin
+     * @description Where an entity's box comes from.
+     * @enum {string}
+     */
+    EntityOrigin: 'detector' | 'vlm' | 'user_selection';
     /**
      * ErrorCode
      * @description The stable error codes. A code is never renamed or reused.
@@ -1597,7 +2133,33 @@ export interface components {
       | 'INVALID_CURSOR'
       | 'GONE'
       | 'legal_acceptance_required'
-      | 'mail_unavailable';
+      | 'mail_unavailable'
+      | 'UNSUPPORTED_MEDIA_TYPE'
+      | 'FEATURE_DISABLED'
+      | 'ASSET_MISSING'
+      | 'MODEL_UNAVAILABLE'
+      | 'VISION_FAILED'
+      | 'NEEDS_CLARIFICATION'
+      | 'NO_RELEVANT_EVIDENCE'
+      | 'SOURCE_UNAVAILABLE'
+      | 'PAIR_INCOMPLETE'
+      | 'CHAT_LIMIT_REACHED'
+      | 'SAVE_FAILED'
+      | 'PUBLISH_FAILED'
+      | 'STORAGE_UNAVAILABLE'
+      | 'IMAGE_EMPTY'
+      | 'IMAGE_TOO_LARGE'
+      | 'IMAGE_TOO_SMALL'
+      | 'IMAGE_UNSUPPORTED'
+      | 'IMAGE_INVALID'
+      | 'IMAGE_URL_REFUSED'
+      | 'IMAGE_FETCH_FAILED'
+      | 'QUEUE_UNAVAILABLE'
+      | 'SCAN_BUSY'
+      | 'SCAN_TIMEOUT'
+      | 'CHAT_IN_PROGRESS'
+      | 'CHAT_ANSWER_REJECTED'
+      | 'TREASURE_NOT_READY';
     /**
      * ErrorResponse
      * @description The body of every error response.
@@ -1612,6 +2174,59 @@ export interface components {
       terms_version?: string | null;
       /** Privacy Version */
       privacy_version?: string | null;
+    };
+    /**
+     * EvidenceStatus
+     * @description How an understanding is known (v2 §0, rule 3).
+     * @enum {string}
+     */
+    EvidenceStatus: 'observed' | 'inferred' | 'user_confirmed' | 'unknown';
+    /**
+     * EvidenceWhy
+     * @description Why the engine chose a text: the kind of link and what it matched on.
+     */
+    EvidenceWhy: {
+      relation: components['schemas']['RelationType'];
+      /** Relation Label */
+      relation_label: string;
+      /** Matched On */
+      matched_on: string;
+    };
+    /** ExplanationOut */
+    ExplanationOut: {
+      /**
+       * Section
+       * @enum {string}
+       */
+      section: 'seen' | 'value' | 'quran' | 'sunnah' | 'life';
+      /** Label */
+      label: string;
+      /** Text */
+      text: string;
+    };
+    /** ExposureExport */
+    ExposureExport: {
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      /** Kind */
+      kind: string;
+      /** Insight Id */
+      insight_id: string | null;
+      /** Quran Surah */
+      quran_surah: number | null;
+      /** Quran Ayah */
+      quran_ayah: number | null;
+      /** Hadith Collection */
+      hadith_collection: string | null;
+      /** Hadith Number */
+      hadith_number: string | null;
+      /** Concept */
+      concept: string | null;
+      /** Learning Unit Id */
+      learning_unit_id: string | null;
     };
     /**
      * FeedPage
@@ -1642,6 +2257,17 @@ export interface components {
       message: string;
       /** Type */
       type: string;
+    };
+    /**
+     * FocusIn
+     * @description What the learner pointed at: one thing the scene found, or a box drawn on the photo.
+     */
+    FocusIn: {
+      /** Entity Id */
+      entity_id?: string | null;
+      box?: components['schemas']['BBox'] | null;
+      /** Label */
+      label?: string | null;
     };
     /**
      * Gender
@@ -1792,6 +2418,150 @@ export interface components {
        */
       since: string;
     };
+    /** InsightDetailOut */
+    InsightDetailOut: {
+      /** Id */
+      id: string;
+      /** Scan Id */
+      scan_id: string | null;
+      origin: components['schemas']['InsightOrigin'];
+      /**
+       * Engine
+       * @description `pipeline`, `demo` (a declared simulation) or `prepared`
+       */
+      engine: string;
+      /**
+       * Label
+       * @description «مثال موثّق مُعدّ» or the simulation notice, when one applies
+       */
+      label: string | null;
+      /** Title */
+      title: string;
+      /** Glimpse */
+      glimpse: string;
+      anchor: components['schemas']['BBox'] | null;
+      relation: components['schemas']['RelationType'];
+      /** Relation Label */
+      relation_label: string;
+      quran: components['schemas']['InsightQuran'] | null;
+      hadith: components['schemas']['InsightHadith'] | null;
+      /**
+       * Hadith Status
+       * @enum {string}
+       */
+      hadith_status: 'shown' | 'awaiting_verification' | 'none';
+      /**
+       * Notice
+       * @description Set when the hadith waits for its dorar.net ruling
+       */
+      notice: string | null;
+      /** Pair Complete */
+      pair_complete: boolean;
+      /** Explanation Tag */
+      explanation_tag: string;
+      /** Explanation */
+      explanation: components['schemas']['ExplanationOut'][];
+      why: components['schemas']['InsightWhyOut'];
+      small_step: components['schemas']['StepOut'] | null;
+      learning_unit: components['schemas']['LearningUnitOut'] | null;
+      action: components['schemas']['ActionOut'];
+      chat: components['schemas']['ChatOut'];
+      image: components['schemas']['InsightImageOut'];
+      /** Completed At */
+      completed_at: string | null;
+      /** Place Id */
+      place_id: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Disclosure */
+      disclosure: string;
+    };
+    /**
+     * InsightExport
+     * @description An insight with its evidence by reference: the texts themselves are public, in the store.
+     */
+    InsightExport: {
+      /** Id */
+      id: string;
+      /** Scan Id */
+      scan_id: string | null;
+      /** Origin */
+      origin: string;
+      /** Tutorial Slug */
+      tutorial_slug: string | null;
+      /** Engine */
+      engine: string;
+      /** Title */
+      title: string;
+      /** Glimpse */
+      glimpse: string;
+      /** Relation */
+      relation: string;
+      /** Quran Surah */
+      quran_surah: number | null;
+      /** Quran Ayah */
+      quran_ayah: number | null;
+      /** Hadith Collection */
+      hadith_collection: string | null;
+      /** Hadith Number */
+      hadith_number: string | null;
+      /** Explanation */
+      explanation: {
+        [key: string]: unknown;
+      }[];
+      /** Why */
+      why: {
+        [key: string]: unknown;
+      };
+      /** Small Step */
+      small_step: {
+        [key: string]: unknown;
+      } | null;
+      /** Learning Unit Id */
+      learning_unit_id: string | null;
+      /** Action State */
+      action_state: string | null;
+      /** Action At */
+      action_at: string | null;
+      /** Completed At */
+      completed_at: string | null;
+      /** Place Id */
+      place_id: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** InsightHadith */
+    InsightHadith: {
+      /**
+       * Tag
+       * @description «السنة»: the fixed tag of quoted Sunnah
+       */
+      tag: string;
+      /** @description The hadith exactly as stored, its spans, its dorar.net ruling and links */
+      hadith: components['schemas']['HadithOut'];
+      why: components['schemas']['EvidenceWhy'] | null;
+    };
+    /**
+     * InsightImageOut
+     * @description Whether the photo of the insight's scan may be shown; never for a sensitive scene.
+     */
+    InsightImageOut: {
+      /** Sensitive */
+      sensitive: boolean;
+      /** Url */
+      url: string | null;
+    };
+    /**
+     * InsightOrigin
+     * @enum {string}
+     */
+    InsightOrigin: 'scan' | 'tutorial';
     /**
      * InsightOut
      * @description What a post publishes: the platform's insight, never the author's words.
@@ -1827,11 +2597,105 @@ export interface components {
       /** Hadith */
       hadith: components['schemas']['HadithEvidenceOut'][];
     };
+    /** InsightQuran */
+    InsightQuran: {
+      /**
+       * Tag
+       * @description «القرآن»: the fixed tag of quoted Quran
+       */
+      tag: string;
+      /** @description The verse exactly as stored, with its hash and link */
+      verse: components['schemas']['QuranVerseOut'];
+      why: components['schemas']['EvidenceWhy'] | null;
+    };
+    /** InsightSummary */
+    InsightSummary: {
+      /** Id */
+      id: string;
+      /** Title */
+      title: string;
+      /** Glimpse */
+      glimpse: string;
+      anchor: components['schemas']['BBox'] | null;
+      relation: components['schemas']['RelationType'];
+      /** Relation Label */
+      relation_label: string;
+      /** Completed */
+      completed: boolean;
+    };
+    /**
+     * InsightWhyOut
+     * @description «لماذا ظهر هذا؟»: the clues, the concept, the limits, the reason of a personal choice.
+     */
+    InsightWhyOut: {
+      /** Visible Clues */
+      visible_clues: string[];
+      /** Concept */
+      concept: string;
+      /** Limits */
+      limits: string[];
+      /** Personalised Because */
+      personalised_because: string | null;
+    };
     /**
      * KnowledgeLevel
      * @enum {string}
      */
     KnowledgeLevel: 'new' | 'general' | 'advanced' | 'specialist' | 'unknown';
+    /** LearnerUnitExport */
+    LearnerUnitExport: {
+      /** Path Version */
+      path_version: string;
+      /** Unit Id */
+      unit_id: string;
+      /** Seen Count */
+      seen_count: number;
+      /** Opened Count */
+      opened_count: number;
+      /** Completed Count */
+      completed_count: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Last At
+       * Format: date-time
+       */
+      last_at: string;
+    };
+    /**
+     * LearningExport
+     * @description Everything the scan workflow keeps for the account.
+     */
+    LearningExport: {
+      /** Scans */
+      scans: components['schemas']['ScanExport'][];
+      /** Insights */
+      insights: components['schemas']['InsightExport'][];
+      /** Chat Messages */
+      chat_messages: components['schemas']['ChatMessageExport'][];
+      /** Places */
+      places: components['schemas']['PlaceExport'][];
+      /** Treasures */
+      treasures: components['schemas']['TreasureExport'][];
+      /** Learner Units */
+      learner_units: components['schemas']['LearnerUnitExport'][];
+      /** Exposures */
+      exposures: components['schemas']['ExposureExport'][];
+    };
+    /** LearningUnitOut */
+    LearningUnitOut: {
+      /** Id */
+      id: string;
+      /** Title */
+      title: string;
+      /** Domain Id */
+      domain_id: string;
+      /** Path Version */
+      path_version: string;
+    };
     /**
      * LegalAcceptIn
      * @description The versions a signed-in person accepts; they must be the current ones.
@@ -1947,6 +2811,15 @@ export interface components {
        */
       distance_m: number;
     };
+    /** NextRankOut */
+    NextRankOut: {
+      /** Id */
+      id: string;
+      /** Title */
+      title: string;
+      /** Minimum */
+      minimum: number;
+    };
     /** OAuthAccountExport */
     OAuthAccountExport: {
       /** Provider */
@@ -1958,6 +2831,20 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+    };
+    /** PlaceExport */
+    PlaceExport: {
+      /** Id */
+      id: string;
+      /** Region Id */
+      region_id: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Last Visited At */
+      last_visited_at: string | null;
     };
     /**
      * PlaceHit
@@ -1985,6 +2872,39 @@ export interface components {
       location: components['schemas']['GeoJsonPoint'];
       admin_area: components['schemas']['AdminArea'] | null;
       country: components['schemas']['CountryRef'] | null;
+    };
+    /** PlaceInsightOut */
+    PlaceInsightOut: {
+      /** Id */
+      id: string;
+      /** Title */
+      title: string;
+      /**
+       * Completed At
+       * Format: date-time
+       */
+      completed_at: string;
+    };
+    /** PlaceOut */
+    PlaceOut: {
+      /** Id */
+      id: string;
+      /** Region Id */
+      region_id: string;
+      /** Name */
+      name: string;
+      /**
+       * Created
+       * @description The fog lifted from this place with this completion
+       */
+      created: boolean;
+    };
+    /** PositionOut */
+    PositionOut: {
+      /** X */
+      x: number;
+      /** Y */
+      y: number;
     };
     /**
      * PostCreateIn
@@ -2135,6 +3055,20 @@ export interface components {
       /** Sound Enabled */
       sound_enabled?: boolean | null;
     };
+    /** ProgressOut */
+    ProgressOut: {
+      /** Timezone */
+      timezone: string;
+      rank: components['schemas']['RankOut'];
+      streak: components['schemas']['StreakOut'];
+      daily_quest: components['schemas']['QuestOut'];
+      sky: components['schemas']['SkyOut'];
+      /** Badges */
+      badges: components['schemas']['BadgeOut'][];
+      counts: components['schemas']['CountsOut'];
+      /** Disclaimer */
+      disclaimer: string;
+    };
     /** ProviderOut */
     ProviderOut: {
       /**
@@ -2208,6 +3142,31 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+    };
+    /** QuestOut */
+    QuestOut: {
+      /** Title */
+      title: string;
+      /**
+       * Day
+       * Format: date
+       */
+      day: string;
+      /** Steps */
+      steps: components['schemas']['QuestStepOut'][];
+      /** Done */
+      done: boolean;
+      /** Days Done */
+      days_done: number;
+    };
+    /** QuestStepOut */
+    QuestStepOut: {
+      /** Id */
+      id: string;
+      /** Label */
+      label: string;
+      /** Done */
+      done: boolean;
     };
     /**
      * QuranEvidenceOut
@@ -2308,10 +3267,27 @@ export interface components {
       links: components['schemas']['QuranLinks'];
       /**
        * Status
-       * @default local_corpus
+       * @default verified_cached
        * @constant
        */
-      status: 'local_corpus';
+      status: 'verified_cached';
+    };
+    /** RankOut */
+    RankOut: {
+      /** Id */
+      id: string;
+      /** Title */
+      title: string;
+      /** Hint */
+      hint: string;
+      /** Looks */
+      looks: number;
+      next: components['schemas']['NextRankOut'] | null;
+      /**
+       * Progress
+       * @description The way from this rank to the next, 0 to 1
+       */
+      progress: number;
     };
     /** ReactionOut */
     ReactionOut: {
@@ -2359,6 +3335,50 @@ export interface components {
        */
       looks_like_scripture: boolean;
     };
+    /** RegionOut */
+    RegionOut: {
+      /** Id */
+      id: string;
+      /** Domain Id */
+      domain_id: string;
+      /** Name */
+      name: string;
+      /** Domain Title */
+      domain_title: string;
+      position: components['schemas']['PositionOut'];
+      /**
+       * Fog
+       * @description True until an insight of this region is completed
+       */
+      fog: boolean;
+      /** Place Id */
+      place_id: string | null;
+    };
+    /** RelationOut */
+    RelationOut: {
+      /** Place A Id */
+      place_a_id: string;
+      /** Place B Id */
+      place_b_id: string;
+      reason: components['schemas']['RelationReason'];
+      /** Reason Label */
+      reason_label: string;
+      /** Question */
+      question: string;
+      /** Insight Ids */
+      insight_ids: string[];
+    };
+    /**
+     * RelationReason
+     * @enum {string}
+     */
+    RelationReason: 'same_scene' | 'prerequisite';
+    /**
+     * RelationType
+     * @description How an insight relates to the scene, strongest first (v2 §8).
+     * @enum {string}
+     */
+    RelationType: 'direct' | 'action_based' | 'close_conceptual' | 'opposite' | 'thematic_reminder';
     /**
      * ReligiousBackground
      * @enum {string}
@@ -2462,6 +3482,135 @@ export interface components {
        */
       recorded_at: string;
     };
+    /** ScanEntityOut */
+    ScanEntityOut: {
+      /** Id */
+      id: string;
+      /** Label Arabic */
+      label_arabic: string;
+      bbox: components['schemas']['BBox'] | null;
+      origin: components['schemas']['EntityOrigin'];
+      status: components['schemas']['EvidenceStatus'];
+    };
+    /**
+     * ScanExport
+     * @description A scan without its photo, which is never kept beyond the hour it is needed.
+     */
+    ScanExport: {
+      /** Id */
+      id: string;
+      /** Source */
+      source: string;
+      /** Status */
+      status: string;
+      /** Outcome */
+      outcome: string | null;
+      /** Engine */
+      engine: string;
+      /** Sensitive */
+      sensitive: boolean;
+      /** Scene */
+      scene: {
+        [key: string]: unknown;
+      } | null;
+      /** Focus */
+      focus: {
+        [key: string]: unknown;
+      } | null;
+      /** Clarification Question */
+      clarification_question: string | null;
+      /** Clarification Answer */
+      clarification_answer: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Finished At */
+      finished_at: string | null;
+    };
+    /**
+     * ScanImageOut
+     * @description Whether the photo can still be shown to its owner; never for a sensitive scene.
+     */
+    ScanImageOut: {
+      /** Available */
+      available: boolean;
+      /** Width */
+      width: number | null;
+      /** Height */
+      height: number | null;
+      /**
+       * Url
+       * @description Path of the photo on this API while it is kept
+       */
+      url: string | null;
+    };
+    /** ScanOut */
+    ScanOut: {
+      /** Id */
+      id: string;
+      status: components['schemas']['ScanStatus'];
+      outcome: components['schemas']['ScanOutcome'] | null;
+      /**
+       * Error Code
+       * @description A stable code (v2 §26) when the scan failed
+       */
+      error_code: string | null;
+      /** Run */
+      run: number;
+      /** Engine */
+      engine: string;
+      /**
+       * Engine Label
+       * @description Set when the engine is a declared simulation
+       */
+      engine_label: string | null;
+      source: components['schemas']['ScanSource'];
+      /** Sensitive */
+      sensitive: boolean;
+      image: components['schemas']['ScanImageOut'];
+      /** Description */
+      description: string | null;
+      /** Entities */
+      entities: components['schemas']['ScanEntityOut'][];
+      /** Clarification Question */
+      clarification_question: string | null;
+      /** Insights */
+      insights: components['schemas']['InsightSummary'][];
+      /**
+       * Awaiting Verification
+       * @description Hadith wanted by this scan that wait for a ruling
+       */
+      awaiting_verification: number;
+      /** Events Url */
+      events_url: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Finished At */
+      finished_at: string | null;
+      /** Disclosure */
+      disclosure: string;
+    };
+    /**
+     * ScanOutcome
+     * @description What a finished scan found (v2 §8 and §26): insights, a question, or no reliable link.
+     * @enum {string}
+     */
+    ScanOutcome: 'insights' | 'needs_clarification' | 'no_relevant_evidence';
+    /**
+     * ScanSource
+     * @enum {string}
+     */
+    ScanSource: 'upload' | 'url';
+    /**
+     * ScanStatus
+     * @enum {string}
+     */
+    ScanStatus: 'queued' | 'running' | 'done' | 'failed';
     /**
      * Section
      * @description A kind of public page. The names are part of the web app's URLs for the child sitemaps.
@@ -2545,6 +3694,13 @@ export interface components {
       /** Lastmod */
       lastmod?: string | null;
     };
+    /** SkyOut */
+    SkyOut: {
+      /** Count */
+      count: number;
+      /** Stars */
+      stars: components['schemas']['StarOut'][];
+    };
     /** SocialExport */
     SocialExport: {
       /** Posts */
@@ -2575,6 +3731,22 @@ export interface components {
      * @enum {string}
      */
     SpanRole: 'chain' | 'body' | 'words' | 'tail';
+    /** StarOut */
+    StarOut: {
+      /** Concept */
+      concept: string;
+      /** Count */
+      count: number;
+      /**
+       * First Seen
+       * Format: date-time
+       */
+      first_seen: string;
+      /** X */
+      x: number;
+      /** Y */
+      y: number;
+    };
     /**
      * StatusOut
      * @description The answer of the routes that report only that they did what was asked.
@@ -2585,6 +3757,35 @@ export interface components {
        * @enum {string}
        */
       status: 'ok' | 'accepted';
+    };
+    /** StepOut */
+    StepOut: {
+      /** Text */
+      text: string;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: 'text_grounded' | 'ethical_application' | 'reflection';
+      /**
+       * Label
+       * @description «من السنة» when grounded in a shown text, else «اقتراح عملي»
+       */
+      label: string;
+    };
+    /** StreakOut */
+    StreakOut: {
+      /** Current */
+      current: number;
+      /** Best */
+      best: number;
+      /** Last Day */
+      last_day: string | null;
+      /**
+       * Days
+       * @description The last seven days, today first
+       */
+      days: components['schemas']['DayOut'][];
     };
     /** SupportIn */
     SupportIn: {
@@ -2611,6 +3812,143 @@ export interface components {
      * @enum {string}
      */
     Theme: 'system' | 'light' | 'dark';
+    /** TreasureExport */
+    TreasureExport: {
+      /** Insight Id */
+      insight_id: string;
+      /** Kind */
+      kind: string;
+      /** Quran Surah */
+      quran_surah: number | null;
+      /** Quran Ayah */
+      quran_ayah: number | null;
+      /** Hadith Collection */
+      hadith_collection: string | null;
+      /** Hadith Number */
+      hadith_number: string | null;
+      /** Learning Unit Id */
+      learning_unit_id: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Revealed At */
+      revealed_at: string | null;
+    };
+    /**
+     * TreasureFlag
+     * @description A treasure ready to be revealed; its content stays hidden until the reveal.
+     */
+    TreasureFlag: {
+      /** Id */
+      id: string;
+    };
+    /**
+     * TreasureKind
+     * @enum {string}
+     */
+    TreasureKind: 'alternative' | 'deeper';
+    /** TreasureOut */
+    TreasureOut: {
+      /** Id */
+      id: string;
+      kind: components['schemas']['TreasureKind'];
+      /** Kind Label */
+      kind_label: string;
+      /** Insight Id */
+      insight_id: string;
+      /** Place Id */
+      place_id: string;
+      quran: components['schemas']['InsightQuran'] | null;
+      hadith: components['schemas']['InsightHadith'] | null;
+      learning_unit: components['schemas']['TreasureUnitOut'] | null;
+      /** Revealed At */
+      revealed_at: string | null;
+      /** Disclosure */
+      disclosure: string;
+    };
+    /** TreasureUnitOut */
+    TreasureUnitOut: {
+      /** Id */
+      id: string;
+      /** Title */
+      title: string;
+    };
+    /** TutorialImageOut */
+    TutorialImageOut: {
+      /**
+       * Path
+       * @description Path of the photo in the web app
+       */
+      path: string;
+      /** Width */
+      width: number;
+      /** Height */
+      height: number;
+      /** Alt */
+      alt: string;
+    };
+    /** TutorialInsightOut */
+    TutorialInsightOut: {
+      /** Slug */
+      slug: string;
+      /** Title */
+      title: string;
+      /** Glimpse */
+      glimpse: string;
+      anchor: components['schemas']['BBox'];
+      relation: components['schemas']['RelationType'];
+      /** Relation Label */
+      relation_label: string;
+      quran: components['schemas']['InsightQuran'];
+      hadith: components['schemas']['InsightHadith'] | null;
+      /**
+       * Hadith Status
+       * @enum {string}
+       */
+      hadith_status: 'shown' | 'awaiting_verification' | 'none';
+      /**
+       * Notice
+       * @description Set while the hadith waits for its dorar.net ruling
+       */
+      notice: string | null;
+      /** Pair Complete */
+      pair_complete: boolean;
+      /** Explanation Tag */
+      explanation_tag: string;
+      /** Explanation */
+      explanation: components['schemas']['ExplanationOut'][];
+      why: components['schemas']['InsightWhyOut'];
+      small_step: components['schemas']['StepOut'] | null;
+      /** Learning Unit Id */
+      learning_unit_id: string;
+    };
+    /** TutorialOut */
+    TutorialOut: {
+      /** Scene */
+      scene: string;
+      /** Version */
+      version: string;
+      /** Title */
+      title: string;
+      /**
+       * Label
+       * @description «مثال موثّق مُعدّ»
+       */
+      label: string;
+      /**
+       * Status
+       * @description Prepared, reviewed content; never live analysis
+       * @constant
+       */
+      status: 'prepared';
+      image: components['schemas']['TutorialImageOut'];
+      /** Insights */
+      insights: components['schemas']['TutorialInsightOut'][];
+      /** Disclosure */
+      disclosure: string;
+    };
     /** UserExport */
     UserExport: {
       /**
@@ -2709,6 +4047,46 @@ export interface components {
       code: 'followed_author' | 'fresh' | 'new_topic' | 'community';
       /** Text */
       text: string;
+    };
+    /** WorldOut */
+    WorldOut: {
+      /** Version */
+      version: string;
+      /** Path Version */
+      path_version: string;
+      /** Regions */
+      regions: components['schemas']['RegionOut'][];
+      /** Places */
+      places: components['schemas']['WorldPlaceOut'][];
+      /** Relations */
+      relations: components['schemas']['RelationOut'][];
+    };
+    /** WorldPlaceOut */
+    WorldPlaceOut: {
+      /** Id */
+      id: string;
+      /** Region Id */
+      region_id: string;
+      /** Name */
+      name: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Last Visited At */
+      last_visited_at: string | null;
+      /** Insights */
+      insights: components['schemas']['PlaceInsightOut'][];
+      treasure: components['schemas']['TreasureFlag'] | null;
+    };
+    /**
+     * ScanFromUrl
+     * @description A photo given by its public address; the server fetches it (v2 §6).
+     */
+    ScanFromUrl: {
+      /** Url */
+      url: string;
     };
   };
   responses: never;
@@ -4570,6 +5948,523 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['StatusOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  create_scan_scans_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'multipart/form-data': {
+          /** Format: binary */
+          image: string;
+        };
+        'application/json': components['schemas']['ScanFromUrl'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ScanOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  get_scan_scans__scan_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        scan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ScanOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  get_scan_image_scans__scan_id__image_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        scan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'image/jpeg': unknown;
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  scan_events_scans__scan_id__events_get: {
+    parameters: {
+      query?: never;
+      header?: {
+        'last-event-id'?: string | null;
+      };
+      path: {
+        scan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'text/event-stream': unknown;
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  focus_scan_scans__scan_id__focus_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        scan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FocusIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ScanOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  clarify_scan_scans__scan_id__clarify_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        scan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ClarifyIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ScanOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  get_insight_insights__insight_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['InsightDetailOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  chat_insights__insight_id__chat_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ChatIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ChatReply'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  declare_action_insights__insight_id__action_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ActionIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ActionOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  complete_insight_insights__insight_id__complete_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CompletionOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  get_world_world_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['WorldOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  visit_place_world_places__place_id__visit_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        place_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['WorldPlaceOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  reveal_treasure_world_treasures__treasure_id__reveal_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        treasure_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TreasureOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  progress_me_progress_get: {
+    parameters: {
+      query?: {
+        /** @description The learner's IANA time zone, for what «today» means; UTC by default */
+        tz?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProgressOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  rain_tutorial_rain_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TutorialOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  keep_rain_insight_tutorial_rain_insights__slug__post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['InsightDetailOut'];
         };
       };
       /** @description An error */

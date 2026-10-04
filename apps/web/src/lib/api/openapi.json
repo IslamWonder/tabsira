@@ -671,7 +671,7 @@
       "get": {
         "tags": ["account"],
         "summary": "Download everything the account owns",
-        "description": "Return the account, its profile, consents, linked identities and sessions as JSON.",
+        "description": "Return the account, its profile, consents, identities, sessions and learning as JSON.",
         "operationId": "export_account_account_export_get",
         "responses": {
           "200": {
@@ -701,7 +701,7 @@
       "delete": {
         "tags": ["account"],
         "summary": "Delete the account and everything it owns",
-        "description": "Delete the user, their profile, consents, linked identities and every session.\n\nIdempotent: without a valid session there is nothing left to delete, and the\nanswer is the same 204 that clears the cookie.",
+        "description": "Delete the user, their profile, consents, identities, sessions and everything they saved.\n\nIdempotent: without a valid session there is nothing left to delete, and the\nanswer is the same 204 that clears the cookie.",
         "operationId": "delete_account_account_delete",
         "responses": {
           "204": {
@@ -2543,6 +2543,715 @@
           }
         }
       }
+    },
+    "/scans": {
+      "post": {
+        "tags": ["scans"],
+        "summary": "Start a scan of a photo or of a photo's address",
+        "description": "Check the photo, keep it for an hour, queue the scan and answer at once.",
+        "operationId": "create_scan_scans_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "type": "object",
+                "required": ["image"]
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanFromUrl"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scans/{scan_id}": {
+      "get": {
+        "tags": ["scans"],
+        "summary": "A scan and what it found",
+        "description": "Return the owner's scan: its state, its scene and its insights.",
+        "operationId": "get_scan_scans__scan_id__get",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Scan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scans/{scan_id}/image": {
+      "get": {
+        "tags": ["scans"],
+        "summary": "The stripped photo of a scan, while it is kept",
+        "description": "Return the photo without its metadata to its owner, for the hour it is kept.",
+        "operationId": "get_scan_image_scans__scan_id__image_get",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Scan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scans/{scan_id}/events": {
+      "get": {
+        "tags": ["scans"],
+        "summary": "The progress of a scan, as server-sent events",
+        "description": "Stream `queued`, `stage`, then `done` or `failed` for the scan's current run.\n\nA reader that reconnects sends `Last-Event-ID` and gets only what it missed.",
+        "operationId": "scan_events_scans__scan_id__events_get",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Scan Id"
+            }
+          },
+          {
+            "name": "last-event-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/event-stream": {}
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scans/{scan_id}/focus": {
+      "post": {
+        "tags": ["scans"],
+        "summary": "Point at one thing in the scene and look again",
+        "description": "Run the engine again on the thing the learner chose or the box they drew.",
+        "operationId": "focus_scan_scans__scan_id__focus_post",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Scan Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FocusIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scans/{scan_id}/clarify": {
+      "post": {
+        "tags": ["scans"],
+        "summary": "Answer the one question the scan asked",
+        "description": "Run the engine again with the learner's answer.",
+        "operationId": "clarify_scan_scans__scan_id__clarify_post",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Scan Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClarifyIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/{insight_id}": {
+      "get": {
+        "tags": ["insights"],
+        "summary": "One insight, its scripture read from the store",
+        "description": "Return the insight: its verse and hadith exactly as stored, the explanation apart.",
+        "operationId": "get_insight_insights__insight_id__get",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightDetailOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/{insight_id}/chat": {
+      "post": {
+        "tags": ["insights"],
+        "summary": "Ask one question about the insight (three at most)",
+        "description": "Answer a question classified by its content level, grounded in the insight.\n\nThe same `idempotencyKey` returns the same answer and counts once; the\nfourth successful message answers 409 CHAT_LIMIT_REACHED.",
+        "operationId": "chat_insights__insight_id__chat_post",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatReply"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/{insight_id}/action": {
+      "post": {
+        "tags": ["insights"],
+        "summary": "Declare the small step done, or for later",
+        "description": "Record «نفّذته» or «سأفعله لاحقًا»: the learner's own statement, never a proof or a reward.",
+        "operationId": "declare_action_insights__insight_id__action_post",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/{insight_id}/complete": {
+      "post": {
+        "tags": ["insights"],
+        "summary": "«تمّ»: complete the insight, once",
+        "description": "Complete the insight; a second call saves nothing more and answers the same place.",
+        "operationId": "complete_insight_insights__insight_id__complete_post",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompletionOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/world": {
+      "get": {
+        "tags": ["world"],
+        "summary": "The map: regions under fog, the places that came out of it, threads",
+        "description": "Return every region with its fog, the caller's places, threads and ready treasures.\n\nA newcomer gets the whole map under fog: there is nothing to hide and nothing to make.",
+        "operationId": "get_world_world_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorldOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/world/places/{place_id}/visit": {
+      "post": {
+        "tags": ["world"],
+        "summary": "Open a place: a return can show its treasure",
+        "description": "Record the visit and return the place with its insights and a treasure that is ready.",
+        "operationId": "visit_place_world_places__place_id__visit_post",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Place Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorldPlaceOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/world/treasures/{treasure_id}/reveal": {
+      "post": {
+        "tags": ["world"],
+        "summary": "Reveal a treasure that is ready",
+        "description": "Return the treasure's verified text from the store; 409 TREASURE_NOT_READY before the return.",
+        "operationId": "reveal_treasure_world_treasures__treasure_id__reveal_post",
+        "parameters": [
+          {
+            "name": "treasure_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Treasure Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreasureOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/progress": {
+      "get": {
+        "tags": ["me"],
+        "summary": "Practice, never piety: ranks, streak, quest, sky, badges",
+        "description": "Return what the learner's recorded practice adds up to, with the practice disclaimer.\n\nCounted from looks, completions, declared steps, places, treasures and\nquestions only; never faith, never reward, never a comparison with anyone.",
+        "operationId": "progress_me_progress_get",
+        "parameters": [
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "The learner's IANA time zone, for what «today» means; UTC by default",
+              "default": "UTC",
+              "title": "Tz"
+            },
+            "description": "The learner's IANA time zone, for what «today» means; UTC by default"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tutorial/rain": {
+      "get": {
+        "tags": ["tutorial"],
+        "summary": "The prepared rain scene and its two insights",
+        "description": "Return the rain scene with «الحياة في قطرة» and «الغرس الذي يتعدّاك».\n\nThe verses come from the store; each hadith shows once an editor has\nrecorded its dorar.net ruling, and until then the insight says so.",
+        "operationId": "rain_tutorial_rain_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TutorialOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tutorial/rain/insights/{slug}": {
+      "post": {
+        "tags": ["tutorial"],
+        "summary": "Keep a copy of a tutorial insight, to complete it and ask about it",
+        "description": "Return the caller's copy of the insight (made once), labelled «مثال موثّق مُعدّ».",
+        "operationId": "keep_rain_insight_tutorial_rain_insights__slug__post",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{1,63}$",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightDetailOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2590,6 +3299,9 @@
           },
           "social": {
             "$ref": "#/components/schemas/SocialExport"
+          },
+          "learning": {
+            "$ref": "#/components/schemas/LearningExport"
           }
         },
         "type": "object",
@@ -2601,10 +3313,69 @@
           "profile",
           "consents",
           "cookie_consents",
-          "social"
+          "social",
+          "learning"
         ],
         "title": "AccountExport",
         "description": "Everything the account owns so far, for its owner.\n\nA table that gets a user id later must be added here and to the deletion in\n`account_service`; a test fails when a table references `users` without a cascade."
+      },
+      "ActionIn": {
+        "properties": {
+          "choice": {
+            "$ref": "#/components/schemas/ActionState"
+          }
+        },
+        "type": "object",
+        "required": ["choice"],
+        "title": "ActionIn",
+        "description": "«نفّذته» (`done`) or «سأفعله لاحقًا» (`later`)."
+      },
+      "ActionOut": {
+        "properties": {
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActionState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "means": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Means"
+          }
+        },
+        "type": "object",
+        "required": ["state", "at", "means"],
+        "title": "ActionOut",
+        "description": "What the learner declared about the small step: a statement, never a proof or a reward."
+      },
+      "ActionState": {
+        "type": "string",
+        "enum": ["done", "later"],
+        "title": "ActionState",
+        "description": "What the learner declared about the small step: a statement, never a proof (tajriba §9)."
       },
       "AdminArea": {
         "properties": {
@@ -2637,10 +3408,93 @@
         "title": "AdminArea",
         "description": "The first-level administrative division (region, governorate, state) of a place."
       },
+      "AfterOption": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": ["open_world", "new_scan", "share"],
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": ["id", "label"],
+        "title": "AfterOption"
+      },
       "AgeRange": {
         "type": "string",
         "enum": ["under_13", "13_17", "18_24", "25_39", "40_59", "60_plus", "unknown"],
         "title": "AgeRange"
+      },
+      "BBox": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y"
+          },
+          "width": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Height"
+          }
+        },
+        "type": "object",
+        "required": ["x", "y", "width", "height"],
+        "title": "BBox",
+        "description": "A box as ratios of the image; `x` and `y` are its top-left corner."
+      },
+      "BadgeOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "earned": {
+            "type": "boolean",
+            "title": "Earned"
+          },
+          "earned_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earned At"
+          }
+        },
+        "type": "object",
+        "required": ["id", "title", "description", "earned", "earned_at"],
+        "title": "BadgeOut"
       },
       "ChapterOut": {
         "properties": {
@@ -2681,6 +3535,169 @@
         "type": "object",
         "required": ["book_number", "book_name", "number_in_book"],
         "title": "ChapterOut"
+      },
+      "ChatIn": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Message"
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 8,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Idempotencykey"
+          }
+        },
+        "type": "object",
+        "required": ["message", "idempotencyKey"],
+        "title": "ChatIn"
+      },
+      "ChatMessageExport": {
+        "properties": {
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": ["insight_id", "question", "answer", "level", "created_at"],
+        "title": "ChatMessageExport"
+      },
+      "ChatMessageOut": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "title": "Question"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "level": {
+            "type": "string",
+            "enum": ["a", "b", "c", "d"],
+            "title": "Level"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["answer", "referral", "new_search"],
+            "title": "Kind"
+          },
+          "answered_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Answered At"
+          }
+        },
+        "type": "object",
+        "required": ["question", "answer", "level", "kind", "answered_at"],
+        "title": "ChatMessageOut"
+      },
+      "ChatOut": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "used": {
+            "type": "integer",
+            "title": "Used"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "remaining": {
+            "type": "integer",
+            "title": "Remaining"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageOut"
+            },
+            "type": "array",
+            "title": "Messages"
+          }
+        },
+        "type": "object",
+        "required": ["enabled", "used", "limit", "remaining", "messages"],
+        "title": "ChatOut"
+      },
+      "ChatReply": {
+        "properties": {
+          "message": {
+            "$ref": "#/components/schemas/ChatMessageOut"
+          },
+          "used": {
+            "type": "integer",
+            "title": "Used"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "remaining": {
+            "type": "integer",
+            "title": "Remaining"
+          },
+          "disclosure": {
+            "type": "string",
+            "title": "Disclosure"
+          }
+        },
+        "type": "object",
+        "required": ["message", "used", "limit", "remaining", "disclosure"],
+        "title": "ChatReply"
+      },
+      "ClarifyIn": {
+        "properties": {
+          "answer": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Answer"
+          }
+        },
+        "type": "object",
+        "required": ["answer"],
+        "title": "ClarifyIn",
+        "description": "The learner's answer to the one question the scan asked."
       },
       "ClientBreadcrumb": {
         "properties": {
@@ -3050,6 +4067,83 @@
         "type": "string",
         "enum": ["pending_review", "published", "rejected", "removed"],
         "title": "CommentStatus"
+      },
+      "CompletionOut": {
+        "properties": {
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Completed At"
+          },
+          "first_time": {
+            "type": "boolean",
+            "title": "First Time",
+            "description": "False when «تمّ» was already recorded: nothing was saved twice"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlaceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "treasure_prepared": {
+            "type": "boolean",
+            "title": "Treasure Prepared",
+            "description": "A hidden treasure waits; it shows on return"
+          },
+          "badges_earned": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Badges Earned"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/AfterOption"
+            },
+            "type": "array",
+            "title": "Options"
+          },
+          "suggest_account": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggest Account",
+            "description": "Set for a guest after the first completion"
+          },
+          "disclosure": {
+            "type": "string",
+            "title": "Disclosure"
+          }
+        },
+        "type": "object",
+        "required": [
+          "insight_id",
+          "completed_at",
+          "first_time",
+          "place",
+          "treasure_prepared",
+          "badges_earned",
+          "options",
+          "suggest_account",
+          "disclosure"
+        ],
+        "title": "CompletionOut"
       },
       "ConsentCategories": {
         "properties": {
@@ -3429,6 +4523,53 @@
         "title": "CountryRef",
         "description": "The country of a place."
       },
+      "CountsOut": {
+        "properties": {
+          "looks": {
+            "type": "integer",
+            "title": "Looks"
+          },
+          "completed": {
+            "type": "integer",
+            "title": "Completed"
+          },
+          "actions_done": {
+            "type": "integer",
+            "title": "Actions Done"
+          },
+          "places": {
+            "type": "integer",
+            "title": "Places"
+          },
+          "treasures": {
+            "type": "integer",
+            "title": "Treasures"
+          },
+          "questions": {
+            "type": "integer",
+            "title": "Questions"
+          }
+        },
+        "type": "object",
+        "required": ["looks", "completed", "actions_done", "places", "treasures", "questions"],
+        "title": "CountsOut"
+      },
+      "DayOut": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "title": "Day"
+          },
+          "looked": {
+            "type": "boolean",
+            "title": "Looked"
+          }
+        },
+        "type": "object",
+        "required": ["day", "looked"],
+        "title": "DayOut"
+      },
       "EmailIn": {
         "properties": {
           "email": {
@@ -3442,6 +4583,12 @@
         "required": ["email"],
         "title": "EmailIn",
         "description": "An address, for the routes that mail a link to it."
+      },
+      "EntityOrigin": {
+        "type": "string",
+        "enum": ["detector", "vlm", "user_selection"],
+        "title": "EntityOrigin",
+        "description": "Where an entity's box comes from."
       },
       "ErrorCode": {
         "type": "string",
@@ -3472,7 +4619,33 @@
           "INVALID_CURSOR",
           "GONE",
           "legal_acceptance_required",
-          "mail_unavailable"
+          "mail_unavailable",
+          "UNSUPPORTED_MEDIA_TYPE",
+          "FEATURE_DISABLED",
+          "ASSET_MISSING",
+          "MODEL_UNAVAILABLE",
+          "VISION_FAILED",
+          "NEEDS_CLARIFICATION",
+          "NO_RELEVANT_EVIDENCE",
+          "SOURCE_UNAVAILABLE",
+          "PAIR_INCOMPLETE",
+          "CHAT_LIMIT_REACHED",
+          "SAVE_FAILED",
+          "PUBLISH_FAILED",
+          "STORAGE_UNAVAILABLE",
+          "IMAGE_EMPTY",
+          "IMAGE_TOO_LARGE",
+          "IMAGE_TOO_SMALL",
+          "IMAGE_UNSUPPORTED",
+          "IMAGE_INVALID",
+          "IMAGE_URL_REFUSED",
+          "IMAGE_FETCH_FAILED",
+          "QUEUE_UNAVAILABLE",
+          "SCAN_BUSY",
+          "SCAN_TIMEOUT",
+          "CHAT_IN_PROGRESS",
+          "CHAT_ANSWER_REJECTED",
+          "TREASURE_NOT_READY"
         ],
         "title": "ErrorCode",
         "description": "The stable error codes. A code is never renamed or reused."
@@ -3527,6 +4700,155 @@
         "required": ["error", "detail"],
         "title": "ErrorResponse",
         "description": "The body of every error response."
+      },
+      "EvidenceStatus": {
+        "type": "string",
+        "enum": ["observed", "inferred", "user_confirmed", "unknown"],
+        "title": "EvidenceStatus",
+        "description": "How an understanding is known (v2 §0, rule 3)."
+      },
+      "EvidenceWhy": {
+        "properties": {
+          "relation": {
+            "$ref": "#/components/schemas/RelationType"
+          },
+          "relation_label": {
+            "type": "string",
+            "title": "Relation Label"
+          },
+          "matched_on": {
+            "type": "string",
+            "title": "Matched On"
+          }
+        },
+        "type": "object",
+        "required": ["relation", "relation_label", "matched_on"],
+        "title": "EvidenceWhy",
+        "description": "Why the engine chose a text: the kind of link and what it matched on."
+      },
+      "ExplanationOut": {
+        "properties": {
+          "section": {
+            "type": "string",
+            "enum": ["seen", "value", "quran", "sunnah", "life"],
+            "title": "Section"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": ["section", "label", "text"],
+        "title": "ExplanationOut"
+      },
+      "ExposureExport": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "insight_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insight Id"
+          },
+          "quran_surah": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quran Surah"
+          },
+          "quran_ayah": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quran Ayah"
+          },
+          "hadith_collection": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hadith Collection"
+          },
+          "hadith_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hadith Number"
+          },
+          "concept": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concept"
+          },
+          "learning_unit_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Learning Unit Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "kind",
+          "insight_id",
+          "quran_surah",
+          "quran_ayah",
+          "hadith_collection",
+          "hadith_number",
+          "concept",
+          "learning_unit_id"
+        ],
+        "title": "ExposureExport"
       },
       "FeedPage": {
         "properties": {
@@ -3597,6 +4919,49 @@
         "required": ["loc", "message", "type"],
         "title": "FieldError",
         "description": "One rejected field of a request: where it is and why it was refused."
+      },
+      "FocusIn": {
+        "properties": {
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "box": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BBox"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "title": "FocusIn",
+        "description": "What the learner pointed at: one thing the scene found, or a box drawn on the photo."
       },
       "Gender": {
         "type": "string",
@@ -3854,6 +5219,484 @@
         "title": "HandleExport",
         "description": "Someone the account follows or blocked, by the handle they chose, and since when."
       },
+      "InsightDetailOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "scan_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan Id"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/InsightOrigin"
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine",
+            "description": "`pipeline`, `demo` (a declared simulation) or `prepared`"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label",
+            "description": "«مثال موثّق مُعدّ» or the simulation notice, when one applies"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "glimpse": {
+            "type": "string",
+            "title": "Glimpse"
+          },
+          "anchor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BBox"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "relation": {
+            "$ref": "#/components/schemas/RelationType"
+          },
+          "relation_label": {
+            "type": "string",
+            "title": "Relation Label"
+          },
+          "quran": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InsightQuran"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hadith": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InsightHadith"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hadith_status": {
+            "type": "string",
+            "enum": ["shown", "awaiting_verification", "none"],
+            "title": "Hadith Status"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice",
+            "description": "Set when the hadith waits for its dorar.net ruling"
+          },
+          "pair_complete": {
+            "type": "boolean",
+            "title": "Pair Complete"
+          },
+          "explanation_tag": {
+            "type": "string",
+            "title": "Explanation Tag"
+          },
+          "explanation": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationOut"
+            },
+            "type": "array",
+            "title": "Explanation"
+          },
+          "why": {
+            "$ref": "#/components/schemas/InsightWhyOut"
+          },
+          "small_step": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StepOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "learning_unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LearningUnitOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/ActionOut"
+          },
+          "chat": {
+            "$ref": "#/components/schemas/ChatOut"
+          },
+          "image": {
+            "$ref": "#/components/schemas/InsightImageOut"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "place_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "disclosure": {
+            "type": "string",
+            "title": "Disclosure"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "scan_id",
+          "origin",
+          "engine",
+          "label",
+          "title",
+          "glimpse",
+          "anchor",
+          "relation",
+          "relation_label",
+          "quran",
+          "hadith",
+          "hadith_status",
+          "notice",
+          "pair_complete",
+          "explanation_tag",
+          "explanation",
+          "why",
+          "small_step",
+          "learning_unit",
+          "action",
+          "chat",
+          "image",
+          "completed_at",
+          "place_id",
+          "created_at",
+          "disclosure"
+        ],
+        "title": "InsightDetailOut"
+      },
+      "InsightExport": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "scan_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan Id"
+          },
+          "origin": {
+            "type": "string",
+            "title": "Origin"
+          },
+          "tutorial_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tutorial Slug"
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "glimpse": {
+            "type": "string",
+            "title": "Glimpse"
+          },
+          "relation": {
+            "type": "string",
+            "title": "Relation"
+          },
+          "quran_surah": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quran Surah"
+          },
+          "quran_ayah": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quran Ayah"
+          },
+          "hadith_collection": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hadith Collection"
+          },
+          "hadith_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hadith Number"
+          },
+          "explanation": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Explanation"
+          },
+          "why": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Why"
+          },
+          "small_step": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Small Step"
+          },
+          "learning_unit_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Learning Unit Id"
+          },
+          "action_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action State"
+          },
+          "action_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "place_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "scan_id",
+          "origin",
+          "tutorial_slug",
+          "engine",
+          "title",
+          "glimpse",
+          "relation",
+          "quran_surah",
+          "quran_ayah",
+          "hadith_collection",
+          "hadith_number",
+          "explanation",
+          "why",
+          "small_step",
+          "learning_unit_id",
+          "action_state",
+          "action_at",
+          "completed_at",
+          "place_id",
+          "created_at"
+        ],
+        "title": "InsightExport",
+        "description": "An insight with its evidence by reference: the texts themselves are public, in the store."
+      },
+      "InsightHadith": {
+        "properties": {
+          "tag": {
+            "type": "string",
+            "title": "Tag",
+            "description": "«السنة»: the fixed tag of quoted Sunnah"
+          },
+          "hadith": {
+            "$ref": "#/components/schemas/HadithOut",
+            "description": "The hadith exactly as stored, its spans, its dorar.net ruling and links"
+          },
+          "why": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceWhy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": ["tag", "hadith", "why"],
+        "title": "InsightHadith"
+      },
+      "InsightImageOut": {
+        "properties": {
+          "sensitive": {
+            "type": "boolean",
+            "title": "Sensitive"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": ["sensitive", "url"],
+        "title": "InsightImageOut",
+        "description": "Whether the photo of the insight's scan may be shown; never for a sensitive scene."
+      },
+      "InsightOrigin": {
+        "type": "string",
+        "enum": ["scan", "tutorial"],
+        "title": "InsightOrigin"
+      },
       "InsightOut": {
         "properties": {
           "title": {
@@ -3932,10 +5775,247 @@
         "title": "InsightOut",
         "description": "What a post publishes: the platform's insight, never the author's words."
       },
+      "InsightQuran": {
+        "properties": {
+          "tag": {
+            "type": "string",
+            "title": "Tag",
+            "description": "«القرآن»: the fixed tag of quoted Quran"
+          },
+          "verse": {
+            "$ref": "#/components/schemas/QuranVerseOut",
+            "description": "The verse exactly as stored, with its hash and link"
+          },
+          "why": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceWhy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": ["tag", "verse", "why"],
+        "title": "InsightQuran"
+      },
+      "InsightSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "glimpse": {
+            "type": "string",
+            "title": "Glimpse"
+          },
+          "anchor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BBox"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "relation": {
+            "$ref": "#/components/schemas/RelationType"
+          },
+          "relation_label": {
+            "type": "string",
+            "title": "Relation Label"
+          },
+          "completed": {
+            "type": "boolean",
+            "title": "Completed"
+          }
+        },
+        "type": "object",
+        "required": ["id", "title", "glimpse", "anchor", "relation", "relation_label", "completed"],
+        "title": "InsightSummary"
+      },
+      "InsightWhyOut": {
+        "properties": {
+          "visible_clues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Visible Clues"
+          },
+          "concept": {
+            "type": "string",
+            "title": "Concept"
+          },
+          "limits": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limits"
+          },
+          "personalised_because": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personalised Because"
+          }
+        },
+        "type": "object",
+        "required": ["visible_clues", "concept", "limits", "personalised_because"],
+        "title": "InsightWhyOut",
+        "description": "«لماذا ظهر هذا؟»: the clues, the concept, the limits, the reason of a personal choice."
+      },
       "KnowledgeLevel": {
         "type": "string",
         "enum": ["new", "general", "advanced", "specialist", "unknown"],
         "title": "KnowledgeLevel"
+      },
+      "LearnerUnitExport": {
+        "properties": {
+          "path_version": {
+            "type": "string",
+            "title": "Path Version"
+          },
+          "unit_id": {
+            "type": "string",
+            "title": "Unit Id"
+          },
+          "seen_count": {
+            "type": "integer",
+            "title": "Seen Count"
+          },
+          "opened_count": {
+            "type": "integer",
+            "title": "Opened Count"
+          },
+          "completed_count": {
+            "type": "integer",
+            "title": "Completed Count"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "last_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path_version",
+          "unit_id",
+          "seen_count",
+          "opened_count",
+          "completed_count",
+          "created_at",
+          "last_at"
+        ],
+        "title": "LearnerUnitExport"
+      },
+      "LearningExport": {
+        "properties": {
+          "scans": {
+            "items": {
+              "$ref": "#/components/schemas/ScanExport"
+            },
+            "type": "array",
+            "title": "Scans"
+          },
+          "insights": {
+            "items": {
+              "$ref": "#/components/schemas/InsightExport"
+            },
+            "type": "array",
+            "title": "Insights"
+          },
+          "chat_messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageExport"
+            },
+            "type": "array",
+            "title": "Chat Messages"
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceExport"
+            },
+            "type": "array",
+            "title": "Places"
+          },
+          "treasures": {
+            "items": {
+              "$ref": "#/components/schemas/TreasureExport"
+            },
+            "type": "array",
+            "title": "Treasures"
+          },
+          "learner_units": {
+            "items": {
+              "$ref": "#/components/schemas/LearnerUnitExport"
+            },
+            "type": "array",
+            "title": "Learner Units"
+          },
+          "exposures": {
+            "items": {
+              "$ref": "#/components/schemas/ExposureExport"
+            },
+            "type": "array",
+            "title": "Exposures"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scans",
+          "insights",
+          "chat_messages",
+          "places",
+          "treasures",
+          "learner_units",
+          "exposures"
+        ],
+        "title": "LearningExport",
+        "description": "Everything the scan workflow keeps for the account."
+      },
+      "LearningUnitOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "domain_id": {
+            "type": "string",
+            "title": "Domain Id"
+          },
+          "path_version": {
+            "type": "string",
+            "title": "Path Version"
+          }
+        },
+        "type": "object",
+        "required": ["id", "title", "domain_id", "path_version"],
+        "title": "LearningUnitOut"
       },
       "LegalAcceptIn": {
         "properties": {
@@ -4199,6 +6279,25 @@
         "title": "NearbyPlace",
         "description": "The populated place nearest to a point."
       },
+      "NextRankOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "minimum": {
+            "type": "integer",
+            "title": "Minimum"
+          }
+        },
+        "type": "object",
+        "required": ["id", "title", "minimum"],
+        "title": "NextRankOut"
+      },
       "OAuthAccountExport": {
         "properties": {
           "provider": {
@@ -4218,6 +6317,39 @@
         "type": "object",
         "required": ["provider", "subject", "created_at"],
         "title": "OAuthAccountExport"
+      },
+      "PlaceExport": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "region_id": {
+            "type": "string",
+            "title": "Region Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "last_visited_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Visited At"
+          }
+        },
+        "type": "object",
+        "required": ["id", "region_id", "created_at", "last_visited_at"],
+        "title": "PlaceExport"
       },
       "PlaceHit": {
         "properties": {
@@ -4326,6 +6458,67 @@
         ],
         "title": "PlaceHit",
         "description": "A place that matched a search, with its region and country to tell namesakes apart."
+      },
+      "PlaceInsightOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Completed At"
+          }
+        },
+        "type": "object",
+        "required": ["id", "title", "completed_at"],
+        "title": "PlaceInsightOut"
+      },
+      "PlaceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "region_id": {
+            "type": "string",
+            "title": "Region Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "created": {
+            "type": "boolean",
+            "title": "Created",
+            "description": "The fog lifted from this place with this completion"
+          }
+        },
+        "type": "object",
+        "required": ["id", "region_id", "name", "created"],
+        "title": "PlaceOut"
+      },
+      "PositionOut": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "title": "Y"
+          }
+        },
+        "type": "object",
+        "required": ["x", "y"],
+        "title": "PositionOut"
       },
       "PostCreateIn": {
         "properties": {
@@ -4823,6 +7016,52 @@
         "title": "ProfilePatch",
         "description": "The fields a user may change, any of them, alone.\n\nThe three consent switches are not here: they change only through\n`POST /consents`, which records the answer. A field sent as null is refused;\nto clear an answer, send `unknown` (or `[]` for the goals)."
       },
+      "ProgressOut": {
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "rank": {
+            "$ref": "#/components/schemas/RankOut"
+          },
+          "streak": {
+            "$ref": "#/components/schemas/StreakOut"
+          },
+          "daily_quest": {
+            "$ref": "#/components/schemas/QuestOut"
+          },
+          "sky": {
+            "$ref": "#/components/schemas/SkyOut"
+          },
+          "badges": {
+            "items": {
+              "$ref": "#/components/schemas/BadgeOut"
+            },
+            "type": "array",
+            "title": "Badges"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/CountsOut"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timezone",
+          "rank",
+          "streak",
+          "daily_quest",
+          "sky",
+          "badges",
+          "counts",
+          "disclaimer"
+        ],
+        "title": "ProgressOut"
+      },
       "ProviderOut": {
         "properties": {
           "id": {
@@ -5006,6 +7245,56 @@
         "title": "PublicationExport",
         "description": "The copy of an insight a post published: references to the evidence, never scripture."
       },
+      "QuestOut": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "day": {
+            "type": "string",
+            "format": "date",
+            "title": "Day"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/QuestStepOut"
+            },
+            "type": "array",
+            "title": "Steps"
+          },
+          "done": {
+            "type": "boolean",
+            "title": "Done"
+          },
+          "days_done": {
+            "type": "integer",
+            "title": "Days Done"
+          }
+        },
+        "type": "object",
+        "required": ["title", "day", "steps", "done", "days_done"],
+        "title": "QuestOut"
+      },
+      "QuestStepOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "done": {
+            "type": "boolean",
+            "title": "Done"
+          }
+        },
+        "type": "object",
+        "required": ["id", "label", "done"],
+        "title": "QuestStepOut"
+      },
       "QuranEvidenceOut": {
         "properties": {
           "surah": {
@@ -5158,9 +7447,9 @@
           },
           "status": {
             "type": "string",
-            "const": "local_corpus",
+            "const": "verified_cached",
             "title": "Status",
-            "default": "local_corpus"
+            "default": "verified_cached"
           }
         },
         "type": "object",
@@ -5176,6 +7465,44 @@
           "links"
         ],
         "title": "QuranVerseOut"
+      },
+      "RankOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "hint": {
+            "type": "string",
+            "title": "Hint"
+          },
+          "looks": {
+            "type": "integer",
+            "title": "Looks"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NextRankOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "progress": {
+            "type": "number",
+            "title": "Progress",
+            "description": "The way from this rank to the next, 0 to 1"
+          }
+        },
+        "type": "object",
+        "required": ["id", "title", "hint", "looks", "next", "progress"],
+        "title": "RankOut"
       },
       "ReactionOut": {
         "properties": {
@@ -5240,6 +7567,103 @@
         "required": ["text", "looks_like_scripture"],
         "title": "ReflectionOut",
         "description": "The author's own words.\n\nThey are labelled as the user's text and never carry the verified badge, whatever they say."
+      },
+      "RegionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "domain_id": {
+            "type": "string",
+            "title": "Domain Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "domain_title": {
+            "type": "string",
+            "title": "Domain Title"
+          },
+          "position": {
+            "$ref": "#/components/schemas/PositionOut"
+          },
+          "fog": {
+            "type": "boolean",
+            "title": "Fog",
+            "description": "True until an insight of this region is completed"
+          },
+          "place_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Id"
+          }
+        },
+        "type": "object",
+        "required": ["id", "domain_id", "name", "domain_title", "position", "fog", "place_id"],
+        "title": "RegionOut"
+      },
+      "RelationOut": {
+        "properties": {
+          "place_a_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Place A Id"
+          },
+          "place_b_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Place B Id"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/RelationReason"
+          },
+          "reason_label": {
+            "type": "string",
+            "title": "Reason Label"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          },
+          "insight_ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$"
+            },
+            "type": "array",
+            "title": "Insight Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "place_a_id",
+          "place_b_id",
+          "reason",
+          "reason_label",
+          "question",
+          "insight_ids"
+        ],
+        "title": "RelationOut"
+      },
+      "RelationReason": {
+        "type": "string",
+        "enum": ["same_scene", "prerequisite"],
+        "title": "RelationReason"
+      },
+      "RelationType": {
+        "type": "string",
+        "enum": ["direct", "action_based", "close_conceptual", "opposite", "thematic_reminder"],
+        "title": "RelationType",
+        "description": "How an insight relates to the scene, strongest first (v2 §8)."
       },
       "ReligiousBackground": {
         "type": "string",
@@ -5461,6 +7885,368 @@
         ],
         "title": "RulingOut"
       },
+      "ScanEntityOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label_arabic": {
+            "type": "string",
+            "title": "Label Arabic"
+          },
+          "bbox": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BBox"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "origin": {
+            "$ref": "#/components/schemas/EntityOrigin"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EvidenceStatus"
+          }
+        },
+        "type": "object",
+        "required": ["id", "label_arabic", "bbox", "origin", "status"],
+        "title": "ScanEntityOut"
+      },
+      "ScanExport": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine"
+          },
+          "sensitive": {
+            "type": "boolean",
+            "title": "Sensitive"
+          },
+          "scene": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scene"
+          },
+          "focus": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focus"
+          },
+          "clarification_question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clarification Question"
+          },
+          "clarification_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clarification Answer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "status",
+          "outcome",
+          "engine",
+          "sensitive",
+          "scene",
+          "focus",
+          "clarification_question",
+          "clarification_answer",
+          "created_at",
+          "finished_at"
+        ],
+        "title": "ScanExport",
+        "description": "A scan without its photo, which is never kept beyond the hour it is needed."
+      },
+      "ScanImageOut": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url",
+            "description": "Path of the photo on this API while it is kept"
+          }
+        },
+        "type": "object",
+        "required": ["available", "width", "height", "url"],
+        "title": "ScanImageOut",
+        "description": "Whether the photo can still be shown to its owner; never for a sensitive scene."
+      },
+      "ScanOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ScanStatus"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScanOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code",
+            "description": "A stable code (v2 §26) when the scan failed"
+          },
+          "run": {
+            "type": "integer",
+            "title": "Run"
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine"
+          },
+          "engine_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Label",
+            "description": "Set when the engine is a declared simulation"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ScanSource"
+          },
+          "sensitive": {
+            "type": "boolean",
+            "title": "Sensitive"
+          },
+          "image": {
+            "$ref": "#/components/schemas/ScanImageOut"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/ScanEntityOut"
+            },
+            "type": "array",
+            "title": "Entities"
+          },
+          "clarification_question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clarification Question"
+          },
+          "insights": {
+            "items": {
+              "$ref": "#/components/schemas/InsightSummary"
+            },
+            "type": "array",
+            "title": "Insights"
+          },
+          "awaiting_verification": {
+            "type": "integer",
+            "title": "Awaiting Verification",
+            "description": "Hadith wanted by this scan that wait for a ruling"
+          },
+          "events_url": {
+            "type": "string",
+            "title": "Events Url"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "disclosure": {
+            "type": "string",
+            "title": "Disclosure"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "outcome",
+          "error_code",
+          "run",
+          "engine",
+          "engine_label",
+          "source",
+          "sensitive",
+          "image",
+          "description",
+          "entities",
+          "clarification_question",
+          "insights",
+          "awaiting_verification",
+          "events_url",
+          "created_at",
+          "finished_at",
+          "disclosure"
+        ],
+        "title": "ScanOut"
+      },
+      "ScanOutcome": {
+        "type": "string",
+        "enum": ["insights", "needs_clarification", "no_relevant_evidence"],
+        "title": "ScanOutcome",
+        "description": "What a finished scan found (v2 §8 and §26): insights, a question, or no reliable link."
+      },
+      "ScanSource": {
+        "type": "string",
+        "enum": ["upload", "url"],
+        "title": "ScanSource"
+      },
+      "ScanStatus": {
+        "type": "string",
+        "enum": ["queued", "running", "done", "failed"],
+        "title": "ScanStatus"
+      },
       "Section": {
         "type": "string",
         "enum": ["static", "insights", "posts", "places", "profiles"],
@@ -5633,6 +8419,24 @@
         "title": "SitemapPage",
         "description": "One page of a section: its number from 0, and the newest `lastmod` it holds."
       },
+      "SkyOut": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "stars": {
+            "items": {
+              "$ref": "#/components/schemas/StarOut"
+            },
+            "type": "array",
+            "title": "Stars"
+          }
+        },
+        "type": "object",
+        "required": ["count", "stars"],
+        "title": "SkyOut"
+      },
       "SocialExport": {
         "properties": {
           "posts": {
@@ -5712,6 +8516,34 @@
         "enum": ["chain", "body", "words", "tail"],
         "title": "SpanRole"
       },
+      "StarOut": {
+        "properties": {
+          "concept": {
+            "type": "string",
+            "title": "Concept"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "first_seen": {
+            "type": "string",
+            "format": "date-time",
+            "title": "First Seen"
+          },
+          "x": {
+            "type": "number",
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "title": "Y"
+          }
+        },
+        "type": "object",
+        "required": ["concept", "count", "first_seen", "x", "y"],
+        "title": "StarOut"
+      },
       "StatusOut": {
         "properties": {
           "status": {
@@ -5724,6 +8556,62 @@
         "required": ["status"],
         "title": "StatusOut",
         "description": "The answer of the routes that report only that they did what was asked."
+      },
+      "StepOut": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["text_grounded", "ethical_application", "reflection"],
+            "title": "Kind"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "«من السنة» when grounded in a shown text, else «اقتراح عملي»"
+          }
+        },
+        "type": "object",
+        "required": ["text", "kind", "label"],
+        "title": "StepOut"
+      },
+      "StreakOut": {
+        "properties": {
+          "current": {
+            "type": "integer",
+            "title": "Current"
+          },
+          "best": {
+            "type": "integer",
+            "title": "Best"
+          },
+          "last_day": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Day"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/DayOut"
+            },
+            "type": "array",
+            "title": "Days",
+            "description": "The last seven days, today first"
+          }
+        },
+        "type": "object",
+        "required": ["current", "best", "last_day", "days"],
+        "title": "StreakOut"
       },
       "SupportIn": {
         "properties": {
@@ -5780,6 +8668,401 @@
         "type": "string",
         "enum": ["system", "light", "dark"],
         "title": "Theme"
+      },
+      "TreasureExport": {
+        "properties": {
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "quran_surah": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quran Surah"
+          },
+          "quran_ayah": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quran Ayah"
+          },
+          "hadith_collection": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hadith Collection"
+          },
+          "hadith_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hadith Number"
+          },
+          "learning_unit_id": {
+            "type": "string",
+            "title": "Learning Unit Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "revealed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revealed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "insight_id",
+          "kind",
+          "quran_surah",
+          "quran_ayah",
+          "hadith_collection",
+          "hadith_number",
+          "learning_unit_id",
+          "created_at",
+          "revealed_at"
+        ],
+        "title": "TreasureExport"
+      },
+      "TreasureFlag": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": ["id"],
+        "title": "TreasureFlag",
+        "description": "A treasure ready to be revealed; its content stays hidden until the reveal."
+      },
+      "TreasureKind": {
+        "type": "string",
+        "enum": ["alternative", "deeper"],
+        "title": "TreasureKind"
+      },
+      "TreasureOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/TreasureKind"
+          },
+          "kind_label": {
+            "type": "string",
+            "title": "Kind Label"
+          },
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id"
+          },
+          "place_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Place Id"
+          },
+          "quran": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InsightQuran"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hadith": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InsightHadith"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "learning_unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TreasureUnitOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revealed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revealed At"
+          },
+          "disclosure": {
+            "type": "string",
+            "title": "Disclosure"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "kind_label",
+          "insight_id",
+          "place_id",
+          "quran",
+          "hadith",
+          "learning_unit",
+          "revealed_at",
+          "disclosure"
+        ],
+        "title": "TreasureOut"
+      },
+      "TreasureUnitOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          }
+        },
+        "type": "object",
+        "required": ["id", "title"],
+        "title": "TreasureUnitOut"
+      },
+      "TutorialImageOut": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path",
+            "description": "Path of the photo in the web app"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          },
+          "alt": {
+            "type": "string",
+            "title": "Alt"
+          }
+        },
+        "type": "object",
+        "required": ["path", "width", "height", "alt"],
+        "title": "TutorialImageOut"
+      },
+      "TutorialInsightOut": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "glimpse": {
+            "type": "string",
+            "title": "Glimpse"
+          },
+          "anchor": {
+            "$ref": "#/components/schemas/BBox"
+          },
+          "relation": {
+            "$ref": "#/components/schemas/RelationType"
+          },
+          "relation_label": {
+            "type": "string",
+            "title": "Relation Label"
+          },
+          "quran": {
+            "$ref": "#/components/schemas/InsightQuran"
+          },
+          "hadith": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InsightHadith"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hadith_status": {
+            "type": "string",
+            "enum": ["shown", "awaiting_verification", "none"],
+            "title": "Hadith Status"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice",
+            "description": "Set while the hadith waits for its dorar.net ruling"
+          },
+          "pair_complete": {
+            "type": "boolean",
+            "title": "Pair Complete"
+          },
+          "explanation_tag": {
+            "type": "string",
+            "title": "Explanation Tag"
+          },
+          "explanation": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationOut"
+            },
+            "type": "array",
+            "title": "Explanation"
+          },
+          "why": {
+            "$ref": "#/components/schemas/InsightWhyOut"
+          },
+          "small_step": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StepOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "learning_unit_id": {
+            "type": "string",
+            "title": "Learning Unit Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "title",
+          "glimpse",
+          "anchor",
+          "relation",
+          "relation_label",
+          "quran",
+          "hadith",
+          "hadith_status",
+          "notice",
+          "pair_complete",
+          "explanation_tag",
+          "explanation",
+          "why",
+          "small_step",
+          "learning_unit_id"
+        ],
+        "title": "TutorialInsightOut"
+      },
+      "TutorialOut": {
+        "properties": {
+          "scene": {
+            "type": "string",
+            "title": "Scene"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "«مثال موثّق مُعدّ»"
+          },
+          "status": {
+            "type": "string",
+            "const": "prepared",
+            "title": "Status",
+            "description": "Prepared, reviewed content; never live analysis"
+          },
+          "image": {
+            "$ref": "#/components/schemas/TutorialImageOut"
+          },
+          "insights": {
+            "items": {
+              "$ref": "#/components/schemas/TutorialInsightOut"
+            },
+            "type": "array",
+            "title": "Insights"
+          },
+          "disclosure": {
+            "type": "string",
+            "title": "Disclosure"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scene",
+          "version",
+          "title",
+          "label",
+          "status",
+          "image",
+          "insights",
+          "disclosure"
+        ],
+        "title": "TutorialOut"
       },
       "UserExport": {
         "properties": {
@@ -5988,6 +9271,118 @@
         "required": ["code", "text"],
         "title": "WhyOut",
         "description": "«لماذا أرى هذا؟»: the one reason a feed item is where it is."
+      },
+      "WorldOut": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "path_version": {
+            "type": "string",
+            "title": "Path Version"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/RegionOut"
+            },
+            "type": "array",
+            "title": "Regions"
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/WorldPlaceOut"
+            },
+            "type": "array",
+            "title": "Places"
+          },
+          "relations": {
+            "items": {
+              "$ref": "#/components/schemas/RelationOut"
+            },
+            "type": "array",
+            "title": "Relations"
+          }
+        },
+        "type": "object",
+        "required": ["version", "path_version", "regions", "places", "relations"],
+        "title": "WorldOut"
+      },
+      "WorldPlaceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "region_id": {
+            "type": "string",
+            "title": "Region Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "last_visited_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Visited At"
+          },
+          "insights": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceInsightOut"
+            },
+            "type": "array",
+            "title": "Insights"
+          },
+          "treasure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TreasureFlag"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "region_id",
+          "name",
+          "created_at",
+          "last_visited_at",
+          "insights",
+          "treasure"
+        ],
+        "title": "WorldPlaceOut"
+      },
+      "ScanFromUrl": {
+        "description": "A photo given by its public address; the server fetches it (v2 §6).",
+        "properties": {
+          "url": {
+            "maxLength": 2048,
+            "minLength": 8,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": ["url"],
+        "title": "ScanFromUrl",
+        "type": "object"
       }
     }
   },
@@ -6059,6 +9454,26 @@
     {
       "name": "client-errors",
       "description": "Errors the browser saw, forwarded to GlitchTip when it is configured."
+    },
+    {
+      "name": "scans",
+      "description": "A photo in, insights out: the background job and its progress."
+    },
+    {
+      "name": "insights",
+      "description": "An insight with its scripture from the store; chat, small step, «تمّ»."
+    },
+    {
+      "name": "world",
+      "description": "The learner's map under fog, its places and treasures."
+    },
+    {
+      "name": "me",
+      "description": "Practice, never piety: ranks, streak, quest, sky, badges."
+    },
+    {
+      "name": "tutorial",
+      "description": "The prepared rain scene, «مثال موثّق مُعدّ»."
     }
   ]
 }
