@@ -1,6 +1,6 @@
 # 02 · Legal pages, consent and support
 
-**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 14:40 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 14:36 (Tunis)
 
 Terms and privacy pages, the full-screen cookie choice, acceptance of the terms at sign-up, and a support form that e-mails `support@tabsira.me`.
 

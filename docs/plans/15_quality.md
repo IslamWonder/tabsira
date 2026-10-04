@@ -1,6 +1,6 @@
 # 15 · Quality gates
 
-**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 14:40 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 14:36 (Tunis)
 
 Every change is tested; nothing merges below 100 % coverage.
 

@@ -1,6 +1,6 @@
 # 03 · Quran and hadith sources
 
-**Phase:** 1 · **Priority:** Critical · **Status:** ✅ · **Updated:** 2026-10-04 14:40 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** ✅ · **Updated:** 2026-10-04 14:36 (Tunis)
 
 Every verse and hadith shown comes from a verified store, byte for byte, never from a model. Hadith grades are recorded by editors from dorar.net.
 

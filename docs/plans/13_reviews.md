@@ -1,6 +1,6 @@
 # 13 · Scripture, privacy and security reviews
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 14:40 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 14:36 (Tunis)
 
 Independent reviews before each important merge; findings are fixed before release.
 

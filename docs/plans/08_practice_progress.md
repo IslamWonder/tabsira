@@ -1,6 +1,6 @@
 # 08 · Practice progress
 
-**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 14:40 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 14:36 (Tunis)
 
 Ranks, streak, daily quest, a sky of meanings and badges. Practice, never a score of faith, and never a comparison with others.
 

@@ -1,6 +1,6 @@
 # 01 · Accounts and sign-in
 
-**Phase:** 1 · **Priority:** High · **Status:** ✅ · **Updated:** 2026-10-04 14:40 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** ✅ · **Updated:** 2026-10-04 14:36 (Tunis)
 
 People can use TABSIRA as a guest, then create an account with e-mail or Google to keep what they saved. «ملفي» holds their account, answers, settings and data.
 

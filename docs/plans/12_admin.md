@@ -1,6 +1,6 @@
 # 12 · Admin area
 
-**Phase:** 1 · **Priority:** Medium · **Status:** ✅ · **Updated:** 2026-10-04 14:40 (Tunis)
+**Phase:** 1 · **Priority:** Medium · **Status:** ✅ · **Updated:** 2026-10-04 14:36 (Tunis)
 
 A private area for the team at admin.tabsira.me, reachable only over the VPN.
 

@@ -1,6 +1,6 @@
 # 07 · Personal world
 
-**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 14:40 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 14:36 (Tunis)
 
 Each completed insight lights a place in a fog-covered world, organised by the learning path. Hidden treasures are found along the way.
 

@@ -1,6 +1,6 @@
 # 17 · World atlas «أطلس بصائر العالم»
 
-**Phase:** 2 · **Priority:** Medium · **Status:** ⏸ · **Updated:** 2026-10-04 14:40 (Tunis)
+**Phase:** 2 · **Priority:** Medium · **Status:** ⏸ · **Updated:** 2026-10-04 14:36 (Tunis)
 
 A real map of shared insights, at approximate locations only.
 

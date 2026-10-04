@@ -1,6 +1,6 @@
 # 14 · Deployment and operations
 
-**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 14:40 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 14:36 (Tunis)
 
 Production at tabsira.me without Docker, with no downtime on deploy and data reachable only over the VPN.
 

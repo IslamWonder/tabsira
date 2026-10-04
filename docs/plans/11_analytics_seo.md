@@ -1,6 +1,6 @@
 # 11 · Analytics and search engines
 
-**Phase:** 1 · **Priority:** Medium · **Status:** 🔄 · **Updated:** 2026-10-04 14:40 (Tunis)
+**Phase:** 1 · **Priority:** Medium · **Status:** 🔄 · **Updated:** 2026-10-04 14:36 (Tunis)
 
 Google Analytics and heatmaps only after consent; pages that search engines and AI crawlers read well.
 

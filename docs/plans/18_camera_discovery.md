@@ -1,6 +1,6 @@
 # 18 · Camera discovery «اكتشف البصائر حولك»
 
-**Phase:** 2 · **Priority:** Low · **Status:** ⏸ · **Updated:** 2026-10-04 14:40 (Tunis)
+**Phase:** 2 · **Priority:** Low · **Status:** ⏸ · **Updated:** 2026-10-04 14:36 (Tunis)
 
 Point the camera to discover insights shared nearby.
 
