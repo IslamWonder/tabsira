@@ -69,6 +69,15 @@ else
 	ok "Scripture store imported in $((SECONDS - started)) s"
 fi
 
+# The ontology and the learning path ship in the repository and load in seconds:
+# before the vectors, so a download or an API key problem there never leaves a
+# server without them.
+# shellcheck source=data-learning.sh
+source "$(dirname "${BASH_SOURCE[0]}")/data-learning.sh"
+banner "World ontology and learning path"
+import_ontology
+import_masar
+
 # Vectors for semantic search, with the active provider's embedding model. Only
 # new or changed documents are sent, so a second run costs nothing; without an
 # API key the step says so and is skipped (search then uses its lexical half).
@@ -78,9 +87,3 @@ started=$SECONDS
 bash "$REPO_ROOT/scripts/vectors/ensure.sh"
 (cd "$REPO_ROOT/apps/api" && uv run --quiet python -m src.cli.embed_corpus)
 ok "Scripture vectors checked in $((SECONDS - started)) s"
-
-# shellcheck source=data-learning.sh
-source "$(dirname "${BASH_SOURCE[0]}")/data-learning.sh"
-banner "World ontology and learning path"
-import_ontology
-import_masar
