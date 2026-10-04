@@ -552,7 +552,7 @@ async def test_a_server_error_reaches_glitchtip_cleaned(make_settings, recorder)
     assert event["exception"]["values"][0]["value"] == (
         f"failed for token={FILTERED} and {ARABIC_FILTERED} 42"
     )
-    assert event["request"]["url"] == "http://test/boom/42"
+    assert event["request"]["url"] == "http://test/boom/{who}"
     assert event["request"]["headers"] == {
         "host": "test",
         "accept": "*/*",
@@ -820,3 +820,22 @@ def test_a_frame_without_text_fields_and_a_value_without_a_stack_are_left_alone(
 )
 def test_personal_data_written_in_plain_text_is_masked(text, expected):
     assert error_tracking.scrub_text(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("transaction", "url", "expected"),
+    [
+        (
+            "GET /consent/{consent_id}",
+            "https://api.tabsira.me/consent/0199b6a0-0000-7000-8000-000000000001?x=1",
+            "https://api.tabsira.me/consent/{consent_id}",
+        ),
+        ("/consent/{consent_id}", "/consent/abc", "/consent/{consent_id}"),
+        ("GET /health", "https://api.tabsira.me/health", "https://api.tabsira.me/health"),
+        (None, "https://api.tabsira.me/consent/abc", "https://api.tabsira.me/consent/abc"),
+    ],
+)
+def test_a_route_with_path_parameters_is_reported_as_its_pattern(transaction, url, expected):
+    event = {"request": {"url": url}, "transaction": transaction}
+
+    assert error_tracking.before_send(event)["request"]["url"] == expected

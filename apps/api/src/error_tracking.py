@@ -274,6 +274,23 @@ def _scrub_headers(headers: Mapping[str, Any]) -> dict[str, Any]:
     return kept
 
 
+_ROUTE_PATTERN = re.compile(r"^(?:[A-Z]+ )?(?P<pattern>/\S*\{\S*)$")
+
+
+def _route_url(event: Any, url: str) -> str:
+    """
+    Return the address with its path replaced by the route pattern when the route has parameters.
+
+    An id in a path is a handle on somebody's data (`GET /consent/<consent id>` is the
+    bearer of a consent record), so a report names the route, never the id.
+    """
+    matched = _ROUTE_PATTERN.match(str(event.get("transaction") or ""))
+    if matched is None:
+        return url
+    origin = _ORIGIN.match(url)
+    return (origin.group(0) if origin else "") + matched["pattern"]
+
+
 def _scrub_request(event: Any) -> None:
     request = event.get("request")
     if not isinstance(request, dict):
@@ -283,7 +300,7 @@ def _scrub_request(event: Any) -> None:
     for key in ("data", "cookies", "query_string", "env"):
         request.pop(key, None)
     if isinstance(request.get("url"), str):
-        request["url"] = scrub_url(request["url"])
+        request["url"] = scrub_url(_route_url(event, request["url"]))
     if isinstance(request.get("headers"), Mapping):
         request["headers"] = _scrub_headers(request["headers"])
 
