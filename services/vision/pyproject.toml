@@ -1,0 +1,185 @@
+[project]
+name = "tabsira-vision"
+version = "0.1.0"
+description = "TABSIRA object detector: Ultralytics YOLOE / YOLO-World behind a small HTTP service"
+readme = "README.md"
+license = "AGPL-3.0-only"
+license-files = ["LICENSE"]
+requires-python = ">=3.12,<3.13"
+
+dependencies = [
+  # Web framework and servers
+  "fastapi>=0.142.2",
+  "uvicorn[standard]>=0.54.0",
+  "gunicorn>=26.2.0",
+  "uvicorn-worker>=0.4.0",
+  "python-multipart>=0.0.32",
+  # Settings and validation
+  "pydantic>=2.13.5",
+  "pydantic-settings>=2.15.0",
+  # Image decoding and validation
+  "pillow>=12.3.0",
+  # Detector. AGPL-3.0, which is why this service (and the repository) is AGPL-3.0.
+  "ultralytics>=8.4.172",
+  # Text encoder front-end that YOLOE and YOLO-World import. Ultralytics only
+  # publishes it on GitHub; uv.lock pins the commit.
+  "clip",
+  # CPU-only wheels from the PyTorch index below, so an install never pulls CUDA.
+  "torch>=2.14.1",
+  "torchvision>=0.29.1",
+  # Ultralytics asks for the GUI build of OpenCV, which needs libGL on a server.
+  # The headless build replaces it (see override-dependencies below).
+  "opencv-python-headless>=5.0.0.93",
+]
+
+[project.scripts]
+vision = "vision.main:run"
+
+[dependency-groups]
+dev = [
+  "pytest>=9.1.1",
+  "pytest-cov>=7.1.0",
+  "ruff>=0.16.10",
+  "mypy>=2.4.0",
+  # Starlette 1.7 deprecates httpx for its TestClient and prefers httpx2.
+  "httpx2>=2.13.1",
+]
+
+[build-system]
+requires = ["hatchling>=1.32.4"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vision"]
+
+[tool.uv]
+override-dependencies = ["opencv-python ; sys_platform == 'never'"]
+
+[tool.uv.sources]
+clip = { git = "https://github.com/ultralytics/CLIP.git" }
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [
+  ".venv",
+  "coverage",
+  ".coverage",
+  ".pytest_cache",
+  "__pycache__",
+  ".mypy_cache",
+  ".ruff_cache",
+  "weights",
+]
+
+[tool.ruff.lint]
+select = [
+  "E",     # pycodestyle errors
+  "W",     # pycodestyle warnings
+  "F",     # Pyflakes (undefined names, unused imports)
+  "I",     # isort (import sorting)
+  "N",     # pep8-naming
+  "UP",    # pyupgrade (modern Python syntax)
+  "B",     # flake8-bugbear
+  "A",     # flake8-builtins
+  "C4",    # flake8-comprehensions
+  "SIM",   # flake8-simplify
+  "ISC",   # flake8-implicit-str-concat
+  "TCH",   # flake8-type-checking
+  "ASYNC", # flake8-async
+  "T10",   # flake8-debugger  (no pdb/set_trace in production)
+  "T20",   # flake8-print     (no print; use logging)
+  "YTT",   # flake8-2020      (Y2K38-safe checks)
+  "PERF",  # perflint         (performance anti-patterns)
+  "PIE",   # flake8-pie       (misc lints)
+  "S",     # flake8-bandit    (security checks)
+  "PL",    # pylint           (bug detection: wrong operators, unreachable code, assert tuples)
+  "RET",   # flake8-return    (return consistency bugs)
+  "PTH",   # flake8-use-pathlib (filesystem API bugs: os.path vs pathlib)
+  "LOG",   # flake8-logging   (logging format bugs)
+  "D",     # pydocstyle       (docstring conventions)
+  "ERA",   # eradicate        (commented-out code, Ruff built-in)
+  "FIX",   # flake8-fixme     (TODO/FIXME tracking)
+  "C90",   # mccabe           (cyclomatic complexity)
+  "Q",     # flake8-quotes    (quote consistency)
+  "SLF",   # flake8-self      (private member access)
+  "TRY",   # tryceratops      (try/except best practices)
+  "EM",    # flake8-errmsg    (error message formatting)
+  "RUF",   # Ruff-specific rules
+]
+ignore = [
+  "E501",    # line-too-long (handled by formatter)
+  "ISC001",  # conflicts with formatter
+  "S101",    # assert is fine in tests
+  "S603",    # subprocess with list args is safe in our scripts
+  "S607",    # we intentionally call external commands in scripts
+  "PLR2004", # magic value comparisons (too noisy with HTTP status codes)
+  "PLR0913", # too many arguments (FastAPI endpoints naturally have many params)
+  "PLR0917", # too many positional arguments (same reasoning)
+  "FIX002",  # TODO comments are allowed during development
+  "FIX003",  # FIXME comments are allowed during development
+  "TC001",   # type-checking-only imports clash with Pydantic and FastAPI at runtime
+  "TC002",   # same, third-party
+  "TC003",   # same, stdlib
+  "PLC0415", # imports inside functions are the point of lazy loading torch and ultralytics
+  "D203",    # incompatible with D211 (no-blank-line-before-class)
+  "D212",    # incompatible with D213 (multi-line-summary-second-line)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# __init__.py re-exports trigger unused-import warnings
+"src/**/__init__.py" = ["F401", "F403", "F405"]
+# Docstrings: not required on every module, class and function of the application code
+"src/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D107"]
+# Tests do not need docstrings
+"tests/**/*.py" = ["D"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["vision"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["src/vision"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+# Every exclusion has a reason: AGENTS.md asks for one.
+exclude_lines = [
+  "pragma: no cover",
+  # The entry-point guard of `python -m vision.weights`; main() itself is tested.
+  "if __name__ == .__main__.:",
+  # The bodies of the Detector protocol: signatures only, nothing runs.
+  '^\s+\.\.\.$',
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+show_error_codes = true
+plugins = ["pydantic.mypy"]
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["ultralytics", "ultralytics.*", "torch", "torch.*", "cv2"]
+ignore_missing_imports = true

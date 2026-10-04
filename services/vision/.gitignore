@@ -1,0 +1,10 @@
+# Weights and the Ultralytics settings kept beside them: downloaded by scripts/fetch-weights.sh
+weights/
+
+.venv/
+coverage/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
