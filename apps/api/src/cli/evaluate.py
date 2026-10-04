@@ -39,6 +39,7 @@ from src.evaluation.engine_eval import (
 )
 from src.evaluation.evaluation_report import render
 from src.evaluation.gold import load_gold
+from src.evaluation.report_sections import carry_sections
 from src.pipeline.detector import DetectorClient
 from src.pipeline.engine import InsightEngine
 from src.pipeline.insight.engine import ResourceCache, build_engine
@@ -138,7 +139,10 @@ async def run(
     raw = args.results_dir / f"evaluation-{result.started_at:%Y-%m-%d}.json"
     raw.write_text(result.model_dump_json(indent=1) + "\n", encoding="utf-8")
     if not args.no_report:
-        args.report.write_text(render(result, _relative(raw)), encoding="utf-8")
+        previous = args.report.read_text(encoding="utf-8") if args.report.is_file() else ""
+        # Hand-written sections (a comparison run, notes) are kept.
+        report = carry_sections(previous, render(result, _relative(raw)))
+        args.report.write_text(report, encoding="utf-8")
     facts = summary(result)
     _say(
         f"{facts.correct}/{facts.scenes} as expected, {facts.leaks} leaks, "
