@@ -64,7 +64,7 @@ async def record_consent(
         profile.photo_storage_consent = granted
     elif kind == ConsentKind.PERSONALIZATION:
         profile.personalization_enabled = granted
-    elif kind == ConsentKind.MEMORY:
+    else:  # memory: the legal kinds were refused above
         profile.memory_enabled = granted
     profile.consent_version = version
     await db.flush()
