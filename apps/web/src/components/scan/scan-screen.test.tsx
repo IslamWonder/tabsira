@@ -214,7 +214,7 @@ describe('ScanScreen: the insights', () => {
   it('has no focus button when the scene found nothing to point at', () => {
     setControls(ready({ entities: [] }));
     render(<ScanScreen scanId="1" />);
-    expect(screen.queryByRole('button', { name: 'ما الذي لفت نظرك؟' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'وضّح ما تقصد' })).toBeNull();
   });
 });
 
@@ -286,7 +286,7 @@ describe('ScanScreen: no reliable link', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/لا نكمل بنص بعيد/)).toBeInTheDocument();
     expect(screen.getByText(/بانتظار التحقق من حكمه في الدرر/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'ما الذي لفت نظرك؟' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'وضّح ما تقصد' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'جرّب مشهدًا آخر' })).toBeInTheDocument();
   });
 
@@ -304,7 +304,7 @@ describe('ScanScreen: choosing a focus', () => {
   async function startFocus(extra: Partial<ScanControls> = {}, overrides = {}) {
     const state = setControls(ready(overrides), extra);
     render(<ScanScreen scanId="1" />);
-    await userEvent.click(screen.getByRole('button', { name: 'ما الذي لفت نظرك؟' }));
+    await userEvent.click(screen.getByRole('button', { name: 'وضّح ما تقصد' }));
     return state;
   }
 

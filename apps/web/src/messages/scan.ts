@@ -43,7 +43,8 @@ export const scanMessages = {
     completedGlimpse: (glimpse: string) => `تمّت · ${glimpse}`,
     noEvidence: {
       title: 'لم أجد صلة موثوقة بهذا المشهد بعد',
-      body: 'لا نكمل بنص بعيد لنملأ الفراغ. حدّد ما لفت نظرك لننظر إليه وحده، أو جرّب مشهدًا آخر.',
+      /** The two ways on that v2 §8 names: «وضّح ما تقصد» and «جرّب مشهدًا آخر». */
+      body: 'لا نكمل بنص بعيد لنملأ الفراغ. وضّح ما تقصد لننظر إليه وحده، أو جرّب مشهدًا آخر.',
       awaiting:
         'ثمة حديث مرتبط بهذا المشهد بانتظار التحقق من حكمه في الدرر، ولذلك لم تكتمل البصيرة بعد.',
     },
@@ -51,7 +52,8 @@ export const scanMessages = {
       title: 'لم تكتمل قراءة المشهد',
     },
     focus: {
-      open: 'ما الذي لفت نظرك؟',
+      /** The action of v2 §8; the dialog it opens asks the question. */
+      open: 'وضّح ما تقصد',
       title: 'ما الذي لفت نظرك؟',
       hint: 'اختر شيئًا في الصورة لننظر إليه وحده.',
       photoLabel: 'الأشياء في الصورة',
