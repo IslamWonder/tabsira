@@ -40,6 +40,9 @@ def test_the_menu_lists_the_views_in_order_with_their_identities(admin_app):
         ("consent", "Accounts"),
         ("ontology-candidate", "Ontology"),
         ("ontology-entity", "Ontology"),
+        ("learning-path-version", "Learning path"),
+        ("learning-domain", "Learning path"),
+        ("learning-unit", "Learning path"),
         ("admin-audit-log", "Security"),
         ("two-factor", "Security"),
     ]

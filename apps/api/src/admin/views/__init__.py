@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from src.admin.registry import ViewClass
 from src.admin.views.accounts import ConsentAdmin, SessionAdmin, UserAdmin
+from src.admin.views.learning import (
+    LearningDomainAdmin,
+    LearningPathVersionAdmin,
+    LearningUnitAdmin,
+)
 from src.admin.views.ontology import OntologyCandidateAdmin, OntologyEntityAdmin
 from src.admin.views.security import AdminAuditLogAdmin, TwoFactorView
 
@@ -14,6 +19,9 @@ BUILT_IN_VIEWS: tuple[ViewClass, ...] = (
     ConsentAdmin,
     OntologyCandidateAdmin,
     OntologyEntityAdmin,
+    LearningPathVersionAdmin,
+    LearningDomainAdmin,
+    LearningUnitAdmin,
     AdminAuditLogAdmin,
     TwoFactorView,
 )
