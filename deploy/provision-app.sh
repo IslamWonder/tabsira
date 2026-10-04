@@ -212,16 +212,24 @@ EOF
 		chmod 0600 "$CERTBOT_DNS_CREDENTIALS"
 		issue_lineage "$ADMIN_NAME" "--dns-$CERTBOT_DNS_PLUGIN" "--dns-$CERTBOT_DNS_PLUGIN-credentials" "$CERTBOT_DNS_CREDENTIALS" -d "$ADMIN_NAME"
 	fi
-	# Lineages made with `certbot --nginx` renew through the nginx plugin, which edits the live
-	# configuration and cannot find the admin name. Renew them through the webroot instead.
+	systemctl enable --now certbot.timer >/dev/null 2>&1 || true
+}
+
+# Lineages made with `certbot --nginx` renew through the nginx plugin, which edits the live
+# configuration and cannot find the admin name. Renew them through the webroot instead.
+# `certbot reconfigure` proves the change with a trial renewal, which needs the site's
+# nginx configuration (it serves /var/www/certbot), so this runs after apply-config.sh;
+# a failure is a warning: the certificate stays valid and renews the old way meanwhile.
+move_renewals_to_webroot() {
+	local name
 	for name in "$WEB_NAME" "$API_NAME" "$ADMIN_NAME"; do
 		if grep -q '^authenticator = nginx' "/etc/letsencrypt/renewal/$name.conf" 2>/dev/null; then
 			log "Moving the renewal of $name to the webroot"
 			certbot reconfigure --cert-name "$name" --authenticator webroot --webroot-path /var/www/certbot \
-				--installer none --non-interactive >/dev/null
+				--installer none --non-interactive >/dev/null ||
+				warn "The renewal of $name stays on the nginx plugin (trial renewal failed; see /var/log/letsencrypt/letsencrypt.log). Run this script again once https://$name answers."
 		fi
 	done
-	systemctl enable --now certbot.timer >/dev/null 2>&1 || true
 }
 if $SKIP_TLS; then
 	warn "--skip-tls: no certificate issued; deploy/apply-config.sh refuses to run without one."
@@ -232,6 +240,7 @@ fi
 # ─── 7. nginx, units, log rotation ──────────────────────────────────
 if ! $SKIP_TLS; then
 	APP_USER="$APP_USER" APP_GROUP="$APP_GROUP" APP_HOME="$APP_HOME" bash "$DEPLOY_DIR/apply-config.sh"
+	move_renewals_to_webroot
 fi
 
 # ─── 8. sudoers and the launcher ────────────────────────────────────
