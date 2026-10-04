@@ -41,7 +41,10 @@ describe('placeholder routes', () => {
     expect(screen.getByRole('group', { name: 'المظهر' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'الحركة الزخرفية' })).toBeInTheDocument();
     const sections = screen.getByRole('navigation', { name: 'أقسام ملفي' });
-    expect(sections.querySelectorAll('a')).toHaveLength(3);
+    // A guest (the API has not answered yet): the account, the settings, practice and cookies.
+    expect(Array.from(sections.querySelectorAll('a'), (link) => link.getAttribute('href'))).toEqual(
+      ['#account', '#settings', '#practice', '#cookies']
+    );
   });
 
   it('opens on the scene', () => {
