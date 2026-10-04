@@ -27,7 +27,7 @@ People can use TABSIRA as a guest, then create an account with e-mail or Google 
 
 ### 01.1 Save theme and motion settings to the account
 
-- **Status:** ⬜ open
+- **Status:** 🔄 main machine
 - **Goal:** Theme and motion follow the person across devices instead of staying per device.
 - **Depends on:** —
 - **Touches:** apps/api profile settings (schema, one migration), apps/web «ملفي» settings and the theme provider.
