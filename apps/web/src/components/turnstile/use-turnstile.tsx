@@ -1,6 +1,7 @@
 'use client';
 
-import { type ReactNode, useCallback, useEffect, useRef } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { Notice } from '@/components/ui/notice';
 import { loadTurnstile, TURNSTILE_WAIT_MS, turnstileHeaders } from '@/lib/turnstile';
 import { messages } from '@/messages';
 
@@ -35,6 +36,19 @@ function themeOf(): 'light' | 'dark' | 'auto' {
  */
 function Widget({ siteKey, handle, onToken, onClear, onGiveUp }: WidgetProps) {
   const container = useRef<HTMLDivElement>(null);
+  // The check cannot run (an ad blocker, a network that blocks Cloudflare): the API will refuse the form, so say why.
+  const [blocked, setBlocked] = useState(false);
+  const giveUp = useCallback(() => {
+    setBlocked(true);
+    onGiveUp();
+  }, [onGiveUp]);
+  const take = useCallback(
+    (token: string) => {
+      setBlocked(false);
+      onToken(token);
+    },
+    [onToken]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -54,10 +68,12 @@ function Widget({ siteKey, handle, onToken, onClear, onGiveUp }: WidgetProps) {
         const id = api.render(box, {
           sitekey: siteKey,
           language: 'ar',
+          // No hidden input holding the token in the page: it travels in a header only.
+          'response-field': false,
           theme: themeOf(),
           size: compact ? 'compact' : 'flexible',
-          callback: onToken,
-          'error-callback': onGiveUp,
+          callback: take,
+          'error-callback': giveUp,
           // A token is single-use and short-lived: drop it and fetch a fresh one.
           'expired-callback': () => {
             onClear();
@@ -68,9 +84,8 @@ function Widget({ siteKey, handle, onToken, onClear, onGiveUp }: WidgetProps) {
         handle.current = { reset: () => api.reset(id) };
       },
       () => {
-        // The form still works: the API is the real gate, and it will say so.
         if (!cancelled) {
-          onGiveUp();
+          giveUp();
         }
       }
     );
@@ -79,12 +94,17 @@ function Widget({ siteKey, handle, onToken, onClear, onGiveUp }: WidgetProps) {
       handle.current = null;
       remove?.();
     };
-  }, [siteKey, handle, onToken, onClear, onGiveUp]);
+  }, [siteKey, handle, take, onClear, giveUp]);
 
   return (
     <fieldset className="m-0 min-w-0 border-0 p-0">
       <legend className="sr-only">{messages.auth.turnstile.label}</legend>
       <div ref={container} className={`w-full ${NORMAL_HEIGHT}`} />
+      {blocked ? (
+        <div role="alert">
+          <Notice tone="error">{messages.auth.turnstile.blocked}</Notice>
+        </div>
+      ) : null}
     </fieldset>
   );
 }
@@ -94,8 +114,9 @@ export interface UseTurnstile {
   widget: ReactNode;
   /**
    * The headers for the form's request. Waits (a few seconds at most) for a
-   * check still running; with no key, or a check that cannot run, it is empty
-   * and the request goes as it would have before.
+   * check still running; with no key it is empty. With a check that cannot run
+   * it is empty too, and the API refuses the form (it fails closed): the widget
+   * has already said why.
    */
   headers: () => Promise<Record<string, string>>;
   /** Call after every submit: a token is single-use. */

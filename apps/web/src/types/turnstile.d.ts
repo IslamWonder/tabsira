@@ -10,6 +10,7 @@ interface TurnstileRenderOptions {
   'error-callback'?: () => void;
   'expired-callback'?: () => void;
   language?: string;
+  'response-field'?: boolean;
   theme?: 'light' | 'dark' | 'auto';
   size?: 'normal' | 'flexible' | 'compact';
 }

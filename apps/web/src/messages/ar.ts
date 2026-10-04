@@ -118,8 +118,6 @@ export const ar = {
         unverified: 'لم يُؤكَّد بعد',
         unverifiedHint: 'أكّد بريدك قبل أن تنشر شيئًا للناس.',
         resend: 'أرسل رابط التأكيد مرة أخرى',
-        resending: 'أرسل…',
-        resent: 'إن لم يكن بريدك مؤكَّدًا، فسيصله رابط جديد خلال دقائق.',
         withGoogle: 'تدخل بحساب Google',
       },
       data: {
@@ -481,7 +479,11 @@ export const ar = {
 
   auth: {
     /** Cloudflare Turnstile's check on the five forms bots abuse (decision 56). */
-    turnstile: { label: 'التحقق من أنك لست برنامجًا آليًا' },
+    turnstile: {
+      label: 'التحقق من أنك لست برنامجًا آليًا',
+      blocked:
+        'تعذّر تحميل التحقق من أنك لست برنامجًا آليًا، ولن يُقبل النموذج بدونه. اسمح بالاتصال بـ challenges.cloudflare.com في مانع الإعلانات أو جرّب متصفحًا أو شبكة أخرى.',
+    },
     fields: {
       email: 'البريد الإلكتروني',
       password: 'كلمة المرور',

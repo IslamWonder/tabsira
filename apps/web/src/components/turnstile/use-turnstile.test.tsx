@@ -75,7 +75,12 @@ describe('useTurnstile with a site key', () => {
   it('loads the script and draws the widget in Arabic, in a labelled place that keeps its room', async () => {
     await mount();
     expect(loader.load).toHaveBeenCalledTimes(1);
-    expect(fake.options()).toMatchObject({ sitekey: KEY, language: 'ar', theme: 'auto' });
+    expect(fake.options()).toMatchObject({
+      sitekey: KEY,
+      language: 'ar',
+      theme: 'auto',
+      'response-field': false,
+    });
     expect(screen.getByRole('group', { name: 'التحقق من أنك لست برنامجًا آليًا' })).toBeVisible();
     expect(document.querySelector('.min-h-\\[65px\\]')).not.toBeNull();
   });
@@ -152,6 +157,15 @@ describe('useTurnstile with a site key', () => {
     await waitFor(() => expect(loader.load).toHaveBeenCalled());
     await expect(current.headers()).resolves.toEqual({});
     expect(fake.render).not.toHaveBeenCalled();
+    expect(await screen.findByRole('alert')).toHaveTextContent('challenges.cloudflare.com');
+  });
+
+  it('says so too when the check reports an error, and clears it once a token comes', async () => {
+    await mount();
+    act(() => fake.options()['error-callback']?.());
+    expect(screen.getByRole('alert')).toHaveTextContent('تعذّر تحميل التحقق');
+    act(() => fake.options().callback?.('tok-9'));
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('removes the widget when the form goes away', async () => {

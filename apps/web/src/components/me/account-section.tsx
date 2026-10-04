@@ -1,45 +1,26 @@
 'use client';
 
-import { useState } from 'react';
 import { loadSession, type SessionState, type User } from '@/account/session';
 import { SignOutButton } from '@/components/account/sign-out-button';
 import { CheckIcon, MailIcon } from '@/components/icons';
 import { Button, LinkButton } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { Notice } from '@/components/ui/notice';
-import { api } from '@/lib/api/client';
-import { failureMessage } from '@/lib/api/failure-message';
-import { attempt } from '@/lib/api/result';
 import { messages } from '@/messages';
 import { MeSection } from './me-section';
 
 const M = messages.pages.me;
 
-function ResendVerification({ email }: { email: string }) {
-  const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
-  const [failure, setFailure] = useState<string | null>(null);
-  const resend = async () => {
-    setState('sending');
-    setFailure(null);
-    const result = await attempt(api.POST('/auth/resend-verification', { body: { email } }));
-    setState(result.ok ? 'sent' : 'idle');
-    setFailure(result.ok ? null : failureMessage(result));
-  };
+/**
+ * A new link is asked for on /verify-email, where the Turnstile check lives
+ * (decision 56 keeps Cloudflare to the five form pages, not /me).
+ */
+function ResendVerification() {
   return (
-    <div className="flex flex-col items-start gap-2">
-      <Button variant="secondary" onClick={resend} disabled={state !== 'idle'}>
-        <MailIcon width="18" height="18" />
-        {state === 'sending' ? M.account.resending : M.account.resend}
-      </Button>
-      <div role="status" className="empty:hidden">
-        {state === 'sent' ? <Notice tone="success">{M.account.resent}</Notice> : null}
-      </div>
-      {failure === null ? null : (
-        <div role="alert">
-          <Notice tone="error">{failure}</Notice>
-        </div>
-      )}
-    </div>
+    <LinkButton href="/verify-email" variant="secondary" className="self-start">
+      <MailIcon width="18" height="18" />
+      {M.account.resend}
+    </LinkButton>
   );
 }
 
@@ -74,7 +55,7 @@ function SignedIn({ user, onSignedOut }: { user: User; onSignedOut: () => void }
         {user.email_verified ? null : (
           <div className="flex flex-col gap-2">
             <p className="m-0 text-fg-soft text-sm">{M.account.unverifiedHint}</p>
-            <ResendVerification email={user.email} />
+            <ResendVerification />
           </div>
         )}
       </div>

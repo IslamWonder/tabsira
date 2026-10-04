@@ -47,4 +47,4 @@ Terms and privacy pages, the full-screen cookie choice, acceptance of the terms 
 - **Goal:** Refuse sign-up, sign-in, the two mail forms and the support form without a valid Turnstile token (decision 56), before any rate-limit bookkeeping, database or mail work.
 - **Depends on:** —
 - **Touches:** apps/api config, deps, errors, messages, turnstile service, five routes, production checklist; `.env.example`, `deploy/env.production.example`, docs/PRIVACY.md, docs/OPERATIONS.md.
-- **Done when:** Both keys empty is off; one without the other is a configuration error; a missing or refused token answers 403 `turnstile_failed`; the web app sends `CF-Turnstile-Response` and shows the widget (separate task, apps/web); the privacy and terms pages name Cloudflare (web).
+- **Done when:** Both keys empty is off; one without the other is a configuration error; a missing or refused token answers 403 `turnstile_failed`; the web app sends `CF-Turnstile-Response` and shows the widget (separate task, apps/web); the privacy page names Cloudflare (web).

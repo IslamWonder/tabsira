@@ -79,35 +79,17 @@ describe('MeScreen signed in', () => {
     expect(readSession()).toEqual({ status: 'guest' });
   });
 
-  it('offers a new verification link to an unverified address, and names Google', async () => {
-    const api = mockApi(
-      signedIn(
-        { 'POST /auth/resend-verification': { status: 202, body: { status: 'accepted' } } },
-        { ...USER, email_verified: false, providers: ['google'] }
-      )
-    );
+  it('sends an unverified address to /verify-email for a new link, and names Google', async () => {
+    const api = mockApi(signedIn({}, { ...USER, email_verified: false, providers: ['google'] }));
     render(<MeScreen />);
     expect(await screen.findByText('لم يُؤكَّد بعد')).toBeInTheDocument();
     expect(screen.getByText('تدخل بحساب Google')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'أرسل رابط التأكيد مرة أخرى' }));
-    expect(await screen.findByText(/فسيصله رابط جديد/)).toBeInTheDocument();
-    expect(await api.bodies('POST', '/auth/resend-verification')).toEqual([
-      { email: 'reader@example.com' },
-    ]);
-  });
-
-  it('reports a failed resend', async () => {
-    mockApi(
-      signedIn(
-        { 'POST /auth/resend-verification': apiError(429, 'RATE_LIMITED') },
-        { ...USER, email_verified: false }
-      )
+    // The Turnstile check lives on that page; /me never calls the route itself (decision 56).
+    expect(screen.getByRole('link', { name: 'أرسل رابط التأكيد مرة أخرى' })).toHaveAttribute(
+      'href',
+      '/verify-email'
     );
-    render(<MeScreen />);
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'أرسل رابط التأكيد مرة أخرى' })
-    );
-    expect(await screen.findByText(/محاولات كثيرة/)).toBeInTheDocument();
+    expect(api.requests.some((request) => request.url.includes('resend-verification'))).toBe(false);
   });
 
   it('saves each answer of «عنك» at once, and undoes one the API refused', async () => {
