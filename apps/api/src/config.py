@@ -392,6 +392,11 @@ class Settings(BaseSettings):
     # Wait before the first retry; doubled for each later one.
     ai_retry_backoff_seconds: Annotated[float, Field(ge=0)] = 1.0
 
+    # The object detector (services/vision), reached over HTTP only. A detector
+    # that does not answer in time is skipped and the scan goes on without boxes.
+    detector_url: str = "http://127.0.0.1:8100"
+    detector_timeout_seconds: Annotated[float, Field(gt=0)] = 30.0
+
     # Photos received for a scan: largest upload, and largest decoded size
     # (checked from the header, before decoding: a small file can expand a lot).
     image_max_bytes: Annotated[int, Field(gt=0)] = 15 * 1024 * 1024
@@ -466,6 +471,11 @@ class Settings(BaseSettings):
             message = "must be an http(s) URL with a host and no fragment"
             raise ValueError(message)
         return value.strip()
+
+    @field_validator("detector_url")
+    @classmethod
+    def _check_detector_url(cls, value: str) -> str:
+        return _origin(value)
 
     @field_validator("sync_database_url", "test_database_url", mode="before")
     @classmethod

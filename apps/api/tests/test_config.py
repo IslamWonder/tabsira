@@ -176,6 +176,18 @@ def test_reasoning_effort_accepts_only_the_known_levels(make_settings):
     assert "AI_OVH__REASONING_EFFORT" in errors_of(ai_ovh={"reasoning_effort": "maximum"})
 
 
+def test_the_detector_is_a_loopback_origin_by_default(make_settings):
+    settings = make_settings()
+
+    assert settings.detector_url == "http://127.0.0.1:8100"
+    assert settings.detector_timeout_seconds == 30.0
+    assert make_settings(detector_url="http://10.0.0.5:8100/").detector_url == (
+        "http://10.0.0.5:8100"
+    )
+    assert "no path" in errors_of(detector_url="http://127.0.0.1:8100/detect")
+    assert "DETECTOR_TIMEOUT_SECONDS" in errors_of(detector_timeout_seconds=0)
+
+
 def test_image_limits_default_to_15_megabytes_and_40_megapixels(make_settings):
     settings = make_settings()
 
