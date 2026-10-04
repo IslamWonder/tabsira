@@ -2,7 +2,7 @@
 
 One short file per feature: what it is, where it stands, what is waiting on the owners, and how it is checked. Phase 1 is this release (decision 40); phase 2 follows.
 
-**Updated:** 2026-10-04 16:09 (Tunis) · ✅ done · 🔄 in progress · ⬜ not started · ⏸ phase 2
+**Updated:** 2026-10-04 17:20 (Tunis) · ✅ done · 🔄 in progress · ⬜ not started · ⏸ phase 2
 
 | #   | Feature                                                           | Phase | Priority | Status |
 | --- | ----------------------------------------------------------------- | ----- | -------- | ------ |
@@ -21,8 +21,8 @@ One short file per feature: what it is, where it stands, what is waiting on the 
 | 13  | [Scripture, privacy and security reviews](13_reviews.md)          | 1     | Critical | 🔄     |
 | 14  | [Deployment and operations](14_deployment.md)                     | 1     | High     | 🔄     |
 | 15  | [Quality gates](15_quality.md)                                    | 1     | High     | 🔄     |
-| 16  | [Social network «تبصرة تواصل»](16_social_network.md)              | 2     | Medium   | ⏸      |
-| 17  | [World atlas «أطلس بصائر العالم»](17_atlas.md)                    | 2     | Medium   | ⏸      |
+| 16  | [Social network «تبصرة تواصل»](16_social_network.md)              | 2     | Medium   | 🔄     |
+| 17  | [World atlas «أطلس بصائر العالم»](17_atlas.md)                    | 2     | Medium   | 🔄     |
 | 18  | [Camera discovery «اكتشف البصائر حولك»](18_camera_discovery.md)   | 2     | Low      | ⏸      |
 
 ## Taking a task
