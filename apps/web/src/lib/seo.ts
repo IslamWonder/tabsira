@@ -209,7 +209,8 @@ export function articleJsonLd(article: {
   path: string;
   headline: string;
   datePublished: string;
-  authorName: string;
+  /** Absent when the owner chose no public name: the page then names no author. */
+  authorName?: string;
   dateModified?: string;
 }): JsonLd {
   return {
@@ -220,7 +221,9 @@ export function articleJsonLd(article: {
     inLanguage: siteLanguage.tag,
     datePublished: article.datePublished,
     ...(article.dateModified === undefined ? {} : { dateModified: article.dateModified }),
-    author: { '@type': 'Person', name: article.authorName },
+    ...(article.authorName === undefined
+      ? {}
+      : { author: { '@type': 'Person', name: article.authorName } }),
     publisher: { '@id': ORGANIZATION_ID() },
   };
 }

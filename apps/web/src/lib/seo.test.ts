@@ -164,6 +164,9 @@ describe('structured data', () => {
     });
     expect(article).not.toHaveProperty('dateModified');
     expect(
+      articleJsonLd({ path: '/insights/x', headline: 'عنوان', datePublished: '2026-10-04' })
+    ).not.toHaveProperty('author');
+    expect(
       articleJsonLd({
         path: '/insights/x',
         headline: 'عنوان',
