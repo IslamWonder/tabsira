@@ -152,5 +152,8 @@ cat <<EOF
 
 For the application host's environment file:
 
-  REDIS_URL=redis://:<REDIS_PASSWORD>@$LISTEN_ADDR:$REDIS_PORT/0
+  REDIS_URL=redis://$LISTEN_ADDR:$REDIS_PORT/0
+  REDIS_PASSWORD=<REDIS_PASSWORD>
+
+The URL carries no password: the API refuses one. The password is in $CREDENTIALS_FILE.
 EOF
