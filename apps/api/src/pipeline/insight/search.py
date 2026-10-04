@@ -30,9 +30,11 @@ from src.retrieval.query import query_terms
 from src.retrieval.reranker import RerankerClient
 from src.retrieval.vector import nearest
 
-# Candidates each search returns, and the head of the fused list the cross-encoder reads.
+# Candidates each search returns, and the head of the fused list the cross-encoder reads:
+# eight, not thirty, because on a CPU it reads about 1.5 passages a second (docs/BENCHMARK.md)
+# and the verifier sees only the first four of each corpus.
 SEARCH_TOP = 30
-RERANK_TOP = 12
+RERANK_TOP = 8
 QUERY_SEPARATOR = " ، "
 
 

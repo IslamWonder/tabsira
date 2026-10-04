@@ -990,3 +990,12 @@ def test_an_embedding_size_left_empty_keeps_the_model_size(make_settings):
     assert sized.ai_ovh.embedding_dimensions == 1024
     with pytest.raises(ValidationError):
         make_settings(ai_openai={"embedding_dimensions": 3072})
+
+
+def test_an_empty_reranker_url_switches_reranking_off(make_settings):
+    assert make_settings(reranker_url=" ").reranker_url == ""
+    assert (
+        make_settings(reranker_url="http://127.0.0.1:8101/").reranker_url == "http://127.0.0.1:8101"
+    )
+    with pytest.raises(ValidationError):
+        make_settings(reranker_url="vision:8100")
