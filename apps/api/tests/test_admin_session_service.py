@@ -14,6 +14,11 @@ from src.models import AdminSession
 from src.services import admin_session_service as service
 
 
+@pytest.fixture
+def settings(make_settings):
+    return make_settings()
+
+
 def request_with(cookie=None):
     headers = [] if cookie is None else [(b"cookie", cookie.encode())]
     return Request({"type": "http", "method": "GET", "path": "/admin", "headers": headers})
@@ -125,10 +130,10 @@ async def test_a_session_is_revoked_by_its_token_or_with_all_of_its_admin(db_ses
     assert await service.find(db_session, other) is not None
 
 
-def test_the_cookie_is_httponly_secure_strict_and_confined_to_the_admin_path():
+def test_the_cookie_is_httponly_secure_strict_and_confined_to_the_admin_path(settings):
     response = Response()
 
-    service.set_cookie(response, "the-token")
+    service.set_cookie(response, settings, "the-token")
 
     header = response.headers["set-cookie"]
     assert header.startswith("__Secure-tabsira_admin=the-token;")
@@ -139,10 +144,10 @@ def test_the_cookie_is_httponly_secure_strict_and_confined_to_the_admin_path():
     assert "Domain" not in header
 
 
-def test_clearing_the_cookie_expires_it_on_the_same_path():
+def test_clearing_the_cookie_expires_it_on_the_same_path(settings):
     response = Response()
 
-    service.clear_cookie(response)
+    service.clear_cookie(response, settings)
 
     header = response.headers["set-cookie"]
     assert header.startswith('__Secure-tabsira_admin="";')
@@ -150,12 +155,35 @@ def test_clearing_the_cookie_expires_it_on_the_same_path():
     assert "Path=/admin" in header
 
 
-def test_the_cookie_token_is_read_unless_it_is_missing_or_absurdly_long():
-    assert service.cookie_token(request_with()) is None
-    assert service.cookie_token(request_with("__Secure-tabsira_admin=abc")) == "abc"
-    assert service.cookie_token(request_with(f"__Secure-tabsira_admin={'a' * 129}")) is None
+def test_the_cookie_token_is_read_unless_it_is_missing_or_absurdly_long(settings):
+    assert service.cookie_token(request_with(), settings) is None
+    assert service.cookie_token(request_with("__Secure-tabsira_admin=abc"), settings) == "abc"
+    assert (
+        service.cookie_token(request_with(f"__Secure-tabsira_admin={'a' * 129}"), settings) is None
+    )
     # The user cookie is another cookie and never opens the admin area.
-    assert service.cookie_token(request_with("__Secure-tabsira_session=abc")) is None
+    assert service.cookie_token(request_with("__Secure-tabsira_session=abc"), settings) is None
+
+
+def test_over_plain_http_the_cookie_loses_its_secure_prefix_and_flag(make_settings):
+    """Local development is http://tabsira.test (decision 49): a __Secure- cookie would be dropped."""
+    settings = make_settings(
+        site_url="http://tabsira.test",
+        api_url="http://api.tabsira.test",
+        admin_url="http://admin.tabsira.test",
+        cors_origins="http://tabsira.test",
+    )
+    response = Response()
+
+    service.set_cookie(response, settings, "the-token")
+
+    header = response.headers["set-cookie"]
+    assert header.startswith("tabsira_admin=the-token;")
+    assert "Secure" not in header
+    assert "HttpOnly" in header
+    assert "SameSite=strict" in header
+    assert service.cookie_token(request_with("tabsira_admin=abc"), settings) == "abc"
+    assert service.cookie_token(request_with("__Secure-tabsira_admin=abc"), settings) is None
 
 
 def test_the_csrf_token_follows_the_session_token_and_the_server_key(make_settings):

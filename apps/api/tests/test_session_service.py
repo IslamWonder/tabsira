@@ -170,6 +170,29 @@ def test_the_cookie_is_http_only_secure_same_site_lax_on_the_shared_domain(setti
     assert "Path=/" in cookie
 
 
+def test_over_plain_http_the_cookie_loses_its_secure_prefix_and_flag(make_settings):
+    """Local development is http://tabsira.test (decision 49): a __Secure- cookie would be dropped."""
+    settings = make_settings(
+        site_url="http://tabsira.test",
+        api_url="http://api.tabsira.test",
+        admin_url="http://admin.tabsira.test",
+        cors_origins="http://tabsira.test",
+    )
+    response = Response()
+
+    session_service.set_cookie(response, settings, "tok")
+
+    cookie = response.headers["set-cookie"]
+    assert cookie.startswith("tabsira_session=tok;")
+    assert "Secure" not in cookie
+    assert "HttpOnly" in cookie
+    assert "Domain=.tabsira.test" in cookie
+    assert session_service.cookie_token(request_with("tabsira_session=abc"), settings) == "abc"
+    assert (
+        session_service.cookie_token(request_with("__Secure-tabsira_session=abc"), settings) is None
+    )
+
+
 def test_clearing_the_cookie_expires_it_on_the_same_domain_and_path(settings):
     response = Response()
 

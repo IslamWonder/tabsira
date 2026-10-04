@@ -1191,3 +1191,28 @@ def test_an_empty_reranker_url_switches_reranking_off(make_settings):
     )
     with pytest.raises(ValidationError):
         make_settings(reranker_url="vision:8100")
+
+
+def test_cookies_are_secure_and_prefixed_only_where_the_web_app_is_served_over_https():
+    """Local development runs over plain HTTP on port 80 (decision 49); production over https."""
+    https = Settings(_env_file=None)
+    http = Settings(
+        _env_file=None,
+        site_url="http://tabsira.test",
+        api_url="http://api.tabsira.test",
+        admin_url="http://admin.tabsira.test",
+        cors_origins="http://tabsira.test",
+    )
+
+    assert https.cookie_secure is True
+    assert https.cookie_name("__Secure-tabsira_session") == "__Secure-tabsira_session"
+    assert http.cookie_secure is False
+    assert http.cookie_name("__Secure-tabsira_session") == "tabsira_session"
+    assert http.cookie_name("plain") == "plain"
+
+
+@pytest.mark.parametrize("name", ["site_url", "api_url", "admin_url"])
+def test_production_refuses_a_public_address_over_plain_http(name):
+    message = errors_of(**{**PRODUCTION, name: "http://tabsira.me"})
+
+    assert f"{name.upper()} must use https in production, not http://tabsira.me" in message

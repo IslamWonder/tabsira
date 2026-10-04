@@ -54,13 +54,17 @@ def _failure(settings: Settings, code: str) -> RedirectResponse:
     redirect = RedirectResponse(
         f"{settings.site_url}/signin?error={code}", status_code=status.HTTP_302_FOUND
     )
-    _clear_binder(redirect)
+    _clear_binder(redirect, settings)
     return redirect
 
 
-def _clear_binder(response: Response) -> None:
+def _clear_binder(response: Response, settings: Settings) -> None:
     response.delete_cookie(
-        BINDER_COOKIE, path=BINDER_PATH, secure=True, httponly=True, samesite="lax"
+        settings.cookie_name(BINDER_COOKIE),
+        path=BINDER_PATH,
+        secure=settings.cookie_secure,
+        httponly=True,
+        samesite="lax",
     )
 
 
@@ -101,11 +105,11 @@ async def start(
         status_code=status.HTTP_302_FOUND,
     )
     redirect.set_cookie(
-        BINDER_COOKIE,
+        settings.cookie_name(BINDER_COOKIE),
         flow.binder,
         max_age=settings.google_state_ttl_seconds,
         path=BINDER_PATH,
-        secure=True,
+        secure=settings.cookie_secure,
         httponly=True,
         samesite="lax",
     )
@@ -135,7 +139,9 @@ async def callback(
     """
     _require_configured(settings)
     flow = (
-        await oauth_state_service.consume(db, state, request.cookies.get(BINDER_COOKIE))
+        await oauth_state_service.consume(
+            db, state, request.cookies.get(settings.cookie_name(BINDER_COOKIE))
+        )
         if state
         else None
     )
@@ -164,5 +170,5 @@ async def callback(
         f"{settings.site_url}{flow.next_path or '/'}", status_code=status.HTTP_302_FOUND
     )
     session_service.set_cookie(redirect, settings, token)
-    _clear_binder(redirect)
+    _clear_binder(redirect, settings)
     return redirect

@@ -43,7 +43,10 @@ from src.geo.privacy import DEFAULT_CELL_METERS, MAX_CELL_METERS, MIN_CELL_METER
 # developer's real .env, with its keys and URLs, can never reach a test.
 ENV_FILE_OVERRIDE = "TABSIRA_ENV_FILE"
 
-# Where the services run when nothing else is configured: local development only.
+# The development hosts, used when nothing else is configured (tests, CI). A
+# developer's `.env`, written from `.env.example`, names them over plain HTTP on
+# port 80 (decision 49); the https form here keeps the test suite on the cookie
+# and origin rules production runs under. Production refuses `.test` and http.
 DEV_SITE_URL = "https://tabsira.test"
 DEV_API_URL = "https://api.tabsira.test"
 DEV_ADMIN_URL = "https://admin.tabsira.test"
@@ -464,8 +467,8 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = 8000
 
-    # Public addresses. The .test defaults are development-only (mkcert TLS) and
-    # are refused in production.
+    # Public addresses. The .test defaults are development-only and are refused
+    # in production, which also requires https.
     site_url: str = DEV_SITE_URL
     api_url: str = DEV_API_URL
     # Where the admin area (/admin) is served: its own host, reachable through the VPN only.
@@ -1037,6 +1040,15 @@ class Settings(BaseSettings):
             )
             if _host_is_test_domain(url)
         ]
+        problems.extend(
+            f"{name} must use https in production, not {url}"
+            for name, url in (
+                ("SITE_URL", self.site_url),
+                ("API_URL", self.api_url),
+                ("ADMIN_URL", self.admin_url),
+            )
+            if urlsplit(url).scheme != "https"
+        )
         problems.extend(self._storage_problems())
         if not self.ai.api_key.get_secret_value():
             problems.append(f"the key of the active AI provider ({self.ai_provider}) is empty")
@@ -1134,6 +1146,26 @@ class Settings(BaseSettings):
     def mail_link_base(self) -> str:
         """Base of the links in mail: WEB_BASE_URL, else the web app's own address."""
         return self.web_base_url or self.site_url
+
+    @property
+    def cookie_secure(self) -> bool:
+        """
+        Whether cookies carry the Secure flag: whenever the web app is served over https.
+
+        Local development runs over plain HTTP on port 80 (decision 49), where a
+        browser drops a Secure cookie; production is https and so always Secure.
+        """
+        return urlsplit(self.site_url).scheme == "https"
+
+    def cookie_name(self, name: str) -> str:
+        """
+        Return the name a cookie is set and read under.
+
+        A `__Secure-` prefix is a promise browsers enforce: such a cookie is
+        refused over plain HTTP, so the prefix is dropped where cookies are not
+        Secure, and kept everywhere else.
+        """
+        return name if self.cookie_secure else name.removeprefix("__Secure-")
 
     @property
     def admin_host(self) -> str:
