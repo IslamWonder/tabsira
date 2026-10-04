@@ -61,3 +61,22 @@ export function serverSiteOrigin(env: Env = process.env): URL {
 
 /** How long the sitemap waits for the API: a page of 10 000 entries is more than a consent check. */
 export const SITEMAP_TIMEOUT_MS = 10_000;
+
+// The spellings pydantic accepts for a boolean setting, so the web and the API read one value alike.
+const TRUE_WORDS = new Set(['1', 'true', 't', 'yes', 'y', 'on']);
+
+/**
+ * A FEATURE_* flag the web server reads at request time, from the same
+ * environment file as the API (deploy/ecosystem.config.cjs): on unless the
+ * value says otherwise, as the API's own defaults are. Server code only; no
+ * flag is baked into the bundle.
+ */
+export function featureFlag(name: string, env: Env = process.env): boolean {
+  const value = env[`FEATURE_${name}`]?.trim().toLowerCase() ?? '';
+  return value === '' ? true : TRUE_WORDS.has(value);
+}
+
+/** The camera discovery, levels A and B (decision 9); off in production until proven on phones. */
+export function featureCameraDiscovery(env: Env = process.env): boolean {
+  return featureFlag('CAMERA_DISCOVERY', env);
+}
