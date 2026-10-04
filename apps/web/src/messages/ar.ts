@@ -774,7 +774,20 @@ export const ar = {
       anyCountry: 'كل البلدان',
       concept: 'الموضوع',
       anyConcept: 'كل المواضيع',
+      /** A concept filter comes from an entry's own page («بصائر بالمعنى نفسه»); the ids carry no name yet. */
+      conceptActive: 'بالمعنى نفسه: بصائر تشترك في معنى البصيرة التي جئت منها.',
+      clearConcept: 'امسح المعنى',
+      scope: 'ما يُعرض',
+      scopes: { public: 'بصائر الناس', mine: 'بصائري المنشورة' },
       clear: 'امسح المرشحات',
+    },
+    /** The owner's own entries, from every state, beside the public map (extension §4). */
+    mine: {
+      list: 'بصائري على الأطلس',
+      loading: 'نحمّل بصائرك…',
+      empty: 'لم تضع بصيرة على الأطلس بعد.',
+      emptyHint: 'افتح بصيرة في عالمك واختر «انشر على الخريطة».',
+      review: 'راجع الموضع',
     },
     list: 'قائمة البصائر في المنطقة',
     marker: (title: string) => `افتح ${title}`,
@@ -800,6 +813,7 @@ export const ar = {
         'النقطة مركز منطقة تقريبية حُسب على الخادم، لا موضع التصوير الحقيقي، كما حدّده صاحب البصيرة ولم يُتحقق منه. الموقع قرينة جغرافية لا دليل ديني.',
       explanation: 'شرح تبصرة',
       step: 'خطوة صغيرة',
+      sameMeaning: 'بصائر بالمعنى نفسه على الخريطة',
     },
     /** The share line of a place page. */
     placeDescription: (label: string) => `البصائر التي نشرها الناس في ${label} على أطلس تبصرة.`,

@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react';
 import { useSession } from '@/account/session';
 import { getEntry } from '@/atlas/api';
 import type { AtlasEntry } from '@/atlas/types';
-import { lngLatOf } from '@/atlas/types';
+import { EMPTY_FILTERS, lngLatOf } from '@/atlas/types';
+import { atlasHref } from '@/atlas/view-state';
 import { StatusScreen } from '@/components/app/status-screen';
 import { PostEvidence } from '@/components/community/evidence';
 import { ReportSheet } from '@/components/community/sheets';
@@ -146,6 +147,18 @@ export function EntryScreen({ entryId }: { entryId: string }) {
               </p>
             )}
             <footer className="flex flex-wrap items-center gap-2.5 border-line border-t pt-4">
+              {load.entry.concepts[0] === undefined ? null : (
+                <LinkButton
+                  href={atlasHref({
+                    view: null,
+                    selected: null,
+                    filters: { ...EMPTY_FILTERS, concept: load.entry.concepts[0] },
+                  })}
+                  variant="secondary"
+                >
+                  {A.entry.sameMeaning}
+                </LinkButton>
+              )}
               {load.entry.post_id === null ? null : (
                 <LinkButton href={postPath(load.entry.post_id)} variant="secondary">
                   {A.card.openPost}

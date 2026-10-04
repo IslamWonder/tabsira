@@ -3,13 +3,15 @@
 import type { Route } from 'next';
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { entriesIn, searchPlaces } from '@/atlas/api';
+import { useSession } from '@/account/session';
+import { entriesIn, myEntries, searchPlaces } from '@/atlas/api';
 import {
   type AtlasFeature,
   type AtlasFilters,
   DEFAULT_VIEW,
   EMPTY_FILTERS,
   lngLatOf,
+  type MapEntryOwner,
   type Period,
   type PlaceHit,
   type Window,
@@ -31,6 +33,9 @@ import { MapView } from './map-view';
 
 const A = messages.atlas;
 const PERIODS: readonly Period[] = ['all', 'week', 'month', 'year'];
+/** Whose entries the list shows: everyone's inside the window, or the signed-in owner's own. */
+type Scope = 'public' | 'mine';
+const SCOPES: readonly Scope[] = ['public', 'mine'];
 
 type View = AtlasView;
 
@@ -189,14 +194,39 @@ function Filters({
   filters,
   countries,
   onChange,
+  scope,
+  onScope,
 }: {
   filters: AtlasFilters;
   countries: readonly { iso2: string; label: string }[];
   onChange: (filters: AtlasFilters) => void;
+  /** Null for a guest, who has no entries of their own. */
+  scope: Scope | null;
+  onScope: (scope: Scope) => void;
 }) {
   const countryId = useId();
   return (
     <div className="flex flex-col gap-4">
+      {scope === null ? null : (
+        <ChoiceGroup
+          legend={A.filters.scope}
+          options={SCOPES.map((value) => ({ value, label: A.filters.scopes[value] }))}
+          value={scope}
+          onChange={onScope}
+        />
+      )}
+      {filters.concept === null ? null : (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="m-0 text-[0.9375rem] text-fg-soft">{A.filters.conceptActive}</p>
+          <Button
+            variant="ghost"
+            onClick={() => onChange({ ...filters, concept: null })}
+            className="min-h-10 px-3 text-[0.875rem]"
+          >
+            {A.filters.clearConcept}
+          </Button>
+        </div>
+      )}
       <ChoiceGroup
         legend={A.filters.period}
         options={PERIODS.map((value) => ({ value, label: A.filters.periods[value] }))}
@@ -228,12 +258,122 @@ function Filters({
           </select>
         </div>
       )}
-      {filters.period !== 'all' || filters.country !== null ? (
+      {filters.period !== 'all' || filters.country !== null || filters.concept !== null ? (
         <Button variant="ghost" onClick={() => onChange(EMPTY_FILTERS)} className="self-start">
           {A.filters.clear}
         </Button>
       ) : null}
     </div>
+  );
+}
+
+type MineLoad =
+  | { kind: 'loading' }
+  | { kind: 'ready'; entries: MapEntryOwner[] }
+  | { kind: 'failed'; message: string };
+
+/**
+ * The owner's own entries in every state («بصائري المنشورة», extension §4):
+ * what is public opens on the atlas; the rest leads back to the placing screen.
+ * The private capture point is never shown here; the public point only moves the map.
+ */
+function MyEntries({ onShow }: { onShow: (point: [number, number]) => void }) {
+  const [load, setLoad] = useState<MineLoad>({ kind: 'loading' });
+  const [attempt, setAttempt] = useState(0);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` counts the retries; each one asks again.
+  useEffect(() => {
+    let current = true;
+    setLoad({ kind: 'loading' });
+    void myEntries().then((result) => {
+      if (!current) {
+        return;
+      }
+      setLoad(
+        result.ok
+          ? { kind: 'ready', entries: result.data }
+          : { kind: 'failed', message: failureMessage(result) }
+      );
+    });
+    return () => {
+      current = false;
+    };
+  }, [attempt]);
+
+  return (
+    <section aria-label={A.mine.list} className="flex flex-col gap-3">
+      <h2 className="m-0 flex items-baseline justify-between font-semibold text-[1.125rem] text-fg">
+        <span>{A.mine.list}</span>
+        {load.kind === 'ready' ? (
+          <span className="text-[0.875rem] text-fg-muted">{A.count(load.entries.length)}</span>
+        ) : null}
+      </h2>
+      {load.kind === 'loading' ? (
+        <p role="status" className="m-0 text-fg-muted">
+          {A.mine.loading}
+        </p>
+      ) : null}
+      {load.kind === 'failed' ? (
+        <div role="alert" className="flex flex-col items-start gap-3">
+          <Notice tone="error">{load.message}</Notice>
+          <Button variant="ghost" onClick={() => setAttempt((n) => n + 1)}>
+            {A.retry}
+          </Button>
+        </div>
+      ) : null}
+      {load.kind === 'ready' && load.entries.length === 0 ? (
+        <p role="status" className="m-0 text-fg-soft leading-[1.85]">
+          {A.mine.empty} {A.mine.emptyHint}
+        </p>
+      ) : null}
+      {load.kind === 'ready' ? (
+        <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          {load.entries.map((entry) => {
+            const point = entry.public === null ? null : lngLatOf(entry.public.point);
+            return (
+              <li
+                key={entry.id}
+                className="flex flex-col gap-2 rounded-[var(--radius-card)] border border-line px-3 py-2.5"
+              >
+                <div className="flex flex-col">
+                  <span className="font-semibold text-fg">{entry.title}</span>
+                  <span className="text-[0.8125rem] text-fg-muted">
+                    {A.joinLabels([A.publish.status[entry.status], entry.place?.label])}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {entry.status === 'published' ? (
+                    <LinkButton
+                      href={entryPath(entry.id)}
+                      variant="secondary"
+                      className="min-h-10 px-3 text-[0.875rem]"
+                    >
+                      {A.publish.open}
+                    </LinkButton>
+                  ) : null}
+                  <LinkButton
+                    href={`/atlas/publish?insight=${entry.insight_id}` as Route}
+                    variant="ghost"
+                    className="min-h-10 px-3 text-[0.875rem]"
+                  >
+                    {A.mine.review}
+                  </LinkButton>
+                  {point === null ? null : (
+                    <Button
+                      variant="ghost"
+                      onClick={() => onShow(point)}
+                      className="min-h-10 px-3 text-[0.875rem]"
+                    >
+                      {A.place.showOnMap}
+                    </Button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </section>
   );
 }
 
@@ -260,9 +400,11 @@ export function AtlasScreen({
   /** FEATURE_CAMERA_DISCOVERY, read by the server: shows the way to the camera discovery. */
   cameraDiscovery?: boolean;
 }) {
+  const session = useSession();
   const [features, setFeatures] = useState<AtlasFeature[]>([]);
   const [load, setLoad] = useState<Load>({ kind: 'idle' });
   const [filters, setFilters] = useState<AtlasFilters>(EMPTY_FILTERS);
+  const [scope, setScope] = useState<Scope>('public');
   const [view, setView] = useState<View | null>(() => initialView ?? viewFromAddress());
   const [selected, setSelected] = useState<string | null>(null);
   const [moved, setMoved] = useState(false);
@@ -409,13 +551,33 @@ export function AtlasScreen({
           {nearNote}
         </p>
       )}
-      <Filters filters={filters} countries={countries} onChange={setFilters} />
+      <Filters
+        filters={filters}
+        countries={countries}
+        onChange={setFilters}
+        scope={session.status === 'signed-in' ? scope : null}
+        onScope={setScope}
+      />
       {selectedFeature === null ? null : (
         <div className="hidden tablet:block">
           <EntryCard feature={selectedFeature} onClose={() => setSelected(null)} />
         </div>
       )}
-      <section aria-label={A.list} className="flex flex-col gap-3">
+      {session.status === 'signed-in' && scope === 'mine' ? (
+        <MyEntries
+          onShow={(point) => {
+            setView({ center: point, zoom: 12 });
+            setMoved(true);
+          }}
+        />
+      ) : null}
+      <section
+        aria-label={A.list}
+        className={cx(
+          'flex flex-col gap-3',
+          session.status === 'signed-in' && scope === 'mine' && 'hidden'
+        )}
+      >
         <h2 className="m-0 flex items-baseline justify-between font-semibold text-[1.125rem] text-fg">
           <span>{A.inView}</span>
           <span className="text-[0.875rem] text-fg-muted">{A.count(features.length)}</span>

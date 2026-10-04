@@ -48,6 +48,11 @@ describe('EntryScreen', () => {
       'href',
       '/posts/7345678901234567890'
     );
+    // The way to the entries sharing its meaning: the atlas filtered by the first concept.
+    expect(screen.getByRole('link', { name: 'بصائر بالمعنى نفسه على الخريطة' })).toHaveAttribute(
+      'href',
+      '/atlas#t=rain'
+    );
     const map = await loadedMap();
     expect(map.options.interactive).toBe(false);
     expect(
@@ -61,11 +66,13 @@ describe('EntryScreen', () => {
     const api = mockApi({
       'GET /auth/me': { body: USER },
       'GET /me/public-identity': { body: IDENTITY },
-      [`GET /atlas/entries/${ENTRY.id}`]: { body: ENTRY },
+      [`GET /atlas/entries/${ENTRY.id}`]: { body: { ...ENTRY, concepts: [] } },
       'POST /reports': { status: 201, body: { id: '1' } },
     });
     render(<EntryScreen entryId={ENTRY.id} />);
     await userEvent.click(await screen.findByRole('button', { name: 'بلّغ' }));
+    // An entry with no concept recorded offers no way to the same meaning.
+    expect(screen.queryByRole('link', { name: 'بصائر بالمعنى نفسه على الخريطة' })).toBeNull();
     await userEvent.click(screen.getByRole('radio', { name: 'المكان غير صحيح' }));
     await userEvent.click(screen.getByRole('button', { name: 'أرسل البلاغ' }));
     expect(await screen.findByText('وصل بلاغك، وسيراجعه مشرف.')).toBeInTheDocument();
