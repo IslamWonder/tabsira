@@ -3024,6 +3024,7 @@ export interface components {
       /** Photo Storage Consent */
       photo_storage_consent: boolean;
       theme: components['schemas']['Theme'];
+      reduced_motion: components['schemas']['ReducedMotion'];
       /** Sound Enabled */
       sound_enabled: boolean;
       /** Consent Version */
@@ -3052,6 +3053,7 @@ export interface components {
       /** Language */
       language?: string | null;
       theme?: components['schemas']['Theme'] | null;
+      reduced_motion?: components['schemas']['ReducedMotion'] | null;
       /** Sound Enabled */
       sound_enabled?: boolean | null;
     };
@@ -3308,6 +3310,12 @@ export interface components {
         [key: string]: 'ok' | 'down';
       };
     };
+    /**
+     * ReducedMotion
+     * @description Whether decorative motion is reduced: `system` follows the device setting.
+     * @enum {string}
+     */
+    ReducedMotion: 'system' | 'on' | 'off';
     /**
      * ReflectionOut
      * @description The author's own words.

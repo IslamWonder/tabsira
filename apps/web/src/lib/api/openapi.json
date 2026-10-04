@@ -6881,6 +6881,9 @@
           "theme": {
             "$ref": "#/components/schemas/Theme"
           },
+          "reduced_motion": {
+            "$ref": "#/components/schemas/ReducedMotion"
+          },
           "sound_enabled": {
             "type": "boolean",
             "title": "Sound Enabled"
@@ -6914,6 +6917,7 @@
           "memory_enabled",
           "photo_storage_consent",
           "theme",
+          "reduced_motion",
           "sound_enabled",
           "consent_version",
           "updated_at"
@@ -6993,6 +6997,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/Theme"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reduced_motion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReducedMotion"
               },
               {
                 "type": "null"
@@ -7538,6 +7552,12 @@
         "type": "object",
         "required": ["status", "checks"],
         "title": "Readiness"
+      },
+      "ReducedMotion": {
+        "type": "string",
+        "enum": ["system", "on", "off"],
+        "title": "ReducedMotion",
+        "description": "Whether decorative motion is reduced: `system` follows the device setting."
       },
       "ReflectionOut": {
         "properties": {

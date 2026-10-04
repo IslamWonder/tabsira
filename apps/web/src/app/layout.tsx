@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { CLARITY_MASK } from '@/analytics/clarity';
 import { LegalGate } from '@/components/account/legal-gate';
+import { AccountPreferencesSync } from '@/components/app/account-preferences-sync';
 import { AppNav } from '@/components/app/app-nav';
 import { PageShell } from '@/components/app/page-shell';
 import { ServiceWorkerRegister } from '@/components/app/service-worker-register';
@@ -120,6 +121,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <FocusCursor />
         <AnalyticsTags gaId={gaMeasurementId()} clarityId={clarityProjectId()} />
         <ThemeSync />
+        <AccountPreferencesSync />
         <ServiceWorkerRegister />
       </body>
     </html>

@@ -9,7 +9,7 @@ People can use TABSIRA as a guest, then create an account with e-mail or Google 
 | E-mail sign-up, sign-in, verification and password reset | ✅     | Mails in Arabic.                                                     |
 | Google sign-in                                           | ✅     | Needs the Google client from the owners to work outside development. |
 | Guest use and merge at sign-in                           | 🔄     | Built with the scan workflow; merges with it.                        |
-| «ملفي»: account, the three optional questions, settings  | ✅     | Theme is saved per device for now.                                   |
+| «ملفي»: account, the three optional questions, settings  | ✅     | Theme and motion follow the account; guests keep the device.         |
 | Download my data, delete my account                      | ✅     |                                                                      |
 | Sign-in limits that hold under parallel requests         | ✅     | From the security review.                                            |
 
@@ -27,7 +27,7 @@ People can use TABSIRA as a guest, then create an account with e-mail or Google 
 
 ### 01.1 Save theme and motion settings to the account
 
-- **Status:** 🔄 main machine
+- **Status:** ✅ 2026-10-04 15:32
 - **Goal:** Theme and motion follow the person across devices instead of staying per device.
 - **Depends on:** —
 - **Touches:** apps/api profile settings (schema, one migration), apps/web «ملفي» settings and the theme provider.

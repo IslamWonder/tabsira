@@ -3,6 +3,7 @@
 import { useId } from 'react';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
+import { rememberTheme } from '@/preferences/account-sync';
 import { setThemePreference, THEME_PREFERENCES } from '@/theme/theme';
 import { useThemePreference } from '@/theme/use-theme-preference';
 import { THEME_ICONS } from './theme-icons';
@@ -12,7 +13,7 @@ export interface ThemeSwitcherProps {
 }
 
 /**
- * Automatic, light or dark, stored on this device. Native radio buttons: arrow
+ * Automatic, light or dark, stored on this device and, when signed in, in the account. Native radio buttons: arrow
  * keys move between the three, and screen readers announce «one of three»
  * (Jakob's law: the segmented control everyone already knows).
  */
@@ -42,7 +43,10 @@ export function ThemeSwitcher({ className }: ThemeSwitcherProps) {
                 name={name}
                 value={option}
                 checked={checked}
-                onChange={() => setThemePreference(option)}
+                onChange={() => {
+                  setThemePreference(option);
+                  void rememberTheme(option);
+                }}
                 className="sr-only"
               />
               <Icon width="18" height="18" />

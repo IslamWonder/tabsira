@@ -27,6 +27,7 @@ export const PROFILE: Profile = {
   memory_enabled: true,
   photo_storage_consent: false,
   theme: 'system',
+  reduced_motion: 'system',
   sound_enabled: false,
   consent_version: null,
   updated_at: '2026-10-04T08:00:00Z',
