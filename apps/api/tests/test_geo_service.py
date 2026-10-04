@@ -248,7 +248,7 @@ async def test_the_nearest_settlement_is_found_with_its_region_and_country(world
     assert result.place is not None
     assert result.place.geoname_id == TUNIS_CITY
     assert 1_900 <= result.place.distance_m <= 2_100
-    assert (result.place.label, result.place.location.coordinates) == ("تونس", (10.16579, 36.81897))
+    assert (result.place.label, result.place.location.coordinates) == ("تونس", [10.16579, 36.81897])
     assert result.admin_area is not None
     assert result.admin_area.label == "ولاية تونس"
     assert result.country is not None
@@ -272,7 +272,7 @@ async def test_a_coordinate_of_zero_is_a_place_on_the_map(world):
 
     assert result.place is not None
     assert (result.place.geoname_id, result.place.distance_m) == (ZERO_POINT, 0)
-    assert result.place.location.coordinates == (0.0, 0.0)
+    assert result.place.location.coordinates == [0.0, 0.0]
     assert (result.admin_area, result.country) == (None, None)
     # Zero latitude or zero longitude alone is as good as any other value.
     assert (await geo_service.nearest_place(world, 0.0, 0.001)).place is not None
