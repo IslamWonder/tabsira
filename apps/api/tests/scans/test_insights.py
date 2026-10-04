@@ -304,3 +304,19 @@ def test_the_chat_talks_to_the_active_provider_on_one_shared_client(flow_setting
     assert isinstance(client, ProviderClient)
     assert client.provider == flow_settings.ai_provider
     assert again(CallLog())._http is app.state.http
+
+
+async def test_an_insight_names_the_sound_of_its_first_ontology_entity(
+    browser, store, flow_settings
+):
+    owner = await as_guest(browser, store, flow_settings)
+    why = {"visible_clues": [], "concept": "الإحياء", "limits": []}
+    with_sound = await keep(
+        store, owner, why={**why, "ontology_entity_ids": ["not-an-id", "E006", "E007"]}
+    )
+    without_sound = await keep(store, owner, why=why)
+
+    assert (await browser.get(f"/insights/{with_sound}")).json()["sound_url"] == (
+        "/sounds/ontology/E006"
+    )
+    assert (await browser.get(f"/insights/{without_sound}")).json()["sound_url"] is None

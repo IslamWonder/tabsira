@@ -1692,6 +1692,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/sounds/ontology/{entity_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The sound effect of one ontology entity, as MP3
+     * @description Return `static/ontology/audio/<entity_id>.mp3` of the bucket; 404 when it was not uploaded.
+     */
+    get: operations['ontology_sound_sounds_ontology__entity_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2813,6 +2833,11 @@ export interface components {
       relation: components['schemas']['RelationType'];
       /** Relation Label */
       relation_label: string;
+      /**
+       * Sound Url
+       * @description Path on this API of the sound effect of the insight's main ontology entity
+       */
+      sound_url: string | null;
       quran: components['schemas']['InsightQuran'] | null;
       hadith: components['schemas']['InsightHadith'] | null;
       /**
@@ -7413,6 +7438,38 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['InsightDetailOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  ontology_sound_sounds_ontology__entity_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description An ontology id such as E001 */
+        entity_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'audio/mpeg': unknown;
         };
       };
       /** @description An error */

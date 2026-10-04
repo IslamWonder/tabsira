@@ -45,6 +45,7 @@ from src.routers import (
     scans,
     scripture,
     sitemap,
+    sounds,
     support,
     tutorial,
     world,
@@ -254,6 +255,7 @@ def create_app(
     app.include_router(me.router)
     app.include_router(atlas.router)
     app.include_router(tutorial.router)
+    app.include_router(sounds.router)
     # The admin area is not mounted at all while its feature flag is off.
     if settings.feature_admin:
         install_admin(app, settings)

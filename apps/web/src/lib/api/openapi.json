@@ -3807,6 +3807,44 @@
           }
         }
       }
+    },
+    "/sounds/ontology/{entity_id}": {
+      "get": {
+        "tags": ["sounds"],
+        "summary": "The sound effect of one ontology entity, as MP3",
+        "description": "Return `static/ontology/audio/<entity_id>.mp3` of the bucket; 404 when it was not uploaded.",
+        "operationId": "ontology_sound_sounds_ontology__entity_id__get",
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^E[0-9]{3,4}$",
+              "description": "An ontology id such as E001",
+              "title": "Entity Id"
+            },
+            "description": "An ontology id such as E001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "audio/mpeg": {} }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6303,6 +6341,18 @@
             "type": "string",
             "title": "Relation Label"
           },
+          "sound_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sound Url",
+            "description": "Path on this API of the sound effect of the insight's main ontology entity"
+          },
           "quran": {
             "anyOf": [
               {
@@ -6446,6 +6496,7 @@
           "anchor",
           "relation",
           "relation_label",
+          "sound_url",
           "quran",
           "hadith",
           "hadith_status",

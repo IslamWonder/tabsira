@@ -47,6 +47,7 @@ from src.schemas.insight import (
     StepOut,
 )
 from src.services import learner_service
+from src.storage.sounds import ENTITY_ID
 
 
 def action_means(state: str) -> str:
@@ -368,6 +369,14 @@ async def record_display(
         await db.commit()
 
 
+def sound_path(insight: Insight) -> str | None:
+    """Return the API path of the sound of the first ontology entity the insight rests on."""
+    for entity_id in insight.why.get("ontology_entity_ids", []):
+        if isinstance(entity_id, str) and ENTITY_ID.fullmatch(entity_id):
+            return f"/sounds/ontology/{entity_id}"
+    return None
+
+
 async def describe(
     db: AsyncSession, settings: Settings, insight: Insight, owner: Owner
 ) -> InsightDetailOut:
@@ -387,6 +396,7 @@ async def describe(
         anchor=BBox.model_validate(insight.anchor) if insight.anchor else None,
         relation=RelationType(insight.relation),
         relation_label=messages_for().relation_labels[insight.relation],
+        sound_url=sound_path(insight),
         **shown_fields(insight, verse, hadith, awaiting),
         why=InsightWhyOut(
             visible_clues=list(insight.why.get("visible_clues", [])),
