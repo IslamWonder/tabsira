@@ -14,4 +14,4 @@ The night and day themes, the AAA game feel, the logo everywhere, phone to deskt
 
 **How we check it**
 
-- Screenshots at phone, tablet and desktop.
+- Accessibility check at phone, tablet and desktop widths.

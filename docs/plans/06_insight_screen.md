@@ -14,7 +14,7 @@ Shows the insight: title, the verse and the hadith with their source and grade, 
 
 **How we check it**
 
-- Screenshots on phone and desktop, both themes; accessibility check.
+- Accessibility check; related tests.
 
 ## Tasks
 
@@ -24,4 +24,4 @@ Shows the insight: title, the verse and the hadith with their source and grade, 
 - **Goal:** Verse, hadith, explanation, «لماذا ظهر هذا؟», small step, chat, «تمّ».
 - **Depends on:** 04.1
 - **Touches:** apps/web insight components and route.
-- **Done when:** Screenshots; accessibility check; scripture text untouched (source guards).
+- **Done when:** Accessibility check; scripture text untouched (source guards).

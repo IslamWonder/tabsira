@@ -21,4 +21,4 @@ Each completed insight lights a place in a fog-covered world, organised by the l
 - **Goal:** Fog world with places, threads and treasures.
 - **Depends on:** 04.1
 - **Touches:** apps/web world components and route.
-- **Done when:** Screenshots; empty state for a new guest.
+- **Done when:** Empty state for a new guest works; related tests pass.

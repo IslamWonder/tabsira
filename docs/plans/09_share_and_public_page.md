@@ -29,7 +29,7 @@ A shareable image of an insight with real Arabic fonts, and a public page for it
 - **Goal:** A public page for a published insight, with the verse and hadith exactly as stored, search metadata and structured data from `apps/web/src/lib/seo.ts`.
 - **Depends on:** 09.1, 06.1
 - **Touches:** apps/web one public route and its components.
-- **Done when:** check:seo passes; scripture text untouched; screenshots.
+- **Done when:** check:seo passes; scripture text untouched.
 
 ### 09.3 Share card image
 

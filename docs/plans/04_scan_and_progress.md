@@ -37,7 +37,7 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 - **Goal:** Web screens for 04, built on the workflow API.
 - **Depends on:** 04.1
 - **Touches:** apps/web scan and insight components.
-- **Done when:** Screenshots phone and desktop, both themes; accessibility check clean.
+- **Done when:** Accessibility check clean; related tests pass.
 
 ### 04.3 Run the scan worker in production
 
