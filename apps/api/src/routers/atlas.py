@@ -56,6 +56,7 @@ async def place_insight(
     user: PublicMember,
     db: DbDep,
     settings: SettingsDep,
+    photos: PhotoStoreDep,
 ) -> MapEntryOwnerOut:
     """
     Keep the exact point privately and answer with what the map will show.
@@ -63,8 +64,9 @@ async def place_insight(
     The public point is the centre of the grid cell (GEO_APPROX_CELL_METERS), labelled with
     the nearest populated place; the answer carries the cell as a polygon, so the owner reviews
     it before publishing. 409 INSIGHT_NOT_PUBLISHABLE for an insight that is not the pipeline's.
+    Placing a published entry again takes it off the map, and its photo's public copy with it.
     """
-    result = await atlas_service.place(db, settings, user, insight_id, body)
+    result = await atlas_service.place(db, settings, user, insight_id, body, photos=photos)
     await db.commit()
     return result
 

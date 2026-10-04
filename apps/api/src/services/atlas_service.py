@@ -191,14 +191,21 @@ async def _label(db: AsyncSession, lat: float, lng: float) -> dict[str, object]:
 
 
 async def place(
-    db: AsyncSession, settings: Settings, user: User, insight_id: int, body: CapturePointIn
+    db: AsyncSession,
+    settings: Settings,
+    user: User,
+    insight_id: int,
+    body: CapturePointIn,
+    *,
+    photos: PhotoStore | None = None,
 ) -> MapEntryOwnerOut:
     """
     Keep the owner's exact point privately and compute what the map will show.
 
     The entry is a draft until the owner publishes it; placing a published entry again
     makes it a draft again, since what is shown changed. The cell size is the setting's at
-    the time of placing, kept with the entry.
+    the time of placing, kept with the entry. With `photos`, a public copy that only the
+    entry showed is deleted with the draft, whatever the new choice of photo.
     """
     insight = await _own_insight(db, user, insight_id)
     await _check_publishable(db, insight)
@@ -240,6 +247,8 @@ async def place(
     point.measured_at = body.measured_at
     point.confirmed_at = clock.utcnow()
     await db.flush()
+    if photos is not None:
+        await photo_service.sync_public_copy(db, photos, insight.id)
     return owner_view(entry, insight, point)
 
 

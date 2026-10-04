@@ -391,6 +391,30 @@ async def test_a_map_entry_placed_without_the_choice_makes_no_copy(
     assert objects(media) == [insight.photo_key]
 
 
+@pytest.mark.parametrize("photo_again", [True, False])
+async def test_re_placing_a_published_entry_takes_the_copy_down_with_the_draft(
+    db_session, make_member, photos, media, world, photo_again
+):
+    author = await make_member("author")
+    await consent(author)
+    insight = await kept_insight(db_session, author, photos)
+    await place_with_photo(author, insight)
+    assert (await author.http.post(f"/insights/{insight.id}/map/publish")).status_code == 200
+    _, public = await keys_of(db_session, insight)
+    assert public is not None
+
+    # The entry is a draft again: nothing shows the photo, whatever the new choice says.
+    placed = await place_with_photo(author, insight, photo=photo_again)
+
+    assert placed.json()["status"] == "draft" and placed.json()["photo"] is photo_again
+    assert await keys_of(db_session, insight) == (insight.photo_key, None)
+    assert objects(media) == [insight.photo_key]
+    # Publishing the new draft makes the copy again only when the photo is still chosen.
+    assert (await author.http.post(f"/insights/{insight.id}/map/publish")).status_code == 200
+    _, again = await keys_of(db_session, insight)
+    assert (again is not None) is photo_again
+
+
 async def test_a_withdrawn_consent_deletes_both_copies_at_once_whatever_still_shows_them(
     db_session, make_member, photos, media, world
 ):
