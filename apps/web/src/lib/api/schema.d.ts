@@ -388,6 +388,253 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/geo/search': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search places by Arabic or Latin name
+     * @description Return places whose name matches `q`, in Arabic or in Latin letters.
+     *
+     *     Exact matches come first, then names that start with `q`, each by
+     *     population, then similar names. `label` is the Arabic name when there is
+     *     one. The text is matched without regard to case, accents, Arabic vowel
+     *     marks or the alef, ta marbuta and ya variants.
+     */
+    get: operations['search_geo_search_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/geo/reverse': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The populated place nearest to a point
+     * @description Return the nearest populated place within `radius_m`, with its region and country.
+     *
+     *     It labels an approximate location: send the rounded point (see
+     *     `src/geo/privacy.py`), never the exact one of a photo, and keep the answer
+     *     to the place found. Nothing is returned when no populated place is in range.
+     */
+    get: operations['reverse_geo_reverse_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/geo/countries': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Countries
+     * @description Return every country, with its Arabic name when GeoNames has one.
+     */
+    get: operations['countries_geo_countries_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/scripture/quran/{surah}/{ayah}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * One verse of the Quran
+     * @description Return a verse of quranpedia's mushaf 2 exactly as stored, with its hash and source.
+     */
+    get: operations['quran_verse_scripture_quran__surah___ayah__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/scripture/hadith/{collection}/{number}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * One hadith
+     * @description Return a hadith exactly as stored, with its spans, its ruling and its eligibility.
+     */
+    get: operations['hadith_scripture_hadith__collection___number__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/client-errors': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Report errors a page saw
+     * @description Accept a page's error reports and forward them to GlitchTip, cleaned.
+     *
+     *     Answers 204 whether or not anything is forwarded.
+     */
+    post: operations['report_client_errors_client_errors_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/consent/policy': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The categories to choose between and the re-ask interval
+     * @description Return the current policy.
+     *
+     *     The policy is its version, each category with its Arabic title and description, and the
+     *     number of days after which a choice lapses and the visitor is asked again.
+     */
+    get: operations['get_policy_consent_policy_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/consent': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record a cookie choice
+     * @description Append the choice and return the consent id with what is in force.
+     *
+     *     The first call has no `consent_id`; keep the one returned in a first-party cookie and send
+     *     it with every later choice, so they are one history. Choosing again is a new record, never
+     *     an edit. The user agent is reduced to its browser family and no address is kept.
+     */
+    post: operations['post_consent_consent_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/consent/{consent_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The choice in force for a consent id
+     * @description Return what the id's latest choice allows now.
+     *
+     *     While the choice is current its categories are the ones chosen; once the policy changed or
+     *     the re-ask interval passed, `reask` is true and only the necessary category is on. An id the
+     *     server never issued is a 404.
+     */
+    get: operations['get_consent_consent__consent_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/sitemap': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Every section's pages
+     * @description List the sections that are advertised, each with its pages and their last change.
+     *
+     *     A section whose feature is switched off is not listed, and a section with nothing to list
+     *     has no pages.
+     */
+    get: operations['sitemap_index_sitemap_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/sitemap/{section}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * One page of a section
+     * @description List one page of a section, in a stable order.
+     *
+     *     A page past the last is empty. A section whose feature is off is a 404, like its pages.
+     */
+    get: operations['sitemap_section_sitemap__section__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -413,12 +660,150 @@ export interface components {
       profile: components['schemas']['ProfileOut'];
       /** Consents */
       consents: components['schemas']['ConsentOut'][];
+      /** Cookie Consents */
+      cookie_consents: components['schemas']['CookieConsentExport'][];
+    };
+    /**
+     * AdminArea
+     * @description The first-level administrative division (region, governorate, state) of a place.
+     */
+    AdminArea: {
+      /** Geoname Id */
+      geoname_id: number;
+      /** Name */
+      name: string;
+      /** Name Ar */
+      name_ar: string | null;
+      /** Label */
+      label: string;
     };
     /**
      * AgeRange
      * @enum {string}
      */
     AgeRange: 'under_13' | '13_17' | '18_24' | '25_39' | '40_59' | '60_plus' | 'unknown';
+    /** ChapterOut */
+    ChapterOut: {
+      /** Book Number */
+      book_number: number | null;
+      /** Book Name */
+      book_name: string | null;
+      /** Number In Book */
+      number_in_book: number | null;
+    };
+    /**
+     * ClientBreadcrumb
+     * @description One thing that happened before the error, as the page remembers it.
+     */
+    ClientBreadcrumb: {
+      /**
+       * Category
+       * @default log
+       */
+      category: string;
+      /**
+       * Level
+       * @default info
+       * @enum {string}
+       */
+      level: 'debug' | 'info' | 'warning' | 'error';
+      /** Message */
+      message: string;
+      /** Timestamp */
+      timestamp?: number | null;
+    };
+    /**
+     * ClientReport
+     * @description One error or log record from the browser.
+     */
+    ClientReport: {
+      /**
+       * Kind
+       * @default error
+       * @enum {string}
+       */
+      kind: 'error' | 'log';
+      /**
+       * Level
+       * @default error
+       * @enum {string}
+       */
+      level: 'warning' | 'error' | 'fatal';
+      /** Message */
+      message: string;
+      /** Name */
+      name?: string | null;
+      /** Stack */
+      stack?: string | null;
+      /** Url */
+      url?: string | null;
+      /**
+       * Handled
+       * @default true
+       */
+      handled: boolean;
+      /** Context */
+      context?: {
+        [key: string]: string | number | boolean | null;
+      } | null;
+      /** Breadcrumbs */
+      breadcrumbs?: components['schemas']['ClientBreadcrumb'][];
+      /** Release */
+      release?: string | null;
+    };
+    /**
+     * ClientReportBatch
+     * @description A page's pending reports, flushed together.
+     */
+    ClientReportBatch: {
+      /** Items */
+      items: components['schemas']['ClientReport'][];
+    };
+    /** CollectionOut */
+    CollectionOut: {
+      /** Slug */
+      slug: string;
+      /** Name Ar */
+      name_ar: string;
+      /** Source Dataset */
+      source_dataset: string;
+      /** Source Url */
+      source_url: string;
+      /** Licence */
+      licence: string;
+      /** Version */
+      version: string;
+    };
+    /**
+     * ConsentCategories
+     * @description Each category and whether it is on. The necessary one always is.
+     */
+    ConsentCategories: {
+      /**
+       * Necessary
+       * @default true
+       * @constant
+       */
+      necessary: true;
+      /** Analytics */
+      analytics: boolean;
+      /** Behaviour */
+      behaviour: boolean;
+    };
+    /** ConsentCategoryOut */
+    ConsentCategoryOut: {
+      /**
+       * Key
+       * @enum {string}
+       */
+      key: 'necessary' | 'analytics' | 'behaviour';
+      /** Required */
+      required: boolean;
+      /** Title */
+      title: string;
+      /** Description */
+      description: string;
+    };
     /** ConsentIn */
     ConsentIn: {
       kind: components['schemas']['ConsentKind'];
@@ -446,6 +831,137 @@ export interface components {
       created_at: string;
     };
     /**
+     * ConsentPolicyOut
+     * @description What a visitor is asked, and when they are asked again.
+     */
+    ConsentPolicyOut: {
+      /** Policy Version */
+      policy_version: string;
+      /** Reask Days */
+      reask_days: number;
+      /** Categories */
+      categories: components['schemas']['ConsentCategoryOut'][];
+    };
+    /**
+     * CookieConsentExport
+     * @description One recorded choice, as the account export shows it.
+     */
+    CookieConsentExport: {
+      /**
+       * Consent Id
+       * Format: uuid
+       */
+      consent_id: string;
+      /** Policy Version */
+      policy_version: string;
+      /** Necessary */
+      necessary: boolean;
+      /** Analytics */
+      analytics: boolean;
+      /** Behaviour */
+      behaviour: boolean;
+      /** User Agent Family */
+      user_agent_family: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /**
+     * CookieConsentIn
+     * @description A choice, as the visitor made it.
+     *
+     *     `consent_id` is the id the server gave this browser before; leave it out on the first
+     *     choice. An id the server does not know is not adopted: a new one is made and returned.
+     *     `policy_version` is the version of the text the visitor was shown; leave it out for the
+     *     current one. The two flags must be JSON booleans.
+     */
+    CookieConsentIn: {
+      /** Consent Id */
+      consent_id?: string | null;
+      /** Policy Version */
+      policy_version?: string | null;
+      /**
+       * Necessary
+       * @default true
+       * @constant
+       */
+      necessary: true;
+      /** Analytics */
+      analytics: boolean;
+      /** Behaviour */
+      behaviour: boolean;
+    };
+    /**
+     * CookieConsentOut
+     * @description The choice in force for one consent id.
+     *
+     *     `categories` is what may run now: the recorded choice while it holds, and only the
+     *     necessary category once it lapsed. It lapses when the policy version changed or
+     *     `expires_at` has passed; `reask` is then true and the visitor must be asked again.
+     */
+    CookieConsentOut: {
+      /**
+       * Consent Id
+       * Format: uuid
+       */
+      consent_id: string;
+      /** Policy Version */
+      policy_version: string;
+      /**
+       * Decided At
+       * Format: date-time
+       */
+      decided_at: string;
+      /**
+       * Expires At
+       * Format: date-time
+       */
+      expires_at: string;
+      /** Reask */
+      reask: boolean;
+      categories: components['schemas']['ConsentCategories'];
+    };
+    /**
+     * Country
+     * @description A country, from the GeoNames country information.
+     */
+    Country: {
+      /** Iso2 */
+      iso2: string;
+      /** Iso3 */
+      iso3: string | null;
+      /** Name */
+      name: string;
+      /** Name Ar */
+      name_ar: string | null;
+      /** Label */
+      label: string;
+      /** Capital */
+      capital: string | null;
+      /** Continent */
+      continent: string | null;
+      /** Flag Emoji */
+      flag_emoji: string | null;
+      /** Population */
+      population: number | null;
+    };
+    /**
+     * CountryRef
+     * @description The country of a place.
+     */
+    CountryRef: {
+      /** Iso2 */
+      iso2: string;
+      /** Name */
+      name: string;
+      /** Name Ar */
+      name_ar: string | null;
+      /** Label */
+      label: string;
+    };
+    /**
      * EmailIn
      * @description An address, for the routes that mail a link to it.
      */
@@ -468,6 +984,7 @@ export interface components {
       | 'NOT_FOUND'
       | 'METHOD_NOT_ALLOWED'
       | 'CONFLICT'
+      | 'PAYLOAD_TOO_LARGE'
       | 'VALIDATION_ERROR'
       | 'RATE_LIMITED'
       | 'INTERNAL_ERROR'
@@ -510,6 +1027,23 @@ export interface components {
      */
     Gender: 'man' | 'woman' | 'unknown';
     /**
+     * GeoJsonPoint
+     * @description A GeoJSON Point (RFC 7946): `coordinates` is [longitude, latitude].
+     */
+    GeoJsonPoint: {
+      /**
+       * Type
+       * @default Point
+       * @constant
+       */
+      type: 'Point';
+      /**
+       * Coordinates
+       * @description [longitude, latitude]
+       */
+      coordinates: [number, number];
+    };
+    /**
      * Goal
      * @description Why the user is here (master prompt v2, section 5); several may be chosen.
      * @enum {string}
@@ -522,6 +1056,73 @@ export interface components {
       | 'research'
       | 'teaching'
       | 'curiosity';
+    /** GradeOut */
+    GradeOut: {
+      /** Name */
+      name: string;
+      /** Grade */
+      grade: string;
+    };
+    /**
+     * HadithClassification
+     * @description An editor's reading of a dorar.net ruling; only the first two make a hadith evidence.
+     * @enum {string}
+     */
+    HadithClassification: 'صحيح' | 'حسن' | 'ضعيف' | 'موضوع' | 'مختلف_فيه';
+    /** HadithLinks */
+    HadithLinks: {
+      /**
+       * Dorar Verification
+       * @description A dorar.net search for this hadith («تحقق في الدرر»)
+       */
+      dorar_verification: string;
+    };
+    /** HadithOut */
+    HadithOut: {
+      collection: components['schemas']['CollectionOut'];
+      /**
+       * Number
+       * @description As the dataset numbers it
+       */
+      number: string;
+      /** Arabic Number */
+      arabic_number: string | null;
+      chapter: components['schemas']['ChapterOut'] | null;
+      /**
+       * Text
+       * @description Exactly as stored, invisible direction marks included
+       */
+      text: string;
+      /**
+       * Sha256
+       * @description SHA-256 of the UTF-8 bytes of `text`
+       */
+      sha256: string;
+      /**
+       * Spans
+       * @description Positions in `text`, counted in Unicode code points (not UTF-16 units); their slices join back into it
+       */
+      spans: components['schemas']['SpanOut'][];
+      /**
+       * Informational Grades
+       * @description The dataset's grades as given; informational only, never decide eligibility
+       */
+      informational_grades: components['schemas']['GradeOut'][] | null;
+      /** @description The editor-recorded dorar.net ruling in force */
+      ruling: components['schemas']['RulingOut'] | null;
+      /**
+       * Eligible
+       * @description Whether the ruling in force is صحيح or حسن
+       */
+      eligible: boolean;
+      links: components['schemas']['HadithLinks'];
+      /**
+       * Status
+       * @default local_corpus
+       * @constant
+       */
+      status: 'local_corpus';
+    };
     /**
      * KnowledgeLevel
      * @enum {string}
@@ -545,6 +1146,36 @@ export interface components {
       /** Password */
       password: string;
     };
+    /**
+     * NearbyPlace
+     * @description The populated place nearest to a point.
+     */
+    NearbyPlace: {
+      /** Geoname Id */
+      geoname_id: number;
+      /** Name */
+      name: string;
+      /** Name Ar */
+      name_ar: string | null;
+      /** Label */
+      label: string;
+      /** Feature Class */
+      feature_class: string | null;
+      /** Feature Code */
+      feature_code: string | null;
+      /** Population */
+      population: number | null;
+      /** Latitude */
+      latitude: number;
+      /** Longitude */
+      longitude: number;
+      location: components['schemas']['GeoJsonPoint'];
+      /**
+       * Distance M
+       * @description Metres from the point, on the ellipsoid
+       */
+      distance_m: number;
+    };
     /** OAuthAccountExport */
     OAuthAccountExport: {
       /** Provider */
@@ -556,6 +1187,33 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+    };
+    /**
+     * PlaceHit
+     * @description A place that matched a search, with its region and country to tell namesakes apart.
+     */
+    PlaceHit: {
+      /** Geoname Id */
+      geoname_id: number;
+      /** Name */
+      name: string;
+      /** Name Ar */
+      name_ar: string | null;
+      /** Label */
+      label: string;
+      /** Feature Class */
+      feature_class: string | null;
+      /** Feature Code */
+      feature_code: string | null;
+      /** Population */
+      population: number | null;
+      /** Latitude */
+      latitude: number;
+      /** Longitude */
+      longitude: number;
+      location: components['schemas']['GeoJsonPoint'];
+      admin_area: components['schemas']['AdminArea'] | null;
+      country: components['schemas']['CountryRef'] | null;
     };
     /** ProfileOut */
     ProfileOut: {
@@ -620,6 +1278,77 @@ export interface components {
       /** Providers */
       providers: components['schemas']['ProviderOut'][];
     };
+    /** QuranLinks */
+    QuranLinks: {
+      /** Quranpedia */
+      quranpedia: string;
+    };
+    /** QuranSource */
+    QuranSource: {
+      /**
+       * Name
+       * @default quranpedia.net
+       * @constant
+       */
+      name: 'quranpedia.net';
+      /**
+       * Url
+       * @default https://quranpedia.net
+       */
+      url: string;
+      /**
+       * Mushaf Id
+       * @default 2
+       */
+      mushaf_id: number;
+      /**
+       * Mushaf Name
+       * @default مصحف حفص نسخة نصية
+       */
+      mushaf_name: string;
+      /** Quranpedia Ayah Id */
+      quranpedia_ayah_id: number;
+      /**
+       * Version
+       * @description `dump:<dump version>` or `change:<time of the correction>`
+       */
+      version: string;
+      /** Dump Version */
+      dump_version: string | null;
+      /** Last Sync At */
+      last_sync_at: string | null;
+    };
+    /** QuranVerseOut */
+    QuranVerseOut: {
+      /** Surah */
+      surah: number;
+      /** Ayah */
+      ayah: number;
+      /** Surah Name */
+      surah_name: string;
+      /**
+       * Text
+       * @description Exactly as stored; never normalised
+       */
+      text: string;
+      /**
+       * Sha256
+       * @description SHA-256 of the UTF-8 bytes of `text`
+       */
+      sha256: string;
+      /** Page */
+      page: number;
+      /** Juz */
+      juz: number;
+      source: components['schemas']['QuranSource'];
+      links: components['schemas']['QuranLinks'];
+      /**
+       * Status
+       * @default local_corpus
+       * @constant
+       */
+      status: 'local_corpus';
+    };
     /** Readiness */
     Readiness: {
       /**
@@ -644,6 +1373,43 @@ export interface components {
       /** Password */
       password: string;
     };
+    /**
+     * ReverseResult
+     * @description What is near a point. Every field is null when no populated place is in range.
+     */
+    ReverseResult: {
+      place: components['schemas']['NearbyPlace'] | null;
+      admin_area: components['schemas']['AdminArea'] | null;
+      country: components['schemas']['CountryRef'] | null;
+    };
+    /** RulingOut */
+    RulingOut: {
+      /**
+       * Ruling Text
+       * @description As dorar.net gives it, copied by an editor
+       */
+      ruling_text: string;
+      /** Scholar */
+      scholar: string;
+      /** Source Book */
+      source_book: string;
+      /** Page */
+      page: string;
+      /** Dorar Url */
+      dorar_url: string;
+      classification: components['schemas']['HadithClassification'];
+      /**
+       * Recorded At
+       * Format: date-time
+       */
+      recorded_at: string;
+    };
+    /**
+     * Section
+     * @description A kind of public page. The names are part of the web app's URLs for the child sitemaps.
+     * @enum {string}
+     */
+    Section: 'static' | 'insights' | 'posts' | 'places' | 'profiles';
     /**
      * SessionExport
      * @description A session without its token hash, which is a credential.
@@ -681,6 +1447,55 @@ export interface components {
       /** Display Name */
       display_name: string;
     };
+    /**
+     * SitemapEntry
+     * @description One URL: a path of the web app (the web app adds the origin), its change date, its pictures.
+     */
+    SitemapEntry: {
+      /** Path */
+      path: string;
+      /** Lastmod */
+      lastmod?: string | null;
+      /** Images */
+      images?: string[];
+    };
+    /**
+     * SitemapIndex
+     * @description The sitemap index: how every advertised section is cut into pages.
+     *
+     *     A section whose feature is off is missing; a section with nothing to list has no pages.
+     */
+    SitemapIndex: {
+      /** Page Size */
+      page_size: number;
+      /** Sections */
+      sections: {
+        [key: string]: components['schemas']['SitemapPage'][];
+      };
+    };
+    /**
+     * SitemapPage
+     * @description One page of a section: its number from 0, and the newest `lastmod` it holds.
+     */
+    SitemapPage: {
+      /** Page */
+      page: number;
+      /** Lastmod */
+      lastmod?: string | null;
+    };
+    /** SpanOut */
+    SpanOut: {
+      /** Start */
+      start: number;
+      /** End */
+      end: number;
+      role: components['schemas']['SpanRole'];
+    };
+    /**
+     * SpanRole
+     * @enum {string}
+     */
+    SpanRole: 'chain' | 'body' | 'words' | 'tail';
     /**
      * StatusOut
      * @description The answer of the routes that report only that they did what was asked.
@@ -1317,6 +2132,354 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  search_geo_search_get: {
+    parameters: {
+      query: {
+        /** @description Part of a place name */
+        q: string;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PlaceHit'][];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  reverse_geo_reverse_get: {
+    parameters: {
+      query: {
+        /** @description Degrees, -90 to 90; 0 is valid */
+        lat: number;
+        /** @description Degrees, -180 to 180; 0 is valid */
+        lng: number;
+        /** @description Search radius in metres */
+        radius_m?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ReverseResult'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  countries_geo_countries_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Country'][];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  quran_verse_scripture_quran__surah___ayah__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        surah: number;
+        ayah: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['QuranVerseOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  hadith_scripture_hadith__collection___number__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        collection: string;
+        number: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HadithOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  report_client_errors_client_errors_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ClientReportBatch'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  get_policy_consent_policy_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ConsentPolicyOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  post_consent_consent_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CookieConsentIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CookieConsentOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  get_consent_consent__consent_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        consent_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CookieConsentOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  sitemap_index_sitemap_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SitemapIndex'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  sitemap_section_sitemap__section__get: {
+    parameters: {
+      query?: {
+        page?: number;
+      };
+      header?: never;
+      path: {
+        section: components['schemas']['Section'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SitemapEntry'][];
+        };
       };
       /** @description An error */
       default: {
