@@ -17,6 +17,7 @@ from src.middleware.body_limit import BodyLimitMiddleware
 from src.middleware.no_store import NoStoreMiddleware
 from src.middleware.origin_check import OriginCheckMiddleware
 from src.middleware.request_id import REQUEST_ID_HEADER, RequestIdMiddleware
+from src.redis_client import close_redis
 from src.responses import OrjsonResponse
 from src.routers import (
     account,
@@ -35,10 +36,12 @@ from src.routers import (
     profile,
     reactions,
     reports,
+    scans,
     scripture,
     sitemap,
     support,
 )
+from src.scans.queue import close_queue
 from src.services import social_sitemap  # noqa: F401 - registers the posts and profiles sitemaps
 from src.services.insight_source import InsightSource
 
@@ -80,17 +83,33 @@ OPENAPI_TAGS = [
         "name": "client-errors",
         "description": "Errors the browser saw, forwarded to GlitchTip when it is configured.",
     },
+    {
+        "name": "scans",
+        "description": "A photo in, insights out: the background job and its progress.",
+    },
+    {
+        "name": "insights",
+        "description": "An insight with its scripture from the store; chat, small step, «تمّ».",
+    },
+    {"name": "world", "description": "The learner's map under fog, its places and treasures."},
+    {"name": "me", "description": "Practice, never piety: ranks, streak, quest, sky, badges."},
+    {"name": "tutorial", "description": "The prepared rain scene, «مثال موثّق مُعدّ»."},
 ]
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Let the last error reports out and release the database connections when the process stops."""
+    """Flush error reports, then release the database, Redis, queue and HTTP connections."""
     yield
     shutdown_error_tracking()
     reporter: WebReporter | None = getattr(app.state, "web_reporter", None)
     if reporter is not None:
         reporter.flush()
+    http = getattr(app.state, "http", None)
+    if http is not None:
+        await http.aclose()
+    await close_queue()
+    await close_redis()
     await dispose_engine()
 
 
@@ -173,6 +192,7 @@ def create_app(
     app.include_router(feed.router)
     app.include_router(legal.router)
     app.include_router(support.router)
+    app.include_router(scans.router)
     # The admin area is not mounted at all while its feature flag is off.
     if settings.feature_admin:
         install_admin(app, settings)

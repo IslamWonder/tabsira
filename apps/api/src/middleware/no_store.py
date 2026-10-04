@@ -7,9 +7,10 @@ from collections.abc import Iterable
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-# The routes that answer about one person or set a session cookie: accounts,
-# sign-in, the profile, the consents and the export, and the social routes, whose
-# answers carry the viewer's own likes, saves and follows. Their responses carry
+# The routes that answer about one person or set a session or guest cookie:
+# accounts, sign-in, the profile, the consents, the export, the social routes,
+# whose answers carry the viewer's own likes, saves and follows, and the scan
+# workflow (scans, insights, the world, progress, kept tutorial insights). Their responses carry
 # `Cache-Control: no-store`, redirects and errors included, which is why this is
 # a middleware: a route that returns its own Response would escape a dependency.
 PRIVATE_PREFIXES = (
@@ -25,6 +26,10 @@ PRIVATE_PREFIXES = (
     "/posts",
     "/feed",
     "/reports",
+    "/scans",
+    "/insights",
+    "/world",
+    "/tutorial/rain/insights",
 )
 
 
