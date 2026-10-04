@@ -20,7 +20,8 @@ def test_the_committed_json_names_the_document_it_was_made_from(real_path):
     path = read_path(REAL_MASAR_JSON)
 
     assert path.source.file == "docs/spec/masar.md"
-    assert path.source.sha256 == hashlib.sha256(REAL_MASAR.read_bytes()).hexdigest()
+    text = REAL_MASAR.read_text(encoding="utf-8")
+    assert path.source.sha256 == hashlib.sha256(text.encode()).hexdigest()
     assert path.path_version == "tabsira-masar-1.0" == REAL_MASAR_JSON.stem
 
 

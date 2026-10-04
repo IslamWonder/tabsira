@@ -58,7 +58,9 @@ def test_the_header_of_the_document_becomes_the_version(real_path):
 
 
 def test_the_source_hash_is_the_hash_of_the_document(real_path):
-    assert real_path.source.sha256 == hashlib.sha256(REAL_MASAR.read_bytes()).hexdigest()
+    # The hash is of the text with LF line endings, so a CRLF checkout gives the same data.
+    text = REAL_MASAR.read_text(encoding="utf-8")
+    assert real_path.source.sha256 == hashlib.sha256(text.encode()).hexdigest()
 
 
 def test_the_six_depths_are_the_ones_of_the_document(real_path):
