@@ -316,8 +316,13 @@ systemctl enable --now tabsira-pg-backup.timer >/dev/null
 
 # ─── Verify ─────────────────────────────────────────────────────────
 pg_isready -q -h "$LISTEN_ADDR" -p "$PG_PORT" || die "Nothing answers on $LISTEN_ADDR:$PG_PORT."
-PGPASSWORD="$DB_PASSWORD" psql -X -q -h "$LISTEN_ADDR" -p "$PG_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc 'SELECT 1' >/dev/null ||
-	die "The application role cannot log in on $LISTEN_ADDR (pg_hba allows only $APP_HOST_VPN_IP, so a local check may be refused: test from the app host)."
+# pg_hba admits the application role from the application host only, so a login from
+# this host is refused by design. Check what can be checked here; the login itself
+# is tested from the application host (docs/OPERATIONS.md, provisioning step 4).
+[[ "$(pg_scalar -c "SELECT rolpassword LIKE 'SCRAM-SHA-256\$%' FROM pg_authid WHERE rolname = '$DB_USER'")" == t ]] ||
+	die "The password of $DB_USER is not stored as scram-sha-256."
+[[ "$(pg_scalar -c "SELECT count(*) FROM pg_hba_file_rules WHERE error IS NOT NULL")" == 0 ]] ||
+	die "pg_hba.conf has errors; see pg_hba_file_rules."
 ok "PostgreSQL $PG_VERSION is ready on $LISTEN_ADDR:$PG_PORT"
 cat <<EOF
 
