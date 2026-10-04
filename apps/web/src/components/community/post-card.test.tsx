@@ -26,10 +26,24 @@ describe('PostCard and the scripture it shows', () => {
     const hadith = document.querySelector('[data-scripture="hadith"]');
     expect(quran?.textContent).toBe(QURAN_TEXT);
     expect(hadith?.textContent).toBe(HADITH_TEXT);
-    // What is on screen hashes to what the API said it sent: nothing was changed on the way.
+    // Byte for byte: the UTF-8 bytes on screen are the bytes the API sent, and hash to what it said.
+    expect(
+      Buffer.from(quran?.textContent ?? '', 'utf8').equals(Buffer.from(QURAN_TEXT, 'utf8'))
+    ).toBe(true);
+    expect(
+      Buffer.from(hadith?.textContent ?? '', 'utf8').equals(Buffer.from(HADITH_TEXT, 'utf8'))
+    ).toBe(true);
     expect(sha256(quran?.textContent ?? '')).toBe(POST.insight.quran[0]?.sha256);
     expect(sha256(hadith?.textContent ?? '')).toBe(POST.insight.hadith[0]?.sha256);
+    // The placeholders really would change under the usual damage, so the check above means something.
+    expect(QURAN_TEXT.trim()).not.toBe(QURAN_TEXT);
+    expect(QURAN_TEXT.normalize('NFC')).not.toBe(QURAN_TEXT);
+    expect(HADITH_TEXT.replace(/\s+/g, ' ')).not.toBe(HADITH_TEXT);
+    expect(HADITH_TEXT.length).toBeGreaterThan(280);
     expect(screen.getAllByText('نص موثّق من مصدره')).toHaveLength(2);
+    // The editor's classification is labelled as the editor's, never as dorar's wording.
+    expect(screen.getByText('تصنيف المحرّر لحكم الدرر: صحيح')).toBeInTheDocument();
+    expect(screen.queryByText(/^حكم الدرر:/)).toBeNull();
     expect(screen.getByRole('link', { name: /تحقق في الدرر/ })).toHaveAttribute(
       'href',
       'https://dorar.net/'
@@ -47,7 +61,16 @@ describe('PostCard and the scripture it shows', () => {
       />
     );
     expect(screen.getByTestId('post-evidence')).toBeInTheDocument();
-    expect(screen.getByText(/تُعرض الآية وحدها/)).toBeInTheDocument();
+    expect(screen.getByText('يستند هذا المنشور إلى الآية وحدها.')).toBeInTheDocument();
+    // In a feed the reveal names what the post holds.
+    render(
+      <PostCard
+        post={{ ...POST, insight: { ...POST.insight, hadith: [] } }}
+        onChange={vi.fn()}
+        headingLevel={3}
+      />
+    );
+    expect(screen.getByRole('button', { name: 'اعرض الآية' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: '[عنوان البصيرة]' })).toBeInTheDocument();
   });
 

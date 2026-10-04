@@ -12,8 +12,10 @@ export function sha256(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
-export const QURAN_TEXT = '[نص الآية كما في المدونة]';
-export const HADITH_TEXT = '[نص الحديث كما في المدونة]';
+// Shaped so that any trim, whitespace collapse, NFC or NFKC, diacritic or tatweel
+// stripping, or cut at 280 characters changes them: a display that alters the text fails.
+export const QURAN_TEXT = `  [نص  الآية كما في المدونة]\u200f\u00a0مَعَ حَرَكَاتٍ وتطـــويل وآ\u0627\u0653 ${'[كلمة] '.repeat(60)}\n `;
+export const HADITH_TEXT = ` [نص الحديث كما في المدونة]\t\u200f مَتْنٌ  بحركات، وتطـويل، و\u0627\u0653 ${'[كلمة] '.repeat(60)}  \n`;
 
 export const AUTHOR = { handle: 'rain_reader', public_name: '[اسم عام]' };
 export const OTHER = { handle: 'other_one', public_name: '[عضو آخر]' };

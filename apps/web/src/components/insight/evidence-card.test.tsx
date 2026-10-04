@@ -191,3 +191,26 @@ describe('EvidenceCard, the ruling', () => {
     expect(within(none).queryByText(/حكم الدرر/)).toBeNull();
   });
 });
+
+describe("EvidenceCard, Sunnah with the editor's classification only", () => {
+  it("labels the classification as the editor's, keeps the dorar link, and omits the missing source link", () => {
+    render(
+      <EvidenceCard
+        variant="sunnah"
+        headingLevel={3}
+        text="[نص الحديث]"
+        reference="[الكتاب · الرقم]"
+        verifyHref="https://dorar.net/"
+        classification="[تصنيف]"
+      />
+    );
+    const card = screen.getByRole('article', { name: 'السنة' });
+    expect(within(card).getByText('تصنيف المحرّر لحكم الدرر: [تصنيف]')).toBeInTheDocument();
+    expect(within(card).queryByText(/^حكم الدرر:/)).toBeNull();
+    expect(within(card).getByRole('link', { name: /تحقق في الدرر/ })).toHaveAttribute(
+      'href',
+      'https://dorar.net/'
+    );
+    expect(within(card).queryByRole('link', { name: /افتح المصدر/ })).toBeNull();
+  });
+});

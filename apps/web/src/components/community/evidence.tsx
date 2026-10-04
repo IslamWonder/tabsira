@@ -38,20 +38,28 @@ export function PostEvidence({
       text={hadith.text}
       reference={M.hadithReference(hadith.collection_name, hadith.number)}
       verifyHref={hadith.verification_url}
-      ruling={hadith.classification}
+      classification={hadith.classification}
       verified={hadith.verified}
     />
   ));
+  const quranBlock = <div className="flex flex-col gap-4">{verses}</div>;
+  const sunnahBlock = <div className="flex flex-col gap-4">{hadiths}</div>;
   return (
     <div className="flex flex-col gap-4" data-testid="post-evidence">
-      <EvidencePair
-        quran={<div className="flex flex-col gap-4">{verses}</div>}
-        sunnah={
-          hadiths.length === 0 ? undefined : <div className="flex flex-col gap-4">{hadiths}</div>
-        }
-      />
+      {/* The thread of the pair joins two sources, never one. */}
+      {verses.length > 0 && hadiths.length > 0 ? (
+        <EvidencePair quran={quranBlock} sunnah={sunnahBlock} />
+      ) : null}
+      {verses.length > 0 && hadiths.length === 0 ? quranBlock : null}
+      {verses.length === 0 && hadiths.length > 0 ? sunnahBlock : null}
       {hadiths.length === 0 && verses.length > 0 ? (
         <p className="m-0 text-fg-muted text-sm">{M.verseAlone}</p>
+      ) : null}
+      {verses.length === 0 && hadiths.length > 0 ? (
+        <p className="m-0 text-fg-muted text-sm">{M.hadithAlone}</p>
+      ) : null}
+      {verses.length === 0 && hadiths.length === 0 ? (
+        <p className="m-0 text-fg-muted text-sm">{M.noEvidence}</p>
       ) : null}
     </div>
   );

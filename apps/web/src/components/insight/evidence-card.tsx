@@ -36,6 +36,11 @@ export interface SunnahEvidenceProps extends Omit<EvidenceBase, 'sourceHref'> {
   ruling?: string;
   /** Who gave the ruling and where (scholar, book, page), as recorded; shown under it, quieter. */
   rulingSource?: string;
+  /**
+   * The editor's classification of the ruling (sahih or hasan), when the answer carries it
+   * without dorar's own words; shown under its own label, never as the ruling.
+   */
+  classification?: string;
 }
 
 export type EvidenceCardProps = QuranEvidenceProps | SunnahEvidenceProps;
@@ -132,7 +137,13 @@ export function EvidenceCard(props: EvidenceCardProps) {
       {props.variant === 'sunnah' ? (
         <footer className="flex flex-wrap items-center justify-between gap-x-4 border-[var(--sunnah-border)] border-t pt-1">
           {props.ruling === undefined ? (
-            <span />
+            props.classification === undefined ? (
+              <span />
+            ) : (
+              <p className="m-0 text-[0.8125rem] text-fg-muted">
+                {messages.evidence.classification(props.classification)}
+              </p>
+            )
           ) : (
             <div className="flex min-w-0 flex-col gap-0.5">
               <p className="m-0 text-[0.8125rem] text-fg-muted">
