@@ -122,7 +122,7 @@ One Mac, two Windows laptops that develop inside Linux virtual machines, one Win
 ## Lessons already paid for
 
 - Vision models return boxes in their own coordinate system: GPT in pixels of the image it received, Qwen 3.x on a 0–1000 grid even when asked for pixels. The provider setting `BOX_COORDINATES` says which; convert to 0–1 ratios on the server and drop boxes outside the image.
-- Reranking with a large language model was the slowest stage (about 20 s of a 30–45 s scan). Measure a cross-encoder before choosing.
+- Reranking with a large language model was the slowest stage (about 20 s of a 30–45 s scan), and a cross-encoder on a CPU was no faster (22 s a scan). A small model (`gpt-5.4-nano`) on the eight best fused candidates only, every list at once, ranks best and costs about 3 s; it answers numbers and scores only, never text.
 - When the database is down the first page must still load: short connect timeout, an error handler, no unhandled rejection.
 - A page-level CSS transform breaks `position: fixed` children. Animate opacity on wrappers.
 - In nginx, a location that sets a header drops the headers inherited from the server block.
