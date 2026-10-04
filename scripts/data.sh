@@ -9,6 +9,9 @@
 #   hadith       the nine books into app.hadiths
 #   signals      data/corpus/sunnah-enriched.json, repaired from cp720 and linked
 #
+# Then the vectors of every new or changed text for semantic search
+# (src.cli.embed_corpus, the active provider's embedding model).
+#
 # The two files in data/corpus/ are the project's own corpora, too large for
 # git; docs/ASSET_MANIFEST.md names them and their SHA-256. Then the world
 # ontology and the learning path (scripts/data-learning.sh).
@@ -33,6 +36,14 @@ started=$SECONDS
 (cd "$REPO_ROOT/apps/api" && uv run --quiet python -m src.cli.import_scripture \
 	download quran annotations hadith signals --cache-dir "$REPO_ROOT/data/cache" --corpus-dir "$CORPUS_DIR")
 ok "Scripture store imported in $((SECONDS - started)) s"
+
+# Vectors for semantic search, with the active provider's embedding model. Only
+# new or changed documents are sent, so a second run costs nothing; without an
+# API key the step says so and is skipped (search then uses its lexical half).
+banner "Scripture vectors"
+started=$SECONDS
+(cd "$REPO_ROOT/apps/api" && uv run --quiet python -m src.cli.embed_corpus)
+ok "Scripture vectors checked in $((SECONDS - started)) s"
 
 # shellcheck source=data-learning.sh
 source "$(dirname "${BASH_SOURCE[0]}")/data-learning.sh"
