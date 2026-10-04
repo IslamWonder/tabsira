@@ -1095,7 +1095,8 @@ def test_contact_addresses_and_legal_versions_default_to_the_published_ones(make
 
     assert settings.support_email == "support@tabsira.me"
     assert settings.privacy_email == "privacy@tabsira.me"
-    assert settings.terms_version == settings.privacy_version == "2026-10-04"
+    assert settings.terms_version == "2026-10-04T20:00Z"
+    assert settings.privacy_version == "2026-10-04T23:00Z"
     assert (
         settings.support_max_per_ip_per_hour,
         settings.support_max_per_address_per_hour,

@@ -77,6 +77,8 @@ DEFAULT_PRIVACY_EMAIL = "privacy@tabsira.me"
 TURNSTILE_TEST_KEY_PREFIXES = ("1x", "2x", "3x")
 TURNSTILE_SITE_KEY_PATTERN = re.compile(r"[0-9A-Za-z_-]{8,64}")
 DEFAULT_LEGAL_VERSION = "2026-10-04T20:00Z"
+# The privacy policy moved on when Cloudflare Turnstile joined the browser's third-party contacts.
+DEFAULT_PRIVACY_VERSION = "2026-10-04T23:00Z"
 DEFAULT_LANGUAGE = "ar"
 
 # A cookie name: RFC 6265 token characters we actually use. `__Host-` is refused
@@ -560,7 +562,7 @@ class Settings(BaseSettings):
     # Versions of the terms of use and the privacy policy. Changing one asks every
     # account to accept again (decision 35).
     terms_version: Annotated[str, Field(min_length=1, max_length=32)] = DEFAULT_LEGAL_VERSION
-    privacy_version: Annotated[str, Field(min_length=1, max_length=32)] = DEFAULT_LEGAL_VERSION
+    privacy_version: Annotated[str, Field(min_length=1, max_length=32)] = DEFAULT_PRIVACY_VERSION
     # Limits of the support form, shared by every worker through PostgreSQL: per client IP
     # (IPv6 grouped by /48), per reply-to address, and over everyone as a ceiling.
     support_max_per_ip_per_hour: Annotated[int, Field(ge=1)] = 5

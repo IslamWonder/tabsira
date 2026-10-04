@@ -198,7 +198,7 @@ const terms: LegalDocument = {
 };
 
 const privacy: LegalDocument = {
-  version: '2026-10-04T20:00Z',
+  version: '2026-10-04T23:00Z',
   updated: '4 أكتوبر 2026',
   title: 'سياسة الخصوصية',
   description:

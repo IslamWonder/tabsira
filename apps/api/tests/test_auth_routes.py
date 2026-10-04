@@ -16,7 +16,7 @@ SIGNUP = {
     "password": PASSPHRASE,
     "display_name": "ليلى",
     "accepted_terms_version": "2026-10-04T20:00Z",
-    "accepted_privacy_version": "2026-10-04T20:00Z",
+    "accepted_privacy_version": "2026-10-04T23:00Z",
 }
 LOGIN = {"email": "reader@example.com", "password": PASSPHRASE}
 
@@ -271,7 +271,7 @@ async def test_signing_up_records_the_acceptance_of_both_texts(web, db_session):
     rows = await consents_of(db_session)
     assert {(row.kind, row.version, row.granted) for row in rows} == {
         (ConsentKind.TERMS, "2026-10-04T20:00Z", True),
-        (ConsentKind.PRIVACY, "2026-10-04T20:00Z", True),
+        (ConsentKind.PRIVACY, "2026-10-04T23:00Z", True),
     }
 
 
