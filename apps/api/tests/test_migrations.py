@@ -19,6 +19,7 @@ import pytest
 from sqlalchemy import text
 
 from alembic import op
+from src.models.scripture import GUARDED_TABLES
 from tests.dbschema import EXTENSIONS, create_schema, reset_schemas
 
 API_DIR = Path(__file__).resolve().parents[1]
@@ -155,6 +156,18 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
                 )
             ).scalars()
         )
+        triggers = set(
+            (
+                await connection.execute(
+                    text(
+                        "SELECT c.relname || '.' || t.tgname FROM pg_trigger t "
+                        "JOIN pg_class c ON c.oid = t.tgrelid "
+                        "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                        "WHERE n.nspname = 'app' AND NOT t.tgisinternal"
+                    )
+                )
+            ).scalars()
+        )
 
     assert {
         "geodata.geonames",
@@ -170,6 +183,13 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
     assert versions == {"app": "20261004_121500", "geodata": "20261004_130000"}
     # The models and the migrations describe the same database.
     assert {"ix_geonames_name_trgm", "ix_geonames_location_geom", "pk_geonames"} <= indexes
+    # The scripture write guard exists after the migrations too, not only in a schema built
+    # from the models; alembic check cannot see triggers.
+    assert {
+        f"{table}.{table}_{kind}_guard"
+        for table in GUARDED_TABLES
+        for kind in ("write", "truncate")
+    } <= triggers
     for config in (GEODATA_CONFIG, APP_CONFIG):
         check = alembic(config, "check")
         assert check.returncode == 0, check.stdout + check.stderr
