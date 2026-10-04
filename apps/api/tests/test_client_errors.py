@@ -14,7 +14,7 @@ from src.config import Settings
 from src.error_tracking import FILTERED, WebReporter
 from src.main import create_app
 from src.routers import client_errors
-from src.routers.client_errors import ClientErrorLimits
+from src.services.window_limiter import AddressLimits
 
 WEB_DSN = "https://web-key@glitchtip.example.com/8"
 ORIGIN = "https://tabsira.test"
@@ -146,9 +146,7 @@ async def test_a_body_over_the_cap_is_refused_before_it_is_read(open_client):
 
 async def test_an_address_over_its_budget_gets_429_and_others_are_unaffected(make_settings):
     application = create_app(make_settings())
-    limits = ClientErrorLimits()
-    limits.per_address.limit = 2
-    application.state.client_error_limits = limits
+    application.state.client_error_limits = AddressLimits(2, 600, 300)
 
     async with client_of(application, "203.0.113.5") as noisy:
         statuses = [(await noisy.post("/client-errors", json=REPORT)).status_code for _ in range(4)]
@@ -164,9 +162,7 @@ async def test_an_address_over_its_budget_gets_429_and_others_are_unaffected(mak
 
 async def test_every_address_together_is_bounded_too(make_settings):
     application = create_app(make_settings())
-    limits = ClientErrorLimits()
-    limits.overall.limit = 2
-    application.state.client_error_limits = limits
+    application.state.client_error_limits = AddressLimits(60, 2, 300)
 
     statuses = []
     for number in range(4):

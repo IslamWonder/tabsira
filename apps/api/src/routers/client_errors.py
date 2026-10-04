@@ -20,9 +20,8 @@ from fastapi import APIRouter, Depends, Request, Response, status
 
 from src.deps import IpHashDep, SettingsDep
 from src.error_tracking import WebReporter
-from src.errors import AppError, ErrorCode
 from src.schemas.client_errors import ClientReportBatch
-from src.services.window_limiter import WindowLimiter
+from src.services.window_limiter import AddressLimits, limits_of, too_many_requests
 
 router = APIRouter(prefix="/client-errors", tags=["client-errors"])
 
@@ -36,21 +35,13 @@ GLOBAL_LIMIT = 600
 WINDOW_SECONDS = 300
 
 
-class ClientErrorLimits:
-    """The two limiters of the route, one set per application."""
-
-    def __init__(self) -> None:
-        self.per_address = WindowLimiter(ADDRESS_LIMIT, WINDOW_SECONDS)
-        self.overall = WindowLimiter(GLOBAL_LIMIT, WINDOW_SECONDS, max_keys=1)
-
-
-def get_limits(request: Request) -> ClientErrorLimits:
-    """Return the application's limiters, built on first use."""
-    limits: ClientErrorLimits | None = getattr(request.app.state, "client_error_limits", None)
-    if limits is None:
-        limits = ClientErrorLimits()
-        request.app.state.client_error_limits = limits
-    return limits
+def get_limits(request: Request) -> AddressLimits:
+    """Return the application's limits for this route, built on first use."""
+    return limits_of(
+        request,
+        "client_error_limits",
+        lambda: AddressLimits(ADDRESS_LIMIT, GLOBAL_LIMIT, WINDOW_SECONDS),
+    )
 
 
 def get_reporter(request: Request, settings: SettingsDep) -> WebReporter:
@@ -66,19 +57,12 @@ ReporterDep = Annotated[WebReporter, Depends(get_reporter)]
 
 
 def enforce_limits(
-    limits: Annotated[ClientErrorLimits, Depends(get_limits)], ip_hash: IpHashDep
+    limits: Annotated[AddressLimits, Depends(get_limits)], ip_hash: IpHashDep
 ) -> None:
     """Answer 429 when this address, or this worker as a whole, has sent too many reports."""
-    retry_after = limits.per_address.hit(ip_hash)
-    if retry_after is None:
-        retry_after = limits.overall.hit("all")
+    retry_after = limits.hit(ip_hash)
     if retry_after is not None:
-        raise AppError(
-            ErrorCode.RATE_LIMITED,
-            "Too many error reports. Try again later.",
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            headers={"Retry-After": str(max(int(retry_after), 1))},
-        )
+        raise too_many_requests(retry_after, "Too many error reports. Try again later.")
 
 
 @router.post(
