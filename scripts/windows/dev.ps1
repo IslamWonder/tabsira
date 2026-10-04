@@ -1,11 +1,11 @@
 <#
 Run the API, the scan worker, the web app and (when present) the vision
-service behind https://tabsira.test, the way `make dev` (scripts/dev.sh) does,
+service behind http://tabsira.test, the way `make dev` (scripts/dev.sh) does,
 from PowerShell. nginx (scripts\windows\setup-nginx-local.ps1) is started
 first when it is not running yet, and stopped at the end when this script
 started it.
 
-  nginx    ../tabsira-tools/nginx          443 -> the apps below
+  nginx    ../tabsira-tools/nginx          80 -> the apps below
   api      uv run uvicorn in apps/api      127.0.0.1:8000 (API_HOST, API_PORT)
   worker   the scan jobs, from Redis
   web      next dev in apps/web            127.0.0.1:3000
@@ -131,7 +131,7 @@ try {
         Start-Process -FilePath $nginxExe -ArgumentList (ConvertTo-ArgumentString @('-p', $nginxDir, '-c', 'conf\tabsira.conf')) -WorkingDirectory $nginxDir -WindowStyle Hidden
         $nginxStartedHere = $true
         Start-Sleep -Milliseconds 800
-        if (-not (Test-TcpPort -Port 443)) { Write-Warn "nginx did not open port 443: see $(Join-Path $LogDir 'nginx.error.log')" }
+        if (-not (Test-TcpPort -Port 80)) { Write-Warn "nginx did not open port 80: see $(Join-Path $LogDir 'nginx.error.log')" }
     }
 
     # --- The apps --------------------------------------------------------------
@@ -173,7 +173,7 @@ try {
 
     if ($services.Count -eq 0) { throw 'nothing to run: no app exists yet' }
     $names = ($services | ForEach-Object { $_.Name }) -join ', '
-    Write-Log "running: $names. Web https://tabsira.test, API https://api.tabsira.test. Ctrl-C stops all."
+    Write-Log "running: $names. Web http://tabsira.test, API http://api.tabsira.test. Ctrl-C stops all."
 
     # Ctrl-C arrives here as a key, so the shutdown below always runs.
     if (-not [Console]::IsInputRedirected) { [Console]::TreatControlCAsInput = $true }

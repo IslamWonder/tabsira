@@ -1,7 +1,7 @@
 <#
-The developer tools that install for the user alone, no elevation: uv, mkcert,
-the pnpm pinned in package.json, and the quality tools the shell scripts and
-the git hooks look for (shfmt, shellcheck, gitleaks, jq). Node itself comes
+The developer tools that install for the user alone, no elevation: uv, the
+pnpm pinned in package.json, and the quality tools the shell scripts and the
+git hooks look for (shfmt, shellcheck, gitleaks, jq). Node itself comes
 from provision-system.ps1 (it is a machine-wide installer); here it is checked.
 
 Idempotent.
@@ -16,11 +16,6 @@ Write-Banner 'uv'
 [void](Install-WingetPackage -Id 'astral-sh.uv' -Scope 'user')
 if (-not (Test-Command uv)) { Fail 'uv is not on PATH after the install; open a new terminal and run again' }
 Write-Ok (Invoke-Capture 'uv' @('--version')).Output
-
-Write-Banner 'mkcert'
-[void](Install-WingetPackage -Id 'FiloSottile.mkcert' -Scope 'user')
-if (-not (Test-Command mkcert)) { Fail 'mkcert is not on PATH after the install; open a new terminal and run again' }
-Write-Ok "mkcert $((Invoke-Capture 'mkcert' @('-version')).Output)"
 
 Write-Banner 'Node and pnpm'
 $major = Get-NodeMajor

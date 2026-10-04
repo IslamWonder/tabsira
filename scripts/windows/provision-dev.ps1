@@ -5,9 +5,9 @@ PowerShell counterpart of scripts/provision-dev.sh (Ubuntu).
   1. elevated, in its own window (Windows asks once):
        Node 24 LTS; PostgreSQL 18 with PostGIS, pgvector and TimescaleDB;
        a Redis-compatible server; the hosts file       (provision-system.ps1)
-  2. uv, mkcert, the pinned pnpm, the quality tools    (install-tools.ps1)
+  2. uv, the pinned pnpm, the quality tools            (install-tools.ps1)
   3. role, databases, schemas, extensions, .env        (setup-db.ps1)
-  4. nginx and mkcert for https://tabsira.test         (setup-nginx-local.ps1)
+  4. nginx for http://tabsira.test, port 80            (setup-nginx-local.ps1)
   5. dependencies and git hooks                        (install.ps1)
 
 Then: scripts\windows\migrate.ps1, and scripts\windows\dev.ps1 to run.
@@ -65,13 +65,13 @@ if ($SkipSystem) {
     Update-Path
 }
 
-Write-Banner '2/5 Tools: uv, mkcert, pnpm, quality tools'
+Write-Banner '2/5 Tools: uv, pnpm, quality tools'
 Invoke-Step 'install-tools.ps1'
 
 Write-Banner '3/5 Database'
 Invoke-Step 'setup-db.ps1'
 
-Write-Banner '4/5 nginx and mkcert for tabsira.test'
+Write-Banner '4/5 nginx for tabsira.test'
 Invoke-Step 'setup-nginx-local.ps1'
 
 Write-Banner '5/5 Dependencies and git hooks'
@@ -90,5 +90,5 @@ Next steps:
   1. scripts\windows\migrate.ps1   geodata chain, then app chain, then vectors chain
   2. docs/SETUP.md steps 4 to 7    corpora, scripture store, GeoNames, vectors
   3. scripts\windows\dev.ps1       nginx + api + worker + web (+ vision) with reload
-  4. https://tabsira.test  (API: https://api.tabsira.test)
+  4. http://tabsira.test  (API: http://api.tabsira.test)
 "@
