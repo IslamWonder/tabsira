@@ -43,7 +43,7 @@ class InsightSource(Protocol):
     ) -> InsightSnapshot | None: ...
 ```
 
-It returns an `InsightSnapshot` (id, version, owner, verified, title, glimpse, relation type, explanation excerpt, evidence references, step, concepts, and the photo reference with `photo_consent` and `scene_sensitive`), or `None` for an insight that does not exist or is not the owner's. To wire it, implement the protocol over the insights table and pass it to `create_app(insight_source=...)` in `apps/api/src/main.py`; until then `POST /posts` answers `503 SERVICE_UNAVAILABLE` and invents nothing. Tests use `FakeInsightSource` in `tests/support_social.py`.
+It returns an `InsightSnapshot` (id, version, owner, verified, title, glimpse, relation type, explanation excerpt, evidence references, step, concepts, and the photo reference with `photo_consent` and `scene_sensitive`), or `None` for an insight that does not exist or is not the owner's. `services/insight_table_source.py` implements it over `app.insights` and `create_app` uses it unless a test hands in a double (`FakeInsightSource` in `tests/support_social.py`); an application built with no source at all answers `503 SERVICE_UNAVAILABLE` and invents nothing.
 
 A second plug point is the **photo**: a publication keeps the private reference of the owner's photo (`photo_ref`), for the owner and for the photo store; **no public response carries it**, they say only `has_photo`. Turning it into a public address (copying the photo to its public place when its owner publishes, and removing it when the post is withdrawn) belongs to the photo store, not to this module. The sitemap lists no image until that address exists.
 
@@ -104,6 +104,12 @@ Every write has a budget per account and one over all accounts, counted in memor
 ## Account export and deletion
 
 `GET /account/export` includes a `social` object: the posts with their reflections and publications, the comments, the members followed and blocked (by handle only), the likes and bookmarks, and the reports filed. `DELETE /account` removes all of it by cascade, and the posts, comments, follows and reactions with it; what is left is the moderation log, which names no author and holds no text.
+
+## The web screens
+
+`apps/web/src/components/community` and `apps/web/src/social` (task 16.1). The feeds at `/community` («لك», «أتابع», the latest, and for a signed-in person «منشوراتي» in every state and «محفوظاتي»), each with its cursor behind a «اعرض المزيد» button and, in «لك», the item's reason behind «لماذا أرى هذا؟»; a post at `/posts/<id>` with its comments and one level of replies; a public profile at `/u/<handle>` with follow and block; publishing at `/community/publish?insight=<id>` (draft, preview, submit, edit a refused post, withdraw); and in «ملفي» the public handle and name with the list of blocked members. The web never decides a permission: it tells the viewer which step the API will ask for (sign in, a verified address, a public identity) and shows the API's answer. Scripture is shown by the shared evidence card exactly as the API returns it, and the author's reflection is labelled as the author's words. The screens are reached only while `FEATURE_SOCIAL` is on; with it off the API answers 404 and the feeds say they cannot be loaded.
+
+The insights plug in through `services/insight_table_source.py`, the `InsightSource` over `app.insights`: an insight is publishable when it is the caller's own and came out of the real pipeline (`engine = "pipeline"`); a demo insight and a prepared tutorial copy are not.
 
 ## Sitemap
 
