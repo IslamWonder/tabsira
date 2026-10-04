@@ -16,7 +16,7 @@ Read first, in this order:
 TABSIRA (تَبْصِرَة, no "h") turns a photo into an insight (بصيرة) backed by one Quran verse and one hadith, in Arabic, as a phone-first PWA. Insights can be saved in a personal world, shared, published to a small social network («تبصرة تواصل») and placed on a real map («أطلس بصائر العالم») that a camera view can discover nearby. Authors: Firas Ben Sassi and Ghazi Triki.
 
 - Production: `https://tabsira.me` (`api.tabsira.me` for the API).
-- Local development: `https://tabsira.test` (`api.tabsira.test`), TLS by mkcert. Production files never contain `.test`; `.test` defaults in code are development-only.
+- Local development: `http://tabsira.test` (`api.tabsira.test`, `admin.tabsira.test`), plain HTTP on port 80, never 443 (decision 49). Production is https only. Production files never contain `.test`; `.test` defaults in code are development-only.
 
 ## Stack
 

@@ -1,6 +1,6 @@
 # Setting up a machine
 
-A new laptop (Linux, macOS, or Linux in a virtual machine on Windows) ready to work: the databases filled with the scripture store, GeoNames and the scripture vectors, and the app running at `https://tabsira.test`, **without importing anything that is already there**. Every step below is safe to run again, and each one starts with the check that tells you it is already done. Task 15.4 turns these steps into one command, `make bootstrap`.
+A new laptop (Linux, macOS, or Linux in a virtual machine on Windows) ready to work: the databases filled with the scripture store, GeoNames and the scripture vectors, and the app running at `http://tabsira.test`, **without importing anything that is already there**. Every step below is safe to run again, and each one starts with the check that tells you it is already done. Task 15.4 turns these steps into one command, `make bootstrap`.
 
 Artifacts you make while working (exports, reports) go beside the checkout in `../tabsira-artifact/`, never into the repository.
 
@@ -16,12 +16,12 @@ Artifacts you make while working (exports, reports) go beside the checkout in `.
 
 ## Steps
 
-### 1. System, database server, local HTTPS
+### 1. System, database server, local nginx
 
-Done when `psql "$(grep ^SYNC_DATABASE_URL= .env | cut -d= -f2- | sed 's/+psycopg//')" -c 'select 1'` answers and `https://tabsira.test` resolves.
+Done when `psql "$(grep ^SYNC_DATABASE_URL= .env | cut -d= -f2- | sed 's/+psycopg//')" -c 'select 1'` answers and `http://tabsira.test` resolves.
 
 - Install Node 24, pnpm and uv yourself (nvm, fnm, brew: your choice).
-- Ubuntu or Mint: `sudo bash scripts/provision-dev.sh` installs PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, the quality tools, creates the role, the databases and `.env` (`scripts/setup-db.sh`), and sets up nginx with mkcert for `tabsira.test`. Idempotent.
+- Ubuntu or Mint: `sudo bash scripts/provision-dev.sh` installs PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, the quality tools, creates the role, the databases and `.env` (`scripts/setup-db.sh`), and sets up nginx for `tabsira.test` on port 80, plain HTTP (decision 49). Idempotent.
 - macOS: `bash scripts/install-postgres.sh`, then `bash scripts/setup-db.sh` and `bash scripts/setup-nginx-local.sh` (the provisioning script is for Ubuntu).
 - Redis must run on 127.0.0.1:6379 (scans use it).
 
@@ -74,7 +74,7 @@ If both are full, skip. Otherwise download, check and import as docs/EMBEDDINGS.
 
 ### 8. Run
 
-`make dev` starts the API, the web app, the vision service and the scan worker; open `https://tabsira.test`. `make smoke` checks the main pages and routes. `make stats` prints a short summary of the code.
+`make dev` starts the API, the web app, the vision service and the scan worker; open `http://tabsira.test`. `make smoke` checks the main pages and routes. `make stats` prints a short summary of the code.
 
 ## Everything at once
 
