@@ -28,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.atlas import MapEntry, MapEntryStatus
 from src.models.profile import AgeRange, Profile
 from src.models.scan import Insight, Scan
-from src.models.social import InsightPublication, Post, PostStatus
+from src.models.social import InsightPublication, Post, PostStatus, PostVisibility
 from src.scans import buffer
 from src.services.image_service import ImageRejectedError, process_photo_in_thread
 from src.storage.base import StorageError
@@ -90,10 +90,13 @@ async def keep_from_buffer(
 
 
 def _shown_by_a_live_publication(insight_id: int) -> Select[tuple[bool]]:
-    """Whether a published post or map entry shows the photo of the insight right now."""
+    """Whether a public post or a published map entry shows the photo of the insight right now."""
+    # A post for followers only is not public: the `public/` prefix is readable by anyone who
+    # has the address, so only a public post or a map entry makes a public copy.
     post_shows = exists().where(
         Post.publication_id == InsightPublication.id,
         Post.status == PostStatus.PUBLISHED,
+        Post.visibility == PostVisibility.PUBLIC,
         InsightPublication.insight_id == insight_id,
         InsightPublication.photo_ref.is_not(None),
     )

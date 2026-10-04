@@ -184,6 +184,26 @@ async def test_without_the_choice_or_a_kept_photo_a_post_shows_none(
     assert await keys_of(db_session, kept) == (kept.photo_key, None)
 
 
+async def test_a_post_for_followers_only_makes_no_public_copy(
+    db_session, make_member, photos, media, world
+):
+    author = await make_member("author")
+    await consent(author)
+    insight = await kept_insight(db_session, author, photos)
+    draft = await author.http.post(
+        "/posts", json={"insight_id": str(insight.id), "photo": True, "visibility": "followers"}
+    )
+    assert draft.status_code == 201, draft.text
+
+    response = await author.http.post(f"/posts/{draft.json()['id']}/submit")
+
+    # The owner's choice is recorded, but the `public/` prefix is for public posts alone.
+    assert response.json()["status"] == "published"
+    assert response.json()["insight"]["has_photo"] is True
+    assert await keys_of(db_session, insight) == (insight.photo_key, None)
+    assert objects(media) == [insight.photo_key]
+
+
 async def test_the_rules_are_checked_again_when_the_copy_would_be_made(
     db_session, make_member, photos, media, world, caplog
 ):
