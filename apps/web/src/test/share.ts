@@ -15,8 +15,10 @@ export function publicInsightOut(overrides: Partial<PublicInsight> = {}): Public
     glimpse: insight.glimpse,
     relation: insight.relation,
     relation_label: insight.relation_label,
-    quran: insight.quran,
-    hadith: insight.hadith,
+    // The public schemas carry the text and its tag, never why the engine chose it.
+    quran: insight.quran === null ? null : { tag: insight.quran.tag, verse: insight.quran.verse },
+    hadith:
+      insight.hadith === null ? null : { tag: insight.hadith.tag, hadith: insight.hadith.hadith },
     hadith_status: insight.hadith_status,
     notice: insight.notice,
     pair_complete: insight.pair_complete,
