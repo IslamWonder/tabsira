@@ -202,6 +202,39 @@ def answer_is_shown(row: ChatMessage, shown: set[str]) -> bool:
     return row.evidence_ids is not None and set(row.evidence_ids) <= shown
 
 
+# An evidence id as the chat keeps it: `quran:30:50` or `hadith:bukhari:1032`.
+EVIDENCE_ID = re.compile(
+    r"^(?:quran:(?P<surah>[0-9]+):(?P<ayah>[0-9]+)|hadith:(?P<book>[^:]+):(?P<number>[^:]+))$"
+)
+
+
+async def found_texts(
+    db: AsyncSession, row: ChatMessage, shown: set[str]
+) -> tuple[QuranVerseOut | None, HadithOut | None] | None:
+    """
+    Read the texts an answer found by itself (a request for another text, v2 §14).
+
+    They are the evidence ids of the row that the insight does not show, read from the
+    store by id; a hadith shows only while its ruling is eligible. None when any of them
+    is not in the store or not eligible: the answer is then no longer shown.
+    """
+    verse: QuranVerseOut | None = None
+    hadith: HadithOut | None = None
+    for ref in row.evidence_ids or []:
+        match = EVIDENCE_ID.match(ref)
+        if ref in shown or match is None:
+            continue
+        if match.group("surah") is not None:
+            verse = await read_verse(db, int(match.group("surah")), int(match.group("ayah")))
+            if verse is None:
+                return None
+        else:
+            hadith = await read_hadith(db, match.group("book"), match.group("number"))
+            if hadith is None or not hadith.eligible:
+                return None
+    return verse, hadith
+
+
 async def chat_of(
     db: AsyncSession,
     settings: Settings,
@@ -223,21 +256,34 @@ async def chat_of(
         used=len(rows),
         limit=limit,
         remaining=max(limit - len(rows), 0),
-        messages=[message_out(row, shown) for row in rows],
+        messages=[await message_out(db, row, shown) for row in rows],
     )
 
 
-def message_out(row: ChatMessage, shown: set[str]) -> ChatMessageOut:
-    """Return the message; a note stands in place of an answer no longer shown."""
+async def message_out(db: AsyncSession, row: ChatMessage, shown: set[str]) -> ChatMessageOut:
+    """
+    Return the message; a note stands in place of an answer no longer shown.
+
+    An answer is shown while every text it was written beside is: the insight's texts in
+    `shown`, and the text it found itself, read from the store beside it.
+    """
+    texts = messages_for()
+    found = await found_texts(db, row, shown)
+    verse, hadith = found if found is not None else (None, None)
+    withdrawn = found is None or not answer_is_shown(row, shown | shown_ids(verse, hadith))
     return ChatMessageOut.model_validate(
         {
             "question": row.question,
-            "answer": row.answer
-            if answer_is_shown(row, shown)
-            else messages_for().chat_answer_withdrawn,
+            "answer": texts.chat_answer_withdrawn if withdrawn else row.answer,
             "level": row.level,
             "kind": row.kind,
             "answered_at": row.answered_at,
+            "quran": PublicQuran(tag=texts.quran_tag, verse=verse)
+            if verse is not None and not withdrawn
+            else None,
+            "hadith": PublicHadith(tag=texts.sunnah_tag, hadith=hadith)
+            if hadith is not None and not withdrawn
+            else None,
         }
     )
 

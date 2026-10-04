@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 from datetime import timedelta
+from typing import Any
 
 import pytest
 from sqlalchemy import delete, select
@@ -13,11 +16,23 @@ from src import clock
 from src.ai.errors import AiCallError, AiErrorCode
 from src.errors import AppError
 from src.messages import messages_for
-from src.models import AiCall, ChatMessage, ChatStatus, Guest, HadithClassification
+from src.models import (
+    AiCall,
+    ChatMessage,
+    ChatStatus,
+    Guest,
+    Hadith,
+    HadithClassification,
+    HadithVerificationQueue,
+    QuranVerse,
+)
 from src.owner import Owner
+from src.pipeline.insight.engine import ResourceCache
 from src.services import chat_service
+from src.services.chat_retrieval import query_for
 from tests.fakes import FakeModelClient
-from tests.scans.builders import insight_row, scan_row
+from tests.retrieval.support import EmbeddingClient
+from tests.scans.builders import insight_row, scan_row, scene
 from tests.scans.conftest import as_guest, rule
 
 
@@ -27,16 +42,85 @@ def said(
     return {"level": level, "asks_for_new_text": new_text, "answer": answer}
 
 
-async def an_insight(browser, store, flow_settings) -> str:
+def wants(kind: str = "either") -> dict[str, Any]:
+    """The model's answer when the learner asks for a text that is not shown."""
+    return said(level="a", answer="", new_text=True) | {"new_text_kind": kind}
+
+
+def relevant_where(word: str):
+    """A verifier that finds relevant exactly the texts holding `word`, and nothing else."""
+
+    def answer(call: dict[str, Any]) -> dict[str, Any]:
+        payload = json.loads(call["user"])
+        return {
+            "candidates": [
+                {
+                    "candidate": item["candidate"],
+                    "texts": [
+                        {
+                            "label": text["label"],
+                            "relevant": word in text["text"],
+                            "strength": "strong",
+                            "relation": "direct",
+                            "limit": "لا يثبت النص ما قبل الصورة",
+                        }
+                        for text in item["texts"]
+                    ],
+                }
+                for item in payload["candidates"]
+            ]
+        }
+
+    return answer
+
+
+def labels(call: dict[str, Any]) -> list[str]:
+    return [text["label"] for text in json.loads(call["user"])["candidates"][0]["texts"]]
+
+
+async def an_insight(browser, store, flow_settings, *, with_scene: bool = False) -> str:
     owner = await as_guest(browser, store, flow_settings)
     async with store() as db:
-        scan = scan_row(owner, status="done")
+        stored = scene().model_dump(mode="json") if with_scene else None
+        scan = scan_row(owner, status="done", scene=stored)
         db.add(scan)
         await db.flush()
         insight = insight_row(owner, scan_id=scan.id)
         db.add(insight)
         await db.commit()
         return str(insight.id)
+
+
+def searching_model(flow_app, *answers: Any) -> EmbeddingClient:
+    """A model that embeds too, with the engine's indexes loaded from this test's store."""
+    model = EmbeddingClient()
+    model.answers = list(answers)
+
+    def client_factory(log):
+        model.log = log
+        return model
+
+    flow_app.state.model_client_factory = client_factory
+    flow_app.state.engine_resources = ResourceCache()
+    return model
+
+
+async def stored_verse(store, surah: int, ayah: int) -> str:
+    async with store() as db:
+        text = await db.scalar(
+            select(QuranVerse.text).where(QuranVerse.surah == surah, QuranVerse.ayah == ayah)
+        )
+    assert text is not None
+    return text
+
+
+async def stored_hadith(store, collection: str, number: str) -> str:
+    async with store() as db:
+        text = await db.scalar(
+            select(Hadith.text).where(Hadith.collection == collection, Hadith.number == number)
+        )
+    assert text is not None
+    return text
 
 
 async def ask(
@@ -165,14 +249,184 @@ async def test_a_failed_answer_gives_its_slot_back(
         assert len((await db.scalars(select(AiCall))).all()) == 2
 
 
-async def test_a_request_for_another_text_needs_a_new_search(browser, store, flow_settings, model):
+async def test_a_request_for_another_text_without_a_scene_to_judge_against_needs_a_new_scan(
+    browser, store, flow_settings, model
+):
     insight_id = await an_insight(browser, store, flow_settings)
-    model.answers.append(said(level="a", answer="", new_text=True))
+    model.answers.append(wants())
 
     body = (await ask(browser, insight_id, "أعطني حديثًا آخر عن المطر")).json()
 
     assert body["message"]["answer"] == messages_for().chat_needs_new_search
     assert body["message"]["kind"] == "new_search"
+    assert (body["message"]["quran"], body["message"]["hadith"]) == (None, None)
+    # No scene to verify against: nothing was searched, and no text is cited from memory.
+    assert [call["stage"].value for call in model.calls] == ["chat"]
+
+
+async def test_a_request_for_another_text_searches_again_verifies_and_shows_the_found_verse(
+    browser, store, flow_settings, flow_app
+):
+    insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
+    model = searching_model(flow_app, wants("either"), relevant_where("نبات"))
+
+    body = (await ask(browser, insight_id, "أعطني آية أخرى عن الماء والنبات")).json()
+
+    message = body["message"]
+    verse = message["quran"]["verse"]
+    assert (verse["surah"], verse["ayah"]) == (6, 99)
+    text = await stored_verse(store, 6, 99)
+    assert verse["text"] == text
+    assert verse["sha256"] == hashlib.sha256(text.encode("utf-8")).hexdigest()
+    assert message["quran"]["tag"] == messages_for().quran_tag
+    assert message["hadith"] is None
+    assert message["answer"] == messages_for().chat_new_text_found.format(
+        references=f"سورة {verse['surah_name']}، الآية 99"
+    )
+    assert (message["level"], message["kind"]) == ("a", "answer")
+    assert text not in message["answer"]
+    assert (body["used"], body["remaining"]) == (1, 2)
+    # One embedding, one verifier call, both corpora searched, the insight's own texts left out.
+    assert [call["stage"].value for call in model.calls] == ["chat", "verify"]
+    assert model.embedded == [[query_for("الإحياء", "أعطني آية أخرى عن الماء والنبات")]]
+    payload = json.loads(model.calls[1]["user"])
+    assert payload["scene"]["description"] == "نبتة صغيرة تحت المطر"
+    assert payload["candidates"][0]["concept"] == "الإحياء"
+    shown = [label[0] for label in labels(model.calls[1])]
+    assert "Q" in shown
+    assert "H" in shown
+    folded_own = await stored_verse(store, 30, 50)
+    assert all(folded_own[:20] not in text["text"] for text in payload["candidates"][0]["texts"])
+    async with store() as db:
+        row = await db.scalar(select(ChatMessage))
+        assert row is not None
+        assert row.evidence_ids == ["quran:30:50", "quran:6:99"]
+        # The fake embeds without a call record; the verifier call is recorded with the chat's.
+        calls = (await db.scalars(select(AiCall))).all()
+        assert sorted((c.stage, str(c.insight_id)) for c in calls) == [
+            ("chat", insight_id),
+            ("verify", insight_id),
+        ]
+    page = (await browser.get(f"/insights/{insight_id}")).json()["chat"]["messages"][0]
+    assert page["quran"]["verse"]["text"] == text
+    assert page["answer"] == message["answer"]
+
+
+async def test_a_request_for_a_verse_searches_the_quran_alone_and_says_when_nothing_passes(
+    browser, store, flow_settings, flow_app
+):
+    insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
+    model = searching_model(flow_app, wants("verse"), relevant_where("كلمة لا توجد في أي نص"))
+
+    body = (await ask(browser, insight_id, "أعطني آية أخرى عن الماء والنبات")).json()
+
+    assert body["message"]["answer"] == messages_for().chat_needs_new_search
+    assert body["message"]["kind"] == "new_search"
+    assert (body["message"]["quran"], body["message"]["hadith"]) == (None, None)
+    assert [call["stage"].value for call in model.calls] == ["chat", "verify"]
+    assert all(label.startswith("Q") for label in labels(model.calls[1]))
+    async with store() as db:
+        row = await db.scalar(select(ChatMessage))
+        assert row is not None
+        assert row.evidence_ids == ["quran:30:50"]
+
+
+async def test_a_request_whose_searches_find_nothing_calls_no_verifier(
+    browser, store, flow_settings, flow_app
+):
+    insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
+    model = searching_model(flow_app, wants("hadith"))
+
+    body = (await ask(browser, insight_id, "xyzzy")).json()
+
+    assert body["message"]["kind"] == "new_search"
+    assert [call["stage"].value for call in model.calls] == ["chat"]
+
+
+async def test_a_found_hadith_without_a_ruling_is_queued_and_never_shown(
+    browser, store, flow_settings, flow_app
+):
+    insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
+    model = searching_model(flow_app, wants("hadith"), relevant_where("يغرس"))
+
+    body = (await ask(browser, insight_id, "أعطني حديثًا عن الغرس والزرع")).json()
+
+    assert body["message"]["answer"] == messages_for().chat_needs_new_search
+    assert body["message"]["kind"] == "new_search"
+    assert body["message"]["hadith"] is None
+    assert all(label.startswith("H") for label in labels(model.calls[1]))
+    async with store() as db:
+        queued = (await db.scalars(select(HadithVerificationQueue))).all()
+        wanted = await db.scalar(
+            select(Hadith.id).where(Hadith.collection == "bukhari", Hadith.number == "2320")
+        )
+        assert [(q.hadith_id, q.demand_count) for q in queued] == [(wanted, 1)]
+        row = await db.scalar(select(ChatMessage))
+        assert row is not None
+        assert row.evidence_ids == ["quran:30:50"]
+
+
+async def test_a_found_hadith_with_an_eligible_ruling_is_shown_from_the_store_until_ruled_out(
+    browser, store, flow_settings, flow_app
+):
+    insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
+    async with store() as db:
+        await rule(db, "bukhari", "2320")
+        await db.commit()
+    searching_model(flow_app, wants("hadith"), relevant_where("يغرس"))
+
+    body = (await ask(browser, insight_id, "أعطني حديثًا عن الغرس والزرع")).json()
+
+    message = body["message"]
+    hadith = message["hadith"]["hadith"]
+    text = await stored_hadith(store, "bukhari", "2320")
+    assert (hadith["collection"]["slug"], hadith["number"]) == ("bukhari", "2320")
+    assert hadith["text"] == text
+    assert hadith["sha256"] == hashlib.sha256(text.encode("utf-8")).hexdigest()
+    assert hadith["eligible"] is True
+    assert message["hadith"]["tag"] == messages_for().sunnah_tag
+    assert message["quran"] is None
+    assert message["answer"] == messages_for().chat_new_text_found.format(
+        references=f"{hadith['collection']['name_ar']}، رقم 2320"
+    )
+    assert message["kind"] == "answer"
+    async with store() as db:
+        row = await db.scalar(select(ChatMessage))
+        assert row is not None
+        assert row.evidence_ids == ["hadith:bukhari:2320", "quran:30:50"]
+
+    async with store() as db:
+        await rule(db, "bukhari", "2320", HadithClassification.DAIF)
+        await db.commit()
+
+    page = (await browser.get(f"/insights/{insight_id}")).json()["chat"]["messages"][0]
+    assert page["answer"] == messages_for().chat_answer_withdrawn
+    assert (page["quran"], page["hadith"]) == (None, None)
+    assert text not in json.dumps(page, ensure_ascii=False)
+
+
+async def test_a_verifier_that_fails_gives_the_slot_back(browser, store, flow_settings, flow_app):
+    insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
+    searching_model(flow_app, wants(), AiCallError(AiErrorCode.TIMEOUT, "slow"), said(), said())
+
+    failed = await ask(browser, insight_id, "أعطني آية أخرى عن الماء والنبات")
+    retried = await ask(browser, insight_id)
+
+    assert (failed.status_code, failed.json()["error"]) == (503, "MODEL_UNAVAILABLE")
+    assert retried.json()["used"] == 1
+    async with store() as db:
+        stages = sorted(c.stage for c in (await db.scalars(select(AiCall))).all())
+    assert stages == ["chat", "chat", "verify"]
+
+
+def test_the_query_keeps_the_concept_and_the_first_words_of_the_message():
+    words = " ".join(f"كلمة{index}" for index in range(40))
+
+    query = query_for("الإحياء", words)
+
+    assert query.split()[0] == "الإحياء"
+    assert len(query.split()) == 24
+    assert query_for(" الإحياء ", " سؤال قصير ") == "الإحياء سؤال قصير"
 
 
 @pytest.mark.parametrize(
@@ -323,6 +577,37 @@ async def test_an_answer_of_an_unknown_evidence_is_not_shown_and_one_still_shown
     assert "جواب kept" in model.calls[0]["user"]
     replay = await ask(browser, insight_id, key="old-key1")
     assert replay.json()["message"]["answer"] == messages_for().chat_answer_withdrawn
+
+
+async def test_an_answer_whose_found_text_is_unknown_or_gone_from_the_store_is_withdrawn(
+    browser, store, flow_settings
+):
+    insight_id = await an_insight(browser, store, flow_settings)
+    async with store() as db:
+        for key, ids in (
+            ("odd-ref", ["quran:30:50", "masar:T01_01"]),
+            ("gone-verse", ["quran:30:50", "quran:99:1"]),
+            ("gone-hadith", ["quran:30:50", "hadith:bukhari:9999"]),
+        ):
+            db.add(
+                ChatMessage(
+                    insight_id=int(insight_id),
+                    idempotency_key=key,
+                    status=ChatStatus.ANSWERED,
+                    question=f"سؤال {key}",
+                    answer=f"جواب {key}",
+                    level="a",
+                    kind="answer",
+                    evidence_ids=ids,
+                    answered_at=clock.utcnow(),
+                )
+            )
+        await db.commit()
+
+    shown = (await browser.get(f"/insights/{insight_id}")).json()["chat"]
+
+    assert [m["answer"] for m in shown["messages"]] == [messages_for().chat_answer_withdrawn] * 3
+    assert all((m["quran"], m["hadith"]) == (None, None) for m in shown["messages"])
 
 
 @pytest.mark.parametrize("classification", [HadithClassification.SAHIH, HadithClassification.DAIF])

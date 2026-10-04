@@ -1327,7 +1327,8 @@ export interface paths {
      * @description Answer a question classified by its content level, grounded in the insight.
      *
      *     The same `idempotencyKey` returns the same answer and counts once; the
-     *     fourth successful message answers 409 CHAT_LIMIT_REACHED.
+     *     fourth successful message answers 409 CHAT_LIMIT_REACHED. A request for
+     *     another text runs the retrieval and the verification again (v2 §14).
      */
     post: operations['chat_insights__insight_id__chat_post'];
     delete?: never;
@@ -2015,6 +2016,10 @@ export interface components {
        * Format: date-time
        */
       answered_at: string;
+      /** @description The verse the answer found after a new search, as stored */
+      quran?: components['schemas']['PublicQuran'] | null;
+      /** @description The hadith the answer found after a new search, as stored */
+      hadith?: components['schemas']['PublicHadith'] | null;
     };
     /** ChatOut */
     ChatOut: {

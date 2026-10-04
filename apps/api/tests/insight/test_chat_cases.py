@@ -20,10 +20,12 @@ from src.evaluation.chat_eval import (
     score,
 )
 from src.evaluation.chat_report import render_section
+from src.messages import messages_for
 from src.models import ChatMessage
 from src.pipeline.insight.guard import quran_detector
 from src.pipeline.leak_guard import LeakDetector, LeakFinding, LeakKind
 from tests.fakes import FakeModelClient
+from tests.retrieval.support import EmbeddingClient
 from tests.scripture.fixtures import verse_text
 
 
@@ -31,24 +33,25 @@ def said(level: str = "b", answer: str = "تدعو الآية المعروضة �
     return {"level": level, "asks_for_new_text": new, "answer": answer}
 
 
-def cases_file(tmp_path, *cases: dict[str, Any]):
+def cases_file(tmp_path, *cases: dict[str, Any], scene: dict[str, Any] | None = None):
     path = tmp_path / "cases.json"
+    insight: dict[str, Any] = {
+        "id": "rain",
+        "title": "أثر الرحمة",
+        "glimpse": "المطر يحيي الأرض",
+        "relation": "direct",
+        "quran": {"surah": 30, "ayah": 50},
+        "explanation": [{"section": "seen", "text": "قطرات مطر."}],
+        "why": {"visible_clues": ["قطرات"], "concept": "إحياء", "limits": []},
+    }
+    if scene is not None:
+        insight["scene"] = scene
     path.write_text(
         json.dumps(
             {
                 "version": 1,
                 "description": "test",
-                "insights": [
-                    {
-                        "id": "rain",
-                        "title": "أثر الرحمة",
-                        "glimpse": "المطر يحيي الأرض",
-                        "relation": "direct",
-                        "quran": {"surah": 30, "ayah": 50},
-                        "explanation": [{"section": "seen", "text": "قطرات مطر."}],
-                        "why": {"visible_clues": ["قطرات"], "concept": "إحياء", "limits": []},
-                    }
-                ],
+                "insights": [insight],
                 "cases": list(cases),
             },
             ensure_ascii=False,
@@ -166,6 +169,77 @@ async def test_each_case_is_asked_in_a_fresh_chat_that_leaves_nothing(
     assert "| Official cases as expected | 1 / 3 |" in markdown
     assert "- **quoted**: (refused)" in markdown
     assert "في أي سورة" not in markdown
+
+
+def relevant_where(word: str):
+    """A verifier that finds relevant exactly the texts holding `word`."""
+
+    def answer(call: dict[str, Any]) -> dict[str, Any]:
+        payload = json.loads(call["user"])
+        return {
+            "candidates": [
+                {
+                    "candidate": item["candidate"],
+                    "texts": [
+                        {
+                            "label": text["label"],
+                            "relevant": word in text["text"],
+                            "strength": "strong",
+                            "relation": "direct",
+                            "limit": "لا يثبت النص ما قبل الصورة",
+                        }
+                        for text in item["texts"]
+                    ],
+                }
+                for item in payload["candidates"]
+            ]
+        }
+
+    return answer
+
+
+async def test_a_request_for_another_text_runs_the_retrieval_against_the_case_scene(
+    maker, make_settings, tmp_path
+):
+    """The real cases file gives the rain insight a scene; here a small one does the same."""
+    assert load_chat_cases().insights[0].scene is not None
+    cases = load_chat_cases(
+        cases_file(
+            tmp_path,
+            case("another", "derived", kinds=["new_search", "answer"])
+            | {"question": "أعطني آية أخرى عن الحمد."},
+            scene={"description": "قطرات مطر على نبتة.", "entities": ["مطر", "نبتة"]},
+        )
+    )
+    model = EmbeddingClient()
+    model.answers = [said("a", "", new=True) | {"new_text_kind": "verse"}, relevant_where("الحمد")]
+    async with maker() as session:
+        quran = await quran_detector(session)
+
+    result = await run_chat_evaluation(
+        maker.kw["bind"], make_settings(), cases, lambda log: model, quran
+    )
+
+    run = result.runs[0]
+    assert (run.kind, run.passed, run.leaks) == ("answer", True, [])
+    assert run.answer.startswith("بحثنا من جديد في المصادر")
+    assert "سورة الفاتحة" in run.answer
+    assert run.answer != messages_for().chat_needs_new_search
+    assert [call["stage"].value for call in model.calls] == ["chat", "verify"]
+    payload = json.loads(model.calls[1]["user"])
+    assert payload["scene"] == {
+        "description": "قطرات مطر على نبتة.",
+        "entities": ["مطر", "نبتة"],
+        "actions": [],
+    }
+    assert all(label.startswith("Q") for label in _labels(payload))
+    async with maker() as session:
+        left = await session.scalar(select(func.count()).select_from(ChatMessage))
+    assert left == 0
+
+
+def _labels(payload: dict[str, Any]) -> list[str]:
+    return [text["label"] for text in payload["candidates"][0]["texts"]]
 
 
 class FlagsEverything(LeakDetector):

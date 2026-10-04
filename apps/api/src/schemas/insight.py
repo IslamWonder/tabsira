@@ -89,6 +89,14 @@ class ChatMessageOut(BaseModel):
     level: Literal["a", "b", "c", "d"]
     kind: Literal["answer", "referral", "new_search"]
     answered_at: datetime
+    # A request for another text that found one: the text the answer names, read from the
+    # store by its id (v2 §14); null on every other answer.
+    quran: PublicQuran | None = Field(
+        default=None, description="The verse the answer found after a new search, as stored"
+    )
+    hadith: PublicHadith | None = Field(
+        default=None, description="The hadith the answer found after a new search, as stored"
+    )
 
 
 class ChatOut(BaseModel):

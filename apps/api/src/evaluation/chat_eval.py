@@ -4,8 +4,9 @@ The twelve chat cases of `make eval` (v2 §27.16), checked by rule.
 Each case asks one question in a fresh chat of a fixed insight (the cases file
 holds its title, explanation and verse reference; the verse is read from the
 store), through the chat service itself with the real provider, inside a
-transaction that is rolled back: nothing it writes stays in the database.
-Then:
+transaction that is rolled back: nothing it writes stays in the database. An
+insight with a `scene` gets a scan that holds it, so a request for another text
+runs the retrieval and the verification again against it (v2 §14). Then:
 
 - the answer shown goes through the scripture guard (patterns, the whole
   Quran); a leak must be 0;
@@ -47,6 +48,7 @@ from src.messages import messages_for
 from src.models import Guest, Insight, InsightOrigin, Scan, ScanSource, ScanStatus
 from src.pipeline.insight.guard import scripture_guard
 from src.pipeline.leak_guard import LeakDetector
+from src.pipeline.schemas import EntityOrigin, EvidenceStatus, SceneAnalysis, SceneEntity
 from src.services import chat_service
 
 CHAT_CASES = Path(__file__).resolve().parents[2] / "tests" / "evaluation" / "chat" / "cases.json"
@@ -63,6 +65,13 @@ class VerseRef(_Frozen):
     ayah: int
 
 
+class CaseScene(_Frozen):
+    """What the photo showed, as the scene analyzer would have written it: no scripture."""
+
+    description: str
+    entities: list[str]
+
+
 class CaseInsight(_Frozen):
     """The insight a case asks about, as the engine would have kept it."""
 
@@ -74,6 +83,9 @@ class CaseInsight(_Frozen):
     explanation: list[dict[str, str]]
     why: dict[str, Any]
     small_step: dict[str, Any] | None = None
+    # Without a scene, a request for another text has nothing to verify against and is
+    # answered by the honest message alone.
+    scene: CaseScene | None = None
 
 
 class CaseExpectation(_Frozen):
@@ -235,7 +247,37 @@ class _Recorder(ModelClient):
 ClientFactory = Callable[[CallLog], ModelClient]
 
 
-async def _insight(db: AsyncSession, spec: CaseInsight) -> Insight:
+def _scene(settings: Settings, spec: CaseScene) -> dict[str, Any]:
+    """Return the stored form of a case's scene, as the scan workflow keeps it."""
+    scene = SceneAnalysis(
+        description=spec.description,
+        entities=[
+            SceneEntity(
+                id=f"e{index}",
+                label=f"entity-{index}",
+                label_arabic=label,
+                bbox=None,
+                origin=EntityOrigin.VLM,
+                status=EvidenceStatus.OBSERVED,
+            )
+            for index, label in enumerate(spec.entities, start=1)
+        ],
+        actions=[],
+        relations=[],
+        ambiguities=[],
+        clarification_question=None,
+        sensitive=[],
+        detector_available=False,
+        unconfirmed_detection_ids=[],
+        rejected=[],
+        provider=settings.ai_provider,
+        model="evaluation",
+        prompt_version="evaluation",
+    )
+    return scene.model_dump(mode="json")
+
+
+async def _insight(db: AsyncSession, settings: Settings, spec: CaseInsight) -> Insight:
     """Store a guest, a finished scan and the case's insight, as a scan would have."""
     now = clock.utcnow()
     guest = Guest(key=secrets.token_hex(32), created_at=now, last_seen_at=now)
@@ -246,6 +288,7 @@ async def _insight(db: AsyncSession, spec: CaseInsight) -> Insight:
         source=ScanSource.UPLOAD,
         status=ScanStatus.DONE,
         engine="pipeline",
+        scene=_scene(settings, spec.scene) if spec.scene is not None else None,
     )
     db.add(scan)
     await db.flush()
@@ -300,7 +343,7 @@ async def evaluate_case(
     leaks: list[str] = []
     try:
         async with maker() as db:
-            row = await _insight(db, insight)
+            row = await _insight(db, settings, insight)
             try:
                 reply = await chat_service.answer(
                     db,

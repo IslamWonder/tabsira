@@ -114,6 +114,12 @@ class Messages:
     # Chat (v2 §14); level د gives general information first, then the referral.
     chat_limit_reached: str
     chat_needs_new_search: str
+    # Said when a request for another text found one that passed the gate: `{references}`
+    # names it; the text itself is read from the store beside the answer.
+    chat_new_text_found: str
+    chat_verse_reference: str
+    chat_hadith_reference: str
+    chat_reference_joiner: str
     chat_referral: str
     # Said in place of an answer that is no longer shown.
     chat_answer_withdrawn: str
@@ -269,6 +275,13 @@ ARABIC = Messages(
         "طلب نص آخر يحتاج بحثًا جديدًا في المصادر وتحققًا منها، ولا أذكر نصًا من الذاكرة."
         " صوّر المشهد من جديد أو وضّح ما تقصد لنبحث لك."
     ),
+    chat_new_text_found=(
+        "بحثنا من جديد في المصادر وتحققنا، فوجدنا نصًا يناسب طلبك: {references}."
+        " يُعرض أدناه كما هو في مصدره، ولا نكتب نصًا من الذاكرة."
+    ),
+    chat_verse_reference="سورة {surah}، الآية {ayah}",
+    chat_hadith_reference="{book}، رقم {number}",
+    chat_reference_joiner="، و",
     chat_referral=(
         "هذه مسألة تخصّ حالتك، والحكم فيها لمن يعرف تفاصيلها:"
         " اسأل أهل العلم المؤهلين أو جهة الفتوى المعتمدة في بلدك."

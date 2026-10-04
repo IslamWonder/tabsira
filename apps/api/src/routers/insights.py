@@ -24,6 +24,7 @@ from src.deps import DbDep, SettingsDep, UngatedCurrentUser, VerifiedUser, limit
 from src.errors import AppError, ErrorCode
 from src.models import Insight
 from src.owner import INSIGHT, OptionalOwner, Owner, not_found
+from src.pipeline.insight.engine import SHARED_RESOURCES, ResourceCache
 from src.scans.deps import CHAT_LIMITS, PublicIdPath, address_limit, feature
 from src.schemas.insight import (
     ActionIn,
@@ -42,16 +43,21 @@ router = APIRouter(prefix="/insights", tags=["insights"])
 ClientFactory = Callable[[CallLog], ModelClient]
 
 
+def shared_http(request: Request) -> httpx.AsyncClient:
+    """Return the process's HTTP client, opened on first use and closed with the app."""
+    http: httpx.AsyncClient | None = getattr(request.app.state, "http", None)
+    if http is None:
+        http = httpx.AsyncClient()
+        request.app.state.http = http
+    return http
+
+
 def model_client_factory(request: Request, settings: SettingsDep) -> ClientFactory:
     """Return the factory of provider clients: a test's, or one on the process's HTTP client."""
     factory: ClientFactory | None = getattr(request.app.state, "model_client_factory", None)
     if factory is not None:
         return factory
-    http: httpx.AsyncClient | None = getattr(request.app.state, "http", None)
-    if http is None:
-        http = httpx.AsyncClient()
-        request.app.state.http = http
-    shared = http
+    shared = shared_http(request)
 
     def build(log: CallLog) -> ModelClient:
         return client_for(settings, shared, log=log)
@@ -59,7 +65,15 @@ def model_client_factory(request: Request, settings: SettingsDep) -> ClientFacto
     return build
 
 
+def engine_resources(request: Request) -> ResourceCache:
+    """Return the engine's shared indexes and shingles: a test's, or the process's."""
+    resources: ResourceCache | None = getattr(request.app.state, "engine_resources", None)
+    return resources if resources is not None else SHARED_RESOURCES
+
+
 ClientFactoryDep = Annotated[ClientFactory, Depends(model_client_factory)]
+HttpDep = Annotated[httpx.AsyncClient, Depends(shared_http)]
+ResourcesDep = Annotated[ResourceCache, Depends(engine_resources)]
 
 
 async def owned_insight(
@@ -100,12 +114,15 @@ async def chat(
     settings: SettingsDep,
     owner: OptionalOwner,
     client_factory: ClientFactoryDep,
+    http: HttpDep,
+    resources: ResourcesDep,
 ) -> ChatReply:
     """
     Answer a question classified by its content level, grounded in the insight.
 
     The same `idempotencyKey` returns the same answer and counts once; the
-    fourth successful message answers 409 CHAT_LIMIT_REACHED.
+    fourth successful message answers 409 CHAT_LIMIT_REACHED. A request for
+    another text runs the retrieval and the verification again (v2 §14).
     """
     _owner, insight = await owned_insight(db, owner, insight_id)
     return await chat_service.answer(
@@ -115,6 +132,8 @@ async def chat(
         question=body.message,
         key=body.idempotency_key,
         client_factory=client_factory,
+        http=http,
+        resources=resources,
     )
 
 

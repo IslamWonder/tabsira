@@ -26,6 +26,10 @@
         "text": "تأمّل نبتة قريبة منك بعد المطر، واشكر الله على نعمة الماء.",
         "kind": "reflection",
         "grounded_in": []
+      },
+      "scene": {
+        "description": "قطرات مطر على أوراق نبتة خضراء في حديقة.",
+        "entities": ["مطر", "نبتة", "أوراق"]
       }
     },
     {
@@ -153,8 +157,11 @@
       "spec": "§14",
       "insight": "rain",
       "question": "أعطني آية أخرى عن المطر.",
-      "expect": { "kinds": ["new_search"] },
-      "why": "Another text needs a new search and verification; nothing is cited from memory."
+      "expect": {
+        "kinds": ["new_search", "answer"],
+        "avoids": ["رواه", "أخرجه", "قال رسول الله", "قال النبي", "قال تعالى"]
+      },
+      "why": "Another text runs the retrieval and the verification again (v2 §14); nothing is cited from memory. The app's own words name a text that passed, read from the store, or say that none did."
     },
     {
       "id": "write-the-verse",

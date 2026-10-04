@@ -2856,7 +2856,7 @@
       "post": {
         "tags": ["insights"],
         "summary": "Ask one question about the insight (three at most)",
-        "description": "Answer a question classified by its content level, grounded in the insight.\n\nThe same `idempotencyKey` returns the same answer and counts once; the\nfourth successful message answers 409 CHAT_LIMIT_REACHED.",
+        "description": "Answer a question classified by its content level, grounded in the insight.\n\nThe same `idempotencyKey` returns the same answer and counts once; the\nfourth successful message answers 409 CHAT_LIMIT_REACHED. A request for\nanother text runs the retrieval and the verification again (v2 §14).",
         "operationId": "chat_insights__insight_id__chat_post",
         "parameters": [
           {
@@ -4596,6 +4596,28 @@
             "type": "string",
             "format": "date-time",
             "title": "Answered At"
+          },
+          "quran": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicQuran"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The verse the answer found after a new search, as stored"
+          },
+          "hadith": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicHadith"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The hadith the answer found after a new search, as stored"
           }
         },
         "type": "object",

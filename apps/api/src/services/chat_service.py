@@ -12,9 +12,12 @@ the remains of a crash and is cleared. The fourth message answers
 CHAT_LIMIT_REACHED.
 
 The model writes the level of the question (v2 §12) before its answer. A
-request for another text is answered by the app itself: it needs a new
-search, and no text is ever quoted from memory. A personal case (level د) gets
-general information and the app's referral. Every answer goes through the leak
+request for another text is never answered from memory: the app runs the
+retrieval and the verification again for it (`chat_retrieval`, v2 §14) and,
+when a text passes the gate, answers in its own words naming the text by
+reference and attaches its evidence id, so the view reads it from the store;
+when nothing passes, it says so. A personal case (level د) gets general
+information and the app's referral. Every text shown goes through the leak
 guard, with the insight's own texts as a corpus, and carries the disclosure.
 """
 
@@ -24,6 +27,7 @@ from collections.abc import Callable
 from datetime import timedelta
 from typing import Annotated, Literal
 
+import httpx
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,12 +40,15 @@ from src.config import AiStage, Settings
 from src.errors import AppError, ErrorCode
 from src.messages import messages_for
 from src.models import ChatMessage, ChatStatus, Hadith, Insight, QuranVerse
+from src.pipeline.insight.engine import SHARED_RESOURCES, ResourceCache
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
 from src.pipeline.prompt import load_prompt
 from src.routers.scripture import HadithOut, QuranVerseOut
 from src.scans.workflow import call_rows
 from src.schemas.insight import ChatReply
 from src.scripture.overlap import repeats_store
+from src.services import chat_retrieval
+from src.services.chat_retrieval import NewText, TextKind
 from src.services.insight_view import (
     answer_is_shown,
     explanation_out,
@@ -51,7 +58,7 @@ from src.services.insight_view import (
     step_out,
 )
 
-SYSTEM_PROMPT = "insight_chat_system.v3"
+SYSTEM_PROMPT = "insight_chat_system.v4"
 USER_PROMPT = "insight_chat_user.v2"
 MAX_OUTPUT_TOKENS = 1200
 # A pending answer older than this was left by a crash; its slot is given back.
@@ -73,6 +80,10 @@ class ChatModelOutput(BaseModel):
         bool,
         Field(description="True when the learner asks for a verse or hadith that is not shown"),
     ]
+    new_text_kind: Annotated[
+        TextKind,
+        Field(description="What is asked for when asks_for_new_text: verse, hadith, or either"),
+    ] = "either"
     answer: Annotated[
         str, Field(description="Arabic, at most 120 words; empty when asks_for_new_text")
     ]
@@ -204,17 +215,32 @@ async def answer(
     question: str,
     key: str,
     client_factory: ClientFactory,
+    http: httpx.AsyncClient | None = None,
+    resources: ResourceCache | None = None,
 ) -> ChatReply:
-    """Answer one message of the insight's chat, or replay the answer of its key."""
+    """
+    Answer one message of the insight's chat, or replay the answer of its key.
+
+    `http` and `resources` serve a request for another text: the reranker that
+    needs an HTTP client, and the engine's shared indexes (one per process).
+    """
     question = question.strip()
     row = await _reserve(db, settings, insight, key, question)
     if row.status is ChatStatus.PENDING:
-        await _answer(db, settings, insight, row, client_factory)
+        await _answer(
+            db,
+            settings,
+            insight,
+            row,
+            client_factory,
+            http=http,
+            resources=resources or SHARED_RESOURCES,
+        )
     used = await _used(db, insight)
     limit = settings.max_chat_user_messages
     verse, hadith, _awaiting = await shown_evidence(db, insight)
     return ChatReply(
-        message=message_out(row, shown_ids(verse, hadith)),
+        message=await message_out(db, row, shown_ids(verse, hadith)),
         used=used,
         limit=limit,
         remaining=max(limit - used, 0),
@@ -237,6 +263,9 @@ async def _answer(
     insight: Insight,
     row: ChatMessage,
     client_factory: ClientFactory,
+    *,
+    http: httpx.AsyncClient | None,
+    resources: ResourceCache,
 ) -> None:
     verse, hadith, _awaiting = await shown_evidence(db, insight)
     references: list[str] = []
@@ -270,11 +299,29 @@ async def _answer(
         await _give_back(db, row, log, insight.id)
         raise _refused(ErrorCode.MODEL_UNAVAILABLE, "The chat model did not answer.", 503) from None
     output = result.value
-    text, kind = _compose(output)
+    found = NewText()
+    if output.asks_for_new_text:
+        try:
+            found = await chat_retrieval.find_new_text(
+                db,
+                settings,
+                insight,
+                client,
+                question=row.question,
+                kind=output.new_text_kind,
+                http=http,
+                resources=resources,
+            )
+        except AiCallError:
+            await _give_back(db, row, log, insight.id)
+            raise _refused(
+                ErrorCode.MODEL_UNAVAILABLE, "The verifier did not answer.", 503
+            ) from None
+    text, kind = _compose(output, found)
+    # Every text shown meets the guard, the app's own words included: patterns, the
+    # insight's texts, then the whole store.
     guard = LeakGuard([PatternLeakDetector(), ShingleOverlapDetector(corpus)])
-    leaked = kind != "new_search" and (
-        guard.check(output.answer).leaked or await repeats_store(db, [output.answer])
-    )
+    leaked = guard.check(text).leaked or await repeats_store(db, [text])
     if not text.strip() or leaked:
         await _give_back(db, row, log, insight.id)
         raise _refused(ErrorCode.CHAT_ANSWER_REJECTED, "The answer was refused.", 502)
@@ -293,15 +340,25 @@ async def _answer(
     row.answer = text
     row.level = output.level
     row.kind = kind
-    row.evidence_ids = sorted(shown)
+    row.evidence_ids = sorted(shown | found.ids)
     row.answered_at = clock.utcnow()
     db.add_all(call_rows(log.records, insight_id=insight.id))
     await db.commit()
 
 
-def _compose(output: ChatModelOutput) -> tuple[str, str]:
-    """Return the text shown and its kind: the app's own words for a new text, a referral for د."""
+def _compose(output: ChatModelOutput, found: NewText) -> tuple[str, str]:
+    """
+    Return the text shown and its kind: the app's own words for a new text, a referral for د.
+
+    A text found for a request for another text is named by its reference only; the
+    view reads it from the store beside the answer. Nothing found is said plainly.
+    """
     if output.asks_for_new_text:
+        if found.passed:
+            return (
+                messages_for().chat_new_text_found.format(references=_references(found)),
+                "answer",
+            )
         return messages_for().chat_needs_new_search, "new_search"
     if output.level == "d":
         general = output.answer.strip()
@@ -310,6 +367,23 @@ def _compose(output: ChatModelOutput) -> tuple[str, str]:
         )
         return "\n\n".join(parts), "referral"
     return output.answer.strip(), "answer"
+
+
+def _references(found: NewText) -> str:
+    """Name the texts found, the way a reader cites them: surah and ayah, book and number."""
+    texts = messages_for()
+    named: list[str] = []
+    if found.verse is not None:
+        named.append(
+            texts.chat_verse_reference.format(surah=found.verse.surah_name, ayah=found.verse.ayah)
+        )
+    if found.hadith is not None:
+        named.append(
+            texts.chat_hadith_reference.format(
+                book=found.hadith.collection.name_ar, number=found.hadith.number
+            )
+        )
+    return texts.chat_reference_joiner.join(named)
 
 
 async def _give_back(db: AsyncSession, row: ChatMessage, log: CallLog, insight_id: int) -> None:

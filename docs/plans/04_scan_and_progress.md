@@ -1,6 +1,6 @@
 # 04 · Photo to scan, with honest progress
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 20:42 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 20:55 (Tunis)
 
 A person takes or uploads a photo. They see honest stages (understanding, searching, verifying, composing), can point at what matters and answer one question.
 
@@ -17,6 +17,7 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 | Screens: capture, progress, focus, question                                      | 🔄     | In progress.                       |
 | Chat answers tied to the texts shown when written                                | ✅     | Hidden once a text is not shown.   |
 | Optional questions after the first insight, share option after saving, §8 labels | ✅     | Core audit wave 3, task 04.11.     |
+| Chat request for another text re-runs retrieval and verification                 | ✅     | Found text read from the store.    |
 
 **How we check it**
 
@@ -122,3 +123,11 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 - **Depends on:** 04.1, 09.1
 - **Touches:** apps/api/src/pipeline/{prompts/insight_composer_system.v1.txt,insight/planner.py,scene_analyzer.py,person_words.py}, apps/api/src/services/{public_insight_service.py,insight_view.py,learner_service.py,completion_service.py,world_service.py}, apps/api/src/routers/{insights.py,tutorial.py}, apps/api/src/errors.py, apps/api/src/models/timeseries.py, their tests, apps/web/src/components/insight/share-sheet.tsx, apps/web/src/messages/{share.ts,legal.ts}, the generated web client, docs/PRIVACY.md.
 - **Done when:** The tests of each fix pass; `make lint` passes. Not done here: posts and atlas entries of an under-13 account still answer `INSIGHT_NOT_PUBLISHABLE` only for the photo (posts) or the location (atlas); the owners decide whether §5 closes those too.
+
+### 04.14 A chat request for another text re-runs the retrieval and the verification
+
+- **Status:** ✅ 2026-10-04 20:55
+- **Goal:** v2 §14 («طلب نص إضافي يعيد الاسترجاع والتحقق؛ لا جواب من الذاكرة»): when the chat model classifies a message as a request for a verse or a hadith that is not shown, the app runs a focused retrieval for it instead of the fixed message alone. One candidate is built from the insight's concept and the learner's words (no planner call), searched through the engine's hybrid search with the scan's reranker setting, the insight's own texts left out, judged by the verifier against the scan's stored scene and gated by the same rules (a hadith without an eligible ruling is queued for an editor and never shown, decision 18). A text that passes is named by reference in the app's own words and attached to the chat message as an evidence id, so the insight page reads it from the store byte for byte beside the answer and withdraws the answer once the text is no longer eligible; when nothing passes, the honest message stays. The model never writes scripture; every text shown meets the leak guard. The three-message limit and the idempotency key are unchanged. Cost: one embedding call and one verifier call.
+- **Depends on:** 04.4, 05.1
+- **Touches:** apps/api/src/services/{chat_service,chat_retrieval,insight_view}.py, routers/insights.py, schemas/insight.py (`ChatMessageOut.quran`, `ChatMessageOut.hadith`), messages.py, prompts/insight_chat_system.v4.txt, evaluation/chat_eval.py (an optional `scene` per case insight), tests/scans/test_chat.py, tests/insight/test_chat_cases.py, tests/evaluation/chat/cases.json, the generated web client.
+- **Done when:** A test asks for another text on an insight with a scene and gets the found verse from the store with its hash, a found hadith without a ruling is queued and not shown, a ruled-out found hadith withdraws the answer, and the twelve cases accept `answer` or `new_search` for the new-text case; scripture review passes. Not done here: the web shows `quran` and `hadith` on a chat message (a follow-up for the web).
