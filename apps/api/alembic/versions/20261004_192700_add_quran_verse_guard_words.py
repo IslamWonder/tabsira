@@ -1,8 +1,8 @@
 """add_quran_verse_guard_words
 
-Revision ID: 20261004_193000
+Revision ID: 20261004_192700
 Revises: 20261004_192500
-Create Date: 2026-10-04 19:30:00.000000
+Create Date: 2026-10-04 19:27:00.000000
 
 How many words each verse's guard skeleton has, computed by the database and
 indexed, so the leak guard can hold a short verse (three to six words) against
@@ -19,7 +19,7 @@ import sqlalchemy as sa
 from alembic import op
 from src.models.scripture import GUARD_WORDS_SQL
 
-revision: str = "20261004_193000"
+revision: str = "20261004_192700"
 down_revision: str | Sequence[str] | None = "20261004_192500"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
