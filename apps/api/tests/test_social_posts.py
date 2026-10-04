@@ -277,6 +277,38 @@ async def test_a_reflection_over_the_limit_or_with_control_characters_is_refused
     assert (long.status_code, control.status_code, paragraphs.status_code) == (422, 422, 201)
 
 
+async def test_text_that_can_reverse_how_a_line_reads_is_refused_but_the_arabic_marks_stay(
+    make_member, make_insight
+):
+    author = await make_member("author")
+    insight = make_insight(author)
+
+    override = await create(author, insight, reflection="safe \u202etxet")
+    isolate = await create(author, insight, reflection="a \u2066b")
+    marks = await create(author, insight, reflection="\u200fنص\u200f")
+
+    assert (override.status_code, isolate.status_code, marks.status_code) == (422, 422, 201)
+
+
+async def test_a_moderators_own_words_are_never_returned_as_the_reason(
+    make_member, make_insight, guard, db_session
+):
+    from src.services import moderation_service
+
+    author = await make_member("author")
+    post_id = await published(author, make_insight)
+    post = await db_session.get(Post, int(post_id))
+    await moderation_service.remove(db_session, post, MODERATOR, "free words of a moderator")
+    await db_session.flush()
+
+    item = (await author.http.get("/me/posts")).json()["items"][0]
+
+    assert item["status"] == "removed"
+    assert item["status_reason"] is None
+    assert item["status_message"] == "لم يُقبل لأنه يخالف قواعد المجتمع."
+    assert "free words" not in str(item)
+
+
 async def test_unknown_fields_are_refused(make_member, make_insight):
     author = await make_member("author")
 

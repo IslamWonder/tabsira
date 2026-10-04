@@ -36,6 +36,12 @@ from src.services.evidence_view import Evidence, load_evidence
 from src.services.post_service import PostRow
 
 
+def known_reason(reason: str | None) -> str | None:
+    """Return the reason only if it is one of the codes the app defines, never a moderator's own words."""
+    known = messages.OUTCOME_REASONS.keys() | messages.REASON_LABELS.keys()
+    return reason if reason in known else None
+
+
 def outcome_message(status: str, reason: str | None) -> str | None:
     """Say what happened to a post or a comment, in Arabic, to the person who wrote it."""
     if status == PostStatus.PENDING_REVIEW.value:
@@ -119,7 +125,7 @@ def _post_out(
         ),
         visibility=post.visibility,
         status=post.status,
-        status_reason=post.status_reason if is_author else None,
+        status_reason=known_reason(post.status_reason) if is_author else None,
         status_message=outcome_message(post.status, post.status_reason) if is_author else None,
         published_at=post.published_at,
         created_at=post.created_at,

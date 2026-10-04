@@ -382,3 +382,20 @@ async def test_every_social_route_answers_404_while_the_feature_is_off(
     ):
         response = await reader.http.request(method, path)
         assert response.status_code == 404, path
+
+
+async def test_the_social_routes_are_never_cached_because_they_carry_the_viewers_own_state(
+    make_member,
+):
+    reader = await make_member("reader")
+
+    for path in (
+        "/u/reader",
+        "/feed/latest",
+        "/feed/for-you",
+        "/me/bookmarks",
+        "/blocks",
+        "/me/public-identity",
+    ):
+        response = await reader.http.get(path)
+        assert response.headers["cache-control"] == "no-store", path

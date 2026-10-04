@@ -111,11 +111,12 @@ async def test_a_comment_has_words_and_not_too_many(make_member, make_insight, g
     empty = await comment(author, post_id, "   ")
     long = await comment(author, post_id, "x" * 501)
     control = await comment(author, post_id, "a\u0007b")
+    bidi = await comment(author, post_id, "a \u202eb")
     extra = await author.http.post(
         f"/posts/{post_id}/comments", json={"body": "x", "status": "published"}
     )
 
-    assert [r.status_code for r in (empty, long, control, extra)] == [422, 422, 422, 422]
+    assert [r.status_code for r in (empty, long, control, bidi, extra)] == [422] * 5
 
 
 async def test_comments_are_rate_limited_per_account(make_member, make_insight, guard, account_app):

@@ -292,18 +292,26 @@ class ReportOut(BaseModel):
     id: PublicId
 
 
+# U+202A to U+202E (embeddings and overrides) and U+2066 to U+2069 (isolates).
+BIDI_OVERRIDES = frozenset("\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069")
+
+
 def clean_text(value: str | None, limit: int) -> str | None:
     """
     Return `value` trimmed, or None when nothing is left.
 
-    Control characters and anything longer than `limit` characters are refused. Line breaks
-    and tabs are kept (a reflection has paragraphs); the other control characters, which no
-    person types, are not.
+    Control characters, the bidirectional overrides and isolates (which can make a line of text
+    read as something other than what it says) and anything longer than `limit` characters are
+    refused. Line breaks and tabs are kept (a reflection has paragraphs), and so are the plain
+    right-to-left and left-to-right marks that Arabic text uses.
     """
     if value is None:
         return None
     text = value.strip()
-    if any(unicodedata.category(char) == "Cc" and char not in "\n\t" for char in text):
+    if any(
+        (unicodedata.category(char) == "Cc" and char not in "\n\t") or char in BIDI_OVERRIDES
+        for char in text
+    ):
         message = "must not contain control characters"
         raise ValueError(message)
     if len(text) > limit:
