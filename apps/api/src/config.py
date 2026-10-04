@@ -544,6 +544,10 @@ class Settings(BaseSettings):
     # that does not answer in time is skipped and the scan goes on without boxes.
     detector_url: str = "http://127.0.0.1:8100"
     detector_timeout_seconds: Annotated[float, Field(gt=0)] = 30.0
+    # The cross-encoder that reranks evidence candidates, served by services/vision
+    # (POST /rerank). One that does not answer in time is skipped: the fused order is kept.
+    reranker_url: str = "http://127.0.0.1:8100"
+    reranker_timeout_seconds: Annotated[float, Field(gt=0)] = 15.0
 
     # Photos received for a scan: largest upload, and largest decoded size
     # (checked from the header, before decoding: a small file can expand a lot).
@@ -676,7 +680,7 @@ class Settings(BaseSettings):
             raise ValueError(message)
         return value.strip()
 
-    @field_validator("detector_url")
+    @field_validator("detector_url", "reranker_url")
     @classmethod
     def _check_detector_url(cls, value: str) -> str:
         return _origin(value)
