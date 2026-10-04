@@ -40,7 +40,7 @@ export const scanMessages = {
     pick: 'المس البصيرة التي لفتتك',
     open: 'افتح البصيرة',
     ready: 'بصائر هذا المشهد',
-    completed: 'تمّت',
+    completedGlimpse: (glimpse: string) => `تمّت · ${glimpse}`,
     noEvidence: {
       title: 'لم أجد صلة موثوقة بهذا المشهد بعد',
       body: 'لا نكمل بنص بعيد لنملأ الفراغ. حدّد ما لفت نظرك لننظر إليه وحده، أو جرّب مشهدًا آخر.',
@@ -107,6 +107,7 @@ export const scanMessages = {
     photoAlt: 'صورة المشهد',
     photoSensitive: 'لا نعرض صورة هذا المشهد ولا نحفظها.',
     photoGone: 'مُسحت الصورة من خادمنا بعد ساعة، وبقيت البصيرة.',
+    photoNone: 'الصورة غير معروضة الآن.',
     verseReference: (surah: string, ayah: number) => `${surah}، الآية ${ayah}`,
     hadithReference: (book: string, number: string) => `${book}، رقم ${number}`,
     rulingSource: (scholar: string, book: string, page: string) => `${scholar}، ${book}، ${page}`,
@@ -120,7 +121,8 @@ export const scanMessages = {
       sources: 'المصادر',
       sourceQuran: 'القرآن',
       sourceSunnah: 'السنة',
-      matchedOn: (text: string) => `وجه الصلة: ${text}`,
+      sourceLine: (relation: string, matched: string) =>
+        matched === '' ? relation : `${relation}، وجه الصلة: ${matched}`,
       limits: 'حدود هذه الصلة',
       personalisation: 'التخصيص',
       personalised: 'اختيارٌ بُني على ما صرّحت به في ملفك:',
@@ -128,10 +130,6 @@ export const scanMessages = {
     },
     step: {
       confirm: 'نفّذته',
-      later: 'سأفعله لاحقًا',
-      saved: 'سُجّل ما صرّحت به.',
-      deferred: 'حُفظ تأجيلك.',
-      failed: 'لم يُحفظ ما صرّحت به.',
     },
     chat: {
       open: 'ناقش البصيرة',
@@ -142,13 +140,12 @@ export const scanMessages = {
       hint: 'سؤال واحد في كل مرة، حتى 500 حرف.',
       send: 'اسأل',
       sending: 'أجيب…',
-      retry: 'أعد المحاولة',
       limit: 'اكتمل النقاش حول هذه البصيرة',
       disabled: 'النقاش غير متاح الآن.',
       asked: 'سؤالك',
       answered: 'الجواب',
       empty: 'اكتب سؤالك أولًا.',
-      empty_state: 'لم تسأل شيئًا بعد.',
+      emptyState: 'لم تسأل شيئًا بعد.',
     },
     done: {
       saving: 'أحفظ بصيرتك…',

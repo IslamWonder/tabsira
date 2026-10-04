@@ -397,6 +397,18 @@
   }
 }
 
+/* The fog lifting from a new place: a veil that thins and drifts outward, once. */
+@keyframes fx-mist {
+  from {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
 @keyframes fx-lock {
   from {
     transform: scale(1.3);

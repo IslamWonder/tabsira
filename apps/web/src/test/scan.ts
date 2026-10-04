@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { ChatReply, Completion, Insight, Progress, Scan, Tutorial } from '@/lib/scan/api';
 
 /*
@@ -10,6 +11,9 @@ import type { ChatReply, Completion, Insight, Progress, Scan, Tutorial } from '@
 
 /** A stand-in verse with an escape for a Uthmani mark: the source file never holds one raw. */
 export const VERSE_TEXT = `[آية للاختبار]ٰ  بين فراغين ‏ `;
+/** The SHA-256 the API stores beside a text: of its UTF-8 bytes. */
+export const sha256 = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
+
 export const HADITH_TEXT = '[حديث للاختبار] سند الرواية: قال النبي: [كلام للاختبار] ختام.';
 const WORDS_AT = HADITH_TEXT.indexOf('قال');
 const TAIL_AT = HADITH_TEXT.indexOf(' ختام');
@@ -104,7 +108,7 @@ export function insightOut(overrides: Partial<Insight> = {}): Insight {
         ayah: 50,
         surah_name: 'سورة اختبار',
         text: VERSE_TEXT,
-        sha256: 'a'.repeat(64),
+        sha256: sha256(VERSE_TEXT),
         page: 1,
         juz: 1,
         source: {
@@ -137,7 +141,7 @@ export function insightOut(overrides: Partial<Insight> = {}): Insight {
         arabic_number: null,
         chapter: null,
         text: HADITH_TEXT,
-        sha256: 'b'.repeat(64),
+        sha256: sha256(HADITH_TEXT),
         spans: HADITH_SPANS,
         informational_grades: null,
         ruling: {

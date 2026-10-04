@@ -20,7 +20,7 @@ import { coverPlacement, isRatio } from './scene-geometry';
  * below that, as in the phone mockup.
  */
 
-function BackArrow() {
+export function BackArrow() {
   return (
     <svg
       width="20"

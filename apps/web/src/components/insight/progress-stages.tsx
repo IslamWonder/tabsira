@@ -23,7 +23,8 @@ export function stageState(stage: StageId, current: StageId | 'queued' | 'done')
     return 'done';
   }
   const at = STAGES.indexOf(stage);
-  const now = STAGES.indexOf(current);
+  // `queued` is not a stage: it sits before all of them, so every stage is still ahead.
+  const now = current === 'queued' ? -1 : STAGES.indexOf(current);
   if (at < now) {
     return 'done';
   }
