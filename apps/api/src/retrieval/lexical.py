@@ -96,13 +96,15 @@ async def search_lexical(
         )
         matches = [literal(term).op("<%")(folded) for term in terms]
     found_any = or_(*matches)
-    counted = _from(
-        corpus,
-        select(
-            func.count().label("documents"),
-            *[func.count().filter(match).label(f"t{index}") for index, match in enumerate(matches)],
-        ),
-    ).where(*filters)
+    # One count per term, each on its own index scan: a FILTER over every row was ten
+    # times slower on the 65,712 hadiths.
+    counted = select(
+        _from(corpus, select(func.count(key))).where(*filters).scalar_subquery(),
+        *[
+            _from(corpus, select(func.count(key))).where(match, *filters).scalar_subquery()
+            for match in matches
+        ],
+    )
     counts = (await session.execute(counted)).one()
     documents = int(counts[0])
     weights = [idf(documents, int(counts[index + 1])) for index in range(len(terms))]
