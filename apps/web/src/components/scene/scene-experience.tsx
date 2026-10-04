@@ -195,7 +195,7 @@ export function SceneExperience() {
         <div className="flex flex-col gap-4 pb-2">
           {sending === null ? null : (
             <p role="status" className="m-0 text-fg leading-[1.9]">
-              {sendError === null ? messages.sending.file(sending.file.name) : null}
+              {sendError === null ? messages.sending.file : null}
             </p>
           )}
           {sendError === null ? null : (

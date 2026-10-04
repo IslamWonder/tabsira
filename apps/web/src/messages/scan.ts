@@ -14,7 +14,8 @@
 export const scanMessages = {
   sending: {
     title: 'صورتك',
-    file: (name: string) => `أرسل «${name}» لتحليلها…`,
+    // No file name: a phone's names (008.jpeg.jfif, capture-…) say nothing to the reader.
+    file: 'جارٍ إرسال صورتك لتحليلها…',
     link: 'أطلب الصورة من الرابط وأحلّلها…',
     cancel: 'ألغِ',
     retry: 'أعد المحاولة',

@@ -138,7 +138,9 @@ describe('SceneExperience: a scene of the reader', () => {
     const [picker] = screen.getAllByLabelText('اختر صورة');
     await userEvent.upload(picker as HTMLElement, image());
     const sheet = screen.getByRole('dialog', { name: 'صورتك' });
-    expect(within(sheet).getByRole('status')).toHaveTextContent('أرسل «mine.jpg» لتحليلها…');
+    expect(within(sheet).getByRole('status')).toHaveTextContent('جارٍ إرسال صورتك لتحليلها…');
+    // The phone's file name says nothing to the reader.
+    expect(sheet).not.toHaveTextContent('mine.jpg');
     await userEvent.click(within(sheet).getByRole('button', { name: 'ألغِ' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     await act(async () => release());
