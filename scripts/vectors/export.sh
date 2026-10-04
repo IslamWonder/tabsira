@@ -32,23 +32,24 @@ PSQL=(psql -X -v ON_ERROR_STOP=1 -q)
 mkdir -p "$DIR"
 
 echo "[vectors] exporting verses"
-"${PSQL[@]}" -c "\\copy (SELECT v.surah, v.ayah, v.text_sha256, e.model, e.dimensions, e.document_sha256, e.embedding FROM app.quran_verse_embeddings e JOIN app.quran_verses v ON v.id = e.verse_id ORDER BY v.surah, v.ayah, e.model, e.dimensions) TO '$DIR/quran_verse_embeddings.tsv' WITH (FORMAT text)"
+"${PSQL[@]}" -c "\\copy (SELECT v.surah, v.ayah, v.text_sha256, e.model, e.dimensions, e.document_sha256, e.embedding FROM vectors.quran_verse_embeddings e JOIN app.quran_verses v ON v.id = e.verse_id ORDER BY v.surah, v.ayah, e.model, e.dimensions) TO '$DIR/quran_verse_embeddings.tsv' WITH (FORMAT text)"
 echo "[vectors] exporting hadiths"
-"${PSQL[@]}" -c "\\copy (SELECT h.collection, h.number, h.text_sha256, e.model, e.dimensions, e.document_sha256, e.embedding FROM app.hadith_embeddings e JOIN app.hadiths h ON h.id = e.hadith_id ORDER BY h.collection, h.number, e.model, e.dimensions) TO '$DIR/hadith_embeddings.tsv' WITH (FORMAT text)"
+"${PSQL[@]}" -c "\\copy (SELECT h.collection, h.number, h.text_sha256, e.model, e.dimensions, e.document_sha256, e.embedding FROM vectors.hadith_embeddings e JOIN app.hadiths h ON h.id = e.hadith_id ORDER BY h.collection, h.number, e.model, e.dimensions) TO '$DIR/hadith_embeddings.tsv' WITH (FORMAT text)"
 
 echo "[vectors] writing the manifest"
 "${PSQL[@]}" -tA >"$DIR/manifest.json" <<'SQL'
 SELECT json_build_object(
   'created_at', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
   'source_database_revision', (SELECT version_num FROM app.alembic_version LIMIT 1),
-  'quran', (SELECT json_agg(json_build_object('model', model, 'dimensions', dimensions, 'rows', n)) FROM (SELECT model, dimensions, count(*) n FROM app.quran_verse_embeddings GROUP BY 1, 2 ORDER BY 1, 2) x),
-  'hadith', (SELECT json_agg(json_build_object('model', model, 'dimensions', dimensions, 'rows', n)) FROM (SELECT model, dimensions, count(*) n FROM app.hadith_embeddings GROUP BY 1, 2 ORDER BY 1, 2) x),
+  'source_vectors_revision', (SELECT version_num FROM vectors.alembic_version LIMIT 1),
+  'quran', (SELECT json_agg(json_build_object('model', model, 'dimensions', dimensions, 'rows', n)) FROM (SELECT model, dimensions, count(*) n FROM vectors.quran_verse_embeddings GROUP BY 1, 2 ORDER BY 1, 2) x),
+  'hadith', (SELECT json_agg(json_build_object('model', model, 'dimensions', dimensions, 'rows', n)) FROM (SELECT model, dimensions, count(*) n FROM vectors.hadith_embeddings GROUP BY 1, 2 ORDER BY 1, 2) x),
   'store', json_build_object(
      'verses', (SELECT count(*) FROM app.quran_verses),
      'hadiths', (SELECT count(*) FROM app.hadiths),
      'quran_text_fingerprint', (SELECT encode(sha256(string_agg(text_sha256, '' ORDER BY surah, ayah)::bytea), 'hex') FROM app.quran_verses),
      'hadith_text_fingerprint', (SELECT encode(sha256(string_agg(text_sha256, '' ORDER BY collection, number)::bytea), 'hex') FROM app.hadiths)),
-  'runs', (SELECT json_agg(json_build_object('corpus', corpus, 'provider', provider, 'model', model, 'dimensions', dimensions, 'status', status, 'documents', documents, 'already_present', unchanged, 'embedded', embedded, 'input_tokens', input_tokens, 'cost_usd', round(cost_usd::numeric, 4), 'started_at', started_at, 'finished_at', finished_at) ORDER BY id) FROM app.embedding_runs)
+  'runs', (SELECT json_agg(json_build_object('corpus', corpus, 'provider', provider, 'model', model, 'dimensions', dimensions, 'status', status, 'documents', documents, 'already_present', unchanged, 'embedded', embedded, 'input_tokens', input_tokens, 'cost_usd', round(cost_usd::numeric, 4), 'started_at', started_at, 'finished_at', finished_at) ORDER BY id) FROM vectors.embedding_runs)
 );
 SQL
 
@@ -65,7 +66,7 @@ explains how they are made.
 Contents: quran_verse_embeddings.tsv, hadith_embeddings.tsv, manifest.json (counts,
 store fingerprints, the runs that made them), SHA256SUMS, import.sh.
 
-Import (the database needs the scripture store and the retrieval tables):
+Import (the database needs the scripture store and the vectors schema, make migrate):
   tar -xzf <archive>.tar.gz && cd <archive>
   DATABASE_URL=postgresql://user:password@127.0.0.1:5432/tabsira ./import.sh
 A vector is imported only when its text is in the store with the same SHA-256;

@@ -66,10 +66,10 @@ Verified 2026-10-04 16:37 (Tunis): the downloaded archive matches its SHA-256 an
 
 ## Import (development and production)
 
-1. The database has the scripture store (`make data`) and the app migrations, including the retrieval tables.
-2. `curl -fO https://s3-v2.riastorage.com/tabsira/vectors/tabsira-vectors-2026-10-04.tar.gz -fO https://s3-v2.riastorage.com/tabsira/vectors/tabsira-vectors-2026-10-04.tar.gz.sha256 && sha256sum -c tabsira-vectors-2026-10-04.tar.gz.sha256` (about 1 min 30 s from Tunis).
-3. `tar -xzf tabsira-vectors-2026-10-04.tar.gz && cd tabsira-vectors-2026-10-04`
-4. `DATABASE_URL=postgresql://user:password@127.0.0.1:5432/tabsira ./import.sh` (the SQLAlchemy `postgresql+asyncpg://` form is accepted too).
+1. The database has the scripture store (`make data`) and the three migration chains (`make migrate`), the last of which creates the `vectors` schema.
+2. In `../tabsira-data/vectors/` beside the checkout: `curl -fO https://s3-v2.riastorage.com/tabsira/vectors/tabsira-vectors-2026-10-04.tar.gz -fO https://s3-v2.riastorage.com/tabsira/vectors/tabsira-vectors-2026-10-04.tar.gz.sha256 && sha256sum -c tabsira-vectors-2026-10-04.tar.gz.sha256` (about 1 min 30 s from Tunis).
+3. `tar -xzf tabsira-vectors-2026-10-04.tar.gz`
+4. From the checkout: `DATABASE_URL=postgresql://user:password@127.0.0.1:5432/tabsira scripts/vectors/import.sh ../tabsira-data/vectors/tabsira-vectors-2026-10-04` (the SQLAlchemy `postgresql+asyncpg://` form is accepted too). Use the repository's script, not the archive's own `import.sh`: the 2026-10-04 archive was made before decision 48 and its copy writes to `app.*`.
 
 The import checks `SHA256SUMS`, then attaches each vector to its verse by (surah, ayah) and to its hadith by (collection, number), **only when the stored text's SHA-256 is the one it was computed from**; anything else is skipped and counted, never forced. Existing rows are kept. It prints a table per model: in the archive, imported, skipped because the text changed, skipped because the text is not in the store. Rehearsed on 2026-10-04: 2 min 40 s for the rows it had to restore, exact rows restored.
 
