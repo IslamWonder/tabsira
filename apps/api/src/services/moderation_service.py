@@ -21,8 +21,9 @@ from typing import Any
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import clock, messages
+from src import clock
 from src.errors import AppError, ErrorCode
+from src.messages import messages_for
 from src.models.moderation import (
     ModerationAction,
     ModerationActionKind,
@@ -128,7 +129,7 @@ def settle(db: AsyncSession, item: Item, verdict: GuardVerdict) -> None:
 
 def known_reason(reason: str | None) -> str | None:
     """Return the reason only if it is a code the app defines, never a moderator's own words."""
-    known = messages.OUTCOME_REASONS.keys() | messages.REASON_LABELS.keys()
+    known = messages_for().outcome_reasons.keys() | messages_for().reason_labels.keys()
     return reason if reason in known else None
 
 

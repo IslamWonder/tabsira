@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import messages
+from src.messages import messages_for
 from src.models.social import (
     Bookmark,
     Comment,
@@ -40,11 +40,15 @@ from src.services.post_service import PostRow
 def outcome_message(status: str, reason: str | None) -> str | None:
     """Say what happened to a post or a comment, in Arabic, to the person who wrote it."""
     if status == PostStatus.PENDING_REVIEW.value:
-        return messages.OUTCOME_REASONS.get(reason or "", messages.OUTCOME_GUARD_UNCERTAIN)
+        return messages_for().outcome_reasons.get(
+            reason or "", messages_for().outcome_guard_uncertain
+        )
     if status in {PostStatus.REJECTED.value, PostStatus.REMOVED.value}:
-        if reason in messages.REASON_LABELS:
-            return messages.OUTCOME_REJECTED.format(reason=messages.REASON_LABELS[reason])
-        return messages.OUTCOME_UNKNOWN
+        if reason in messages_for().reason_labels:
+            return messages_for().outcome_rejected.format(
+                reason=messages_for().reason_labels[reason]
+            )
+        return messages_for().outcome_unknown
     return None
 
 

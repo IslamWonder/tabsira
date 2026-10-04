@@ -3,7 +3,8 @@ Transactional mail, sent by the API itself over SMTP.
 
 Two kinds go out: the e-mail verification link and the password reset link.
 Each is a plain-text and an HTML part rendered by Jinja2 from
-`src/templates/email`, in Arabic, right to left. HTML is autoescaped, so a
+`src/templates/email/<language>` (Arabic, right to left, today); the subjects
+come from `src/messages.py` in the same language. HTML is autoescaped, so a
 display name cannot inject markup. Every mail carries `Auto-Submitted:
 auto-generated` so auto-responders stay quiet.
 
@@ -25,6 +26,7 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid, parseaddr
+from functools import cache
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -37,25 +39,37 @@ from src.config import Settings
 log = logging.getLogger("tabsira.email")
 
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "email"
-_TEMPLATES = Environment(
-    loader=FileSystemLoader(TEMPLATE_DIR),
-    # HTML is autoescaped; the plain-text parts are not HTML and must stay as written.
-    autoescape=select_autoescape(enabled_extensions=("html",), default_for_string=False),
-    undefined=StrictUndefined,
-    trim_blocks=True,
-    lstrip_blocks=True,
-)
 FAILURE_TEXT_MAX = 300
 
 
+@cache
+def _templates(language: str) -> Environment:
+    """Return the templates of one language; each language has its own folder."""
+    return Environment(
+        loader=FileSystemLoader(TEMPLATE_DIR / language),
+        # HTML is autoescaped; the plain-text parts are not HTML and must stay as written.
+        autoescape=select_autoescape(enabled_extensions=("html",), default_for_string=False),
+        undefined=StrictUndefined,
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+
+
 def build_message(
-    settings: Settings, *, to: str, subject: str, template: str, context: dict[str, Any]
+    settings: Settings,
+    *,
+    to: str,
+    subject: str,
+    template: str,
+    context: dict[str, Any],
+    language: str | None = None,
 ) -> EmailMessage:
     """Render a template into a message: text part first, HTML as the alternative."""
+    catalog = messages.messages_for(language)
     sender_domain = parseaddr(settings.mail_from)[1].rpartition("@")[2] or None
     page = {
         **context,
-        "site_name": messages.SITE_NAME,
+        "site_name": catalog.site_name,
         "support_email": settings.mail_reply_to,
     }
     message = EmailMessage()
@@ -69,10 +83,9 @@ def build_message(
     # Tells servers and clients this is machine-sent: no auto-replies, no vacation
     # responder answering a password reset.
     message["Auto-Submitted"] = "auto-generated"
-    message.set_content(_TEMPLATES.get_template(f"{template}.txt").render(page))
-    message.add_alternative(
-        _TEMPLATES.get_template(f"{template}.html").render(page), subtype="html"
-    )
+    templates = _templates(catalog.language)
+    message.set_content(templates.get_template(f"{template}.txt").render(page))
+    message.add_alternative(templates.get_template(f"{template}.html").render(page), subtype="html")
     return message
 
 
@@ -149,7 +162,7 @@ async def send_email_verification(settings: Settings, *, email: str, name: str, 
     return await send(
         settings,
         to=email,
-        subject=messages.VERIFY_EMAIL_SUBJECT,
+        subject=messages.messages_for().verify_email_subject,
         template="verify_email",
         context={
             "name": name,
@@ -165,7 +178,7 @@ async def send_password_reset(settings: Settings, *, email: str, name: str, toke
     return await send(
         settings,
         to=email,
-        subject=messages.RESET_PASSWORD_SUBJECT,
+        subject=messages.messages_for().reset_password_subject,
         template="password_reset",
         context={
             "name": name,

@@ -7,7 +7,7 @@ from dataclasses import FrozenInstanceError, dataclass
 
 import pytest
 
-from src import messages
+from src.messages import messages_for
 from src.services.ontology_constraints import (
     BLOCKING_KINDS,
     KNOWN_CONSTRAINTS,
@@ -109,11 +109,11 @@ def test_the_answer_of_the_person_lifts_a_question(row_of):
 @pytest.mark.parametrize(
     ("entity_id", "question"),
     [
-        ("E946", messages.QUESTION_CONFIRM_SCENE_MEANING),  # «وحدة مصرح بها»
-        ("E217", messages.QUESTION_CONFIRM_ROLE_OR_RELATION),  # «عامل في مهمة»
-        ("E885", messages.QUESTION_CONFIRM_ACTION.format(label="مشي رياضي")),
-        ("E282", messages.QUESTION_CONFIRM_WORSHIP_ACTION.format(label="شخص يصلي")),
-        ("E298", messages.QUESTION_CONFIRM_IDENTITY_OF_THING.format(label="الكعبة")),
+        ("E946", messages_for().question_confirm_scene_meaning),  # «وحدة مصرح بها»
+        ("E217", messages_for().question_confirm_role_or_relation),  # «عامل في مهمة»
+        ("E885", messages_for().question_confirm_action.format(label="مشي رياضي")),
+        ("E282", messages_for().question_confirm_worship_action.format(label="شخص يصلي")),
+        ("E298", messages_for().question_confirm_identity_of_thing.format(label="الكعبة")),
     ],
 )
 def test_each_kind_of_confirmation_asks_its_own_question(row_of, entity_id, question):

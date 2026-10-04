@@ -19,7 +19,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-from src import messages
+from src.messages import messages_for
 from src.schemas.social import WhyOut
 
 # A post's freshness halves every day: new enough to matter, never forever.
@@ -61,13 +61,13 @@ def freshness(published_at: datetime, now: datetime) -> float:
 
 def _why(candidate: Candidate, *, followed: bool, fresh: float, repeats: int) -> WhyOut:
     if followed:
-        text = messages.WHY_FOLLOWED_AUTHOR.format(name=candidate.author_name)
+        text = messages_for().why_followed_author.format(name=candidate.author_name)
         return WhyOut(code="followed_author", text=text)
     if fresh >= FRESH_REASON_AT:
-        return WhyOut(code="fresh", text=messages.WHY_FRESH)
+        return WhyOut(code="fresh", text=messages_for().why_fresh)
     if candidate.concepts and repeats == 0:
-        return WhyOut(code="new_topic", text=messages.WHY_NEW_TOPIC)
-    return WhyOut(code="community", text=messages.WHY_COMMUNITY)
+        return WhyOut(code="new_topic", text=messages_for().why_new_topic)
+    return WhyOut(code="community", text=messages_for().why_community)
 
 
 def rank(

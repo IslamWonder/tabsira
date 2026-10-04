@@ -12,9 +12,9 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy import func, select
 
-from src import messages
 from src.database import get_db
 from src.main import create_app
+from src.messages import messages_for
 from src.models import CookieConsent
 from src.routers import cookie_consent
 from src.services.window_limiter import AddressLimits
@@ -69,20 +69,20 @@ async def test_the_policy_lists_the_three_categories_with_their_arabic_text(visi
         {
             "key": "necessary",
             "required": True,
-            "title": messages.CONSENT_NECESSARY_TITLE,
-            "description": messages.CONSENT_NECESSARY_DESCRIPTION,
+            "title": messages_for().consent_necessary_title,
+            "description": messages_for().consent_necessary_description,
         },
         {
             "key": "analytics",
             "required": False,
-            "title": messages.CONSENT_ANALYTICS_TITLE,
-            "description": messages.CONSENT_ANALYTICS_DESCRIPTION,
+            "title": messages_for().consent_analytics_title,
+            "description": messages_for().consent_analytics_description,
         },
         {
             "key": "behaviour",
             "required": False,
-            "title": messages.CONSENT_BEHAVIOUR_TITLE,
-            "description": messages.CONSENT_BEHAVIOUR_DESCRIPTION,
+            "title": messages_for().consent_behaviour_title,
+            "description": messages_for().consent_behaviour_description,
         },
     ]
     assert response.headers["cache-control"] == "no-store"
@@ -97,15 +97,15 @@ async def test_the_policy_follows_the_settings(build_app):
 
 def test_every_category_text_is_arabic_and_names_what_is_never_sent():
     for text in (
-        messages.CONSENT_NECESSARY_DESCRIPTION,
-        messages.CONSENT_ANALYTICS_DESCRIPTION,
-        messages.CONSENT_BEHAVIOUR_DESCRIPTION,
+        messages_for().consent_necessary_description,
+        messages_for().consent_analytics_description,
+        messages_for().consent_behaviour_description,
     ):
         assert any("؀" <= char <= "ۿ" for char in text)
     # The promises of decision 32, stated to the visitor.
-    assert "ملفك الشخصي" in messages.CONSENT_ANALYTICS_DESCRIPTION
-    assert "صورك" in messages.CONSENT_ANALYTICS_DESCRIPTION
-    assert "كل خانة كتابة" in messages.CONSENT_BEHAVIOUR_DESCRIPTION
+    assert "ملفك الشخصي" in messages_for().consent_analytics_description
+    assert "صورك" in messages_for().consent_analytics_description
+    assert "كل خانة كتابة" in messages_for().consent_behaviour_description
 
 
 # ─── Recording a choice ───────────────────────────────────────────────────────

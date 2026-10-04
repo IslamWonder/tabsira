@@ -307,3 +307,12 @@ def test_the_built_message_survives_serialization(settings):
     assert parsed["Subject"] == "s"
     assert parsed["From"].addresses[0].display_name == "تبصرة"
     assert parsed["From"].addresses[0].addr_spec == "no-reply@tabsira.me"
+
+
+def test_messages_come_from_the_catalog_of_the_language_and_fall_back_to_the_default():
+    from src import messages
+
+    assert messages.messages_for("ar") is messages.ARABIC
+    assert messages.messages_for(None) is messages.ARABIC
+    assert messages.messages_for("xx") is messages.ARABIC
+    assert messages.ARABIC.direction == "rtl"

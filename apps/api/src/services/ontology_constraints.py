@@ -15,8 +15,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
 
-from src import messages
 from src.arabic import normalize_arabic
+from src.messages import messages_for
 
 log = logging.getLogger("tabsira.ontology")
 
@@ -110,20 +110,22 @@ class ConstraintOutcome:
     before_search: bool = False
 
 
+# The language of the questions is the default one until a language reaches the pipeline.
+_TEXT = messages_for()
 _QUESTIONS = {
-    ConstraintKind.SPECIFY_BEFORE_SEARCH: messages.QUESTION_SPECIFY_BEFORE_SEARCH,
-    ConstraintKind.CONFIRM_SCENE_MEANING: messages.QUESTION_CONFIRM_SCENE_MEANING,
-    ConstraintKind.CONFIRM_ROLE_OR_RELATION: messages.QUESTION_CONFIRM_ROLE_OR_RELATION,
-    ConstraintKind.CONFIRM_ACTION: messages.QUESTION_CONFIRM_ACTION,
-    ConstraintKind.CONFIRM_WORSHIP_ACTION: messages.QUESTION_CONFIRM_WORSHIP_ACTION,
-    ConstraintKind.CONFIRM_IDENTITY_OF_THING: messages.QUESTION_CONFIRM_IDENTITY_OF_THING,
-    ConstraintKind.UNKNOWN: messages.QUESTION_UNKNOWN_CONSTRAINT,
+    ConstraintKind.SPECIFY_BEFORE_SEARCH: _TEXT.question_specify_before_search,
+    ConstraintKind.CONFIRM_SCENE_MEANING: _TEXT.question_confirm_scene_meaning,
+    ConstraintKind.CONFIRM_ROLE_OR_RELATION: _TEXT.question_confirm_role_or_relation,
+    ConstraintKind.CONFIRM_ACTION: _TEXT.question_confirm_action,
+    ConstraintKind.CONFIRM_WORSHIP_ACTION: _TEXT.question_confirm_worship_action,
+    ConstraintKind.CONFIRM_IDENTITY_OF_THING: _TEXT.question_confirm_identity_of_thing,
+    ConstraintKind.UNKNOWN: _TEXT.question_unknown_constraint,
 }
 _RULES = {
-    ConstraintKind.NO_DIAGNOSIS: (Forbidden.DIAGNOSIS, messages.RULE_NO_DIAGNOSIS),
+    ConstraintKind.NO_DIAGNOSIS: (Forbidden.DIAGNOSIS, _TEXT.rule_no_diagnosis),
     ConstraintKind.NO_PERSON_IDENTITY: (
         Forbidden.PERSON_IDENTITY,
-        messages.RULE_NO_PERSON_IDENTITY,
+        _TEXT.rule_no_person_identity,
     ),
 }
 # An action the scene already shows needs no question; a role or a meaning never shows.

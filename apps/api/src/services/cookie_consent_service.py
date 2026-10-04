@@ -15,8 +15,9 @@ from datetime import datetime
 from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import clock, messages
+from src import clock
 from src.config import Settings
+from src.messages import messages_for
 from src.models.cookie_consent import CookieConsent
 from src.models.user import User
 from src.schemas.cookie_consent import (
@@ -32,20 +33,20 @@ CATEGORIES: tuple[ConsentCategoryOut, ...] = (
     ConsentCategoryOut(
         key="necessary",
         required=True,
-        title=messages.CONSENT_NECESSARY_TITLE,
-        description=messages.CONSENT_NECESSARY_DESCRIPTION,
+        title=messages_for().consent_necessary_title,
+        description=messages_for().consent_necessary_description,
     ),
     ConsentCategoryOut(
         key="analytics",
         required=False,
-        title=messages.CONSENT_ANALYTICS_TITLE,
-        description=messages.CONSENT_ANALYTICS_DESCRIPTION,
+        title=messages_for().consent_analytics_title,
+        description=messages_for().consent_analytics_description,
     ),
     ConsentCategoryOut(
         key="behaviour",
         required=False,
-        title=messages.CONSENT_BEHAVIOUR_TITLE,
-        description=messages.CONSENT_BEHAVIOUR_DESCRIPTION,
+        title=messages_for().consent_behaviour_title,
+        description=messages_for().consent_behaviour_description,
     ),
 )
 
