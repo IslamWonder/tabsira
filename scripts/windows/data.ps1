@@ -2,12 +2,16 @@
 Load the reference data into the database, once: what `make data`
 (scripts/data.sh) and scripts/seed-geonames.sh do, from PowerShell.
 
-  geodata     GeoNames into the geodata schema: a pg_restore of the owners'
-              export when -GeodataDump is given, otherwise scripts/seed-geonames.sh
-              (downloads about 600 MB from geonames.org into data/cache/geonames)
+  geodata     GeoNames into the geodata schema: a pg_restore of the owners' export
+              (-GeodataDump, or the newest geodata/*.dump of the bucket, 336 MB),
+              or with -FromGeoNames scripts/seed-geonames.sh (about 600 MB from
+              geonames.org into data/cache/geonames, then millions of rows)
   scripture   the Quran, the hadiths, the annotations and the signals
-              (src.cli.import_scripture; the pinned downloads in data/cache, the
-              two corpora in data/corpus)
+              (src.cli.import_scripture). The two corpora come from the bucket's
+              corpus/ when data/corpus lacks them, and whatever the bucket holds
+              under cache/ fills data/cache first: a source file that changed
+              upstream since the owners' import is then read from their copy. The
+              importer still checks every file against its source's own manifest.
   ontology    the world ontology (src.cli.import_ontology)
   masar       the learning path, every data/masar/*.json (src.cli.import_masar)
   vectors     the published vector archive (930 MB, checked against its .sha256),
@@ -19,8 +23,13 @@ so running the script again by mistake costs a few queries. -Force imports again
 anyway. A step that fails does not stop the steps that do not depend on it; the
 vectors need the scripture store. The exit code is 1 when a step failed.
 
+The bucket is the owners' public one (docs/SETUP.md, "what to fetch");
+-BucketUrl names another. Its files are kept beside the checkout, in
+../tabsira-data, except the corpora (data/corpus) and the cache (data/cache).
+
 Usage: scripts\windows\data.ps1 [-Only geodata,scripture,ontology,masar,vectors]
-                                [-Force] [-GeodataDump <file.dump>] [-GeonamesLimit <N>]
+                                [-Force] [-GeodataDump <file.dump>]
+                                [-FromGeoNames [-GeonamesLimit <N>]] [-BucketUrl <url>]
 
 Reads DATABASE_URL and the other settings from the root .env. Run
 scripts\windows\migrate.ps1 first. The GeoNames import and the vector import run
@@ -31,7 +40,9 @@ param(
     [string[]]$Only = @('geodata', 'scripture', 'ontology', 'masar', 'vectors'),
     [switch]$Force,
     [string]$GeodataDump,
-    [int]$GeonamesLimit = 0
+    [switch]$FromGeoNames,
+    [int]$GeonamesLimit = 0,
+    [string]$BucketUrl = 'https://s3-v2.riastorage.com/tabsira'
 )
 . "$PSScriptRoot\lib.ps1"
 Update-Path
@@ -88,6 +99,44 @@ function Invoke-Bash {
     }
 }
 
+# --- The owners' bucket ----------------------------------------------------
+
+$DataDir = Join-Path (Split-Path -Parent $RepoRoot) 'tabsira-data'
+
+# Every object under a prefix, with its size: the bucket's listing is public.
+function Get-BucketObjects {
+    param([string]$Prefix)
+    $objects = @()
+    $token = $null
+    do {
+        $url = "$($BucketUrl)?list-type=2&prefix=$([Uri]::EscapeDataString($Prefix))"
+        if ($token) { $url += "&continuation-token=$([Uri]::EscapeDataString($token))" }
+        [xml]$listing = Get-RemoteText $url
+        foreach ($item in @($listing.ListBucketResult.Contents)) {
+            if ($item) { $objects += [pscustomobject]@{ Key = $item.Key; Size = [long]$item.Size } }
+        }
+        $token = if ($listing.ListBucketResult.IsTruncated -eq 'true') { $listing.ListBucketResult.NextContinuationToken } else { $null }
+    } while ($token)
+    return $objects
+}
+
+# One object to a local file, unless a file of the same size is there already.
+# The callers check the content: a SHA-256 file, or the importer's own manifests.
+function Save-BucketObject {
+    param([pscustomobject]$Object, [string]$Destination)
+    if ((Test-Path -LiteralPath $Destination) -and (Get-Item -LiteralPath $Destination).Length -eq $Object.Size) { return }
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Destination) | Out-Null
+    Write-Log "Downloading $($Object.Key) ($([math]::Ceiling($Object.Size / 1MB)) MB)..."
+    Invoke-Native 'curl.exe' @('-fL', '--retry', '3', '-sS', '-o', "$Destination.part", "$BucketUrl/$($Object.Key)") | Out-Host
+    Move-Item -Force -LiteralPath "$Destination.part" -Destination $Destination
+}
+
+function Test-Sha256File {
+    param([string]$File, [string]$SumFile)
+    $expected = ((Get-Content -LiteralPath $SumFile -Raw).Trim() -split '\s+')[0]
+    return ((Get-FileHash -Algorithm SHA256 -LiteralPath $File).Hash -eq $expected.ToUpper())
+}
+
 # --- The steps -----------------------------------------------------------
 
 function Step-Geodata {
@@ -97,21 +146,30 @@ function Step-Geodata {
         Write-Ok "GeoNames already imported ($places places): nothing to do. Use -Force to import again."
         return 'skipped'
     }
-    if ($GeodataDump) {
-        if (-not (Test-Path -LiteralPath $GeodataDump)) { throw "$GeodataDump does not exist" }
-        $sumFile = "$GeodataDump.sha256"
-        if (Test-Path -LiteralPath $sumFile) {
-            $expected = ((Get-Content -LiteralPath $sumFile -Raw).Trim() -split '\s+')[0]
-            if ((Get-FileHash -Algorithm SHA256 -LiteralPath $GeodataDump).Hash -ne $expected.ToUpper()) {
-                throw "$GeodataDump does not match $sumFile"
-            }
+    $dump = $GeodataDump
+    if (-not $dump -and -not $FromGeoNames) {
+        # The newest export of the bucket: the names carry their date.
+        $object = @(Get-BucketObjects 'geodata/' | Where-Object { $_.Key -like '*.dump' } | Sort-Object Key) | Select-Object -Last 1
+        if ($object) {
+            $dump = Join-Path $DataDir ('geodata\' + (Split-Path -Leaf $object.Key))
+            Save-BucketObject $object $dump
+            $sum = @(Get-BucketObjects "$($object.Key).sha256") | Select-Object -First 1
+            if ($sum) { Save-BucketObject $sum "$dump.sha256" }
+        } else {
+            Write-Warn 'no GeoNames export in the bucket: importing from geonames.org instead'
+        }
+    }
+    if ($dump) {
+        if (-not (Test-Path -LiteralPath $dump)) { throw "$dump does not exist" }
+        if (Test-Path -LiteralPath "$dump.sha256") {
+            if (-not (Test-Sha256File $dump "$dump.sha256")) { throw "$dump does not match its .sha256: delete it and run again" }
             Write-Ok 'The GeoNames export matches its .sha256'
         } else {
-            Write-Warn "no $sumFile beside the export: it is restored unchecked"
+            Write-Warn "no $dump.sha256 beside the export: it is restored unchecked"
         }
         $user = ([Uri]($psqlUrl -replace '^postgresql:', 'http:')).UserInfo.Split(':')[0]
         Write-Log 'Restoring the GeoNames export (geodata schema only)...'
-        Invoke-Native 'pg_restore' @('--no-owner', "--role=$user", '--clean', '--if-exists', '--schema=geodata', '-d', $psqlUrl, $GeodataDump) | Out-Host
+        Invoke-Native 'pg_restore' @('--no-owner', "--role=$user", '--clean', '--if-exists', '--schema=geodata', '-d', $psqlUrl, $dump) | Out-Host
     } else {
         $arguments = @()
         if ($GeonamesLimit -gt 0) { $arguments += @('--limit', "$GeonamesLimit") }
@@ -143,6 +201,25 @@ function Step-Scripture {
         return 'skipped'
     }
     $corpusDir = if ($env:CORPUS_DIR) { $env:CORPUS_DIR } else { Join-Path $RepoRoot 'data\corpus' }
+    $corpusFiles = 'quran-annotations.json', 'sunnah-enriched.json', 'SHA256SUMS'
+    if (@($corpusFiles | Where-Object { -not (Test-Path -LiteralPath (Join-Path $corpusDir $_)) }).Count -gt 0) {
+        foreach ($object in Get-BucketObjects 'corpus/') {
+            $name = Split-Path -Leaf $object.Key
+            if ($corpusFiles -contains $name -and -not (Test-Path -LiteralPath (Join-Path $corpusDir $name))) {
+                Save-BucketObject $object (Join-Path $corpusDir $name)
+            }
+        }
+    }
+    # The owners' copies of the downloads (data/cache): a file its source changed since
+    # their import is read from here. A failing listing leaves the importer to download.
+    try {
+        foreach ($object in Get-BucketObjects 'cache/') {
+            if ($object.Key.EndsWith('/')) { continue }
+            Save-BucketObject $object (Join-Path $RepoRoot ('data\' + ($object.Key -replace '/', '\')))
+        }
+    } catch {
+        Write-Warn "the bucket's cache/ could not be read ($_): the importer downloads from the sources"
+    }
     foreach ($name in 'quran-annotations.json', 'sunnah-enriched.json') {
         if (-not (Test-Path -LiteralPath (Join-Path $corpusDir $name))) {
             throw "$corpusDir\$name is missing. Copy it there (docs/ASSET_MANIFEST.md names its source and SHA-256)."
