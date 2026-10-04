@@ -31,6 +31,7 @@ from src.routers import (
     health,
     members,
     posts,
+    legal,
     profile,
     reactions,
     reports,
@@ -68,6 +69,10 @@ OPENAPI_TAGS = [
     {
         "name": "members",
         "description": "The public handle and name, public profiles, follows and blocks.",
+    },
+    {
+        "name": "legal",
+        "description": "Versions of the terms and privacy texts, and the contact addresses.",
     },
     {
         "name": "client-errors",
@@ -163,6 +168,7 @@ def create_app(
     app.include_router(comments.router)
     app.include_router(reports.router)
     app.include_router(feed.router)
+    app.include_router(legal.router)
     # The admin area is not mounted at all while its feature flag is off.
     if settings.feature_admin:
         install_admin(app, settings)
