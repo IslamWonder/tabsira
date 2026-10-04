@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Provision a developer machine running Ubuntu (or a derivative such as Linux
 # Mint) for TABSIRA: the database server with its extensions, the quality tools,
-# and https://tabsira.test. Everything runs natively; Docker is not needed.
+# and http://tabsira.test. Everything runs natively; Docker is not needed.
 #
 #   1. base packages
 #   2. PostgreSQL 18 + postgis, pgvector, TimescaleDB, preloaded libraries
 #                                                       (scripts/install-postgres.sh)
 #   3. shfmt, shellcheck, gitleaks, typos               (scripts/install-quality-tools.sh)
 #   4. role, databases, schemas, extensions, .env       (scripts/setup-db.sh)
-#   5. nginx + mkcert for tabsira.test                  (scripts/setup-nginx-local.sh)
+#   5. nginx on port 80 for tabsira.test                (scripts/setup-nginx-local.sh)
 #
 # Node 24, pnpm and uv are prerequisites that are checked, not installed: they
 # are personal choices (nvm, fnm, brew). Install them, then run `make install`.
@@ -38,7 +38,7 @@ bash "$SCRIPT_DIR/install-quality-tools.sh" shfmt shellcheck gitleaks typos
 banner "4/5 Database"
 bash "$SCRIPT_DIR/setup-db.sh"
 
-banner "5/5 nginx and mkcert for tabsira.test"
+banner "5/5 nginx for tabsira.test"
 bash "$SCRIPT_DIR/setup-nginx-local.sh"
 
 banner "Prerequisites"
@@ -65,5 +65,5 @@ Next steps:
   1. make install     dependencies and git hooks
   2. make migrate     geodata chain, then app chain
   3. make dev         api + web with reload
-  4. https://tabsira.test  (API: https://api.tabsira.test)
+  4. http://tabsira.test  (API: http://api.tabsira.test)
 EOF

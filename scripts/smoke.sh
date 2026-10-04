@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # HTTP checks against a running app (make smoke): the main pages and API routes.
 #
-#   make smoke                                   # https://tabsira.test, with the write check
+#   make smoke                                   # http://tabsira.test, with the write check
 #   SITE_URL=https://tabsira.me API_URL=https://api.tabsira.me make smoke   # read-only
 #
 # One line per check, then a summary; exits 1 when any check failed.
@@ -11,16 +11,17 @@ set -uo pipefail
 # shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-SITE_URL="${SITE_URL:-https://tabsira.test}"
-API_URL="${API_URL:-https://api.tabsira.test}"
+SITE_URL="${SITE_URL:-http://tabsira.test}"
+API_URL="${API_URL:-http://api.tabsira.test}"
 SITE_URL="${SITE_URL%/}"
 API_URL="${API_URL%/}"
 require_cmd curl "Install curl."
 
-# The mkcert authority is trusted by the system store after `mkcert -install`;
-# fall back to its root file for a machine where that has not run.
+# Local development is plain HTTP (decision 49). A machine that still serves a
+# .test name over https with a mkcert certificate is trusted through mkcert's
+# root file, so the checks work there too.
 CURL_TLS=()
-if [[ "$API_URL" == *.test ]] && have mkcert; then
+if [[ "$API_URL" == https://*.test ]] && have mkcert; then
 	ca_root="$(mkcert -CAROOT 2>/dev/null || true)/rootCA.pem"
 	if [[ -f "$ca_root" ]]; then
 		CURL_TLS=(--cacert "$ca_root")
