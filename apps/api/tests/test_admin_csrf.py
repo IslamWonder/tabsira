@@ -179,6 +179,9 @@ async def test_the_admin_script_is_served_with_the_token_logic_and_may_be_cached
     assert script.status_code == 200
     assert "X-CSRF-Token" in script.text
     assert "csrf_token" in script.text
+    # The token is posted only to this origin and only under /admin/.
+    assert "url.origin === location.origin" in script.text
+    assert "url.pathname.startsWith('/admin/')" in script.text
     assert "cache-control" not in script.headers
     assert script.headers["x-content-type-options"] == "nosniff"
     # sqladmin's own assets are still served beside it.

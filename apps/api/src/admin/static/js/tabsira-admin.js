@@ -21,6 +21,17 @@
       .map((input) => input.value);
   }
 
+  // The token goes only to this admin: same origin, and a path under /admin/. A link whose
+  // address merely contains "/action/" (a record's text, a link to another site) never gets it.
+  function isAdminUrl(address) {
+    try {
+      const url = new URL(address, location.href);
+      return url.origin === location.origin && url.pathname.startsWith('/admin/');
+    } catch {
+      return false;
+    }
+  }
+
   // Run an action as a POST with the token in the body.
   function post(url) {
     const form = document.createElement('form');
@@ -49,7 +60,7 @@
       } else if ((link.getAttribute('href') || '').includes('/action/')) {
         url = link.href;
       }
-      if (url !== null) {
+      if (url !== null && isAdminUrl(url)) {
         event.preventDefault();
         event.stopImmediatePropagation();
         post(url);
