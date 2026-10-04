@@ -45,7 +45,7 @@ def kinds(text: str) -> list[LeakKind]:
         "كان النبي ﷺ يحب التيسير على الناس.",
         "انتقال «الولد يكتب درسه في البيت الكبير» من مكان إلى آخر.",
         'قال: "نعم لا"',
-        "قال تعالى: «نعم لا»",
+        "كما في «الآية المعروضة» وفي «الحديث المعروض».",
         "",
         "A plain English sentence about rain.",
     ],
@@ -101,8 +101,29 @@ def test_words_after_an_introducer_and_a_colon_are_refused_without_quotes():
     ]
 
 
-def test_a_short_phrase_after_an_introducer_and_a_colon_passes():
-    assert kinds("قال تعالى: كلمتان فقط. ثم شرح طويل جدًا للمعنى في سياق المشهد.") == []
+def test_one_word_after_an_introducer_and_a_colon_passes():
+    assert kinds("قال تعالى: كذلك. ثم شرح طويل جدًا للمعنى في سياق المشهد.") == []
+
+
+def test_two_words_after_an_introducer_and_a_colon_are_refused():
+    findings = PatternLeakDetector().find("قال تعالى: كلمتان فقط. ثم شرح طويل.")
+
+    assert findings == [
+        LeakFinding(
+            kind=LeakKind.INTRODUCED_QUOTE,
+            detail="words after a scripture introducer and a colon: 2 words",
+        )
+    ]
+
+
+@pytest.mark.parametrize("quoted", ["نعم", "نعم لا", "كلمتان فقط"])
+def test_any_quotation_after_a_strong_introducer_is_refused(quoted):
+    assert kinds(f"قال تعالى «{quoted}» في هذا المشهد.") == [LeakKind.INTRODUCED_QUOTE]
+    assert kinds(f"قال رسول الله ﷺ: «{quoted}»") == [LeakKind.INTRODUCED_QUOTE]
+
+
+def test_the_names_the_chat_gives_the_shown_texts_stay_allowed():
+    assert kinds("كما قال تعالى «الآية المعروضة»، وكما في الحديث «الحديث المعروض».") == []
 
 
 def test_a_long_quotation_after_a_plain_said_is_refused():

@@ -63,13 +63,16 @@ _WEAK_QUOTE = re.compile(_WEAK_INTRODUCER + r"\s*[:،,]?\s*" + _QUOTED)
 _STRONG_COLON = re.compile(_STRONG_INTRODUCER + r"\s*:\s*([^.؟!?\n]+)")
 _ANY_QUOTE = re.compile(_QUOTED)
 
-STRONG_QUOTE_WORDS = 3
+# After «قال تعالى» or «قال رسول الله ﷺ» any quoted Arabic is refused, and two words after a colon.
+STRONG_QUOTE_WORDS = 1
 WEAK_QUOTE_WORDS = 6
-UNQUOTED_WORDS = 6
+UNQUOTED_WORDS = 2
 LONG_QUOTE_WORDS = 15
 VOCALISED_RUN = 6
 VOCALISED_MARKS = 2
 SHINGLE_WORDS = 5
+# The names the chat is told to give the texts on the screen; quoting them quotes nothing.
+SHOWN_TEXT_NAMES = frozenset({"الآية المعروضة", "الحديث المعروض"})
 
 
 class LeakKind(StrEnum):
@@ -160,6 +163,8 @@ class PatternLeakDetector(LeakDetector):
         )
         for pattern, minimum, label in rules:
             for match in pattern.finditer(plain):
+                if _names_a_shown_text(match.group(1)):
+                    continue
                 words = arabic_word_count(match.group(1))
                 if words >= minimum:
                     detail = f"{label}: {words} words"
@@ -170,6 +175,10 @@ class PatternLeakDetector(LeakDetector):
                 detail = f"quotation of {words} Arabic words"
                 return [LeakFinding(kind=LeakKind.LONG_QUOTE, detail=detail)]
         return []
+
+
+def _names_a_shown_text(quoted: str) -> bool:
+    return normalize_arabic(quoted) in {normalize_arabic(name) for name in SHOWN_TEXT_NAMES}
 
 
 def _longest_vocalised_run(text: str) -> int:
