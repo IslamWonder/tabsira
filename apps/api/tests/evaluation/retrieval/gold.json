@@ -1,0 +1,838 @@
+{
+  "version": 1,
+  "description": "Retrieval gold set: short Arabic concept queries, written the way the insight planner writes them, each with the stored references that answer it. A query names a concept in our own words and never quotes a verse or a hadith. Quran targets come from the anchors of the learning path (data/masar/tabsira-masar-1.0.json, docs/spec/masar.md §13) and from the gold scenes; hadith targets are well-known hadiths whose stored numbers were found by searching the folded search copies for their distinctive words, every narration of the same hadith in Bukhari and Muslim being accepted. Hadith keys use the stored numbering (Muslim's stored number, not Abd al-Baqi's). A query has one or a few acceptable answers while the corpus may hold others as good, so recall here is a lower bound, fit for comparing methods, not an absolute score.",
+  "hadith_collections": ["bukhari", "muslim"],
+  "queries": [
+    {
+      "id": "q01",
+      "corpus": "quran",
+      "query": "إحياء الأرض بالمطر",
+      "relevant": ["Q:30:50"],
+      "source": "masar T01_06, scene rain"
+    },
+    {
+      "id": "q02",
+      "corpus": "quran",
+      "query": "عدم الكلام والحكم بغير علم",
+      "relevant": ["Q:17:36"],
+      "source": "masar T00_01, T08_02"
+    },
+    {
+      "id": "q03",
+      "corpus": "quran",
+      "query": "وظيفة النبي في شرح الوحي للناس",
+      "relevant": ["Q:16:44"],
+      "source": "masar T00_03, T03_01"
+    },
+    {
+      "id": "q04",
+      "corpus": "quran",
+      "query": "التأمل في الكون وتبدل الليل والنهار",
+      "relevant": ["Q:3:190-191"],
+      "source": "masar T01_01, scene night-sky"
+    },
+    {
+      "id": "q05",
+      "corpus": "quran",
+      "query": "الماء النازل من السماء للشرب ورعي الماشية",
+      "relevant": ["Q:16:10-11"],
+      "source": "masar T01_02"
+    },
+    {
+      "id": "q06",
+      "corpus": "quran",
+      "query": "إخراج النبات والثمار المتنوعة بالماء من السماء",
+      "relevant": ["Q:6:99"],
+      "source": "masar T01_03, T12_02, scene tree"
+    },
+    {
+      "id": "q07",
+      "corpus": "quran",
+      "query": "نعم الله كثيرة لا يمكن عدها",
+      "relevant": ["Q:16:18"],
+      "source": "masar T01_04"
+    },
+    {
+      "id": "q08",
+      "corpus": "quran",
+      "query": "شكر النعمة سبب في زيادتها",
+      "relevant": ["Q:14:7"],
+      "source": "masar T01_05"
+    },
+    {
+      "id": "q09",
+      "corpus": "quran",
+      "query": "عبادة الله الخالق الذي مهد الأرض ورفع السماء",
+      "relevant": ["Q:2:21-22"],
+      "source": "masar T02_01"
+    },
+    {
+      "id": "q10",
+      "corpus": "quran",
+      "query": "إفراد الله بالعبادة وطلب العون منه وحده",
+      "relevant": ["Q:1:5"],
+      "source": "masar T02_02"
+    },
+    {
+      "id": "q11",
+      "corpus": "quran",
+      "query": "وحدانية الله وأنه لا والد له ولا ولد",
+      "relevant": ["Q:112"],
+      "source": "masar T02_02, T02_04"
+    },
+    {
+      "id": "q12",
+      "corpus": "quran",
+      "query": "دعاء الله بأسمائه الحسنى",
+      "relevant": ["Q:7:180"],
+      "source": "masar T02_03"
+    },
+    {
+      "id": "q13",
+      "corpus": "quran",
+      "query": "تنزيه الله عن مشابهة المخلوقات",
+      "relevant": ["Q:42:11"],
+      "source": "masar T02_04"
+    },
+    {
+      "id": "q14",
+      "corpus": "quran",
+      "query": "قرب الله من عباده واستجابته لمن يدعوه",
+      "relevant": ["Q:2:186"],
+      "source": "masar T02_05"
+    },
+    {
+      "id": "q15",
+      "corpus": "quran",
+      "query": "التوكل على الله بعد العزم والمشاورة",
+      "relevant": ["Q:3:159"],
+      "source": "masar T02_06"
+    },
+    {
+      "id": "q16",
+      "corpus": "quran",
+      "query": "القرآن كتاب هداية لا شك فيه",
+      "relevant": ["Q:2:2"],
+      "source": "masar T03_02"
+    },
+    {
+      "id": "q17",
+      "corpus": "quran",
+      "query": "الاقتداء بالنبي في سلوكه",
+      "relevant": ["Q:33:21"],
+      "source": "masar T03_03"
+    },
+    {
+      "id": "q18",
+      "corpus": "quran",
+      "query": "إرسال النبي رحمة للخلق جميعا",
+      "relevant": ["Q:21:107"],
+      "source": "masar T03_04, T14_06"
+    },
+    {
+      "id": "q19",
+      "corpus": "quran",
+      "query": "الإيمان بكل الأنبياء دون تفريق بينهم",
+      "relevant": ["Q:2:136", "Q:2:285"],
+      "source": "masar T03_05, T04_04"
+    },
+    {
+      "id": "q20",
+      "corpus": "quran",
+      "query": "طاعة الرسول طاعة لله",
+      "relevant": ["Q:4:80"],
+      "source": "masar T03_06"
+    },
+    {
+      "id": "q21",
+      "corpus": "quran",
+      "query": "أركان الإيمان بالملائكة والكتب والرسل",
+      "relevant": ["Q:2:285", "Q:4:136"],
+      "source": "masar T04_01, T04_03"
+    },
+    {
+      "id": "q22",
+      "corpus": "quran",
+      "query": "ملائكة يحفظون أعمال الإنسان ويكتبونها",
+      "relevant": ["Q:82:10-12"],
+      "source": "masar T04_02"
+    },
+    {
+      "id": "q23",
+      "corpus": "quran",
+      "query": "محاسبة الإنسان على أصغر عمل من خير أو شر",
+      "relevant": ["Q:99:6-8"],
+      "source": "masar T04_05"
+    },
+    {
+      "id": "q24",
+      "corpus": "quran",
+      "query": "الجنة لمن أطاع الله ورسوله والنار لمن عصى",
+      "relevant": ["Q:4:13-14"],
+      "source": "masar T04_05"
+    },
+    {
+      "id": "q25",
+      "corpus": "quran",
+      "query": "خلق كل الأشياء بتقدير من الله",
+      "relevant": ["Q:54:49"],
+      "source": "masar T04_06"
+    },
+    {
+      "id": "q26",
+      "corpus": "quran",
+      "query": "الوضوء وغسل الأعضاء قبل الصلاة",
+      "relevant": ["Q:5:6"],
+      "source": "masar T05_02"
+    },
+    {
+      "id": "q27",
+      "corpus": "quran",
+      "query": "الصلاة وسيلة لذكر الله",
+      "relevant": ["Q:20:14"],
+      "source": "masar T05_03"
+    },
+    {
+      "id": "q28",
+      "corpus": "quran",
+      "query": "الزكاة تطهير للمال وصاحبه",
+      "relevant": ["Q:9:103"],
+      "source": "masar T05_04"
+    },
+    {
+      "id": "q29",
+      "corpus": "quran",
+      "query": "فرض الصيام لتحصيل التقوى",
+      "relevant": ["Q:2:183"],
+      "source": "masar T05_05"
+    },
+    {
+      "id": "q30",
+      "corpus": "quran",
+      "query": "الحج إلى البيت فريضة على المستطيع",
+      "relevant": ["Q:3:97"],
+      "source": "masar T05_06"
+    },
+    {
+      "id": "q31",
+      "corpus": "quran",
+      "query": "إخلاص العبادة لله وحده",
+      "relevant": ["Q:98:5"],
+      "source": "masar T06_03"
+    },
+    {
+      "id": "q32",
+      "corpus": "quran",
+      "query": "محاسبة النفس والاستعداد للآخرة",
+      "relevant": ["Q:59:18"],
+      "source": "masar T06_04"
+    },
+    {
+      "id": "q33",
+      "corpus": "quran",
+      "query": "سعة مغفرة الله للمسرفين على أنفسهم وفتح باب التوبة",
+      "relevant": ["Q:39:53-54"],
+      "source": "masar T06_05, T13_04"
+    },
+    {
+      "id": "q34",
+      "corpus": "quran",
+      "query": "النهي عن الإفساد والدعاء بين الخوف والرجاء",
+      "relevant": ["Q:7:56"],
+      "source": "masar T06_06, T12_04"
+    },
+    {
+      "id": "q35",
+      "corpus": "quran",
+      "query": "قيمة الوقت والإيمان والعمل الصالح والتناصح",
+      "relevant": ["Q:103"],
+      "source": "masar T07_01"
+    },
+    {
+      "id": "q36",
+      "corpus": "quran",
+      "query": "كظم الغضب والعفو عن المسيء",
+      "relevant": ["Q:3:134"],
+      "source": "masar T07_03"
+    },
+    {
+      "id": "q37",
+      "corpus": "quran",
+      "query": "غض البصر وحفظ العفة",
+      "relevant": ["Q:24:30-31"],
+      "source": "masar T07_05"
+    },
+    {
+      "id": "q38",
+      "corpus": "quran",
+      "query": "تزكية النفس سبيل الفلاح",
+      "relevant": ["Q:91:7-10"],
+      "source": "masar T07_06"
+    },
+    {
+      "id": "q39",
+      "corpus": "quran",
+      "query": "طلب الزيادة من العلم",
+      "relevant": ["Q:20:114"],
+      "source": "masar T08_01"
+    },
+    {
+      "id": "q40",
+      "corpus": "quran",
+      "query": "التثبت من الخبر قبل نقله",
+      "relevant": ["Q:49:6"],
+      "source": "masar T08_03, scene phone-news"
+    },
+    {
+      "id": "q41",
+      "corpus": "quran",
+      "query": "اجتناب سوء الظن والتجسس والغيبة",
+      "relevant": ["Q:49:12"],
+      "source": "masar T08_04"
+    },
+    {
+      "id": "q42",
+      "corpus": "quran",
+      "query": "الكلام الصادق المستقيم وتقوى الله",
+      "relevant": ["Q:33:70"],
+      "source": "masar T08_05, T10_02"
+    },
+    {
+      "id": "q43",
+      "corpus": "quran",
+      "query": "الدعوة بالحكمة والحوار بأحسن الطرق",
+      "relevant": ["Q:16:125"],
+      "source": "masar T08_06"
+    },
+    {
+      "id": "q44",
+      "corpus": "quran",
+      "query": "بر الوالدين والرفق بهما عند الكبر",
+      "relevant": ["Q:17:23-24"],
+      "source": "masar T09_01"
+    },
+    {
+      "id": "q45",
+      "corpus": "quran",
+      "query": "الإحسان إلى الأقارب واليتامى والجيران",
+      "relevant": ["Q:4:36"],
+      "source": "masar T09_02, T09_05"
+    },
+    {
+      "id": "q46",
+      "corpus": "quran",
+      "query": "المودة والرحمة بين الزوجين",
+      "relevant": ["Q:30:21"],
+      "source": "masar T09_03"
+    },
+    {
+      "id": "q47",
+      "corpus": "quran",
+      "query": "وصايا لقمان الحكيم لابنه",
+      "relevant": ["Q:31:12-19"],
+      "source": "masar T09_04, T14_05"
+    },
+    {
+      "id": "q48",
+      "corpus": "quran",
+      "query": "البر والعدل مع غير المسلمين المسالمين",
+      "relevant": ["Q:60:8"],
+      "source": "masar T09_06"
+    },
+    {
+      "id": "q49",
+      "corpus": "quran",
+      "query": "اختلاف الشعوب والقبائل للتعارف والتقوى معيار الكرامة",
+      "relevant": ["Q:49:13"],
+      "source": "masar T09_06"
+    },
+    {
+      "id": "q50",
+      "corpus": "quran",
+      "query": "العدل حتى مع من نبغضه",
+      "relevant": ["Q:5:8"],
+      "source": "masar T10_01, T15_03"
+    },
+    {
+      "id": "q51",
+      "corpus": "quran",
+      "query": "أداء الأمانة لأصحابها والحكم بالعدل",
+      "relevant": ["Q:4:58"],
+      "source": "masar T10_03, T15_03"
+    },
+    {
+      "id": "q52",
+      "corpus": "quran",
+      "query": "الوفاء بالعهد ورعاية مال اليتيم",
+      "relevant": ["Q:17:34"],
+      "source": "masar T10_03"
+    },
+    {
+      "id": "q53",
+      "corpus": "quran",
+      "query": "التعاون على الخير لا على العدوان",
+      "relevant": ["Q:5:2"],
+      "source": "masar T10_04"
+    },
+    {
+      "id": "q54",
+      "corpus": "quran",
+      "query": "الإنفاق على الوالدين والأقربين والمحتاجين",
+      "relevant": ["Q:2:215"],
+      "source": "masar T10_05"
+    },
+    {
+      "id": "q55",
+      "corpus": "quran",
+      "query": "الإصلاح بين المتخاصمين من المؤمنين",
+      "relevant": ["Q:49:9-10"],
+      "source": "masar T10_06"
+    },
+    {
+      "id": "q56",
+      "corpus": "quran",
+      "query": "السعي في الأرض وطلب الرزق",
+      "relevant": ["Q:67:15"],
+      "source": "masar T11_01"
+    },
+    {
+      "id": "q57",
+      "corpus": "quran",
+      "query": "تحريم أخذ المال بغير حق واشتراط الرضا في البيع",
+      "relevant": ["Q:4:29"],
+      "source": "masar T11_02"
+    },
+    {
+      "id": "q58",
+      "corpus": "quran",
+      "query": "الغش في الكيل والميزان",
+      "relevant": ["Q:83:1-3"],
+      "source": "masar T11_03, scene market"
+    },
+    {
+      "id": "q59",
+      "corpus": "quran",
+      "query": "كتابة الدين وتوثيق الحقوق بالشهود",
+      "relevant": ["Q:2:282"],
+      "source": "masar T11_04"
+    },
+    {
+      "id": "q60",
+      "corpus": "quran",
+      "query": "مضاعفة أجر الإنفاق في سبيل الله أضعافا كثيرة",
+      "relevant": ["Q:2:261"],
+      "source": "masar T11_05"
+    },
+    {
+      "id": "q61",
+      "corpus": "quran",
+      "query": "الاعتدال في الإنفاق بين الإسراف والبخل",
+      "relevant": ["Q:25:67"],
+      "source": "masar T11_06"
+    },
+    {
+      "id": "q62",
+      "corpus": "quran",
+      "query": "الأكل والشرب دون إسراف",
+      "relevant": ["Q:7:31"],
+      "source": "masar T12_01, scene shared-meal"
+    },
+    {
+      "id": "q63",
+      "corpus": "quran",
+      "query": "الامتحان بالمصائب وجزاء الصبر",
+      "relevant": ["Q:2:155-157"],
+      "source": "masar T13_01, T13_02"
+    },
+    {
+      "id": "q64",
+      "corpus": "quran",
+      "query": "حتمية الموت لكل نفس والجزاء يوم القيامة",
+      "relevant": ["Q:3:185"],
+      "source": "masar T13_05"
+    },
+    {
+      "id": "q65",
+      "corpus": "quran",
+      "query": "اليسر يأتي بعد العسر",
+      "relevant": ["Q:94:5-6"],
+      "source": "masar T13_06"
+    },
+    {
+      "id": "q66",
+      "corpus": "quran",
+      "query": "محاجة إبراهيم للملك في الإحياء والإماتة",
+      "relevant": ["Q:2:258"],
+      "source": "masar T14_01"
+    },
+    {
+      "id": "q67",
+      "corpus": "quran",
+      "query": "عفة يوسف حين راودته امرأة العزيز",
+      "relevant": ["Q:12:23-24"],
+      "source": "masar T14_02"
+    },
+    {
+      "id": "q68",
+      "corpus": "quran",
+      "query": "رحلة موسى مع العبد الصالح لطلب العلم",
+      "relevant": ["Q:18:60-82"],
+      "source": "masar T14_03"
+    },
+    {
+      "id": "q69",
+      "corpus": "quran",
+      "query": "ولادة عيسى ومريم تحت النخلة",
+      "relevant": ["Q:19:16-26"],
+      "source": "masar T14_04"
+    },
+    {
+      "id": "h01",
+      "corpus": "hadith",
+      "query": "الدعاء عند نزول المطر بأن يكون نافعا",
+      "relevant": ["H:bukhari:1032"],
+      "source": "masar §13.1, scene rain"
+    },
+    {
+      "id": "h02",
+      "corpus": "hadith",
+      "query": "نسبة نزول المطر إلى فضل الله لا إلى النجوم",
+      "relevant": ["H:bukhari:846", "H:bukhari:1038", "H:muslim:231"],
+      "source": "scenes rain, night-sky"
+    },
+    {
+      "id": "h03",
+      "corpus": "hadith",
+      "query": "تعرض النبي لماء المطر عند نزوله",
+      "relevant": ["H:muslim:2083"],
+      "source": "scenes rain, rain-olive"
+    },
+    {
+      "id": "h04",
+      "corpus": "hadith",
+      "query": "أجر الغرس والزراعة التي ينتفع بها الإنسان والطير",
+      "relevant": [
+        "H:bukhari:2320",
+        "H:muslim:3968",
+        "H:muslim:3969",
+        "H:muslim:3970",
+        "H:muslim:3971",
+        "H:muslim:3973"
+      ],
+      "source": "masar T12_02, scenes tree, rain-olive"
+    },
+    {
+      "id": "h05",
+      "corpus": "hadith",
+      "query": "سقي الكلب العطشان والأجر في الرحمة بالحيوان",
+      "relevant": ["H:bukhari:2363", "H:bukhari:2466", "H:bukhari:6009", "H:muslim:5859"],
+      "source": "masar T12_03, scene child-cat"
+    },
+    {
+      "id": "h06",
+      "corpus": "hadith",
+      "query": "عقوبة تعذيب الحيوان وحبسه دون طعام",
+      "relevant": [
+        "H:bukhari:2365",
+        "H:bukhari:3318",
+        "H:bukhari:3482",
+        "H:muslim:5852",
+        "H:muslim:6675",
+        "H:muslim:6679"
+      ],
+      "source": "scene child-cat"
+    },
+    {
+      "id": "h07",
+      "corpus": "hadith",
+      "query": "قبول الأعمال بحسب النية والقصد",
+      "relevant": [
+        "H:bukhari:1",
+        "H:bukhari:54",
+        "H:bukhari:2529",
+        "H:bukhari:3898",
+        "H:bukhari:6689",
+        "H:bukhari:6953",
+        "H:muslim:4927"
+      ],
+      "source": "masar T06_02"
+    },
+    {
+      "id": "h08",
+      "corpus": "hadith",
+      "query": "أركان الإسلام الخمسة",
+      "relevant": ["H:bukhari:8", "H:muslim:111", "H:muslim:112", "H:muslim:113"],
+      "source": "masar T05_01"
+    },
+    {
+      "id": "h09",
+      "corpus": "hadith",
+      "query": "سؤال جبريل عن الإسلام والإيمان والإحسان",
+      "relevant": ["H:bukhari:50", "H:bukhari:4777", "H:muslim:93", "H:muslim:97", "H:muslim:99"],
+      "source": "masar T06_01, T15_01"
+    },
+    {
+      "id": "h10",
+      "corpus": "hadith",
+      "query": "القوة والحرص على النافع مع الاستعانة بالله",
+      "relevant": ["H:muslim:6774"],
+      "source": "masar T02_06, T13_03"
+    },
+    {
+      "id": "h11",
+      "corpus": "hadith",
+      "query": "المداومة على العمل الصالح القليل",
+      "relevant": ["H:bukhari:6464", "H:bukhari:6465", "H:muslim:1830"],
+      "source": "masar T07_02"
+    },
+    {
+      "id": "h12",
+      "corpus": "hadith",
+      "query": "حق الجسد والأهل في التوازن بين العبادة والراحة",
+      "relevant": ["H:bukhari:1975", "H:bukhari:5199", "H:bukhari:6134", "H:muslim:2730"],
+      "source": "masar T07_04, T12_05"
+    },
+    {
+      "id": "h13",
+      "corpus": "hadith",
+      "query": "تنظيف الطريق مما يؤذي المارة",
+      "relevant": [
+        "H:muslim:153",
+        "H:bukhari:2989",
+        "H:bukhari:652",
+        "H:bukhari:2472",
+        "H:muslim:4940",
+        "H:muslim:6669"
+      ],
+      "source": "masar T12_06"
+    },
+    {
+      "id": "h14",
+      "corpus": "hadith",
+      "query": "عدد الصلوات المفروضة يوميا",
+      "relevant": ["H:bukhari:46", "H:muslim:100"],
+      "source": "masar T05_03"
+    },
+    {
+      "id": "h15",
+      "corpus": "hadith",
+      "query": "القوة الحقيقية في ضبط النفس وقت الانفعال",
+      "relevant": ["H:bukhari:6114", "H:muslim:6643", "H:muslim:6644"],
+      "source": "masar T07_03"
+    },
+    {
+      "id": "h16",
+      "corpus": "hadith",
+      "query": "وصية رجل بعدم الغضب",
+      "relevant": ["H:bukhari:6116"],
+      "source": "masar T07_03"
+    },
+    {
+      "id": "h17",
+      "corpus": "hadith",
+      "query": "تمني الخير للآخرين كما نتمناه لأنفسنا",
+      "relevant": ["H:bukhari:13", "H:muslim:170", "H:muslim:171"],
+      "source": "masar T10"
+    },
+    {
+      "id": "h18",
+      "corpus": "hadith",
+      "query": "عظم حق الجار في الوصية النبوية",
+      "relevant": ["H:bukhari:6014", "H:bukhari:6015", "H:muslim:6685", "H:muslim:6687"],
+      "source": "masar T09_05"
+    },
+    {
+      "id": "h19",
+      "corpus": "hadith",
+      "query": "عاقبة الصدق والكذب على صاحبهما",
+      "relevant": ["H:bukhari:6094", "H:muslim:6637", "H:muslim:6638", "H:muslim:6639"],
+      "source": "masar T10_02"
+    },
+    {
+      "id": "h20",
+      "corpus": "hadith",
+      "query": "كف الأذى باللسان واليد عن الناس",
+      "relevant": [
+        "H:bukhari:10",
+        "H:bukhari:11",
+        "H:bukhari:6484",
+        "H:muslim:161",
+        "H:muslim:162",
+        "H:muslim:163"
+      ],
+      "source": "masar T08_05"
+    },
+    {
+      "id": "h21",
+      "corpus": "hadith",
+      "query": "طلب العلم طريق إلى الجنة",
+      "relevant": ["H:muslim:6853"],
+      "source": "masar T08_01"
+    },
+    {
+      "id": "h22",
+      "corpus": "hadith",
+      "query": "الغش في البيع ليس من أخلاق المسلمين",
+      "relevant": ["H:muslim:283"],
+      "source": "masar T11_03, scene market"
+    },
+    {
+      "id": "h23",
+      "corpus": "hadith",
+      "query": "إضاعة الصحة ووقت الفراغ",
+      "relevant": ["H:bukhari:6412"],
+      "source": "masar T07_01, scenes tv, phone-alone"
+    },
+    {
+      "id": "h24",
+      "corpus": "hadith",
+      "query": "الثبات في اللحظة الأولى للمصاب",
+      "relevant": ["H:bukhari:1283", "H:bukhari:1302", "H:muslim:2139"],
+      "source": "masar T13_02"
+    },
+    {
+      "id": "h25",
+      "corpus": "hadith",
+      "query": "رضا المؤمن بالشكر في النعمة والصبر في الشدة",
+      "relevant": ["H:muslim:7500"],
+      "source": "masar T13_02"
+    },
+    {
+      "id": "h26",
+      "corpus": "hadith",
+      "query": "فضل العطاء على الأخذ والسؤال",
+      "relevant": [
+        "H:bukhari:1427",
+        "H:bukhari:1428",
+        "H:bukhari:1429",
+        "H:muslim:2385",
+        "H:muslim:2386",
+        "H:muslim:2387"
+      ],
+      "source": "masar T11_05"
+    },
+    {
+      "id": "h27",
+      "corpus": "hadith",
+      "query": "العطاء لا يقلل الثروة والصفح يرفع صاحبه",
+      "relevant": ["H:muslim:6592"],
+      "source": "masar T11_05"
+    },
+    {
+      "id": "h28",
+      "corpus": "hadith",
+      "query": "البركة في مشاركة الطعام القليل مع الآخرين",
+      "relevant": ["H:bukhari:5392", "H:muslim:5367"],
+      "source": "scene shared-meal"
+    },
+    {
+      "id": "h29",
+      "corpus": "hadith",
+      "query": "التسمية قبل الطعام والأكل باليمين ومما يليك",
+      "relevant": ["H:bukhari:5376", "H:muslim:5269"],
+      "source": "scene shared-meal"
+    },
+    {
+      "id": "h30",
+      "corpus": "hadith",
+      "query": "الرفق واللين في التعامل",
+      "relevant": ["H:bukhari:6927", "H:muslim:6601", "H:muslim:6602"],
+      "source": "masar T08_06"
+    },
+    {
+      "id": "h31",
+      "corpus": "hadith",
+      "query": "أجر الكلام الحسن كأجر الصدقة",
+      "relevant": ["H:bukhari:2891", "H:bukhari:2989", "H:muslim:2335"],
+      "source": "masar T08_05"
+    },
+    {
+      "id": "h32",
+      "corpus": "hadith",
+      "query": "حفظ اللسان إلا من الخير وإكرام الضيف",
+      "relevant": [
+        "H:bukhari:6018",
+        "H:bukhari:6019",
+        "H:bukhari:6135",
+        "H:bukhari:6136",
+        "H:bukhari:6138",
+        "H:bukhari:6475",
+        "H:muslim:173"
+      ],
+      "source": "masar T08_05, T09_05"
+    },
+    {
+      "id": "h33",
+      "corpus": "hadith",
+      "query": "منزلة الطهارة من الإيمان وفضل الذكر",
+      "relevant": ["H:muslim:534"],
+      "source": "masar T05_02"
+    },
+    {
+      "id": "h34",
+      "corpus": "hadith",
+      "query": "النصح والإخلاص في المعاملة لله وللناس",
+      "relevant": ["H:muslim:196"],
+      "source": "masar T10"
+    },
+    {
+      "id": "h35",
+      "corpus": "hadith",
+      "query": "التيسير على الناس وعدم التنفير",
+      "relevant": ["H:bukhari:69", "H:bukhari:6125", "H:muslim:4525", "H:muslim:4528"],
+      "source": "masar T08_06"
+    },
+    {
+      "id": "h36",
+      "corpus": "hadith",
+      "query": "رحمة الله لمن يرحم الخلق",
+      "relevant": [
+        "H:bukhari:5997",
+        "H:bukhari:6013",
+        "H:bukhari:7376",
+        "H:muslim:6028",
+        "H:muslim:6030"
+      ],
+      "source": "masar T03_04"
+    },
+    {
+      "id": "h37",
+      "corpus": "hadith",
+      "query": "قيمة الصدقة القليلة في الوقاية من العذاب",
+      "relevant": [
+        "H:bukhari:1413",
+        "H:bukhari:1417",
+        "H:bukhari:6023",
+        "H:bukhari:6539",
+        "H:bukhari:6540",
+        "H:bukhari:6563",
+        "H:muslim:2347",
+        "H:muslim:2348",
+        "H:muslim:2349",
+        "H:muslim:2350"
+      ],
+      "source": "masar T11_05"
+    },
+    {
+      "id": "h38",
+      "corpus": "hadith",
+      "query": "إتقان العمل والرفق بالحيوان عند ذبحه",
+      "relevant": ["H:muslim:5055"],
+      "source": "masar T12_03"
+    },
+    {
+      "id": "h39",
+      "corpus": "hadith",
+      "query": "منزلة الحياء في الإيمان",
+      "relevant": ["H:bukhari:24", "H:bukhari:6118", "H:muslim:154"],
+      "source": "masar T07_05"
+    },
+    {
+      "id": "h40",
+      "corpus": "hadith",
+      "query": "زيارة المرضى ومساعدة الجائعين",
+      "relevant": ["H:bukhari:3046", "H:bukhari:5174", "H:bukhari:5373", "H:bukhari:5649"],
+      "source": "masar T10_05"
+    }
+  ]
+}

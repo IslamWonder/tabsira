@@ -129,6 +129,18 @@ async def test_the_report_can_be_left_alone(tmp_path, keys):
     assert not (tmp_path / "BENCHMARK.md").exists()
 
 
+async def test_rewriting_the_report_keeps_the_sections_other_commands_own(tmp_path, keys):
+    owned = "<!-- section:retrieval -->\n# Benchmark: retrieval\n<!-- /section:retrieval -->\n"
+    (tmp_path / "BENCHMARK.md").write_text(f"# old scene report\n\n{owned}")
+
+    assert await run(arguments(tmp_path), provider_handler()) == 0
+
+    report = (tmp_path / "BENCHMARK.md").read_text()
+    assert "# old scene report" not in report
+    assert report.startswith("# Benchmark: scene analysis")
+    assert report.endswith(owned)
+
+
 async def test_a_run_where_nothing_answers_fails_and_says_why(tmp_path, keys, capsys):
     code = await run(arguments(tmp_path), provider_handler(chat_status=503))
 

@@ -1,0 +1,30 @@
+# Benchmark: retrieval
+
+Measured on $date by `uv run python -m src.cli.retrieval_benchmark` (`apps/api/src/evaluation/retrieval_benchmark.py`). Raw ranks: `$raw_path` (not committed). This section is rewritten by that command; the scene benchmark keeps it.
+
+## Method
+
+- **Gold set**: `$gold_path`, $queries Arabic concept queries written the way the planner writes them ($quran_queries Quran, $hadith_queries hadith), each with the stored texts that answer it: the anchors of the learning path, the texts the gold scenes call for, and well-known hadiths whose stored numbers were found by searching their distinctive words. No query quotes scripture. Hadith queries are judged against $collections only, so every embedding model sees the same 14,940 hadiths and the whole Quran.
+- **Documents**: the folded search copy of each text (a hadith without its chain) followed by its model-written concepts (`src/retrieval/documents.py`); never displayed.
+- **Methods**: vector search per embedding cell (exact scan), PostgreSQL full text (`fts`, `simple` configuration, stems matched behind every clitic) and pg_trgm word similarity (`trigram`), the concept index, their RRF fusions (k = 60), and the rerankers on the 30 fused candidates of `hybrid+concepts:$rerank_cell`. `+metadata` is the earlier build's recipe: 0.6 x (0.7 x reranker + 0.3 x share of the query's stems in the text's concepts) + 0.4 x fused score.
+- **Metrics**: recall@k = share of queries with an answer in the first k; MRR@10 = mean of 1/rank of the first answer, 0 past ten. One acceptable answer per query while the corpus may hold others as good: these numbers are lower bounds, fit for comparing methods.
+
+$cells_table
+
+## Results (all queries)
+
+$overall_table
+
+## Results by corpus
+
+$corpus_table
+
+## Latency (this machine, CPU)
+
+$latency_table
+
+## Choices
+
+$choices_table
+
+Spend of the runs merged here: **$$$cost** (query embeddings and the LLM rerank baseline; the corpus vectors were paid by `src.cli.embed_corpus`, see `app.embedding_runs`).

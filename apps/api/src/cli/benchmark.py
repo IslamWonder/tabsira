@@ -41,6 +41,7 @@ from src.evaluation.benchmark import (
 )
 from src.evaluation.gold import load_gold
 from src.evaluation.report import render
+from src.evaluation.report_sections import carry_sections
 
 API_DIR = Path(__file__).resolve().parents[2]
 REPO_ROOT = API_DIR.parents[1]
@@ -98,7 +99,9 @@ def write_outputs(result: BenchmarkResult, args: argparse.Namespace) -> list[Pat
     written = [raw, summary]
     if not args.no_report:
         markdown = render(result, load_gold(args.gold), _relative(raw), _relative(args.gold))
-        args.report.write_text(markdown, encoding="utf-8")
+        previous = args.report.read_text(encoding="utf-8") if args.report.is_file() else ""
+        # Sections other commands own (the retrieval benchmark's) are kept.
+        args.report.write_text(carry_sections(previous, markdown), encoding="utf-8")
         written.append(args.report)
     return written
 
