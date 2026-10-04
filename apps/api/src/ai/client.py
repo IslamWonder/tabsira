@@ -287,6 +287,7 @@ class ProviderClient(ModelClient):
         usage = Usage()
         attempts = 0
         finish_reason: str | None = None
+        retried: list[AiErrorCode] = []
 
         def record(*, ok: bool, error_code: AiErrorCode | None = None) -> CallRecord:
             made = CallRecord(
@@ -302,6 +303,7 @@ class ProviderClient(ModelClient):
                 ok=ok,
                 error_code=error_code,
                 finish_reason=finish_reason,
+                retried_errors=tuple(retried),
             )
             if self._log is not None:
                 self._log.add(made)
@@ -316,6 +318,7 @@ class ProviderClient(ModelClient):
                 value = parse(payload)
             except AiCallError as error:
                 if error.retryable and attempts <= self._max_retries:
+                    retried.append(error.code)
                     await self._sleep(self._delay(attempts, error.retry_after))
                     continue
                 failed = record(ok=False, error_code=error.code)

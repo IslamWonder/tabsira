@@ -106,6 +106,8 @@ class CallRecord(BaseModel):
     error_code: AiErrorCode | None = None
     # The provider's finish reason of the last attempt (stop, length, ...), when it gave one.
     finish_reason: str | None = None
+    # Why each earlier attempt failed and was retried, in order; empty on a first-try success.
+    retried_errors: tuple[AiErrorCode, ...] = ()
 
 
 class CallLog:

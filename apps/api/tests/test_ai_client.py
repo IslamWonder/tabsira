@@ -140,6 +140,7 @@ async def test_a_structured_answer_is_validated_and_recorded():
     assert record.ok
     assert record.error_code is None
     assert record.attempts == 1
+    assert record.retried_errors == ()
     assert record.finish_reason == "stop"
     assert record.latency_ms == 250
     assert record.usage.reasoning_tokens == 300
@@ -212,6 +213,7 @@ async def test_a_server_error_is_retried_with_backoff_and_usage_adds_up():
     result = await ask(harness)
 
     assert result.record.attempts == 3
+    assert result.record.retried_errors == (AiErrorCode.SERVER_ERROR, AiErrorCode.INVALID_OUTPUT)
     assert harness.sleeps == [0.5, 1.0]
     # The failed answer was billed too.
     assert result.record.usage.input_tokens == 200
@@ -230,6 +232,7 @@ async def test_retries_are_bounded_and_the_failure_is_recorded():
     assert not error.record.ok
     assert error.record.error_code is AiErrorCode.INVALID_OUTPUT
     assert error.record.attempts == 3
+    assert error.record.retried_errors == (AiErrorCode.INVALID_OUTPUT,) * 2
     assert harness.log.records == [error.record]
     assert harness.responses == []
 
