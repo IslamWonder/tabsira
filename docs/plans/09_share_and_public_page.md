@@ -1,6 +1,6 @@
 # 09 · Share card and public insight page
 
-**Phase:** 1 · **Priority:** High · **Status:** ⬜ · **Updated:** 2026-10-04 17:51 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** ⬜ · **Updated:** 2026-10-04 17:59 (Tunis)
 
 A shareable image of an insight with real Arabic fonts, and a public page for it, with no private data.
 
@@ -8,7 +8,7 @@ A shareable image of an insight with real Arabic fonts, and a public page for it
 | ---------------------------------------- | ------ | ------------------------------- |
 | Publish an insight (server)              | ✅     | Done 2026-10-04 17:51.          |
 | Share card image                         | ⬜     | Next, after the insight screen. |
-| Public insight page with search metadata | ⬜     |                                 |
+| Public insight page with search metadata | ✅     | Done 2026-10-04 17:59.          |
 
 **How we check it**
 
@@ -26,7 +26,7 @@ A shareable image of an insight with real Arabic fonts, and a public page for it
 
 ### 09.2 Public insight page
 
-- **Status:** ⬜ open
+- **Status:** ✅ done 2026-10-04 17:59
 - **Goal:** A public page for a published insight, with the verse and hadith exactly as stored, search metadata and structured data from `apps/web/src/lib/seo.ts`.
 - **Depends on:** 09.1, 06.1
 - **Touches:** apps/web one public route and its components.
