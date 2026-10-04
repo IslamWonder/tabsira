@@ -11,8 +11,10 @@ from typing import Any
 import pytest
 import pytest_asyncio
 from openpyxl import Workbook
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from src.models import OntologyEntity
 from src.services.ontology_import import (
     HEADERS,
     SHEET_NAME,
@@ -87,6 +89,23 @@ async def ontology(db_session: AsyncSession) -> ParsedOntology:
     parsed = parsed_real_ontology()
     await load_ontology(db_session, parsed)
     return parsed
+
+
+@pytest_asyncio.fixture(scope="module")
+async def committed_ontology(engine: AsyncEngine) -> AsyncIterator[ParsedOntology]:
+    """
+    The 1000 real entities, committed once for a whole test module and removed after it.
+
+    Loading takes a third of a second, which adds up over dozens of resolver tests; the
+    tests themselves still run in rolled-back sessions on top of these rows.
+    """
+    parsed = parsed_real_ontology()
+    factory = async_sessionmaker(bind=engine, expire_on_commit=False)
+    async with factory() as session, session.begin():
+        await load_ontology(session, parsed)
+    yield parsed
+    async with factory() as session, session.begin():
+        await session.execute(delete(OntologyEntity))
 
 
 @pytest_asyncio.fixture
