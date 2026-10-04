@@ -32,6 +32,7 @@ from src.routers import (
     health,
     insights,
     legal,
+    me,
     members,
     posts,
     profile,
@@ -197,6 +198,7 @@ def create_app(
     app.include_router(scans.router)
     app.include_router(insights.router)
     app.include_router(world.router)
+    app.include_router(me.router)
     # The admin area is not mounted at all while its feature flag is off.
     if settings.feature_admin:
         install_admin(app, settings)
