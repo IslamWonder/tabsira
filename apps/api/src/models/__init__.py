@@ -33,6 +33,7 @@ from src.models.profile import (
     ReligiousBackground,
     Theme,
 )
+from src.models.public_id import public_id_pk
 from src.models.scripture import (
     Hadith,
     HadithClassification,
@@ -104,4 +105,5 @@ __all__ = [
     "Theme",
     "TokenPurpose",
     "User",
+    "public_id_pk",
 ]
