@@ -192,6 +192,10 @@ for entry in "${FILES[@]}"; do
 done
 ln -sf /etc/nginx/sites-available/tabsira "$SITE_LINK"
 # The Debian default site would otherwise answer for any unmatched host.
+# certbot --nginx may have written its server blocks into this file: keep a copy, our site replaces it.
+if [[ -f "$DEFAULT_SITE" && ! -L "$DEFAULT_SITE" ]]; then
+	cp -p "$DEFAULT_SITE" /etc/nginx/sites-available/default.before-tabsira
+fi
 rm -f "$DEFAULT_SITE"
 
 log "Validating the nginx configuration"
