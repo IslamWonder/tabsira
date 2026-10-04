@@ -1,0 +1,33 @@
+# Bandit: Python security scan (scripts/audit.sh runs it on apps/api/src and
+# services/vision). https://bandit.readthedocs.io/en/latest/config.html
+
+# Tests and Alembic revisions are real code and are scanned; only generated and
+# dependency directories are skipped.
+exclude_dirs:
+  - .venv
+  - venv
+  - node_modules
+  - __pycache__
+  - .pytest_cache
+  - .mypy_cache
+  - .ruff_cache
+  - coverage
+  - htmlcov
+  - .cache
+  - uploads
+  - logs
+
+skips:
+  # random is fine for non-cryptographic uses (jitter, sampling, test data);
+  # secrets and tokens use the `secrets` module.
+  - B311
+  # Binding 0.0.0.0 is intended inside a container; nginx and the compose
+  # network decide what is reachable (AGENTS.md: bare-metal servers bind 127.0.0.1).
+  - B104
+
+# assert is how tests check things; it is still reported in application code.
+assert_used:
+  skips:
+    - "*/tests/*"
+    - "*_test.py"
+    - "test_*.py"

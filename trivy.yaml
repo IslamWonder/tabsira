@@ -1,0 +1,47 @@
+# Trivy configuration (scripts/audit.sh: trivy fs --config trivy.yaml).
+# https://trivy.dev/latest/docs/references/configuration/config-file/
+
+severity:
+  - HIGH
+  - CRITICAL
+
+scan:
+  scanners:
+    - vuln
+    - secret
+    - misconfig
+  skip-dirs:
+    - .git
+    - node_modules
+    - .venv
+    - venv
+    - .next
+    - .turbo
+    - dist
+    - build
+    - coverage
+    - htmlcov
+    - __pycache__
+    - .pytest_cache
+    - .mypy_cache
+    - .ruff_cache
+    - .cache
+    - logs
+    - uploads
+    - data
+    - services/vision/weights
+    - nginx/local/certs
+    - alembic/versions
+    - alembic_geodata/versions
+  skip-files:
+    - ".env"
+    - ".env.*"
+    - "rootCA.pem"
+    - "rootCA-key.pem"
+    - "*.min.js"
+    - "*.bundle.js"
+
+vulnerability:
+  # A finding with no fixed release is reported by osv-scanner and pnpm audit,
+  # but cannot be acted on here.
+  ignore-unfixed: true

@@ -1,0 +1,53 @@
+# Gitleaks configuration (scripts/security-gate.sh, scripts/audit.sh).
+# https://github.com/gitleaks/gitleaks#configuration
+
+# Inherit the full set of upstream detection rules. Without this the file
+# defines no rules at all and every scan reports "no leaks found".
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated, dependency, cache and local-only paths"
+# The working-tree scan runs with --no-git, so it also walks files that .gitignore
+# keeps out of the repository. These paths hold no source of ours; the history
+# scan still catches a secret that was ever committed under any of them.
+paths = [
+  '''(^|/)\.git/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)\.venv/''',
+  '''(^|/)venv/''',
+  '''(^|/)\.uv-cache/''',
+  '''(^|/)\.next/''',
+  '''(^|/)\.turbo/''',
+  '''(^|/)dist/''',
+  '''(^|/)build/''',
+  '''(^|/)out/''',
+  '''(^|/)coverage/''',
+  '''(^|/)htmlcov/''',
+  '''(^|/)\.coverage''',
+  '''(^|/)\.pytest_cache/''',
+  '''(^|/)__pycache__/''',
+  '''(^|/)\.mypy_cache/''',
+  '''(^|/)\.ruff_cache/''',
+  '''(^|/)\.scannerwork/''',
+  '''(^|/)\.ci_metrics/''',
+  '''(^|/)\.ci_logs/''',
+  '''(^|/)\.dev/''',
+  '''(^|/)logs/''',
+  '''\.log$''',
+  '''(^|/)uv\.lock$''',
+  '''(^|/)pnpm-lock\.yaml$''',
+  '''(^|/)package-lock\.json$''',
+  # Local environment: gitignored, never leaves the machine.
+  '''(^|/)\.env$''',
+  '''(^|/)\.env\.(local|development|production|staging|test|ci)$''',
+  '''(^|/)\.env\..+\.local$''',
+  # Local mkcert certificates and keys.
+  '''(^|/)nginx/local/certs/''',
+  '''(^|/)rootCA(-key)?\.pem$''',
+  # Corpora, caches and uploaded media: downloaded text and images, no source.
+  '''(^|/)data/(cache|corpus|media)/''',
+  '''(^|/)uploads/''',
+  # Downloaded detector weights (binary files of hundreds of megabytes).
+  '''(^|/)services/vision/weights/''',
+]

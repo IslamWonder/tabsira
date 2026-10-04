@@ -1,0 +1,59 @@
+# Dependencies and generated code
+.venv/
+venv/
+node_modules/
+.pnpm-store/
+.next/
+out/
+.turbo/
+dist/
+build/
+*.min.js
+*.bundle.js
+*.map
+*.tsbuildinfo
+
+# Test and coverage output
+coverage/
+htmlcov/
+.coverage
+.pytest_cache/
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+test-results/
+playwright-report/
+
+# Documentation, specifications and corpora
+docs/
+*.md
+data/
+
+# Environment and secrets (gitleaks covers these)
+.env
+.env.*
+
+# Editors, logs, local files
+.vscode/
+.idea/
+.DS_Store
+*.log
+logs/
+uploads/
+.dev/
+.ci_metrics/
+.ci_logs/
+nginx/local/certs/
+
+# Lock files (trivy and osv-scanner read them)
+uv.lock
+pnpm-lock.yaml
+package-lock.json
+
+# Database and weights (one of them is a TorchScript file named .ts)
+*.db
+*.sqlite
+*.sqlite3
+*.pt
+*.onnx
+services/vision/weights/

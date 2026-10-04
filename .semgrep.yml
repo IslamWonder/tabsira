@@ -1,0 +1,111 @@
+# Semgrep rules specific to this repository (scripts/audit.sh adds p/default).
+# Paths that do not exist yet simply match nothing.
+rules:
+  # ─── Python: apps/api, services/vision ───────────────────────────
+  - id: python-hardcoded-secret
+    pattern-regex: "(?i)(SECRET_KEY|API_KEY|ACCESS_TOKEN|PRIVATE_KEY|PASSWORD)\\s*=\\s*[\"'][^\"']+[\"']"
+    pattern-not-regex: "(?i)(EXAMPLE|PLACEHOLDER|DUMMY|MOCK|TEST_|FAKE_)"
+    message: >
+      Hardcoded secret or credential. Read it from the typed settings (pydantic-settings).
+    languages: [python]
+    severity: ERROR
+    paths:
+      include:
+        - /apps/api/src/
+        - /services/vision/
+      exclude:
+        - "**/tests/**"
+
+  - id: python-sql-string-building
+    pattern-either:
+      - pattern-regex: '(?i)(SELECT|INSERT|UPDATE|DELETE)\s+.*%s'
+      - pattern-regex: '(?i)(SELECT|INSERT|UPDATE|DELETE)\s+.*\.format\('
+      - pattern-regex: '(?i)(SELECT|INSERT|UPDATE|DELETE)\s+.*f"'
+    message: >
+      SQL built with string interpolation. Use SQLAlchemy expressions or text() with bound parameters.
+    languages: [python]
+    severity: ERROR
+    paths:
+      include:
+        - /apps/api/src/
+      exclude:
+        - "**/alembic/**"
+        - "**/alembic_geodata/**"
+
+  - id: python-pickle-usage
+    pattern: pickle.$FUNC(...)
+    message: pickle is unsafe for untrusted data. Use JSON.
+    languages: [python]
+    severity: ERROR
+
+  - id: python-yaml-unsafe-load
+    pattern-either:
+      - pattern: yaml.load($X)
+      - pattern: yaml.unsafe_load($X)
+    message: yaml.load() is unsafe. Use yaml.safe_load().
+    languages: [python]
+    severity: ERROR
+
+  - id: python-subprocess-shell-true
+    pattern: subprocess.run(..., shell=True, ...)
+    message: shell=True invites shell injection. Pass a list and leave shell off.
+    languages: [python]
+    severity: ERROR
+
+  - id: python-eval-exec
+    pattern-either:
+      - pattern: eval($X)
+      - pattern: exec($X)
+    message: eval and exec run arbitrary code. Never use them on input.
+    languages: [python]
+    severity: ERROR
+
+  # ─── Web: apps/web ───────────────────────────────────────────────
+  - id: web-third-party-request
+    pattern-regex: 'https?://(fonts\.(googleapis|gstatic)\.com|(cdn|cdnjs)\.[a-z0-9.-]+|unpkg\.com|cdn\.jsdelivr\.net|(www\.)?(googletagmanager|google-analytics)\.com|connect\.facebook\.net|js\.stripe\.com)'
+    message: >
+      The visitor's browser makes no third-party request: no CDN assets, fonts or analytics
+      (AGENTS.md; map tiles are the one documented exception). Serve the asset from this origin.
+    languages: [typescript, javascript]
+    severity: ERROR
+    paths:
+      include:
+        - /apps/web/
+
+  - id: web-dangerous-set-inner-html
+    pattern-regex: 'dangerouslySetInnerHTML\s*=\s*\{\{\s*__html:'
+    message: dangerouslySetInnerHTML can lead to XSS. Render text, or sanitise the HTML first.
+    languages: [typescript, javascript]
+    severity: ERROR
+
+  - id: js-eval-exec
+    pattern-either:
+      - pattern: eval($X)
+      - pattern: new Function($X)
+      - pattern: setTimeout("...", ...)
+      - pattern: setInterval("...", ...)
+    message: eval, new Function and a string handed to a timer run arbitrary code.
+    languages: [typescript, javascript]
+    severity: ERROR
+
+  - id: js-inner-html-assignment
+    pattern: $EL.innerHTML = $X
+    message: Assigning innerHTML is an XSS vector. Use textContent, or sanitise first.
+    languages: [typescript, javascript]
+    severity: ERROR
+
+  - id: web-client-env-leak
+    pattern: process.env.$VAR
+    message: >
+      A variable without the NEXT_PUBLIC_ prefix is not available in the browser, and one
+      with it is baked at build time. Check this read happens on the server.
+    languages: [typescript, javascript]
+    severity: WARNING
+    paths:
+      include:
+        - /apps/web/src/app/
+        - /apps/web/src/components/
+      exclude:
+        - "**/*.server.ts"
+        - "**/*.server.tsx"
+        - "**/api/**"
