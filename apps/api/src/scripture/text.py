@@ -95,3 +95,21 @@ def search_copy(text: str) -> str:
     """
     folded = text.translate(_TABLE).replace(_UTHMANI_MADDA, chr(ALEF))
     return _SEPARATORS.sub(" ", folded).strip()
+
+
+def folded_with_positions(text: str) -> tuple[str, list[int]]:
+    """
+    Fold `text` character by character and say where each folded character came from.
+
+    The same folding as `search_copy`, except that separators are kept one for
+    one (as spaces) and nothing is collapsed, so a match found in the folded
+    string can be mapped back to a position in the original text. Used to find
+    positions in a stored text without ever changing it.
+    """
+    folded: list[str] = []
+    positions: list[int] = []
+    for index, char in enumerate(text):
+        for piece in char.translate(_TABLE):
+            folded.append(" " if _SEPARATORS.fullmatch(piece) else piece)
+            positions.append(index)
+    return "".join(folded), positions
