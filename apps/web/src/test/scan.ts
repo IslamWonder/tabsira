@@ -187,6 +187,7 @@ export function insightOut(overrides: Partial<Insight> = {}): Insight {
     image: { sensitive: false, url: '/scans/110000000000000001/image' },
     completed_at: null,
     place_id: null,
+    published_at: null,
     created_at: '2026-10-04T08:00:10Z',
     disclosure: 'تبصرة أداة مدعومة بالذكاء الاصطناعي، وليست مفتيًا ولا عالمًا',
     ...overrides,

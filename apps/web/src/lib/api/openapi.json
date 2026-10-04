@@ -2998,6 +2998,130 @@
         }
       }
     },
+    "/insights/{insight_id}/publication": {
+      "put": {
+        "tags": ["insights"],
+        "summary": "Make the insight public (verified owners)",
+        "description": "Publish the caller's own insight; asking again changes nothing.\n\nAnswers 409 INSIGHT_NOT_PUBLISHABLE for a sensitive scene, an insight with no text to\nshow from the store, or text that looks like scripture. A guest gets 401.",
+        "operationId": "publish_insight_insights__insight_id__publication_put",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["insights"],
+        "summary": "Withdraw the insight from public view",
+        "description": "Take the caller's insight down at once; its public address answers 404 from then on.",
+        "operationId": "withdraw_insight_insights__insight_id__publication_delete",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/insights/{insight_id}": {
+      "get": {
+        "tags": ["public"],
+        "summary": "One published insight, its scripture read from the store",
+        "description": "Return the published insight: verse and hadith as stored, the author only if chosen.",
+        "operationId": "get_public_insight_public_insights__insight_id__get",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicInsightOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/world": {
       "get": {
         "tags": ["world"],
@@ -6238,6 +6362,19 @@
             ],
             "title": "Place Id"
           },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At",
+            "description": "Set while the owner has the insight public"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -6275,6 +6412,7 @@
           "image",
           "completed_at",
           "place_id",
+          "published_at",
           "created_at",
           "disclosure"
         ],
@@ -6457,6 +6595,30 @@
             ],
             "title": "Place Id"
           },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "withdrawn_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawn At"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -6485,6 +6647,8 @@
           "action_at",
           "completed_at",
           "place_id",
+          "published_at",
+          "withdrawn_at",
           "created_at"
         ],
         "title": "InsightExport",
@@ -8130,6 +8294,22 @@
         "required": ["providers"],
         "title": "ProvidersOut"
       },
+      "PublicAuthorOut": {
+        "properties": {
+          "handle": {
+            "type": "string",
+            "title": "Handle"
+          },
+          "public_name": {
+            "type": "string",
+            "title": "Public Name"
+          }
+        },
+        "type": "object",
+        "required": ["handle", "public_name"],
+        "title": "PublicAuthorOut",
+        "description": "The only things a public insight says about its owner: the handle and name they chose."
+      },
       "PublicIdentityIn": {
         "properties": {
           "handle": {
@@ -8180,6 +8360,149 @@
         "required": ["handle", "public_name"],
         "title": "PublicIdentityOut",
         "description": "The caller's own handle and public name; both null until they have chosen."
+      },
+      "PublicInsightOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine",
+            "description": "`pipeline`, `demo` (a declared simulation) or `prepared`"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "glimpse": {
+            "type": "string",
+            "title": "Glimpse"
+          },
+          "relation": {
+            "$ref": "#/components/schemas/RelationType"
+          },
+          "relation_label": {
+            "type": "string",
+            "title": "Relation Label"
+          },
+          "quran": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InsightQuran"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hadith": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InsightHadith"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hadith_status": {
+            "type": "string",
+            "enum": ["shown", "awaiting_verification", "none"],
+            "title": "Hadith Status"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice"
+          },
+          "pair_complete": {
+            "type": "boolean",
+            "title": "Pair Complete"
+          },
+          "explanation_tag": {
+            "type": "string",
+            "title": "Explanation Tag"
+          },
+          "explanation": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationOut"
+            },
+            "type": "array",
+            "title": "Explanation"
+          },
+          "small_step": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StepOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "author": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicAuthorOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Published At"
+          },
+          "disclosure": {
+            "type": "string",
+            "title": "Disclosure"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "engine",
+          "label",
+          "title",
+          "glimpse",
+          "relation",
+          "relation_label",
+          "quran",
+          "hadith",
+          "hadith_status",
+          "notice",
+          "pair_complete",
+          "explanation_tag",
+          "explanation",
+          "small_step",
+          "author",
+          "published_at",
+          "disclosure"
+        ],
+        "title": "PublicInsightOut",
+        "description": "A published insight for any reader: scripture from the store, nothing of the owner's.\n\nThere is no photo, no scan, no location, no chat, no progress and no «لماذا ظهر هذا؟»\n(its clues describe the photo and its personal reason is the owner's); the author is\npresent only when the owner chose a public handle and name."
       },
       "PublicLocationOut": {
         "properties": {
@@ -8337,6 +8660,47 @@
         ],
         "title": "PublicationExport",
         "description": "The copy of an insight a post published: references to the evidence, never scripture."
+      },
+      "PublicationOut": {
+        "properties": {
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id"
+          },
+          "published": {
+            "type": "boolean",
+            "title": "Published"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path",
+            "description": "The public page's path on the web app, when public"
+          }
+        },
+        "type": "object",
+        "required": ["insight_id", "published", "published_at", "path"],
+        "title": "PublicationOut",
+        "description": "Whether the owner's insight is public, and since when."
       },
       "QuestOut": {
         "properties": {
@@ -10565,6 +10929,10 @@
     {
       "name": "insights",
       "description": "An insight with its scripture from the store; chat, small step, «تمّ»."
+    },
+    {
+      "name": "public",
+      "description": "What a stranger may read: published insights, nothing private."
     },
     {
       "name": "world",

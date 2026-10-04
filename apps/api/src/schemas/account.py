@@ -98,6 +98,8 @@ class InsightExport(BaseModel):
     action_at: datetime | None
     completed_at: datetime | None
     place_id: PublicId | None
+    published_at: datetime | None
+    withdrawn_at: datetime | None
     created_at: datetime
 
 

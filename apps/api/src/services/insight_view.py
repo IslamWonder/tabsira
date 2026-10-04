@@ -218,7 +218,7 @@ def message_out(row: ChatMessage) -> ChatMessageOut:
     )
 
 
-def _label(insight: Insight) -> str | None:
+def label_of(insight: Insight) -> str | None:
     if insight.engine == "prepared":
         return messages_for().prepared_example
     if insight.engine == "demo":
@@ -236,7 +236,7 @@ async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> In
         scan_id=insight.scan_id,
         origin=insight.origin,
         engine=insight.engine,
-        label=_label(insight),
+        label=label_of(insight),
         title=insight.title,
         glimpse=insight.glimpse,
         anchor=BBox.model_validate(insight.anchor) if insight.anchor else None,
@@ -277,6 +277,7 @@ async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> In
         ),
         completed_at=insight.completed_at,
         place_id=insight.place_id,
+        published_at=insight.published_at,
         created_at=insight.created_at,
         disclosure=messages_for().ai_disclosure,
     )

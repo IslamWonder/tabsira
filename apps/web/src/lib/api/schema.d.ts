@@ -1374,6 +1374,53 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/insights/{insight_id}/publication': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Make the insight public (verified owners)
+     * @description Publish the caller's own insight; asking again changes nothing.
+     *
+     *     Answers 409 INSIGHT_NOT_PUBLISHABLE for a sensitive scene, an insight with no text to
+     *     show from the store, or text that looks like scripture. A guest gets 401.
+     */
+    put: operations['publish_insight_insights__insight_id__publication_put'];
+    post?: never;
+    /**
+     * Withdraw the insight from public view
+     * @description Take the caller's insight down at once; its public address answers 404 from then on.
+     */
+    delete: operations['withdraw_insight_insights__insight_id__publication_delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/public/insights/{insight_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * One published insight, its scripture read from the store
+     * @description Return the published insight: verse and hadith as stored, the author only if chosen.
+     */
+    get: operations['get_public_insight_public_insights__insight_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/world': {
     parameters: {
       query?: never;
@@ -2778,6 +2825,11 @@ export interface components {
       /** Place Id */
       place_id: string | null;
       /**
+       * Published At
+       * @description Set while the owner has the insight public
+       */
+      published_at: string | null;
+      /**
        * Created At
        * Format: date-time
        */
@@ -2836,6 +2888,10 @@ export interface components {
       completed_at: string | null;
       /** Place Id */
       place_id: string | null;
+      /** Published At */
+      published_at: string | null;
+      /** Withdrawn At */
+      withdrawn_at: string | null;
       /**
        * Created At
        * Format: date-time
@@ -3462,6 +3518,16 @@ export interface components {
       providers: components['schemas']['ProviderOut'][];
     };
     /**
+     * PublicAuthorOut
+     * @description The only things a public insight says about its owner: the handle and name they chose.
+     */
+    PublicAuthorOut: {
+      /** Handle */
+      handle: string;
+      /** Public Name */
+      public_name: string;
+    };
+    /**
      * PublicIdentityIn
      * @description The handle and public name an account chooses to appear under.
      */
@@ -3480,6 +3546,56 @@ export interface components {
       handle: string | null;
       /** Public Name */
       public_name: string | null;
+    };
+    /**
+     * PublicInsightOut
+     * @description A published insight for any reader: scripture from the store, nothing of the owner's.
+     *
+     *     There is no photo, no scan, no location, no chat, no progress and no «لماذا ظهر هذا؟»
+     *     (its clues describe the photo and its personal reason is the owner's); the author is
+     *     present only when the owner chose a public handle and name.
+     */
+    PublicInsightOut: {
+      /** Id */
+      id: string;
+      /**
+       * Engine
+       * @description `pipeline`, `demo` (a declared simulation) or `prepared`
+       */
+      engine: string;
+      /** Label */
+      label: string | null;
+      /** Title */
+      title: string;
+      /** Glimpse */
+      glimpse: string;
+      relation: components['schemas']['RelationType'];
+      /** Relation Label */
+      relation_label: string;
+      quran: components['schemas']['InsightQuran'] | null;
+      hadith: components['schemas']['InsightHadith'] | null;
+      /**
+       * Hadith Status
+       * @enum {string}
+       */
+      hadith_status: 'shown' | 'awaiting_verification' | 'none';
+      /** Notice */
+      notice: string | null;
+      /** Pair Complete */
+      pair_complete: boolean;
+      /** Explanation Tag */
+      explanation_tag: string;
+      /** Explanation */
+      explanation: components['schemas']['ExplanationOut'][];
+      small_step: components['schemas']['StepOut'] | null;
+      author: components['schemas']['PublicAuthorOut'] | null;
+      /**
+       * Published At
+       * Format: date-time
+       */
+      published_at: string;
+      /** Disclosure */
+      disclosure: string;
     };
     /**
      * PublicLocationOut
@@ -3548,6 +3664,23 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+    };
+    /**
+     * PublicationOut
+     * @description Whether the owner's insight is public, and since when.
+     */
+    PublicationOut: {
+      /** Insight Id */
+      insight_id: string;
+      /** Published */
+      published: boolean;
+      /** Published At */
+      published_at: string | null;
+      /**
+       * Path
+       * @description The public page's path on the web app, when public
+       */
+      path: string | null;
     };
     /** QuestOut */
     QuestOut: {
@@ -6694,6 +6827,99 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['CompletionOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  publish_insight_insights__insight_id__publication_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PublicationOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  withdraw_insight_insights__insight_id__publication_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PublicationOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  get_public_insight_public_insights__insight_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PublicInsightOut'];
         };
       };
       /** @description An error */

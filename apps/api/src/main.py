@@ -39,6 +39,7 @@ from src.routers import (
     members,
     posts,
     profile,
+    public_insights,
     reactions,
     reports,
     scans,
@@ -104,6 +105,10 @@ OPENAPI_TAGS = [
     {
         "name": "insights",
         "description": "An insight with its scripture from the store; chat, small step, «تمّ».",
+    },
+    {
+        "name": "public",
+        "description": "What a stranger may read: published insights, nothing private.",
     },
     {"name": "world", "description": "The learner's map under fog, its places and treasures."},
     {"name": "me", "description": "Practice, never piety: ranks, streak, quest, sky, badges."},
@@ -244,6 +249,7 @@ def create_app(
     app.include_router(support.router)
     app.include_router(scans.router)
     app.include_router(insights.router)
+    app.include_router(public_insights.router)
     app.include_router(world.router)
     app.include_router(me.router)
     app.include_router(atlas.router)

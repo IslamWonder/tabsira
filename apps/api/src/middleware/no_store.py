@@ -28,6 +28,8 @@ PRIVATE_PREFIXES = (
     "/reports",
     "/scans",
     "/insights",
+    # Public, but a withdrawal must show at once, in a browser and in any cache.
+    "/public/insights",
     "/world",
     "/tutorial/rain/insights",
 )

@@ -185,7 +185,14 @@ class Insight(Base):
             "(hadith_collection IS NULL) = (hadith_number IS NULL)",
             name="hadith_reference_whole",
         ),
+        # A guest's insight is never public: publishing needs an account (decision 25).
+        CheckConstraint("published_at IS NULL OR user_id IS NOT NULL", name="public_has_account"),
         Index("ix_insights_scan_id", "scan_id"),
+        Index(
+            "ix_insights_published_at",
+            "published_at",
+            postgresql_where=text("published_at IS NOT NULL"),
+        ),
         Index("ix_insights_user_id_completed_at", "user_id", "completed_at"),
         Index("ix_insights_guest_key_completed_at", "guest_key", "completed_at"),
         Index(
@@ -249,6 +256,10 @@ class Insight(Base):
     place_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("world_places.id", ondelete="SET NULL")
     )
+    # Public while `published_at` is set: the owner's own act, cleared again on withdrawal.
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The last time the owner took it down; kept for the owner's history, never public.
+    withdrawn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
 
 

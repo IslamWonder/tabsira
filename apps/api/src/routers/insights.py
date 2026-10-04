@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import clock
 from src.ai.client import ModelClient, client_for
 from src.ai.records import CallLog
-from src.deps import DbDep, SettingsDep
+from src.deps import DbDep, SettingsDep, VerifiedUser
 from src.errors import AppError, ErrorCode
 from src.models import Insight
 from src.owner import INSIGHT, OptionalOwner, Owner, not_found
@@ -32,8 +32,9 @@ from src.schemas.insight import (
     ChatReply,
     CompletionOut,
     InsightDetailOut,
+    PublicationOut,
 )
-from src.services import chat_service, completion_service, insight_view
+from src.services import chat_service, completion_service, insight_view, public_insight_service
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -146,3 +147,26 @@ async def complete_insight(
         raise AppError(
             ErrorCode.SAVE_FAILED, "The insight was not saved.", status_code=503
         ) from None
+
+
+@router.put("/{insight_id}/publication", summary="Make the insight public (verified owners)")
+async def publish_insight(
+    insight_id: PublicIdPath, db: DbDep, user: VerifiedUser
+) -> PublicationOut:
+    """
+    Publish the caller's own insight; asking again changes nothing.
+
+    Answers 409 INSIGHT_NOT_PUBLISHABLE for a sensitive scene, an insight with no text to
+    show from the store, or text that looks like scripture. A guest gets 401.
+    """
+    _owner, insight = await owned_insight(db, Owner(user_id=user.id), insight_id)
+    return await public_insight_service.publish(db, insight)
+
+
+@router.delete("/{insight_id}/publication", summary="Withdraw the insight from public view")
+async def withdraw_insight(
+    insight_id: PublicIdPath, db: DbDep, user: VerifiedUser
+) -> PublicationOut:
+    """Take the caller's insight down at once; its public address answers 404 from then on."""
+    _owner, insight = await owned_insight(db, Owner(user_id=user.id), insight_id)
+    return await public_insight_service.withdraw(db, insight)

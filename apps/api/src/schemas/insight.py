@@ -125,6 +125,7 @@ class InsightDetailOut(BaseModel):
     image: InsightImageOut
     completed_at: datetime | None
     place_id: PublicId | None
+    published_at: datetime | None = Field(description="Set while the owner has the insight public")
     created_at: datetime
     disclosure: str
 
@@ -174,4 +175,49 @@ class CompletionOut(BaseModel):
     badges_earned: list[str]
     options: list[AfterOption]
     suggest_account: str | None = Field(description="Set for a guest after the first completion")
+    disclosure: str
+
+
+class PublicationOut(BaseModel):
+    """Whether the owner's insight is public, and since when."""
+
+    insight_id: PublicId
+    published: bool
+    published_at: datetime | None
+    path: str | None = Field(description="The public page's path on the web app, when public")
+
+
+class PublicAuthorOut(BaseModel):
+    """The only things a public insight says about its owner: the handle and name they chose."""
+
+    handle: str
+    public_name: str
+
+
+class PublicInsightOut(BaseModel):
+    """
+    A published insight for any reader: scripture from the store, nothing of the owner's.
+
+    There is no photo, no scan, no location, no chat, no progress and no «لماذا ظهر هذا؟»
+    (its clues describe the photo and its personal reason is the owner's); the author is
+    present only when the owner chose a public handle and name.
+    """
+
+    id: PublicId
+    engine: str = Field(description="`pipeline`, `demo` (a declared simulation) or `prepared`")
+    label: str | None
+    title: str
+    glimpse: str
+    relation: RelationType
+    relation_label: str
+    quran: InsightQuran | None
+    hadith: InsightHadith | None
+    hadith_status: Literal["shown", "awaiting_verification", "none"]
+    notice: str | None
+    pair_complete: bool
+    explanation_tag: str
+    explanation: list[ExplanationOut]
+    small_step: StepOut | None
+    author: PublicAuthorOut | None
+    published_at: datetime
     disclosure: str
