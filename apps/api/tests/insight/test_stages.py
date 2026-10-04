@@ -508,6 +508,14 @@ def test_a_weak_main_text_makes_a_general_reminder():
 
     assert result.relation is RelationType.THEMATIC_REMINDER
     assert GateResult(candidate()).relation is RelationType.THEMATIC_REMINDER
+    built = build_insight(
+        ComposedInsight.model_validate(composed(sunnah=None)),
+        result,
+        rain_scene(),
+        LearnerContext(),
+        None,
+    )
+    assert built.quran.relation is RelationType.THEMATIC_REMINDER
 
 
 async def test_the_guard_compares_with_the_hadiths_shown_without_the_honorific():

@@ -37,6 +37,7 @@ from src.pipeline.engine import (
     LearnerContext,
     ProposedInsight,
     QuranRef,
+    RelationType,
     SmallStep,
     WhyThis,
 )
@@ -136,9 +137,11 @@ def composer_message(
 def _reference(chosen: Chosen | None, ref: QuranRef | HadithRef | None) -> EvidenceRef | None:
     if chosen is None or ref is None:
         return None
+    # A text the verifier called weak is a general reminder on its own line too.
+    weak = chosen.strength == "weak"
     return EvidenceRef(
         ref=ref,
-        relation=chosen.relation,
+        relation=RelationType.THEMATIC_REMINDER if weak else chosen.relation,
         retrieval_score=round(chosen.found.retrieval_score, 6),
         rerank_score=chosen.found.rerank_score,
         matched_on=chosen.found.matched_on,
