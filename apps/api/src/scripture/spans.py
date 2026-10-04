@@ -2,7 +2,9 @@
 Display spans of a stored hadith: where the chain, the body, the Prophet's words and the notes are.
 
 The text is never cut or changed: a span is a pair of positions in the stored
-text, and the spans of a hadith always follow each other from the first
+text, counted in Unicode code points (a browser counts UTF-16 units; the two
+agree while a text holds no character beyond U+FFFF, as every stored hadith
+does today), and the spans of a hadith always follow each other from the first
 character to the last, so joining their slices gives the stored text back
 (a property test holds this). The web app sets the chain and the closing notes
 smaller and the Prophet's words stronger (docs/DESIGN_DECISION.md, «Hadith

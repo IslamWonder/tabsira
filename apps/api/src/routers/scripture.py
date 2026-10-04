@@ -121,7 +121,12 @@ class HadithOut(BaseModel):
     chapter: ChapterOut | None
     text: str = Field(description="Exactly as stored, invisible direction marks included")
     sha256: str = Field(description="SHA-256 of the UTF-8 bytes of `text`")
-    spans: list[SpanOut] = Field(description="Positions in `text`; their slices join back into it")
+    spans: list[SpanOut] = Field(
+        description=(
+            "Positions in `text`, counted in Unicode code points (not UTF-16 units); "
+            "their slices join back into it"
+        )
+    )
     informational_grades: list[GradeOut] | None = Field(
         description="The dataset's grades as given; informational only, never decide eligibility"
     )
