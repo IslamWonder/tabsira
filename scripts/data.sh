@@ -3,7 +3,7 @@
 #
 # Usage: scripts/data.sh [--force]
 #   CORPUS_DIR=<folder>  where the two corpus files are (default data/corpus of the checkout;
-#                        /opt/tabsira/shared/corpus on the application host)
+#                        /srv/tabsira/shared/corpus on the application host)
 #   Data already there (the scripture store, the vectors) is left alone; --force,
 #   or DATA_FORCE=true with make data, imports it again. GeoNames has the same
 #   guard in scripts/seed-geonames.sh.
@@ -26,7 +26,7 @@ set -euo pipefail
 # shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-# On the application host the corpus files live in /opt/tabsira/shared/corpus: a release is cut from git and holds neither.
+# On the application host the corpus files live in /srv/tabsira/shared/corpus: a release is cut from git and holds neither.
 CORPUS_DIR="${CORPUS_DIR:-$REPO_ROOT/data/corpus}"
 CORPUS_FILES="quran-annotations.json sunnah-enriched.json"
 

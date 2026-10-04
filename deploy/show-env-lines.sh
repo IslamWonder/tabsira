@@ -7,7 +7,7 @@
 #   sudo deploy/show-env-lines.sh
 #
 # The passwords are secrets: do not paste this output into a chat or a ticket. Put it
-# in /opt/tabsira/shared/.env on the application host (mode 0600), then run
+# in /opt/tabsira/.env on the application host (mode 0600), then run
 # deploy/deploy.sh --check there.
 
 set -Eeuo pipefail

@@ -4,7 +4,7 @@
 # Everything is spelled through the `current` link on purpose: workers forked
 # after a deploy (deploy/api-roll.sh, TTIN then TTOU) import the new release.
 # The pid file is how that script finds the master. Settings of the application
-# are read by the application itself from @APP_ROOT@/shared/.env, in each worker.
+# are read by the application itself from @ENV_FILE@ (through the release's .env link), in each worker.
 [Unit]
 Description=TABSIRA API (gunicorn, uvicorn workers)
 After=network-online.target
@@ -15,7 +15,7 @@ Type=simple
 User=@APP_USER@
 Group=@APP_GROUP@
 WorkingDirectory=@APP_ROOT@/current/apps/api
-Environment=ENV_FILE=@APP_ROOT@/shared/.env
+Environment=ENV_FILE=@ENV_FILE@
 Environment=PYTHONUNBUFFERED=1
 RuntimeDirectory=tabsira-api
 RuntimeDirectoryPreserve=yes

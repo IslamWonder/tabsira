@@ -8,8 +8,11 @@
 #   deploy/install-toolchain.sh [--check]
 #   --check   print what is installed and what would be, install nothing
 #
-# Idempotent. No rc file is edited: scripts/lib.sh finds nvm, pnpm and uv itself on a
-# server, so a deploy over ssh (which reads no rc file) and a zsh login shell agree.
+# Idempotent. For the user's own shell, ~/.bashrc and ~/.zshrc (those that exist) get
+# one marked section that loads nvm and puts ~/.local/bin on the PATH, replaced, never
+# duplicated, on a re-run; TABSIRA_SHELL_RC=0 leaves them alone. The deploy scripts do
+# not depend on it: scripts/lib.sh finds nvm, pnpm and uv itself, so a deploy over ssh
+# (which reads no rc file) works either way.
 #
 # Versions are pinned here and in the repository, never "latest": NVM_VERSION,
 # PM2_VERSION and UV_VERSION below (checked against GitHub, npm and PyPI on
@@ -111,6 +114,38 @@ if [[ -x "$UV_BIN" ]]; then
 	fi
 else
 	log "would: install Python $PYTHON_VERSION with uv once uv is there"
+fi
+
+# ─── The user's shell ───────────────────────────────────────────────
+# One marked block per rc file, replaced on every run; nothing else of the file is touched.
+RC_BEGIN="# >>> tabsira toolchain (deploy/install-toolchain.sh) >>>"
+RC_END="# <<< tabsira toolchain <<<"
+# shellcheck disable=SC2016  # expanded by the user's shell, not here
+RC_BODY='export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac'
+write_rc_section() {
+	local rc="$1" tmp
+	tmp="$(mktemp)"
+	awk -v b="$RC_BEGIN" -v e="$RC_END" '$0 == b { skip = 1; next } $0 == e { skip = 0; next } !skip { print }' "$rc" >"$tmp"
+	printf '\n%s\n%s\n%s\n' "$RC_BEGIN" "$RC_BODY" "$RC_END" >>"$tmp"
+	cat "$tmp" >"$rc"
+	rm -f "$tmp"
+}
+if [[ "${TABSIRA_SHELL_RC:-1}" == 1 ]]; then
+	for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+		[[ -f "$rc" ]] || continue
+		if $CHECK; then
+			if grep -qxF "$RC_BEGIN" "$rc"; then
+				ok "$rc loads nvm and ~/.local/bin"
+			else
+				log "would: add the nvm and ~/.local/bin section to $rc"
+			fi
+		else
+			write_rc_section "$rc"
+			ok "$rc loads nvm and ~/.local/bin (open a new shell, or: source $rc)"
+		fi
+	done
 fi
 
 if $CHECK; then

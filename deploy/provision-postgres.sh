@@ -791,7 +791,7 @@ cat <<EOF
 
 ${C_GREEN}${C_BOLD}PostgreSQL $INSTALLED is ready on $PG_LISTEN_ADDR:$PG_PORT (on $LISTEN_IFACE).${C_RESET}
 
-For the application host's environment file (/opt/tabsira/shared/.env). The password
+For the application host's environment file (/opt/tabsira/.env). The password
 is hex, so it sits in the URL unescaped; it is also in $CREDENTIALS_FILE.
 
   DATABASE_URL=postgresql+asyncpg://$DB_USER:$DB_PASSWORD@$PG_LISTEN_ADDR:$PG_PORT/$DB_NAME

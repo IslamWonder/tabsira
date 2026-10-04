@@ -41,7 +41,7 @@ def _dotenv(path: Path) -> dict[str, str]:
     return values
 
 
-_ENV = {**_dotenv(Path(os.environ.get("ENV_FILE", "/opt/tabsira/shared/.env"))), **os.environ}
+_ENV = {**_dotenv(Path(os.environ.get("ENV_FILE", "/opt/tabsira/.env"))), **os.environ}
 
 
 bind = f"{_ENV.get('API_HOST', '127.0.0.1')}:{_ENV.get('API_PORT', '8000')}"

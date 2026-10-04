@@ -412,7 +412,7 @@ cat <<EOF
 
 ${C_GREEN}${C_BOLD}Redis $INSTALLED is ready on $REDIS_LISTEN_ADDR:$REDIS_PORT (on $LISTEN_IFACE).${C_RESET}
 
-For the application host's environment file (/opt/tabsira/shared/.env). The URL
+For the application host's environment file (/opt/tabsira/.env). The URL
 carries no password: the API refuses one. The password is also in $CREDENTIALS_FILE.
 
   REDIS_URL=redis://$REDIS_LISTEN_ADDR:$REDIS_PORT/0
