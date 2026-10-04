@@ -1,3 +1,5 @@
+import { scanMessages } from './scan';
+
 /**
  * Every user-visible string of the web app (AGENTS.md: Arabic copy lives here,
  * never inline). Wording follows docs/spec/tajriba.md §7: an action is named by
@@ -394,6 +396,7 @@ export const ar = {
       current: 'الآن',
       pending: 'لاحقًا',
     },
+    queued: 'ننتظر دور مشهدك',
     complete: 'بصيرتك جاهزة',
     slow: 'ما زلنا نعمل على طلبك، وقد يستغرق وقتًا أطول من المعتاد.',
     cancel: 'ألغِ',
@@ -826,6 +829,8 @@ export const ar = {
       settingsBody: '[الإعداد المختار]',
     },
   },
+
+  ...scanMessages,
 } as const;
 
 export type Messages = typeof ar;
