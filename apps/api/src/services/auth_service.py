@@ -180,14 +180,7 @@ def _google_display_name(identity: GoogleIdentity, email: str) -> str:
     return name or email.split("@", maxsplit=1)[0][:DISPLAY_NAME_MAX]
 
 
-async def sign_in_with_google(
-    db: AsyncSession,
-    settings: Settings,
-    identity: GoogleIdentity,
-    *,
-    accepted_terms_version: str | None = None,
-    accepted_privacy_version: str | None = None,
-) -> User:
+async def sign_in_with_google(db: AsyncSession, identity: GoogleIdentity) -> User:
     """
     Return the account of a verified Google identity, linking or creating it.
 
@@ -198,9 +191,9 @@ async def sign_in_with_google(
     first may have been a stranger who then waits for the owner to arrive
     (account pre-hijacking). The owner keeps the account, through Google.
 
-    When the account is new and the versions ticked before leaving for Google are the
-    current ones, the acceptance is recorded with it. An existing account is untouched:
-    it is asked through `legal_acceptance_required` if it has not accepted.
+    A new account has no acceptance rows: acceptance is recorded only by the e-mail
+    sign-up and by `POST /auth/legal/accept`, never from a link, so the server asks
+    for it (`legal_acceptance_required`) before the account is used.
     """
     linked = await db.scalar(
         select(OAuthAccount).where(
@@ -210,21 +203,16 @@ async def sign_in_with_google(
     if linked is not None:
         user = await db.get(User, linked.user_id)
     else:
-        user, created = await _link_or_create(db, identity)
-        if created and legal_service.is_current(
-            settings, accepted_terms_version, accepted_privacy_version
-        ):
-            legal_service.record_acceptance(db, settings, user.id)
+        user = await _link_or_create(db, identity)
     if user is None or not can_sign_in(user):
         raise SignInRefusedError(WEB_ACCOUNT_DISABLED)
     return user
 
 
-async def _link_or_create(db: AsyncSession, identity: GoogleIdentity) -> tuple[User, bool]:
+async def _link_or_create(db: AsyncSession, identity: GoogleIdentity) -> User:
     email = normalize_email(identity.email)
     now: datetime = clock.utcnow()
     user = await find_by_email(db, email)
-    created = user is None
     if user is None:
         user = User(
             email=email,
@@ -252,4 +240,4 @@ async def _link_or_create(db: AsyncSession, identity: GoogleIdentity) -> tuple[U
         # Two callbacks for one new person raced; the loser is sent back to try again.
         raise SignInRefusedError(WEB_GOOGLE_FAILED) from None
     await profile_service.ensure_profile(db, user.id)
-    return user, created
+    return user

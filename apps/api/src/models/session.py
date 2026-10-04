@@ -58,8 +58,5 @@ class OAuthState(Base):
     nonce: Mapped[str] = mapped_column(String(64))
     # Where in the web app to send the user afterwards: a path, never a full URL.
     next_path: Mapped[str | None] = mapped_column(Text)
-    # The versions of the terms and the privacy policy ticked before leaving for Google.
-    accepted_terms_version: Mapped[str | None] = mapped_column(String(32))
-    accepted_privacy_version: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[datetime] = created_at_column()
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
