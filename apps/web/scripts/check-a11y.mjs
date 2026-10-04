@@ -14,7 +14,8 @@
 // CHROME_PATH is the browser.
 //
 // Checked, in both themes, at 375 and 1440 px: the scene (/), the cookie
-// screen of a first visit, the sign-in page and «ملفي» signed in. The API is
+// screen of a first visit, the sign-in page, «ملفي», the world and the practice
+// screen, signed in. The API is
 // answered with the samples of scripts/lib/api-mock.mjs.
 
 import { readFileSync } from 'node:fs';
@@ -33,6 +34,8 @@ const CHECKS = [
   { name: 'consent screen', path: '/', consent: 'ask', state: 'guest' },
   { name: 'sign-in', path: '/signin', consent: 'decided', state: 'guest' },
   { name: 'ملفي', path: '/me', consent: 'decided', state: 'signed-in' },
+  { name: 'world', path: '/world', consent: 'decided', state: 'signed-in' },
+  { name: 'practice', path: '/me/practice', consent: 'decided', state: 'signed-in' },
 ];
 
 async function main() {

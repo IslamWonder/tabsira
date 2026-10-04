@@ -6,7 +6,7 @@
 //   pnpm --filter @tabsira/web screenshots [base-url] [shot...] [--out=dir]
 //
 // Shots: home (the scene, cookie choice made), consent (the first visit's
-// cookie screen), signin, me (signed in) and dev-ui (the gallery, `next dev`
+// cookie screen), signin, me, world and practice (signed in) and dev-ui (the gallery, `next dev`
 // only); by default all but dev-ui. The API is answered with the samples of
 // scripts/lib/api-mock.mjs, so every screen is in a known state. The base URL
 // defaults to https://tabsira.test (the local nginx with mkcert TLS).
@@ -31,6 +31,8 @@ const SHOTS = {
   consent: { path: '/', consent: 'ask', state: 'guest', full: false },
   signin: { path: '/signin', consent: 'decided', state: 'guest', full: true },
   me: { path: '/me', consent: 'decided', state: 'signed-in', full: true },
+  world: { path: '/world', consent: 'decided', state: 'signed-in', full: true },
+  practice: { path: '/me/practice', consent: 'decided', state: 'signed-in', full: true },
   'dev-ui': { path: '/dev/ui', consent: 'decided', state: 'guest', full: true },
   // The first paint without JavaScript: the consent screen must already be there.
   'consent-nojs': { path: '/', consent: 'ask', state: 'guest', full: false, noScript: true },

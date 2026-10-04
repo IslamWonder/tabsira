@@ -3,6 +3,8 @@
 // without a database, a mail server or the consent routes (still being built).
 // Sample data only: the names and texts below are examples, never shown as live.
 
+import { progressSample, worldSample } from './world-samples.mjs';
+
 const USER = {
   id: '6f9c1a52-3a51-4c8c-9f0e-1b2d3c4d5e6f',
   email: 'reader@example.com',
@@ -123,6 +125,12 @@ export function answer(method, pathname, state) {
   }
   if (route === 'POST /consent' || route === `GET /consent/${CONSENT_ID}`) {
     return reply(200, RECORD);
+  }
+  if (route === 'GET /world') {
+    return reply(200, worldSample());
+  }
+  if (route === 'GET /me/progress') {
+    return reply(200, progressSample());
   }
   return reply(404, { error: 'NOT_FOUND', detail: `No sample answer for ${route}.` });
 }
