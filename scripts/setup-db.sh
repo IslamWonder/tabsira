@@ -180,6 +180,9 @@ for db in "${DATABASES[@]}"; do
 	done
 	if [[ "$db" == "$TEMPLATE_DB_NAME" ]]; then
 		psql_admin postgres -c "ALTER DATABASE $db WITH IS_TEMPLATE true ALLOW_CONNECTIONS false;"
+		# The TimescaleDB scheduler may still hold a session opened before the
+		# switch, and a template with any session cannot be copied.
+		psql_admin postgres -tA -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$db' AND pid <> pg_backend_pid()" >/dev/null
 	fi
 	ok "$db: schemas ${SCHEMAS[*]} and extensions ready"
 done
