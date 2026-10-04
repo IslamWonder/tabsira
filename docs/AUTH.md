@@ -66,7 +66,7 @@ The API sends two mails over SMTP, always encrypted (`SMTP_*`, `MAIL_FROM`, `MAI
 
 ## An unverified address
 
-An unverified account can sign in and use the app. It may not publish anything public: a route that does so depends on `VerifiedUser` (`src/deps.py`), which answers `403 EMAIL_NOT_VERIFIED`. The flag is `users.email_verified_at`, exposed to its owner as `email_verified` in `/auth/me`. It is set by following the verification link, by a completed password reset, or by Google, which verifies addresses itself.
+An unverified account can sign in and use the app. It may not publish anything public: a route that does so depends on `VerifiedUser` (`src/deps.py`), which answers `403 EMAIL_NOT_VERIFIED`. On the social network (`docs/SOCIAL_NETWORK.md`) that is choosing a public handle and name, posting, commenting, following, liking and reporting; blocking, bookmarking, unfollowing and withdrawing one's own post need only a session. Putting a name on anything also needs a public identity (`PublicMember`, `409 PUBLIC_IDENTITY_REQUIRED`). The flag is `users.email_verified_at`, exposed to its owner as `email_verified` in `/auth/me`. It is set by following the verification link, by a completed password reset, or by Google, which verifies addresses itself.
 
 ## Behind nginx
 
