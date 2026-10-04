@@ -236,6 +236,7 @@ class CellSummary(BaseModel):
     forbidden_claims: int
     identity_inferences: int
     hallucinated_entities: int
+    wrong_language: int
     violations_per_run: float | None
     sensitive_accuracy: float | None
     sensitive_false_negatives: int
@@ -512,6 +513,7 @@ def summarize(cell: Cell, results: Sequence[RunResult]) -> CellSummary:
         forbidden_claims=sum(len(score.forbidden_claims) for score in scores),
         identity_inferences=sum(len(score.identity_inferences) for score in scores),
         hallucinated_entities=sum(len(score.hallucinated_entities) for score in scores),
+        wrong_language=sum(len(score.wrong_language) for score in scores),
         violations_per_run=_rate(violations, len(scores)),
         sensitive_accuracy=_rate(sum(1 for s in scores if s.sensitive_correct), len(scores)),
         sensitive_false_negatives=sum(
@@ -558,6 +560,7 @@ def _findings(scores: Sequence[SceneScore]) -> dict[str, int]:
             score.forbidden_claims
             + [f"identity word: «{word}»" for word in score.identity_inferences]
             + [f"invented: «{word}»" for word in score.hallucinated_entities]
+            + [f"not in Arabic: {path.split('.')[0]}" for path in score.wrong_language]
             + [f"missing: «{word}»" for word in score.missing_entities]
         )
         for finding in found:

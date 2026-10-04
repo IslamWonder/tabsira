@@ -211,6 +211,7 @@ async def test_boxes_far_from_the_detectors_are_not_eligible(tmp_path, make_sett
     assert summary.blind_box_agreement == 0.0
     assert summary.ineligible_because == ["median IoU with the detector 0.00"]
     assert summary.findings == {"identity word: «طفل»": 2}
+    assert summary.wrong_language == 0
     assert summary.identity_inferences == 2
 
 

@@ -69,6 +69,19 @@ def test_missing_entities_and_every_kind_of_violation_are_named():
     assert score.violations == 6
 
 
+def test_arabic_fields_written_in_another_script_are_counted():
+    scene = analysis(
+        description="شجرة كبيرة" + "".join(chr(code) for code in range(0x5B64, 0x5B70)),
+        entities=[entity("e1", "phone", "هاتف ذكي iPhone"), entity("e2", "pen", "قلم")],
+        relations=[relation("holding by"), relation("فوق")],
+    )
+
+    score = score_scene(scene, gold_scene(), RULES)
+
+    assert score.wrong_language == ["description", "relations.0.predicate"]
+    assert score.violations == 2
+
+
 def test_identity_words_are_whole_words():
     scene = analysis(description="قطة واقفة على أرجلها الأربع")
 

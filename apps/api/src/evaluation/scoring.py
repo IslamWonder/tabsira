@@ -5,7 +5,8 @@ The judge is mechanical on purpose: the same answer always gets the same score,
 and every point lost names the words that lost it. It does not replace a human
 reading the descriptions (docs/BENCHMARK.md says so); it catches what can be
 caught by rule: missing things, forbidden claims, identity words, invented
-objects, a wrong sensitivity verdict, boxes in the wrong coordinate system.
+objects, Arabic fields written in another script, a wrong sensitivity
+verdict, boxes in the wrong coordinate system.
 """
 
 from __future__ import annotations
@@ -25,6 +26,14 @@ from src.pipeline.schemas import (
 )
 
 BOX_DROPPED_NOTE = "box outside the image"
+# Unicode blocks of Arabic letters: base, supplement, extended-A, presentation forms.
+ARABIC_BLOCKS = (
+    (0x0600, 0x06FF),
+    (0x0750, 0x077F),
+    (0x08A0, 0x08FF),
+    (0xFB50, 0xFDFF),
+    (0xFE70, 0xFEFF),
+)
 
 
 class SceneScore(BaseModel):
@@ -40,6 +49,8 @@ class SceneScore(BaseModel):
     forbidden_claims: list[str]
     identity_inferences: list[str]
     hallucinated_entities: list[str]
+    # Arabic fields (by path) written mostly in another script: English, Chinese ...
+    wrong_language: list[str] = []
     sensitive_expected: bool
     sensitive_predicted: bool
     categories: list[SensitiveCategory]
@@ -62,6 +73,7 @@ class SceneScore(BaseModel):
             len(self.forbidden_claims)
             + len(self.identity_inferences)
             + len(self.hallucinated_entities)
+            + len(self.wrong_language)
         )
 
     @computed_field  # type: ignore[prop-decorator]
@@ -80,6 +92,15 @@ def iou(first: BBox, second: BBox) -> float:
     return intersection / union if union > 0 else 0.0
 
 
+def not_arabic(text: str) -> bool:
+    """Return whether most letters of `text` are not Arabic."""
+    letters = [char for char in text if char.isalpha()]
+    arabic = sum(
+        1 for char in letters if any(low <= ord(char) <= high for low, high in ARABIC_BLOCKS)
+    )
+    return arabic * 2 < len(letters)
+
+
 def score_scene(
     scene: SceneAnalysis,
     gold: GoldScene,
@@ -92,7 +113,8 @@ def score_scene(
     claims = [action.label for action in scene.actions]
     claims += [relation.predicate for relation in scene.relations]
     observed = [a.label for a in scene.actions if a.status is EvidenceStatus.OBSERVED]
-    visible_texts = [*scene_texts(scene).values(), *(entity.label for entity in scene.entities)]
+    arabic_fields = scene_texts(scene)
+    visible_texts = [*arabic_fields.values(), *(entity.label for entity in scene.entities)]
 
     missing = [group[0] for group in gold.required_entities if not first_match(group, described)]
     found_actions = [group for group in gold.expected_actions if first_match(group, claims)]
@@ -143,6 +165,7 @@ def score_scene(
         forbidden_claims=forbidden,
         identity_inferences=identity,
         hallucinated_entities=invented,
+        wrong_language=[path for path, text in arabic_fields.items() if not_arabic(text)],
         sensitive_expected=gold.sensitive,
         sensitive_predicted=scene.is_sensitive,
         categories=list(categories),
