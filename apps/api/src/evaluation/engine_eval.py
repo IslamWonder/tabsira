@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -98,6 +98,8 @@ class SceneRun(BaseModel):
     total_ms: int
     cost_usd: float
     calls: int
+    # The latency of every model call, by stage, in the order they were made.
+    call_ms: dict[str, list[int]] = Field(default_factory=dict)
 
 
 class EvaluationResult(BaseModel):
@@ -226,6 +228,14 @@ async def check_result(
 EngineFactory = Callable[[CallLog], tuple[ModelClient, InsightEngine]]
 
 
+def call_latencies(log: CallLog) -> dict[str, list[int]]:
+    """Return the latency of each model call by stage, in call order."""
+    latencies: dict[str, list[int]] = {}
+    for record in log.records:
+        latencies.setdefault(record.stage.value, []).append(record.latency_ms)
+    return latencies
+
+
 async def evaluate_scene(
     session: AsyncSession,
     prepared: PreparedScene,
@@ -265,6 +275,7 @@ async def evaluate_scene(
         total_ms=round((clock() - started) * 1000),
         cost_usd=round(log.total_cost_usd, 6),
         calls=len(log.records),
+        call_ms=call_latencies(log),
         **{
             "insights": 0,
             "relations": [],
