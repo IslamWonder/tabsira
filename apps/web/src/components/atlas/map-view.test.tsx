@@ -1,5 +1,6 @@
 import { act, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { messages } from '@/messages';
 import { FEATURE, SECOND_FEATURE } from '@/test/atlas';
 import { FakeMap, type FakeSource, forgetMaps, loadedMap } from '@/test/maplibre';
 import { MapView } from './map-view';
@@ -118,5 +119,12 @@ describe('MapView', () => {
     map.emit('click:points', { features: [{ properties: {} }] });
     expect(map.easeTo).not.toHaveBeenCalled();
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('says so, and does not crash, when the browser has no WebGL2', async () => {
+    FakeMap.failWith = new Error('WebGL2 is required');
+    const { findByRole } = render(<MapView features={[FEATURE]} />);
+    expect((await findByRole('status')).textContent).toBe(messages.atlas.mapUnsupported);
+    expect(FakeMap.instances).toHaveLength(0);
   });
 });

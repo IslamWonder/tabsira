@@ -729,6 +729,8 @@ export const ar = {
     lead: 'بصائر نشرها أصحابها في أماكنها التقريبية. تصفّح العالم دون أن تمنح موقعك.',
     mapLabel: 'خريطة الأطلس',
     /** Joins a place's labels (place, region, country) the way Arabic lists them. */
+    mapUnsupported:
+      'لا يدعم هذا المتصفح أو الجهاز عرض الخريطة (يلزم WebGL2). تبقى النتائج في القائمة بجانبها.',
     joinLabels: (parts: readonly (string | null | undefined)[]) => parts.filter(Boolean).join('، '),
     attribution: 'بلاط الخريطة من OpenFreeMap، بيانات OpenStreetMap.',
     searchHere: 'ابحث في هذه المنطقة',

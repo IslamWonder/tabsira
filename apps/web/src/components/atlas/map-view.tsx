@@ -4,7 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 import type { FeatureCollection, Polygon } from 'geojson';
 import type { GeoJSONSource, LngLatLike, Map as MapLibreMap } from 'maplibre-gl';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AtlasFeature, Window } from '@/atlas/types';
 import { DEFAULT_VIEW, lngLatOf, MAP_STYLE_URL } from '@/atlas/types';
 import { cx } from '@/lib/cx';
@@ -89,6 +89,7 @@ export function MapView({
   className,
 }: MapViewProps) {
   const container = useRef<HTMLDivElement>(null);
+  const [unsupported, setUnsupported] = useState(false);
   const map = useRef<MapLibreMap | null>(null);
   const ready = useRef(false);
   const handlers = useRef({ onSelect, onMoved, onPick });
@@ -104,16 +105,23 @@ export function MapView({
       if (cancelled || container.current === null) {
         return;
       }
-      const instance = new MapLibre({
-        container: container.current,
-        style: MAP_STYLE_URL,
-        center: view?.center ?? DEFAULT_VIEW.center,
-        zoom: view?.zoom ?? DEFAULT_VIEW.zoom,
-        interactive,
-        attributionControl: false,
-        // A pointer that moves is a scroll, not a zoom, until the map is touched (Jakob's law).
-        cooperativeGestures: interactive,
-      });
+      let instance: MapLibreMap;
+      try {
+        instance = new MapLibre({
+          container: container.current,
+          style: MAP_STYLE_URL,
+          center: view?.center ?? DEFAULT_VIEW.center,
+          zoom: view?.zoom ?? DEFAULT_VIEW.zoom,
+          interactive,
+          attributionControl: false,
+          // A pointer that moves is a scroll, not a zoom, until the map is touched (Jakob's law).
+          cooperativeGestures: interactive,
+        });
+      } catch {
+        // No WebGL2 (old device, blocked GPU, headless browser): the list beside the map still works.
+        setUnsupported(true);
+        return;
+      }
       map.current = instance;
       if (interactive) {
         instance.addControl(new NavigationControl({ showCompass: false }), 'top-left');
@@ -283,6 +291,14 @@ export function MapView({
   return (
     <div className={cx('relative h-full w-full', className)}>
       <div ref={container} aria-hidden="true" className="h-full w-full" data-testid="map-canvas" />
+      {unsupported ? (
+        <p
+          role="status"
+          className="absolute inset-0 m-0 flex items-center justify-center bg-[var(--surface-glass)] p-4 text-center text-fg-muted"
+        >
+          {A.mapUnsupported}
+        </p>
+      ) : null}
       <p className="pointer-events-none absolute bottom-1 start-1 m-0 rounded bg-[var(--surface-glass)] px-2 py-0.5 text-[0.6875rem] text-fg-muted">
         {A.attribution}
       </p>

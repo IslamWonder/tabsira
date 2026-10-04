@@ -18,6 +18,8 @@ export class FakeSource {
 
 export class FakeMap {
   static instances: FakeMap[] = [];
+  /** Set to an error to make the next construction throw, as a browser without WebGL2 does. */
+  static failWith: Error | null = null;
   options: Record<string, unknown>;
   sources = new Map<string, FakeSource>();
   layers: string[] = [];
@@ -32,6 +34,9 @@ export class FakeMap {
   bounds = { west: 9, south: 35, east: 11, north: 37 };
 
   constructor(options: Record<string, unknown>) {
+    if (FakeMap.failWith !== null) {
+      throw FakeMap.failWith;
+    }
     this.options = options;
     FakeMap.instances.push(this);
   }
@@ -96,6 +101,7 @@ export async function loadedMap(): Promise<FakeMap> {
 
 export function forgetMaps(): void {
   FakeMap.instances = [];
+  FakeMap.failWith = null;
 }
 
 // The name maplibre-gl exports; declared last so nothing above shadows the built-in Map.
