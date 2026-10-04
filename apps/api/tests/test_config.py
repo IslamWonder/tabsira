@@ -92,7 +92,7 @@ def test_feature_flags_default_and_can_be_switched(make_settings, monkeypatch):
 def test_ai_defaults_are_what_the_benchmark_measured(make_settings):
     settings = make_settings()
 
-    # docs/BENCHMARK.md, 4 October 2026: only the vision stage and the guard are measured.
+    # docs/BENCHMARK.md, 4 October 2026: the vision stage, the guard and the embeddings.
     assert settings.ai_provider is AiProvider.OPENAI
     assert settings.ai_ovh.base_url == config.OVH_BASE_URL
     assert settings.ai_openai.base_url == config.OPENAI_BASE_URL
@@ -103,14 +103,25 @@ def test_ai_defaults_are_what_the_benchmark_measured(make_settings):
     assert settings.ai_openai.model_for(AiStage.GUARD) == "omni-moderation-latest"
     assert settings.ai_openai.reasoning_effort == "none"
     assert settings.ai_openai.box_coordinates is BoxCoordinates.PIXELS
-    measured = {(AiProvider.OVH, AiStage.VISION), (AiProvider.OPENAI, AiStage.VISION)}
-    measured.add((AiProvider.OPENAI, AiStage.GUARD))
+    # The retrieval benchmark measured the embeddings; the insight stages follow the vision
+    # model and are measured end to end by docs/EVALUATION.md.
+    assert settings.ai_openai.model_for(AiStage.EMBEDDING) == "text-embedding-3-large"
+    assert settings.ai_openai.embedding_dimensions == 1536
+    assert settings.ai_ovh.model_for(AiStage.EMBEDDING) == "bge-m3"
+    assert settings.ai_ovh.embedding_dimensions is None
+    text_stages = (AiStage.PLANNER, AiStage.VERIFY, AiStage.COMPOSE)
+    for block in (settings.ai_ovh, settings.ai_openai):
+        assert {block.model_for(stage) for stage in text_stages} == {block.vision_model}
+    set_by_a_measure = {AiStage.VISION, AiStage.EMBEDDING, *text_stages}
     for provider, block in (
         (AiProvider.OVH, settings.ai_ovh),
         (AiProvider.OPENAI, settings.ai_openai),
     ):
         for stage in AiStage:
-            if (provider, stage) not in measured:
+            if stage not in set_by_a_measure and (provider, stage) != (
+                AiProvider.OPENAI,
+                AiStage.GUARD,
+            ):
                 assert block.model_for(stage) == "", (provider, stage)
 
 
