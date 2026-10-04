@@ -22,6 +22,7 @@ def test_the_gold_set_is_complete_and_every_image_is_the_one_annotated():
         assert scene.required_entities, scene.id
         assert all(group for group in scene.required_entities), scene.id
         assert scene.provenance.origin in {"generated", "most likely generated"}
+        assert scene.provenance.source.startswith("earlier prototype, "), scene.id
     # Every image of the folder is in the gold set: nothing is benchmarked unannotated.
     assert {path.name for path in SCENES.glob("*.jpg")} == {s.image for s in gold.scenes}
 
