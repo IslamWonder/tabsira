@@ -17,8 +17,12 @@ export interface MapViewProps {
   features?: readonly AtlasFeature[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
-  /** The window after every move; `byHand` says a person dragged or zoomed, not the page. */
-  onMoved?: (window: Window, byHand: boolean) => void;
+  /** The window after every move, with the centre and zoom; `byHand` says a person dragged or zoomed, not the page. */
+  onMoved?: (
+    window: Window,
+    byHand: boolean,
+    view: { center: [number, number]; zoom: number }
+  ) => void;
   /** Where to look; a change flies there (or jumps, under reduced motion). */
   view?: { center: [number, number]; zoom: number } | null;
   /** A single point to mark: a chosen capture point, or an entry's public point. */
@@ -43,6 +47,11 @@ function windowOf(map: MapLibreMap): Window {
     east: bounds.getEast(),
     north: bounds.getNorth(),
   };
+}
+
+function viewOf(map: MapLibreMap): { center: [number, number]; zoom: number } {
+  const center = map.getCenter();
+  return { center: [center.lng, center.lat], zoom: map.getZoom() };
 }
 
 function reducedMotion(): boolean {
@@ -246,9 +255,13 @@ export function MapView({
           }
         });
         instance.on('moveend', (event: { originalEvent?: unknown }) => {
-          handlers.current.onMoved?.(windowOf(instance), event.originalEvent !== undefined);
+          handlers.current.onMoved?.(
+            windowOf(instance),
+            event.originalEvent !== undefined,
+            viewOf(instance)
+          );
         });
-        handlers.current.onMoved?.(windowOf(instance), false);
+        handlers.current.onMoved?.(windowOf(instance), false, viewOf(instance));
       });
     });
     return () => {

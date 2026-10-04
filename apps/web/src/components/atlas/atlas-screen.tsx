@@ -14,6 +14,7 @@ import {
   type PlaceHit,
   type Window,
 } from '@/atlas/types';
+import { type AtlasView, encodeViewHash, parseViewHash } from '@/atlas/view-state';
 import { MapLayout } from '@/components/layout/layouts';
 import { Button, LinkButton } from '@/components/ui/button';
 import { ChoiceGroup } from '@/components/ui/choice-group';
@@ -31,7 +32,7 @@ import { MapView } from './map-view';
 const A = messages.atlas;
 const PERIODS: readonly Period[] = ['all', 'week', 'month', 'year'];
 
-type View = { center: [number, number]; zoom: number };
+type View = AtlasView;
 
 type Load =
   | { kind: 'idle' | 'loading' }
@@ -236,12 +237,20 @@ function Filters({
   );
 }
 
+/** The view the address's fragment names, read in the browser alone; the server renders none. */
+function viewFromAddress(): View | null {
+  return typeof window === 'undefined' ? null : parseViewHash(window.location.hash).view;
+}
+
 /**
  * The world atlas: the map with its results beside it (the accessible
  * alternative made a feature: DESIGN_DECISION.md). The page asks the API for the
  * window it shows, on display and on the search-here button, never on every
  * move; the near-me button moves the map with the device's own position and sends
- * nothing. An empty window says so and invents no point.
+ * nothing. An empty window says so and invents no point. What the page looks at
+ * (centre, zoom, selection, filters) lives in the address's fragment, so the
+ * camera's «اعرض على الخريطة» opens the same view and coming back restores it;
+ * a fragment never reaches a server.
  */
 export function AtlasScreen({
   initialView = null,
@@ -254,12 +263,35 @@ export function AtlasScreen({
   const [features, setFeatures] = useState<AtlasFeature[]>([]);
   const [load, setLoad] = useState<Load>({ kind: 'idle' });
   const [filters, setFilters] = useState<AtlasFilters>(EMPTY_FILTERS);
-  const [view, setView] = useState<View | null>(initialView);
+  const [view, setView] = useState<View | null>(() => initialView ?? viewFromAddress());
   const [selected, setSelected] = useState<string | null>(null);
   const [moved, setMoved] = useState(false);
   const [nearNote, setNearNote] = useState<string | null>(null);
   const window_ = useRef<Window | null>(null);
+  // What the map shows after its last move; what the address carries.
+  const [shownView, setShownView] = useState<View | null>(view);
   const latest = useRef(0);
+
+  // The selection and filters of the address, once in the browser; the map's view was read above.
+  useEffect(() => {
+    const state = parseViewHash(window.location.hash);
+    if (state.selected !== null) {
+      setSelected(state.selected);
+    }
+    if (
+      state.filters.period !== 'all' ||
+      state.filters.country !== null ||
+      state.filters.concept !== null
+    ) {
+      setFilters(state.filters);
+    }
+  }, []);
+
+  // The address follows the page, replacing itself: coming back restores the same view.
+  useEffect(() => {
+    const hash = encodeViewHash({ view: shownView, selected, filters });
+    window.history.replaceState(null, '', hash === '' ? window.location.pathname : hash);
+  }, [selected, filters, shownView]);
 
   const fetchWindow = useCallback(async (window: Window, applied: AtlasFilters) => {
     const mine = ++latest.current;
@@ -278,9 +310,10 @@ export function AtlasScreen({
   }, []);
 
   const onMoved = useCallback(
-    (window: Window, _byHand: boolean) => {
+    (window: Window, _byHand: boolean, current: View) => {
       const first = window_.current === null;
       window_.current = window;
+      setShownView(current);
       if (first) {
         void fetchWindow(window, filters);
       } else {

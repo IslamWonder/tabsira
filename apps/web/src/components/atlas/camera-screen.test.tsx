@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AtlasFeature } from '@/atlas/types';
+import { zoomForRadius } from '@/atlas/view-state';
 import { apiError, mockApi, type Route } from '@/test/api';
 import { FEATURE, SECOND_FEATURE } from '@/test/atlas';
 import {
@@ -106,6 +107,10 @@ describe('CameraScreen', () => {
     expect(document.body.textContent).not.toContain('36.81');
     expect(document.body.textContent).not.toContain('10.19');
     expect(JSON.stringify(api.requests.map((r) => r.url))).not.toContain('10.19');
+    // «اعرض على الخريطة» opens the atlas on this view, the nearest entry selected; the centre
+    // travels in the fragment, which never reaches a server.
+    const toMap = screen.getByRole('link', { name: 'اعرض على الخريطة' }).getAttribute('href');
+    expect(toMap).toBe(`/atlas#c=10.19,36.81,${zoomForRadius(1500, 36.81)}&e=${FEATURE.id}`);
 
     // A small drift asks nothing; a real move asks again, once.
     geolocation.fix([10.1905, 36.8102]);

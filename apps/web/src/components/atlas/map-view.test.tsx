@@ -21,7 +21,10 @@ describe('MapView', () => {
     const data = map.getSource('entries')?.data as { features: { properties: { id: string } }[] };
     expect(data.features.map((feature) => feature.properties.id)).toEqual([FEATURE.id]);
     // The first window is reported once the map is ready, so the page can ask for it.
-    expect(onMoved).toHaveBeenCalledWith({ west: 9, south: 35, east: 11, north: 37 }, false);
+    expect(onMoved).toHaveBeenCalledWith({ west: 9, south: 35, east: 11, north: 37 }, false, {
+      center: [10, 36],
+      zoom: 8,
+    });
     expect(map.addControl).toHaveBeenCalled();
   });
 
@@ -33,9 +36,9 @@ describe('MapView', () => {
     const map = await loadedMap();
     onMoved.mockClear();
     map.emit('moveend', {});
-    expect(onMoved).toHaveBeenLastCalledWith(expect.anything(), false);
+    expect(onMoved).toHaveBeenLastCalledWith(expect.anything(), false, expect.anything());
     map.emit('moveend', { originalEvent: {} });
-    expect(onMoved).toHaveBeenLastCalledWith(expect.anything(), true);
+    expect(onMoved).toHaveBeenLastCalledWith(expect.anything(), true, expect.anything());
     expect(onMoved).toHaveBeenCalledTimes(2);
     map.emit('click:points', { features: [{ properties: { id: FEATURE.id } }] });
     expect(onSelect).toHaveBeenCalledWith(FEATURE.id);

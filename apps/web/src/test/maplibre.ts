@@ -32,6 +32,8 @@ export class FakeMap {
   addControl = vi.fn();
   queryRenderedFeatures = vi.fn((): unknown[] => []);
   bounds = { west: 9, south: 35, east: 11, north: 37 };
+  center = { lng: 10, lat: 36 };
+  zoom = 8;
 
   constructor(options: Record<string, unknown>) {
     if (FakeMap.failWith !== null) {
@@ -72,6 +74,14 @@ export class FakeMap {
 
   setFeatureState(target: { id: string | number }, state: Record<string, unknown>): void {
     this.featureState.set(String(target.id), state);
+  }
+
+  getCenter() {
+    return this.center;
+  }
+
+  getZoom() {
+    return this.zoom;
   }
 
   getBounds() {

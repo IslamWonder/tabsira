@@ -9,7 +9,10 @@ import { AtlasScreen } from './atlas-screen';
 vi.mock('maplibre-gl', () => import('@/test/maplibre'));
 vi.mock('next/navigation', () => ({ usePathname: () => '/atlas' }));
 
-afterEach(forgetMaps);
+afterEach(() => {
+  forgetMaps();
+  window.history.replaceState(null, '', '/atlas');
+});
 
 const collection = (features = [FEATURE, SECOND_FEATURE], truncated = false) => ({
   body: { type: 'FeatureCollection', features, truncated },
@@ -164,5 +167,44 @@ describe('AtlasScreen', () => {
     });
     await userEvent.click(screen.getByRole('button', { name: 'قريب مني' }));
     expect(await screen.findByText(/لم يُمنح إذن الموقع/)).toBeInTheDocument();
+  });
+
+  it('opens on the view, selection and filters the address carries, and keeps the address in step', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      `/atlas#c=39.826,21.423,11&e=${SECOND_FEATURE.id}&p=month&k=SA`
+    );
+    const api = guest();
+    render(<AtlasScreen />);
+    const map = await loadedMap();
+    expect(map.options).toMatchObject({ center: [39.826, 21.423], zoom: 11 });
+    await screen.findByRole('button', { name: /^\[بصيرة ثانية\]/ });
+    const query = new URL(api.requests.at(-1)?.url ?? '').searchParams;
+    expect(query.get('since')).not.toBeNull();
+    expect(query.get('country')).toBe('SA');
+    expect(screen.getByRole('radio', { name: 'آخر شهر' })).toBeChecked();
+    expect(screen.getAllByRole('article', { name: '[بصيرة ثانية]' }).length).toBeGreaterThan(0);
+
+    // A hand move, a new selection and a cleared filter are written back, replacing the address.
+    map.center = { lng: 10.5, lat: 36.5 };
+    map.zoom = 9.25;
+    map.emit('moveend', { originalEvent: {} });
+    await waitFor(() => expect(window.location.hash).toContain('c=10.5,36.5,9.3'));
+    await userEvent.click(screen.getByRole('button', { name: /^\[عنوان البصيرة\]/ }));
+    expect(window.location.hash).toContain(`e=${FEATURE.id}`);
+    await userEvent.click(screen.getByRole('button', { name: 'امسح المرشحات' }));
+    await waitFor(() => expect(window.location.hash).not.toContain('p=month'));
+    expect(window.location.hash).toBe(`#c=10.5,36.5,9.3&e=${FEATURE.id}`);
+  });
+
+  it('ignores a malformed address and replaces it with what the map shows', async () => {
+    window.history.replaceState(null, '', '/atlas#c=nonsense&e=0&p=never');
+    guest();
+    render(<AtlasScreen />);
+    const map = await loadedMap();
+    expect(map.options).toMatchObject({ center: [30, 27] });
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    expect(window.location.hash).toBe('#c=10,36,8');
   });
 });

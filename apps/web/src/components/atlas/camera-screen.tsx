@@ -18,6 +18,7 @@ import {
   windowAround,
 } from '@/atlas/geo';
 import { type AtlasFeature, EMPTY_FILTERS, lngLatOf, type PlaceHit } from '@/atlas/types';
+import { atlasHref, zoomForRadius } from '@/atlas/view-state';
 import { AtlasIcon, CameraIcon } from '@/components/icons';
 import { StageLayout } from '@/components/layout/layouts';
 import { Button, LinkButton } from '@/components/ui/button';
@@ -259,6 +260,18 @@ export function CameraScreen() {
 
   const canWiden = radiusM < RADIUS_MAX_M;
   const listed = showAll ? items : items.slice(0, OVERLAY_MAX);
+  // The atlas opens on the same view: this centre and radius, the nearest entry selected (extension §4).
+  const mapHref =
+    centre === null
+      ? atlasHref({ view: null, selected: null, filters: EMPTY_FILTERS })
+      : atlasHref({
+          view: {
+            center: [centre.point[0], centre.point[1]],
+            zoom: zoomForRadius(radiusM, centre.point[1]),
+          },
+          selected: items[0]?.feature.id ?? null,
+          filters: EMPTY_FILTERS,
+        });
 
   const status = (() => {
     if (phase === 'intro') {
@@ -376,7 +389,7 @@ export function CameraScreen() {
                 {C.stopCamera}
               </Button>
             ) : null}
-            <LinkButton href="/atlas" variant="ghost">
+            <LinkButton href={mapHref} variant="ghost">
               {C.showOnMap}
             </LinkButton>
           </div>
