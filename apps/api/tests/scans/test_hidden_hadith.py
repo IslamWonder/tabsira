@@ -24,6 +24,25 @@ def test_what_is_said_about_a_text_waits_with_it():
     assert shown == ["seen", "value"]
 
 
+async def test_a_reference_the_view_cannot_place_counts_as_hidden(store):
+    async with store() as db:
+        verse = await read_verse(db, 30, 50)
+    parts = [
+        {"section": "seen", "text": "بلا مرجع.", "sources": ["T01_06"]},
+        {"section": "value", "text": "مذكرة.", "sources": ["note:rain"]},
+        {"section": "value", "text": "وحدة.", "sources": ["masar:T01_06"]},
+        {"section": "value", "text": "وحدة مشوهة.", "sources": ["masar:../T01"]},
+        {"section": "quran", "text": "الآية.", "sources": ["quran:30:50"]},
+        {"section": "quran", "text": "آية أخرى.", "sources": ["quran:2:255"]},
+    ]
+    step = {"text": "تأمّل.", "kind": "reflection", "grounded_in": ["note:rain"]}
+
+    shown = [part.text for part in explanation_out(parts, verse, None)]
+
+    assert shown == ["وحدة.", "الآية."]
+    assert step_out(step, verse, None) is None
+
+
 async def test_a_step_is_from_the_sunnah_only_with_a_hadith_shown(store):
     async with store() as db:
         verse = await read_verse(db, 30, 50)

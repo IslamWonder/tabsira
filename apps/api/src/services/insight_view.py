@@ -12,6 +12,7 @@ rests on a text that is not shown is not shown either.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from sqlalchemy import select
@@ -85,7 +86,8 @@ async def shown_evidence(
     return await evidence(db, quran, hadith)
 
 
-EVIDENCE_PREFIXES = ("quran:", "hadith:")
+# A learning unit a part may rest on; whether it exists was checked when the insight was kept.
+UNIT_REFERENCE = re.compile(r"masar:T[0-9]{2}_[0-9]{2}")
 
 
 def shown_ids(verse: QuranVerseOut | None, hadith: HadithOut | None) -> set[str]:
@@ -99,7 +101,8 @@ def shown_ids(verse: QuranVerseOut | None, hadith: HadithOut | None) -> set[str]
 
 
 def _rests_on_hidden(refs: list[str], shown: set[str]) -> bool:
-    return any(ref.startswith(EVIDENCE_PREFIXES) and ref not in shown for ref in refs)
+    """Tell whether any reference is not a text shown here or a learning unit: unknown is hidden."""
+    return any(ref not in shown and not UNIT_REFERENCE.fullmatch(ref) for ref in refs)
 
 
 def explanation_out(
