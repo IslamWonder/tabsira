@@ -65,6 +65,7 @@ Before you say a task is done: `make lint && make coverage` pass, and `make smok
 - Check the latest version of a dependency in its registry (npm, PyPI) when you add it. Never guess a version.
 - Add every new configuration key to the typed settings and to `.env.example` in the same commit.
 - Update the terms and privacy text in the same commit as any new data flow.
+- Update the step's status in `docs/plans/` in the same commit as the change.
 - Say plainly what you did not do, what failed, and what you could not verify.
 
 **Ask first**
