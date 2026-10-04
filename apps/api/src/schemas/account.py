@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.schemas.atlas import MapEntryOwnerOut
 from src.schemas.cookie_consent import CookieConsentExport
@@ -165,6 +165,18 @@ class ExposureExport(BaseModel):
     learning_unit_id: str | None
 
 
+class PhotoExport(BaseModel):
+    """
+    A photo «تمّ» kept with the owner's consent (v2 §19): which insight, and whether a copy is public.
+
+    The export says that the photo exists; the image itself is not in the file, and neither are
+    the keys of its copies.
+    """
+
+    insight_id: PublicId
+    published: bool = Field(description="A post or a map entry shows a public copy right now")
+
+
 class LearningExport(BaseModel):
     """Everything the scan workflow keeps for the account."""
 
@@ -175,6 +187,7 @@ class LearningExport(BaseModel):
     treasures: list[TreasureExport]
     learner_units: list[LearnerUnitExport]
     exposures: list[ExposureExport]
+    photos: list[PhotoExport]
 
 
 class AccountExport(BaseModel):
