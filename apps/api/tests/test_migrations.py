@@ -335,7 +335,8 @@ async def test_the_app_chain_builds_the_cookie_consent_guard_and_removes_it_agai
         left = (await connection.execute(text("SELECT user_id FROM app.cookie_consents"))).all()
     assert [row.user_id for row in left] == [None]
 
-    assert alembic(APP_CONFIG, "downgrade", "-1").returncode == 0
+    # Down to the revision under cookie consents by name: a later migration must not shift it.
+    assert alembic(APP_CONFIG, "downgrade", "20261004_121500").returncode == 0
     async with migrated.connect() as connection:
         functions = (
             await connection.execute(
