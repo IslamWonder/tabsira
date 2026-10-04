@@ -55,8 +55,8 @@ describe('ScenePhoto', () => {
     const list = screen.getByRole('navigation', { name: 'البصائر في الصورة' });
     const items = within(list).getAllByRole('button');
     expect(items.map((item) => item.textContent)).toEqual([
-      '[أولى][لمحة]، يسار وسط الصورة',
-      '[ثانية]أسفل يمين الصورة',
+      '[أولى] [لمحة]، يسار وسط الصورة',
+      '[ثانية] أسفل يمين الصورة',
     ]);
     expect(items[1]).toHaveAttribute('aria-current', 'true');
     await userEvent.click(items[0] as HTMLElement);
