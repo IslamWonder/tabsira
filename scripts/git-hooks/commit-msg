@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Refuse a commit message that names a project the owners keep out of this
+# repository. The names live in .git/info/private-names (never committed), one
+# extended regular expression per line; without that file this hook does nothing.
+#
+# Installed by scripts/install-git-hooks.sh, like pre-commit.
+set -euo pipefail
+
+private_names="$(git rev-parse --git-common-dir)/info/private-names"
+[[ -s "$private_names" ]] || exit 0
+pattern="$(grep -vE '^[[:space:]]*(#|$)' "$private_names" | paste -sd'|' -)"
+[[ -n "$pattern" ]] || exit 0
+if grep -vE '^#' "$1" | grep -qiE "$pattern"; then
+	echo "[err ] Commit refused: the message names a project kept out of this repository." >&2
+	exit 1
+fi

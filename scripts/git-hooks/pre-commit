@@ -66,6 +66,18 @@ if [[ ${#shell[@]} -gt 0 ]]; then
 	fi
 fi
 
+# Names the owners keep out of the repository (other projects of theirs), one
+# extended regular expression per line, in a file that is never committed.
+private_names="$(git rev-parse --git-common-dir)/info/private-names"
+if [[ -s "$private_names" ]]; then
+	pattern="$(grep -vE '^[[:space:]]*(#|$)' "$private_names" | paste -sd'|' -)"
+	if [[ -n "$pattern" ]] && git diff --cached -U0 --diff-filter=ACMR | grep -E '^\+[^+]' | grep -qiE "$pattern"; then
+		err "Commit refused: a staged line names a project kept out of this repository."
+		git diff --cached -U0 --diff-filter=ACMR | grep -E '^(\+\+\+ |\+[^+])' | grep -iE "^\+\+\+ |$pattern" | grep -B1 -iE "$pattern" >&2 || true
+		exit 1
+	fi
+fi
+
 if [[ ${#failed[@]} -gt 0 ]]; then
 	err "Commit refused: not formatted (${failed[*]})."
 	err "Run 'make format', review the changes, re-stage them and commit again."
