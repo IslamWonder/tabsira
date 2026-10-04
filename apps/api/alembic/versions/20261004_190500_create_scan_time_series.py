@@ -1,8 +1,8 @@
 """create_scan_time_series
 
-Revision ID: 20261004_180500
-Revises: 20261004_180000
-Create Date: 2026-10-04 18:05:00.000000
+Revision ID: 20261004_190500
+Revises: 20261004_190000
+Create Date: 2026-10-04 19:05:00.000000
 
 Three TimescaleDB hypertables partitioned on `at` (decision 13): the stage
 events of scans, the AI calls and the evidence exposures of learners. Each is
@@ -23,8 +23,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 from src.config import get_settings
 
-revision: str = "20261004_180500"
-down_revision: str | Sequence[str] | None = "20261004_180000"
+revision: str = "20261004_190500"
+down_revision: str | Sequence[str] | None = "20261004_190000"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

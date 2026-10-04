@@ -158,7 +158,7 @@ async def test_the_spans_are_rebuilt_when_a_verse_is_corrected(store):
 
 
 def test_the_migration_writes_the_spans_the_models_write():
-    path = API_DIR / "alembic" / "versions" / "20261004_181000_create_quran_verse_spans.py"
+    path = API_DIR / "alembic" / "versions" / "20261004_191000_create_quran_verse_spans.py"
     spec = importlib.util.spec_from_file_location(path.stem, path)
     assert spec is not None
     assert spec.loader is not None

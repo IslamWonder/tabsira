@@ -1,8 +1,8 @@
 """create_quran_verse_spans
 
-Revision ID: 20261004_181000
-Revises: 20261004_180500
-Create Date: 2026-10-04 18:10:00.000000
+Revision ID: 20261004_191000
+Revises: 20261004_190500
+Create Date: 2026-10-04 19:10:00.000000
 
 The folded text of each verse followed by the next six words of its surah, as
 a materialized view of the search copies with a trigram index, so the leak
@@ -18,8 +18,8 @@ from collections.abc import Sequence
 
 from alembic import op
 
-revision: str = "20261004_181000"
-down_revision: str | Sequence[str] | None = "20261004_180500"
+revision: str = "20261004_191000"
+down_revision: str | Sequence[str] | None = "20261004_190500"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

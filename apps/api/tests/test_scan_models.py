@@ -35,7 +35,7 @@ GUEST = "a" * 64
 
 
 def _migration() -> Any:
-    path = API_DIR / "alembic" / "versions" / "20261004_180500_create_scan_time_series.py"
+    path = API_DIR / "alembic" / "versions" / "20261004_190500_create_scan_time_series.py"
     spec = importlib.util.spec_from_file_location(path.stem, path)
     assert spec is not None
     assert spec.loader is not None
