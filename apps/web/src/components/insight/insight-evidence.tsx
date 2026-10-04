@@ -9,7 +9,12 @@ import { EvidencePair } from './evidence-pair';
 const SHORT_TEXT = 280;
 
 /** The fields both the owner's insight and the public one carry. */
-export type EvidenceSource = Pick<Insight, 'quran' | 'hadith' | 'hadith_status' | 'notice'>;
+export interface EvidenceSource {
+  quran: Pick<NonNullable<Insight['quran']>, 'verse'> | null;
+  hadith: Pick<NonNullable<Insight['hadith']>, 'hadith'> | null;
+  hadith_status: Insight['hadith_status'];
+  notice: Insight['notice'];
+}
 
 /**
  * The verse and the hadith of an insight, exactly as the API returns them:
