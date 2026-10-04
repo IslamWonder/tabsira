@@ -106,6 +106,22 @@ async def test_a_run_writes_the_raw_results_the_summary_and_the_report(tmp_path,
     assert "test-key" not in out + report + json.dumps(raw)
 
 
+async def test_a_saved_run_can_be_scored_again_without_calls(tmp_path, keys, capsys):
+    assert await run(arguments(tmp_path, "--no-report"), provider_handler()) == 0
+    (raw,) = [p for p in (tmp_path / "results").glob("*.json") if "summary" not in p.name]
+    capsys.readouterr()
+
+    def detector_only(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/detect"
+        return detector_handler(request)
+
+    code = await run(arguments(tmp_path, "--rescore", str(raw)), detector_only)
+
+    assert code == 0
+    assert (tmp_path / "BENCHMARK.md").exists()
+    assert "  ovh-qwen3.8-27b: ok 2/2" in capsys.readouterr().out
+
+
 async def test_the_report_can_be_left_alone(tmp_path, keys):
     code = await run(arguments(tmp_path, "--no-report"), provider_handler())
 

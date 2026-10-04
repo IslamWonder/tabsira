@@ -4,12 +4,17 @@ Compare the vision models on the gold scenes (make benchmark).
     uv run python -m src.cli.benchmark [--runs N] [--cells NAME,...] [--scenes ID,...]
                                        [--blind-runs N] [--concurrency N] [--max-cost USD]
                                        [--detector-url URL] [--no-report]
+    uv run python -m src.cli.benchmark --rescore tests/evaluation/results/<date>.json
 
 It calls the real providers with the keys of the .env, so it costs money; no
 new run starts once `--max-cost` dollars are spent. It writes the raw results
 (every answer and call record) to tests/evaluation/results/<date>.json, which is
 not committed, a summary next to it, and docs/BENCHMARK.md. A provider whose
 key is empty fails its cells with `not_configured` and costs nothing.
+
+`--rescore` scores the answers of an earlier raw file again with the current
+gold file and judge, and rewrites the outputs: no model is called, only the
+local detector (for the box measurement).
 """
 
 from __future__ import annotations
@@ -30,6 +35,8 @@ from src.evaluation.benchmark import (
     BenchmarkOptions,
     BenchmarkResult,
     ClientFactory,
+    SavedRun,
+    rescore_benchmark,
     run_benchmark,
 )
 from src.evaluation.gold import load_gold
@@ -66,6 +73,9 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--results-dir", type=Path, default=RESULTS_DIR, help=argparse.SUPPRESS)
     parser.add_argument("--report", type=Path, default=REPORT_PATH, help=argparse.SUPPRESS)
     parser.add_argument("--no-report", action="store_true", help="do not write docs/BENCHMARK.md")
+    parser.add_argument(
+        "--rescore", type=Path, default=None, help="score a raw results file again, no calls"
+    )
     return parser.parse_args(argv)
 
 
@@ -138,7 +148,13 @@ async def run(
     )
     async with AsyncExitStack() as stack:
         client = http if http is not None else await stack.enter_async_context(httpx.AsyncClient())
-        result = await run_benchmark(options, settings=settings, http=client, factory=factory)
+        if args.rescore:
+            saved = SavedRun.model_validate_json(args.rescore.read_text(encoding="utf-8"))
+            result = await rescore_benchmark(
+                saved, gold_path=args.gold, settings=settings, http=client
+            )
+        else:
+            result = await run_benchmark(options, settings=settings, http=client, factory=factory)
     written = write_outputs(result, args)
     sys.stdout.write("\n".join(_report_lines(result, written)) + "\n")
     return 0 if any(cell.ok for cell in result.cells) else 1

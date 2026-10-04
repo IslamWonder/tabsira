@@ -17,10 +17,12 @@ from src.evaluation.benchmark import (
     BenchmarkResult,
     Cell,
     CellSummary,
+    SavedRun,
     best,
     percentile,
     provider_factory,
     recommend,
+    rescore_benchmark,
     run_benchmark,
     stat,
 )
@@ -243,6 +245,31 @@ async def test_a_scene_filter_runs_only_the_named_scenes(tmp_path, make_settings
 
     assert result.scenes == ["wine"]
     assert result.blind_runs_per_scene == 0
+
+
+async def test_saved_answers_are_scored_again_without_calling_a_model(tmp_path, make_settings):
+    cells = [cell("named"), cell("down")]
+    behaviours = {
+        "named": (answer(box=[0, 0, 500, 500], description="طفل يقف"), 1000),
+        "down": (broken, 1000),
+    }
+    first = await run(tmp_path, make_settings, cells, behaviours, runs=1)
+    assert by_name(first)["named"].identity_inferences == 2
+    saved = SavedRun.model_validate_json(first.model_dump_json())
+    gold = tmp_path / "gold.json"
+    # The judge changed: the identity word list no longer holds the word.
+    gold.write_text(gold.read_text().replace('"طفل"', '"عجوز"'))
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(detector_handler)) as http:
+        again = await rescore_benchmark(saved, gold_path=gold, settings=make_settings(), http=http)
+
+    named = by_name(again)["named"]
+    assert named.identity_inferences == 0
+    assert named.blind_box_agreement == 1.0
+    assert by_name(again)["down"].failed == 2
+    assert (again.started_at, again.finished_at) == (first.started_at, first.finished_at)
+    assert again.blind_runs_per_scene == 1
+    assert [r.status for r in again.results] == [r.status for r in first.results]
 
 
 # ─── Choosing ──────────────────────────────────────────────────────

@@ -701,6 +701,12 @@ def _box_reason(chosen: CellSummary, mine: Sequence[CellSummary]) -> str:
     return "; ".join(boxes(summary) for summary in [chosen, *variants])
 
 
+def _detector(settings: Settings, http: httpx.AsyncClient) -> DetectorClient:
+    return DetectorClient(
+        settings.detector_url, http, timeout_seconds=settings.detector_timeout_seconds
+    )
+
+
 async def run_benchmark(
     options: BenchmarkOptions,
     *,
@@ -712,22 +718,97 @@ async def run_benchmark(
     """Prepare the scenes, run every cell, aggregate and recommend."""
     started_at = now()
     gold = load_gold(options.gold_path)
-    detector = DetectorClient(
-        settings.detector_url, http, timeout_seconds=settings.detector_timeout_seconds
-    )
     scenes = await prepare_scenes(
-        gold, options.gold_path.parent, options.scene_ids, settings=settings, detector=detector
+        gold,
+        options.gold_path.parent,
+        options.scene_ids,
+        settings=settings,
+        detector=_detector(settings, http),
     )
     results = await run_cells(scenes, gold, options, factory or provider_factory(settings, http))
-    summaries = [summarize(cell, results) for cell in options.cells]
+    return assemble(
+        gold,
+        scenes,
+        options.cells,
+        results,
+        runs=options.runs,
+        blind_runs=options.blind_runs,
+        started_at=started_at,
+        finished_at=now(),
+    )
+
+
+class SavedCell(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    cell: Cell
+
+
+class SavedRun(BaseModel):
+    """What a rescore needs from a raw results file; the rest is recomputed."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    started_at: datetime
+    finished_at: datetime
+    runs_per_scene: int
+    blind_runs_per_scene: int = 0
+    cells: list[SavedCell]
+    results: list[RunResult]
+
+
+async def rescore_benchmark(
+    saved: SavedRun, *, gold_path: Path, settings: Settings, http: httpx.AsyncClient
+) -> BenchmarkResult:
+    """Score saved answers again with the current gold file and judge: no model is called."""
+    gold = load_gold(gold_path)
+    wanted = sorted({result.scene for result in saved.results})
+    scenes = await prepare_scenes(
+        gold, gold_path.parent, wanted, settings=settings, detector=_detector(settings, http)
+    )
+    by_id = {scene.gold.id: scene for scene in scenes}
+    results = []
+    for saved_result in saved.results:
+        scene = by_id[saved_result.scene]
+        if saved_result.analysis is None:
+            results.append(saved_result)
+            continue
+        reference = scene.detector.detections if saved_result.blind else ()
+        score = score_scene(saved_result.analysis, scene.gold, gold.rules, reference)
+        results.append(saved_result.model_copy(update={"score": score}))
+    return assemble(
+        gold,
+        scenes,
+        tuple(saved_cell.cell for saved_cell in saved.cells),
+        results,
+        runs=saved.runs_per_scene,
+        blind_runs=saved.blind_runs_per_scene,
+        started_at=saved.started_at,
+        finished_at=saved.finished_at,
+    )
+
+
+def assemble(
+    gold: GoldSet,
+    scenes: Sequence[PreparedScene],
+    cells: Sequence[Cell],
+    results: list[RunResult],
+    *,
+    runs: int,
+    blind_runs: int,
+    started_at: datetime,
+    finished_at: datetime,
+) -> BenchmarkResult:
+    """Aggregate the runs per cell and per stage, and recommend."""
+    summaries = [summarize(cell, results) for cell in cells]
     detected = [scene.detector for scene in scenes if scene.detector.available]
     analyses = [result.analysis for result in results if result.analysis is not None]
     return BenchmarkResult(
         started_at=started_at,
-        finished_at=now(),
+        finished_at=finished_at,
         gold_version=gold.version,
-        runs_per_scene=options.runs,
-        blind_runs_per_scene=options.blind_runs,
+        runs_per_scene=runs,
+        blind_runs_per_scene=blind_runs,
         scenes=[scene.gold.id for scene in scenes],
         prompt_version=analyses[0].prompt_version if analyses else None,
         detector_model=detected[0].model if detected else None,
