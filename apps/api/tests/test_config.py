@@ -176,6 +176,15 @@ def test_reasoning_effort_accepts_only_the_known_levels(make_settings):
     assert "AI_OVH__REASONING_EFFORT" in errors_of(ai_ovh={"reasoning_effort": "maximum"})
 
 
+def test_image_limits_default_to_15_megabytes_and_40_megapixels(make_settings):
+    settings = make_settings()
+
+    assert settings.image_max_bytes == 15 * 1024 * 1024
+    assert settings.image_max_pixels == 40_000_000
+    assert "IMAGE_MAX_BYTES" in errors_of(image_max_bytes=0)
+    assert "IMAGE_MAX_PIXELS" in errors_of(image_max_pixels=-1)
+
+
 def test_every_stage_has_a_model_field(make_settings):
     settings = make_settings(ai_ovh={f"{stage.value}_model": stage.value for stage in AiStage})
 

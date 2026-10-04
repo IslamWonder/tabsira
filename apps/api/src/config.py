@@ -392,6 +392,11 @@ class Settings(BaseSettings):
     # Wait before the first retry; doubled for each later one.
     ai_retry_backoff_seconds: Annotated[float, Field(ge=0)] = 1.0
 
+    # Photos received for a scan: largest upload, and largest decoded size
+    # (checked from the header, before decoding: a small file can expand a lot).
+    image_max_bytes: Annotated[int, Field(gt=0)] = 15 * 1024 * 1024
+    image_max_pixels: Annotated[int, Field(gt=0)] = 40_000_000
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: Any) -> Any:
