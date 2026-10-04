@@ -107,7 +107,7 @@ id -u "$APP_USER" >/dev/null 2>&1 || useradd --system --create-home --shell /bin
 APP_GROUP="$(id -gn "$APP_USER")"
 APP_HOME="$(getent passwd "$APP_USER" | cut -d: -f6)"
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$APP_ROOT" "$APP_ROOT/releases" "$APP_ROOT/shared" \
-	"$APP_ROOT/shared/state" "$APP_ROOT/shared/cache" "$APP_ROOT/shared/vision-weights"
+	"$APP_ROOT/shared/state" "$APP_ROOT/shared/cache" "$APP_ROOT/shared/vision-weights" "$APP_ROOT/shared/corpus"
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 0755 "$APP_ROOT/static" /var/log/tabsira
 install -d -m 0755 /var/www/certbot /etc/tabsira
 # nginx (www-data) reads the static files; it needs to traverse APP_ROOT.

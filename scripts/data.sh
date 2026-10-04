@@ -2,6 +2,8 @@
 # Import the corpora (make data). Run `make migrate` first.
 #
 # Usage: scripts/data.sh [--force]
+#   CORPUS_DIR=<folder>  where the two corpus files are (default data/corpus of the checkout;
+#                        /srv/tabsira/shared/corpus on the application host)
 #   Data already there (the scripture store, the vectors) is left alone; --force,
 #   or DATA_FORCE=true with make data, imports it again. GeoNames has the same
 #   guard in scripts/seed-geonames.sh.
@@ -24,7 +26,8 @@ set -euo pipefail
 # shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-CORPUS_DIR="$REPO_ROOT/data/corpus"
+# On the application host the corpus files live in /srv/tabsira/shared/corpus: a release is cut from git and holds neither.
+CORPUS_DIR="${CORPUS_DIR:-$REPO_ROOT/data/corpus}"
 CORPUS_FILES="quran-annotations.json sunnah-enriched.json"
 
 # Data that is there is left alone; --force (or DATA_FORCE=true) imports it again.
@@ -38,6 +41,8 @@ done
 export DATA_FORCE="$FORCE"
 
 load_env
+# In a production release the Python environment is built without development dependencies; `uv run` must not add them.
+[[ "${ENVIRONMENT:-}" != "production" ]] || export UV_NO_SYNC=1
 [[ -n "${DATABASE_URL:-}" ]] || die "DATABASE_URL is not set. Run scripts/setup-db.sh, then make migrate."
 require_cmd uv "See https://docs.astral.sh/uv/"
 require_cmd psql "Install the PostgreSQL client."
@@ -48,7 +53,7 @@ query() { psql -X -q -tA -v ON_ERROR_STOP=1 "$sync_url" -c "$1"; }
 
 for name in $CORPUS_FILES; do
 	[[ -f "$CORPUS_DIR/$name" ]] ||
-		die "$CORPUS_DIR/$name is missing. Copy it there (docs/ASSET_MANIFEST.md names its source and SHA-256)."
+		die "$CORPUS_DIR/$name is missing. Copy it there, or set CORPUS_DIR to the folder that holds it (docs/ASSET_MANIFEST.md names its source and SHA-256)."
 done
 
 banner "Scripture store"
