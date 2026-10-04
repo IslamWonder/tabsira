@@ -9,7 +9,19 @@ describe('isPublicId', () => {
   });
 
   it('refuses anything else before it reaches the API', () => {
-    for (const value of ['', '0', '01', '-1', '1.5', '1e3', 'abc', ' 1', '12345678901234567890']) {
+    for (const value of [
+      '',
+      '0',
+      '01',
+      '-1',
+      '1.5',
+      '1e3',
+      'abc',
+      ' 1',
+      '12345678901234567890',
+      '9223372036854775808',
+      '9999999999999999999',
+    ]) {
       expect(isPublicId(value)).toBe(false);
     }
   });

@@ -25,6 +25,12 @@ describe('the description', () => {
     expect(describeGlimpse('ا'.repeat(300))).toHaveLength(165);
   });
 
+  it('cuts by code points, never leaving half of an emoji', () => {
+    const cut = describeGlimpse('😀'.repeat(300));
+    expect(Array.from(cut)).toHaveLength(165);
+    expect(cut).toBe(`${'😀'.repeat(164)}…`);
+  });
+
   it('builds the page seo from the title and the glimpse only', () => {
     expect(publicInsightSeo(publicInsightOut({ id: '7' }))).toEqual({
       path: '/insights/7',

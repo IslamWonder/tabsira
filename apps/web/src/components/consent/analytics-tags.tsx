@@ -6,10 +6,11 @@ import { pauseClarity, startClarity, stopClarity } from '@/analytics/clarity';
 import { dropQueuedEvents, track } from '@/analytics/events';
 import {
   pauseGoogleAnalytics,
+  setGooglePageTitle,
   startGoogleAnalytics,
   stopGoogleAnalytics,
 } from '@/analytics/google';
-import { isExcludedPath } from '@/analytics/paths';
+import { isExcludedPath, isHeatmapExcludedPath } from '@/analytics/paths';
 import { ConsentGate } from '@/consent/consent-gate';
 import { useConsent } from '@/consent/store';
 
@@ -22,7 +23,8 @@ export interface AnalyticsTagsProps {
 
 /** Runs while the analytics category is accepted; unmounting is the withdrawal. */
 function GoogleAnalytics({ id }: { id: string }) {
-  const allowed = !isExcludedPath(usePathname());
+  const pathname = usePathname();
+  const allowed = !isExcludedPath(pathname);
   useEffect(
     () => () => {
       stopGoogleAnalytics(id);
@@ -32,17 +34,19 @@ function GoogleAnalytics({ id }: { id: string }) {
   );
   useEffect(() => {
     if (allowed) {
-      startGoogleAnalytics(id);
+      // Before the start, so the first page view carries it too, and again on every path change.
+      setGooglePageTitle(pathname);
+      startGoogleAnalytics(id, pathname);
     } else {
       pauseGoogleAnalytics(id);
     }
-  }, [id, allowed]);
+  }, [id, allowed, pathname]);
   return null;
 }
 
 /** Runs while the behaviour category is accepted; unmounting is the withdrawal. */
 function Heatmaps({ id }: { id: string }) {
-  const allowed = !isExcludedPath(usePathname());
+  const allowed = !isHeatmapExcludedPath(usePathname());
   useEffect(() => () => stopClarity(), []);
   useEffect(() => {
     if (allowed) {

@@ -151,4 +151,28 @@ describe('after consent', () => {
     rerender(<AnalyticsTags gaId={GA} clarityId={CLARITY} />);
     expect(flag()).toBe(true);
   });
+
+  it('sends a fixed page title on a public insight, before the first page view and on each path change', async () => {
+    where.pathname = '/insights/123';
+    document.title = 'عنوان بصيرة | تبصرة';
+    const { rerender } = render(<AnalyticsTags gaId={GA} clarityId={CLARITY} />);
+    await choose(true, true);
+    const titles = () =>
+      gtag.mock.calls.filter(([command]) => command === 'set').map(([, value]) => value);
+    expect(titles()).toEqual([{ page_title: '/insights/[id]' }, { page_title: '/insights/[id]' }]);
+    const order = gtag.mock.calls.map(([command]) => command);
+    expect(order.indexOf('set')).toBeLessThan(order.indexOf('config'));
+    expect(JSON.stringify(gtag.mock.calls)).not.toContain('عنوان بصيرة');
+    where.pathname = '/world';
+    rerender(<AnalyticsTags gaId={GA} clarityId={CLARITY} />);
+    expect(titles().at(-1)).toEqual({ page_title: undefined });
+  });
+
+  it('runs no heatmap on a public insight', async () => {
+    where.pathname = '/insights/123';
+    render(<AnalyticsTags gaId={GA} clarityId={CLARITY} />);
+    await choose(true, true);
+    expect(document.getElementById(CLARITY_SCRIPT_ID)).toBeNull();
+    expect(document.getElementById(GA_SCRIPT_ID)).not.toBeNull();
+  });
 });

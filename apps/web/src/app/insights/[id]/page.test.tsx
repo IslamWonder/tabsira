@@ -76,6 +76,25 @@ describe('the public page of an insight', () => {
     }
   });
 
+  it('renders the API disclosure, not a copy of the web', async () => {
+    await open({ disclosure: 'إفصاح من الخادم' });
+    expect(screen.getByText('إفصاح من الخادم')).toBeInTheDocument();
+  });
+
+  it('shows the date in the owners zone, whatever the server zone', async () => {
+    await open({ published_at: '2026-10-04T23:30:00Z' });
+    expect(screen.getByText(/5/, { selector: 'time' })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['pipeline', 'مثال موثّق مُعدّ'],
+    ['prepared', 'مثال موثّق مُعدّ'],
+    ['demo', 'محاكاة مُعلَنة من الخادم'],
+  ])('shows the API label of a %s insight', async (engine, label) => {
+    await open({ engine, label });
+    expect(screen.getByText(label)).toBeInTheDocument();
+  });
+
   it('shows the small step as the API labels it, and none when there is none', async () => {
     await open();
     expect(screen.getByText('من السنة')).toBeInTheDocument();
@@ -121,6 +140,20 @@ describe('what is not shown', () => {
     mockApi({ [`GET ${API_PATH}`]: reply });
     await expect(PublicInsightRoute(params(ID))).rejects.toBeInstanceOf(NotFoundSignal);
     await expect(generateMetadata(params(ID))).rejects.toBeInstanceOf(NotFoundSignal);
+  });
+
+  it.each([400, 422])('answers not found when the API refuses the id with %i', async (status) => {
+    mockApi({ [`GET ${API_PATH}`]: apiError(status, 'validation_error') });
+    await expect(PublicInsightRoute(params(ID))).rejects.toBeInstanceOf(NotFoundSignal);
+    await expect(generateMetadata(params(ID))).rejects.toBeInstanceOf(NotFoundSignal);
+  });
+
+  it('answers not found for an id beyond the API range, without asking it', async () => {
+    const api = mockApi({});
+    await expect(PublicInsightRoute(params('9999999999999999999'))).rejects.toBeInstanceOf(
+      NotFoundSignal
+    );
+    expect(api.requests).toHaveLength(0);
   });
 
   it('answers not found for what is not a public id, without asking the API', async () => {

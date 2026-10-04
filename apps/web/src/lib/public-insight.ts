@@ -21,7 +21,7 @@ export function publicInsightPath(id: string): string {
 export const loadPublicInsight = cache(async (id: string): Promise<Result<PublicInsight>> => {
   const client = createApiClient({
     baseUrl: serverApiOrigin(),
-    fetch: (request) => globalThis.fetch(request, { cache: 'no-store' }),
+    fetch: (request) => globalThis.fetch(request, { cache: 'no-store', redirect: 'error' }),
   });
   return attempt(
     client.GET('/public/insights/{insight_id}', {
@@ -36,10 +36,12 @@ const DESCRIPTION_MAX = 165;
 
 /** The glimpse, cut at a word when a result would cut it anyway. Never scripture. */
 export function describe(glimpse: string): string {
-  if (glimpse.length <= DESCRIPTION_MAX) {
+  // By code points, so an emoji is never split into a lone surrogate.
+  const points = Array.from(glimpse);
+  if (points.length <= DESCRIPTION_MAX) {
     return glimpse;
   }
-  const room = glimpse.slice(0, DESCRIPTION_MAX - 1);
+  const room = points.slice(0, DESCRIPTION_MAX - 1).join('');
   const cut = room.lastIndexOf(' ');
   return `${(cut > 0 ? room.slice(0, cut) : room).trimEnd()}…`;
 }

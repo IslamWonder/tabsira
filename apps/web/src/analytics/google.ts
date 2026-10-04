@@ -1,5 +1,6 @@
 import { expireCookies } from './cookies';
 import { flushEvents } from './events';
+import { analyticsPageTitle } from './paths';
 
 /**
  * Google Analytics 4 (owner decisions 28 and 31). Nothing here runs before the
@@ -31,7 +32,15 @@ function pageLocation(): string {
   return `${window.location.origin}${window.location.pathname}`;
 }
 
-export function startGoogleAnalytics(id: string): void {
+/** Never lets an insight's title reach Google through document.title (decisions 28 and 32). */
+export function setGooglePageTitle(pathname: string): void {
+  const gtag = googleWindow().gtag;
+  if (typeof gtag === 'function') {
+    gtag('set', { page_title: analyticsPageTitle(pathname) });
+  }
+}
+
+export function startGoogleAnalytics(id: string, pathname = window.location.pathname): void {
   const win = googleWindow();
   const gtag = win.gtag;
   if (typeof gtag !== 'function') {
@@ -41,6 +50,7 @@ export function startGoogleAnalytics(id: string): void {
   gtag('consent', 'update', { analytics_storage: 'granted' });
   if (document.getElementById(GA_SCRIPT_ID) === null) {
     gtag('js', new Date());
+    setGooglePageTitle(pathname);
     gtag('config', id, {
       allow_google_signals: false,
       allow_ad_personalization_signals: false,

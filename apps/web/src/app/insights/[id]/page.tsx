@@ -10,6 +10,8 @@ import { messages } from '@/messages';
 // Read at each request: a withdrawal must show at once (the API answers no-store).
 export const dynamic = 'force-dynamic';
 
+const NOT_SHOWN: ReadonlySet<number> = new Set([400, 404, 422]);
+
 type Props = { params: Promise<{ id: string }> };
 
 async function load(params: Props['params']) {
@@ -18,8 +20,8 @@ async function load(params: Props['params']) {
     notFound();
   }
   const result = await loadPublicInsight(id);
-  if (!result.ok && result.status === 404) {
-    // Unknown, unpublished and withdrawn are one answer, with nothing to tell them apart.
+  if (!result.ok && NOT_SHOWN.has(result.status)) {
+    // Unknown, unpublished, withdrawn and malformed are one answer, with nothing to tell them apart.
     notFound();
   }
   return { id, result };

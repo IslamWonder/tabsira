@@ -8,10 +8,11 @@ import { dropQueuedEvents, flushEvents, track } from './events';
 import {
   GA_SCRIPT_ID,
   pauseGoogleAnalytics,
+  setGooglePageTitle,
   startGoogleAnalytics,
   stopGoogleAnalytics,
 } from './google';
-import { isExcludedPath } from './paths';
+import { analyticsPageTitle, isExcludedPath, isHeatmapExcludedPath } from './paths';
 
 const gtag = vi.fn();
 const sent = () => gtag.mock.calls.filter(([command]) => command === 'event');
@@ -65,6 +66,24 @@ describe('the pages where no tool runs', () => {
     for (const path of ['/', '/world', '/terms', '/mex', '/device', '/signing']) {
       expect(isExcludedPath(path), path).toBe(false);
     }
+  });
+});
+
+describe('public insights and the tools', () => {
+  it('keep GA on but no heatmap, and give analytics a fixed title instead of the insight title', () => {
+    expect(isExcludedPath('/insights/1')).toBe(false);
+    for (const path of ['/insights', '/insights/1', '/me']) {
+      expect(isHeatmapExcludedPath(path), path).toBe(true);
+    }
+    expect(isHeatmapExcludedPath('/insightsx')).toBe(false);
+    expect(analyticsPageTitle('/insights/1')).toBe('/insights/[id]');
+    expect(analyticsPageTitle('/insights')).toBe('/insights/[id]');
+    expect(analyticsPageTitle('/world')).toBeUndefined();
+  });
+
+  it('does not throw without gtag when the title is set', () => {
+    vi.stubGlobal('gtag', undefined);
+    expect(() => setGooglePageTitle('/insights/1')).not.toThrow();
   });
 });
 

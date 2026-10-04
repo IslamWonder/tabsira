@@ -1,10 +1,10 @@
+import { SparkIcon } from '@/components/icons';
 import { LinkButton } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { Notice } from '@/components/ui/notice';
-import { formatDay } from '@/lib/dates';
+import { DISPLAY_TIME_ZONE, formatDay } from '@/lib/dates';
 import type { PublicInsight } from '@/lib/public-insight';
 import { messages } from '@/messages';
-import { DisclosureLine } from './disclosure-line';
 import { EngineLabel } from './engine-label';
 import { ExplanationSections } from './explanation-sections';
 import { InsightEvidence } from './insight-evidence';
@@ -84,7 +84,7 @@ export function PublicInsightPage({ insight }: { insight: PublicInsight }) {
           {insight.author === null ? null : <Author author={insight.author} />}
           <p className="m-0 text-[0.8125rem] text-fg-muted">
             <time dateTime={insight.published_at}>
-              {T.publishedOn(formatDay(insight.published_at))}
+              {T.publishedOn(formatDay(insight.published_at, DISPLAY_TIME_ZONE))}
             </time>
           </p>
         </header>
@@ -97,7 +97,10 @@ export function PublicInsightPage({ insight }: { insight: PublicInsight }) {
         <ExplanationSections tag={insight.explanation_tag} parts={insight.explanation} />
         {insight.small_step === null ? null : <SmallStep step={insight.small_step} />}
         {/* The share action and the share image of task 09.3 go here, after the content and before the invitation. */}
-        <DisclosureLine />
+        <p className="m-0 flex items-center justify-center gap-1.5 text-center text-[0.8125rem] text-fg-muted leading-relaxed">
+          <SparkIcon width="15" height="15" className="shrink-0" />
+          {insight.disclosure}
+        </p>
       </article>
       <Invitation />
     </div>
