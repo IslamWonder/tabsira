@@ -9,6 +9,7 @@ import type { Insight } from '@/lib/scan/api';
 import { journeyFailureMessage } from '@/lib/scan/failure';
 import { messages } from '@/messages';
 import { DisclosureLine } from './disclosure-line';
+import { InsightEvidence } from './insight-evidence';
 
 const T = messages.insightPage.chat;
 /** The API's limit of a question (apps/api/src/schemas/insight.py). */
@@ -35,6 +36,9 @@ function mayRetry(failure: Failure): boolean {
  * gets a new key when it is changed. The AI disclosure stays in view
  * (master prompt §12), and the title of the insight is the sheet's own
  * description, so the reader knows what they are asking about (Working memory).
+ * An answer that found another text (v2 §14) shows it under the answer with the
+ * same evidence cards as the insight: the store's text, byte for byte, with its
+ * fixed tag, reference and links; the model's words never carry scripture.
  */
 export function ChatSheet({ open, onClose, insightTitle, chat, onAsk }: ChatSheetProps) {
   const [draft, setDraft] = useState('');
@@ -94,6 +98,17 @@ export function ChatSheet({ open, onClose, insightTitle, chat, onAsk }: ChatShee
                   <br />
                   {message.answer}
                 </p>
+                {message.quran || message.hadith ? (
+                  <InsightEvidence
+                    headingLevel={3}
+                    insight={{
+                      quran: message.quran ?? null,
+                      hadith: message.hadith ?? null,
+                      hadith_status: message.hadith ? 'shown' : 'none',
+                      notice: null,
+                    }}
+                  />
+                ) : null}
               </li>
             ))}
           </ol>

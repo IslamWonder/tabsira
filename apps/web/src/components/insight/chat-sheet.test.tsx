@@ -3,8 +3,22 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { Failure } from '@/lib/api/result';
 import type { Insight } from '@/lib/scan/api';
-import { chatReply, insightOut } from '@/test/scan';
+import { chatReply, HADITH_TEXT, insightOut, sha256, VERSE_TEXT } from '@/test/scan';
 import { ChatSheet } from './chat-sheet';
+
+function bytes(text: string) {
+  return Array.from(new TextEncoder().encode(text));
+}
+
+/** A message whose answer found the insight fixture's texts, as the API returns them. */
+function replyWithTexts() {
+  const { quran, hadith } = insightOut();
+  const found = {
+    quran: quran === null ? null : { tag: quran.tag, verse: quran.verse },
+    hadith: hadith === null ? null : { tag: hadith.tag, hadith: hadith.hadith },
+  };
+  return { ...chatReply().message, kind: 'new_search' as const, ...found };
+}
 
 function failure(code: Failure['code'], status: number): Failure {
   return { ok: false, code, status, fields: [], retryAfter: null };
@@ -34,6 +48,50 @@ describe('ChatSheet', () => {
     expect(within(sheet).getByText('ما معنى هذا؟')).toBeInTheDocument();
     expect(within(sheet).getByText('جواب الاختبار.')).toBeInTheDocument();
     expect(within(sheet).queryByText('لم تسأل شيئًا بعد.')).toBeNull();
+  });
+
+  it('renders a message without texts as before: no evidence card under the answer', () => {
+    const reply = chatReply().message;
+    const { sheet } = renderChat(chatWith({ used: 1, remaining: 2, messages: [reply] }));
+    expect(within(sheet).queryByRole('article')).toBeNull();
+    expect(sheet.querySelector('[data-scripture]')).toBeNull();
+  });
+
+  it('shows a found verse and hadith under the answer, byte for byte, matching their stored hashes', () => {
+    const reply = replyWithTexts();
+    const { sheet } = renderChat(chatWith({ used: 1, remaining: 2, messages: [reply] }));
+    const item = within(sheet).getByText('جواب الاختبار.').closest('li') as HTMLElement;
+    const quran = within(item).getByRole('article', { name: 'القرآن' });
+    const sunnah = within(item).getByRole('article', { name: 'السنة' });
+    const verse = quran.querySelector('[data-scripture="quran"]')?.textContent as string;
+    const hadith = sunnah.querySelector('[data-scripture="hadith"]')?.textContent as string;
+    expect(bytes(verse)).toEqual(bytes(VERSE_TEXT));
+    expect(bytes(hadith)).toEqual(bytes(HADITH_TEXT));
+    expect(sha256(verse)).toBe(reply.quran?.verse.sha256);
+    expect(sha256(hadith)).toBe(reply.hadith?.hadith.sha256);
+    expect(within(quran).getByText('سورة اختبار، الآية 50')).toBeInTheDocument();
+    expect(within(sunnah).getByRole('link', { name: /تحقق في الدرر/ })).toHaveAttribute(
+      'href',
+      'https://dorar.net/hadith/search?q=test'
+    );
+    // The cards sit under the sheet's own h2 title.
+    expect(within(quran).getByRole('heading', { level: 3 })).toHaveTextContent('القرآن');
+    expect(within(sunnah).getByRole('heading', { level: 3 })).toHaveTextContent('السنة');
+  });
+
+  it('shows a found verse alone, with no notice and no hadith card', () => {
+    const reply = { ...replyWithTexts(), hadith: null };
+    const { sheet } = renderChat(chatWith({ used: 1, remaining: 2, messages: [reply] }));
+    expect(within(sheet).getByRole('article', { name: 'القرآن' })).toBeInTheDocument();
+    expect(within(sheet).queryByRole('article', { name: 'السنة' })).toBeNull();
+    expect(within(sheet).getAllByRole('status')).toHaveLength(1);
+  });
+
+  it('shows a found hadith alone', () => {
+    const reply = { ...replyWithTexts(), quran: null };
+    const { sheet } = renderChat(chatWith({ used: 1, remaining: 2, messages: [reply] }));
+    expect(within(sheet).queryByRole('article', { name: 'القرآن' })).toBeNull();
+    expect(within(sheet).getByRole('article', { name: 'السنة' })).toBeInTheDocument();
   });
 
   it('sends one question with a key, and clears the field once it is answered', async () => {
