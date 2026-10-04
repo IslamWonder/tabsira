@@ -18,6 +18,7 @@ sensitivity guard and the insight engine, with the real providers. Then:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import statistics
 import time
@@ -266,9 +267,13 @@ async def evaluate_scene(
         )
         checked = await check_result(session, expectation, result, quran)
     except (AiCallError, ScriptureLeakError) as error:
-        moderation.cancel()
         status = "vision_failed" if isinstance(error, AiCallError) else "vision_leak"
         checked = {"status": status, "correct": False}
+    finally:
+        if not moderation.done():
+            moderation.cancel()
+            with contextlib.suppress(BaseException):
+                await moderation
     return SceneRun(
         scene=prepared.gold.id,
         expected=expectation.expect,

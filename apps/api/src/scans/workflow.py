@@ -20,6 +20,7 @@ whatever the outcome.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import io
 import logging
 import time
@@ -60,7 +61,7 @@ from src.pipeline.schemas import (
     SceneEntity,
     SceneRequest,
 )
-from src.pipeline.sensitivity import moderate, with_moderation
+from src.pipeline.sensitivity import Moderation, moderate, with_moderation
 from src.scans import buffer, progress
 from src.scans.accept import accept
 from src.scans.engines import EngineDeps, EngineFactory
@@ -328,14 +329,15 @@ async def _understand(job: Run, client: ModelClient) -> SceneAnalysis:
     with Image.open(io.BytesIO(data)) as decoded:
         width, height = decoded.size
     image = EncodedImage(data=data, width=width, height=height)
-    # The moderation looks at the photo alone, so it runs while the scene is described.
+    # The moderation looks at the photo alone, so it runs while the scene is described;
+    # its trace time runs from its start, overlapping the description.
+    started = services.timer()
     moderation = asyncio.create_task(moderate(image, client=client))
     try:
         scene = await _describe(job, client, image)
     except BaseException:
-        moderation.cancel()
+        await _stop(moderation)
         raise
-    started = services.timer()
     scene = with_moderation(scene, await moderation)
     guard = scene.guard
     job.trace.add(
@@ -364,6 +366,13 @@ async def _understand(job: Run, client: ModelClient) -> SceneAnalysis:
         )
         await db.commit()
     return scene
+
+
+async def _stop(task: asyncio.Task[Moderation]) -> None:
+    """Cancel the moderation of a scan that ended, and wait until it has stopped."""
+    task.cancel()
+    with contextlib.suppress(BaseException):
+        await task
 
 
 async def _describe(job: Run, client: ModelClient, image: EncodedImage) -> SceneAnalysis:
