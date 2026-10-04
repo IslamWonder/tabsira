@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.ai.client import ModelClient, client_for
 from src.ai.records import CallLog
-from src.config import AiStage, Settings, get_settings
+from src.config import AiStage, RerankerKind, Settings, get_settings
 from src.database import dispose_engine, get_sessionmaker
 from src.evaluation.benchmark import prepare_scenes
 from src.evaluation.engine_eval import (
@@ -42,7 +42,7 @@ from src.evaluation.gold import load_gold
 from src.evaluation.report_sections import carry_sections
 from src.pipeline.detector import DetectorClient
 from src.pipeline.engine import InsightEngine
-from src.pipeline.insight.engine import ResourceCache, build_engine
+from src.pipeline.insight.engine import ResourceCache, active_reranker, build_engine
 from src.pipeline.insight.guard import quran_detector
 
 API_DIR = Path(__file__).resolve().parents[2]
@@ -68,6 +68,16 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     args.scenes = [name for name in args.scenes.split(",") if name]
     return args
+
+
+def models_of(settings: Settings) -> dict[str, str]:
+    """Name the model of each measured stage, and what reranked."""
+    models = {stage.value: settings.ai.model_for(stage) for stage in STAGES}
+    kind = active_reranker(settings)
+    models[AiStage.RERANK.value] = (
+        settings.ai.rerank_model if kind is RerankerKind.LLM else kind.value
+    )
+    return models
 
 
 def _relative(path: Path) -> str:
@@ -128,7 +138,7 @@ async def run(
                 factory or factory_for(settings, transport, maker),
                 await quran_detector(session),
                 provider=settings.ai_provider.value,
-                models={stage.value: settings.ai.model_for(stage) for stage in STAGES},
+                models=models_of(settings),
                 max_cost_usd=args.max_cost,
                 on_scene=_progress,
             )
