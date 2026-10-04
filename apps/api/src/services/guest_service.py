@@ -137,15 +137,18 @@ async def _delete_unlinked_rows(db: AsyncSession, keys: list[str]) -> None:
     await db.execute(delete(EvidenceExposure).where(EvidenceExposure.guest_key.in_(keys)))
 
 
-async def merge_into_user(db: AsyncSession, key: str, user_id: uuid.UUID) -> bool:
+async def merge_into_user(
+    db: AsyncSession, settings: Settings, key: str, user_id: uuid.UUID
+) -> bool:
     """
-    Move everything a guest saved to an account, then delete the guest; say whether it existed.
+    Move everything a live guest saved to an account, then delete it; say whether it merged.
 
-    A place the account already has absorbs the guest's place of the same
-    region (its insights, treasures and threads move to it); learner unit rows
-    are added together.
+    A guest past GUEST_TTL_DAYS is not merged: it is due for deletion. A place
+    the account already has absorbs the guest's place of the same region (its
+    insights, treasures and threads move to it); learner unit rows are added together.
     """
-    if await db.get(Guest, key) is None:
+    guest = await db.get(Guest, key)
+    if guest is None or guest.last_seen_at < _expired_before(settings):
         return False
     await _merge_places(db, key, user_id)
     for model in (Scan, Insight):

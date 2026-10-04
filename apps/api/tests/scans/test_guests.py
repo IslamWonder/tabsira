@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import timedelta
 
 from fastapi import FastAPI, Response
 from sqlalchemy import select
@@ -136,11 +137,19 @@ async def test_the_owner_of_a_request(maker, flow_settings):
             Owner(user_id=user.id)
         )
 
-        response = Response()
-        kept = await owner_for_write(response, db, flow_settings, Owner(guest_key=guest.key))
+        renewed = Response()
+        kept = await owner_for_write(
+            request_with({name: signed}), renewed, db, flow_settings, Owner(guest_key=guest.key)
+        )
         assert kept == Owner(guest_key=guest.key)
-        assert "set-cookie" not in response.headers
-        made = await owner_for_write(response, db, flow_settings, None)
+        assert renewed.headers["set-cookie"].startswith(f"{name}={signed}")
+        account = Response()
+        assert await owner_for_write(
+            request_with({name: signed}), account, db, flow_settings, Owner(user_id=user.id)
+        ) == Owner(user_id=user.id)
+        assert "set-cookie" not in account.headers
+        response = Response()
+        made = await owner_for_write(request_with({}), response, db, flow_settings, None)
         assert made.guest_key is not None
         assert made.guest_key != guest.key
         assert response.headers["set-cookie"].startswith(name)
@@ -223,9 +232,13 @@ async def test_merging_a_guest_moves_everything_it_saved_to_the_account(store, f
         )
         await db.commit()
 
-        assert await guest_service.merge_into_user(db, key, user.id)
+        stale = Guest(key="d" * 64, last_seen_at=clock.utcnow() - timedelta(days=91))
+        db.add(stale)
+        await db.flush()
+        assert not await guest_service.merge_into_user(db, flow_settings, stale.key, user.id)
+        assert await guest_service.merge_into_user(db, flow_settings, key, user.id)
         await db.commit()
-        assert not await guest_service.merge_into_user(db, key, user.id)
+        assert not await guest_service.merge_into_user(db, flow_settings, key, user.id)
 
         assert await db.get(Guest, key) is None
         assert (await db.scalars(select(Scan.user_id))).all() == [user.id]

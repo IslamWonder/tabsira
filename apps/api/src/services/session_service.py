@@ -127,7 +127,7 @@ async def start_for_request(
     # What this browser saved as a guest joins the account (v2 §15).
     guest = guest_service.cookie_token(request, settings)
     if guest is not None:
-        await guest_service.merge_into_user(db, guest_service.key_of(guest), user_id)
+        await guest_service.merge_into_user(db, settings, guest_service.key_of(guest), user_id)
     return token
 
 

@@ -91,10 +91,18 @@ OptionalOwner = Annotated[Owner | None, Depends(optional_owner)]
 
 
 async def owner_for_write(
-    response: Response, db: DbDep, settings: SettingsDep, owner: OptionalOwner
+    request: Request, response: Response, db: DbDep, settings: SettingsDep, owner: OptionalOwner
 ) -> Owner:
-    """Return the caller as an owner, making a guest (and its cookie) for a newcomer."""
+    """
+    Return the caller as an owner, making a guest (and its cookie) for a newcomer.
+
+    A guest that saves something gets its cookie again, so a guest that keeps
+    coming back keeps its cookie as long as the server keeps its rows.
+    """
     if owner is not None:
+        token = guest_service.cookie_token(request, settings) if owner.is_guest else None
+        if token is not None:
+            guest_service.set_cookie(response, settings, token)
         return owner
     token, guest = await guest_service.create(db, settings)
     await db.commit()
