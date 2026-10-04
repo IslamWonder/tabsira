@@ -279,6 +279,8 @@ async def test_timeouts_and_network_errors_are_retried():
     [
         (httpx.ReadTimeout("slow"), AiErrorCode.TIMEOUT),
         (httpx.ConnectError("refused"), AiErrorCode.NETWORK),
+        (httpx.ConnectTimeout("no route"), AiErrorCode.NETWORK),
+        (httpx.PoolTimeout("busy"), AiErrorCode.TIMEOUT),
         (httpx.Response(401, json={"error": {"message": "bad key"}}), AiErrorCode.UNAUTHORIZED),
         (httpx.Response(403, json=["forbidden"]), AiErrorCode.UNAUTHORIZED),
         (httpx.Response(404, json={"error": {"message": "no model"}}), AiErrorCode.NOT_FOUND),

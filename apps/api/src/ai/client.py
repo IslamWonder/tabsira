@@ -330,6 +330,9 @@ class ProviderClient(ModelClient):
         headers = {"Authorization": f"Bearer {self._settings.api_key.get_secret_value()}"}
         try:
             response = await self._http.post(url, json=body, headers=headers, timeout=self._timeout)
+        except httpx.ConnectTimeout:
+            # No connection was made: the network, not the provider's speed.
+            raise AiCallError(AiErrorCode.NETWORK, "cannot reach the provider") from None
         except httpx.TimeoutException:
             raise AiCallError(AiErrorCode.TIMEOUT, "the provider did not answer in time") from None
         except httpx.TransportError as error:
