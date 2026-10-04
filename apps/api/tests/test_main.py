@@ -56,6 +56,7 @@ async def test_production_serves_the_schema_but_not_the_interactive_docs(make_se
         admin_totp_encryption_key="AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
         ai_ovh={"api_key": "ovh-key-123"},
         ai_openai={"api_key": "openai-key-123"},
+        redis_password="redis-secret",
     )
     async with client_for(main.create_app(settings)) as client:
         assert (await client.get("/openapi.json")).status_code == 200
