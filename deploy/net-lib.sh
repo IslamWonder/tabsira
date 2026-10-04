@@ -43,3 +43,19 @@ require_app_host() {
 	[[ -n "${APP_HOST_VPN_IP:-}" ]] || die "Set APP_HOST_VPN_IP to the application host's Netbird address."
 	is_ipv4 "$APP_HOST_VPN_IP" || die "APP_HOST_VPN_IP '$APP_HOST_VPN_IP' must be a single IPv4 address, not a network."
 }
+
+# Let a service bind an address that is not up yet. Netbird adds its address a
+# little after boot, and nginx, PostgreSQL and Redis bind it by name: without
+# this one of them can fail to start on a reboot and stay down. Connections to
+# that address simply wait until it exists.
+NONLOCAL_BIND_SYSCTL=/etc/sysctl.d/90-tabsira-nonlocal-bind.conf
+NONLOCAL_BIND_CONTENT='# Written by deploy/. The VPN address may appear after the services that bind it.
+net.ipv4.ip_nonlocal_bind = 1'
+install_nonlocal_bind() {
+	if is_dry; then
+		echo "      would write $NONLOCAL_BIND_SYSCTL (net.ipv4.ip_nonlocal_bind = 1) and load it"
+		return 0
+	fi
+	printf '%s\n' "$NONLOCAL_BIND_CONTENT" >"$NONLOCAL_BIND_SYSCTL"
+	sysctl -q -p "$NONLOCAL_BIND_SYSCTL" >/dev/null
+}
