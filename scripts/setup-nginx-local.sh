@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# Put https://tabsira.test and https://api.tabsira.test behind the machine's
+# Put https://tabsira.test, https://api.tabsira.test and https://admin.tabsira.test behind the machine's
 # nginx, with a certificate from mkcert (a local certificate authority that your
 # browser and curl trust once `mkcert -install` has run).
 #
 #   https://tabsira.test      -> web  127.0.0.1:3000
 #   https://api.tabsira.test  -> API  127.0.0.1:8000
+#   https://admin.tabsira.test -> API  127.0.0.1:8000, /admin only
 #
 # What it changes, and nothing else:
 #   - /etc/nginx/sites-available/tabsira.test.conf and its sites-enabled link
 #   - /etc/nginx/certs/tabsira.test.pem and tabsira.test-key.pem
-#   - /etc/hosts: one line naming the two hosts (when they are not there yet)
+#   - /etc/hosts: one line naming the three hosts (when they are not there yet)
 #   - the mkcert certificate authority in ~/.local/share/mkcert, trusted by the
 #     system store and your browsers (`mkcert -install`, one time)
 # Other nginx sites are never touched: no default site is removed, and the
@@ -25,7 +26,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "$SCRIPT_DIR/lib.sh"
 
 MKCERT_VERSION="${MKCERT_VERSION:-1.4.4}"
-HOSTS=(tabsira.test api.tabsira.test)
+HOSTS=(tabsira.test api.tabsira.test admin.tabsira.test)
 SITE="tabsira.test"
 CONF_SRC="$REPO_ROOT/nginx/local/$SITE.conf"
 CERT_DIR_LOCAL="$REPO_ROOT/nginx/local/certs"
@@ -154,11 +155,12 @@ log "Reloading nginx"
 as_root systemctl reload nginx 2>/dev/null || as_root nginx -s reload
 ROLLBACK=false
 
-ok "https://tabsira.test and https://api.tabsira.test are served by nginx"
+ok "https://tabsira.test, https://api.tabsira.test and https://admin.tabsira.test are served by nginx"
 cat <<EOF
 
   Web   https://tabsira.test      -> 127.0.0.1:3000
   API   https://api.tabsira.test  -> 127.0.0.1:8000
+  Admin https://admin.tabsira.test -> 127.0.0.1:8000 (/admin)
 
   A 502 Bad Gateway is expected until the apps run: make dev
   Chrome, Edge and curl trust the certificate through the system store.
