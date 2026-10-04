@@ -20,6 +20,9 @@ from src.config import (
 )
 
 PASSWORD = "s3cr3t-pw"
+# A Fernet key: 32 bytes as url-safe base64. Only ever used by these tests.
+FERNET_KEY = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
+OTHER_FERNET_KEY = "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8="
 DATABASE_URL = f"postgresql+asyncpg://tabsira:{PASSWORD}@127.0.0.1:5432/tabsira"
 SYNC_URL = f"postgresql+psycopg://tabsira:{PASSWORD}@127.0.0.1:5432/tabsira"
 PRODUCTION = {
@@ -31,6 +34,7 @@ PRODUCTION = {
     "session_cookie_domain": ".tabsira.me",
     "hash_secret": "not-a-real-secret-but-long-enough-for-the-rule",
     "ai_provider": "ovh",
+    "admin_totp_encryption_key": FERNET_KEY,
     "ai_ovh": {"api_key": "ovh-key-123"},
 }
 
@@ -850,3 +854,53 @@ def test_production_refuses_a_development_public_media_address():
 
 def test_production_accepts_a_real_s3_configuration(make_settings):
     assert make_settings(**PRODUCTION, **S3).storage_backend == "s3"
+
+
+# ─── Admin area ────────────────────────────────────────────────────
+
+
+def test_the_admin_settings_have_safe_defaults(make_settings):
+    settings = make_settings()
+
+    assert settings.feature_admin is True
+    assert settings.admin_require_two_factor is False
+    assert settings.admin_audit_retention_days == 400
+    assert settings.admin_audit_compress_after_days == 30
+    assert settings.admin_totp_encryption_key.get_secret_value() == ""
+
+
+def test_an_empty_totp_key_derives_one_from_the_hash_key_and_a_set_one_wins(make_settings):
+    derived = make_settings(hash_secret="one-secret-of-the-installation").admin_totp_keys
+    other = make_settings(hash_secret="another-secret-of-the-installation").admin_totp_keys
+    configured = make_settings(admin_totp_encryption_key=f" {FERNET_KEY} , {OTHER_FERNET_KEY},")
+
+    # Each is a Fernet key, and the derivation depends on the installation's secret.
+    assert len(derived) == 1
+    assert derived != other
+    assert configured.admin_totp_keys == (FERNET_KEY.encode(), OTHER_FERNET_KEY.encode())
+
+
+@pytest.mark.parametrize("bad", ["not-a-key", "AAECAwQ=", f"{FERNET_KEY},oops"])
+def test_a_totp_key_that_is_not_a_fernet_key_is_refused_without_being_echoed(bad):
+    message = errors_of(admin_totp_encryption_key=bad)
+
+    assert "ADMIN_TOTP_ENCRYPTION_KEY: must hold one or more Fernet keys" in message
+    assert bad not in message
+
+
+def test_compression_must_start_before_the_retention_ends():
+    message = errors_of(admin_audit_retention_days=60, admin_audit_compress_after_days=60)
+
+    assert "ADMIN_AUDIT_COMPRESS_AFTER_DAYS must be under ADMIN_AUDIT_RETENTION_DAYS" in message
+    assert "ADMIN_AUDIT_RETENTION_DAYS" in errors_of(admin_audit_retention_days=29)
+
+
+def test_production_refuses_the_admin_without_an_encryption_key_but_not_when_it_is_off(
+    make_settings,
+):
+    without_key = {**PRODUCTION, "admin_totp_encryption_key": ""}
+
+    assert "ADMIN_TOTP_ENCRYPTION_KEY is empty while FEATURE_ADMIN is on" in errors_of(
+        **without_key
+    )
+    assert make_settings(**without_key, feature_admin=False).feature_admin is False

@@ -9,6 +9,8 @@ Secrets are `SecretStr`, so printing or logging a `Settings` never shows them.
 
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import os
 import re
@@ -53,6 +55,12 @@ DEV_GOOGLE_REDIRECT_URI = f"{DEV_API_URL}/auth/google/callback"
 MIN_HASH_SECRET_LENGTH = 32
 # The bcrypt work factor production must not go under.
 MIN_PRODUCTION_BCRYPT_ROUNDS = 12
+
+# Admin area. The audit log is a hypertable: it keeps this many days, and the chunks
+# older than the second value are compressed. A Fernet key is 32 random bytes.
+DEFAULT_AUDIT_RETENTION_DAYS = 400
+DEFAULT_AUDIT_COMPRESS_AFTER_DAYS = 30
+FERNET_KEY_BYTES = 32
 
 # Where transactional mail says it comes from. The sending domain is the real one
 # in development too: .test is not a mail domain.
@@ -291,6 +299,19 @@ def _domain_is_test(domain: str) -> bool:
     return host == "test" or host.endswith(".test")
 
 
+def _split_keys(raw: str) -> list[str]:
+    """Return the comma-separated keys of a setting, trimmed, without the empty ones."""
+    return [key.strip() for key in raw.split(",") if key.strip()]
+
+
+def _is_fernet_key(key: str) -> bool:
+    """Whether `key` is 32 bytes as url-safe base64: what a Fernet key is."""
+    try:
+        return len(base64.urlsafe_b64decode(key.encode())) == FERNET_KEY_BYTES
+    except (binascii.Error, ValueError):
+        return False
+
+
 def _check_postgres_url(value: SecretStr, driver: str) -> SecretStr:
     """Validate a database URL without ever echoing it back in an error."""
     try:
@@ -361,6 +382,21 @@ class Settings(BaseSettings):
     hash_secret: SecretStr = SecretStr("")
     # bcrypt work factor. Tests lower it; production may not go under 12.
     password_bcrypt_rounds: Annotated[int, Field(ge=4, le=16)] = 12
+
+    # Admin area (/admin, decision 14), mounted only while FEATURE_ADMIN is on. The
+    # second-factor secrets are encrypted at rest with these Fernet keys, comma
+    # separated: the first encrypts, every one decrypts, so a key is rotated by putting
+    # the new one first. Required in production when the admin is on; elsewhere empty
+    # derives a key from HASH_SECRET.
+    admin_totp_encryption_key: SecretStr = SecretStr("")
+    # Whether an admin who has not enrolled the second factor may use the admin area
+    # at all: when true, they can only reach the page that enrols it.
+    admin_require_two_factor: bool = False
+    # The audit log keeps this many days, and compresses chunks older than the second value.
+    admin_audit_retention_days: Annotated[int, Field(ge=30, le=3650)] = DEFAULT_AUDIT_RETENTION_DAYS
+    admin_audit_compress_after_days: Annotated[int, Field(ge=1, le=365)] = (
+        DEFAULT_AUDIT_COMPRESS_AFTER_DAYS
+    )
 
     # Rate limiting of sign-in and sign-up, kept in PostgreSQL.
     auth_attempt_window_seconds: Annotated[int, Field(ge=1)] = 900
@@ -531,6 +567,19 @@ class Settings(BaseSettings):
             raise ValueError(message)
         return value
 
+    @field_validator("admin_totp_encryption_key")
+    @classmethod
+    def _check_totp_keys(cls, value: SecretStr) -> SecretStr:
+        """Every comma-separated key must be a Fernet key; never echo one back."""
+        raw = value.get_secret_value()
+        if raw and not all(_is_fernet_key(key) for key in _split_keys(raw)):
+            message = (
+                "must hold one or more Fernet keys (32 random bytes as url-safe base64), "
+                "comma separated"
+            )
+            raise ValueError(message)
+        return value
+
     @field_validator("google_client_id")
     @classmethod
     def _strip_client_id(cls, value: str) -> str:
@@ -549,6 +598,7 @@ class Settings(BaseSettings):
     @classmethod
     def _check_detector_url(cls, value: str) -> str:
         return _origin(value)
+
     @field_validator("glitchtip_dsn", "glitchtip_web_dsn")
     @classmethod
     def _check_glitchtip_dsn(cls, value: SecretStr) -> SecretStr:
@@ -628,6 +678,14 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def _check_audit_windows(self) -> Self:
+        """Compression waits for part of the retention, never all of it."""
+        if self.admin_audit_compress_after_days >= self.admin_audit_retention_days:
+            message = "ADMIN_AUDIT_COMPRESS_AFTER_DAYS must be under ADMIN_AUDIT_RETENTION_DAYS"
+            raise ValueError(message)
+        return self
+
+    @model_validator(mode="after")
     def _refuse_unsafe_production(self) -> Self:
         """Stop a production process that still carries development values."""
         if self.environment != Environment.PRODUCTION:
@@ -643,7 +701,12 @@ class Settings(BaseSettings):
         problems = [
             f"{name} points at the development host {url}"
             for name, url in (
-                [("SITE_URL", self.site_url), ("API_URL", self.api_url)]
+                [
+                    ("SITE_URL", self.site_url),
+                    ("API_URL", self.api_url),
+                    ("WEB_BASE_URL", self.web_base_url),
+                    ("S3_PUBLIC_BASE_URL", self.s3_public_base_url),
+                ]
                 + [("CORS_ORIGINS", origin) for origin in self.cors_origins]
             )
             if _host_is_test_domain(url)
@@ -658,17 +721,16 @@ class Settings(BaseSettings):
             problems.append(f"HASH_SECRET must hold at least {MIN_HASH_SECRET_LENGTH} characters")
         if self.password_bcrypt_rounds < MIN_PRODUCTION_BCRYPT_ROUNDS:
             problems.append(f"PASSWORD_BCRYPT_ROUNDS is under {MIN_PRODUCTION_BCRYPT_ROUNDS}")
-        if self.web_base_url and _host_is_test_domain(self.web_base_url):
-            problems.append(f"WEB_BASE_URL points at the development host {self.web_base_url}")
         for name, dsn in (
             ("GLITCHTIP_DSN", self.glitchtip_dsn),
             ("GLITCHTIP_WEB_DSN", self.glitchtip_web_dsn),
         ):
             if dsn.get_secret_value() and _host_is_test_domain(dsn.get_secret_value()):
                 problems.append(f"{name} points at a development host")
-        if self.s3_public_base_url and _host_is_test_domain(self.s3_public_base_url):
+        if self.feature_admin and not self.admin_totp_encryption_key.get_secret_value():
             problems.append(
-                f"S3_PUBLIC_BASE_URL points at the development host {self.s3_public_base_url}"
+                "ADMIN_TOTP_ENCRYPTION_KEY is empty while FEATURE_ADMIN is on "
+                "(set a key, or turn the admin area off)"
             )
         if self.google_configured:
             if not self.google_client_secret.get_secret_value():
@@ -738,6 +800,20 @@ class Settings(BaseSettings):
             b"tabsira-hash-key:" + self.database_url.get_secret_value().encode()
         )
         return derived.digest()
+
+    @property
+    def admin_totp_keys(self) -> tuple[bytes, ...]:
+        """
+        The Fernet keys that protect the second-factor secrets, the encrypting one first.
+
+        Production must set ADMIN_TOTP_ENCRYPTION_KEY. Elsewhere an empty one derives a
+        key from `hash_key`, so a development database needs no extra secret.
+        """
+        configured = _split_keys(self.admin_totp_encryption_key.get_secret_value())
+        if configured:
+            return tuple(key.encode() for key in configured)
+        derived = hashlib.sha256(b"tabsira-admin-totp-key:" + self.hash_key).digest()
+        return (base64.urlsafe_b64encode(derived),)
 
     @property
     def ai(self) -> ProviderSettings:
