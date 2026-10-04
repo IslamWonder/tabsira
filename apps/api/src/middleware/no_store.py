@@ -8,10 +8,24 @@ from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 # The routes that answer about one person or set a session cookie: accounts,
-# sign-in, the profile, the consents and the export. Their responses carry
+# sign-in, the profile, the consents and the export, and the social routes, whose
+# answers carry the viewer's own likes, saves and follows. Their responses carry
 # `Cache-Control: no-store`, redirects and errors included, which is why this is
 # a middleware: a route that returns its own Response would escape a dependency.
-PRIVATE_PREFIXES = ("/auth", "/account", "/profile", "/consents", "/consent")
+PRIVATE_PREFIXES = (
+    "/auth",
+    "/account",
+    "/profile",
+    "/consents",
+    "/consent",
+    # The social network answers with what the viewer liked, saved and follows.
+    "/me/",
+    "/u/",
+    "/blocks",
+    "/posts",
+    "/feed",
+    "/reports",
+)
 
 
 class NoStoreMiddleware:

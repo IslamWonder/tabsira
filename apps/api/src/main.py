@@ -27,10 +27,12 @@ from src.routers import (
     geo,
     google_auth,
     health,
+    members,
     profile,
     scripture,
     sitemap,
 )
+from src.services.insight_source import InsightSource
 
 API_VERSION = "0.1.0"
 
@@ -50,6 +52,10 @@ OPENAPI_TAGS = [
     {"name": "scripture", "description": "Quran verses and hadith, read-only, exactly as stored."},
     {"name": "sitemap", "description": "The public pages for the web app's sitemaps."},
     {
+        "name": "members",
+        "description": "The public handle and name, public profiles, follows and blocks.",
+    },
+    {
         "name": "client-errors",
         "description": "Errors the browser saw, forwarded to GlitchTip when it is configured.",
     },
@@ -67,8 +73,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await dispose_engine()
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
-    """Build the application; `settings` defaults to the process-wide ones."""
+def create_app(
+    settings: Settings | None = None, *, insight_source: InsightSource | None = None
+) -> FastAPI:
+    """
+    Build the application; `settings` defaults to the process-wide ones.
+
+    `insight_source` is where the social network reads the insight a post publishes (see
+    `services/insight_source.py`); without one, publishing answers 503.
+    """
     settings = settings or get_settings()
     # Before the application exists: the SDK hooks the framework as it is assembled.
     init_error_tracking(settings, API_VERSION)
@@ -91,6 +104,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url=None if settings.is_production else "/redoc",
     )
     app.state.settings = settings
+    app.state.insight_source = insight_source
 
     register_error_handlers(app)
 
@@ -129,6 +143,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(client_errors.router)
     app.include_router(cookie_consent.router)
     app.include_router(sitemap.router)
+    app.include_router(members.router)
     # The admin area is not mounted at all while its feature flag is off.
     if settings.feature_admin:
         install_admin(app, settings)

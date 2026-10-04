@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +13,9 @@ from src.errors import AppError, ErrorCode
 from src.models.user import User
 from src.services import auth_service, session_service
 from src.services.google_oidc import GoogleOidc
+from src.services.insight_source import InsightSource
+from src.services.social_limits import WriteKind, get_social_limits
+from src.services.window_limiter import too_many_requests
 
 
 def get_app_settings(request: Request) -> Settings:
@@ -95,3 +98,61 @@ async def verified_user(user: CurrentUser) -> User:
 
 
 VerifiedUser = Annotated[User, Depends(verified_user)]
+
+
+async def public_member(user: VerifiedUser) -> User:
+    """
+    Return a verified user who has chosen a public handle and name.
+
+    Everything that puts a person's name on something other people read (a post, a
+    comment, a follow) depends on this: the account's own name may be a real one, and
+    only the identity chosen for the network is ever shown.
+    """
+    if user.handle is None or user.public_name is None:
+        raise AppError(
+            ErrorCode.PUBLIC_IDENTITY_REQUIRED,
+            "Choose a public handle and name first.",
+            status_code=409,
+        )
+    return user
+
+
+PublicMember = Annotated[User, Depends(public_member)]
+
+
+def require_social(settings: SettingsDep) -> None:
+    """Answer 404 for every social route while the network is switched off."""
+    if not settings.feature_social:
+        raise AppError(ErrorCode.NOT_FOUND, "Not found.", status_code=404)
+
+
+def get_insight_source(request: Request) -> InsightSource:
+    """
+    Return where publishable insights are read from.
+
+    The insights feature sets `app.state.insight_source` when it builds the application
+    (see `create_app`); until it does, publishing answers 503 rather than inventing
+    an insight.
+    """
+    source: InsightSource | None = getattr(request.app.state, "insight_source", None)
+    if source is None:
+        raise AppError(
+            ErrorCode.SERVICE_UNAVAILABLE,
+            "Publishing insights is not available yet.",
+            status_code=503,
+        )
+    return source
+
+
+InsightSourceDep = Annotated[InsightSource, Depends(get_insight_source)]
+
+
+def limited(kind: WriteKind) -> Any:
+    """Build the dependency that counts one write of `kind` against the caller's own budget."""
+
+    def enforce(request: Request, user: CurrentUser) -> None:
+        retry_after = get_social_limits(request).hit(kind, str(user.id))
+        if retry_after is not None:
+            raise too_many_requests(retry_after, "Too many actions. Try again later.")
+
+    return Depends(enforce)

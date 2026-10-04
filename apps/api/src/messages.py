@@ -52,3 +52,39 @@ CONSENT_BEHAVIOUR_DESCRIPTION = (
     "تُسجَّل حركة المؤشر والتمرير والنقرات على صفحات تبصرة لنعرف أين يتعثّر الناس."
     " تُستعمل لذلك خدمة Microsoft Clarity، وتُخفى فيها كل خانة كتابة وكل نص كتبه المستخدمون."
 )
+
+# ─── تبصرة تواصل: why a post is in the feed, and what happened to a post or a comment ───
+
+WHY_FOLLOWED_AUTHOR = "لأنك تتابع {name}"
+WHY_FRESH = "بصيرة نُشرت قبل قليل"
+WHY_NEW_TOPIC = "لتنويع ما تقرؤه: موضوع مختلف عمّا قبله"
+WHY_COMMUNITY = "من بصائر المجتمع"
+
+# The code a post or a comment carries as `status_reason`, and what the author is told.
+# A code that is not here gets OUTCOME_UNKNOWN: a moderator's reason is never shown raw.
+OUTCOME_GUARD_UNAVAILABLE = "تعذّرت المراجعة الآلية الآن، فسيراجعه مشرف قبل نشره."
+OUTCOME_GUARD_UNCERTAIN = "يحتاج إلى مراجعة مشرف قبل نشره."
+OUTCOME_REPORTED = "وصلتنا عنه بلاغات، فأُخفي مؤقتًا حتى يراجعه مشرف."
+OUTCOME_UNKNOWN = "لم يُقبل لأنه يخالف قواعد المجتمع."
+OUTCOME_REJECTED = "لم يُقبل لأنه يخالف قواعد المجتمع: {reason}."
+OUTCOME_REASONS: dict[str, str] = {
+    "guard_unavailable": OUTCOME_GUARD_UNAVAILABLE,
+    "guard_uncertain": OUTCOME_GUARD_UNCERTAIN,
+    "reported": OUTCOME_REPORTED,
+}
+# What a guard category, or a moderator's reason, is called when the author is told.
+REASON_LABELS: dict[str, str] = {
+    "harassment": "إساءة أو مضايقة",
+    "hate": "خطاب كراهية",
+    "sexual": "محتوى جنسي",
+    "violence": "عنف",
+    "self_harm": "إيذاء النفس",
+    "illicit": "نشاط غير مشروع",
+    "abuse": "إساءة أو مضايقة",
+    "spam": "محتوى مزعج أو إعلاني",
+    "false_religious_claim": "نسبة قول ديني إلى غير قائله",
+    "unauthorised_photo": "صورة منشورة دون إذن",
+    "private_information": "معلومات خاصة",
+    "wrong_place": "مكان غير صحيح",
+    "other": "مخالفة أخرى",
+}
