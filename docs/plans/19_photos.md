@@ -1,6 +1,6 @@
 # 19 · Consented photos
 
-**Phase:** 2 · **Priority:** High · **Status:** ✅ · **Updated:** 2026-10-04 21:52 (Tunis)
+**Phase:** 2 · **Priority:** High · **Status:** ✅ · **Updated:** 2026-10-04 22:06 (Tunis)
 
 The photo of a scan, kept with its owner's consent, shown to the public only by the owner's choice (v2 §15 and §19, decisions 8 and 44).
 
@@ -13,7 +13,7 @@ The photo of a scan, kept with its owner's consent, shown to the public only by 
 **How we check it**
 
 - Nothing is kept for a guest, an under-13 account, a sensitive scene, a withdrawn consent or a switched-off feature (tested, `tests/scans/test_photo_keep.py`).
-- The public copy exists exactly while a public post or a published map entry shows it; withdrawal, a moderator's removal and a withdrawn consent delete it (tested, `tests/test_photo_publication.py`).
+- The public copy exists exactly while a public post or a published map entry shows it; withdrawal, re-placing, a hold by reports, a moderator's removal or refusal and a withdrawn consent delete it (tested, `tests/test_photo_publication.py`); a deletion the store refused is reconciled by the worker and an hourly timer (tested, `tests/test_photo_reconcile.py`).
 - Deleting the account or the consent deletes both copies; a store that cannot be reached refuses the act with 503 (tested, `tests/test_account_photos.py`).
 - No response carries a storage key; the export says only which insights have a photo.
 - A storage key is in no public schema (tested, `test_atlas.py`, `test_social_posts.py`); the address is given only by a published public post or a published entry that shows the photo, and the local `/media` route serves the `public/` prefix alone (tested, `tests/test_photo_publication.py`).
@@ -41,3 +41,14 @@ The photo of a scan, kept with its owner's consent, shown to the public only by 
 - **What was built:** `InsightOut.photo_url` (published public posts only, even when a map entry made the copy; drafts, held posts and followers-only posts say null), `AtlasEntryOut.photo_url` (entries whose owner chose the photo), `InsightImageOut.has_photo` on the owner's own insight view. The address comes from the store (`S3_PUBLIC_BASE_URL`, or the API's new `GET /media/public/<id>.jpg` on the local disk, `Cache-Control: public, max-age=300`, 404 under S3 and for anything but a public key). The web asks the owner's insight view for `has_photo` and offers «أرفق الصورة» (a native checkbox, unticked, one line saying the photo becomes public) on both publish screens; the post offers it for a public audience only. The post page and the entry page render a plain lazy `<img>` from `photo_url` when it is http(s), with a fixed Arabic alt naming the title; feed cards and the share card show no photo.
 - **Reviews:** privacy self-review (no reviewer subagent available in this session): no key in any response (schema guard tests extended), a followers-only post never names the copy a map entry made, the media route checks the key's shape before touching the disk and serves `public/` alone.
 - **Left for the owners:** the new public route `GET /media/public/*` on the API was added without asking first (the brief named "the local media route", which did not exist); the legal text changed without a version bump (the public copy was already described as made by the owner's choice; only the "not shown yet" sentence changed), to confirm (decision 35); the photo cannot be added to or removed from an existing post afterwards (`PATCH /posts` has no `photo`), only chosen when the draft is made.
+
+### 19.3 Privacy review fixes of the photo flow
+
+- **Status:** ✅ 2026-10-04 22:06, owners' agent (branch task/19.3-photo-review-fixes)
+- **Goal:** Close the four findings of the privacy review of task 19.1 (`../tabsira-artifact/reviews/privacy-review-19.1-photos-2026-10-04.md`): a `public/` copy must never outlive what shows it, and the export must carry no key.
+- **Depends on:** 19.1, 19.2
+- **Touches:** apps/api/src/{services/{photo_service,photo_reconcile,atlas_service,moderation_service,report_service,social_export}.py, routers/{atlas,reports}.py, admin/views/moderation.py, schemas/social_export.py, worker.py, cli/reconcile_photos.py}, their tests, deploy/systemd (one timer), deploy/apply-config.sh, docs/{PRIVACY,OPERATIONS}.md.
+- **Done when:** Re-placing a published entry, a hold by reports and a rejection after a hold delete the copy; a deletion the store refused is retried in one process; the export states a post's photo as `has_photo`/`published` only.
+- **What was built:** `place()` takes the store and syncs after the flush; `hold_if_reported` and `reject` take `photos` and sync (the report route and the admin view pass it). `sync_public_copy` returns whether the store did its part and, on a failure, asks the worker (`photos.reconcile`, run 30 s later in that one process) to run `photo_service.reconcile_public_copies`, which deletes every public copy nothing shows any more under an advisory lock; `tabsira-reconcile-photos.timer` runs `python -m src.cli.reconcile_photos` hourly. The person still gets 204. `PublicationExport.photo_ref` is replaced by `has_photo` and `published`.
+- **Reviews:** the four findings and the missing tests the review named are covered by `tests/test_photo_publication.py` and `tests/test_photo_reconcile.py`; no new setting.
+- **Left for the owners:** the privacy text's wording (`legal.ts`) was not changed: it already promises the deletion that now holds; the review's note on a legal version bump stays theirs to decide.
