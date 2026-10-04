@@ -47,9 +47,9 @@ ENV_FILE_OVERRIDE = "TABSIRA_ENV_FILE"
 # developer's `.env`, written from `.env.example`, names them over plain HTTP on
 # port 80 (decision 49); the https form here keeps the test suite on the cookie
 # and origin rules production runs under. Production refuses `.test` and http.
-DEV_SITE_URL = "https://tabsira.test"
-DEV_API_URL = "https://api.tabsira.test"
-DEV_ADMIN_URL = "https://admin.tabsira.test"
+DEV_SITE_URL = "http://tabsira.test"
+DEV_API_URL = "http://api.tabsira.test"
+DEV_ADMIN_URL = "http://admin.tabsira.test"
 
 # Accounts. The cookie domain lets the web app and the API, on sibling subdomains,
 # share the session; the .test value is development-only like the URLs above.
