@@ -76,6 +76,8 @@ APP_TABLES = {
     "scan_events",
     "ai_calls",
     "evidence_exposures",
+    "map_entries",
+    "map_capture_points",
 }
 
 
@@ -213,7 +215,7 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
         *(f"app.{table}" for table in APP_TABLES),
     } == tables
     assert set(EXTENSIONS) <= extensions
-    assert versions == {"app": "20261004_192700", "geodata": "20261004_130000"}
+    assert versions == {"app": "20261004_193000", "geodata": "20261004_130000"}
     # alembic check cannot see a materialized view either.
     assert views == {"app.quran_verse_spans true"}
     # The models and the migrations describe the same database.

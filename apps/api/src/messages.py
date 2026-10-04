@@ -67,6 +67,9 @@ class Messages:
     # What a moderator's or the guard's code is called when the author is told.
     outcome_reasons: dict[str, str]
     reason_labels: dict[str, str]
+    # «أطلس بصائر العالم»: how precise a public point is, and what it stands for.
+    atlas_precision: str
+    atlas_meanings: dict[str, str]
     # Clarification questions, one per constraint that asks something.
     question_specify_before_search: str
     question_confirm_scene_meaning: str
@@ -193,6 +196,11 @@ ARABIC = Messages(
         "private_information": "معلومات خاصة",
         "wrong_place": "مكان غير صحيح",
         "other": "مخالفة أخرى",
+    },
+    atlas_precision="موقع تقريبي ضمن نحو {metres} م",
+    atlas_meanings={
+        "capture_point": "موضع الالتقاط، تقريبًا",
+        "public_place": "مكان عام",
     },
     question_specify_before_search="ما نوع «{label}» الذي تقصده، أو ما الذي يحدث هنا بالضبط؟",
     question_confirm_scene_meaning="ما الذي يحدث في هذا المشهد كما تراه أنت؟",

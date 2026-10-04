@@ -14,9 +14,10 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.errors import AppError, ErrorCode
+from src.models.atlas import MapEntry
 from src.models.social import Comment, Post, Report, ReportReason, ReportTarget
 from src.models.user import User
-from src.services import comment_service, moderation_service, post_service
+from src.services import atlas_service, comment_service, moderation_service, post_service
 
 
 def _own() -> AppError:
@@ -25,8 +26,13 @@ def _own() -> AppError:
 
 async def _target(
     db: AsyncSession, reporter: User, target_type: ReportTarget, target_id: int
-) -> Post | Comment:
+) -> Post | Comment | MapEntry:
     """Load what is reported, or raise 404 when the reporter may not read it."""
+    if target_type is ReportTarget.MAP_ENTRY:
+        entry = await atlas_service.published_entry(db, target_id)
+        if entry.user_id == reporter.id:
+            raise _own()
+        return entry
     if target_type is ReportTarget.POST:
         row = await post_service.get_interactable(db, target_id, reporter)
         if row.post.author_id == reporter.id:
@@ -70,7 +76,9 @@ async def file_report(
         .returning(Report.id)
     )
     if created is not None:
-        await moderation_service.hold_if_reported(db, target, hold_threshold)
+        # An entry of the atlas has no text a guard judged; the moderators read its reports.
+        if not isinstance(target, MapEntry):
+            await moderation_service.hold_if_reported(db, target, hold_threshold)
         return created
     first: int = (
         await db.execute(

@@ -23,6 +23,7 @@ from src.redis_client import close_redis
 from src.responses import OrjsonResponse
 from src.routers import (
     account,
+    atlas,
     auth,
     auth_email,
     client_errors,
@@ -48,7 +49,7 @@ from src.routers import (
     world,
 )
 from src.scans.queue import close_queue
-from src.services import social_sitemap  # noqa: F401 - registers the posts and profiles sitemaps
+from src.services import atlas_sitemap, social_sitemap  # noqa: F401 - register the sitemap sections
 from src.services.insight_source import InsightSource
 from src.services.insight_table_source import InsightTableSource
 from src.storage.notice import announce_storage
@@ -69,6 +70,10 @@ OPENAPI_TAGS = [
     },
     {"name": "account", "description": "Export and deletion of everything an account owns."},
     {"name": "geo", "description": "Place search, reverse lookup and countries from GeoNames."},
+    {
+        "name": "atlas",
+        "description": "«أطلس بصائر العالم»: insights placed on the map at approximate points.",
+    },
     {"name": "scripture", "description": "Quran verses and hadith, read-only, exactly as stored."},
     {"name": "sitemap", "description": "The public pages for the web app's sitemaps."},
     {"name": "support", "description": "The support form: an e-mail to the team, nothing stored."},
@@ -241,6 +246,7 @@ def create_app(
     app.include_router(insights.router)
     app.include_router(world.router)
     app.include_router(me.router)
+    app.include_router(atlas.router)
     app.include_router(tutorial.router)
     # The admin area is not mounted at all while its feature flag is off.
     if settings.feature_admin:

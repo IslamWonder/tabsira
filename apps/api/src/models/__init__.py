@@ -4,6 +4,13 @@ from __future__ import annotations
 
 from src.models.admin_access import AdminSession, AdminTotp
 from src.models.admin_audit import AdminAuditLog, AuditAction
+from src.models.atlas import (
+    LocationMeaning,
+    LocationSource,
+    MapCapturePoint,
+    MapEntry,
+    MapEntryStatus,
+)
 from src.models.base import Base
 from src.models.consent import Consent, ConsentKind
 from src.models.cookie_consent import CookieConsent
@@ -145,7 +152,12 @@ __all__ = [
     "LearningDomain",
     "LearningPathVersion",
     "LearningUnit",
+    "LocationMeaning",
+    "LocationSource",
     "LoginAttempt",
+    "MapCapturePoint",
+    "MapEntry",
+    "MapEntryStatus",
     "ModerationAction",
     "ModerationActionKind",
     "ModerationSource",

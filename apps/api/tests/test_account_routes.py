@@ -63,6 +63,7 @@ async def test_the_export_holds_everything_the_account_owns_as_a_download(web, r
         "consents",
         "cookie_consents",
         "social",
+        "map_entries",
         "learning",
     }
     assert body["user"]["email"] == "reader@example.com"

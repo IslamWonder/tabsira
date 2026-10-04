@@ -8,6 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from src.schemas.atlas import MapEntryOwnerOut
 from src.schemas.cookie_consent import CookieConsentExport
 from src.schemas.profile import ConsentOut, ProfileOut
 from src.schemas.public_id import PublicId
@@ -189,4 +190,6 @@ class AccountExport(BaseModel):
     cookie_consents: list[CookieConsentExport]
     # What the account wrote and did on the social network.
     social: SocialExport
+    # The insights placed on the atlas, with the exact points their owner gave.
+    map_entries: list[MapEntryOwnerOut]
     learning: LearningExport

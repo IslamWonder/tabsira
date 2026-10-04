@@ -84,6 +84,8 @@ class RemovalSource(StrEnum):
 class ReportTarget(StrEnum):
     POST = "post"
     COMMENT = "comment"
+    # An entry of the atlas (a place that is wrong, or that gives away private information).
+    MAP_ENTRY = "map_entry"
 
 
 class ReportReason(StrEnum):

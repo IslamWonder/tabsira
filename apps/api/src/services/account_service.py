@@ -22,7 +22,7 @@ from src.scans import buffer
 from src.schemas.account import AccountExport, LearningExport
 from src.schemas.cookie_consent import CookieConsentExport
 from src.schemas.profile import ConsentOut, ProfileOut
-from src.services import cookie_consent_service, profile_service, social_export
+from src.services import atlas_service, cookie_consent_service, profile_service, social_export
 
 log = logging.getLogger("tabsira.account")
 
@@ -117,6 +117,7 @@ async def export_account(db: AsyncSession, user: User) -> AccountExport:
                 for choice in await cookie_consent_service.choices_of(db, user)
             ],
             "social": await social_export.collect(db, user),
+            "map_entries": await atlas_service.list_mine(db, user),
             "learning": await export_learning(db, user.id),
         },
         from_attributes=True,
