@@ -1,0 +1,261 @@
+"""
+The composer: the platform's own explanation of each insight («شرح تبصرة»), never the texts.
+
+A chat model (structured output) writes the five parts of v2 §12 (what
+appeared, the value, what the verse adds, what the hadith adds, life), the
+concept of «لماذا ظهر هذا؟» and one small optional step, in Arabic adapted to
+the learner's declared level. It sees the meaning of the chosen texts as
+folded Arabic so it can explain them, and it cites them by reference only:
+every field goes through the leak guard, whose corpus includes those texts,
+and an answer that leaks is asked again within the stage's bound; an insight
+whose text still leaks is dropped.
+
+The server, not the model, decides what is shown: a part about a verse or a
+hadith exists only when that text was chosen; a step is «من السنة» only when
+the chosen hadith grounds it, otherwise it is a practical suggestion; a
+personal matter (content level «د») ends with the referral to a qualified
+scholar (v2 §12, rule 7).
+"""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Annotated, Any, Literal
+
+from pydantic import BaseModel, Field
+
+from src.ai.client import ModelClient
+from src.config import AiStage
+from src.messages import messages_for
+from src.pipeline.engine import (
+    EvidenceRef,
+    ExplanationPart,
+    HadithRef,
+    LearnerContext,
+    ProposedInsight,
+    QuranRef,
+    SmallStep,
+    WhyThis,
+)
+from src.pipeline.insight.evidence import TEXT_CHARS, Chosen, GateResult
+from src.pipeline.insight.learning import personalised_reason
+from src.pipeline.insight.planner import learner_payload
+from src.pipeline.leak_guard import LeakGuard
+from src.pipeline.prompt import load_prompt
+from src.pipeline.schemas import BBox, SceneAnalysis
+from src.retrieval.refs import hadith_key
+
+SYSTEM_PROMPT = "insight_composer_system.v1"
+MAX_OUTPUT_TOKENS = 6000
+
+
+class ComposedStep(BaseModel):
+    text: str
+    kind: Literal["text_grounded", "ethical_application", "reflection"]
+    from_hadith: bool
+
+
+class ComposedInsight(BaseModel):
+    insight: Annotated[int, Field(description="The index of the insight given.")]
+    title: str
+    glimpse: str
+    seen: str
+    value: str
+    quran: str | None
+    sunnah: str | None
+    life: str
+    why_concept: str
+    small_step: ComposedStep | None
+
+
+class ComposerOutput(BaseModel):
+    insights: list[ComposedInsight]
+
+
+@dataclass(frozen=True, slots=True)
+class Composition:
+    insights: list[ProposedInsight]
+    # Indexes of gate results whose text kept leaking and were dropped.
+    leaked: list[int]
+    prompt_version: str
+
+
+def composer_texts(item: ComposedInsight) -> dict[str, str]:
+    texts = {
+        "title": item.title,
+        "glimpse": item.glimpse,
+        "seen": item.seen,
+        "value": item.value,
+        "life": item.life,
+        "why_concept": item.why_concept,
+    }
+    texts |= {
+        name: value for name, value in (("quran", item.quran), ("sunnah", item.sunnah)) if value
+    }
+    if item.small_step is not None:
+        texts["small_step"] = item.small_step.text
+    return texts
+
+
+def leaks(guard: LeakGuard, texts: dict[str, str]) -> bool:
+    """Whether any of these texts looks like scripture."""
+    return any(guard.check(text).leaked for text in texts.values())
+
+
+def composer_message(
+    scene: SceneAnalysis, results: Sequence[GateResult], learner: LearnerContext
+) -> str:
+    learner_view = learner_payload(learner) if learner.personalization_enabled else {}
+    payload: dict[str, Any] = {
+        "scene": scene.description,
+        "learner": {"level": learner_view.get("knowledge_level", "beginner"), **learner_view},
+        "insights": [
+            {
+                "insight": index,
+                "concept": result.candidate.concept,
+                "value": result.candidate.value,
+                "relation": result.relation.value,
+                "content_level": result.candidate.content_level,
+                "visible_clues": result.candidate.visible_clues,
+                "limits": [
+                    *result.candidate.limits,
+                    *(c.limit for c in (result.quran, result.hadith) if c and c.limit),
+                ],
+                "verse_meaning": result.quran.found.document.text[:TEXT_CHARS]
+                if result.quran
+                else None,
+                "hadith_meaning": result.hadith.found.document.text[:TEXT_CHARS]
+                if result.hadith
+                else None,
+            }
+            for index, result in enumerate(results)
+        ],
+    }
+    return json.dumps(payload, ensure_ascii=False)
+
+
+def _reference(chosen: Chosen | None, ref: QuranRef | HadithRef | None) -> EvidenceRef | None:
+    if chosen is None or ref is None:
+        return None
+    return EvidenceRef(
+        ref=ref,
+        relation=chosen.relation,
+        retrieval_score=round(chosen.found.retrieval_score, 6),
+        rerank_score=chosen.found.rerank_score,
+        matched_on=chosen.found.matched_on,
+    )
+
+
+def _step(item: ComposedInsight, result: GateResult) -> SmallStep | None:
+    step = item.small_step
+    if step is None or not step.text.strip():
+        return None
+    ref = result.hadith_ref
+    if step.kind == "text_grounded" and step.from_hadith and ref is not None:
+        reference = hadith_key(ref.collection, ref.number)
+        return SmallStep(text=step.text.strip(), kind="text_grounded", grounded_in=[reference])
+    kind = "reflection" if step.kind == "reflection" else "ethical_application"
+    return SmallStep(text=step.text.strip(), kind=kind)
+
+
+def build_insight(
+    item: ComposedInsight,
+    result: GateResult,
+    scene: SceneAnalysis,
+    learner: LearnerContext,
+    path_version: str | None,
+) -> ProposedInsight:
+    """Assemble one insight from the composed text and the gate's decision."""
+    quran = _reference(result.quran, result.quran_ref)
+    hadith = _reference(result.hadith, result.hadith_ref)
+    candidate = result.candidate
+    life = item.life.strip()
+    if candidate.content_level == "d":
+        life = f"{life} {messages_for().engine_referral}".strip()
+    parts = [
+        ExplanationPart(section="seen", text=item.seen.strip()),
+        ExplanationPart(section="value", text=item.value.strip()),
+    ]
+    if quran is not None and item.quran:
+        parts.append(ExplanationPart(section="quran", text=item.quran.strip()))
+    if hadith is not None and item.sunnah:
+        parts.append(ExplanationPart(section="sunnah", text=item.sunnah.strip()))
+    parts.append(ExplanationPart(section="life", text=life))
+    if candidate.unit is not None:
+        parts = [
+            part.model_copy(update={"sources": [candidate.unit.unit.unit_id]}) for part in parts
+        ]
+    boxes = {entity.id: entity.bbox for entity in scene.entities}
+    anchor: BBox | None = next(
+        (boxes[e] for e in candidate.entity_ids if boxes.get(e) is not None), None
+    )
+    chosen = [c for c in (result.quran, result.hadith) if c is not None]
+    return ProposedInsight(
+        title=item.title.strip() or candidate.title,
+        glimpse=item.glimpse.strip() or candidate.glimpse,
+        entity_ids=list(candidate.entity_ids),
+        action_ids=list(candidate.action_ids),
+        anchor=anchor,
+        relation=result.relation,
+        quran=quran,
+        hadith=hadith,
+        explanation=parts,
+        why=WhyThis(
+            visible_clues=list(candidate.visible_clues),
+            concept=item.why_concept.strip() or candidate.concept,
+            ontology_entity_ids=list(candidate.ontology_ids),
+            limits=list(dict.fromkeys([*candidate.limits, *(c.limit for c in chosen if c.limit)])),
+            personalised_because=personalised_reason(
+                candidate.unit,
+                learner,
+                review=any(c.review for c in chosen),
+                new_text=any(c.unseen_preferred for c in chosen),
+            ),
+        ),
+        small_step=_step(item, result),
+        learning_unit_id=candidate.unit.unit.unit_id if candidate.unit else None,
+        learning_path_version=path_version if candidate.unit else None,
+    )
+
+
+class InsightComposer:
+    """Writes the explanation of the insights that passed the gate."""
+
+    def __init__(self, client: ModelClient, *, attempts: int = 2) -> None:
+        self._client = client
+        self._attempts = attempts
+
+    async def compose(
+        self,
+        scene: SceneAnalysis,
+        results: Sequence[GateResult],
+        learner: LearnerContext,
+        guard: LeakGuard,
+        path_version: str | None,
+    ) -> Composition:
+        system = load_prompt(SYSTEM_PROMPT)
+        user = composer_message(scene, results, learner)
+        clean: dict[int, ComposedInsight] = {}
+        for _ in range(self._attempts):
+            output = await self._client.chat_json(
+                ComposerOutput,
+                stage=AiStage.COMPOSE,
+                system=system.text,
+                user=user,
+                max_output_tokens=MAX_OUTPUT_TOKENS,
+            )
+            for item in output.value.insights:
+                valid = 0 <= item.insight < len(results)
+                if valid and item.insight not in clean and not leaks(guard, composer_texts(item)):
+                    clean[item.insight] = item
+            if len(clean) == len(results):
+                break
+        insights = [
+            build_insight(clean[index], result, scene, learner, path_version)
+            for index, result in enumerate(results)
+            if index in clean
+        ]
+        leaked = [index for index in range(len(results)) if index not in clean]
+        return Composition(insights, leaked, system.version)
