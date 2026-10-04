@@ -11,6 +11,7 @@ import re
 
 import pyotp
 import pytest
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import func, select
 
 from src import clock
@@ -106,13 +107,19 @@ async def test_signing_in_to_the_site_does_not_open_the_admin_area(
 
     admin_app.dependency_overrides[get_db] = use_the_test_session
     await make_admin()
-    async with browser(admin_app) as web:
+    async with AsyncClient(
+        transport=ASGITransport(app=admin_app, raise_app_exceptions=False),
+        base_url="https://api.tabsira.test",
+        headers={"Origin": "https://tabsira.test"},
+    ) as web:
         login = await web.post(
             "/auth/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
         )
         assert login.status_code == 200
 
-        response = await web.get("/admin/")
+        async with browser(admin_app) as admin_host:
+            admin_host.cookies.update(web.cookies)
+            response = await admin_host.get("/admin/")
 
     assert response.status_code == 302
     assert response.headers["location"].endswith("/admin/login")
