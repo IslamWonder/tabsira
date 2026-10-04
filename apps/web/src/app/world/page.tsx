@@ -3,14 +3,14 @@ import { ComingSoon } from '@/components/app/coming-soon';
 import { EmptyStage } from '@/components/app/empty-stage';
 import { WorldIcon } from '@/components/icons';
 import { MapLayout } from '@/components/layout/layouts';
+import { unlistedMetadata } from '@/lib/seo';
 import { messages } from '@/messages';
 
-export const metadata: Metadata = {
+// A personal space: never indexed.
+export const metadata: Metadata = unlistedMetadata({
+  path: '/world',
   title: messages.nav.world,
-  alternates: { canonical: '/world' },
-  // A personal space: never indexed.
-  robots: { index: false, follow: false },
-};
+});
 
 /** The fog map with its places as a side list, once built; the map area stays empty until then. */
 export default function WorldPage() {

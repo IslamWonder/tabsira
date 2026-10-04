@@ -18,7 +18,7 @@ type GoogleWindow = Window & {
 };
 
 function googleWindow(): GoogleWindow {
-  return window as GoogleWindow;
+  return window as unknown as GoogleWindow;
 }
 
 /** Only the origin of the referrer: a query string of another site is never passed on. */

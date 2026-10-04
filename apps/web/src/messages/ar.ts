@@ -18,6 +18,25 @@ export const ar = {
     shortDescription: 'بصيرة من مشهدك، تسندها آية وحديث.',
   },
 
+  /** Text for search engines, share cards and agents (docs/SEO.md): never shown in the interface. */
+  seo: {
+    /** The first crumb of every breadcrumb trail. */
+    home: 'الرئيسية',
+    /** The share line of the home page: the reason to tap, distinct from its headline. */
+    homeShare: 'صوّر مشهدًا من حولك، وانظر ما تقوله الآية والحديث عنه.',
+    organizationDescription: 'تبصرة تطبيق عربي يحوّل صورة مشهد إلى بصيرة تسندها آية وحديث.',
+    llms: {
+      summaryHeading: 'عن الموقع',
+      pagesHeading: 'الصفحات العامة',
+      rulesHeading: 'ما يجب أن يعرفه القارئ الآلي',
+      rules: [
+        'اللغة العربية وحدها، من اليمين إلى اليسار.',
+        'نصوص القرآن والحديث تُعرض كما هي من مصدرها المحقَّق، ولا يولّدها أي نموذج.',
+        'صفحات الحساب والإدارة ليست للفهرسة.',
+      ],
+    },
+  },
+
   brand: {
     /** The logo's accessible name. */
     name: 'تبصرة',

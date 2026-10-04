@@ -19,18 +19,11 @@ import { VictoryLayer } from '@/components/fx/victory-layer';
 import { clarityProjectId, gaMeasurementId } from '@/config/server-env';
 import { serverConsent } from '@/consent/server';
 import { fontVariables } from '@/fonts';
+import { SHARE_IMAGE } from '@/lib/seo';
 import { siteOrigin } from '@/lib/site';
 import { messages, siteLanguage } from '@/messages';
 import { PREFERENCES_INIT_SCRIPT } from '@/preferences/init-script';
 import { THEME_BACKGROUND } from '@/theme/colors';
-
-/** The default share card (public/share/default.jpg), drawn from the logo by scripts/make-icons.mjs. */
-const SHARE_IMAGE = {
-  url: '/share/default.jpg',
-  width: 1200,
-  height: 630,
-  alt: messages.meta.title,
-};
 
 import './globals.css';
 
@@ -39,7 +32,7 @@ export const metadata: Metadata = {
   title: { default: messages.meta.title, template: messages.meta.titleTemplate },
   description: messages.meta.description,
   applicationName: messages.meta.siteName,
-  alternates: { canonical: '/' },
+  // No canonical here: it would be inherited by any page that forgets its own (see src/lib/seo.ts).
   formatDetection: { telephone: false, email: false, address: false },
   appleWebApp: {
     capable: true,

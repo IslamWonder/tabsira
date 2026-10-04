@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
 import { safeNextPath } from '@/account/links';
 import { type GoogleErrorCode, SignInScreen } from '@/components/account/sign-in-screen';
+import { unlistedMetadata } from '@/lib/seo';
 import { messages } from '@/messages';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = unlistedMetadata({
+  path: '/signin',
   title: messages.auth.signIn.metaTitle,
   description: messages.auth.signIn.metaDescription,
-  alternates: { canonical: '/signin' },
-  robots: { index: false, follow: false },
-};
+});
 
 function googleError(value: string | string[] | undefined): GoogleErrorCode | null {
   return typeof value === 'string' && Object.hasOwn(messages.auth.google.errors, value)

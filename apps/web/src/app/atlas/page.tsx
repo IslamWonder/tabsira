@@ -3,12 +3,11 @@ import { ComingSoon } from '@/components/app/coming-soon';
 import { EmptyStage } from '@/components/app/empty-stage';
 import { AtlasIcon } from '@/components/icons';
 import { MapLayout } from '@/components/layout/layouts';
+import { unlistedMetadata } from '@/lib/seo';
 import { messages } from '@/messages';
 
-export const metadata: Metadata = {
-  title: messages.nav.atlas,
-  alternates: { canonical: '/atlas' },
-};
+// Outside the sitemap until the atlas has places to list (docs/SEO.md §1).
+export const metadata: Metadata = unlistedMetadata({ path: '/atlas', title: messages.nav.atlas });
 
 /** The world atlas: a map with a results panel, once built; the map area stays empty until then. */
 export default function AtlasPage() {

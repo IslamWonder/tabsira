@@ -17,7 +17,7 @@ type ClarityFunction = ((...args: unknown[]) => void) & { q?: unknown[][] };
 type ClarityWindow = Window & { clarity?: ClarityFunction };
 
 function clarityWindow(): ClarityWindow {
-  return window as ClarityWindow;
+  return window as unknown as ClarityWindow;
 }
 
 /** Clarity's own queueing stub, so calls made before its script arrives are kept in order. */

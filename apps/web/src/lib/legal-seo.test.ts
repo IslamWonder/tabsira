@@ -15,7 +15,7 @@ describe('legal SEO', () => {
       languages: { ar: '/terms', 'x-default': '/terms' },
     });
     expect(metadata.robots).toEqual({ index: true, follow: true, 'max-snippet': 0 });
-    expect(metadata.openGraph).toMatchObject({ type: 'website', locale: 'ar', url: '/terms' });
+    expect(metadata.openGraph).toMatchObject({ type: 'website', locale: 'ar_AR', url: '/terms' });
     expect(metadata.twitter).toMatchObject({ card: 'summary_large_image' });
   });
 
@@ -27,6 +27,7 @@ describe('legal SEO', () => {
       description: 'وصف',
       url: 'https://tabsira.test/terms',
       inLanguage: 'ar',
+      isPartOf: { '@id': 'https://tabsira.test/#website' },
       dateModified: '2026-10-04',
     });
     expect(webPageJsonLd(SEO)).not.toHaveProperty('dateModified');

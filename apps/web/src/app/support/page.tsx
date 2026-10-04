@@ -3,6 +3,7 @@ import { RichText } from '@/components/legal/rich-text';
 import { SupportForm } from '@/components/legal/support-form';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { legalMetadata, webPageJsonLd } from '@/lib/legal-seo';
+import { breadcrumbJsonLd } from '@/lib/seo';
 import { legalMessages } from '@/messages/legal';
 
 const { support } = legalMessages();
@@ -14,6 +15,7 @@ export default function SupportPage() {
   return (
     <div className="mx-auto w-full max-w-[46rem] px-4 pt-[max(28px,env(safe-area-inset-top))] pb-nav tablet:px-6 tablet:pb-8">
       <JsonLd data={webPageJsonLd(SEO)} />
+      <JsonLd data={breadcrumbJsonLd([{ name: SEO.title, path: SEO.path }])} />
       <GlassPanel
         as="article"
         ornate
