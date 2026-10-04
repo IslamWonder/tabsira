@@ -454,6 +454,47 @@ async def test_ovh_has_no_image_moderation():
     assert harness.requests == []
 
 
+async def test_text_moderation_sends_the_text_and_returns_the_scores():
+    harness = Harness(
+        [
+            moderation(
+                flagged=True,
+                categories={"harassment": True, "hate": False},
+                category_scores={"harassment": 0.91, "hate": 0.02},
+            )
+        ],
+        provider=AiProvider.OPENAI,
+    )
+
+    result = await harness.client.moderate_text("نص للفحص")
+
+    assert result.flagged
+    assert result.categories == ["harassment"]
+    assert result.scores == {"harassment": 0.91, "hate": 0.02}
+    assert harness.body() == {"model": "omni-moderation-latest", "input": "نص للفحص"}
+    assert result.record.kind is CallKind.MODERATION
+    assert result.record.stage is AiStage.GUARD
+
+
+async def test_ovh_has_no_text_moderation_and_makes_no_request():
+    harness = Harness([])
+
+    with pytest.raises(AiCallError) as caught:
+        await harness.client.moderate_text("نص")
+
+    assert caught.value.code is AiErrorCode.NOT_SUPPORTED
+    assert harness.requests == []
+
+
+async def test_a_client_that_does_not_override_text_moderation_refuses_it():
+    from tests.fakes import FakeModelClient
+
+    with pytest.raises(AiCallError) as caught:
+        await FakeModelClient(AiProvider.OPENAI).moderate_text("نص")
+
+    assert caught.value.code is AiErrorCode.NOT_SUPPORTED
+
+
 @pytest.mark.parametrize(
     "response",
     [

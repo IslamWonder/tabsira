@@ -83,7 +83,7 @@ class EmbeddingResult:
 
 @dataclass(frozen=True)
 class ModerationResult:
-    """The provider's moderation verdict on an image."""
+    """The provider's moderation verdict on an image or on a text."""
 
     flagged: bool
     # Categories the provider flagged, with its own names (sexual, violence/graphic, ...).
@@ -139,6 +139,16 @@ class ModelClient(ABC):
         self, image: ModelImage, *, model: str | None = None
     ) -> ModerationResult:
         """Run the provider's image moderation."""
+
+    async def moderate_text(self, text: str, *, model: str | None = None) -> ModerationResult:
+        """
+        Run the provider's text moderation.
+
+        Not abstract: a client that cannot moderate text says so, and the callers
+        that need a verdict treat that as "ask a person".
+        """
+        message = f"{self.provider.value} has no text moderation"
+        raise AiCallError(AiErrorCode.NOT_SUPPORTED, message)
 
 
 class ProviderClient(ModelClient):
@@ -242,15 +252,22 @@ class ProviderClient(ModelClient):
         self, image: ModelImage, *, model: str | None = None
     ) -> ModerationResult:
         """Run the provider's image moderation (OpenAI only)."""
+        return await self._moderate(
+            [{"type": "image_url", "image_url": {"url": image.data_url()}}], model
+        )
+
+    async def moderate_text(self, text: str, *, model: str | None = None) -> ModerationResult:
+        """Run the provider's text moderation (OpenAI only)."""
+        return await self._moderate(text, model)
+
+    async def _moderate(self, content: Any, model: str | None) -> ModerationResult:
+        """Send one input to the moderations endpoint and read the verdict."""
         if self._provider != AiProvider.OPENAI:
             raise AiCallError(
-                AiErrorCode.NOT_SUPPORTED, f"{self._provider.value} has no image moderation"
+                AiErrorCode.NOT_SUPPORTED, f"{self._provider.value} has no moderation endpoint"
             )
         chosen = self._model(AiStage.GUARD, model)
-        body = {
-            "model": chosen,
-            "input": [{"type": "image_url", "image_url": {"url": image.data_url()}}],
-        }
+        body = {"model": chosen, "input": content}
         parsed, record = await self._call(
             CallKind.MODERATION, AiStage.GUARD, chosen, "/moderations", body, _parse_moderation
         )
