@@ -316,6 +316,7 @@ def test_production_refuses_the_local_store(make_settings):
         "ai_ovh": {"api_key": "ovh-key-123"},
         "ai_openai": {"api_key": "openai-key-123"},
         "feature_admin": False,
+        "redis_password": "redis-secret",
     }
 
     with pytest.raises(StorageConfigError, match="production keeps photos in S3"):

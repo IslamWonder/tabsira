@@ -956,6 +956,11 @@ class Settings(BaseSettings):
                 problems.append(
                     f"GOOGLE_REDIRECT_URI points at the development host {self.google_redirect_uri}"
                 )
+        return problems + self._scan_workflow_problems()
+
+    def _scan_workflow_problems(self) -> list[str]:
+        """List what the scan workflow refuses in production: an open Redis, the simulation."""
+        problems = []
         if not self.redis_password.get_secret_value():
             problems.append("REDIS_PASSWORD is empty")
         if self.scan_engine is ScanEngine.DEMO:
