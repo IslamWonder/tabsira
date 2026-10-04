@@ -36,7 +36,13 @@ firewall() {
 		warn "FIREWALL=$FIREWALL: no rule written. pg_hba and Redis's password are then the only limits on 5432 and 6379."
 		return 0
 	}
-	have ufw || apt_install ufw
+	if ! have ufw; then
+		if is_dry; then
+			log "ufw is not installed: a real run installs it with apt"
+		else
+			apt_install ufw
+		fi
+	fi
 	local port
 	for port in 5432 6379; do
 		# The allow comes first: ufw evaluates in order.
