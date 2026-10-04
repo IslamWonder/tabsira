@@ -45,7 +45,7 @@ def test_concepts_are_kept_once_in_order_and_blanks_dropped():
 
 def test_a_hadith_body_leaves_out_a_clear_chain_and_folds_the_rest():
     with_chain = hadith_text("bukhari", 1032)
-    whole = "قال: إنما الأمر"
+    whole = "نص قصير بلا سند ولا راو"
 
     body = hadith_body(with_chain)
 
