@@ -137,6 +137,29 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/auth/legal/accept': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Accept the current terms of use and privacy policy
+     * @description Record that the signed-in account accepts both texts, for a version that changed.
+     *
+     *     The versions must be the current ones (`GET /legal`); anything else is a 422
+     *     `legal_acceptance_required`. Two consent rows are appended; none is ever edited.
+     */
+    post: operations['accept_legal_auth_legal_accept_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/auth/providers': {
     parameters: {
       query?: never;
@@ -635,6 +658,51 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/legal': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Current legal versions and contact addresses
+     * @description Return the versions a sign-up must accept, and the addresses the legal pages name.
+     */
+    get: operations['get_legal_legal_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/support': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Send a message to support
+     * @description Email the message to the support address, replies going to the visitor.
+     *
+     *     A filled `website` field is a bot: it gets the same 202 and nothing is sent. The account
+     *     id is added to the mail when a valid session cookie is present. Answers 503
+     *     `mail_unavailable` when mail is not configured or the send fails. The attempt is counted
+     *     (keyed hashes in PostgreSQL, shared by every worker) before the mail is sent.
+     */
+    post: operations['send_support_support_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -816,7 +884,7 @@ export interface components {
      * ConsentKind
      * @enum {string}
      */
-    ConsentKind: 'terms' | 'photo_storage' | 'personalization' | 'memory';
+    ConsentKind: 'terms' | 'privacy' | 'photo_storage' | 'personalization' | 'memory';
     /** ConsentOut */
     ConsentOut: {
       kind: components['schemas']['ConsentKind'];
@@ -997,7 +1065,9 @@ export interface components {
       | 'INVALID_TOKEN'
       | 'ORIGIN_NOT_ALLOWED'
       | 'CONSENT_NOT_ALLOWED'
-      | 'GOOGLE_NOT_CONFIGURED';
+      | 'GOOGLE_NOT_CONFIGURED'
+      | 'legal_acceptance_required'
+      | 'mail_unavailable';
     /**
      * ErrorResponse
      * @description The body of every error response.
@@ -1008,6 +1078,10 @@ export interface components {
       detail: string;
       /** Fields */
       fields?: components['schemas']['FieldError'][] | null;
+      /** Terms Version */
+      terms_version?: string | null;
+      /** Privacy Version */
+      privacy_version?: string | null;
     };
     /**
      * FieldError
@@ -1128,6 +1202,30 @@ export interface components {
      * @enum {string}
      */
     KnowledgeLevel: 'new' | 'general' | 'advanced' | 'specialist' | 'unknown';
+    /**
+     * LegalAcceptIn
+     * @description The versions a signed-in person accepts; they must be the current ones.
+     */
+    LegalAcceptIn: {
+      /** Terms Version */
+      terms_version: string;
+      /** Privacy Version */
+      privacy_version: string;
+    };
+    /**
+     * LegalOut
+     * @description What the sign-up page, the terms page and the privacy page need to show and to send back.
+     */
+    LegalOut: {
+      /** Terms Version */
+      terms_version: string;
+      /** Privacy Version */
+      privacy_version: string;
+      /** Privacy Email */
+      privacy_email: string;
+      /** Support Email */
+      support_email: string;
+    };
     /** Liveness */
     Liveness: {
       /**
@@ -1446,6 +1544,10 @@ export interface components {
       password: string;
       /** Display Name */
       display_name: string;
+      /** Accepted Terms Version */
+      accepted_terms_version: string;
+      /** Accepted Privacy Version */
+      accepted_privacy_version: string;
     };
     /**
      * SitemapEntry
@@ -1507,6 +1609,26 @@ export interface components {
        */
       status: 'ok' | 'accepted';
     };
+    /** SupportIn */
+    SupportIn: {
+      /**
+       * Email
+       * Format: email
+       */
+      email: string;
+      /** Name */
+      name?: string | null;
+      topic: components['schemas']['SupportTopic'];
+      /** Message */
+      message: string;
+      /** Website */
+      website?: string | null;
+    };
+    /**
+     * SupportTopic
+     * @enum {string}
+     */
+    SupportTopic: 'account' | 'privacy' | 'bug' | 'content' | 'suggestion' | 'other';
     /**
      * Theme
      * @enum {string}
@@ -1567,6 +1689,8 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+      /** Legal Acceptance Required */
+      legal_acceptance_required: boolean;
     };
     /** VerifyEmailIn */
     VerifyEmailIn: {
@@ -1750,6 +1874,39 @@ export interface operations {
       cookie?: never;
     };
     requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UserOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  accept_legal_auth_legal_accept_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LegalAcceptIn'];
+      };
+    };
     responses: {
       /** @description Successful Response */
       200: {
@@ -2479,6 +2636,68 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['SitemapEntry'][];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  get_legal_legal_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LegalOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  send_support_support_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SupportIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StatusOut'];
         };
       };
       /** @description An error */

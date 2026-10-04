@@ -209,6 +209,46 @@
         }
       }
     },
+    "/auth/legal/accept": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Accept the current terms of use and privacy policy",
+        "description": "Record that the signed-in account accepts both texts, for a version that changed.\n\nThe versions must be the current ones (`GET /legal`); anything else is a 422\n`legal_acceptance_required`. Two consent rows are appended; none is ever edited.",
+        "operationId": "accept_legal_auth_legal_accept_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegalAcceptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/providers": {
       "get": {
         "tags": ["auth"],
@@ -1183,6 +1223,76 @@
           }
         }
       }
+    },
+    "/legal": {
+      "get": {
+        "tags": ["legal"],
+        "summary": "Current legal versions and contact addresses",
+        "description": "Return the versions a sign-up must accept, and the addresses the legal pages name.",
+        "operationId": "get_legal_legal_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/support": {
+      "post": {
+        "tags": ["support"],
+        "summary": "Send a message to support",
+        "description": "Email the message to the support address, replies going to the visitor.\n\nA filled `website` field is a bot: it gets the same 202 and nothing is sent. The account\nid is added to the mail when a valid session cookie is present. Answers 503\n`mail_unavailable` when mail is not configured or the send fails. The attempt is counted\n(keyed hashes in PostgreSQL, shared by every worker) before the mail is sent.",
+        "operationId": "send_support_support_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1323,6 +1433,7 @@
           "category": {
             "type": "string",
             "maxLength": 64,
+            "pattern": "^[A-Za-z0-9_.$-]+$",
             "title": "Category",
             "default": "log"
           },
@@ -1378,7 +1489,8 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 200
+                "maxLength": 100,
+                "pattern": "^[A-Za-z0-9_.$-]+$"
               },
               {
                 "type": "null"
@@ -1588,7 +1700,7 @@
       },
       "ConsentKind": {
         "type": "string",
-        "enum": ["terms", "photo_storage", "personalization", "memory"],
+        "enum": ["terms", "privacy", "photo_storage", "personalization", "memory"],
         "title": "ConsentKind"
       },
       "ConsentOut": {
@@ -1934,7 +2046,9 @@
           "INVALID_TOKEN",
           "ORIGIN_NOT_ALLOWED",
           "CONSENT_NOT_ALLOWED",
-          "GOOGLE_NOT_CONFIGURED"
+          "GOOGLE_NOT_CONFIGURED",
+          "legal_acceptance_required",
+          "mail_unavailable"
         ],
         "title": "ErrorCode",
         "description": "The stable error codes. A code is never renamed or reused."
@@ -1961,6 +2075,28 @@
               }
             ],
             "title": "Fields"
+          },
+          "terms_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terms Version"
+          },
+          "privacy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Privacy Version"
           }
         },
         "type": "object",
@@ -2189,6 +2325,51 @@
         "type": "string",
         "enum": ["new", "general", "advanced", "specialist", "unknown"],
         "title": "KnowledgeLevel"
+      },
+      "LegalAcceptIn": {
+        "properties": {
+          "terms_version": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Terms Version"
+          },
+          "privacy_version": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Privacy Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["terms_version", "privacy_version"],
+        "title": "LegalAcceptIn",
+        "description": "The versions a signed-in person accepts; they must be the current ones."
+      },
+      "LegalOut": {
+        "properties": {
+          "terms_version": {
+            "type": "string",
+            "title": "Terms Version"
+          },
+          "privacy_version": {
+            "type": "string",
+            "title": "Privacy Version"
+          },
+          "privacy_email": {
+            "type": "string",
+            "title": "Privacy Email"
+          },
+          "support_email": {
+            "type": "string",
+            "title": "Support Email"
+          }
+        },
+        "type": "object",
+        "required": ["terms_version", "privacy_version", "privacy_email", "support_email"],
+        "title": "LegalOut",
+        "description": "What the sign-up page, the terms page and the privacy page need to show and to send back."
       },
       "Liveness": {
         "properties": {
@@ -2968,11 +3149,29 @@
             "maxLength": 120,
             "minLength": 1,
             "title": "Display Name"
+          },
+          "accepted_terms_version": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Accepted Terms Version"
+          },
+          "accepted_privacy_version": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Accepted Privacy Version"
           }
         },
         "additionalProperties": false,
         "type": "object",
-        "required": ["email", "password", "display_name"],
+        "required": [
+          "email",
+          "password",
+          "display_name",
+          "accepted_terms_version",
+          "accepted_privacy_version"
+        ],
         "title": "SignupIn"
       },
       "SitemapEntry": {
@@ -3091,6 +3290,57 @@
         "title": "StatusOut",
         "description": "The answer of the routes that report only that they did what was asked."
       },
+      "SupportIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "topic": {
+            "$ref": "#/components/schemas/SupportTopic"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 20,
+            "title": "Message"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["email", "topic", "message"],
+        "title": "SupportIn"
+      },
+      "SupportTopic": {
+        "type": "string",
+        "enum": ["account", "privacy", "bug", "content", "suggestion", "other"],
+        "title": "SupportTopic"
+      },
       "Theme": {
         "type": "string",
         "enum": ["system", "light", "dark"],
@@ -3193,6 +3443,10 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "legal_acceptance_required": {
+            "type": "boolean",
+            "title": "Legal Acceptance Required"
           }
         },
         "type": "object",
@@ -3204,7 +3458,8 @@
           "email_verified",
           "has_password",
           "providers",
-          "created_at"
+          "created_at",
+          "legal_acceptance_required"
         ],
         "title": "UserOut",
         "description": "The signed-in user's own account. Nothing of the private profile is here."
@@ -3257,6 +3512,14 @@
     {
       "name": "sitemap",
       "description": "The public pages for the web app's sitemaps."
+    },
+    {
+      "name": "support",
+      "description": "The support form: an e-mail to the team, nothing stored."
+    },
+    {
+      "name": "legal",
+      "description": "Versions of the terms and privacy texts, and the contact addresses."
     },
     {
       "name": "client-errors",
