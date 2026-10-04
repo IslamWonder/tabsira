@@ -117,6 +117,9 @@ async def _apply_rows(
         if verse is None:
             message = f"the feed names verse {row.surah}:{row.ayah}, which the store does not hold"
             raise SyncError(message)
+        # The verse's quranpedia id and page come with it; keep them as quranpedia has them now.
+        verse.quranpedia_ayah_id = fetched.id
+        verse.page = fetched.page_number
         if verse.text_sha256 == sha256_hex(fetched.text):
             report.unchanged += 1
             continue

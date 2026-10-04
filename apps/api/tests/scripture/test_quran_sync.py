@@ -42,22 +42,19 @@ def _feed(
 
 
 def _verse_answer(surah: int, ayah: int) -> httpx.Response:
-    return (
-        httpx.Response(200, content=fixture_path("quranpedia-ayah-2-30-50.json").read_bytes())
-        if (
-            surah,
-            ayah,
+    """The real refetch of 30:50, or another fixture verse under a made-up id and page."""
+    if (surah, ayah) == (30, 50):
+        return httpx.Response(
+            200, content=fixture_path("quranpedia-ayah-2-30-50.json").read_bytes()
         )
-        == (30, 50)
-        else json_response(
-            {
-                "id": 1,
-                "number": ayah,
-                "surah": str(surah),
-                "page_number": 1,
-                "text": verse_text(surah, ayah),
-            }
-        )
+    return json_response(
+        {
+            "id": 1,
+            "number": ayah,
+            "surah": str(surah),
+            "page_number": 1,
+            "text": verse_text(surah, ayah),
+        }
     )
 
 
@@ -145,6 +142,13 @@ async def test_a_truncated_feed_is_followed_from_the_date_of_its_last_row(db_ses
 
     assert (report.changed_rows, report.corrected, report.unchanged) == (2, 1, 1)
     assert (await _verse_30_50(db_session)).source_version == "change:2026-10-04 09:00:00"
+    # An unchanged text still takes the quranpedia id and page the refetch gave.
+    ikhlas = (
+        await db_session.scalars(
+            select(QuranVerse).where(QuranVerse.surah == 112, QuranVerse.ayah == 1)
+        )
+    ).one()
+    assert (ikhlas.quranpedia_ayah_id, ikhlas.page, ikhlas.text) == (1, 1, verse_text(112, 1))
 
 
 @pytest.mark.parametrize("too_many", [False, True])
