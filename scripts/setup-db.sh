@@ -11,7 +11,7 @@
 #               tabsira_test    the API test suite, and nothing else; not created
 #                               when ENVIRONMENT is production
 #               tabsira_template  development and test only: an empty copy of the
-#                               setup (both schemas, every extension) marked as a
+#                               setup (the three schemas, every extension) marked as a
 #                               template. The role is not a superuser and cannot
 #                               create postgis, vector or timescaledb, so a database
 #                               made for a pytest-xdist worker has to be copied
@@ -20,8 +20,9 @@
 #                               background session in every database that allows
 #                               them, and PostgreSQL refuses to copy a template
 #                               somebody is connected to.
-#   schemas     app, geodata    owned by the role, in both databases
-#   search_path app, geodata, public   set on the role
+#   schemas     app, geodata,   owned by the role, in every database; vectors
+#               vectors         holds the scripture embeddings (decision 48)
+#   search_path app, geodata, vectors, public   set on the role
 #   extensions  postgis pg_trgm unaccent pgcrypto btree_gin btree_gist
 #               pg_stat_statements vector timescaledb   (DECISIONS.md, decision 15)
 #               created in every database WITH SCHEMA public, the way the API
@@ -57,7 +58,7 @@ DB_USER="tabsira"
 DB_NAME="tabsira"
 TEST_DB_NAME="tabsira_test"
 TEMPLATE_DB_NAME="tabsira_template"
-SCHEMAS=(app geodata)
+SCHEMAS=(app geodata vectors)
 EXTENSIONS=(postgis pg_trgm unaccent pgcrypto btree_gin btree_gist pg_stat_statements vector timescaledb)
 ENV_FILE="$REPO_ROOT/.env"
 
@@ -139,7 +140,7 @@ END
 \$\$;
 SQL
 printf "ALTER ROLE %s WITH LOGIN PASSWORD '%s';\n" "$DB_USER" "$DB_PASS" | psql_admin postgres
-psql_admin postgres -c "ALTER ROLE $DB_USER SET search_path = app, geodata, public;"
+psql_admin postgres -c "ALTER ROLE $DB_USER SET search_path = app, geodata, vectors, public;"
 # CREATEDB lets pytest-xdist copy a template database per worker; it is a
 # development convenience that a production role must not have.
 psql_admin postgres -c "ALTER ROLE $DB_USER $ROLE_FLAGS;"
@@ -200,10 +201,10 @@ for db in "${CONNECTABLE[@]}"; do
 	path="$(PGPASSWORD="$DB_PASS" PGCONNECT_TIMEOUT=5 psql -X -tA -h "$PG_HOST" -p "$PG_PORT" -U "$DB_USER" -d "$db" \
 		-c 'SHOW search_path' 2>&1)" ||
 		die "role $DB_USER cannot connect to $db over $PG_HOST:$PG_PORT: ${path//$DB_PASS/***}"
-	[[ "$path" == "app, geodata, public" ]] || die "search_path of $DB_USER on $db is '$path'"
+	[[ "$path" == "app, geodata, vectors, public" ]] || die "search_path of $DB_USER on $db is '$path'"
 done
 
 for db in "${CONNECTABLE[@]}"; do
 	log "$db extensions: $(query "$db" "SELECT string_agg(extname || ' ' || extversion, ', ' ORDER BY extname) FROM pg_extension WHERE extname <> 'plpgsql'")"
 done
-ok "Database setup complete: ${DATABASES[*]}, role $DB_USER, search_path app, geodata, public"
+ok "Database setup complete: ${DATABASES[*]}, role $DB_USER, search_path app, geodata, vectors, public"

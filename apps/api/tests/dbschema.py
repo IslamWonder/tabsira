@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from src.models import Base, GeoBase
+from src.models import Base, GeoBase, VectorsBase
 
 # The database-side extensions the schema relies on; the app chain's first
 # migration creates the same list.
@@ -20,11 +20,11 @@ EXTENSIONS = (
     "vector",
     "timescaledb",
 )
-SCHEMAS = ("app", "geodata")
+SCHEMAS = ("app", "geodata", "vectors")
 
 
 async def reset_schemas(connection: AsyncConnection) -> None:
-    """Drop every table, function and enum type in the two schemas, whatever created them."""
+    """Drop every table, function and enum type in the three schemas, whatever created them."""
     await connection.execute(
         text(
             """
@@ -32,17 +32,17 @@ async def reset_schemas(connection: AsyncConnection) -> None:
             DECLARE r record;
             BEGIN
                 FOR r IN SELECT schemaname, tablename FROM pg_tables
-                         WHERE schemaname IN ('app', 'geodata') LOOP
+                         WHERE schemaname IN ('app', 'geodata', 'vectors') LOOP
                     EXECUTE format('DROP TABLE IF EXISTS %I.%I CASCADE', r.schemaname, r.tablename);
                 END LOOP;
                 FOR r IN SELECT n.nspname, p.proname, p.oid FROM pg_proc p
                          JOIN pg_namespace n ON n.oid = p.pronamespace
-                         WHERE n.nspname IN ('app', 'geodata') LOOP
+                         WHERE n.nspname IN ('app', 'geodata', 'vectors') LOOP
                     EXECUTE format('DROP FUNCTION IF EXISTS %I.%I CASCADE', r.nspname, r.proname);
                 END LOOP;
                 FOR r IN SELECT n.nspname, t.typname FROM pg_type t
                          JOIN pg_namespace n ON n.oid = t.typnamespace
-                         WHERE n.nspname IN ('app', 'geodata') AND t.typtype = 'e' LOOP
+                         WHERE n.nspname IN ('app', 'geodata', 'vectors') AND t.typtype = 'e' LOOP
                     EXECUTE format('DROP TYPE IF EXISTS %I.%I CASCADE', r.nspname, r.typname);
                 END LOOP;
             END $$;
@@ -69,3 +69,4 @@ async def create_schema(connection: AsyncConnection) -> None:
     await reset_schemas(connection)
     await connection.run_sync(GeoBase.metadata.create_all)
     await connection.run_sync(Base.metadata.create_all)
+    await connection.run_sync(VectorsBase.metadata.create_all)

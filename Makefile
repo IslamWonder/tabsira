@@ -15,7 +15,7 @@ install: ## All dependencies: web, api, vision, git hooks
 dev: ## api + web (+ vision) with reload against tabsira.test
 	@bash scripts/dev.sh
 
-migrate: ## geodata chain, then app chain
+migrate: ## geodata chain, then app chain, then vectors chain
 	@bash scripts/migrate.sh
 
 data: ## Import corpora, ontology and learning path; build indexes

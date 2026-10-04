@@ -8,7 +8,7 @@
 -- the password never sits on a command line.
 --
 --   role      tabsira  login, not a superuser, CREATEDB (pytest-xdist copies a
---             template per worker), search_path app, geodata, public
+--             template per worker), search_path app, geodata, vectors, public
 --   databases tabsira           the database the migrations run against
 --             tabsira_test      the API test suite
 --             tabsira_template  an empty copy of the setup, closed to connections
@@ -23,7 +23,7 @@ END
 $$;
 
 ALTER ROLE tabsira WITH LOGIN CREATEDB PASSWORD :'app_password';
-ALTER ROLE tabsira SET search_path = app, geodata, public;
+ALTER ROLE tabsira SET search_path = app, geodata, vectors, public;
 
 CREATE DATABASE tabsira OWNER tabsira ENCODING 'UTF8' TEMPLATE template0;
 CREATE DATABASE tabsira_test OWNER tabsira ENCODING 'UTF8' TEMPLATE template0;

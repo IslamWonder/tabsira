@@ -39,6 +39,7 @@ extend-exclude = [
   # Alembic revisions are generated.
   "alembic/versions",
   "alembic_geodata/versions",
+  "alembic_vectors/versions",
   # Imported specifications and the corpora: owners' wording and scripture,
   # transliterated names of books, narrators and surahs.
   "docs/spec",

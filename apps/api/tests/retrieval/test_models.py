@@ -77,7 +77,7 @@ async def test_each_default_embedding_has_its_hnsw_index_on_both_tables(world):
         (
             await world.execute(
                 text(
-                    "SELECT indexname FROM pg_indexes WHERE schemaname = 'app' AND indexdef LIKE '%hnsw%'"
+                    "SELECT indexname FROM pg_indexes WHERE schemaname = 'vectors' AND indexdef LIKE '%hnsw%'"
                 )
             )
         ).scalars()

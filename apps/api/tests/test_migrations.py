@@ -25,6 +25,7 @@ from tests.dbschema import EXTENSIONS, create_schema, reset_schemas
 API_DIR = Path(__file__).resolve().parents[1]
 APP_CONFIG = "alembic.ini"
 GEODATA_CONFIG = "alembic_geodata/alembic.ini"
+VECTORS_CONFIG = "alembic_vectors/alembic.ini"
 APP_TABLES = {
     "users",
     "oauth_accounts",
@@ -76,15 +77,11 @@ APP_TABLES = {
     "scan_events",
     "ai_calls",
     "evidence_exposures",
-<<<<<<< HEAD
     "map_entries",
     "map_capture_points",
-=======
-    "quran_verse_embeddings",
-    "hadith_embeddings",
-    "embedding_runs",
->>>>>>> 6f2f6ac (api: store scripture vectors per model and full-text vectors of copies)
 }
+# Decision 48: derived, rebuildable, in their own schema and chain.
+VECTORS_TABLES = {"quran_verse_embeddings", "hadith_embeddings", "embedding_runs"}
 
 
 def load(path: Path) -> ModuleType:
@@ -128,7 +125,7 @@ def test_the_app_chain_creates_every_extension_in_public_and_skips_none(monkeypa
 
 
 def test_each_chain_is_one_line_from_exactly_one_initial_revision():
-    for chain in ("alembic", "alembic_geodata"):
+    for chain in ("alembic", "alembic_geodata", "alembic_vectors"):
         revisions = [load(path) for path in (API_DIR / chain / "versions").glob("2*.py")]
         by_id = {revision.revision: revision for revision in revisions}
 
@@ -142,7 +139,7 @@ def test_each_chain_is_one_line_from_exactly_one_initial_revision():
 
 @pytest.fixture
 async def migrated(engine):
-    """An empty `app` and `geodata`, for the chains to build; the test schema is restored after."""
+    """An empty `app`, `geodata` and `vectors`, for the chains to build; the test schema is restored after."""
     async with engine.begin() as connection:
         await reset_schemas(connection)
     try:
@@ -152,11 +149,13 @@ async def migrated(engine):
             await create_schema(connection)
 
 
-async def test_both_chains_build_the_database_and_match_the_models(migrated):
+async def test_the_three_chains_build_the_database_and_match_the_models(migrated):
     geodata = alembic(GEODATA_CONFIG, "upgrade", "head")
     app = alembic(APP_CONFIG, "upgrade", "head")
+    vectors = alembic(VECTORS_CONFIG, "upgrade", "head")
     assert geodata.returncode == 0, geodata.stderr
     assert app.returncode == 0, app.stderr
+    assert vectors.returncode == 0, vectors.stderr
 
     async with migrated.connect() as connection:
         tables = set(
@@ -164,7 +163,7 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
                 await connection.execute(
                     text(
                         "SELECT schemaname || '.' || tablename FROM pg_tables "
-                        "WHERE schemaname IN ('app', 'geodata')"
+                        "WHERE schemaname IN ('app', 'geodata', 'vectors')"
                     )
                 )
             ).scalars()
@@ -178,7 +177,7 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
                     text(f"SELECT version_num FROM {schema}.alembic_version")  # noqa: S608
                 )
             ).scalar_one()
-            for schema in ("app", "geodata")
+            for schema in ("app", "geodata", "vectors")
         }
         indexes = set(
             (
@@ -219,13 +218,15 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
         "geodata.alembic_version",
         "app.alembic_version",
         *(f"app.{table}" for table in APP_TABLES),
+        "vectors.alembic_version",
+        *(f"vectors.{table}" for table in VECTORS_TABLES),
     } == tables
     assert set(EXTENSIONS) <= extensions
-<<<<<<< HEAD
-    assert versions == {"app": "20261004_200000", "geodata": "20261004_130000"}
-=======
-    assert versions == {"app": "20261004_193000", "geodata": "20261004_130000"}
->>>>>>> 6f2f6ac (api: store scripture vectors per model and full-text vectors of copies)
+    assert versions == {
+        "app": "20261004_201000",
+        "geodata": "20261004_130000",
+        "vectors": "20261004_200000",
+    }
     # alembic check cannot see a materialized view either.
     assert views == {"app.quran_verse_spans true"}
     # The models and the migrations describe the same database.
@@ -242,7 +243,7 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
         "cookie_consents.cookie_consents_row_guard",
         "cookie_consents.cookie_consents_truncate_guard",
     } <= triggers
-    for config in (GEODATA_CONFIG, APP_CONFIG):
+    for config in (GEODATA_CONFIG, APP_CONFIG, VECTORS_CONFIG):
         check = alembic(config, "check")
         assert check.returncode == 0, check.stdout + check.stderr
 
@@ -261,6 +262,26 @@ async def test_the_geodata_chain_downgrades_and_upgrades_again(migrated):
     assert left == 0
 
     again = alembic(GEODATA_CONFIG, "upgrade", "head")
+    assert again.returncode == 0, again.stderr
+
+
+async def test_the_vectors_chain_needs_the_app_chain_and_downgrades_and_upgrades_again(migrated):
+    assert alembic(APP_CONFIG, "upgrade", "head").returncode == 0
+    assert alembic(VECTORS_CONFIG, "upgrade", "head").returncode == 0
+
+    down = alembic(VECTORS_CONFIG, "downgrade", "base")
+    assert down.returncode == 0, down.stderr
+    async with migrated.connect() as connection:
+        left = set(
+            (
+                await connection.execute(
+                    text("SELECT tablename FROM pg_tables WHERE schemaname = 'vectors'")
+                )
+            ).scalars()
+        )
+    assert left == {"alembic_version"}
+
+    again = alembic(VECTORS_CONFIG, "upgrade", "head")
     assert again.returncode == 0, again.stderr
 
 

@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Run the database migrations: the geodata chain first, then the app chain.
+# Run the database migrations: the geodata chain, the app chain, then the vectors chain.
 #
 # Usage: scripts/migrate.sh [message]
-#   no message   upgrade both chains to head
+#   no message   upgrade the three chains to head
 #   message      first autogenerate an app-chain revision with that message
 #
 # Geodata comes first because it is immutable reference data the app schema may
-# point at. Reads DATABASE_URL from the root .env (CI injects it instead).
+# point at; vectors come last because their keys point at app tables (decision
+# 48). Reads DATABASE_URL from the root .env (CI injects it instead).
 
 set -Eeuo pipefail
 
@@ -51,18 +52,18 @@ PSQL_URL="${SYNC_DATABASE_URL:-$DATABASE_URL}"
 PSQL_URL="${PSQL_URL/+asyncpg/}"
 PSQL_URL="${PSQL_URL/+psycopg/}"
 
-# Both schemas must exist before Alembic runs: each chain keeps its version
+# The three schemas must exist before Alembic runs: each chain keeps its version
 # table in its own schema. A schema that exists is left alone, so the role
 # needs no CREATE privilege on the database when setup-db.sh made them.
 if have psql; then
-	log "Ensuring the app and geodata schemas exist..."
-	for schema in app geodata; do
+	log "Ensuring the app, geodata and vectors schemas exist..."
+	for schema in app geodata vectors; do
 		if [[ "$(psql "$PSQL_URL" -tA -c "SELECT 1 FROM pg_namespace WHERE nspname = '$schema'")" != "1" ]]; then
 			psql "$PSQL_URL" -v ON_ERROR_STOP=1 -c "CREATE SCHEMA $schema" >/dev/null
 		fi
 	done
 else
-	warn "psql not found; assuming the app and geodata schemas already exist"
+	warn "psql not found; assuming the app, geodata and vectors schemas already exist"
 fi
 
 if [[ -n "${1:-}" ]]; then
@@ -76,12 +77,15 @@ uv run alembic -c alembic_geodata/alembic.ini upgrade head
 log "Running the app chain..."
 uv run alembic upgrade head
 
+log "Running the vectors chain..."
+uv run alembic -c alembic_vectors/alembic.ini upgrade head
+
 ok "Migrations completed"
 
 # ── CI metrics ──────────────────────────────────────────────────────
 if in_ci; then
 	mkdir -p "${WORKSPACE:-.}/.ci_metrics"
-	MIGRATIONS=$(find alembic/versions alembic_geodata/versions -name '2*.py' 2>/dev/null | wc -l | tr -d ' ')
+	MIGRATIONS=$(find alembic/versions alembic_geodata/versions alembic_vectors/versions -name '2*.py' 2>/dev/null | wc -l | tr -d ' ')
 	printf '{"stage":"migrations","status":"passed","count":%d}\n' "$MIGRATIONS" >"${WORKSPACE:-.}/.ci_metrics/migrations.json"
 	ok "CI metrics: $MIGRATIONS migrations"
 fi
