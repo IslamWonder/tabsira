@@ -66,6 +66,11 @@ FERNET_KEY_BYTES = 32
 # Where transactional mail says it comes from. The sending domain is the real one
 # in development too: .test is not a mail domain.
 DEFAULT_MAIL_FROM = "تبصرة <no-reply@tabsira.me>"
+DEFAULT_SUPPORT_EMAIL = "support@tabsira.me"
+DEFAULT_PRIVACY_EMAIL = "privacy@tabsira.me"
+# The date the first terms and privacy texts were written.
+DEFAULT_LEGAL_VERSION = "2026-10-04"
+DEFAULT_LANGUAGE = "ar"
 
 # A cookie name: RFC 6265 token characters we actually use. `__Host-` is refused
 # because it forbids the Domain attribute that sharing the cookie needs.
@@ -438,6 +443,21 @@ class Settings(BaseSettings):
     email_verification_expire_hours: Annotated[int, Field(ge=1, le=168)] = 24
     password_reset_expire_minutes: Annotated[int, Field(ge=5, le=1440)] = 60
 
+    # Contact addresses named on the terms and privacy pages (decision 34): the
+    # support form mails SUPPORT_EMAIL.
+    support_email: str = DEFAULT_SUPPORT_EMAIL
+    privacy_email: str = DEFAULT_PRIVACY_EMAIL
+    # Versions of the terms of use and the privacy policy. Changing one asks every
+    # account to accept again (decision 35).
+    terms_version: Annotated[str, Field(min_length=1, max_length=32)] = DEFAULT_LEGAL_VERSION
+    privacy_version: Annotated[str, Field(min_length=1, max_length=32)] = DEFAULT_LEGAL_VERSION
+    # Limits of the support form, per hashed address and over all addresses, in each worker.
+    support_max_per_address_per_hour: Annotated[int, Field(ge=1)] = 5
+    support_max_per_hour: Annotated[int, Field(ge=1)] = 200
+    # Language readiness (decision 36): Arabic only today; every text is keyed by language.
+    default_language: str = DEFAULT_LANGUAGE
+    supported_languages: Annotated[tuple[str, ...], NoDecode] = (DEFAULT_LANGUAGE,)
+
     # Feature flags. A feature that is off must not break the core journey.
     feature_chat: bool = True
     feature_world: bool = True
@@ -581,6 +601,30 @@ class Settings(BaseSettings):
             message = 'must be an address, with or without a name: "Name <a@example.com>"'
             raise ValueError(message)
         return value.strip()
+
+    @field_validator("support_email", "privacy_email")
+    @classmethod
+    def _check_contact_address(cls, value: str) -> str:
+        address = value.strip()
+        if not address or "@" not in parseaddr(address)[1]:
+            message = "must be an e-mail address"
+            raise ValueError(message)
+        return address
+
+    @field_validator("supported_languages", mode="before")
+    @classmethod
+    def _split_languages(cls, value: Any) -> Any:
+        """Accept the comma-separated form an environment variable can carry."""
+        if isinstance(value, str):
+            return tuple(part.strip() for part in value.split(",") if part.strip())
+        return value
+
+    @model_validator(mode="after")
+    def _default_language_is_supported(self) -> Self:
+        if self.default_language not in self.supported_languages:
+            message = "DEFAULT_LANGUAGE must be one of SUPPORTED_LANGUAGES"
+            raise ValueError(message)
+        return self
 
     @field_validator("web_base_url")
     @classmethod

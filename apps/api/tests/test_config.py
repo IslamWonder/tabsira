@@ -943,3 +943,25 @@ def test_the_moderation_log_compresses_before_it_drops():
     assert (
         "MODERATION_LOG_COMPRESS_AFTER_DAYS must be under MODERATION_LOG_RETENTION_DAYS" in message
     )
+
+
+def test_contact_addresses_and_legal_versions_default_to_the_published_ones(make_settings):
+    settings = make_settings()
+
+    assert settings.support_email == "support@tabsira.me"
+    assert settings.privacy_email == "privacy@tabsira.me"
+    assert settings.terms_version == settings.privacy_version == "2026-10-04"
+    assert (settings.support_max_per_address_per_hour, settings.support_max_per_hour) == (5, 200)
+
+
+def test_contact_addresses_must_be_addresses(make_settings):
+    assert "SUPPORT_EMAIL" in errors_of(support_email="nobody")
+    assert "PRIVACY_EMAIL" in errors_of(privacy_email=" ")
+    assert make_settings(support_email=" help@tabsira.me ").support_email == "help@tabsira.me"
+
+
+def test_only_arabic_is_supported_and_the_default_must_be_supported(make_settings):
+    assert make_settings().supported_languages == ("ar",)
+    assert make_settings(supported_languages="ar, en").supported_languages == ("ar", "en")
+    assert make_settings(supported_languages=("ar",)).supported_languages == ("ar",)
+    assert "DEFAULT_LANGUAGE" in errors_of(default_language="en")
