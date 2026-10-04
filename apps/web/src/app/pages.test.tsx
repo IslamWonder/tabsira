@@ -17,7 +17,6 @@ vi.mock('next/navigation', () => ({ usePathname: () => '/' }));
 
 describe('placeholder routes', () => {
   it.each<[string, () => ReactElement, Metadata, string, string]>([
-    ['/world', WorldPage, worldMetadata, 'عالمي', '/world'],
     ['/community', CommunityPage, communityMetadata, 'تبصرة تواصل', '/community'],
     ['/atlas', AtlasPage, atlasMetadata, 'أطلس بصائر العالم', '/atlas'],
     ['/me', MePage, meMetadata, 'ملفي', '/me'],
@@ -30,6 +29,13 @@ describe('placeholder routes', () => {
       expect(metadata.alternates?.canonical).toBe(canonical);
     }
   );
+
+  it('/world is a real screen with its canonical address', () => {
+    render(<WorldPage />);
+    expect(screen.getByRole('heading', { level: 1, name: 'عالمي' })).toBeInTheDocument();
+    expect(screen.queryByText('قريبًا')).toBeNull();
+    expect(worldMetadata.alternates?.canonical).toBe('/world');
+  });
 
   it('keeps the personal spaces out of search engines', () => {
     expect(worldMetadata.robots).toEqual({ index: false, follow: false });

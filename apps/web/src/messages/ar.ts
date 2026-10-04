@@ -118,9 +118,6 @@ export const ar = {
         resent: 'إن لم يكن بريدك مؤكَّدًا، فسيصله رابط جديد خلال دقائق.',
         withGoogle: 'تدخل بحساب Google',
       },
-      practice: {
-        body: 'هنا ستظهر مراتب التمرين والسلسلة وعلامات المواظبة حين تُبنى.',
-      },
       data: {
         exportHint: 'كل ما يحفظه حسابك، في ملف JSON واحد.',
         export: 'نزّل بياناتي',
@@ -267,6 +264,121 @@ export const ar = {
 
   victory: {
     title: 'اكتُشِف المعنى',
+  },
+
+  /** The personal world: a fog map of the learning path's regions (master prompt v2 §16-17). */
+  world: {
+    loading: 'نفتح خريطة عالمك…',
+    unavailable: 'تعذّر فتح عالمك الآن. حاول بعد قليل.',
+    retry: 'أعد المحاولة',
+    summary: (opened: number, total: number) =>
+      `انقشع الضباب عن ${opened} من ${total} مناطق. الضباب يدلّ على ما لم يُكتشف بعد، لا على نقص فيك.`,
+    empty: {
+      title: 'عالمك ينتظر أول بصيرة',
+      body: 'يكسو الضباب خريطتك كلها الآن. حين تتمّ بصيرة ينقشع الضباب عن موضعها ويبقى لك. ابدأ بمشهد المطر الموثّق، أو صوّر مشهدك أنت.',
+      cta: 'ابدأ بأول مشهد',
+    },
+    list: {
+      title: 'المناطق',
+      opened: (count: number) => (count === 1 ? 'بصيرة واحدة محفوظة' : `${count} بصائر محفوظة`),
+      openedNoInsights: 'مفتوحة',
+      fog: 'تحت الضباب',
+      withTreasure: (state: string) => `${state}، فيها كنز ينتظر`,
+    },
+    map: {
+      select: (name: string, state: string) => `${name}، ${state}`,
+    },
+    detail: {
+      back: 'أغلق التفاصيل',
+      fogBody:
+        'ينقشع الضباب عن هذه المنطقة حين تتمّ بصيرة تنتمي إليها، فيظهر لك موضعها هنا. لا عجلة في ذلك.',
+      lastVisit: (when: string) => `آخر زيارة: ${when}`,
+      insights: 'بصائر هذا الموضع',
+      insightMeta: (when: string) => `أُتمّت في ${when}`,
+    },
+    treasure: {
+      title: 'كنز مخبوء',
+      ready: 'ينتظرك في هذا الموضع شيء آخر يصل بما حفظته.',
+      reveal: 'اكشف الكنز',
+      revealing: 'نكشفه…',
+      notReady: 'لم يحن وقته بعد. عد إلى هذا الموضع لاحقًا.',
+      revealedTitle: 'كشفت كنزًا',
+      unit: 'وحدة من المسار',
+      verifiedSources: 'من المصادر المتحقَّق منها نفسها',
+      quranReference: (surah: string, ayah: number) => `${surah} · ${ayah}`,
+      hadithReference: (book: string, number: string) => `${book} · ${number}`,
+    },
+    threads: {
+      title: 'الخيوط بين المواضع',
+      lead: 'يصل خيطٌ بين موضعين حين تكون بينهما صلة مسجّلة، لا غير.',
+      between: (a: string, b: string) => `بين «${a}» و«${b}»`,
+      insights: 'البصائر الواصلة',
+      none: 'لا خيوط بعد. تظهر حين تصل صلة مسجّلة بين موضعين.',
+    },
+  },
+
+  /** «تمرينك»: practice ranks, streak, the daily quest, the sky of meanings and badges (decision 27). */
+  practiceView: {
+    title: 'تمرينك',
+    lead: 'ما سجّله تمرينك من نظرات وبصائر وخطوات، لا غير. لا مقارنة بأحد، ولا حكم على إيمانك.',
+    loading: 'نحمّل تمرينك…',
+    unavailable: 'تعذّر تحميل تمرينك الآن. حاول بعد قليل.',
+    retry: 'أعد المحاولة',
+    back: 'ملفي',
+    rank: {
+      label: 'مرتبة التمرين',
+      looks: (count: number) => `${count} نظرة مكتملة`,
+      next: (title: string, minimum: number) => `المرتبة التالية «${title}» عند ${minimum} نظرة.`,
+      top: 'بلغت أعلى مرتبة في التمرين، ويبقى التمرين مفتوحًا.',
+      progressLabel: 'الطريق إلى المرتبة التالية',
+    },
+    streak: {
+      label: 'سلسلة النظر',
+      current: (days: number) => (days === 1 ? 'يوم واحد متتالٍ' : `${days} أيام متتالية`),
+      best: (days: number) => `أطول سلسلة لك: ${days}`,
+      week: 'آخر سبعة أيام',
+      today: 'اليوم',
+      looked: 'نظرت',
+      notLooked: 'لم تنظر',
+    },
+    quest: {
+      done: 'أتممت مهمة اليوم',
+      pending: 'مهمة اليوم لم تكتمل بعد',
+      daysDone: (days: number) => `أتممتها في ${days} أيام حتى الآن`,
+    },
+    sky: {
+      title: 'سماء المعاني',
+      count: (count: number) => {
+        if (count === 0) {
+          return 'لا معنى بعد';
+        }
+        return count === 1 ? 'معنى أضاء لك' : `${count} معاني أضاءت لك`;
+      },
+      label: 'المعاني التي أتممت بصائرها، نجمًا لكل معنى',
+      star: (concept: string, count: number) =>
+        count === 1 ? `${concept}، مرة واحدة` : `${concept}، ${count} مرات`,
+      empty: 'لم يُضئ معنى بعد. حين تتمّ بصيرة يظهر معناها نجمًا في هذه السماء.',
+      cta: 'ابدأ بأول مشهد',
+    },
+    badges: {
+      title: 'علامات التمرين',
+      earned: 'نلتها',
+      locked: 'لم تُنل بعد',
+      count: (earned: number, total: number) => `${earned} من ${total}`,
+    },
+    counts: {
+      title: 'ما سجّلته',
+      looks: 'نظرات مكتملة',
+      completed: 'بصائر أتممتها',
+      actionsDone: 'خطوات أقررت بها',
+      places: 'مواضع في عالمك',
+      treasures: 'كنوز كشفتها',
+      questions: 'أسئلة سألتها',
+    },
+    teaser: {
+      body: 'مرتبة التمرين وسلسلة النظر ومهمة اليوم وسماء المعاني والعلامات، كلها في صفحة واحدة.',
+      open: 'افتح تمرينك',
+    },
   },
 
   progress: {
@@ -607,6 +719,19 @@ export const ar = {
     privacy: 'سياسة الخصوصية',
     support: 'الدعم',
     cookieSettings: 'إعدادات ملفات تعريف الارتباط',
+  },
+
+  /** The world and practice states on sample data (/dev/world). Never part of a production build. */
+  devWorld: {
+    title: 'عالمي وتمرينك على بيانات تجريبية',
+    description: 'حالات الشاشتين في المظهرين: نصوصها بين أقواس لأنها ليست من الخادم.',
+    states: {
+      world: 'عالم فيه موضعان وخيط',
+      opened: 'موضع مفتوح',
+      newcomer: 'عالم ضيف جديد تحت الضباب',
+      practice: 'تمرينك',
+      practiceEmpty: 'تمرينك لضيف جديد',
+    },
   },
 
   /** The development gallery (/dev/ui). Never part of a production build. */
