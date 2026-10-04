@@ -17,7 +17,9 @@ from collections.abc import Sequence
 import psycopg
 from sqlalchemy.engine import make_url
 
-from src.config import ConfigError, Settings, load_settings
+from src.config import ConfigError, Environment, Settings, load_settings
+from src.storage.notice import storage_notice
+from src.storage.probe import StorageProbeError, probe_storage
 
 
 def _database_label(settings: Settings) -> str:
@@ -56,7 +58,7 @@ def report(settings: Settings) -> list[str]:
     flags = sorted(name for name in Settings.model_fields if name.startswith("feature_"))
     on = [name.removeprefix("feature_") for name in flags if getattr(settings, name)]
     key_state = "set" if settings.ai.api_key.get_secret_value() else "NOT set"
-    return [
+    lines = [
         f"environment: {settings.environment.value}",
         f"api: {settings.api_host}:{settings.api_port} (public {settings.api_url})",
         f"site: {settings.site_url}",
@@ -64,7 +66,25 @@ def report(settings: Settings) -> list[str]:
         f"test database: {'set' if settings.test_database_url else 'not set'}",
         f"ai provider: {settings.ai_provider.value} (api key {key_state})",
         f"features on: {', '.join(on) or 'none'}",
+        f"photos: {settings.resolved_storage_backend}",
     ]
+    notice = storage_notice(settings)
+    if notice is not None:
+        lines.append(f"WARNING: {notice}")
+    return lines
+
+
+def storage_report(settings: Settings) -> tuple[str, bool]:
+    """
+    Probe the photo storage; return the line to print and whether the check passed.
+
+    A failure fails the check in production only: elsewhere it is a warning, as at start.
+    """
+    try:
+        probe_storage(settings)
+    except StorageProbeError as error:
+        return f"storage: FAILED, {error}", settings.environment != Environment.PRODUCTION
+    return "storage: ok", True
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -82,6 +102,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     sys.stdout.write("Configuration is valid.\n")
     for line in report(settings):
         sys.stdout.write(f"  {line}\n")
+
+    line, storage_ok = storage_report(settings)
+    if not storage_ok:
+        sys.stderr.write(f"{line}\n")
+        return 1
+    sys.stdout.write(f"  {line}\n")
 
     if args.live:
         problem = _check_database(settings)

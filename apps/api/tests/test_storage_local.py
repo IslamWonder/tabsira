@@ -10,7 +10,8 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
-from src.storage import base, local
+from src import config
+from src.storage import base
 from src.storage.base import (
     InvalidKeyError,
     InvalidTtlError,
@@ -135,6 +136,17 @@ async def test_the_file_lies_under_the_media_folder_with_a_fan_out_folder_and_ow
     assert [p.name for p in path.parent.iterdir()] == [path.name]
 
 
+async def test_every_folder_made_for_an_object_is_private_whatever_the_umask(store):
+    old = os.umask(0)
+    try:
+        await store.put(new_private_key(), JPEG)
+    finally:
+        os.umask(old)
+
+    folders = [store.root, store.root / "private", *(store.root / "private").iterdir()]
+    assert [stat.S_IMODE(f.stat().st_mode) for f in folders] == [0o700, 0o700, 0o700]
+
+
 async def test_a_second_put_replaces_the_object(store):
     key = new_private_key()
     await store.put(key, JPEG)
@@ -218,7 +230,7 @@ def test_the_media_folder_is_data_media_of_the_checkout_and_is_not_tracked():
 
 
 def test_outside_a_checkout_the_folder_is_under_the_working_directory(tmp_path, monkeypatch):
-    monkeypatch.setattr(local, "_ROOT_MARKER", "no-such-marker-file")
+    monkeypatch.setattr(config, "CHECKOUT_MARKER", "no-such-marker-file")
     monkeypatch.chdir(tmp_path)
 
     assert default_media_root() == tmp_path / "data" / "media"

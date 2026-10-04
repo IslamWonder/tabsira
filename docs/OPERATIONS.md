@@ -144,6 +144,15 @@ These are local copies: they do not survive the loss of the data host. Copying `
 
 Restore: `deploy/restore-db.sh <dump>` restores into a new database (`tabsira_restore`) so the live one is never overwritten by accident; `--into tabsira --yes-overwrite` replaces it.
 
+## Photos
+
+Decision 44. Production keeps consented photos in a private S3-compatible bucket and nowhere else: `STORAGE_BACKEND=s3` with every `S3_*` key (`deploy/env.production.example`). The environment file is refused at start when the resolved backend is not S3, when a key is missing, or when an `S3_*` key is set without `S3_BUCKET`.
+
+- **Start-up check.** The API will not start in production when it cannot use the bucket. At boot it probes with a 5-second timeout: a HeadBucket, then a put and delete of a small probe object under `private/` with a random name, which proves the keys can write. A failure names the bucket and the endpoint host (never a key); the uvicorn worker exits with gunicorn's boot-error status and the master halts. `deploy/api-roll.sh smoke` boots the new release once on a spare port before any live worker is touched: it sees the master die, prints the last lines of its log and aborts with "Pre-flight failed; no live worker was touched", so a wrong key, a missing bucket or an unreachable endpoint stops the deploy there. The probe runs again whenever a worker is added or replaced (a roll, `max_requests` recycling): a storage outage at that moment makes the new worker fail to boot and halts the master, and systemd restarts it (`Restart=on-failure`) until the bucket is back, so the API is down while the storage is.
+- **Check by hand.** `python -m src.cli.check_config` runs the same probe and prints `storage: ok` or `storage: FAILED, <reason>` (exit 1 in production); run it with the production environment file after changing any `S3_*` key.
+- **Development and test.** With no `S3_BUCKET`, photos go to `LOCAL_MEDIA_DIR` (`data/media` of the checkout by default) and the API logs "No S3 bucket: photos go to `<dir>`; production requires S3". A failing probe is a warning there, never a refusal, so `make dev` works offline.
+- **Serving.** No route serves stored photos yet, so nginx has no location for them. Published copies are served from `S3_PUBLIC_BASE_URL` with `Cache-Control: public, max-age=300`; private photos only through signed links.
+
 ## Day to day
 
 ```bash

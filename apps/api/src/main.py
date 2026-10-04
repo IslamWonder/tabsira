@@ -50,6 +50,8 @@ from src.routers import (
 from src.scans.queue import close_queue
 from src.services import social_sitemap  # noqa: F401 - registers the posts and profiles sitemaps
 from src.services.insight_source import InsightSource
+from src.storage.notice import announce_storage
+from src.storage.probe import check_storage
 
 API_VERSION = "0.1.0"
 
@@ -105,7 +107,14 @@ OPENAPI_TAGS = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Flush error reports, then release the database, Redis, queue and HTTP connections."""
+    """
+    Prove the photo storage works before serving, then release everything on stop.
+
+    On stop it flushes error reports, then releases the database, Redis, queue and HTTP
+    connections. In production a storage that cannot be used raises here, so the worker exits at boot
+    (decision 44).
+    """
+    await check_storage(app.state.settings)
     yield
     shutdown_error_tracking()
     reporter: WebReporter | None = getattr(app.state, "web_reporter", None)
@@ -155,6 +164,7 @@ def create_app(
     settings = settings or get_settings()
     # Before the application exists: the SDK hooks the framework as it is assembled.
     init_error_tracking(settings, API_VERSION)
+    announce_storage(settings)
 
     app = FastAPI(
         title="TABSIRA API",

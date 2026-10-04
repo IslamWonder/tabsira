@@ -1,10 +1,10 @@
 """
-Photo storage on the local disk, for development on `tabsira.test` (decision 8).
+Photo storage on the local disk, for development and for a server with no S3 bucket (decision 44).
 
-Objects live under `data/media` (gitignored), in `private/` and `public/`, with a two-digit
-subfolder taken from the random id so no folder grows without bound. Files are written with
-owner-only permissions, to a temporary name first and renamed into place, so a reader never
-sees half a photo.
+Objects live under `LOCAL_MEDIA_DIR` (`data/media` of the checkout, gitignored, by default), in
+`private/` and `public/`, with a two-digit subfolder taken from the random id so no folder grows
+without bound. Files are written with owner-only permissions, to a temporary name first and
+renamed into place, so a reader never sees half a photo.
 
 There is no web server in front of a folder, so a "signed" link points at the API's
 `/media/<key>` address with an expiry and an HMAC of both. The route that serves it (not
@@ -23,6 +23,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from src import clock
+from src.config import checkout_root
 from src.storage.base import (
     CONTENT_TYPE,
     KEY,
@@ -35,17 +36,21 @@ from src.storage.base import (
     split_key,
 )
 
-# The folder is found from the repository root: the first parent that holds the workspace file.
-_ROOT_MARKER = "pnpm-workspace.yaml"
 MEDIA_ROUTE = "/media"
 
 
 def default_media_root() -> Path:
     """Return `data/media` of the checkout; the working directory's own `data/media` otherwise."""
-    for parent in Path(__file__).resolve().parents:
-        if (parent / _ROOT_MARKER).is_file():
-            return parent / "data" / "media"
-    return Path.cwd() / "data" / "media"
+    return checkout_root() / "data" / "media"
+
+
+def make_private_folders(folder: Path) -> None:
+    """Make `folder` and each missing parent at 0o700, whatever the process's umask or `parents`."""
+    missing = [folder, *folder.parents]
+    missing = missing[: next((i for i, p in enumerate(missing) if p.exists()), len(missing))]
+    for each in reversed(missing):
+        each.mkdir(mode=0o700, exist_ok=True)
+        each.chmod(0o700)
 
 
 class LocalStorage:
@@ -95,7 +100,7 @@ class LocalStorage:
 
     @staticmethod
     def _write(path: Path, data: bytes) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        make_private_folders(path.parent)
         temporary = path.with_name(f".{path.name}.{secrets.token_hex(4)}.tmp")
         descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         try:

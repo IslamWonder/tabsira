@@ -104,6 +104,18 @@ DEFAULT_EXPOSURES_RETENTION_DAYS = 730
 DEFAULT_EXPOSURES_COMPRESS_AFTER_DAYS = 30
 
 
+# The checkout's root is the first parent that holds the workspace file.
+CHECKOUT_MARKER = "pnpm-workspace.yaml"
+
+
+def checkout_root() -> Path:
+    """Return the checkout's root; the working directory when this code runs outside one."""
+    for parent in Path(__file__).resolve().parents:
+        if (parent / CHECKOUT_MARKER).is_file():
+            return parent
+    return Path.cwd()
+
+
 class Environment(StrEnum):
     """
     The environment the API runs in.
@@ -550,10 +562,13 @@ class Settings(BaseSettings):
     # last page of its section).
     sitemap_page_size: Annotated[int, Field(ge=1, le=MAX_SITEMAP_PAGE_SIZE)] = 10_000
 
-    # Where consented photos are kept (decisions 8 and 19): on local disk under
-    # data/media in development, in a private S3-compatible bucket in production.
-    # Every S3 key below is required once the backend is "s3", in any environment.
-    storage_backend: Literal["local", "s3"] = "local"
+    # Where consented photos are kept (decisions 8, 19 and 44): "auto" uses the S3 bucket
+    # when S3_BUCKET is set and the local disk otherwise; "local" and "s3" force one.
+    # Production requires s3. Every S3 key below is required once the resolved backend is s3,
+    # and S3 keys without a bucket are refused under auto, so a typo never falls back to disk.
+    storage_backend: Literal["auto", "local", "s3"] = "auto"
+    # Root of the local store, for development and test; empty is data/media of the checkout.
+    local_media_dir: str = ""
     # Empty uses AWS; set it for another S3-compatible service.
     s3_endpoint_url: str = ""
     s3_region: str = "us-east-1"
@@ -802,6 +817,9 @@ class Settings(BaseSettings):
         if parts.query or parts.fragment:
             message = "must have no query and no fragment"
             raise ValueError(message)
+        if parts.username is not None or parts.password is not None:
+            message = "must have no user name or password"
+            raise ValueError(message)
         return candidate.rstrip("/")
 
     @field_validator("s3_bucket", "s3_access_key_id", "s3_region")
@@ -862,11 +880,16 @@ class Settings(BaseSettings):
                 raise ValueError(message)
         return self
 
+    @field_validator("local_media_dir")
+    @classmethod
+    def _strip_local_media_dir(cls, value: str) -> str:
+        return value.strip()
+
     @model_validator(mode="after")
     def _require_s3_settings(self) -> Self:
         """With the S3 backend every S3 key must be set, so photos are never lost to a typo."""
-        if self.storage_backend != "s3":
-            return self
+        if self.resolved_storage_backend != "s3":
+            return self._refuse_orphaned_s3_settings()
         missing = [
             name.upper()
             for name in ("s3_bucket", "s3_access_key_id", "s3_public_base_url", "s3_region")
@@ -875,7 +898,34 @@ class Settings(BaseSettings):
         if not self.s3_secret_access_key.get_secret_value():
             missing.append("S3_SECRET_ACCESS_KEY")
         if missing:
-            message = "STORAGE_BACKEND=s3 needs " + ", ".join(missing)
+            subject = (
+                "STORAGE_BACKEND=s3"
+                if self.storage_backend == "s3"
+                else "S3_BUCKET is set, so photos go to S3, which"
+            )
+            message = f"{subject} needs " + ", ".join(missing)
+            raise ValueError(message)
+        return self
+
+    def _refuse_orphaned_s3_settings(self) -> Self:
+        """`auto` with S3 keys but no bucket is a typo, not a request for the disk."""
+        if self.storage_backend != "auto":
+            return self
+        orphans = [
+            name
+            for name, value in (
+                ("S3_ACCESS_KEY_ID", self.s3_access_key_id),
+                ("S3_SECRET_ACCESS_KEY", self.s3_secret_access_key.get_secret_value()),
+                ("S3_ENDPOINT_URL", self.s3_endpoint_url),
+                ("S3_PUBLIC_BASE_URL", self.s3_public_base_url),
+            )
+            if value
+        ]
+        if orphans:
+            message = (
+                f"{', '.join(orphans)} is set while S3_BUCKET is empty: set the bucket, "
+                "or STORAGE_BACKEND=local to keep photos on the development disk"
+            )
             raise ValueError(message)
         return self
 
@@ -932,6 +982,7 @@ class Settings(BaseSettings):
             )
             if _host_is_test_domain(url)
         ]
+        problems.extend(self._storage_problems())
         if not self.ai.api_key.get_secret_value():
             problems.append(f"the key of the active AI provider ({self.ai_provider}) is empty")
         if _domain_is_test(self.session_cookie_domain):
@@ -970,6 +1021,26 @@ class Settings(BaseSettings):
         if self.scan_engine is ScanEngine.DEMO:
             problems.append("SCAN_ENGINE is demo, a development simulation")
         return problems
+
+    def _storage_problems(self) -> list[str]:
+        """Production keeps photos in S3 and nowhere else (decision 44)."""
+        if self.resolved_storage_backend == "s3":
+            return []
+        return ["photos must be kept in S3 in production: set STORAGE_BACKEND=s3 and the S3_* keys"]
+
+    @property
+    def resolved_storage_backend(self) -> Literal["local", "s3"]:
+        """The store in use: `auto` is s3 when S3_BUCKET is set and the local disk otherwise."""
+        if self.storage_backend == "auto":
+            return "s3" if self.s3_bucket else "local"
+        return self.storage_backend
+
+    @property
+    def local_media_path(self) -> Path:
+        """Root of the local store, resolved; data/media of the checkout when not set."""
+        if not self.local_media_dir:
+            return checkout_root() / "data" / "media"
+        return Path(self.local_media_dir).expanduser().resolve()
 
     @property
     def is_production(self) -> bool:

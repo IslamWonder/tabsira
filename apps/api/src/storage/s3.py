@@ -61,6 +61,28 @@ def _translate(error: Exception) -> Exception:
     return StorageUnavailableError("the photo storage did not answer")
 
 
+def build_client(
+    settings: Settings, *, connect_timeout: int = 3, read_timeout: int = 10, attempts: int = 4
+) -> Any:
+    """Build the boto3 client of the `S3_*` settings; the start-up probe asks for shorter waits."""
+    endpoint = settings.s3_endpoint_url or None
+    return boto3.client(
+        "s3",
+        endpoint_url=endpoint,
+        region_name=settings.s3_region,
+        aws_access_key_id=settings.s3_access_key_id,
+        aws_secret_access_key=settings.s3_secret_access_key.get_secret_value(),
+        config=Config(
+            signature_version="s3v4",
+            # Another provider's endpoint rarely serves a bucket under its own host name.
+            s3={"addressing_style": "path" if endpoint else "auto"},
+            retries={"max_attempts": attempts - 1, "mode": "standard"},
+            connect_timeout=connect_timeout,
+            read_timeout=read_timeout,
+        ),
+    )
+
+
 class S3Storage:
     """Implements `Storage` on one bucket."""
 
@@ -80,27 +102,11 @@ class S3Storage:
     @classmethod
     def from_settings(cls, settings: Settings) -> S3Storage:
         """Build the store and its client from the `S3_*` settings."""
-        endpoint = settings.s3_endpoint_url or None
-        client = boto3.client(
-            "s3",
-            endpoint_url=endpoint,
-            region_name=settings.s3_region,
-            aws_access_key_id=settings.s3_access_key_id,
-            aws_secret_access_key=settings.s3_secret_access_key.get_secret_value(),
-            config=Config(
-                signature_version="s3v4",
-                # Another provider's endpoint rarely serves a bucket under its own host name.
-                s3={"addressing_style": "path" if endpoint else "auto"},
-                retries={"max_attempts": 3, "mode": "standard"},
-                connect_timeout=3,
-                read_timeout=10,
-            ),
-        )
         return cls(
             bucket=settings.s3_bucket,
             public_base_url=settings.s3_public_base_url,
             default_ttl_seconds=settings.signed_url_ttl_seconds,
-            client=client,
+            client=build_client(settings),
         )
 
     async def _call(self, operation: str, **arguments: Any) -> Any:

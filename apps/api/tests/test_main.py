@@ -102,6 +102,10 @@ async def test_production_serves_the_schema_but_not_the_interactive_docs(make_se
         ai_ovh={"api_key": "ovh-key-123"},
         ai_openai={"api_key": "openai-key-123"},
         redis_password="redis-secret",
+        s3_bucket="tabsira-photos",
+        s3_access_key_id="AKIAEXAMPLE",
+        s3_secret_access_key="s3-secret-value",
+        s3_public_base_url="https://media.tabsira.me",
     )
     async with client_for(main.create_app(settings)) as client:
         assert (await client.get("/openapi.json")).status_code == 200

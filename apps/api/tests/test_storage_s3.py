@@ -13,6 +13,7 @@ from botocore.exceptions import EndpointConnectionError
 from botocore.stub import Stubber
 from moto import mock_aws
 
+from src.config import Environment
 from src.storage import build_storage
 from src.storage.base import (
     InvalidKeyError,
@@ -304,25 +305,37 @@ def test_the_settings_choose_the_store(make_settings):
     assert local.base_url == "https://api.tabsira.test"
 
 
+PRODUCTION = {
+    "environment": "production",
+    "site_url": "https://tabsira.me",
+    "api_url": "https://api.tabsira.me",
+    "admin_url": "https://admin.tabsira.me",
+    "cors_origins": "https://tabsira.me",
+    "session_cookie_domain": ".tabsira.me",
+    "hash_secret": "not-a-real-secret-but-long-enough-for-the-rule",
+    "ai_ovh": {"api_key": "ovh-key-123"},
+    "ai_openai": {"api_key": "openai-key-123"},
+    "feature_admin": False,
+    "redis_password": "redis-secret",
+}
+
+
 def test_production_refuses_the_local_store(make_settings):
-    production = {
-        "environment": "production",
-        "site_url": "https://tabsira.me",
-        "api_url": "https://api.tabsira.me",
-        "admin_url": "https://admin.tabsira.me",
-        "cors_origins": "https://tabsira.me",
-        "session_cookie_domain": ".tabsira.me",
-        "hash_secret": "not-a-real-secret-but-long-enough-for-the-rule",
-        "ai_ovh": {"api_key": "ovh-key-123"},
-        "ai_openai": {"api_key": "openai-key-123"},
-        "feature_admin": False,
-        "redis_password": "redis-secret",
-    }
+    development = make_settings()
+    production = development.model_copy(update={"environment": Environment.PRODUCTION})
 
     with pytest.raises(StorageConfigError, match="production keeps photos in S3"):
-        build_storage(make_settings(**production))
+        build_storage(production)
 
-    assert isinstance(build_storage(make_settings(**production, **S3_SETTINGS)), S3Storage)
+
+def test_production_with_a_bucket_uses_s3(make_settings):
+    assert isinstance(build_storage(make_settings(**PRODUCTION, **S3_SETTINGS)), S3Storage)
+
+
+def test_an_explicit_local_store_wins_over_a_bucket(make_settings, tmp_path):
+    values = {**S3_SETTINGS, "storage_backend": "local", "local_media_dir": str(tmp_path)}
+
+    assert isinstance(build_storage(make_settings(**values)), LocalStorage)
 
 
 def test_a_public_object_is_cached_for_five_minutes_and_never_immutable():

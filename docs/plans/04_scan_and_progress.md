@@ -4,16 +4,17 @@
 
 A person takes or uploads a photo. They see honest stages (understanding, searching, verifying, composing), can point at what matters and answer one question.
 
-| Step                                                                    | Status | Notes                            |
-| ----------------------------------------------------------------------- | ------ | -------------------------------- |
-| Upload or link, size and safety checks                                  | ✅     | Built; merges after review.      |
-| Queue with one worker, progress that resumes after a drop               | ✅     | Built; merges after review.      |
-| Photo shown only after the safety verdict; sensitive scenes never shown | ✅     |                                  |
-| Focus and one clarifying question                                       | ✅     |                                  |
-| Rain tutorial, labelled as prepared                                     | ✅     |                                  |
-| Scan worker unit, graceful restart, Redis persistence off               | ✅     | Dry-run only; no server touched. |
-| Scripture review fixes, then merge                                      | 🔄     | In progress.                     |
-| Screens: capture, progress, focus, question                             | 🔄     | In progress.                     |
+| Step                                                                             | Status | Notes                              |
+| -------------------------------------------------------------------------------- | ------ | ---------------------------------- |
+| Upload or link, size and safety checks                                           | ✅     | Built; merges after review.        |
+| Queue with one worker, progress that resumes after a drop                        | ✅     | Built; merges after review.        |
+| Photo shown only after the safety verdict; sensitive scenes never shown          | ✅     |                                    |
+| Focus and one clarifying question                                                | ✅     |                                    |
+| Rain tutorial, labelled as prepared                                              | ✅     |                                    |
+| Production requires S3, checked at start; disk only in development (decision 44) | ✅     | Probe at boot and in check_config. |
+| Scan worker unit, graceful restart, Redis persistence off                        | ✅     | Dry-run only; no server touched.   |
+| Scripture review fixes, then merge                                               | 🔄     | In progress.                       |
+| Screens: capture, progress, focus, question                                      | 🔄     | In progress.                       |
 
 **How we check it**
 

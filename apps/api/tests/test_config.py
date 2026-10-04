@@ -40,6 +40,10 @@ PRODUCTION = {
     "admin_totp_encryption_key": FERNET_KEY,
     "ai_ovh": {"api_key": "ovh-key-123"},
     "redis_password": "redis-secret",
+    "s3_bucket": "tabsira-photos",
+    "s3_access_key_id": "AKIAEXAMPLE",
+    "s3_secret_access_key": "s3-secret-value",
+    "s3_public_base_url": "https://media.tabsira.me",
 }
 
 
@@ -797,7 +801,8 @@ S3 = {
 def test_photos_are_kept_on_local_disk_by_default_with_a_short_link_life(make_settings):
     settings = make_settings()
 
-    assert settings.storage_backend == "local"
+    assert settings.storage_backend == "auto"
+    assert settings.resolved_storage_backend == "local"
     assert settings.signed_url_ttl_seconds == 300
     assert (settings.s3_endpoint_url, settings.s3_bucket, settings.s3_public_base_url) == (
         "",
@@ -820,6 +825,74 @@ def test_the_s3_backend_needs_every_key_and_names_the_ones_that_are_missing():
 
 def test_the_s3_keys_are_not_needed_while_photos_stay_on_disk(make_settings):
     assert make_settings(storage_backend="local").storage_backend == "local"
+
+
+def test_auto_picks_s3_when_a_bucket_is_set_and_the_disk_otherwise(make_settings):
+    assert make_settings().resolved_storage_backend == "local"
+    assert make_settings(**{**S3, "storage_backend": "auto"}).resolved_storage_backend == "s3"
+    assert make_settings(**{**S3, "storage_backend": "local"}).resolved_storage_backend == "local"
+    assert make_settings(**S3).resolved_storage_backend == "s3"
+
+
+def test_auto_with_a_half_filled_bucket_refuses_instead_of_falling_back_to_disk():
+    message = errors_of(s3_bucket="tabsira-photos")
+
+    assert "S3_BUCKET is set, so photos go to S3, which needs S3_ACCESS_KEY_ID" in message
+
+
+def test_the_local_folder_defaults_to_the_checkout_and_follows_the_setting(make_settings, tmp_path):
+    assert make_settings().local_media_path == config.checkout_root() / "data" / "media"
+    assert make_settings(local_media_dir=f" {tmp_path} ").local_media_path == tmp_path.resolve()
+
+
+def test_outside_a_checkout_the_root_is_the_working_directory(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "CHECKOUT_MARKER", "no-such-marker-file")
+    monkeypatch.chdir(tmp_path)
+
+    assert config.checkout_root() == tmp_path
+
+
+def test_production_refuses_the_local_disk_even_when_asked_for_it():
+    message = errors_of(**{**PRODUCTION, "storage_backend": "local"})
+
+    assert "photos must be kept in S3 in production" in message
+
+
+def test_production_without_any_s3_setting_is_refused():
+    without_s3 = {k: v for k, v in PRODUCTION.items() if not k.startswith("s3_")}
+
+    assert "photos must be kept in S3 in production" in errors_of(**without_s3)
+
+
+def test_production_with_a_bucket_but_missing_keys_is_refused():
+    message = errors_of(**{**PRODUCTION, "s3_secret_access_key": "", "s3_access_key_id": ""})
+
+    assert "S3_BUCKET is set, so photos go to S3, which needs S3_ACCESS_KEY_ID" in message
+
+
+def test_production_with_s3_keys_but_no_bucket_is_refused():
+    message = errors_of(**{**PRODUCTION, "s3_bucket": ""})
+
+    assert "is set while S3_BUCKET is empty" in message
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "name"),
+    [
+        ("s3_access_key_id", "AKIAEXAMPLE", "S3_ACCESS_KEY_ID"),
+        ("s3_secret_access_key", "s3-secret-value", "S3_SECRET_ACCESS_KEY"),
+        ("s3_endpoint_url", "https://s3.gra.example.net", "S3_ENDPOINT_URL"),
+        ("s3_public_base_url", "https://media.tabsira.me", "S3_PUBLIC_BASE_URL"),
+    ],
+)
+def test_auto_refuses_s3_settings_without_a_bucket_instead_of_using_the_disk(key, value, name):
+    assert f"{name} is set while S3_BUCKET is empty" in errors_of(**{key: value})
+
+
+def test_an_explicit_local_backend_may_keep_the_s3_settings_for_later(make_settings):
+    settings = make_settings(storage_backend="local", s3_access_key_id="AKIAEXAMPLE")
+
+    assert settings.resolved_storage_backend == "local"
 
 
 def test_a_complete_s3_configuration_is_accepted_and_tidied(make_settings):
@@ -869,7 +942,7 @@ def test_production_refuses_a_development_public_media_address():
 
 
 def test_production_accepts_a_real_s3_configuration(make_settings):
-    assert make_settings(**PRODUCTION, **S3).storage_backend == "s3"
+    assert make_settings(**{**PRODUCTION, **S3}).storage_backend == "s3"
 
 
 # ─── Admin area ────────────────────────────────────────────────────
