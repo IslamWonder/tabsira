@@ -913,3 +913,33 @@ def test_production_refuses_the_admin_without_an_encryption_key_but_not_when_it_
         **without_key
     )
     assert make_settings(**without_key, feature_admin=False).feature_admin is False
+
+
+def test_the_social_guard_defaults_leave_a_band_for_a_person_to_review(make_settings):
+    settings = make_settings()
+
+    assert settings.social_guard_allow_score < settings.social_guard_reject_score
+    assert settings.social_guard_timeout_seconds == 8.0
+    assert settings.social_report_hold_threshold == 3
+    assert settings.moderation_log_retention_days == 730
+    assert settings.moderation_log_compress_after_days == 30
+
+
+def test_an_allow_score_at_or_over_the_reject_score_is_refused():
+    message = errors_of(
+        database_url=DATABASE_URL, social_guard_allow_score=0.9, social_guard_reject_score=0.9
+    )
+
+    assert "SOCIAL_GUARD_ALLOW_SCORE must be lower than SOCIAL_GUARD_REJECT_SCORE" in message
+
+
+def test_the_moderation_log_compresses_before_it_drops():
+    message = errors_of(
+        database_url=DATABASE_URL,
+        moderation_log_retention_days=60,
+        moderation_log_compress_after_days=60,
+    )
+
+    assert (
+        "MODERATION_LOG_COMPRESS_AFTER_DAYS must be under MODERATION_LOG_RETENTION_DAYS" in message
+    )

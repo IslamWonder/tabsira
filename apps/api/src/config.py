@@ -516,6 +516,21 @@ class Settings(BaseSettings):
     image_max_bytes: Annotated[int, Field(gt=0)] = 15 * 1024 * 1024
     image_max_pixels: Annotated[int, Field(gt=0)] = 40_000_000
 
+    # The social network's automatic guard. Text goes to OpenAI's moderation endpoint
+    # (the free `omni-moderation-latest`) and the verdict is read from its scores:
+    # under the allow score the item is published, over the reject score it is
+    # refused, anything between (or any failure of the call) waits for a person.
+    social_guard_timeout_seconds: Annotated[float, Field(gt=0, le=60)] = 8.0
+    social_guard_allow_score: Annotated[float, Field(ge=0, lt=1)] = 0.4
+    social_guard_reject_score: Annotated[float, Field(gt=0, le=1)] = 0.85
+    # Distinct accounts that report one published post or comment before it goes back
+    # to the moderation queue, hidden until a person decides. 0 turns this off.
+    social_report_hold_threshold: Annotated[int, Field(ge=0, le=100)] = 3
+    # The moderation log is a TimescaleDB hypertable (decision 13): chunks older than
+    # the retention are dropped, chunks older than the compression age are compressed.
+    moderation_log_retention_days: Annotated[int, Field(ge=30, le=3650)] = 730
+    moderation_log_compress_after_days: Annotated[int, Field(ge=1, le=365)] = 30
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: Any) -> Any:
@@ -687,6 +702,24 @@ class Settings(BaseSettings):
         """Compression waits for part of the retention, never all of it."""
         if self.admin_audit_compress_after_days >= self.admin_audit_retention_days:
             message = "ADMIN_AUDIT_COMPRESS_AFTER_DAYS must be under ADMIN_AUDIT_RETENTION_DAYS"
+            raise ValueError(message)
+        return self
+
+    @model_validator(mode="after")
+    def _guard_scores_leave_a_band_for_review(self) -> Self:
+        """Keep the allow score under the reject score, or no item could ever wait for a person."""
+        if self.social_guard_allow_score >= self.social_guard_reject_score:
+            message = "SOCIAL_GUARD_ALLOW_SCORE must be lower than SOCIAL_GUARD_REJECT_SCORE"
+            raise ValueError(message)
+        return self
+
+    @model_validator(mode="after")
+    def _check_moderation_log_windows(self) -> Self:
+        """Compression waits for part of the retention, never all of it."""
+        if self.moderation_log_compress_after_days >= self.moderation_log_retention_days:
+            message = (
+                "MODERATION_LOG_COMPRESS_AFTER_DAYS must be under MODERATION_LOG_RETENTION_DAYS"
+            )
             raise ValueError(message)
         return self
 
