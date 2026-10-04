@@ -1,0 +1,562 @@
+{
+ "license": {
+  "source": "https://quranpedia.net",
+  "version": "2026-10-03",
+  "en": "Ownership: the classical works in this data (Quran text, canonical qira'at, classical tafsirs) are the shared heritage of the Muslim ummah. The digitization, structuring, verification, diacritical correction (dabt), linking, and metadata are the work of the Quranpedia.net team, compiled and continuously corrected over years; translations and contemporary works remain the property of their authors and publishers. License: free to use inside apps, websites, and research tools with no attribution required (a link is appreciated). Republishing this data — in full or in part — as a downloadable database/dataset requires crediting Quranpedia.net with a link and stating this dump's version. Content is continuously corrected: keep copies current via /api/v1/changes?since=<version>. Provided as-is, without warranty.",
+  "ar": "الملكية: النصوص التراثية المضمَّنة في هذه البيانات — من نصِّ القرآن الكريم بقراءاته المتواترة، وكتبِ التفسير — تراثٌ مشترك للأمة لا يدَّعي أحدٌ ملكيته، أما الرقمنة والهيكلة والتدقيق وضبط النص وربط البيانات وبياناتها الوصفية فهي عمل فريق «الموسوعة القرآنية»، جُمعت وصُحِّحت على مدى سنوات، وما تزال تُصحَّح باستمرار؛ وتبقى الترجمات والأعمال المعاصرة ملكًا لأصحابها وناشريها. الرخصة: يجوز استعمال البيانات داخل التطبيقات والمواقع والأدوات البحثية مجانًا من غير اشتراط ذكر المصدر (وذكرُه محلُّ تقدير)، أما نشرها نفسِها — كاملةً أو بعضَها — في صورة قاعدة بيانات قابلة للتنزيل فيلزم فيه ذكرُ «الموسوعة القرآنية quranpedia.net» مصدرًا، مع رابط الموقع وبيان تاريخ هذه النسخة. والمحتوى يخضع لتصحيح مستمر؛ فمَن نشر نسخةً، فعليه تحديثها عبر ‎/v1/changes، والعهدة في نشر نصٍّ قديم على ناشره. وتُقدَّم البيانات كما هي من غير ضمان، والتثبُّت واجبُ المستفيد.",
+  "sources": [
+   {
+    "fields": "word morphology — part of speech, root, lemma, case, mood, verb form",
+    "source": "Quranic Arabic Corpus, version 0.4 — Dr. Kais Dukes (may Allah have mercy on him), University of Leeds",
+    "url": "https://corpus.quran.com",
+    "license": "GNU General Public License",
+    "requires": "Any use must clearly indicate the Quranic Arabic Corpus as the source, with a link to https://corpus.quran.com."
+   },
+   {
+    "fields": "i'rab syntax — dependency relations, heads, constituents",
+    "source": "The Quranic Treebank (NoorBayan), building on the Quranic Arabic Corpus of Dr. Kais Dukes (may Allah have mercy on him)",
+    "url": "https://github.com/NoorBayan/Quranic",
+    "license": "MIT",
+    "requires": "The MIT copyright notice must accompany redistribution."
+   }
+  ],
+  "contact": "quranpedia.help@gmail.com",
+  "usage_policy": "https://quranpedia.net/api-docs#usage-policy",
+  "resync": "https://quranpedia.net/api/v1/changes?since=2026-10-03"
+ },
+ "schema": "/v1/mushafs/2",
+ "data": {
+  "id": 2,
+  "name": "مصحف حفص نسخة نصية",
+  "description": "المصحف الكريم برواية حفص عن عاصم بالخط العثماني من إصدار مجمع الملك فهد لطباعة المصحف الشريف، غير موافق للمطبوع",
+  "image": "https://quranpedia.net/front/assets/img/mushafs/Standard-70.jpg",
+  "bismillah": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ",
+  "font_file": "https://quranpedia.net/assets/fonts/arabic/UthmanicHafs_V22.ttf",
+  "images": null,
+  "images_png": null,
+  "rawi": {
+   "id": 10,
+   "name": "حفص",
+   "full_name": "بن سليمان بن المغيرة، أبو عمر الأسدي الكوفي الغاضري البزاز",
+   "qiraa": {
+    "id": 5,
+    "name": null,
+    "count": {
+     "id": 6,
+     "name": "الكوفي"
+    }
+   }
+  },
+  "surahs": [
+   {
+    "id": 1,
+    "name": "سورة الفاتحة",
+    "coded_name": "ﮍ",
+    "ayahs": [
+     {
+      "id": 62251,
+      "number": 1,
+      "surah": "1",
+      "page_number": 1,
+      "text": "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ",
+      "marker": "ﰀ",
+      "juz": 1,
+      "hizb": 1,
+      "ruku": 1,
+      "manzil": 1,
+      "options": [
+       "tafsir",
+       "meanings",
+       "similar",
+       "qiraat",
+       "topics",
+       "fatwa",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       1
+      ]
+     },
+     {
+      "id": 62252,
+      "number": 2,
+      "surah": "1",
+      "page_number": 1,
+      "text": "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ",
+      "marker": "ﰁ",
+      "juz": 1,
+      "hizb": 1,
+      "ruku": 1,
+      "manzil": 1,
+      "options": [
+       "tafsir",
+       "meanings",
+       "similar",
+       "qiraat",
+       "topics",
+       "fatwa",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       2
+      ]
+     },
+     {
+      "id": 62253,
+      "number": 3,
+      "surah": "1",
+      "page_number": 1,
+      "text": "ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ",
+      "marker": "ﰂ",
+      "juz": 1,
+      "hizb": 1,
+      "ruku": 1,
+      "manzil": 1,
+      "options": [
+       "tafsir",
+       "similar",
+       "qiraat",
+       "topics",
+       "fatwa",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       3
+      ]
+     },
+     {
+      "id": 62254,
+      "number": 4,
+      "surah": "1",
+      "page_number": 1,
+      "text": "مَٰلِكِ يَوۡمِ ٱلدِّينِ",
+      "marker": "ﰃ",
+      "juz": 1,
+      "hizb": 1,
+      "ruku": 1,
+      "manzil": 1,
+      "options": [
+       "tafsir",
+       "meanings",
+       "similar",
+       "topics",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       4
+      ]
+     },
+     {
+      "id": 62255,
+      "number": 5,
+      "surah": "1",
+      "page_number": 1,
+      "text": "إِيَّاكَ نَعۡبُدُ وَإِيَّاكَ نَسۡتَعِينُ",
+      "marker": "ﰄ",
+      "juz": 1,
+      "hizb": 1,
+      "ruku": 1,
+      "manzil": 1,
+      "options": [
+       "tafsir",
+       "meanings",
+       "topics",
+       "fatwa",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       5
+      ]
+     },
+     {
+      "id": 62256,
+      "number": 6,
+      "surah": "1",
+      "page_number": 1,
+      "text": "ٱهۡدِنَا ٱلصِّرَٰطَ ٱلۡمُسۡتَقِيمَ",
+      "marker": "ﰅ",
+      "juz": 1,
+      "hizb": 1,
+      "ruku": 1,
+      "manzil": 1,
+      "options": [
+       "tafsir",
+       "meanings",
+       "similar",
+       "qiraat",
+       "fatwa",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       6
+      ]
+     },
+     {
+      "id": 62257,
+      "number": 7,
+      "surah": "1",
+      "page_number": 1,
+      "text": "صِرَٰطَ ٱلَّذِينَ أَنۡعَمۡتَ عَلَيۡهِمۡ غَيۡرِ ٱلۡمَغۡضُوبِ عَلَيۡهِمۡ وَلَا ٱلضَّآلِّينَ",
+      "marker": "ﰆ",
+      "juz": 1,
+      "hizb": 1,
+      "ruku": 1,
+      "manzil": 1,
+      "options": [
+       "tafsir",
+       "meanings",
+       "similar",
+       "qiraat",
+       "fatwa",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       7
+      ]
+     }
+    ]
+   },
+   {
+    "id": 2,
+    "name": "سورة البقرة",
+    "coded_name": "ﮎ",
+    "ayahs": [
+     {
+      "id": 62258,
+      "number": 1,
+      "surah": "2",
+      "page_number": 2,
+      "text": "الٓمٓ",
+      "marker": "ﰀ",
+      "juz": 1,
+      "hizb": 1,
+      "ruku": 2,
+      "manzil": 1,
+      "options": [
+       "tafsir",
+       "meanings",
+       "similar",
+       "qiraat",
+       "topics",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       1
+      ]
+     },
+     {
+      "id": 62259,
+      "number": 2,
+      "surah": "2",
+      "page_number": 2,
+      "text": "ذَٰلِكَ ٱلۡكِتَٰبُ لَا رَيۡبَۛ فِيهِۛ هُدٗى لِّلۡمُتَّقِينَ",
+      "marker": "ﰁ",
+      "juz": 1,
+      "hizb": 1,
+      "ruku": 2,
+      "manzil": 1,
+      "options": [
+       "tafsir",
+       "meanings",
+       "similar",
+       "qiraat",
+       "topics",
+       "fatwa",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       2
+      ]
+     },
+     {
+      "id": 62306,
+      "number": 49,
+      "surah": "2",
+      "page_number": 8,
+      "text": "وَإِذۡ نَجَّيۡنَٰكُم مِّنۡ ءَالِ فِرۡعَوۡنَ يَسُومُونَكُمۡ سُوٓءَ ٱلۡعَذَابِ يُذَبِّحُونَ أَبۡنَآءَكُمۡ وَيَسۡتَحۡيُونَ نِسَآءَكُمۡۚ وَفِي ذَٰلِكُم بَلَآءٞ مِّن رَّبِّكُمۡ عَظِيمٞ",
+      "marker": "ﰰ",
+      "juz": 1,
+      "hizb": 3,
+      "ruku": 7,
+      "manzil": 1,
+      "options": [
+       "tafsir",
+       "meanings",
+       "similar",
+       "qiraat",
+       "topics",
+       "fatwa",
+       "e3rab",
+       "notes",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       49
+      ]
+     }
+    ]
+   },
+   {
+    "id": 30,
+    "name": "سورة الروم",
+    "coded_name": "ﮪ",
+    "ayahs": [
+     {
+      "id": 65660,
+      "number": 1,
+      "surah": "30",
+      "page_number": 404,
+      "text": "الٓمٓ",
+      "marker": "ﰀ",
+      "juz": 21,
+      "hizb": 162,
+      "ruku": 349,
+      "manzil": 5,
+      "options": [
+       "tafsir",
+       "similar",
+       "qiraat",
+       "topics",
+       "fatwa",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       1
+      ]
+     },
+     {
+      "id": 65661,
+      "number": 2,
+      "surah": "30",
+      "page_number": 404,
+      "text": "غُلِبَتِ ٱلرُّومُ",
+      "marker": "ﰁ",
+      "juz": 21,
+      "hizb": 162,
+      "ruku": 349,
+      "manzil": 5,
+      "options": [
+       "tafsir",
+       "meanings",
+       "qiraat",
+       "topics",
+       "fatwa",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       2
+      ]
+     },
+     {
+      "id": 65676,
+      "number": 17,
+      "surah": "30",
+      "page_number": 406,
+      "text": "فَسُبۡحَٰنَ ٱللَّهِ حِينَ تُمۡسُونَ وَحِينَ تُصۡبِحُونَ",
+      "marker": "ﰐ",
+      "juz": 21,
+      "hizb": 162,
+      "ruku": 350,
+      "manzil": 5,
+      "options": [
+       "tafsir",
+       "meanings",
+       "similar",
+       "topics",
+       "e3rab",
+       "notes",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       17
+      ]
+     },
+     {
+      "id": 65709,
+      "number": 50,
+      "surah": "30",
+      "page_number": 409,
+      "text": "فَٱنظُرۡ إِلَىٰٓ ءَاثَٰرِ رَحۡمَتِ ٱللَّهِ كَيۡفَ يُحۡيِ ٱلۡأَرۡضَ بَعۡدَ مَوۡتِهَآۚ إِنَّ ذَٰلِكَ لَمُحۡيِ ٱلۡمَوۡتَىٰۖ وَهُوَ عَلَىٰ كُلِّ شَيۡءٖ قَدِيرٞ",
+      "marker": "ﰱ",
+      "juz": 21,
+      "hizb": 163,
+      "ruku": 353,
+      "manzil": 5,
+      "options": [
+       "tafsir",
+       "meanings",
+       "similar",
+       "qiraat",
+       "topics",
+       "fatwa",
+       "e3rab",
+       "notes",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       50
+      ]
+     }
+    ]
+   },
+   {
+    "id": 112,
+    "name": "سورة الإخلاص",
+    "coded_name": "ﰝ",
+    "ayahs": [
+     {
+      "id": 68472,
+      "number": 1,
+      "surah": "112",
+      "page_number": 604,
+      "text": "قُلۡ هُوَ ٱللَّهُ أَحَدٌ",
+      "marker": "ﰀ",
+      "juz": 30,
+      "hizb": 240,
+      "ruku": 554,
+      "manzil": 7,
+      "options": [
+       "tafsir",
+       "meanings",
+       "similar",
+       "fatwa",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       1
+      ]
+     },
+     {
+      "id": 68473,
+      "number": 2,
+      "surah": "112",
+      "page_number": 604,
+      "text": "ٱللَّهُ ٱلصَّمَدُ",
+      "marker": "ﰁ",
+      "juz": 30,
+      "hizb": 240,
+      "ruku": 554,
+      "manzil": 7,
+      "options": [
+       "tafsir",
+       "meanings",
+       "similar",
+       "fatwa",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       2
+      ]
+     },
+     {
+      "id": 68474,
+      "number": 3,
+      "surah": "112",
+      "page_number": 604,
+      "text": "لَمۡ يَلِدۡ وَلَمۡ يُولَدۡ",
+      "marker": "ﰂ",
+      "juz": 30,
+      "hizb": 240,
+      "ruku": 554,
+      "manzil": 7,
+      "options": [
+       "tafsir",
+       "meanings",
+       "similar",
+       "qiraat",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       3
+      ]
+     },
+     {
+      "id": 68475,
+      "number": 4,
+      "surah": "112",
+      "page_number": 604,
+      "text": "وَلَمۡ يَكُن لَّهُۥ كُفُوًا أَحَدُۢ",
+      "marker": "ﰃ",
+      "juz": 30,
+      "hizb": 240,
+      "ruku": 554,
+      "manzil": 7,
+      "options": [
+       "tafsir",
+       "meanings",
+       "similar",
+       "qiraat",
+       "e3rab",
+       "notes",
+       "asbab",
+       "translations",
+       "sayings"
+      ],
+      "number_in_hafs": [
+       4
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,202 @@
+{
+ "license": {
+  "source": "https://quranpedia.net",
+  "version": "2026-10-03",
+  "en": "Ownership: the classical works in this data (Quran text, canonical qira'at, classical tafsirs) are the shared heritage of the Muslim ummah. The digitization, structuring, verification, diacritical correction (dabt), linking, and metadata are the work of the Quranpedia.net team, compiled and continuously corrected over years; translations and contemporary works remain the property of their authors and publishers. License: free to use inside apps, websites, and research tools with no attribution required (a link is appreciated). Republishing this data — in full or in part — as a downloadable database/dataset requires crediting Quranpedia.net with a link and stating this dump's version. Content is continuously corrected: keep copies current via /api/v1/changes?since=<version>. Provided as-is, without warranty.",
+  "ar": "الملكية: النصوص التراثية المضمَّنة في هذه البيانات — من نصِّ القرآن الكريم بقراءاته المتواترة، وكتبِ التفسير — تراثٌ مشترك للأمة لا يدَّعي أحدٌ ملكيته، أما الرقمنة والهيكلة والتدقيق وضبط النص وربط البيانات وبياناتها الوصفية فهي عمل فريق «الموسوعة القرآنية»، جُمعت وصُحِّحت على مدى سنوات، وما تزال تُصحَّح باستمرار؛ وتبقى الترجمات والأعمال المعاصرة ملكًا لأصحابها وناشريها. الرخصة: يجوز استعمال البيانات داخل التطبيقات والمواقع والأدوات البحثية مجانًا من غير اشتراط ذكر المصدر (وذكرُه محلُّ تقدير)، أما نشرها نفسِها — كاملةً أو بعضَها — في صورة قاعدة بيانات قابلة للتنزيل فيلزم فيه ذكرُ «الموسوعة القرآنية quranpedia.net» مصدرًا، مع رابط الموقع وبيان تاريخ هذه النسخة. والمحتوى يخضع لتصحيح مستمر؛ فمَن نشر نسخةً، فعليه تحديثها عبر ‎/v1/changes، والعهدة في نشر نصٍّ قديم على ناشره. وتُقدَّم البيانات كما هي من غير ضمان، والتثبُّت واجبُ المستفيد.",
+  "sources": [
+   {
+    "fields": "word morphology — part of speech, root, lemma, case, mood, verb form",
+    "source": "Quranic Arabic Corpus, version 0.4 — Dr. Kais Dukes (may Allah have mercy on him), University of Leeds",
+    "url": "https://corpus.quran.com",
+    "license": "GNU General Public License",
+    "requires": "Any use must clearly indicate the Quranic Arabic Corpus as the source, with a link to https://corpus.quran.com."
+   },
+   {
+    "fields": "i'rab syntax — dependency relations, heads, constituents",
+    "source": "The Quranic Treebank (NoorBayan), building on the Quranic Arabic Corpus of Dr. Kais Dukes (may Allah have mercy on him)",
+    "url": "https://github.com/NoorBayan/Quranic",
+    "license": "MIT",
+    "requires": "The MIT copyright notice must accompany redistribution."
+   }
+  ],
+  "contact": "quranpedia.help@gmail.com",
+  "usage_policy": "https://quranpedia.net/api-docs#usage-policy",
+  "resync": "https://quranpedia.net/api/v1/changes?since=2026-10-03"
+ },
+ "schema": "/v1/surah/information/{surah}",
+ "data": [
+  {
+   "surah": 1,
+   "information": {
+    "surah_number": {
+     "title": "ترتيبها المصحفي",
+     "value": "1"
+    },
+    "surah_type": {
+     "title": "نوعها",
+     "value": "مكية"
+    },
+    "words_count": {
+     "title": " ألفاظها",
+     "value": "29"
+    },
+    "descent": {
+     "title": "ترتيب نزولها",
+     "value": "5"
+    },
+    "ayahs_count": [
+     {
+      "title": "العد المدني الأول",
+      "value": 7
+     },
+     {
+      "title": "العد المدني الأخير",
+      "value": 7
+     },
+     {
+      "title": "العد البصري",
+      "value": 7
+     },
+     {
+      "title": "العد الكوفي",
+      "value": 7
+     },
+     {
+      "title": "العد الشامي",
+      "value": 7
+     }
+    ]
+   }
+  },
+  {
+   "surah": 2,
+   "information": {
+    "surah_number": {
+     "title": "ترتيبها المصحفي",
+     "value": "2"
+    },
+    "surah_type": {
+     "title": "نوعها",
+     "value": "مدنية"
+    },
+    "words_count": {
+     "title": " ألفاظها",
+     "value": "6140"
+    },
+    "descent": {
+     "title": "ترتيب نزولها",
+     "value": "87"
+    },
+    "ayahs_count": [
+     {
+      "title": "العد المدني الأول",
+      "value": 285
+     },
+     {
+      "title": "العد المدني الأخير",
+      "value": 285
+     },
+     {
+      "title": "العد البصري",
+      "value": 287
+     },
+     {
+      "title": "العد الكوفي",
+      "value": 286
+     },
+     {
+      "title": "العد الشامي",
+      "value": 285
+     }
+    ]
+   }
+  },
+  {
+   "surah": 30,
+   "information": {
+    "surah_number": {
+     "title": "ترتيبها المصحفي",
+     "value": "30"
+    },
+    "surah_type": {
+     "title": "نوعها",
+     "value": "مكية"
+    },
+    "words_count": {
+     "title": " ألفاظها",
+     "value": "817"
+    },
+    "descent": {
+     "title": "ترتيب نزولها",
+     "value": "84"
+    },
+    "ayahs_count": [
+     {
+      "title": "العد المدني الأول",
+      "value": 60
+     },
+     {
+      "title": "العد المدني الأخير",
+      "value": 59
+     },
+     {
+      "title": "العد البصري",
+      "value": 60
+     },
+     {
+      "title": "العد الكوفي",
+      "value": 60
+     },
+     {
+      "title": "العد الشامي",
+      "value": 60
+     }
+    ]
+   }
+  },
+  {
+   "surah": 112,
+   "information": {
+    "surah_number": {
+     "title": "ترتيبها المصحفي",
+     "value": "112"
+    },
+    "surah_type": {
+     "title": "نوعها",
+     "value": "مكية"
+    },
+    "words_count": {
+     "title": " ألفاظها",
+     "value": "15"
+    },
+    "descent": {
+     "title": "ترتيب نزولها",
+     "value": "22"
+    },
+    "ayahs_count": [
+     {
+      "title": "العد المدني الأول",
+      "value": 4
+     },
+     {
+      "title": "العد المدني الأخير",
+      "value": 4
+     },
+     {
+      "title": "العد البصري",
+      "value": 4
+     },
+     {
+      "title": "العد الكوفي",
+      "value": 4
+     },
+     {
+      "title": "العد الشامي",
+      "value": 5
+     }
+    ]
+   }
+  }
+ ]
+}

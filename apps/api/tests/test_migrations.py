@@ -39,6 +39,19 @@ APP_TABLES = {
     "learning_domains",
     "learning_units",
     "learner_unit_states",
+    "quran_surahs",
+    "quran_verses",
+    "quran_verse_history",
+    "quran_verse_search",
+    "quran_annotations",
+    "hadith_collections",
+    "hadiths",
+    "hadith_search",
+    "hadith_signals",
+    "hadith_rulings",
+    "hadith_verification_queue",
+    "scripture_audit",
+    "scripture_sync_state",
 }
 
 
@@ -154,7 +167,7 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
         *(f"app.{table}" for table in APP_TABLES),
     } == tables
     assert set(EXTENSIONS) <= extensions
-    assert versions == {"app": "20261004_120000", "geodata": "20261004_130000"}
+    assert versions == {"app": "20261004_121500", "geodata": "20261004_130000"}
     # The models and the migrations describe the same database.
     assert {"ix_geonames_name_trgm", "ix_geonames_location_geom", "pk_geonames"} <= indexes
     for config in (GEODATA_CONFIG, APP_CONFIG):
@@ -198,6 +211,7 @@ async def test_alembic_check_sees_a_difference_between_the_models_and_the_databa
     assert alembic(APP_CONFIG, "upgrade", "head").returncode == 0
     async with migrated.begin() as connection:
         await connection.execute(text("ALTER TABLE app.users ADD COLUMN drift integer"))
+        await connection.execute(text("ALTER TABLE app.quran_surahs ADD COLUMN drift integer"))
 
     check = alembic(APP_CONFIG, "check")
 

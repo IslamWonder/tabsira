@@ -1,0 +1,70 @@
+{
+ "since": "2026-08-08",
+ "until": "2026-10-04T07:45:13+00:00",
+ "note": "Each list is capped at 1000 rows (\"truncated\" flags an incomplete list — re-query with a later \"since\"). Refetch each changed resource via its \"refetch\" path. Quranic-text change tracking (ayahs) starts 2026-08-07; earlier corrections are not listed.",
+ "changes": {
+  "ayahs": {
+   "count": 3,
+   "truncated": false,
+   "rows": [
+    {
+     "mushaf": 4,
+     "surah": "16",
+     "ayah": 124,
+     "changed_at": "2026-08-22 16:51:13",
+     "refetch": "/v1/mushafs/4/16/124"
+    },
+    {
+     "mushaf": 6,
+     "surah": "1",
+     "ayah": 1,
+     "changed_at": "2026-08-25 17:15:31",
+     "refetch": "/v1/mushafs/6/1/1"
+    },
+    {
+     "mushaf": 6,
+     "surah": "2",
+     "ayah": 1,
+     "changed_at": "2026-08-25 17:15:31",
+     "refetch": "/v1/mushafs/6/2/1"
+    }
+   ]
+  },
+  "ayah_book_contents": {
+   "count": 0,
+   "truncated": false,
+   "rows": []
+  },
+  "books": {
+   "count": 2,
+   "truncated": false,
+   "rows": [
+    {
+     "book": 24108,
+     "changed_at": "2026-08-13 13:34:53",
+     "refetch": "/v1/book/24108"
+    },
+    {
+     "book": 27835,
+     "changed_at": "2026-08-13 13:34:53",
+     "refetch": "/v1/book/27835"
+    }
+   ]
+  },
+  "fatwas": {
+   "count": 0,
+   "truncated": false,
+   "rows": []
+  },
+  "notes": {
+   "count": 0,
+   "truncated": false,
+   "rows": []
+  },
+  "topics": {
+   "count": 0,
+   "truncated": false,
+   "rows": []
+  }
+ }
+}

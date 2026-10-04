@@ -66,6 +66,7 @@
       "!**/uploads",
       "!**/*.css",
       "!data",
+      "!apps/api/tests/fixtures/scripture",
       "!docs/spec",
       "!services/vision/weights"
     ]

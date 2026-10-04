@@ -1,0 +1,1476 @@
+[
+ {
+  "ayah_id": 1,
+  "surah_no": 1,
+  "ayah_no_surah": 1,
+  "text_ar": "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",
+  "text_en": "In the Name of Allah—the Most Compassionate, Most Merciful.",
+  "surah_name_ar": "الفاتحة",
+  "surah_name_en": "The Opener",
+  "place_of_revelation": "Meccan",
+  "arabic_annotation": {
+   "islamic_cognitive_dimension": {
+    "islamic_domain": "ibadah",
+    "sub_topics": [
+     "البسملة كدعاء افتتاحي في العبادة وتلاوة القرآن",
+     "الافتتاح بالاسم الإلهي وأثره في القصد والنية",
+     "القراءات والسنة المتعلقة بلفظ البسملة"
+    ]
+   },
+   "related_sciences": {
+    "theology_religion": {
+     "islamic_theology": "تؤكد الآية على أسماء الله الرحمانية والرحيمة وتدل على صفة الرحمة كمنهج إلهي",
+     "quranic_studies": "البسملة صيغة افتتاحية معروفة تظهر في بداية معظم السور وتُدرس كمدخل منهجي لفهم التراسل القرآني",
+     "hadith_studies": "ترتبط بدراسات الأحاديث المتعلقة بقراءة البسملة، وحكمها وترتيبها عند بداية السور",
+     "fiqh": "تتعلق بالأحكام العملية حول متى وكيف تُقال البسملة في العبادة كالصلاة وقراءة القرآن",
+     "usul_al_fiqh": "تسهم في مناقشات حول الأدلة النصية وموقع النصوص الافتتاحية في استنباط الأحكام",
+     "maqasid_al_sharia": "تُظهر مقصد الشريعة في إظهار الرحمة الإلهية كأساس للتشريع والعبادة",
+     "comparative_religion": "تتيح مقارنة صيغ الافتتاح والشكوى والمديح الإلهي في الديانات الأخرى كممارسة طقسية",
+     "religious_studies_general": "تُعد مادة أساسية لدراسة الوظائف الطقسية واللغوية للعبادات التعبدية"
+    },
+    "human_social_sciences": {
+     "anthropology": "تُدرس كطقس اجتماعي وثقافي في مجتمعات المسلمين وعلاقته بالهوية الدينية",
+     "cultural_anthropology": "ترتبط بكيفية تجسيد العبارة في الممارسات اليومية والرموز الثقافية الإسلامية",
+     "sociology": "تلعب دوراً في التجمعات والطقوس الجماعية مثل تلاوة الكتاب والصلوات الجماعية",
+     "psychology": "تُستخدم العبارة لتهدئة النفوس وتعزيز الطمأنينة والتركيز قبل العمل أو العبادة",
+     "counseling_psychology": "يمكن إدراجها كأداة روحية في الدعم النفسي والوقاية من التوتر والقلق",
+     "education_sciences": "تُدرس كجزء من تعليم الطقوس والقراءات للأطفال وتشكيل العادات الدينية",
+     "gender_studies": "",
+     "family_studies": "تُستخدم في التربية الأسرية كعبارة افتتاحية تُعلَّم للأطفال لبدء الأقوال والأفعال بذكر الله",
+     "communication_studies": "تُعتبر نموذجاً عن خطاب افتتاحي يؤسس للعلاقة المتكلمة-المخاطَب في النص الديني",
+     "media_studies": "",
+     "peace_conflict_studies": "مفهوم الرحمة في البسملة يمكن ربطه بمبادئ بناء السلام والتسامح",
+     "development_studies": "",
+     "public_policy": ""
+    },
+    "philosophy_epistemology_ethics": {
+     "philosophy": "تفتح نقاشاً عن معنى الرحمة والوجود الإلهي ودور اللغة في تشكيل الفهم الأخلاقي",
+     "epistemology": "تثير قضايا حول مصادر المعرفة التعبدية ودور النص الافتتاحي في تأطير المعرفيّة الدينية",
+     "philosophy_of_religion": "تُستخدم في مناقشات صفات الله وكيفية إدراك الصفة الأخلاقية للرحمة",
+     "moral_philosophy": "تقدم أساسًا أخلاقيًا للرحمة كقيمة مركزية في النظام الإسلامي",
+     "applied_ethics": "",
+     "bioethics": "",
+     "tech_ethics": "",
+     "ai_ethics": ""
+    },
+    "law_legal_studies": {
+     "public_law": "",
+     "family_law": "",
+     "criminal_law": "",
+     "international_law": "",
+     "human_rights_law": "مفهوم الرحمة يمكن أن يؤثر في تأويل حقوق الإنسان من منظور إسلامي",
+     "constitutional_law": "",
+     "environmental_law": "",
+     "commercial_law": "",
+     "criminal_justice": "",
+     "criminology": ""
+    },
+    "economics_management": {
+     "economics": "",
+     "islamic_economics": "الرحمة كأساس أخلاقي يمكن أن يؤطر سياسات الاقتصاد الإسلامي والتعامل المالي الرحيم",
+     "development_economics": "",
+     "public_finance": "",
+     "banking_finance": "",
+     "management": "",
+     "organizational_behavior": "استحضار قيم الرحمة والرحمانية في ثقافة المؤسسات والسلوك التنظيمي",
+     "business_ethics": "مبدأ الرحمة ينعكس في أخلاقيات المعاملات والتعامل بالرفق"
+    },
+    "history_civilization_archeology": {
+     "history": "البسملة محورية في المخطوطات الإسلامية وتظهر في النصوص التاريخية كنمط افتتاحي متواصل",
+     "social_history": "تُدرَس كعنصر في حياة المجتمعات الإسلامية اليومية والطقوس الاجتماعية",
+     "intellectual_history": "تلعب دوراً في تطور اللاهوت والبلاغة الإسلامية عبر العصور",
+     "civilizational_studies": "تُستخدم كشاهد على انتشار الثقافة الإسلامية ورمز هوياتي حضاري",
+     "archeology": "",
+     "heritage_studies": "تظهر في فنون العمارة والزخرفة وتُعالج في دراسات التراث الإسلامي"
+    },
+    "geography_environment": {
+     "geography": "",
+     "human_geography": "تنتشر ممارسة البسملة جغرافياً وتُظهر خرائط دينية وثقافية للمجتمعات المسلمة",
+     "environmental_studies": "",
+     "climate_change_studies": "",
+     "sustainability_studies": ""
+    },
+    "natural_life_sciences": {
+     "biology": "",
+     "genetics": "",
+     "human_biology": "دراسة التأثير الفسيولوجي للذكر والطقوس على الجهاز العصبي والقلب",
+     "ecology": "",
+     "neuroscience": "بحث أثر التكرار اللفظي والذكر على نشاط الدماغ والحالة الانفعالية والتهدئة العصبية",
+     "medicine": "دراسة فوائد الطقوس والذكر للصحة النفسية والجسدية كجزء من الطب التكميلي",
+     "public_health": "تضمين الدعم الروحي مثل البسملة في برامج الصحة النفسية المجتمعية",
+     "nutrition_science": ""
+    },
+    "earth_space_sciences": {
+     "astronomy": "",
+     "cosmology": "",
+     "earth_sciences": "",
+     "geology": "",
+     "meteorology": "",
+     "oceanography": ""
+    },
+    "applied_professional_studies": {
+     "social_work": "يمكن إدراج البسملة كأداة دعم روحي في التدخلات الاجتماعية والرعائية",
+     "education_practice": "تُستخدم في مناهج تعليم التربية الدينية وطرق تقديم النصوص التعبدية للأطفال",
+     "public_administration": "",
+     "healthcare_management": "أخذ الممارسات الروحية بعين الاعتبار ضمن سياسات رعاية المرضى ورفاهيتهم"
+    },
+    "other_sciences": {}
+   },
+   "categories": [
+    "divine_names_attributes",
+    "quranic_sciences_methodology",
+    "revelation_scripture",
+    "prayer_salah",
+    "ethics_values",
+    "supplication_dua"
+   ],
+   "related_research_fields": [
+    "بلاغة البسملة ووظيفتها في تماسك النص القرآني",
+    "الأثر النفسي والفيزيولوجي لترديد البسملة في حالات القلق",
+    "حكم البسملة في الصلاة والقراءة عبر مذاهب الفقه المختلفة",
+    "دراسة تاريخية لظهور البسملة في المخطوطات الإسلامية والزخارف المعمارية",
+    "دور مفهوم الرحمة في صياغة مقاصد الشريعة وسياسات الرفق الاجتماعي",
+    "البسملة كآلية تربوية في تعليم الأطفال والناشئة"
+   ],
+   "semantic_tags_entities": {
+    "semantic_tags": [
+     "البسملة",
+     "الرحمة الإلهية",
+     "أسماء الله الحسنى",
+     "افتتاح السور",
+     "دعاء افتتاحي",
+     "نية العبادة"
+    ],
+    "named_entities": {
+     "persons": [],
+     "locations": [
+      "مكة"
+     ],
+     "events": [
+      "نزول الوحي"
+     ],
+     "divine_names": [
+      "الله",
+      "الرحمن",
+      "الرحيم"
+     ],
+     "religious_texts": [
+      "القرآن",
+      "سورة الفاتحة"
+     ]
+    }
+   },
+   "search_retrieval_fields": {
+    "keywords_ar": [
+     "بسم الله",
+     "الرحمن الرحيم",
+     "البسملة",
+     "الافتتاح بالبسملة",
+     "الفاتحة الآية الأولى"
+    ],
+    "keywords_en": [
+     "Bismillah",
+     "Ar-Rahman Ar-Rahim",
+     "basmala",
+     "opening phrase",
+     "Al-Fatiha verse 1"
+    ],
+    "key_concepts": [
+     "الرحمة الإلهية",
+     "الافتتاح الطقسي",
+     "نية الدعاء والعبادة"
+    ],
+    "related_verses": [
+     "1:1",
+     "55:1",
+     "6:12",
+     "112:1"
+    ],
+    "context_window": "جملة افتتاحية تسبق معظم سور القرآن وتؤسس للسياق العقدي والأخلاقي للسورة؛ في المصحف تُكتب قبل بدايات السور ما عدا سورة براءة"
+   },
+   "application_fields": {
+    "difficulty_level": "مبتدئ إلى متوسط",
+    "use_cases": [
+     "تعليم الأطفال بداية القراءة والذكر",
+     "ممارسات روحية داخل الصلاة وقراءة القرآن",
+     "أدلة لبحوث البلاغة واللاهوت حول أسماء الله",
+     "دمج البسملة في برامج الدعم النفسي كوسيلة تهدئة"
+    ],
+    "emotional_tone": "طمأنينة، خشوع، رحمة",
+    "sentiment_score": 0.95,
+    "urgency_level": "منخفض"
+   }
+  },
+  "annotation_source_file": "batch_1_results.jsonl",
+  "annotation_timestamp": "2025-12-02T19:22:36.891194",
+  "annotation_model": "gpt-4o-mini",
+  "processing_method": "batch_api",
+  "has_annotation": true
+ },
+ {
+  "ayah_id": 9,
+  "surah_no": 2,
+  "ayah_no_surah": 2,
+  "text_ar": "ذَٰلِكَ ٱلْكِتَٰبُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًۭى لِّلْمُتَّقِينَ",
+  "text_en": "This is the Book! There is no doubt about it",
+  "surah_name_ar": "البقرة",
+  "surah_name_en": "The Cow",
+  "place_of_revelation": "Medinan",
+  "arabic_annotation": {
+   "verse_text_ar": "ذَٰلِكَ ٱلْكِتَٰبُ لَا رَيْبَ فِيهِ هُدًى لِّلْمُتَّقِينَ",
+   "translation_en": "This is the Book! There is no doubt about it",
+   "surah_name_ar": "البقرة",
+   "surah_name_en": "Al-Baqarah",
+   "verse_number": 2,
+   "revelation_place": "المدينة المنورة (Medinan)",
+   "islamic_cognitive_dimension": {
+    "islamic_domain": "aqeedah",
+    "sub_topics": [
+     "تيقن المسلم بصحة الوحي وصدق القرآن كمصدر معرفي",
+     "المكانة الوظيفية للقرآن كهدى ودليل للمؤمنين والمتقين",
+     "العلاقة بين اليقين والتقوى في توجيه السلوك الديني"
+    ]
+   },
+   "related_sciences": {
+    "theology_religion": {
+     "islamic_theology": "تؤكد الآية على يقين العقيدة بكون القرآن كتاباً منزلاً لا شك فيه كمصدر إيماني أساسي",
+     "quranic_studies": "تعبر عن وظيفة القرآن كـ'كتاب' وُصفت بالبَيّنة والهدى، وهي مدخل لتحليل السياق والتصنيف القرآني",
+     "hadith_studies": "",
+     "fiqh": "تدل على أن النص القرآني مصدر تشريعي ومعرفي يجب الاستدلال به عند الاستنباط",
+     "usul_al_fiqh": "تشير إلى أسس حجية النص القرآني في أصول الفقه ومراتب الدليل",
+     "maqasid_al_sharia": "تؤسس لمبدأ أن الشريعة تهدف إلى هداية المتقين وصيانة مقاصد التقوى والإرشاد",
+     "comparative_religion": "يمكن استخدامها في مقارنة مفهوم الوحي والكتاب السماوي ومطالب اليقين في الديانات الأخرى",
+     "religious_studies_general": "نص مختصر يوضح كيف يُفهم القرآن كمصدر للمعرفة والهوية الدينية"
+    },
+    "human_social_sciences": {
+     "anthropology": "تساهم الآية في فهم كيف تشكل النصوص المقدسة هويات جماعية وممارسات ثقافية",
+     "cultural_anthropology": "تظهر الآية دور الكتاب المقدس في إنتاج رموز ثقافية ومعايير سلوكية للمجتمعات المسلمة",
+     "sociology": "علاقة اليقين بالقرآن وتأثيرها على بناء المعايير الاجتماعية والسلوك الجماعي للمؤمنين",
+     "psychology": "تحمل الآية بعداً نفسياً يتعلق بالشعور بالطمأنينة واليقين الذي يدعم الصحة النفسية لدى المؤمن",
+     "counseling_psychology": "يمكن استخدامها كمصدر معنوي في الإرشاد الروحي والعلاج المعرفي المرتبط بالمعنى",
+     "education_sciences": "تدل على أهمية القرآن كمادة في المناهج الدينية لتعليم القيم والمعرفة",
+     "gender_studies": "",
+     "family_studies": "تؤطر دور النص القرآني في توجيه القيم الأسرية والسلوكية للأفراد المتقين",
+     "communication_studies": "توضح كيفية توظيف نصوص ذات مصداقية لتأطير الخطاب الدعوي والتربوي",
+     "media_studies": "تسبق الآية مبادئ نقل النصوص الدينية في الإعلام ودورها في تشكيل المعتقد العام",
+     "peace_conflict_studies": "",
+     "development_studies": "",
+     "public_policy": ""
+    },
+    "philosophy_epistemology_ethics": {
+     "philosophy": "تطرح قضايا معرفية حول طبيعة اليقين والسلطة المعرفية للنص الديني",
+     "epistemology": "تُعرض الآية كنموذج epistemic يقيني: النص الديني كمصدر لا شك فيه للمعرفة الأخلاقية والشرعية",
+     "philosophy_of_religion": "تستخدم لتساؤل حول معيارية الوحي في تأسيس المعتقدات الدينية ومرجعيتها",
+     "moral_philosophy": "تدعم فكرة أن الهداية القرآنية تؤسس لمبادئ أخلاقية للمتقين",
+     "applied_ethics": "",
+     "bioethics": "",
+     "tech_ethics": "",
+     "ai_ethics": ""
+    },
+    "law_legal_studies": {
+     "public_law": "تشير الآية إلى أن القرآن يشكل مصدراً موثوقاً يستند إليه التشريع الشرعي في النظام العام",
+     "family_law": "",
+     "criminal_law": "",
+     "international_law": "",
+     "human_rights_law": "",
+     "constitutional_law": "",
+     "environmental_law": "",
+     "commercial_law": "",
+     "criminal_justice": "",
+     "criminology": ""
+    },
+    "economics_management": {
+     "economics": "",
+     "islamic_economics": "تؤسس لمعايير أخلاقية توجيهية في السلوك الاقتصادي للمؤمنين المتقين",
+     "development_economics": "",
+     "public_finance": "",
+     "banking_finance": "",
+     "management": "",
+     "organizational_behavior": "",
+     "business_ethics": "تعزز دور النص الشرعي كمصدر لقواعد السلوك الأخلاقي في الأعمال والمعاملات"
+    },
+    "history_civilization_archeology": {
+     "history": "تُستخدم الآية كنقطة بداية لدراسات انتشار القرآن وتأثيره التاريخي في تشكيل الحضارة الإسلامية",
+     "social_history": "تظهر دور القرآن في تكوين أنماط السلوك الاجتماعي عبر العصور",
+     "intellectual_history": "تشير إلى أثر مفهوم اليقين بالوحي في تطور الفكر الإسلامي",
+     "civilizational_studies": "تمثل الآية حجر زاوية في دراسة إسهام القرآن في معمار الحضارة الإسلامية",
+     "archeology": "",
+     "heritage_studies": ""
+    },
+    "geography_environment": {
+     "geography": "",
+     "human_geography": "",
+     "environmental_studies": "",
+     "climate_change_studies": "",
+     "sustainability_studies": ""
+    },
+    "natural_life_sciences": {
+     "biology": "",
+     "genetics": "",
+     "human_biology": "",
+     "ecology": "",
+     "neuroscience": "",
+     "medicine": "",
+     "public_health": "",
+     "nutrition_science": ""
+    },
+    "earth_space_sciences": {
+     "astronomy": "",
+     "cosmology": "",
+     "earth_sciences": "",
+     "geology": "",
+     "meteorology": "",
+     "oceanography": ""
+    },
+    "applied_professional_studies": {
+     "social_work": "يمكن أن تؤطر الآية منهجية دعوية وبرامج دعم روحي للشرائح المحتاجة",
+     "education_practice": "يُستخدم النص كأساس لمناهج التربية الدينية وممارسات التعليم القيمي",
+     "public_administration": "",
+     "healthcare_management": ""
+    },
+    "other_sciences": {}
+   },
+   "categories": [
+    "revelation_scripture",
+    "faith_creed",
+    "quranic_exegesis",
+    "reflection_spirituality",
+    "ethics_values"
+   ],
+   "related_research_fields": [
+    "دراسة أثر اليقين بالقرآن على الصحة النفسية والرفاهية الروحية",
+    "منهجية تفسيرية لمفهوم الهدي والتقوى في القرآن",
+    "تحليل بلاغي لعبارة «لا ريب فيه» ودلالاتها اللغوية والبلاغية",
+    "دور اليقين بالكتاب في صياغة القواعد التشريعية في أصول الفقه",
+    "مقارنة فلسفية بين مصادر اليقين في الديانات الإبراهيمية"
+   ],
+   "semantic_tags_entities": {
+    "semantic_tags": [
+     "الكتاب",
+     "اليقين",
+     "الهدى",
+     "التقوى",
+     "حجية النص",
+     "مصدر معرفي",
+     "وظيفة إرشادية"
+    ],
+    "named_entities": {
+     "persons": [],
+     "locations": [
+      "المدينة المنورة"
+     ],
+     "events": [],
+     "divine_names": [
+      "القرآن"
+     ],
+     "religious_texts": [
+      "القرآن"
+     ]
+    }
+   },
+   "search_retrieval_fields": {
+    "keywords_ar": [
+     "الكتاب",
+     "لا ريب فيه",
+     "هدى",
+     "المتقين",
+     "اليقين بالوحي",
+     "حجية القرآن"
+    ],
+    "keywords_en": [
+     "The Book",
+     "no doubt in it",
+     "guidance",
+     "the righteous (muttaqin)",
+     "certainty in revelation",
+     "authority of Quran"
+    ],
+    "key_concepts": [
+     "حجية النص القرآني",
+     "اليقين والإيمان",
+     "الهدي والتقوى",
+     "الوظيفة الإرشادية للقرآن"
+    ],
+    "related_verses": [
+     "2:1",
+     "2:3",
+     "10:57",
+     "6:19",
+     "39:23"
+    ],
+    "context_window": "الآيات المحيطة تبين صفات المؤمنين وتعرض كيف أن القرآن هدى للمؤمنين وتوضح آثار الإيمان والعمل الصالح"
+   },
+   "application_fields": {
+    "difficulty_level": "مبتدئ",
+    "use_cases": [
+     "مادة لمحاضرة تمهيدية في العقيدة عن حجية القرآن",
+     "نقطة انطلاق لخطبة جمعه حول اليقين والطمأنينة",
+     "مادة للدراسة في مقررات علوم القرآن والمنهج"
+    ],
+    "emotional_tone": "طمأنينة ويقين وإرشاد",
+    "sentiment_score": 0.8,
+    "urgency_level": "منخفض"
+   }
+  },
+  "annotation_source_file": "batch_1_results.jsonl",
+  "annotation_timestamp": "2025-12-02T19:22:36.907941",
+  "annotation_model": "gpt-4o-mini",
+  "processing_method": "batch_api",
+  "has_annotation": true
+ },
+ {
+  "ayah_id": 56,
+  "surah_no": 2,
+  "ayah_no_surah": 49,
+  "text_ar": "وَإِذْ نَجَّيْنَٰكُم مِّنْ ءَالِ فِرْعَوْنَ يَسُومُونَكُمْ سُوٓءَ ٱلْعَذَابِ يُذَبِّحُونَ أَبْنَآءَكُمْ وَيَسْتَحْيُونَ نِسَآءَكُمْ ۚ وَفِى ذَٰلِكُم بَلَآءٌۭ مِّن رَّبِّكُمْ عَظِيمٌۭ",
+  "text_en": "˹Remember˺ how We delivered you from the people of Pharaoh, who afflicted you with dreadful torment, slaughtering your sons and keeping your women. That was a severe test from your Lord.",
+  "surah_name_ar": "البقرة",
+  "surah_name_en": "The Cow",
+  "place_of_revelation": "Medinan",
+  "arabic_annotation": {
+   "islamic_cognitive_dimension": {
+    "islamic_domain": "qsas",
+    "sub_topics": [
+     "قصة نجاة بني إسرائيل من فرعون",
+     "ابتلاء الله لقوم موسى وعقاب الظالمين",
+     "ذكر نعمة الخلاص والتذكير بالتاريخ كعبرة",
+     "أبعاد السرد القرآني في تذكير الجماعة وحفظ الذاكرة"
+    ]
+   },
+   "related_sciences": {
+    "theology_religion": {
+     "islamic_theology": "تشير الآية إلى مسألتين عقيديتين: قدرة الرب على الإنقاذ والابتلاء كسنة إلهية لامتحان العباد.",
+     "quranic_studies": "مادة مناسبة لدراسة سياق السورة وأساليب التذكير واللَّفظ القرآني في عرض قصص الخلاص والبلاء.",
+     "hadith_studies": "",
+     "fiqh": "",
+     "usul_al_fiqh": "",
+     "maqasid_al_sharia": "تُبرز الآية مقصد حفظ النفوس ودرء الظلم وتأكيد حرمة قتل الأبرياء كقيمة شرعية."
+    },
+    "human_social_sciences": {
+     "anthropology": "تقدم الآية مادة لنمط دراسة التذكير الجمعية والطرائق التي تُخزن عبرها الذاكرة التاريخية الدينية.",
+     "cultural_anthropology": "تُستخدم في دراسة طقوس التذكر الجماعي والاحتفاء بنماذج النجاة كمكوّن ثقافي.",
+     "sociology": "تفيد في تحليل تأثير سرد الاضطهاد والنجاة على تشكيل هوية الجماعة والتضامن الاجتماعي.",
+     "psychology": "قابلة للدراسة في إطار أثر السرد الديني على الصمود النفسي والهوية بعد تجربة العنف.",
+     "counseling_psychology": "يمكن استخدامها كمرجع تطبيقي في دعم ضحايا العنف عبر استحضار نماذج النجاة والتمكين الروحي.",
+     "education_sciences": "مادة تعليمية لتدريس قصص الأنبياء كأدوات تربوية في المدارس الدينية والعامة.",
+     "gender_studies": "الآية تفتح باباً لتحليل بُعد استهداف النساء والأطفال في سياق الحروب التقليدية وتأثير ذلك جنسياً واجتماعياً.",
+     "family_studies": "مرجع لمناقشة تأثير العنف الجماعي على بنية الأسرة واستراتيجيات البقاء.",
+     "communication_studies": "تبيّن كيفية توظيف الخطاب الديني للتذكير والتحريض على الصبر والمطالبة بالعدالة.",
+     "media_studies": "نقطة انطلاق لدراسة تمثيلات العنف الأسري والحربي في وسائل الإعلام الدينية.",
+     "peace_conflict_studies": "تُستخدم لتحليل أساليب القمع والطغيان التاريخي ومبررات المقاومة والنجاة.",
+     "development_studies": "صلتها بمفهوم إعادة بناء المجتمعات المتضررة بعد صراعات تؤدي إلى قتل الأبناء وتشريد النساء.",
+     "public_policy": "تقدم دلالات لتكوين سياسات حماية المدنيين والتعامل مع جرائم الحرب عبر مبادئ شرعية وأخلاقية."
+    },
+    "philosophy_epistemology_ethics": {
+     "philosophy": "تثير مسائل حول طبيعة الشر والشرور التاريخية ومسؤولية الفاعل الأخلاقي في المجتمع.",
+     "epistemology": "تساعد في دراسة كيف يُبنى المعرفة التذكيرية والتاريخية في الوعي الديني.",
+     "philosophy_of_religion": "تشكّل حالة تطبيقية للنقاش حول مشروعية الابتلاء الإلهي وحكمته.",
+     "moral_philosophy": "تجسد مقاربة أخلاقية للظلم وواجبات المجتمع تجاه الضحايا والوقوف ضد الطغيان.",
+     "applied_ethics": "تُستخدم في مناقشات أخلاقية عملية عن حماية الأبرياء أثناء النزاعات.",
+     "bioethics": "",
+     "tech_ethics": "",
+     "ai_ethics": "",
+     "legal_philosophy": "تطرح أسئلة عن شرعية وسائل القوة والعقاب الجماعي ضد الأبرياء من منظور فلسفي وقانوني."
+    },
+    "law_legal_studies": {
+     "public_law": "",
+     "family_law": "تلمح إلى انتهاك حقوق الأسرة الأساسية وضروريات حماية الأطفال والنساء في زمن النزاع.",
+     "criminal_law": "تصلح كمرجع تاريخي لمناقشة جرائم القتل الجماعي واعتبارها جرائم ضد الإنسانية.",
+     "international_law": "الآية قابلة للاستخدام في تأصيل مبادئ حماية المدنيين وجرائم الحرب في الخطاب الديني.",
+     "human_rights_law": "تؤكد على حق الحياة والسلامة الجسدية ورفض استهداف المدنيين خصوصاً الأطفال والنساء.",
+     "constitutional_law": "",
+     "environmental_law": "",
+     "commercial_law": "",
+     "criminal_justice": "تدعو للتفكير في آليات العدالة ومحاسبة الطغاة على جرائمهم التاريخية.",
+     "criminology": "تقدم نصاً لتحليل دوافع الطغاة وأنماط العنف المنهجي ضد جماعات مسيّسة."
+    },
+    "economics_management": {
+     "economics": "",
+     "islamic_economics": "",
+     "development_economics": "تتصل بتبعات النزاعات التاريخية على التنمية وتمزيق النسيج الاجتماعي والاقتصادي.",
+     "public_finance": "",
+     "banking_finance": "",
+     "management": "",
+     "organizational_behavior": "",
+     "business_ethics": ""
+    },
+    "history_civilization_archeology": {
+     "history": "تُستخدم كحَدِيثٍ تاريخي داخل النص القرآني عن فترة فرعون واضطهاده لبني إسرائيل.",
+     "social_history": "تتيح بحث أثر الاضطهاد على التحولات الاجتماعية والهجرات الجماعية لاحقاً.",
+     "intellectual_history": "",
+     "civilizational_studies": "مادة لدراسة نزعات الطغيان في حضارات قديمة وكيف سجلتها النصوص الدينية.",
+     "archeology": "",
+     "heritage_studies": ""
+    },
+    "geography_environment": {
+     "geography": "",
+     "human_geography": "ترتبط بمسألة تنقل الشعوب نتيجة اضطهاد وحروب والخطوط الجغرافية للهجرة واللجوء.",
+     "environmental_studies": "",
+     "climate_change_studies": "",
+     "sustainability_studies": ""
+    },
+    "natural_life_sciences": {
+     "biology": "",
+     "genetics": "",
+     "human_biology": "",
+     "ecology": "",
+     "neuroscience": "قابلة للربط في دراسة آثار الصدمات والاعتداءات على دماغ الناجين والأطفال.",
+     "medicine": "تُستخدم كمدخل لمناقشة الرعاية الصحية للناجين من العنف الجماعي.",
+     "public_health": "تربط بتداعيات العنف على الصحة العامة واحتياجات إعادة التأهيل النفسي والجسدي.",
+     "nutrition_science": ""
+    },
+    "earth_space_sciences": {
+     "astronomy": "",
+     "cosmology": "",
+     "earth_sciences": "",
+     "geology": "",
+     "meteorology": "",
+     "oceanography": ""
+    },
+    "applied_professional_studies": {
+     "social_work": "تقدّم الآية سياقاً لتصميم برامج دعم لضحايا النزاعات والتدخل الاجتماعي.",
+     "education_practice": "تُستخدم في مناهج لتعليم التاريخ الديني والأساليب التربوية لمواجهة الصدمات.",
+     "public_administration": "مادة لتعزيز سياسات الحماية المدنية وإدارة أزمات اللاجئين والنازحين.",
+     "healthcare_management": "قابلة لربط بأدوار الإدارة الصحية في الاستجابة لاحتياجات الناجين."
+    },
+    "other_sciences": {}
+   },
+   "categories": [
+    "قصص الأنبياء",
+    "تاريخ الأمم والشعوب",
+    "الكرامة والحقوق الإنسانية",
+    "العدالة الاجتماعية",
+    "الهجرة واللجوء"
+   ],
+   "related_research_fields": [
+    "تحليل دلالات الابتلاء والنجاة في سرديات موسى في القرآن",
+    "الآثار النفسية والاجتماعية لصور العنف ضد الأطفال والنساء في النصوص الدينية",
+    "دور الذاكرة الدينية في تشكيل مقاومة الجماعات المضطهدة",
+    "إمكانية توظيف الآيات القرآنية في سياسات حماية اللاجئين والنازحين",
+    "دراسة مقارنة لتمثيلات الطغيان والخلاص في الأديان التوحيدية",
+    "البعد الجنسي للجهاد والاغتصاب في الحروب التاريخية: قراءة حقوقية شرعية"
+   ],
+   "semantic_tags_entities": {
+    "semantic_tags": [
+     "النجاة",
+     "البلاء",
+     "فرعون",
+     "تعذيب",
+     "ذبح الأبناء",
+     "استحلال النساء",
+     "ابتلاء إلهي",
+     "تذكير بنعمة الخلاص"
+    ],
+    "named_entities": {
+     "persons": [
+      "فرعون",
+      "موسى"
+     ],
+     "locations": [
+      "مصر"
+     ],
+     "events": [
+      "خروج بنو إسرائيل",
+      "قصص اضطهاد فرعون"
+     ],
+     "divine_names": [
+      "الله"
+     ],
+     "religious_texts": [
+      "القرآن الكريم سورة البقرة آية 49"
+     ]
+    }
+   },
+   "search_retrieval_fields": {
+    "keywords_ar": [
+     "النجاة",
+     "فرعون",
+     "ذبح الأبناء",
+     "استحلال النساء",
+     "بلاء",
+     "امتحان إلهي",
+     "بني إسرائيل"
+    ],
+    "keywords_en": [
+     "deliverance",
+     "Pharaoh",
+     "slaughtering sons",
+     "taking women",
+     "trial",
+     "divine test",
+     "Children of Israel"
+    ],
+    "key_concepts": [
+     "الابتلاء",
+     "النجاة الإلهية",
+     "ظلم الطغاة",
+     "حفظ العِرْق والأسرة",
+     "التذكير التاريخي"
+    ],
+    "related_verses": [
+     "2:49",
+     "7:141",
+     "28:4",
+     "28:7",
+     "26:59",
+     "20:38"
+    ],
+    "context_window": "الآية في سياق تذكير بني إسرائيل بنعم الله وذكْر ماضي اضطهاد فرعون كتحذير وعبرة؛ جزء من سِياق قصص موسى في السورة ومدنية النزول."
+   },
+   "application_fields": {
+    "difficulty_level": "متوسط-متقدم",
+    "use_cases": [
+     "بحث أكاديمي في علوم القرآن والتاريخ الديني",
+     "مقرر جامعي في علم الاجتماع الديني ودراسات العنف",
+     "تطوير سياسات حماية اللاجئين والنازحين مبنية على مبادئ حقوقية وشرعية",
+     "مادة تربوية لتعزيز الوعي بالتاريخ الديني والعدالة الاجتماعية",
+     "برامج دعم نفسي واجتماعي لضحايا النزاعات باستخدام نماذج النجاة الدينية"
+    ],
+    "emotional_tone": "حزين، تأملي، تحذيري",
+    "sentiment_score": -0.2,
+    "urgency_level": "مرتفع"
+   }
+  },
+  "annotation_source_file": "batch_1_results.jsonl",
+  "annotation_timestamp": "2025-12-02T19:22:36.959343",
+  "annotation_model": "gpt-4o-mini",
+  "processing_method": "batch_api",
+  "has_annotation": true
+ },
+ {
+  "ayah_id": 3411,
+  "surah_no": 30,
+  "ayah_no_surah": 2,
+  "text_ar": "غُلِبَتِ ٱلرُّومُ",
+  "text_en": "The Romans have been defeated",
+  "surah_name_ar": "الروم",
+  "surah_name_en": "The Romans",
+  "place_of_revelation": "Meccan",
+  "arabic_annotation": {
+   "islamic_cognitive_dimension": {
+    "islamic_domain": "qasas",
+    "sub_topics": "أخبار الأمم السابقة، بيان وقوع هزيمة ونبوءة بانتصار لاحق، دلالة الوقائع التاريخية في سياق التوحيد والقدر"
+   },
+   "related_sciences": {
+    "theology_religion": {
+     "islamic_theology": "تتعلق بدلالة القضاء والقدر وإعلام الله للناس بأحداث مستقبلية جزئية لإثبات علمه وحكمته",
+     "quranic_studies": "نص قصير يفتح باب دراسة سياق السورة والمقصود من ذكر هزيمة الروم وبشارة النصر اللاحق",
+     "hadith_studies": "",
+     "fiqh": "",
+     "usul_al_fiqh": "",
+     "maqasid_al_sharia": "",
+     "comparative_religion": "يمكن مقارنته بكيفية تناول النصوص المقدسة لأحداث قوم وأمم في كتب سماوية أخرى",
+     "religious_studies_general": "يدخل في دراسة الكيفية التي تقدم بها الأديان أخبار التاريخ كدليل عقائدي"
+    },
+    "human_social_sciences": {
+     "anthropology": "تُمكّن دراسة الآية من فهم العلاقة بين النص الديني وبناء الذاكرة الجماعية للأمم",
+     "cultural_anthropology": "تدل على أثر الأحداث العسكرية في تشكيل الأساطير والهوية الثقافية للشعوب",
+     "sociology": "تساعد في دراسة أثر الأخبار الدينية على تماسك المجتمعات وقت الأزمات ومعالجة الهلع الجماعي",
+     "psychology": "ترتبط بكيفية استقبال الجماعات للأخبار وتفسيرها عاطفياً ومعنوياً",
+     "counseling_psychology": "",
+     "education_sciences": "تستخدم كنص تعليمي لتعليم منهجية تفسير الأخبار الدينية وتاريخ الأديان",
+     "gender_studies": "",
+     "family_studies": "",
+     "communication_studies": "تكشف عن دور الخطاب الديني في تشكيل السرديات الإعلامية والرسائل الجماعية",
+     "media_studies": "تجيب عن أسئلة حول نقل الأخبار والدلالات الرمزية لذكر هزيمة أو نصر في الخطاب الإعلامي الديني",
+     "peace_conflict_studies": "تُستَخدم لدراسة جذور الصراعات التاريخية وتأثيرها على علاقات القوة بين الأمم",
+     "development_studies": "",
+     "public_policy": ""
+    },
+    "philosophy_epistemology_ethics": {
+     "philosophy": "تطرح مسائل فلسفية حول علاقة الحدث بالمعرفة البشرية وحدود التكهن بالمستقبل",
+     "epistemology": "تُستخدم لدراسة طبيعة المعرفة الإلهية مقابل المعرفة البشرية وآليات تحقق الأخبار",
+     "philosophy_of_religion": "تثير أسئلة حول دلائل النبوة والرسالة عبر دلالة تحقق الأخبار التاريخية",
+     "moral_philosophy": "تُثْرِي نقاشات حول الحكم الأخلاقي على الحروب والانتصارات والهزائم",
+     "applied_ethics": "",
+     "bioethics": "",
+     "tech_ethics": "",
+     "ai_ethics": ""
+    },
+    "law_legal_studies": {
+     "public_law": "",
+     "family_law": "",
+     "criminal_law": "",
+     "international_law": "ذات صلة بدراسة أحكام الحرب والصلح التاريخية وعلاقات الدول في زمن النص",
+     "human_rights_law": "",
+     "constitutional_law": "",
+     "environmental_law": "",
+     "commercial_law": "",
+     "criminal_justice": "",
+     "criminology": ""
+    },
+    "economics_management": {
+     "economics": "يمكن ربطها بدراسة آثار الحروب والهزائم على الاقتصادات الإقليمية والتجارة",
+     "islamic_economics": "",
+     "development_economics": "تُستخدم كنقطة انطلاق لدراسة أثر الصراعات التاريخية على مسارات التنمية",
+     "public_finance": "",
+     "banking_finance": "",
+     "management": "",
+     "organizational_behavior": "",
+     "business_ethics": ""
+    },
+    "history_civilization_archeology": {
+     "history": "نقطة مرجعية مهمة لدراسة حدث تاريخي بين الروم والفرس وتأثيره الإقليمي في القرن السابع الميلادي",
+     "social_history": "تُساعد على فهم أثر الهزيمة على طبقات المجتمع والتغيرات الاجتماعية اللاحقة",
+     "intellectual_history": "تُشير إلى كيفية تشكيل النصوص الدينية لتصورات العصر حول القوة والدولة",
+     "civilizational_studies": "مهمة لدراسة تفاعل الحضارات (البيزنطية-الفارسية-العربية) في سياق النص",
+     "archeology": "",
+     "heritage_studies": ""
+    },
+    "geography_environment": {
+     "geography": "تشير إلى جغرافيا نزاع حدودي بين الإمبراطوريات ومواضع وقائع الحرب في منطقة البحر المتوسط والشام",
+     "human_geography": "تساعد على دراسة تحولات سكانية وهجرات بسبب الصراعات العسكرية المذكورة",
+     "environmental_studies": "",
+     "climate_change_studies": "",
+     "sustainability_studies": ""
+    },
+    "natural_life_sciences": {
+     "biology": "",
+     "genetics": "",
+     "human_biology": "",
+     "ecology": "",
+     "neuroscience": "",
+     "medicine": "",
+     "public_health": "",
+     "nutrition_science": ""
+    },
+    "earth_space_sciences": {
+     "astronomy": "",
+     "cosmology": "",
+     "earth_sciences": "",
+     "geology": "",
+     "meteorology": "",
+     "oceanography": ""
+    },
+    "applied_professional_studies": {
+     "social_work": "",
+     "education_practice": "",
+     "public_administration": "يمكن أن تستعمل لدراسة أثر النتائج العسكرية التاريخية على إدارة المدن والدول",
+     "healthcare_management": ""
+    },
+    "other_sciences": {}
+   },
+   "categories": [
+    "history_nations",
+    "news_in_the_quran",
+    "quranic_exegesis",
+    "faith_creed",
+    "war_peace_international_relations"
+   ],
+   "related_research_fields": [
+    "دراسة تأريخية لهزيمة الروم وسياقها الجيوسياسي في القرن السابع الميلادي",
+    "تحليل بلاغي وبلاغي للسورة ومقاصد ذكر هزيمة ثم بشارة النصر",
+    "بحث عقائدي في دلالة إخبار القرآن بأحداث مستقبلية جزئية",
+    "دراسة أثر أخبار القرآن على الخطاب الدعوي والسياسي في المجتمعات الإسلامية",
+    "مقارنة نصية بين روايات تاريخية خارجية والقرآن حول هزائم وانتصارات الإمبراطوريات",
+    "دور هذا النص في تشكيل الذاكرة الجماعية الإسلامية تجاه الروم والبيزنطيين",
+    "تحقيق في مواضع النزول وتأثيرها على فهم الآية (مدني/مكي وسياقها التاريخي)"
+   ],
+   "semantic_tags_entities": {
+    "semantic_tags": [
+     "هزيمة الروم",
+     "أخبار تاريخية في القرآن",
+     "نبؤة بانتصار لاحق",
+     "تحقق النبوة",
+     "البيزنطيون",
+     "السياق المكي"
+    ],
+    "named_entities": {
+     "persons": [],
+     "locations": [
+      "الروم",
+      "الشام",
+      "ممالك بيزنطية"
+     ],
+     "events": [
+      "هزيمة الروم",
+      "حروب الروم والفرس"
+     ],
+     "divine_names": [],
+     "religious_texts": [
+      "القرآن الكريم"
+     ]
+    }
+   },
+   "search_retrieval_fields": {
+    "keywords_ar": [
+     "غُلِبَتِ الروم",
+     "هزيمة الروم",
+     "سورة الروم آية 2",
+     "أخبار القرآن عن الأمم"
+    ],
+    "keywords_en": [
+     "غُلِبَتِ الروم (The Romans have been defeated)",
+     "هزيمة الروم (Roman defeat)",
+     "سورة الروم 2 (Surah Ar-Rum 2)",
+     "خبر في القرآن (news in the Quran)"
+    ],
+    "key_concepts": [
+     "نبأ قرآني",
+     "تاريخ الأمم",
+     "تحقق النبوءة",
+     "السياق المكي"
+    ],
+    "related_verses": [
+     "30:2",
+     "30:3",
+     "30:4",
+     "30:5"
+    ],
+    "context_window": "الآيات المجاورة تذكر وقوع هزيمة الروم ثم تبشارة بانتصارهم خلال سنوات قليلة لتكون آية تحقق وتأمل في مشيئة الله وحكمة الأحداث"
+   },
+   "application_fields": {
+    "difficulty_level": "متوسط",
+    "use_cases": [
+     "مادة دراسية في تفسير السور التاريخية",
+     "بحث تأريخي-عقائدي عن أخبار الأمم في القرآن",
+     "تحليل إعلامي لآليات نقل الأخبار الدينية وتأثيرها"
+    ],
+    "emotional_tone": "واقعي-تأملي",
+    "sentiment_score": 0.1,
+    "urgency_level": "منخفض"
+   }
+  },
+  "annotation_source_file": "batch_35_results.jsonl",
+  "annotation_timestamp": "2025-12-02T19:22:38.807756",
+  "annotation_model": "gpt-4o-mini",
+  "processing_method": "batch_api",
+  "has_annotation": true
+ },
+ {
+  "ayah_id": 3426,
+  "surah_no": 30,
+  "ayah_no_surah": 17,
+  "text_ar": "فَسُبْحَٰنَ ٱللَّهِ حِينَ تُمْسُونَ وَحِينَ تُصْبِحُونَ",
+  "text_en": "So glorify Allah in the evening and in the morning—",
+  "surah_name_ar": "الروم",
+  "surah_name_en": "The Romans",
+  "place_of_revelation": "Meccan",
+  "arabic_annotation": {
+   "quran_verse": {
+    "text_ar": "فَسُبْحَٰنَ ٱللَّهِ حِينَ تُمْسُونَ وَحِينَ تُصْبِحُونَ",
+    "translation_en": "So glorify Allah in the evening and in the morning—",
+    "surah": "الروم",
+    "verse_number": 17,
+    "place_of_revelation": "مكي"
+   },
+   "islamic_cognitive_dimension": {
+    "islamic_domain": "ibadah",
+    "sub_topics": [
+     "الذكر",
+     "أذكار الصباح والمساء",
+     "توقيت العبادة",
+     "الإخلاص في العبادة",
+     "عبادة القلوب واللسان"
+    ]
+   },
+   "related_sciences": {
+    "theology_religion": {
+     "islamic_theology": "الآية تدعو إلى التسبيح والاعتراف بربوبية الله كوصف لفعالية العبادة المستمرة.",
+     "quranic_studies": "موقعها في سورة الروم يرتبط بسياق الإشارة إلى آيات الله ووجوب التسبيح صباحاً ومساءً.",
+     "hadith_studies": "ترتبط بدراسات الأذكار التي ثبتت في الأحاديث عن أذكار الصباح والمساء وآدابها.",
+     "fiqh": "تتناول أحكام الذكر كنوع من العبادات وجوازه وفضله وأوقاته دون كونه عبادة مقيدة بصيغة عبادة معينة.",
+     "usul_al_fiqh": "تستعمل الآية في مباحث العموم والخصوص والاشتغال بأدلة الحجية في توصيف الأمر بالعبادة.",
+     "maqasid_al_sharia": "تدعم مقصد تزكية النفوس وتعزيز الطمأنينة واليقين عند العباد.",
+     "comparative_religion": "يمكن مقارنتها بممارسات الصلوات والذكر الصباحية في ديانات أخرى كظاهرة طقسية يومية.",
+     "religious_studies_general": "تفتح الباب لدراسة الدلالة الطقسية والاجتماعية لممارسات الذكر المرتبطة بمراحل اليوم."
+    },
+    "human_social_sciences": {
+     "anthropology": "الأذكار الصباحية والمسائية كممارسة طقسية تحمل دلالات ثقافية ومجتمعية.",
+     "cultural_anthropology": "تظهر كجزء من الطقوس اليومية التي تبني هوية جماعية وديناميكية ثقافية.",
+     "sociology": "تساهم الأذكار في تماسك الجماعات الدينية وبناء شبكات الدعم الاجتماعي.",
+     "psychology": "ارتباط الذكر بالطمأنينة النفسية وتقليل القلق وتحسين التركيز الذهني.",
+     "counseling_psychology": "يمكن توظيف الأذكار كأداة في برامج العلاج النفسي الداعمة للتأقلم والسكينة.",
+     "education_sciences": "إمكانية تضمين الذكر في مناهج التربية الروحية والتنشئة الأخلاقية.",
+     "gender_studies": "تحليل ممارسات الذكر من منظور اختلافات النوع الاجتماعي في الممارسة والولوج للفضاءات الدينية.",
+     "family_studies": "دور أذكار الصباح والمساء في بناء روتين عائلي وقيم تربوية داخل الأسرة.",
+     "communication_studies": "انتقال عادات الأذكار عبر الإعلام والدعوة وتأثيرها على الخطاب الديني.",
+     "media_studies": "توظيف وسائل الإعلام لنشر نماذج أذكار الصباح والمساء والتأثير على الممارسات الدينية.",
+     "peace_conflict_studies": "الذكر كآلية تهدئة فردية قد تساهم في إدارة التوترات بين الأفراد.",
+     "development_studies": "",
+     "public_policy": ""
+    },
+    "philosophy_epistemology_ethics": {
+     "philosophy": "العلاقة بين العبادة والوجود تُفتح هنا كنقطة تأمل فلسفي في معنى التسبيح والزمان.",
+     "epistemology": "",
+     "philosophy_of_religion": "الآية تقدم مادة لدراسة البراهين العملية للالتزام الديني وتجربة الإيمان اليومية.",
+     "moral_philosophy": "الذكر يعزز القيم الأخلاقية كالخشوع والتواضع في السلوك الشخصي.",
+     "applied_ethics": "",
+     "bioethics": "",
+     "tech_ethics": "",
+     "ai_ethics": ""
+    },
+    "law_legal_studies": {
+     "public_law": "",
+     "family_law": "",
+     "criminal_law": "",
+     "international_law": "",
+     "human_rights_law": "",
+     "constitutional_law": "",
+     "environmental_law": "",
+     "commercial_law": "",
+     "criminal_justice": "",
+     "criminology": ""
+    },
+    "economics_management": {
+     "economics": "",
+     "islamic_economics": "",
+     "development_economics": "",
+     "public_finance": "",
+     "banking_finance": "",
+     "management": "",
+     "organizational_behavior": "",
+     "business_ethics": ""
+    },
+    "history_civilization_archeology": {
+     "history": "السياق المكي للآية يتيح دراسة وضع العبادة والذكر في المجتمع المبكر للمدينة ومكة.",
+     "social_history": "أذكار الصباح والمساء كعادات اجتماعية يمكن تتبع تطورها عبر العصور الإسلامية.",
+     "intellectual_history": "",
+     "civilizational_studies": "الدور الحضاري للذكر في تشكيل الخطاب الديني والأخلاقي في المجتمع الإسلامي.",
+     "archeology": "",
+     "heritage_studies": ""
+    },
+    "geography_environment": {
+     "geography": "",
+     "human_geography": "",
+     "environmental_studies": "",
+     "climate_change_studies": "",
+     "sustainability_studies": ""
+    },
+    "natural_life_sciences": {
+     "biology": "",
+     "genetics": "",
+     "human_biology": "",
+     "ecology": "",
+     "neuroscience": "دراسات عصبية قد تربط بين الذكر والأنماط العصبية للتهدئة والحد من التوتر.",
+     "medicine": "البحوث في الطب النفسي قد تستفيد من تضمين ممارسات الذكر في علاجات داعمة.",
+     "public_health": "أثر الذكر على الصحة النفسية كجزء من استراتيجيات الصحة العامة.",
+     "nutrition_science": ""
+    },
+    "earth_space_sciences": {
+     "astronomy": "توقيت الصباح والمساء مرتبط بحركة الشمس وأقسام اليوم المستخدمة لتحديد مواقيت العبادة.",
+     "cosmology": "",
+     "earth_sciences": "",
+     "geology": "",
+     "meteorology": "",
+     "oceanography": ""
+    },
+    "applied_professional_studies": {
+     "social_work": "الذكر يمكن إدراجه كأحد أساليب الدعم النفسي والاجتماعي في العمل الاجتماعي.",
+     "education_practice": "تضمين أذكار الصباح والمساء في برامج التربية الروحية العملية.",
+     "public_administration": "",
+     "healthcare_management": ""
+    },
+    "other_sciences": {}
+   },
+   "categories": [
+    "الذكر",
+    "الطهارة والعبادات",
+    "التفكر والتزكية",
+    "التواضع والإخلاص",
+    "الأخلاق والقيم"
+   ],
+   "related_research_fields": [
+    "دراسة أثر أذكار الصباح والمساء على الصحة النفسية والقلق",
+    "منهجية الأذكار في القرآن والسنة ودورها في بناء الهوية الدينية",
+    "التأثير الاجتماعي للأذكار الجماعية في البيئات الأسرية والمؤسساتية",
+    "تكامل الذكر مع برامج العلاج النفسي والإرشاد النفسي الثقافي",
+    "دراسة زمانية (صباح/مساء) للعبادة والرفاهية الروحية وجودة الحياة",
+    "دور التعليم الديني في نقل عادات الأذكار إلى الأجيال الناشئة"
+   ],
+   "semantic_tags_entities": {
+    "semantic_tags": [
+     "تسبيح",
+     "ذكر",
+     "أذكار الصباح والمساء",
+     "توقيت العبادة",
+     "إخلاص",
+     "طمأنينة نفسية"
+    ],
+    "named_entities": {
+     "persons": [],
+     "locations": [
+      "مكة"
+     ],
+     "events": [],
+     "divine_names": [
+      "الله"
+     ],
+     "religious_texts": [
+      "القرآن الكريم",
+      "سورة الروم آية 17"
+     ]
+    }
+   },
+   "search_retrieval_fields": {
+    "keywords_ar": [
+     "تسبيح",
+     "أذكار الصباح",
+     "أذكار المساء",
+     "الذكر",
+     "سورة الروم آية 17"
+    ],
+    "keywords_en": [
+     "تسبيح الصباح والمساء",
+     "glorify Allah morning evening",
+     "أذكار يومية",
+     "ذكر وطمأنينة"
+    ],
+    "key_concepts": [
+     "الذكر اليومي",
+     "توقيت العبادة",
+     "تزكية النفوس",
+     "الالتزام الروتيني"
+    ],
+    "related_verses": [
+     "الروم:17",
+     "الروم:18",
+     "الأعراف:205",
+     "الأحزاب:41"
+    ],
+    "context_window": "الآية تقع في سياق التأمل في آيات الله ودعوة الإنسان للتسبيح والاعتراف بآيات الربوبية صباحاً ومساءً، يليها تأكيد على دلائل الله في الكون واستحالة إنكارها."
+   },
+   "application_fields": {
+    "difficulty_level": "سهل التناول للنشء والمجتمع؛ متوسط في البحث الأكاديمي",
+    "use_cases": [
+     "خطب ودروس دينية عن أذكار الصباح والمساء",
+     "برامج علاجية نفسية تضم الذكر كاستراتيجية للاسترخاء",
+     "مواد تربوية لمدارس دينية وبرامج تنشئة أسرية",
+     "بحوث أكاديمية في علوم الدين والدراسات الاجتماعية"
+    ],
+    "emotional_tone": "طمأنينة وخشوع وتحفيز للعبادة",
+    "sentiment_score": 0.8,
+    "urgency_level": "منخفض"
+   }
+  },
+  "annotation_source_file": "batch_35_results.jsonl",
+  "annotation_timestamp": "2025-12-02T19:22:38.824379",
+  "annotation_model": "gpt-4o-mini",
+  "processing_method": "batch_api",
+  "has_annotation": true
+ },
+ {
+  "ayah_id": 3459,
+  "surah_no": 30,
+  "ayah_no_surah": 50,
+  "text_ar": "فَٱنظُرْ إِلَىٰٓ ءَاثَٰرِ رَحْمَتِ ٱللَّهِ كَيْفَ يُحْىِ ٱلْأَرْضَ بَعْدَ مَوْتِهَآ ۚ إِنَّ ذَٰلِكَ لَمُحْىِ ٱلْمَوْتَىٰ ۖ وَهُوَ عَلَىٰ كُلِّ شَىْءٍۢ قَدِيرٌۭ",
+  "text_en": "See then the impact of Allah’s mercy: how He gives life to the earth after its death! Surely That ˹same God˺ can raise the dead. For He is Most Capable of everything.",
+  "surah_name_ar": "الروم",
+  "surah_name_en": "The Romans",
+  "place_of_revelation": "Meccan",
+  "arabic_annotation": {
+   "islamic_cognitive_dimension": {
+    "islamic_domain": "akhira",
+    "sub_topics": [
+     "عقيدة البعث والقيامة",
+     "دلالة رحمة الله في إحياء الأرض على إمكانية إحياء الأموات",
+     "آيات الكون كدليل عقلي ونقلي على القدرة الإلهية",
+     "تحفيز للتفكر والتزكية والاعتماد على رحمة الله"
+    ]
+   },
+   "related_sciences": {
+    "theology_religion": {
+     "islamic_theology": "تؤكد الآية على قدرة الله المطلقة ورحمته كدليل عقلاني ونقلي على إمكانية البعث.",
+     "quranic_studies": "يمكن دراسة السياق البلاغي واللغوي في سورة الروم ومقارنة صيغ الإثبات والدعوة للتفكر في آيات الكون.",
+     "hadith_studies": "الآية تُستكمل بالأحاديث التي تشرح دلائل البعث وعلاماته؛ يمكن الربط بينها لتعميق الفهم العقدي.",
+     "fiqh": "",
+     "usul_al_fiqh": "توضح الآية استخدام الاستدلال بالأمثلة الكونية كأسلوب نصي في إثبات العقائد الأساسية.",
+     "maqasid_al_sharia": "تعزز مقاصد الشريعة في حفظ العقيدة والروح وتعميق اليقين والطمأنينة لدى الناس.",
+     "comparative_religion": "تمكن مقارنة مفهوم البعث وإشارات الطبيعة في نصوص الديانات الأخرى مع النص القرآني.",
+     "religious_studies_general": "تُظهر كيفية استعمال النصوص الدينية لرمزية الطبيعة كأداة تفسيرية وعقائدية."
+    },
+    "human_social_sciences": {
+     "anthropology": "الآية تقدم مادة لدراسة كيف يفهم الناس رمزية إحياء الأرض في ثقافاتهم الدينية.",
+     "cultural_anthropology": "تُستخدم الآية لفهم الممارسات الطقسية والرموز المتعلقة بالخصوبة والإحياء في المجتمعات الإسلامية.",
+     "sociology": "تفيد في تحليل أثر التذكير بالبعث والرحمة على السلوك الاجتماعي والقيم الجماعية.",
+     "psychology": "الآية تولد طمأنينة وأمل ويمكن دراستها من زاوية تأثير النصوص المقدسة على الصحة النفسية.",
+     "counseling_psychology": "تُستعمل في دعم العلاج الروحي والوقائي عبر غرس الأمل والثقة في قدرة التجدد.",
+     "education_sciences": "مادة مناسبة لتدريس مهارات التفكر والنقد الديني في مناهج التربية الإسلامية.",
+     "gender_studies": "",
+     "family_studies": "الآية تشجع على تعليم قيم الرحمة والأمل داخل الأسرة كجزء من التربية الدينية.",
+     "communication_studies": "نموذج لخطاب دعوي يستخدم أمثلة الطبيعة لإقناع الجمهور بالعقائد الأساسية.",
+     "media_studies": "استخدام الآية في الإعلام الديني يعكس استراتيجيات تبسيط المفاهيم العقدية عبر صور الطبيعة.",
+     "peace_conflict_studies": "",
+     "development_studies": "",
+     "public_policy": ""
+    },
+    "philosophy_epistemology_ethics": {
+     "philosophy": "تفتح قضايا عن علاقة الظواهر الطبيعية بالدلائل الفلسفية على وجود وقدرة الخالق.",
+     "epistemology": "تمثل حالة استدلال من الظواهر الحسية إلى حقائق غيبية، وتدرس حدود وأساليب هذا النوع من المعرفة.",
+     "philosophy_of_religion": "تقدم مادة للحوار حول العقل والدليل والنص في إثبات قضايا مثل البعث والقدرة الإلهية.",
+     "moral_philosophy": "تدعو إلى استنتاجات أخلاقية مرتبطة بالمسؤولية تجاه الحياة والبيئة بالاستناد إلى قدرة الخالق.",
+     "applied_ethics": "",
+     "bioethics": "",
+     "tech_ethics": "",
+     "ai_ethics": "",
+     "legal_philosophy": ""
+    },
+    "law_legal_studies": {
+     "public_law": "",
+     "family_law": "",
+     "criminal_law": "",
+     "international_law": "",
+     "human_rights_law": "تؤكد الآية قيمة الحياة وكرامة الخلق كمنطلق يمكن ربطه بمبادئ حقوق الإنسان الكونية.",
+     "constitutional_law": "",
+     "environmental_law": "تشجع على مبادئ حماية الأرض والبيئة باعتبار إحياء الأرض آية تستوجب الحفاظ عليها.",
+     "commercial_law": "",
+     "criminal_justice": "",
+     "criminology": ""
+    },
+    "economics_management": {
+     "economics": "",
+     "islamic_economics": "",
+     "development_economics": "يمكن ربط مفهوم إحياء الأرض بدورات الموارد وأهمية سياسات استعادة الأراضي والتربة.",
+     "public_finance": "",
+     "banking_finance": "",
+     "management": "",
+     "organizational_behavior": "",
+     "business_ethics": "تحث الآية على تدبير الموارد والحفاظ عليها كقيمة أخلاقية في التعامل الاقتصادي."
+    },
+    "history_civilization_archeology": {
+     "history": "",
+     "social_history": "",
+     "intellectual_history": "تُظهر أثر مفاهيم البعث والرحمة في تشكيل الفكر الإسلامي والتفسيرات القرآنية عبر العصور.",
+     "civilizational_studies": "تناقش كيف أثرت رؤى إحياء الأرض والبعث على الممارسات الزراعية والثقافية للحضارات الإسلامية.",
+     "archeology": "الآية تتيح تأويلاً لظواهر آثار الحياة والعيش في الأرض وإعادة تحليل المخلفات البيئية القديمة.",
+     "heritage_studies": ""
+    },
+    "geography_environment": {
+     "geography": "",
+     "human_geography": "",
+     "environmental_studies": "تشجع الآية على دراسة دور العوامل الطبيعية في تجدد الحياة والاهتمام بالأنظمة البيئية.",
+     "climate_change_studies": "توفر نصاً لتشجيع الوعي بأهمية العوامل المناخية في إحياء الأرض ودور الإنسان في الحفاظ عليها.",
+     "sustainability_studies": "يمكن استثمار مفهوم الإحياء كمثال تحفيزي على التنمية المستدامة وإدارة الموارد."
+    },
+    "natural_life_sciences": {
+     "biology": "تشير الآية إلى ظاهرة إحياء الحياة النباتية بعد الجفاف، ذات صلة بدراسة الفسيولوجيا النباتية ودورة الحياة.",
+     "genetics": "",
+     "human_biology": "",
+     "ecology": "تعكس العلاقة بين دورة الموت والإحياء في الأنظمة البيئية ودور العوامل المناخية والبيئية.",
+     "neuroscience": "",
+     "medicine": "",
+     "public_health": "",
+     "nutrition_science": ""
+    },
+    "earth_space_sciences": {
+     "astronomy": "",
+     "cosmology": "",
+     "earth_sciences": "الآية مرتبطة بمفاهيم دورات الأرض والمياه والتربة في عملية إحياء الحياة بعد الجفاف.",
+     "geology": "",
+     "meteorology": "يمكن ربطها بدور الأمطار والأنماط المناخية في إعادة الإحياء النباتي.",
+     "oceanography": ""
+    },
+    "applied_professional_studies": {
+     "social_work": "استخدام الآية في برامج إعادة بناء المجتمع والبيئة لتعزيز الأمل والتمكين المجتمعي.",
+     "education_practice": "تستخدم في تصميم أنشطة تعليمية لتعزيز مهارات التفكر والوعي البيئي والديني.",
+     "public_administration": "يمكن توظيف مضمون الآية في سياسات إعادة تأهيل الأراضي وإدارة الكوارث البيئية.",
+     "healthcare_management": ""
+    },
+    "other_sciences": {}
+   },
+   "categories": [
+    "faith_creed",
+    "divine_names_attributes",
+    "afterlife_resurrection",
+    "signs_in_universe",
+    "reflection_spirituality",
+    "environment_climate"
+   ],
+   "related_research_fields": [
+    "دراسة مقارنة لآيات الإحياء في القرآن وعلاقتها بمفاهيم البعث في الأديان الأخرى",
+    "بحث في دور الآيات الكونية في بناء العقيدة لدى المجتمعات المسلمة",
+    "تحليل تأويلي بلاغي لسورة الروم وسياق آية 30:50 ضمن بنية السورة",
+    "دراسة أثر النصوص الدينية على سلوكيات الحفاظ على البيئة والتنمية المستدامة",
+    "بحث نفسي اجتماعي حول تأثير تذكير البعث على التكيف النفسي والأمل لدى الأفراد",
+    "مقاربة فقهية-أصولية لاستعمال الأمثلة الكونية كأدلة في المسائل العقدية"
+   ],
+   "semantic_tags_entities": {
+    "semantic_tags": [
+     "رحمة الله",
+     "إحياء الأرض",
+     "دلائل الطبيعة",
+     "القدرة الإلهية",
+     "البعث",
+     "التفكر",
+     "الآيات الكونية"
+    ],
+    "named_entities": {
+     "persons": [],
+     "locations": [
+      "الأرض"
+     ],
+     "events": [
+      "البعث"
+     ],
+     "divine_names": [
+      "الله"
+     ],
+     "religious_texts": [
+      "القرآن الكريم",
+      "سورة الروم"
+     ]
+    }
+   },
+   "search_retrieval_fields": {
+    "keywords_ar": [
+     "رحمة الله",
+     "إحياء الأرض",
+     "البعث",
+     "آيات الكون",
+     "سورة الروم"
+    ],
+    "keywords_en": [
+     "mercy of God",
+     "earth revival",
+     "resurrection",
+     "signs in nature",
+     "Surah Ar-Rum"
+    ],
+    "key_concepts": [
+     "رحمة الله وإحياء الأرض",
+     "دليل من الطبيعة إلى الغيب",
+     "إمكانية بعث الموتى",
+     "التفكر كمصدر لليقين"
+    ],
+    "related_verses": [
+     "30:50",
+     "22:5",
+     "41:39",
+     "36:33",
+     "75:40"
+    ],
+    "context_window": "الآية تقع في سياق آيات تتناول دلائل الخلق والآيات في الكون وتدعو للتفكر والإيمان بقدرة الله على البعث."
+   },
+   "application_fields": {
+    "difficulty_level": "متوسط",
+    "use_cases": [
+     "خطب ودروس دينية تبرز دلائل البعث والرحمة الإلهية",
+     "مناهج تعليمية لتعزيز التفكر والوعي البيئي في المدارس الدينية",
+     "بحوث مقارنة بين النصوص الدينية والنتائج العلمية حول دور المناخ في إحياء النبات",
+     "برامج استشارات نفسية روحية لتعزيز الأمل لدى المتألمين",
+     "مبادرات سياسة عامة لإعادة تأهيل الأراضي المستنفدة مستلهمة من مفهوم الإحياء"
+    ],
+    "emotional_tone": "طمأنينة وأمل وتأكيد على قدرة الله ورحمته",
+    "sentiment_score": 0.75,
+    "urgency_level": "منخفض"
+   }
+  },
+  "annotation_source_file": "batch_35_results.jsonl",
+  "annotation_timestamp": "2025-12-02T19:22:38.861036",
+  "annotation_model": "gpt-4o-mini",
+  "processing_method": "batch_api",
+  "has_annotation": true
+ },
+ {
+  "ayah_id": 6222,
+  "surah_no": 112,
+  "ayah_no_surah": 1,
+  "text_ar": "قُلْ هُوَ ٱللَّهُ أَحَدٌ",
+  "text_en": "Say, ˹O Prophet,˺ “He is Allah—One ˹and Indivisible˺;",
+  "surah_name_ar": "الإخلاص",
+  "surah_name_en": "The Sincerity",
+  "place_of_revelation": "Meccan",
+  "arabic_annotation": {
+   "islamic_cognitive_dimension": {
+    "islamic_domain": "aqeedah",
+    "sub_topics": [
+     "التوحيد الألوهِي: إثبات أن الله هو الإله الواحد المستحق للعبادة",
+     "نفي الشريك والأحدية المطلقة: مفهوم الإفراد والنفي في العقيدة",
+     "أسماء الله وصفاته: علاقة لفظ 'اللَّهُ' و'أَحَدٌ' بصفات الصفات",
+     "الأساس القرآني للعقيدة والتأثير التعليمي والعبادي",
+     "البُعد البلاغي واللغوي في إعلان الوحدانية"
+    ]
+   },
+   "related_sciences": {
+    "theology_religion": {
+     "islamic_theology": "تشرح الآية بوضوح مبدأ التوحيد والإجابة على أسئلة الهوية الإلهية في العقيدة الإسلامية.",
+     "quranic_studies": "آية افتتاحية لسورة الإخلاص تؤكد تركيز السورة على بيان وحدانية الله وبنيتها المكيّة القصيرة.",
+     "hadith_studies": "متصلة بالأحاديث التي تتحدث عن مكانة سورة الإخلاص وفضل قراءتها وتأويلها العقائدي.",
+     "fiqh": "تؤثر في قواعد العبادة المتعلقة بتوجيه العبادة للخالق الواحد وفي أحكام الاستشهاد بالنصوص العقائدية.",
+     "usul_al_fiqh": "تمثل نموذجاً لنقاشات القياس النصي وأولوية النصوص القطعية الدلالة في استنباط العقائد.",
+     "maqasid_al_sharia": "تدعم مقاصد الشريعة في حفظ الدين من خلال تأكيد وحدة المرجعية الدينية ووضوح العقيدة.",
+     "comparative_religion": "تتيح مقارنة بين مفهوم التوحيد الإسلامي ومفاهيم التوحيد أو الإله الواحد في ديانات أخرى.",
+     "religious_studies_general": "تُستخدم كنص مركزي لفهم التعبيرات الدينية حول الإله والعبادة والهوية الدينية."
+    },
+    "human_social_sciences": {
+     "anthropology": "تلقي ضوءاً على كيفية تشكّل الرموز الدينية والهوية الجماعية لدى المسلمين.",
+     "cultural_anthropology": "تظهر الآية كعنصر ثقافي متكرر في الطقوس والرموز الفنية والخطّ الإسلامي.",
+     "sociology": "تعمل كعنصر موحد اجتماعيًا يحدد الانتماء الديني ويؤثر في البنية القيمية للجماعة.",
+     "psychology": "الترديد والتذكّر بالآية يُسهم في الطمأنينة النفسية والحدّ من القلق الديني لدى الأفراد.",
+     "counseling_psychology": "تُستخدم في تقنيات الدعم الروحي والاسنادي عند معالجة القلق الوجودي والهوية.",
+     "education_sciences": "مادة تعليمية أساسية في تدريس العقيدة والتربية الدينية للمراحل المختلفة.",
+     "gender_studies": "",
+     "family_studies": "تُتلى هذه الآية في السياقات الأسرية كوسيلة لغرس التوحيد والقيم العقائدية في الأطفال.",
+     "communication_studies": "مثال على رسالة دينية موجزة وفعّالة تستخدم أساليب بلاغية مختصرة لنقل عقيدة مركزية.",
+     "media_studies": "تُستخدم في البرامج الدينية والإعلام المرئي والمسموع كعلامة تعريفية بالدين الإسلامي.",
+     "peace_conflict_studies": "مفهوم الوحدة الإلهية يمكن أن يُوظف في حوارات بينية لتقليل التنافر الطائفي عبر التركيز على أسس مشتركة.",
+     "development_studies": "",
+     "public_policy": ""
+    },
+    "philosophy_epistemology_ethics": {
+     "philosophy": "تثير قضايا وجودية وفلسفية حول طبيعة الإله ووحدته كموضوع للميتافيزيقا الدينية.",
+     "epistemology": "تُظهر كيفية استناد المعرفة الدينية إلى نصوص قطعية في تحديد مسألة الألوهية.",
+     "philosophy_of_religion": "نموذج نصي لبناء حجج التوحيد ونقد تعدد الآلهة في نقاشات فلسفة الدين.",
+     "moral_philosophy": "تؤسس لِمرجعية أخلاقية مركزية تستمد شرعيتها من إفراد الله بالربوبية والعبادة.",
+     "applied_ethics": "",
+     "bioethics": "",
+     "tech_ethics": "",
+     "ai_ethics": "",
+     "legal_philosophy": ""
+    },
+    "law_legal_studies": {
+     "public_law": "",
+     "family_law": "",
+     "criminal_law": "",
+     "international_law": "",
+     "human_rights_law": "",
+     "constitutional_law": "",
+     "environmental_law": "",
+     "commercial_law": "",
+     "criminal_justice": "",
+     "criminology": ""
+    },
+    "economics_management": {
+     "economics": "",
+     "islamic_economics": "توفر أساسًا أخلاقيًا ومُنطلقًا لقيم العدالة والتكافل استنادًا إلى وحدة الملكية والربوبية لله.",
+     "development_economics": "",
+     "public_finance": "",
+     "banking_finance": "",
+     "management": "",
+     "organizational_behavior": "",
+     "business_ethics": "تدعم مواقف أخلاقية في التعامل التجاري تستند إلى مسؤولية أخلاقية موحدة أمام خالق واحد."
+    },
+    "history_civilization_archeology": {
+     "history": "سورة مكية قصيرة تظهر في سياق تشكيل العقيدة الأولى للمجتمع الإسلامي في مكة.",
+     "social_history": "تشير إلى ممارسات العبادة والردّ على المعتقدات المشركة في المجتمع الجاهلي.",
+     "intellectual_history": "كان لها أثرٌ في مدارس الكلام والعقيدة عبر التاريخ الإسلامي كمحور لصياغة التوحيد.",
+     "civilizational_studies": "ظهرت في الفنون الإسلامية والزخرفة والخطّ كرمز لوحدة الإيمان.",
+     "archeology": "",
+     "heritage_studies": "تُعد جزءًا من التراث الديني والثقافي المُتوارث ضمن الممارسات الإسلامية."
+    },
+    "geography_environment": {
+     "geography": "",
+     "human_geography": "",
+     "environmental_studies": "",
+     "climate_change_studies": "",
+     "sustainability_studies": ""
+    },
+    "natural_life_sciences": {
+     "biology": "",
+     "genetics": "",
+     "human_biology": "",
+     "ecology": "",
+     "neuroscience": "دراسات التأثير العصبي للذكر والترديد قد تستكشف تأثير تلاوة آيات التوحيد على الدماغ والحالة الذهنية.",
+     "medicine": "",
+     "public_health": "",
+     "nutrition_science": ""
+    },
+    "earth_space_sciences": {
+     "astronomy": "تدعو الآية إلى التفكر في الكون كوحدة تدلّ على وجود خالق واحد، وتُستخدم في دلائل فلسفة الطبيعة.",
+     "cosmology": "تُستعمل كحجة نصية في مناقشات أصل الكون ووحدته من منظور دينيّ.",
+     "earth_sciences": "",
+     "geology": "",
+     "meteorology": "",
+     "oceanography": ""
+    },
+    "applied_professional_studies": {
+     "social_work": "تُستخدم في برامج الدعم الروحي والاجتماعي لتعزيز الإحساس بالمعنى والهوية.",
+     "education_practice": "يمكن دمجها في مناهج التربية الدينية ومواد التحفيظ والتعليم الأخلاقي.",
+     "public_administration": "",
+     "healthcare_management": ""
+    },
+    "other_sciences": {}
+   },
+   "categories": [
+    "faith_creed",
+    "divine_names_attributes",
+    "divinity_lordship",
+    "quranic_exegesis",
+    "reflection_spirituality",
+    "ethics_values"
+   ],
+   "related_research_fields": [
+    "دراسة بلاغة آية 'قُلْ هُوَ اللَّهُ أَحَدٌ' وتأثيرها الأسلوبي في القرآن",
+    "بحث في أصول التوحيد: المقاربات النصية والفلسفية المتعلقة بالأحدية الإلهية",
+    "أثر ترديد سورة الإخلاص على الصحة النفسية والرفاهية الروحية",
+    "مقارنة بين مفهوم التوحيد في الإسلام والديانات التوحيدية الأخرى",
+    "تاريخ تأويل سورة الإخلاص عبر مدارس التفسير المختلفة",
+    "دور سورة الإخلاص في التربية الدينية والمنهاج التعليمي",
+    "استعمالات سورة الإخلاص في الخطاب الديني والإعلامي المعاصر"
+   ],
+   "semantic_tags_entities": {
+    "semantic_tags": [
+     "التوحيد",
+     "وحدانية الله",
+     "أحد",
+     "إفراد الربوبية",
+     "نفي الشريك",
+     "إثبات الألوهية"
+    ],
+    "named_entities": {
+     "persons": [],
+     "locations": [
+      "مكة المكرمة"
+     ],
+     "events": [
+      "نزول السورة في مكة",
+      "الوحي المكي"
+     ],
+     "divine_names": [
+      "الله"
+     ],
+     "religious_texts": [
+      "القرآن الكريم",
+      "سورة الإخلاص"
+     ]
+    }
+   },
+   "search_retrieval_fields": {
+    "keywords_ar": [
+     "قُلْ هُوَ اللَّهُ أَحَدٌ",
+     "التوحيد",
+     "سورة الإخلاص",
+     "أحد",
+     "وحدانية الله"
+    ],
+    "keywords_en": [
+     "Say He is Allah One",
+     "Tawhid",
+     "Surah Al-Ikhlas",
+     "Oneness of God"
+    ],
+    "key_concepts": [
+     "ألوهية الله",
+     "إفراد",
+     "نفي المشاركة",
+     "الهوية الإلهية"
+    ],
+    "related_verses": [
+     "112:1",
+     "112:1-4",
+     "2:163",
+     "5:73"
+    ],
+    "context_window": "السياق الكامل لسورة الإخلاص (الآيات 1-4) والسياق العام للرسالة المكية في توضيح التوحيد ونفي الشرك."
+   },
+   "application_fields": {
+    "difficulty_level": "سهل للفهم العام؛ متوسط عند الدخول في تفاسير الكلام والأدلة الكلامية والفلسفية",
+    "use_cases": [
+     "التدريس العقائدي في المدارس والجامعات",
+     "الخطابة والدروس الدينية",
+     "الاستعانة بها في الدعم النفسي والروحي",
+     "التحفيظ والعبادة اليومية",
+     "بحوث مقارنة في فلسفة الدين"
+    ],
+    "emotional_tone": "تعظيم وخشوع وطمأنينة",
+    "sentiment_score": 0.9,
+    "urgency_level": "منخفض"
+   }
+  },
+  "annotation_source_file": "batch_63_results.jsonl",
+  "annotation_timestamp": "2025-12-02T19:22:42.240405",
+  "annotation_model": "gpt-4o-mini",
+  "processing_method": "batch_api",
+  "has_annotation": true
+ }
+]
