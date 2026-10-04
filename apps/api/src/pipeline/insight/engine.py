@@ -440,6 +440,10 @@ class PipelineInsightEngine:
         return kept[: request.max_insights]
 
 
+# One per process: every engine the factory builds shares the indexes and the shingles.
+SHARED_RESOURCES = ResourceCache()
+
+
 def build_engine(
     settings: Settings,
     http: httpx.AsyncClient,
@@ -448,7 +452,13 @@ def build_engine(
     log: CallLog | None = None,
     resources: ResourceCache | None = None,
 ) -> PipelineInsightEngine:
-    """Build the engine of the active provider: its models, its embedding and the reranker."""
+    """
+    Build the engine of the active provider: its models, its embedding and the reranker.
+
+    This is the factory the scan workflow registers for the pipeline engine. It is
+    cheap to call per scan: the concept indexes, the Quran shingles and the learning
+    path are loaded once per process (`SHARED_RESOURCES`).
+    """
     client = client_for(settings, http, log=log)
     block = settings.ai
     embedding = (
@@ -460,5 +470,9 @@ def build_engine(
         settings.reranker_url, http, timeout_seconds=settings.reranker_timeout_seconds
     )
     return PipelineInsightEngine(
-        sessionmaker, client, embedding=embedding, reranker=reranker, resources=resources
+        sessionmaker,
+        client,
+        embedding=embedding,
+        reranker=reranker,
+        resources=resources or SHARED_RESOURCES,
     )
