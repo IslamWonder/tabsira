@@ -98,7 +98,13 @@ export function PostScreen({ postId }: { postId: string }) {
               setLoad({ kind: reason === 'withdrawn' ? 'withdrawn' : 'missing' })
             }
           />
-          {load.post.status === 'published' ? <Comments postId={load.post.id} /> : null}
+          {load.post.status === 'published' ? (
+            <Comments
+              postId={load.post.id}
+              authorHandle={load.post.author.handle}
+              onAuthorBlocked={() => setLoad({ kind: 'missing' })}
+            />
+          ) : null}
         </>
       ) : null}
       {load.kind === 'withdrawn' ? (

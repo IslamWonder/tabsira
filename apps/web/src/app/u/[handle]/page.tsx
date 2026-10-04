@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { ProfileScreen } from '@/components/community/profile-screen';
 import { pageMetadata } from '@/lib/seo';
 import { messages } from '@/messages';
-import { profilePath } from '@/social/identity';
+import { handleProblem, profilePath } from '@/social/identity';
 import { profileOnServer } from '@/social/server';
 
 export const dynamic = 'force-dynamic';
@@ -20,8 +20,9 @@ function decode(handle: string): string {
 /** A public profile is indexable: its name and handle, nothing else (docs/SEO.md). */
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const handle = decode((await params).handle);
-  const result = await profileOnServer(handle);
-  if (!result.ok) {
+  // Only a handle of the right shape is asked for: anything else is nobody's page.
+  const result = handleProblem(handle) === null ? await profileOnServer(handle) : null;
+  if (result === null || !result.ok) {
     return pageMetadata({
       path: profilePath(handle),
       title: messages.community.title,
@@ -34,6 +35,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     title: result.data.public_name,
     description: messages.community.profileDescription(result.data.public_name),
     type: 'website',
+    // The sitemap lists a profile only once it has a public post; results follow the same rule.
+    noindex: result.data.posts_count === 0,
   });
 }
 

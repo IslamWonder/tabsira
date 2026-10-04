@@ -250,14 +250,21 @@ export function PublishScreen() {
               <div className="flex flex-wrap gap-2.5">
                 {post.status === 'draft' || post.status === 'rejected' ? (
                   <>
+                    {/* A refused post is edited first: the edit makes it a draft again, and then it can be sent. */}
+                    {post.status === 'draft' ? (
+                      <Button
+                        size="lg"
+                        disabled={busy}
+                        onClick={() => void run(() => submitPost(post.id), outcomeOf)}
+                      >
+                        {busy ? P.submitting : P.submit}
+                      </Button>
+                    ) : null}
                     <Button
+                      variant={post.status === 'draft' ? 'secondary' : 'primary'}
                       size="lg"
-                      disabled={busy}
-                      onClick={() => void run(() => submitPost(post.id), outcomeOf)}
+                      onClick={() => setEditing(true)}
                     >
-                      {busy ? P.submitting : P.submit}
-                    </Button>
-                    <Button variant="secondary" size="lg" onClick={() => setEditing(true)}>
                       {P.edit}
                     </Button>
                   </>

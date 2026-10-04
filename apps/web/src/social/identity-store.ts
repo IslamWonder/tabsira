@@ -20,6 +20,8 @@ export type IdentityState =
 const UNKNOWN: IdentityState = { status: 'unknown' };
 let state: IdentityState = UNKNOWN;
 let pending: Promise<void> | null = null;
+// Counts the resets: an answer that arrives after a reset belongs to someone who signed out.
+let generation = 0;
 const listeners = new Set<() => void>();
 
 function publish(next: IdentityState): void {
@@ -37,7 +39,11 @@ function subscribe(listener: () => void): () => void {
 }
 
 export function loadIdentity(): Promise<void> {
+  const asked = generation;
   pending ??= getIdentity().then((result) => {
+    if (asked !== generation) {
+      return;
+    }
     pending = null;
     publish(result.ok ? { status: 'ready', identity: result.data } : { status: 'unavailable' });
   });
@@ -52,6 +58,7 @@ export function setIdentity(identity: PublicIdentity): void {
 
 /** As at a fresh page load (between unit tests, and after signing out). */
 export function forgetIdentity(): void {
+  generation += 1;
   pending = null;
   state = UNKNOWN;
 }

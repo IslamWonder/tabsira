@@ -161,6 +161,7 @@ export interface BlockSheetProps {
 
 /** Confirm a block, which hides each of the two from the other everywhere and ends their follows. */
 export function BlockSheet({ open, onClose, handle, publicName, onBlocked }: BlockSheetProps) {
+  const access = useAccess();
   const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle');
   const [failure, setFailure] = useState<string | null>(null);
   const block = async () => {
@@ -193,9 +194,13 @@ export function BlockSheet({ open, onClose, handle, publicName, onBlocked }: Blo
             <Notice tone="error">{failure}</Notice>
           </div>
         )}
+        <AccessNote access={access} guest={C.block.signIn} unverified="" />
         {state === 'done' ? null : (
           <div className="flex flex-wrap gap-2.5">
-            <Button onClick={block} disabled={state === 'busy'}>
+            <Button
+              onClick={block}
+              disabled={state === 'busy' || access === 'guest' || access === 'unknown'}
+            >
               {state === 'busy' ? C.block.blocking : C.block.confirm}
             </Button>
             <Button variant="ghost" onClick={onClose}>

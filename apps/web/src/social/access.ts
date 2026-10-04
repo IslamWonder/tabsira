@@ -24,7 +24,7 @@ export function useAccess(): Access {
   if (!session.user.email_verified) {
     return 'unverified';
   }
-  if (identity.status === 'loading' || identity.status === 'unknown') {
+  if (identity.status !== 'ready') {
     return 'unknown';
   }
   return hasIdentity(identity) ? 'member' : 'no-identity';

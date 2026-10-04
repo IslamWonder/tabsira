@@ -163,13 +163,15 @@ function CommentItem({
             >
               {C.report.action}
             </Button>
-            <Button
-              variant="ghost"
-              onClick={() => setOpen('block')}
-              className="min-h-10 px-3 text-[0.875rem]"
-            >
-              {C.block.action}
-            </Button>
+            {access === 'guest' || access === 'unknown' ? null : (
+              <Button
+                variant="ghost"
+                onClick={() => setOpen('block')}
+                className="min-h-10 px-3 text-[0.875rem]"
+              >
+                {C.block.action}
+              </Button>
+            )}
           </>
         )}
       </div>
@@ -201,7 +203,16 @@ function CommentItem({
  * once with the state the guard gave it; nobody else sees it until it is
  * published. A comment by someone the viewer blocks leaves the thread.
  */
-export function Comments({ postId }: { postId: string }) {
+export function Comments({
+  postId,
+  authorHandle,
+  onAuthorBlocked,
+}: {
+  postId: string;
+  /** The post's author: blocking them from a comment hides the post too. */
+  authorHandle?: string;
+  onAuthorBlocked?: () => void;
+}) {
   const headingId = useId();
   const fetchPage = useCallback((cursor: string | null) => commentsPage(postId, cursor), [postId]);
   const session = useSession();
@@ -213,8 +224,12 @@ export function Comments({ postId }: { postId: string }) {
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [deleted, setDeleted] = useState(false);
 
-  const removeAuthor = (handle: string) =>
+  const removeAuthor = (handle: string) => {
     pages.replace((thread) => thread.author.handle === handle, null);
+    if (handle === authorHandle) {
+      onAuthorBlocked?.();
+    }
+  };
   const withoutAuthorReplies = (handle: string) => {
     for (const thread of pages.items) {
       if (thread.replies.some((reply) => reply.author.handle === handle)) {

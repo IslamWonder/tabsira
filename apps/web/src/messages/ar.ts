@@ -240,6 +240,8 @@ export const ar = {
     verified: 'نص موثّق من مصدره',
     verifyDorar: 'تحقق في الدرر',
     ruling: (ruling: string) => `حكم الدرر: ${ruling}`,
+    /** The editor's reading of the ruling (decision 18), when dorar's own words are not in the answer. */
+    classification: (classification: string) => `تصنيف المحرّر لحكم الدرر: ${classification}`,
     quranOpen: '﴿',
     quranClose: '﴾',
   },
@@ -747,9 +749,14 @@ export const ar = {
     post: {
       openPost: 'افتح المنشور',
       reveal: 'اعرض الآية والحديث',
+      revealQuran: 'اعرض الآية',
+      revealHadith: 'اعرض الحديث',
+      revealNone: 'اعرض الدليل',
       hide: 'أخفِ الآية والحديث',
       evidenceLabel: 'الدليل الموثّق',
-      verseAlone: 'تُعرض الآية وحدها حتى يُسجَّل حكم الحديث من الدرر.',
+      verseAlone: 'يستند هذا المنشور إلى الآية وحدها.',
+      hadithAlone: 'يستند هذا المنشور إلى الحديث وحده.',
+      noEvidence: 'لا نص موثّق يُعرض مع هذا المنشور الآن.',
       reflection: 'كلمات الكاتب',
       reflectionNote: 'هذه كلمات الكاتب نفسه، ليست نصًا موثّقًا.',
       looksLikeScripture: 'يبدو هذا النص كآية أو حديث، وهو من كلمات الكاتب ولم تتحقق منه تبصرة.',
@@ -866,6 +873,7 @@ export const ar = {
       listEmpty: 'لم تحجب أحدًا.',
       listLoading: 'نحمّل القائمة…',
       listFailed: 'تعذّر تحميل قائمة المحجوبين.',
+      signIn: 'ادخل لتحجب عضوًا.',
     },
     profile: {
       joined: (month: string) => `انضم في ${month}`,

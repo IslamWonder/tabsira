@@ -76,7 +76,7 @@ function FollowButton({
       </LinkButton>
     );
   }
-  if (access === 'unverified') {
+  if (access === 'unverified' && !follows) {
     return <p className="m-0 text-fg-soft text-sm">{P.verify}</p>;
   }
   const toggle = async () => {
@@ -219,7 +219,16 @@ export function ProfileScreen({ handle }: { handle: string }) {
           </GlassPanel>
           <section aria-label={P.posts} className="flex flex-col gap-4">
             <h2 className="m-0 font-semibold text-[1.25rem] text-fg">{P.posts}</h2>
-            <FeedList pages={pages} emptyText={() => P.noPosts} headingLevel={3} />
+            <FeedList
+              pages={pages}
+              emptyText={() => P.noPosts}
+              headingLevel={3}
+              onAuthorBlocked={(blocked) => {
+                if (blocked === handle) {
+                  setLoad({ kind: 'blocked' });
+                }
+              }}
+            />
           </section>
           <Sheet open={open === 'more'} onClose={() => setOpen('none')} title={C.post.more}>
             <ul className="m-0 flex list-none flex-col gap-1 p-0 pb-2">

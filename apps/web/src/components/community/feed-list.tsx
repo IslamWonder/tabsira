@@ -17,6 +17,8 @@ export interface FeedListProps {
   /** Shown instead of the list, for a feed the viewer must sign in for. */
   gate?: ReactNode;
   headingLevel?: 2 | 3;
+  /** The viewer blocked a member from one of the cards; the page may have more of them to hide. */
+  onAuthorBlocked?: (handle: string) => void;
 }
 
 /**
@@ -25,7 +27,13 @@ export interface FeedListProps {
  * failed with a retry, and a button for the next page. No post is ever
  * invented to fill it.
  */
-export function FeedList({ pages, emptyText, gate, headingLevel = 2 }: FeedListProps) {
+export function FeedList({
+  pages,
+  emptyText,
+  gate,
+  headingLevel = 2,
+  onAuthorBlocked,
+}: FeedListProps) {
   if (gate !== undefined) {
     return <div className="py-6">{gate}</div>;
   }
@@ -48,15 +56,18 @@ export function FeedList({ pages, emptyText, gate, headingLevel = 2 }: FeedListP
           post={post}
           headingLevel={headingLevel}
           onChange={(next) => pages.replace((item) => item.id === post.id, next)}
-          onRemoved={(reason) =>
+          onRemoved={(reason) => {
             pages.replace(
               (item) =>
                 reason === 'blocked'
                   ? item.author.handle === post.author.handle
                   : item.id === post.id,
               null
-            )
-          }
+            );
+            if (reason === 'blocked') {
+              onAuthorBlocked?.(post.author.handle);
+            }
+          }}
         />
       ))}
       {status.kind === 'failed' ? (

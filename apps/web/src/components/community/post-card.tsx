@@ -37,6 +37,17 @@ export interface PostCardProps {
   className?: string;
 }
 
+/** The reveal names what the post holds: a verse and a hadith, one of them, or nothing shown. */
+export function revealLabel(insight: Post['insight']): string {
+  if (insight.quran.length > 0 && insight.hadith.length > 0) {
+    return M.reveal;
+  }
+  if (insight.quran.length > 0) {
+    return M.revealQuran;
+  }
+  return insight.hadith.length > 0 ? M.revealHadith : M.revealNone;
+}
+
 /** The author's moderation state, shown to the author alone (the API returns it to nobody else). */
 export function StatusChip({ post }: { post: Post }) {
   if (post.status === 'published') {
@@ -198,7 +209,7 @@ export function PostCard({
           onClick={() => setRevealed(true)}
           className="self-start"
         >
-          {M.reveal}
+          {revealLabel(post.insight)}
         </Button>
       )}
 
@@ -325,15 +336,17 @@ export function PostCard({
                   {C.report.action}
                 </Button>
               </li>
-              <li>
-                <Button
-                  variant="ghost"
-                  onClick={() => setOpen('block')}
-                  className="w-full justify-start"
-                >
-                  {C.block.action} {post.author.public_name}
-                </Button>
-              </li>
+              {access === 'guest' || access === 'unknown' ? null : (
+                <li>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setOpen('block')}
+                    className="w-full justify-start"
+                  >
+                    {C.block.action} {post.author.public_name}
+                  </Button>
+                </li>
+              )}
             </>
           )}
         </ul>
