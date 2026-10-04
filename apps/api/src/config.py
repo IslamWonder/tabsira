@@ -253,6 +253,8 @@ class ProviderSettings(BaseModel):
     reasoning_effort: ReasoningEffort = ""
     # The coordinate system the vision prompt asks for and the server converts from.
     box_coordinates: BoxCoordinates = BoxCoordinates.PIXELS
+    # Size asked of the embedding model (`dimensions`); None keeps the model's own size.
+    embedding_dimensions: Annotated[int, Field(ge=1, le=2000)] | None = None
     # Price of each model, keyed by model id; a model without a price is recorded with no cost.
     prices: dict[str, ModelPrice] = Field(default_factory=dict)
 
@@ -269,6 +271,12 @@ class ProviderSettings(BaseModel):
     @classmethod
     def _refuse_forbidden_models(cls, value: str) -> str:
         return refuse_forbidden_model(value)
+
+    @field_validator("embedding_dimensions", mode="before")
+    @classmethod
+    def _empty_dimensions_mean_native(cls, value: Any) -> Any:
+        """Treat a key left empty in the .env as the model's own size."""
+        return None if value == "" else value
 
     @field_validator("prices")
     @classmethod

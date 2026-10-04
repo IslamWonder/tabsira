@@ -1154,3 +1154,13 @@ def test_production_needs_a_redis_password_and_refuses_the_demo_engine():
 
     assert "REDIS_PASSWORD is empty" in message
     assert "SCAN_ENGINE is demo, a development simulation" in message
+
+
+def test_an_embedding_size_left_empty_keeps_the_model_size(make_settings):
+    empty = make_settings(ai_openai={"embedding_dimensions": ""})
+    sized = make_settings(ai_ovh={"embedding_dimensions": "1024"})
+
+    assert empty.ai_openai.embedding_dimensions is None
+    assert sized.ai_ovh.embedding_dimensions == 1024
+    with pytest.raises(ValidationError):
+        make_settings(ai_openai={"embedding_dimensions": 3072})
