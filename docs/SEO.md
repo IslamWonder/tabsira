@@ -53,6 +53,8 @@ TABSIRA follows the playbook in `the SEO playbook` (README §12 SEO, §26 launch
 
 `check:seo`, `check:site` and `check:a11y` (axe, WCAG 2.2 AA) are ported from the reference site and run against a running server (`BASE_URL`) in CI: title and description lengths, canonical form, hreflang, one `h1`, `lang`/`dir`, `alt`, text-extraction welding, share tags, icons and manifest sizes, consent defaults before any Google script, `noindex` on unlisted routes, and internal links.
 
+In practice: `check:seo` and `check:site` run in the Jenkinsfile stage "Web SEO Checks" against the production build started on loopback (`SITE_URL` is the origin the build was made for; the page lists live in `apps/web/scripts/lib/site-routes.mjs`, a copy a unit test keeps equal to `src/lib/seo.ts` and `src/lib/crawlers.ts`). `check:a11y` needs a local Chromium and the API's sample answers, so it is run by hand (`pnpm --filter @tabsira/web check:a11y`) until a CI agent has Chromium. Pages still to come (insight, place, public profile) use `pageMetadata`, `breadcrumbJsonLd` and `articleJsonLd` of `src/lib/seo.ts`; a route outside the sitemap is added to `UNLISTED_ROUTES`. Heatmaps (decision 32): `CLARITY_PROJECT_ID`, loaded after the behaviour category, with `data-clarity-mask` on `<body>`.
+
 ## 8. Inputs from the owners
 
 Master mark SVG (square, ≥ 112 px) and wordmark; `sameAs` profile URLs; the GA measurement id; Search Console and Bing Webmaster access; the AI-crawler policy if it should differ from "all allowed"; the legal revision date and contact address.

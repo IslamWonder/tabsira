@@ -339,6 +339,30 @@ node {
                                 '''
                             }
                         }
+                        stage('Web SEO Checks') {
+                            // docs/SEO.md section 7: check:seo and check:site against the production
+                            // build, started on loopback with no analytics id (so no Google code
+                            // can exist). check:a11y (axe) needs a Chromium and the API's sample
+                            // answers at the built API address: run it by hand for now.
+                            sh '''#!/bin/bash
+                                set -euo pipefail
+                                mkdir -p .ci_logs
+                                cd apps/web
+                                port=3187
+                                NODE_ENV=production pnpm exec next start --hostname 127.0.0.1 --port "$port" \
+                                    > ../../.ci_logs/web-seo-server.log 2>&1 &
+                                server=$!
+                                trap 'kill "$server" 2>/dev/null || true' EXIT
+                                for _ in $(seq 1 60); do
+                                    curl -fs -o /dev/null "http://127.0.0.1:$port/robots.txt" && break
+                                    sleep 1
+                                done
+                                export BASE_URL="http://127.0.0.1:$port"
+                                # The origin this build was made for: production builds carry https://tabsira.me.
+                                export SITE_URL="${NEXT_PUBLIC_SITE_URL:-${SITE_URL:-https://tabsira.test}}"
+                                { pnpm check:seo && pnpm check:site; } 2>&1 | tee ../../.ci_logs/web-seo-checks.log
+                            '''
+                        }
                         stage('Web Tests') {
                             try {
                                 sh '''#!/bin/bash
