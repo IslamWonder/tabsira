@@ -17,6 +17,7 @@ sensitivity guard and the insight engine, with the real providers. Then:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import statistics
 import time
@@ -47,8 +48,8 @@ from src.pipeline.engine import (
 from src.pipeline.insight.guard import scripture_guard
 from src.pipeline.leak_guard import LeakDetector, ScriptureLeakError
 from src.pipeline.scene_analyzer import analyze_scene
-from src.pipeline.schemas import SceneRequest, SensitivityRequest
-from src.pipeline.sensitivity import check_sensitivity
+from src.pipeline.schemas import SceneRequest
+from src.pipeline.sensitivity import moderate, with_moderation
 from src.retrieval.refs import hadith_key, parse_quran, quran_key
 from src.scripture.text import sha256_hex
 
@@ -251,20 +252,21 @@ async def evaluate_scene(
     started = clock()
     checked: dict[str, object]
     vision_ms = 0
+    # As in the scan workflow, the moderation runs while the scene is described.
+    moderation = asyncio.create_task(moderate(prepared.image.model_image, client=client))
     try:
         described = await analyze_scene(
             SceneRequest(image=prepared.image.model_image, detector=prepared.detector),
             client=client,
         )
-        scene = await check_sensitivity(
-            SensitivityRequest(image=prepared.image.model_image, scene=described), client=client
-        )
+        scene = with_moderation(described, await moderation)
         vision_ms = round((clock() - started) * 1000)
         result = await engine.propose(
             EngineRequest(scan_id=f"eval-{prepared.gold.id}", scene=scene)
         )
         checked = await check_result(session, expectation, result, quran)
     except (AiCallError, ScriptureLeakError) as error:
+        moderation.cancel()
         status = "vision_failed" if isinstance(error, AiCallError) else "vision_leak"
         checked = {"status": status, "correct": False}
     return SceneRun(
