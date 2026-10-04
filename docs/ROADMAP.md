@@ -14,10 +14,11 @@ The order in which TABSIRA is built. Each line becomes one or more atomic commit
 
 - [ ] Scripture store: Quran and nine-books hadith tables with stored hashes, read-only; importers; Sunnah signals after the cp720 repair; search copy normalised separately.
 - [ ] World ontology and learning-path importers (`masar.md` as versioned data), `OntologyCandidate`.
-- [ ] Accounts: email and password, Google (OIDC with PKCE), sessions, guest merge, profile with the three optional questions, consent records, deletion and export.
+- [x] Accounts: email and password, Google (OIDC with PKCE), sessions, guest merge, profile with the three optional questions, consent records, deletion and export.
 - [ ] Web shell: Next.js app, design tokens for both themes, self-hosted fonts, PWA, navigation, messages module, generated API client, 100 % coverage.
 - [x] Vision service: YOLOE / YOLO-World over HTTP, AGPL-3.0.
-- [ ] Jenkinsfile with SonarQube and the quality gate; zero-downtime deploy scripts for pm2 and gunicorn; production provisioning for `tabsira.me`.
+- [x] Jenkinsfile with SonarQube and the quality gate.
+- [ ] Zero-downtime deploy scripts for pm2 and gunicorn, production provisioning for `tabsira.me` and the VPN data host — after the features (decision 20).
 
 ## Wave 3 — the insight
 
