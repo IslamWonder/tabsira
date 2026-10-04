@@ -96,6 +96,7 @@ class Chosen:
     limit: str
     review: bool
     unseen_preferred: bool
+    strength: str = "strong"
 
 
 @dataclass
@@ -213,6 +214,7 @@ def pick(ranked: Sequence[tuple[Found, TextVerdict]], seen: frozenset[int]) -> C
         limit=verdict.limit.strip(),
         review=not unseen,
         unseen_preferred=bool(unseen) and unseen[0] is not tier[0],
+        strength=verdict.strength,
     )
 
 
@@ -277,17 +279,31 @@ async def gate(
         tier = [pair for pair in hadiths if STRENGTH_ORDER[pair[1].strength] == top]
         eligible = [pair for pair in tier if await rulings.is_eligible(session, pair[0].key)]
         wanted = tier[0][0]
-        # The best hadith is wanted; without a ruling it waits for an editor, in demand order.
-        if not any(pair[0] is wanted for pair in eligible) and await rulings.enqueue_demand(
-            session, wanted.key
-        ):
+        unruled = not any(pair[0] is wanted for pair in eligible) and (
+            await rulings.enqueue_demand(session, wanted.key)
+        )
+        if unruled:
+            # Decision 18: the best hadith waits for an editor's ruling, in demand order,
+            # and until then the insight shows its verse alone, never another hadith.
             result.awaiting.append(await hadith_ref(session, wanted.key))
-        result.hadith = pick(eligible, seen_hadiths)
+        else:
+            result.hadith = pick(eligible, seen_hadiths)
+    _drop_remote_companion(result)
     if result.quran is not None:
         result.quran_ref = await quran_ref(session, result.quran.found.key)
     if result.hadith is not None:
         result.hadith_ref = await hadith_ref(session, result.hadith.found.key)
     return result
+
+
+def _drop_remote_companion(result: GateResult) -> None:
+    """Drop a companion text the verifier called remote (v2 §11); the verse stays."""
+    if result.quran is None or result.hadith is None:
+        return
+    if result.hadith.strength == "weak":
+        result.hadith = None
+    elif result.quran.strength == "weak":
+        result.quran = None
 
 
 def shortlist_of(
