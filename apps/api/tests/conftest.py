@@ -48,6 +48,9 @@ from sqlalchemy.pool import NullPool
 from src.config import Settings
 from tests.helpers import client_for
 
+# The fixtures of the ontology and learning-path tests live in their own module.
+pytest_plugins = ["tests.support_ontology"]
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 SEARCH_PATH = "app,geodata,public"
