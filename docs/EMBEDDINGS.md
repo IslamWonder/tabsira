@@ -25,7 +25,7 @@ Only our own store is embedded: the Quran from quranpedia.net edition 2 and the 
 | `bge-m3`                 | OVH AI Endpoints | 1024 | default when `AI_PROVIDER=ovh`          | 6,236  | 65,712  |
 | `text-embedding-3-small` | OpenAI           | 1536 | measured, not used (kept in the export) | 6,236  | 14,940  |
 
-`text-embedding-3-large` is asked for 1536 dimensions instead of its native 3072: pgvector indexes vectors of up to 2,000 dimensions. Vectors live in `app.quran_verse_embeddings` and `app.hadith_embeddings`, one row per text, model and size, with a partial HNSW index per default model.
+`text-embedding-3-large` is asked for 1536 dimensions instead of its native 3072: pgvector indexes vectors of up to 2,000 dimensions. Vectors live in `app.quran_verse_embeddings` and `app.hadith_embeddings` today, one row per text, model and size, with a partial HNSW index per default model; decision 48 moves them, with `embedding_runs`, to the `vectors` schema (task 05.1), and the import script follows.
 
 ## How they were computed (2026-10-04)
 

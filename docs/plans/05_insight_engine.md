@@ -1,6 +1,6 @@
 # 05 · Insight engine
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 16:27 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 16:41 (Tunis)
 
 Finds the verse and hadith that truly fit the scene, checks them, and writes the explanation. It cites texts by reference only.
 
@@ -20,13 +20,20 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 
 ## Tasks
 
-### 05.1 Insight engine: merge and plug into the scans
+### 05.1 Insight engine: rebase, vectors schema, wiring, shared guards, review
 
-- **Status:** 🔄 branch task/05.1-insight-engine: rebase, re-chain, wire, shared guards, review, merge (see its brief)
-- **Goal:** Merge the engine and register it as the scan workflow's real engine.
-- **Depends on:** 04.1
-- **Touches:** apps/api pipeline, retrieval, vision /rerank.
-- **Done when:** make eval scores recorded; scripture review; one real scan.
+- **Status:** 🔄 branch `task/05.1-insight-engine` (committed, not merged)
+- **Goal:** Merge the insight engine and make it the scan workflow's real engine.
+- **Steps, in order:**
+  1. Rebase onto main. Main's app chain ends at `20261004_192500` (profile motion); resolve the conflicts with the scan workflow (models/scripture.py, models/**init**.py, tests/test_migrations.py, test_account_models.py, config, messages).
+  2. Decision 48: move the retrieval tables (`quran_verse_embeddings`, `hadith_embeddings`, `embedding_runs`) to a new `vectors` schema with its own Alembic chain (`alembic_vectors`, initial revision on its own, keys to `app` with `ON DELETE CASCADE`), run last by `make migrate`; add `vectors` to the role's search path in `scripts/setup-db.sh` and the test database setup; drop the old app-chain retrieval migration (it was never on main).
+  3. Point `scripts/vectors/import.sh` and `export.sh` at `vectors.*`, accept the extracted archive folder as an argument, and import the published archive (docs/EMBEDDINGS.md) into the development database instead of recomputing.
+  4. Register the factory: `ENGINE_FACTORIES[ScanEngine.PIPELINE] = build_engine(settings, http, sessionmaker, client=...)` in `src/scans/engines.py`, and update the workflow's test that expects `unavailable_engine`.
+  5. Switch every engine guard to the shared `guard_fold` and `repeats_store` (`src/scripture/guard_fold.py`, `overlap.py`): planner fields, verifier limits, explanation parts, steps, the clarification question; add an engine test where a modern-spelled 3:190 is refused.
+  6. `make lint`, `uv run pytest -n 2` on retrieval, insight, scripture, scans, migrations, config; one `make eval`; scripture-guardian review; merge.
+- **Depends on:** — (the scan workflow is on main).
+- **Touches:** apps/api pipeline, retrieval, scans/engines.py, alembic (new vectors chain), scripts/setup-db.sh, scripts/migrate, scripts/vectors, docs/EMBEDDINGS.md, docs/BENCHMARK.md.
+- **Done when:** a real scan on `https://tabsira.test` returns an engine insight with verse (and hadith when ruled), no leak, guards shared; review passes.
 
 ### 05.2 The twelve official test cases
 
