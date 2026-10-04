@@ -1,7 +1,8 @@
 'use client';
 
+import type { Route } from 'next';
 import { useState } from 'react';
-import { Button, buttonClasses } from '@/components/ui/button';
+import { Button, buttonClasses, LinkButton } from '@/components/ui/button';
 import { Notice, type NoticeTone } from '@/components/ui/notice';
 import { Sheet } from '@/components/ui/sheet';
 import type { Failure } from '@/lib/api/result';
@@ -25,7 +26,16 @@ export interface ShareSheetProps {
   insightTitle: string;
   /** Whether the insight is public when the screen loads: the owner's own `published_at`. */
   published: boolean;
+  /** The other publishing surfaces whose feature is on (read by the server): the atlas and the network. */
+  publishTo?: PublishTargets;
 }
+
+export interface PublishTargets {
+  atlas: boolean;
+  community: boolean;
+}
+
+export const NO_TARGETS: PublishTargets = { atlas: false, community: false };
 
 /** The page's address on this site, from the path the API names or, for an insight already public, the known one. */
 function addressOf(path: string): string {
@@ -68,7 +78,14 @@ async function shareLink(title: string, url: string): Promise<Said | null> {
  * API's own refusal (a sensitive scene, nothing to show from the store) is
  * said in Arabic, in words that name what to change.
  */
-export function ShareSheet({ open, onClose, insightId, insightTitle, published }: ShareSheetProps) {
+export function ShareSheet({
+  open,
+  onClose,
+  insightId,
+  insightTitle,
+  published,
+  publishTo = NO_TARGETS,
+}: ShareSheetProps) {
   const [isPublic, setIsPublic] = useState(published);
   const [link, setLink] = useState<string | null>(
     published ? addressOf(publicInsightPath(insightId)) : null
@@ -166,6 +183,35 @@ export function ShareSheet({ open, onClose, insightId, insightTitle, published }
           <Button variant="ghost" onClick={withdraw} disabled={working}>
             {T.withdraw}
           </Button>
+        ) : null}
+        {publishTo.atlas || publishTo.community ? (
+          // Extension §2.3–2.4: the map and the network are offered inside sharing, each a separate
+          // choice that opens its own preview; neither is switched on by the other.
+          <section
+            aria-label={T.moreWays}
+            className="flex flex-col gap-2 border-line border-t pt-4"
+          >
+            <h3 className="m-0 font-semibold text-[0.9375rem] text-fg-soft">{T.moreWays}</h3>
+            <div className="flex flex-wrap gap-2">
+              {publishTo.atlas ? (
+                <LinkButton
+                  href={`/atlas/publish?insight=${insightId}` as Route}
+                  variant="secondary"
+                >
+                  {T.publishMap}
+                </LinkButton>
+              ) : null}
+              {publishTo.community ? (
+                <LinkButton
+                  href={`/community/publish?insight=${insightId}` as Route}
+                  variant="secondary"
+                >
+                  {T.publishCommunity}
+                </LinkButton>
+              ) : null}
+            </div>
+            <p className="m-0 text-[0.8125rem] text-fg-muted leading-[1.8]">{T.publishSeparate}</p>
+          </section>
         ) : null}
       </div>
     </Sheet>

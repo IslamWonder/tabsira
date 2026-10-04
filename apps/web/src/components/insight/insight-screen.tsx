@@ -28,7 +28,7 @@ import {
   SeenNote,
 } from './insight-frame';
 import { PhotoPlaceholder } from './photo-placeholder';
-import { ShareSheet } from './share-sheet';
+import { NO_TARGETS, type PublishTargets, ShareSheet } from './share-sheet';
 import { StepCard } from './step-card';
 import { type PhotoView, useInsight } from './use-insight';
 import { WhySheet } from './why-sheet';
@@ -78,7 +78,14 @@ function Photo({
  * text. What the API labels (a prepared example, a simulation, a relation, the
  * step's kind) is shown as it labels it.
  */
-export function InsightScreen({ insightId }: { insightId: string }) {
+export function InsightScreen({
+  insightId,
+  publishTo = NO_TARGETS,
+}: {
+  insightId: string;
+  /** FEATURE_ATLAS and FEATURE_SOCIAL, read by the server: the other ways to publish inside sharing. */
+  publishTo?: PublishTargets;
+}) {
   const controls = useInsight(insightId);
   const { load, photo, step, finish } = controls;
   const [whyOpen, setWhyOpen] = useState(false);
@@ -217,6 +224,7 @@ export function InsightScreen({ insightId }: { insightId: string }) {
           insightId={insight.id}
           insightTitle={insight.title}
           published={insight.published_at !== null}
+          publishTo={publishTo}
         />
       ) : null}
       <ChatSheet

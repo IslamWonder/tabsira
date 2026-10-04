@@ -225,10 +225,22 @@ describe('InsightScreen: why, the chat and the step', () => {
 describe('InsightScreen: sharing', () => {
   it('opens the share sheet from the share button, for a signed-in owner of a real analysis', async () => {
     setSignedIn(USER);
-    await open();
+    const api = serve();
+    render(<InsightScreen insightId={ID} publishTo={{ atlas: true, community: true }} />);
+    await screen.findByRole('heading', { level: 1, name: insightOut().title });
     await userEvent.click(screen.getByRole('button', { name: 'شارك' }));
     const sheet = screen.getByRole('dialog', { name: 'شارك البصيرة' });
     expect(within(sheet).getByRole('button', { name: 'انشر وشارك' })).toBeInTheDocument();
+    // The other surfaces the server said are on, each leading to its own preview with this insight.
+    expect(within(sheet).getByRole('link', { name: 'انشر على الخريطة' })).toHaveAttribute(
+      'href',
+      `/atlas/publish?insight=${ID}`
+    );
+    expect(within(sheet).getByRole('link', { name: 'انشر في تواصل' })).toHaveAttribute(
+      'href',
+      `/community/publish?insight=${ID}`
+    );
+    expect(api.requests.some((request) => request.url.includes('/publication'))).toBe(false);
     await userEvent.click(within(sheet).getByRole('button', { name: 'أغلق' }));
     expect(screen.queryByRole('dialog')).toBeNull();
   });

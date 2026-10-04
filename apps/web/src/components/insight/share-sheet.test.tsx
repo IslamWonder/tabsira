@@ -75,6 +75,30 @@ describe('ShareSheet', () => {
     expect(within(sheet).queryByRole('link', { name: 'نزّل البطاقة' })).toBeNull();
   });
 
+  it('offers the map and the network inside sharing, each only while its feature is on, as separate choices', () => {
+    const sheet = renderSheet({ publishTo: { atlas: true, community: true } });
+    const more = within(sheet).getByRole('region', { name: 'طرق نشر أخرى' });
+    expect(within(more).getByRole('link', { name: 'انشر على الخريطة' })).toHaveAttribute(
+      'href',
+      `/atlas/publish?insight=${ID}`
+    );
+    expect(within(more).getByRole('link', { name: 'انشر في تواصل' })).toHaveAttribute(
+      'href',
+      `/community/publish?insight=${ID}`
+    );
+    expect(within(more).getByText(/ولا يفعّل النشر في تواصل/)).toBeInTheDocument();
+  });
+
+  it('shows only the surface whose feature is on, and no section when neither is', () => {
+    const sheet = renderSheet({ publishTo: { atlas: false, community: true } });
+    expect(within(sheet).queryByRole('link', { name: 'انشر على الخريطة' })).toBeNull();
+    expect(within(sheet).getByRole('link', { name: 'انشر في تواصل' })).toBeInTheDocument();
+    sheet.remove();
+    const bare = renderSheet();
+    expect(within(bare).queryByRole('region', { name: 'طرق نشر أخرى' })).toBeNull();
+    expect(within(bare).queryByRole('link')).toBeNull();
+  });
+
   it('publishes, then hands the public address to the share dialog of the browser', async () => {
     const api = mockApi({ [`PUT /insights/${ID}/publication`]: { body: PUBLISHED } });
     const share = vi.fn().mockResolvedValue(undefined);
