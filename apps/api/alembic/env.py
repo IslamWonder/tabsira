@@ -78,6 +78,11 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        # The role's search_path starts with `app`, which made `app` the default
+        # schema: autogenerate then skipped it and saw no table, so `alembic
+        # check` passed while the models and the database disagreed. With the
+        # extensions' schema as the default, `app` is a named schema like any other.
+        connect_args={"server_settings": {"search_path": "public"}},
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)

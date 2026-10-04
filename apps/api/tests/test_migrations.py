@@ -24,6 +24,16 @@ from tests.dbschema import EXTENSIONS, create_schema, reset_schemas
 API_DIR = Path(__file__).resolve().parents[1]
 APP_CONFIG = "alembic.ini"
 GEODATA_CONFIG = "alembic_geodata/alembic.ini"
+APP_TABLES = {
+    "users",
+    "oauth_accounts",
+    "sessions",
+    "profiles",
+    "consents",
+    "email_tokens",
+    "login_attempts",
+    "oauth_states",
+}
 
 
 def load(path: Path) -> ModuleType:
@@ -66,12 +76,17 @@ def test_the_app_chain_creates_every_extension_in_public_and_skips_none(monkeypa
     assert "suppress" not in source
 
 
-def test_each_chain_has_exactly_one_initial_revision():
+def test_each_chain_is_one_line_from_exactly_one_initial_revision():
     for chain in ("alembic", "alembic_geodata"):
         revisions = [load(path) for path in (API_DIR / chain / "versions").glob("2*.py")]
+        by_id = {revision.revision: revision for revision in revisions}
 
-        assert len(revisions) == 1
-        assert revisions[0].down_revision is None
+        roots = [revision for revision in revisions if revision.down_revision is None]
+        parents = [revision.down_revision for revision in revisions if revision.down_revision]
+        assert len(roots) == 1
+        # Every other revision names one that exists, and no two share a parent: no fork.
+        assert set(parents) <= set(by_id)
+        assert len(parents) == len(set(parents)) == len(revisions) - 1
 
 
 @pytest.fixture
@@ -130,9 +145,10 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
         "geodata.geonames_country_info",
         "geodata.alembic_version",
         "app.alembic_version",
+        *(f"app.{table}" for table in APP_TABLES),
     } == tables
     assert set(EXTENSIONS) <= extensions
-    assert versions == {"app": "20261004_090100", "geodata": "20261004_090000"}
+    assert versions == {"app": "20261004_100000", "geodata": "20261004_090000"}
     # The models and the migrations describe the same database.
     assert {"ix_geonames_name_trgm", "ix_geonames_location_geom", "pk_geonames"} <= indexes
     for config in (GEODATA_CONFIG, APP_CONFIG):
@@ -169,3 +185,52 @@ async def test_the_app_chain_is_safe_to_run_twice_and_downgrades_without_droppin
             (await connection.execute(text("SELECT extname FROM pg_extension"))).scalars()
         )
     assert set(EXTENSIONS) <= extensions
+
+
+async def test_alembic_check_sees_a_difference_between_the_models_and_the_database(migrated):
+    # The check must not pass vacuously: it once skipped the `app` schema entirely.
+    assert alembic(APP_CONFIG, "upgrade", "head").returncode == 0
+    async with migrated.begin() as connection:
+        await connection.execute(text("ALTER TABLE app.users ADD COLUMN drift integer"))
+
+    check = alembic(APP_CONFIG, "check")
+
+    assert check.returncode != 0
+    assert "drift" in check.stdout + check.stderr
+
+
+async def test_the_app_chain_builds_the_append_only_trigger_and_removes_it_again(migrated):
+    assert alembic(APP_CONFIG, "upgrade", "head").returncode == 0
+    async with migrated.begin() as connection:
+        user_id = (
+            await connection.execute(
+                text(
+                    "INSERT INTO app.users (email, display_name) VALUES ('a@example.com', 'A') RETURNING id"
+                )
+            )
+        ).scalar_one()
+        await connection.execute(
+            text(
+                "INSERT INTO app.consents (user_id, kind, version, granted) VALUES (:u, 'terms', 'v1', true)"
+            ),
+            {"u": user_id},
+        )
+
+    with pytest.raises(Exception, match="append-only"):
+        async with migrated.begin() as connection:
+            await connection.execute(text("UPDATE app.consents SET granted = false"))
+
+    assert alembic(APP_CONFIG, "downgrade", "base").returncode == 0
+    async with migrated.connect() as connection:
+        functions = (
+            await connection.execute(
+                text("SELECT count(*) FROM pg_proc WHERE proname = 'consents_forbid_update'")
+            )
+        ).scalar_one()
+        tables = (
+            await connection.execute(
+                text("SELECT count(*) FROM pg_tables WHERE schemaname = 'app'")
+            )
+        ).scalar_one()
+    # Only the version table is left, and no function.
+    assert (functions, tables) == (0, 1)

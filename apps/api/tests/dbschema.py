@@ -24,7 +24,7 @@ SCHEMAS = ("app", "geodata")
 
 
 async def reset_schemas(connection: AsyncConnection) -> None:
-    """Drop every table and enum type in the two schemas, whatever created them."""
+    """Drop every table, function and enum type in the two schemas, whatever created them."""
     await connection.execute(
         text(
             """
@@ -34,6 +34,11 @@ async def reset_schemas(connection: AsyncConnection) -> None:
                 FOR r IN SELECT schemaname, tablename FROM pg_tables
                          WHERE schemaname IN ('app', 'geodata') LOOP
                     EXECUTE format('DROP TABLE IF EXISTS %I.%I CASCADE', r.schemaname, r.tablename);
+                END LOOP;
+                FOR r IN SELECT n.nspname, p.proname, p.oid FROM pg_proc p
+                         JOIN pg_namespace n ON n.oid = p.pronamespace
+                         WHERE n.nspname IN ('app', 'geodata') LOOP
+                    EXECUTE format('DROP FUNCTION IF EXISTS %I.%I CASCADE', r.nspname, r.proname);
                 END LOOP;
                 FOR r IN SELECT n.nspname, t.typname FROM pg_type t
                          JOIN pg_namespace n ON n.oid = t.typnamespace
