@@ -13,6 +13,7 @@ export default defineConfig({
     // The gallery renders the shell eleven times; on a busy CI agent five seconds is too tight.
     testTimeout: 15_000,
     unstubEnvs: true,
+    unstubGlobals: true,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],

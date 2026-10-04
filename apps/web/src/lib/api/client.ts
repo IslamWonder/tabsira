@@ -1,5 +1,6 @@
 import createClient, { type Client, type ClientOptions } from 'openapi-fetch';
 import { apiOrigin } from '@/lib/site';
+import { isLegalRefusal, signalLegalRequired } from './legal-signal';
 import type { paths } from './schema';
 
 export type ApiClient = Client<paths>;
@@ -12,7 +13,25 @@ export type ApiClientOptions = Omit<ClientOptions, 'credentials'>;
  * parent domain, so every request carries credentials.
  */
 export function createApiClient(options: ApiClientOptions = {}): ApiClient {
-  return createClient<paths>({ baseUrl: apiOrigin(), ...options, credentials: 'include' });
+  const client = createClient<paths>({
+    baseUrl: apiOrigin(),
+    // Looked up at each call rather than captured once, so a test (or a later
+    // polyfill) that replaces the global fetch is the one used.
+    fetch: (request) => globalThis.fetch(request),
+    ...options,
+    credentials: 'include',
+  });
+  // Any route may answer that the current terms are not accepted yet: that
+  // opens the acceptance gate, wherever it was met (owner decision 35).
+  client.use({
+    async onResponse({ response }) {
+      if (await isLegalRefusal(response)) {
+        signalLegalRequired();
+      }
+      return undefined;
+    },
+  });
+  return client;
 }
 
 export const api: ApiClient = createApiClient();

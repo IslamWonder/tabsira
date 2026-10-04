@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from '@/account/session';
 import { CameraIcon } from '@/components/icons';
 import { LinkButton } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cx } from '@/lib/cx';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 import { Brand } from './brand';
 import { CAPTURE, isActive, SECTIONS } from './nav-items';
 
@@ -19,6 +20,7 @@ import { CAPTURE, isActive, SECTIONS } from './nav-items';
  */
 export function TopBar() {
   const pathname = usePathname();
+  const session = useSession();
   return (
     <header className="topbar-glass sticky top-0 z-40 hidden tablet:block">
       {/* A gold rule under the bar, brightest at its middle: the edge of an RPG window. */}
@@ -32,7 +34,7 @@ export function TopBar() {
       />
       <div className="mx-auto flex h-[var(--topbar-height)] w-full max-w-[1440px] items-center gap-4 px-6 desktop:gap-6 desktop:px-10">
         <Brand />
-        <nav aria-label={ar.nav.label} className="min-w-0 flex-1">
+        <nav aria-label={messages.nav.label} className="min-w-0 flex-1">
           <ul className="flex items-center justify-center gap-1">
             {SECTIONS.map((item) => {
               const active = isActive(item.href, pathname);
@@ -58,15 +60,19 @@ export function TopBar() {
         </nav>
         <div className="flex shrink-0 items-center gap-2">
           <ThemeToggle />
-          <Link
-            href="/me"
-            className="hidden min-h-12 items-center px-3 text-[0.9375rem] text-glass-fg-soft transition-colors duration-200 hover:text-glass-fg desktop:inline-flex"
-          >
-            {ar.nav.signIn}
-          </Link>
+          {/* Shown until the API says someone is signed in: most visitors are guests. */}
+          {session.status === 'signed-in' ? null : (
+            <Link
+              href="/signin"
+              aria-current={pathname === '/signin' ? 'page' : undefined}
+              className="hidden min-h-12 items-center px-3 text-[0.9375rem] text-glass-fg-soft transition-colors duration-200 hover:text-glass-fg desktop:inline-flex"
+            >
+              {messages.nav.signIn}
+            </Link>
+          )}
           <LinkButton variant="cta" href={CAPTURE.href} current={isActive(CAPTURE.href, pathname)}>
             <CameraIcon width="20" height="20" strokeWidth={2} />
-            {ar.nav.captureScene}
+            {messages.nav.captureScene}
           </LinkButton>
         </div>
       </div>

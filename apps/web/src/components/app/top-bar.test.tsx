@@ -1,6 +1,8 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockApi } from '@/test/api';
+import { USER } from '@/test/fixtures';
 import { THEME_STORAGE_KEY } from '@/theme/theme';
 import { TopBar } from './top-bar';
 
@@ -21,7 +23,8 @@ describe('TopBar', () => {
     render(<TopBar />);
     const links = screen.getAllByRole('link');
     expect(links[0]).toHaveAttribute('href', '/');
-    expect(links[0]).toHaveTextContent('تَبْصِرَة');
+    expect(links[0]).toHaveAccessibleName('تبصرة');
+    expect(within(links[0] as HTMLElement).getByRole('img', { name: 'تبصرة' })).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: 'التنقل الرئيسي' });
     expect(
       within(nav)
@@ -31,7 +34,15 @@ describe('TopBar', () => {
     const capture = links.at(-1) as HTMLElement;
     expect(capture).toHaveTextContent('صوّر مشهدًا');
     expect(capture.className).toContain('fill-cta');
-    expect(screen.getByRole('link', { name: 'دخول' })).toHaveAttribute('href', '/me');
+    expect(screen.getByRole('link', { name: 'دخول' })).toHaveAttribute('href', '/signin');
+  });
+
+  it('drops the sign-in link once the API says someone is signed in', async () => {
+    mockApi({ 'GET /auth/me': { body: USER } });
+    pathname.value = '/signin';
+    render(<TopBar />);
+    expect(screen.getByRole('link', { name: 'دخول' })).toHaveAttribute('aria-current', 'page');
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'دخول' })).toBeNull());
   });
 
   it('marks the capture action current on the scene, and a tab on its section', () => {

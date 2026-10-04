@@ -48,6 +48,14 @@ export default function nextConfig(phase: string): NextConfig {
       NEXT_PUBLIC_SITE_URL: publicEnv.siteUrl,
       NEXT_PUBLIC_API_URL: publicEnv.apiUrl,
     },
+    async redirects() {
+      return [
+        // The API's Google callback reports a failure at /login?error=<code>
+        // (docs/AUTH.md); the sign-in page lives at /signin. Temporary, so the
+        // API can point at /signin directly later. The query string follows.
+        { source: '/login', destination: '/signin', permanent: false },
+      ];
+    },
     async headers() {
       return [
         {
