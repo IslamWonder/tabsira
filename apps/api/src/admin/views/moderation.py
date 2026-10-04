@@ -1,5 +1,5 @@
 """
-The moderation queue: held and reported posts and comments, decided one at a time.
+The moderation queue: held and reported posts, comments and map entries, decided one at a time.
 
 A moderator opens an item, reads it and its reports, and decides: approve (publish a held or
 refused item, or restore a removed one), reject a held one, or remove a published one. A
@@ -8,6 +8,10 @@ defines (`src/messages.py`): the moderator's own words never reach the author. E
 goes through `moderation_service`, which writes the moderation log and closes the item's open
 reports; the admin audit log gets a row with the item's id and the decision's name, never the
 text. The reports and the moderation log have read-only views of their own.
+
+A map entry («أطلس بصائر العالم») is shown the way the public atlas shows it: the place it is
+labelled with, the size of its cell and the cell's centre. The exact point its owner gave lives
+in `map_capture_points`, which this view never reads; no photo is shown either.
 """
 
 from __future__ import annotations
@@ -31,12 +35,14 @@ from src.admin.base import ReadOnlyView, current_admin, labelled
 from src.errors import AppError
 from src.messages import messages_for
 from src.models.admin_audit import AuditAction
+from src.models.atlas import MapEntry, MapEntryStatus
 from src.models.moderation import (
     ModerationAction,
     ModerationActionKind,
     ModerationSource,
     ModerationTarget,
 )
+from src.models.scan import Insight
 from src.models.social import (
     Comment,
     InsightPublication,
@@ -49,6 +55,7 @@ from src.models.social import (
     ReportTarget,
 )
 from src.services import moderation_service
+from src.services.atlas_service import meaning_label, precision_label
 
 if TYPE_CHECKING:
     from src.admin.app import TabsiraAdmin
@@ -60,22 +67,34 @@ QUEUE_TEMPLATE = "admin/moderation_queue.html"
 ITEM_TEMPLATE = "admin/moderation_item.html"
 # How many held or reported items of each kind one page shows, oldest first.
 QUEUE_LIMIT = 200
-KINDS: dict[str, type[Post] | type[Comment]] = {
+KINDS: dict[str, type[Post] | type[Comment] | type[MapEntry]] = {
     ReportTarget.POST.value: Post,
     ReportTarget.COMMENT.value: Comment,
+    ReportTarget.MAP_ENTRY.value: MapEntry,
+}
+# How the pages name each kind, one and many; the address keeps the report target's value.
+LABELS = {
+    ReportTarget.POST.value: "post",
+    ReportTarget.COMMENT.value: "comment",
+    ReportTarget.MAP_ENTRY.value: "map entry",
+}
+PLURALS = {
+    ReportTarget.POST.value: "posts",
+    ReportTarget.COMMENT.value: "comments",
+    ReportTarget.MAP_ENTRY.value: "map entries",
 }
 DECISIONS = ("approve", "reject", "remove")
-NO_ITEM = "No post or comment has this id."
+NO_ITEM = "No post, comment or map entry has this id."
 # The audit reason of a decision that was refused (a bad reason, a stale state).
 REFUSED_REASON = "refused"
 # An id the database could hold; anything else names no row and is not even looked up.
 MAX_ID = 2**63 - 1
 # What the queue's success banner may name: a record this view itself wrote into the address.
-DECIDED = re.compile(r"(post|comment):\d{1,19}")
+DECIDED = re.compile(r"(post|comment|map_entry):\d{1,19}")
 UNKNOWN_REASON = "Choose a reason from the list: the author is shown its text, never yours."
 STALE = "This decision does not apply to the item as it is now; it was reloaded."
 
-type Item = Post | Comment
+type Item = Post | Comment | MapEntry
 
 
 @dataclass(frozen=True)
@@ -85,7 +104,36 @@ class QueueRow:
     kind: str
     item: Item
     open_reports: int
+    author_id: uuid.UUID
     created_at: datetime
+
+
+@dataclass(frozen=True)
+class PublicLocation:
+    """A map entry's location as the public atlas shows it: the label, the cell, its centre."""
+
+    place: str
+    precision: str
+    meaning: str
+    lat: float | None
+    lng: float | None
+
+
+def _author_of(item: Item) -> uuid.UUID:
+    """Return the account that wrote the item or placed the entry."""
+    return item.user_id if isinstance(item, MapEntry) else item.author_id
+
+
+def _location_of(entry: MapEntry) -> PublicLocation:
+    """Describe the entry with the public columns alone; the capture point is never read."""
+    labels = (entry.place_label, entry.admin_label, entry.country_label)
+    return PublicLocation(
+        place="، ".join(label for label in labels if label),
+        precision=precision_label(entry.cell_m),
+        meaning=meaning_label(entry.location_meaning),
+        lat=entry.public_lat,
+        lng=entry.public_lng,
+    )
 
 
 def _record_id(kind: str, item_id: int) -> str:
@@ -123,9 +171,20 @@ def _under_review(item: Item) -> bool:
     Whether a moderator may see this item at all.
 
     A draft was never submitted: its text is the author's private writing, even when the
-    item once went through the queue and was then edited back into a draft.
+    item once went through the queue and was then edited back into a draft. A map entry
+    that was placed and never published is the owner's private place in the same way.
     """
-    return not (isinstance(item, Post) and item.status == PostStatus.DRAFT.value)
+    return isinstance(item, Comment) or item.status not in (
+        PostStatus.DRAFT.value,
+        MapEntryStatus.DRAFT.value,
+    )
+
+
+def _owner_withdrew(item: Item) -> bool:
+    """Return whether the owner took the item back; such an item is never brought back."""
+    if isinstance(item, Post):
+        return item.removal_source is RemovalSource.OWNER
+    return isinstance(item, MapEntry) and item.status == MapEntryStatus.WITHDRAWN.value
 
 
 def _open_reports(kind: str) -> Any:
@@ -152,7 +211,9 @@ async def _queue_of(db: AsyncSession, kind: str) -> list[QueueRow]:
         .order_by(model.created_at, model.id)
         .limit(QUEUE_LIMIT)
     )
-    return [QueueRow(kind, item, int(count), item.created_at) for item, count in rows]
+    return [
+        QueueRow(kind, item, int(count), _author_of(item), item.created_at) for item, count in rows
+    ]
 
 
 async def _reports_of(db: AsyncSession, kind: str, item_id: int) -> list[Report]:
@@ -208,13 +269,16 @@ class ModerationQueueView(BaseView):
             request, AuditAction.LIST, admin_user_id=current_admin(request), model=IDENTITY
         )
         async with self.admin.db() as db:
-            posts = await _queue_of(db, ReportTarget.POST.value)
-            comments = await _queue_of(db, ReportTarget.COMMENT.value)
+            queues = [
+                (kind, LABELS[kind], PLURALS[kind], await _queue_of(db, kind)) for kind in KINDS
+            ]
         context: dict[str, Any] = {
             "title": self.name,
-            "subtitle": "Posts and comments held for a person, and published ones with open reports.",
-            "posts": posts,
-            "comments": comments,
+            "subtitle": (
+                "Posts, comments and map entries held for a person, "
+                "and published ones with open reports."
+            ),
+            "queues": queues,
             "limit": QUEUE_LIMIT,
             "decided": DECIDED.fullmatch(request.query_params.get("decided", "")),
         }
@@ -231,24 +295,33 @@ class ModerationQueueView(BaseView):
         status_code: int = 200,
     ) -> Response:
         """Render an item with its text, its reports, its log, and the decisions that fit it."""
-        publication = None
+        # What the item was made from: a post's publication, or the insight an entry places.
+        publication: InsightPublication | Insight | None = None
         if isinstance(item, Post) and item.publication_id is not None:
             publication = await db.get(InsightPublication, item.publication_id)
+        elif isinstance(item, MapEntry):
+            publication = await db.get(Insight, item.insight_id)
+        text = None
+        if isinstance(item, Post):
+            text = item.reflection
+        elif isinstance(item, Comment):
+            text = item.body
         context: dict[str, Any] = {
-            "title": f"{kind.capitalize()} {item.id}",
+            "title": f"{LABELS[kind].capitalize()} {item.id}",
             "subtitle": self.name,
             "kind": kind,
+            "label": LABELS[kind],
             "item": item,
-            "text": item.reflection if isinstance(item, Post) else item.body,
+            "author_id": _author_of(item),
+            "text": text,
             "publication": publication,
+            "location": _location_of(item) if isinstance(item, MapEntry) else None,
             "reports": await _reports_of(db, kind, item.id),
             "log": await _log_of(db, kind, item.id),
             "reasons": reason_choices(),
             "can_reject": item.status == PostStatus.PENDING_REVIEW.value,
             "can_remove": item.status == PostStatus.PUBLISHED.value,
-            # A post its author withdrew is never brought back (the service refuses it too).
-            "can_approve": item.status != PostStatus.PUBLISHED.value
-            and not (isinstance(item, Post) and item.removal_source is RemovalSource.OWNER),
+            "can_approve": item.status != PostStatus.PUBLISHED.value and not _owner_withdrew(item),
             "error": error,
             "queue_url": self._queue_url(request),
         }

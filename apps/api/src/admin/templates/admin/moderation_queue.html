@@ -1,12 +1,13 @@
 {#
-  The moderation queue: posts and comments held for a person, and published ones with open
-  reports, oldest first. Each row opens the item's page, where the decision is made.
+  The moderation queue: posts, comments and map entries held for a person, and published ones
+  with open reports, oldest first. Each row opens the item's page, where the decision is made.
+  A map entry row names its place, never a coordinate.
 #}
 {% extends "sqladmin/layout.html" %}
-{% macro table(kind, rows) -%}
+{% macro table(kind, label, plural, rows) -%}
 <div class="card mb-3">
   <div class="card-header">
-    <h3 class="card-title">{{ rows | length }} {{ kind }}{{ 's' if rows | length != 1 }}{% if rows | length == limit %} (the first {{ limit }}){% endif %}</h3>
+    <h3 class="card-title">{{ rows | length }} {{ label if rows | length == 1 else plural }}{% if rows | length == limit %} (the first {{ limit }}){% endif %}</h3>
   </div>
   {% if rows %}
   <div class="table-responsive">
@@ -17,11 +18,11 @@
       <tbody>
         {% for row in rows %}
         <tr>
-          <td class="text-nowrap"><a href="{{ url_for('admin:view-moderation-queue-item', kind=row.kind, item_id=row.item.id) }}">{{ row.kind }} {{ row.item.id }}</a></td>
+          <td class="text-nowrap"><a href="{{ url_for('admin:view-moderation-queue-item', kind=row.kind, item_id=row.item.id) }}">{{ label }} {{ row.item.id }}</a></td>
           <td class="text-nowrap">{{ row.item.status.value if row.item.status.value is defined else row.item.status }}</td>
           <td class="text-nowrap">{{ row.item.status_reason or '' }}</td>
           <td class="text-nowrap">{{ row.open_reports }}</td>
-          <td class="text-nowrap"><code>{{ row.item.author_id }}</code></td>
+          <td class="text-nowrap"><code>{{ row.author_id }}</code></td>
           <td class="text-nowrap">{{ row.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
         </tr>
         {% endfor %}
@@ -29,7 +30,7 @@
     </table>
   </div>
   {% else %}
-  <div class="card-body">No {{ kind }} is waiting.</div>
+  <div class="card-body">No {{ label }} is waiting.</div>
   {% endif %}
 </div>
 {%- endmacro %}
@@ -39,7 +40,8 @@
   {% if decided %}
   <div class="alert alert-success" role="alert">Decided: {{ decided.group(0) }}. The moderation log has the row.</div>
   {% endif %}
-  {{ table('post', posts) }}
-  {{ table('comment', comments) }}
+  {% for kind, label, plural, rows in queues %}
+  {{ table(kind, label, plural, rows) }}
+  {% endfor %}
 </div>
 {% endblock %}
