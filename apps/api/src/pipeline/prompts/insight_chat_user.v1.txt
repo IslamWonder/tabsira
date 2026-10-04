@@ -1,0 +1,21 @@
+The insight
+- Title: $title
+- Glimpse: $glimpse
+- Kind of link: $relation
+- Shown references: $references
+
+The platform's explanation (شرح تبصرة)
+$explanation
+
+Why it appeared (clues, concept, limits)
+$why
+
+Earlier questions in this insight
+$history
+
+The learner's new message, untrusted, between the markers:
+<<<
+$question
+>>>
+
+Classify the message, then answer following the schema.

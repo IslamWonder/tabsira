@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "path_version": "tabsira-masar-1.0",
+  "description": "The fixed map of the learner's world: one region per domain of the learning path, positions as ratios of the map (x from the left, y from the top). A later release adds regions; it never moves one.",
+  "fallback_region": "T00",
+  "regions": [
+    { "id": "T00", "domain_id": "T00", "name": "بوابة النظر", "position": { "x": 0.5, "y": 0.9 } },
+    { "id": "T01", "domain_id": "T01", "name": "واحة الغيث", "position": { "x": 0.3, "y": 0.78 } },
+    { "id": "T02", "domain_id": "T02", "name": "مرتفع التوحيد", "position": { "x": 0.5, "y": 0.08 } },
+    { "id": "T03", "domain_id": "T03", "name": "وادي الرسالة", "position": { "x": 0.28, "y": 0.16 } },
+    { "id": "T04", "domain_id": "T04", "name": "أعمدة الإيمان", "position": { "x": 0.5, "y": 0.22 } },
+    { "id": "T05", "domain_id": "T05", "name": "ساحة الأركان", "position": { "x": 0.62, "y": 0.32 } },
+    { "id": "T06", "domain_id": "T06", "name": "حديقة الإحسان", "position": { "x": 0.38, "y": 0.32 } },
+    { "id": "T07", "domain_id": "T07", "name": "مزولة الوقت", "position": { "x": 0.15, "y": 0.62 } },
+    { "id": "T08", "domain_id": "T08", "name": "مكتبة الكلمة", "position": { "x": 0.85, "y": 0.62 } },
+    { "id": "T09", "domain_id": "T09", "name": "دار الرحم", "position": { "x": 0.35, "y": 0.6 } },
+    { "id": "T10", "domain_id": "T10", "name": "ميزان العدل", "position": { "x": 0.5, "y": 0.5 } },
+    { "id": "T11", "domain_id": "T11", "name": "سوق الأمانة", "position": { "x": 0.65, "y": 0.6 } },
+    { "id": "T12", "domain_id": "T12", "name": "بستان النفع", "position": { "x": 0.7, "y": 0.78 } },
+    { "id": "T13", "domain_id": "T13", "name": "جسر الصبر", "position": { "x": 0.2, "y": 0.42 } },
+    { "id": "T14", "domain_id": "T14", "name": "منارة القصص", "position": { "x": 0.8, "y": 0.42 } },
+    { "id": "T15", "domain_id": "T15", "name": "مرصد التفكر", "position": { "x": 0.75, "y": 0.14 } }
+  ]
+}

@@ -248,6 +248,24 @@ async def make_account(
     return user
 
 
+async def as_guest(
+    client: AsyncClient, maker: async_sessionmaker[AsyncSession], settings: Settings
+) -> Any:
+    """Make a guest and give its signed cookie to `client`; return its owner."""
+    from src.owner import Owner
+    from src.services import guest_service
+
+    async with maker() as session:
+        token, guest = await guest_service.create(session, settings)
+        await session.commit()
+    client.cookies.set(
+        settings.guest_cookie_name,
+        guest_service.cookie_value(settings, token),
+        domain=settings.session_cookie_domain,
+    )
+    return Owner(guest_key=guest.key)
+
+
 async def sign_in(client: AsyncClient, email: str = "reader@example.com") -> None:
     response = await client.post(
         "/auth/login", json={"email": email, "password": "correct horse battery"}

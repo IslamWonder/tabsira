@@ -30,6 +30,7 @@ from src.routers import (
     geo,
     google_auth,
     health,
+    insights,
     legal,
     members,
     posts,
@@ -193,6 +194,7 @@ def create_app(
     app.include_router(legal.router)
     app.include_router(support.router)
     app.include_router(scans.router)
+    app.include_router(insights.router)
     # The admin area is not mounted at all while its feature flag is off.
     if settings.feature_admin:
         install_admin(app, settings)
