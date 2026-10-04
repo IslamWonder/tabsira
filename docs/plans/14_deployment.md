@@ -4,13 +4,13 @@
 
 Production at tabsira.me without Docker, with no downtime on deploy and data reachable only over the VPN.
 
-| Step                                                  | Status | Notes                             |
-| ----------------------------------------------------- | ------ | --------------------------------- |
-| Deploy scripts with rollback and no downtime          | ✅     | Ready; never run on a server yet. |
-| Database and Redis host over the VPN, nightly backups | ✅     |                                   |
-| Scheduled jobs, UTC everywhere                        | ✅     |                                   |
-| Rehearsal on a scratch server                         | ⬜     |                                   |
-| First production deploy                               | ⬜     |                                   |
+| Step                                                  | Status | Notes                                                                    |
+| ----------------------------------------------------- | ------ | ------------------------------------------------------------------------ |
+| Deploy scripts with rollback and no downtime          | ✅     | Ready; never run on a server yet.                                        |
+| Database and Redis host over the VPN, nightly backups | ✅     |                                                                          |
+| Scheduled jobs, UTC everywhere                        | ✅     |                                                                          |
+| Rehearsal on a scratch server                         | 🔄     | Rehearsed in local containers on 2026-10-04 18:04, real servers pending. |
+| First production deploy                               | ⬜     |                                                                          |
 
 **Waiting on the owners**
 
@@ -24,7 +24,7 @@ Production at tabsira.me without Docker, with no downtime on deploy and data rea
 
 ### 14.1 Rehearse the deploy on a scratch server
 
-- **Status:** ⬜ open
+- **Status:** 🔄 rehearsed in local containers on 2026-10-04 18:04, real servers pending
 - **Goal:** Provision a scratch app host and data host, deploy, roll back, restore a backup.
 - **Depends on:** A scratch VM pair.
 - **Touches:** deploy/ fixes only, docs/OPERATIONS.md.
