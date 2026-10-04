@@ -1,6 +1,6 @@
 # 02 · Legal pages, consent and support
 
-**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 14:51 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** ✅ · **Updated:** 2026-10-04 15:16 (Tunis)
 
 Terms and privacy pages, the full-screen cookie choice, acceptance of the terms at sign-up, and a support form that e-mails `support@tabsira.me`.
 
@@ -8,9 +8,9 @@ Terms and privacy pages, the full-screen cookie choice, acceptance of the terms 
 | -------------------------------------------------------------------------- | ------ | ---------------------------------------------------------- |
 | Terms (/terms) and privacy (/privacy) pages in Arabic                      | ✅     | Drafted from the real data flows; need a lawyer's reading. |
 | Full-screen cookie choice, shown from the first paint, page visible behind | ✅     | Works without JavaScript; proof kept on the server.        |
-| Acceptance of terms and privacy at sign-up (e-mail and Google)             | 🔄     | Screens done; server rules being merged.                   |
-| Asked again when the terms change                                          | 🔄     | Merging with the step above.                               |
-| Support form (/support) to `support@tabsira.me`                            | 🔄     | Page done; server being merged.                            |
+| Acceptance of terms and privacy at sign-up (e-mail and Google)             | ✅     | Server enforces it on every signed-in route.               |
+| Asked again when the terms change                                          | ✅     |                                                            |
+| Support form (/support) to `support@tabsira.me`                            | ✅     | Shared limits, nothing stored.                             |
 
 **Waiting on the owners**
 
@@ -27,7 +27,7 @@ Terms and privacy pages, the full-screen cookie choice, acceptance of the terms 
 
 ### 02.1 Legal acceptance and support API: rebase and merge
 
-- **Status:** 🔄 main machine
+- **Status:** ✅ 2026-10-04 15:16
 - **Goal:** Server rules for accepting terms and privacy, the re-ask gate and the support form, after their security review.
 - **Depends on:** —
 - **Touches:** apps/api auth, legal, support, consents; one migration.
