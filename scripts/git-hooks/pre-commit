@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# Refuse a commit whose staged files are not formatted the way the format check
+# (scripts/format.sh --check) wants them, so a formatting slip is caught here in
+# seconds instead of failing a build. Same tools and scopes as format.sh, but
+# only the files being committed. It checks, it never rewrites: a partially
+# staged file is never silently changed under the commit.
+#
+# Installed by scripts/install-git-hooks.sh (run by `pnpm install` and `make install`).
+# Fix what it reports with `make format`, review, re-stage, commit again.
+set -euo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "$ROOT_DIR"
+# shellcheck disable=SC1091
+source "$ROOT_DIR/scripts/lib.sh"
+
+staged=()
+while IFS= read -r file; do
+	staged+=("$file")
+done < <(git diff --cached --name-only --diff-filter=ACMR)
+[[ ${#staged[@]} -eq 0 ]] && exit 0
+
+api_py=() vision_py=() biome=() markdown=() shell=()
+for file in "${staged[@]}"; do
+	case "$file" in
+	apps/api/*.py) api_py+=("${file#apps/api/}") ;;
+	services/vision/*.py) vision_py+=("${file#services/vision/}") ;;
+	*.ts | *.tsx | *.js | *.jsx | *.mjs | *.cjs | *.json | *.jsonc) biome+=("$file") ;;
+	*.md) markdown+=("$file") ;;
+	*.sh | scripts/git-hooks/*) shell+=("$file") ;;
+	esac
+done
+
+failed=()
+
+if [[ ${#api_py[@]} -gt 0 ]]; then
+	if have uv; then
+		(cd apps/api && uv run --quiet ruff format --check "${api_py[@]}") || failed+=("Python (apps/api)")
+	else
+		warn "uv is not installed; Python formatting is left to CI."
+	fi
+fi
+if [[ ${#vision_py[@]} -gt 0 ]]; then
+	if have uv; then
+		(cd services/vision && uv run --quiet ruff format --check "${vision_py[@]}") || failed+=("Python (services/vision)")
+	else
+		warn "uv is not installed; Python formatting is left to CI."
+	fi
+fi
+if [[ ${#biome[@]} -gt 0 || ${#markdown[@]} -gt 0 ]] && [[ ! -d node_modules ]]; then
+	failed+=("node dependencies are missing (run: make install)")
+else
+	if [[ ${#biome[@]} -gt 0 ]]; then
+		pnpm exec biome check --linter-enabled=false --no-errors-on-unmatched --files-ignore-unknown=true \
+			"${biome[@]}" || failed+=("TypeScript/JavaScript/JSON")
+	fi
+	if [[ ${#markdown[@]} -gt 0 ]]; then
+		pnpm exec prettier --check "${markdown[@]}" || failed+=("Markdown")
+	fi
+fi
+if [[ ${#shell[@]} -gt 0 ]]; then
+	if have shfmt; then
+		shfmt -d "${shell[@]}" || failed+=("Shell")
+	else
+		warn "shfmt is not installed; shell formatting is left to CI."
+	fi
+fi
+
+if [[ ${#failed[@]} -gt 0 ]]; then
+	err "Commit refused: not formatted (${failed[*]})."
+	err "Run 'make format', review the changes, re-stage them and commit again."
+	exit 1
+fi
