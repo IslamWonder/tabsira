@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+import pytest
 from sqlalchemy import text
 
 from src import clock
@@ -143,11 +144,24 @@ async def test_the_banner_asks_for_the_second_factor_until_it_is_on(admin, movin
     assert "You have not turned on the second factor." not in (await http.get("/admin/")).text
 
 
-async def test_the_place_count_is_the_planners_estimate_and_zero_before_the_first_analyse(
-    db_session,
-):
-    assert await dashboard.estimated_geonames(db_session) == 0
+class _Catalogue:
+    """Answers the catalogue query with a fixed estimate."""
 
+    def __init__(self, estimate: int | None) -> None:
+        self.estimate = estimate
+
+    async def scalar(self, _statement: object) -> int | None:
+        return self.estimate
+
+
+@pytest.mark.parametrize("never_analysed", [-1, None])
+async def test_a_table_never_analysed_counts_zero_places(never_analysed):
+    # ANALYZE writes its estimate in place and keeps it past a rollback, so a real
+    # never-analysed table cannot be counted on once any other test has analysed it.
+    assert await dashboard.estimated_geonames(_Catalogue(never_analysed)) == 0  # type: ignore[arg-type]
+
+
+async def test_the_place_count_is_the_planners_estimate_after_an_analyse(db_session):
     await db_session.execute(
         text("INSERT INTO geodata.geonames (geoname_id, name) VALUES (1, 'A'), (2, 'B')")
     )
