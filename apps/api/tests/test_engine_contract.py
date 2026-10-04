@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
+from src.config import AiProvider
 from src.pipeline.engine import (
     EngineRequest,
     EngineResult,
@@ -30,6 +31,11 @@ def scene() -> SceneAnalysis:
         clarification_question=None,
         sensitive=[],
         detector_available=False,
+        unconfirmed_detection_ids=[],
+        rejected=[],
+        provider=AiProvider.OPENAI,
+        model="m",
+        prompt_version="v",
     )
 
 
