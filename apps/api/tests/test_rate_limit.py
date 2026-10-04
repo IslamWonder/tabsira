@@ -106,3 +106,28 @@ async def test_an_attempt_holds_hashes_and_the_clock_time(db_session, settings, 
         True,
     )
     assert attempt.created_at == moving_clock.now
+
+
+async def test_a_reserved_attempt_counts_at_once_and_a_refused_one_is_given_back(
+    db_session, settings, moving_clock
+):
+    reserve = rate_limit.reserve
+    first = await reserve(db_session, settings, AttemptKind.LOGIN, ip_hash="ip-1", email_hash="m")
+    second = await reserve(db_session, settings, AttemptKind.LOGIN, ip_hash="ip-1", email_hash="m")
+
+    with pytest.raises(AppError) as caught:
+        await reserve(db_session, settings, AttemptKind.LOGIN, ip_hash="ip-1", email_hash="m")
+
+    assert caught.value.status_code == 429
+    ids = set((await db_session.scalars(select(LoginAttempt.id))).all())
+    assert ids == {first, second}
+
+
+async def test_a_settled_attempt_stops_counting(db_session, settings, moving_clock):
+    for _ in range(5):
+        attempt = await rate_limit.reserve(
+            db_session, settings, AttemptKind.LOGIN, ip_hash="ip-1", email_hash="m"
+        )
+        await rate_limit.settle(db_session, attempt)
+
+    assert await db_session.scalar(select(func.count()).select_from(LoginAttempt)) == 5

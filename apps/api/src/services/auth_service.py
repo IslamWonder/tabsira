@@ -146,11 +146,17 @@ async def login(
     """
     Check an address and a password and return the account.
 
+    The attempt is taken before the password is checked (`rate_limit.reserve`), so parallel
+    requests cannot all slip under the limit while bcrypt runs; a refusal then has nothing
+    left to record, and only a success changes the attempt.
+
     The password is checked even when no account has the address, against a
     decoy, so the answer and its timing do not say whether the address exists.
     """
     email_hash = hash_email(settings, email)
-    await rate_limit.check(db, settings, AttemptKind.LOGIN, ip_hash=ip_hash, email_hash=email_hash)
+    attempt = await rate_limit.reserve(
+        db, settings, AttemptKind.LOGIN, ip_hash=ip_hash, email_hash=email_hash
+    )
     user = await find_by_email(db, email)
     correct = await asyncio.to_thread(
         security.verify_password,
@@ -159,33 +165,15 @@ async def login(
         settings.password_bcrypt_rounds,
     )
     if user is None or not correct:
-        raise await _refuse(
-            db,
-            settings,
-            AttemptKind.LOGIN,
-            ip_hash=ip_hash,
-            email_hash=email_hash,
-            error=AppError(
-                ErrorCode.INVALID_CREDENTIALS,
-                "The e-mail address or the password is wrong.",
-                status_code=401,
-            ),
+        raise AppError(
+            ErrorCode.INVALID_CREDENTIALS,
+            "The e-mail address or the password is wrong.",
+            status_code=401,
         )
     if not can_sign_in(user):
         # Only someone who knows the password learns this.
-        raise await _refuse(
-            db,
-            settings,
-            AttemptKind.LOGIN,
-            ip_hash=ip_hash,
-            email_hash=email_hash,
-            error=AppError(
-                ErrorCode.ACCOUNT_DISABLED, "This account is disabled.", status_code=403
-            ),
-        )
-    await rate_limit.record(
-        db, settings, AttemptKind.LOGIN, ip_hash=ip_hash, email_hash=email_hash, succeeded=True
-    )
+        raise AppError(ErrorCode.ACCOUNT_DISABLED, "This account is disabled.", status_code=403)
+    await rate_limit.settle(db, attempt)
     return user
 
 

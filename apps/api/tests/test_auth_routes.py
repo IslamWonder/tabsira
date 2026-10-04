@@ -548,3 +548,28 @@ async def test_the_api_may_post_to_itself_and_the_web_origin_may_post(web):
     web_origin = await web.post("/auth/logout", headers={"Origin": BROWSER_ORIGIN})
 
     assert own.status_code == web_origin.status_code == 204
+
+
+async def test_the_attempt_is_counted_before_the_password_is_checked(
+    web, make_user, db_session, monkeypatch
+):
+    from sqlalchemy import func, select
+
+    from src.models import LoginAttempt
+    from src.services import auth_service
+
+    await make_user()
+    original = auth_service.find_by_email
+    counted = []
+
+    async def spy(*args, **kwargs):
+        # Everything after this includes the slow password check; parallel requests all pass
+        # a count made before it, so the attempt must already be on record here.
+        counted.append(await db_session.scalar(select(func.count()).select_from(LoginAttempt)))
+        return await original(*args, **kwargs)
+
+    monkeypatch.setattr(auth_service, "find_by_email", spy)
+
+    await web.post("/auth/login", json=LOGIN)
+
+    assert counted == [1]

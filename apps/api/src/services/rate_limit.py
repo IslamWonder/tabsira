@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -37,13 +37,14 @@ async def _count(
     return total or 0
 
 
-async def check(
+async def _raise_if_over(
     db: AsyncSession,
     settings: Settings,
     kind: AttemptKind,
     *,
     ip_hash: str,
-    email_hash: str | None = None,
+    email_hash: str | None,
+    counted_already: int,
 ) -> None:
     """Raise a 429 when this IP, or this e-mail, has used up its attempts in the window."""
     window = timedelta(seconds=settings.auth_attempt_window_seconds)
@@ -54,13 +55,68 @@ async def check(
     if email_hash is not None:
         limits.append((LoginAttempt.email_hash == email_hash, settings.auth_max_attempts_per_email))
     for match, limit in limits:
-        if await _count(db, kind, match, since) >= limit:
+        # `counted_already` is the caller's own, just-recorded attempt: it must not count
+        # against itself.
+        if await _count(db, kind, match, since) - counted_already >= limit:
             raise AppError(
                 ErrorCode.RATE_LIMITED,
                 "Too many attempts. Try again later.",
                 status_code=429,
                 headers={"Retry-After": str(settings.auth_attempt_window_seconds)},
             )
+
+
+async def check(
+    db: AsyncSession,
+    settings: Settings,
+    kind: AttemptKind,
+    *,
+    ip_hash: str,
+    email_hash: str | None = None,
+) -> None:
+    """Raise a 429 when this IP, or this e-mail, has used up its attempts in the window."""
+    await _raise_if_over(
+        db, settings, kind, ip_hash=ip_hash, email_hash=email_hash, counted_already=0
+    )
+
+
+async def reserve(
+    db: AsyncSession,
+    settings: Settings,
+    kind: AttemptKind,
+    *,
+    ip_hash: str,
+    email_hash: str | None = None,
+) -> int:
+    """
+    Take one attempt before the password is checked, and return its id.
+
+    A slow check (bcrypt) between `check` and `record` lets any number of parallel requests
+    all see a count under the limit. Here the attempt is written as a failure and committed
+    first, in a short transaction of its own, and only then counted: each parallel request
+    sees the others, so no more than the limit gets through. A refused request gives its
+    attempt back, since it was never tried. `settle` marks the attempt that succeeded.
+
+    The session must hold nothing else pending: the commit would take it too.
+    """
+    attempt_id = await _add(db, settings, kind, ip_hash, email_hash, succeeded=False)
+    await db.commit()
+    try:
+        await _raise_if_over(
+            db, settings, kind, ip_hash=ip_hash, email_hash=email_hash, counted_already=1
+        )
+    except AppError:
+        await db.execute(delete(LoginAttempt).where(LoginAttempt.id == attempt_id))
+        await db.commit()
+        raise
+    return attempt_id
+
+
+async def settle(db: AsyncSession, attempt_id: int) -> None:
+    """Mark a reserved attempt as one that succeeded, so it stops counting. The caller commits."""
+    await db.execute(
+        update(LoginAttempt).where(LoginAttempt.id == attempt_id).values(succeeded=True)
+    )
 
 
 async def record(
@@ -78,12 +134,25 @@ async def record(
     It only flushes: the caller commits, and must do so even when it goes on to
     refuse the request, or the attempt is lost with the rolled-back transaction.
     """
+    await _add(db, settings, kind, ip_hash, email_hash, succeeded=succeeded)
+
+
+async def _add(
+    db: AsyncSession,
+    settings: Settings,
+    kind: AttemptKind,
+    ip_hash: str,
+    email_hash: str | None,
+    *,
+    succeeded: bool,
+) -> int:
+    """Delete the attempts too old to count, add one, flush, and return its id."""
     now = clock.utcnow()
     cutoff = now - timedelta(seconds=settings.auth_attempt_window_seconds)
     await db.execute(delete(LoginAttempt).where(LoginAttempt.created_at < cutoff))
-    db.add(
-        LoginAttempt(
-            kind=kind, ip_hash=ip_hash, email_hash=email_hash, succeeded=succeeded, created_at=now
-        )
+    attempt = LoginAttempt(
+        kind=kind, ip_hash=ip_hash, email_hash=email_hash, succeeded=succeeded, created_at=now
     )
+    db.add(attempt)
     await db.flush()
+    return attempt.id

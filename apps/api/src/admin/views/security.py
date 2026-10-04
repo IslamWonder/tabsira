@@ -159,20 +159,14 @@ class TwoFactorView(BaseView):
         email_hash = auth_service.hash_email(settings, user.email)
         async with self.admin.db() as db:
             try:
-                await rate_limit.check(
+                attempt = await rate_limit.reserve(
                     db, settings, AttemptKind.LOGIN, ip_hash=ip_hash, email_hash=email_hash
                 )
             except AppError:
                 return await self._page(request, error=TOO_MANY, status_code=429)
             correct = await admin_totp_service.verify(db, settings, user, code)
-            await rate_limit.record(
-                db,
-                settings,
-                AttemptKind.LOGIN,
-                ip_hash=ip_hash,
-                email_hash=email_hash,
-                succeeded=correct,
-            )
+            if correct:
+                await rate_limit.settle(db, attempt)
             if correct:
                 await admin_totp_service.disable(db, user.id)
             await db.commit()

@@ -130,7 +130,7 @@ class AdminAuth(AuthenticationBackend):
         email_hash = auth_service.hash_email(self.settings, email)
         async with self.session_maker() as db:
             try:
-                await rate_limit.check(
+                attempt = await rate_limit.reserve(
                     db, self.settings, AttemptKind.LOGIN, ip_hash=ip_hash, email_hash=email_hash
                 )
             except AppError as limited:
@@ -145,14 +145,6 @@ class AdminAuth(AuthenticationBackend):
                     headers=limited.headers,
                 )
             user, reason = await self._check(db, email, password, code)
-            await rate_limit.record(
-                db,
-                self.settings,
-                AttemptKind.LOGIN,
-                ip_hash=ip_hash,
-                email_hash=email_hash,
-                succeeded=reason is None,
-            )
             if user is None or reason is not None:
                 await db.commit()
                 await self.trail.write(
@@ -164,6 +156,7 @@ class AdminAuth(AuthenticationBackend):
                 return await self.render_login(
                     request, error=REFUSED_MESSAGE, status_code=401, email=email
                 )
+            await rate_limit.settle(db, attempt)
             return await self._start_session(db, request, user, ip_hash, user_agent)
 
     async def _check(
