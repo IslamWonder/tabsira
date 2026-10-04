@@ -48,6 +48,7 @@ async def profile_of(db: AsyncSession, member: User, viewer: User | None) -> Mem
             Post.author_id == member.id,
             Post.status == PostStatus.PUBLISHED,
             Post.visibility == PostVisibility.PUBLIC,
+            Post.publication_id.is_not(None),
         )
     )
     followers = await db.scalar(

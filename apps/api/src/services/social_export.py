@@ -27,6 +27,7 @@ from src.schemas.social_export import (
     ReportExport,
     SocialExport,
 )
+from src.services.moderation_service import known_reason
 
 
 async def _handles(db: AsyncSession, statement: Select[str | None, datetime]) -> list[HandleExport]:
@@ -65,7 +66,7 @@ async def collect(db: AsyncSession, user: User) -> SocialExport:
             PostExport(
                 id=post.id,
                 status=post.status,
-                status_reason=post.status_reason,
+                status_reason=known_reason(post.status_reason),
                 visibility=post.visibility,
                 reflection=post.reflection,
                 created_at=post.created_at,
@@ -79,7 +80,18 @@ async def collect(db: AsyncSession, user: User) -> SocialExport:
             )
             for post, publication in posts
         ],
-        comments=[CommentExport.model_validate(comment) for comment in comments],
+        comments=[
+            CommentExport(
+                id=comment.id,
+                post_id=comment.post_id,
+                parent_id=comment.parent_id,
+                body=comment.body,
+                status=comment.status,
+                status_reason=known_reason(comment.status_reason),
+                created_at=comment.created_at,
+            )
+            for comment in comments
+        ],
         following=await _handles(
             db,
             select(User.handle, Follow.created_at)

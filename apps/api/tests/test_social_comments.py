@@ -341,14 +341,58 @@ async def test_a_held_comment_can_be_deleted_by_its_author(make_member, make_ins
     assert (await listing(reader, post_id))["items"] == []
 
 
-async def test_deleting_on_a_gone_post_is_a_410(make_member, make_insight, guard):
+async def test_a_comment_on_a_withdrawn_post_is_already_erased_with_it(
+    make_member, make_insight, guard
+):
     author = await make_member("author")
     reader = await make_member("reader")
     post_id = await publish_post(author, make_insight)
     top = (await comment(reader, post_id)).json()
     await author.http.delete(f"/posts/{post_id}")
 
-    assert (await reader.http.delete(f"/posts/{post_id}/comments/{top['id']}")).status_code == 410
+    assert (await reader.http.delete(f"/posts/{post_id}/comments/{top['id']}")).status_code == 404
+
+
+async def test_a_person_takes_their_words_back_after_they_can_no_longer_read_the_post(
+    make_member, make_insight, guard, db_session
+):
+    author = await make_member("author")
+    fan = await make_member("fan")
+    blocker = await make_member("blocker")
+    post_id = await publish_post(author, make_insight, visibility="followers")
+    await fan.http.put("/u/author/follow")
+    await blocker.http.put("/u/author/follow")
+    mine = (await comment(fan, post_id, "تعليقي")).json()
+    theirs = (await comment(blocker, post_id, "تعليق آخر")).json()
+    await fan.http.delete("/u/author/follow")
+    await blocker.http.put("/blocks/author")
+
+    assert (await fan.http.get(f"/posts/{post_id}")).status_code == 404
+    assert (await fan.http.delete(f"/posts/{post_id}/comments/{mine['id']}")).status_code == 204
+    assert (
+        await blocker.http.delete(f"/posts/{post_id}/comments/{theirs['id']}")
+    ).status_code == 204
+    assert await db_session.scalar(select(func.count()).select_from(Comment)) == 0
+
+
+async def test_replies_that_are_held_or_refused_do_not_use_up_a_comments_room(
+    make_member, make_insight, guard, monkeypatch
+):
+    monkeypatch.setattr(comment_service, "MAX_REPLIES", 1)
+    author = await make_member("author")
+    spammer = await make_member("spammer")
+    post_id = await publish_post(author, make_insight)
+    top = (await comment(author, post_id)).json()
+    guard.verdict = REJECT
+    refused = await comment(spammer, post_id, parent_id=top["id"])
+    guard.verdict = REVIEW
+    held = await comment(spammer, post_id, parent_id=top["id"])
+    guard.verdict = ALLOW
+
+    real = await comment(author, post_id, parent_id=top["id"])
+    over = await comment(author, post_id, parent_id=top["id"])
+
+    assert [r.status_code for r in (refused, held, real, over)] == [201, 201, 201, 409]
 
 
 async def test_a_comment_deleted_while_the_guard_judged_it_ends_in_a_404(

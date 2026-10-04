@@ -33,13 +33,8 @@ from src.schemas.social import (
     WhyOut,
 )
 from src.services.evidence_view import Evidence, load_evidence
+from src.services.moderation_service import known_reason
 from src.services.post_service import PostRow
-
-
-def known_reason(reason: str | None) -> str | None:
-    """Return the reason only if it is one of the codes the app defines, never a moderator's own words."""
-    known = messages.OUTCOME_REASONS.keys() | messages.REASON_LABELS.keys()
-    return reason if reason in known else None
 
 
 def outcome_message(status: str, reason: str | None) -> str | None:
@@ -72,7 +67,7 @@ def insight_of(publication: InsightPublication, evidence: Evidence) -> InsightOu
         concepts=list(publication.concepts),
         explanation=publication.explanation_excerpt,
         step=publication.step_text,
-        photo_ref=publication.photo_ref,
+        has_photo=publication.photo_ref is not None,
         insight_version=publication.insight_version,
         quran=quran,
         hadith=hadith,

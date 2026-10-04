@@ -48,6 +48,20 @@ RESERVED_HANDLES = frozenset(
         "الدعم",
     }
 )
+# A handle that starts like one of these passes for the platform or for staff: refused whatever
+# follows (`tabsira_help`, `admin2`). Compared after the handle is folded to lower case.
+RESERVED_PREFIXES = (
+    "tabsira",
+    "admin",
+    "support",
+    "moderator",
+    "تبصر",
+    "مشرف",
+    "ادارة",
+    "إدارة",
+    "الإدارة",
+    "الادارة",
+)
 # An address or a link in a name would put a stranger's contact details on a public page.
 _NAME_FORBIDDEN = re.compile(r"[@<>]|https?:|www\.", re.IGNORECASE)
 _SPACES = re.compile(r"\s+")
@@ -65,7 +79,7 @@ def handle_problem(handle: str) -> str | None:
             "must be 3 to 30 letters, digits or underscores, start with a letter, "
             "and carry no diacritics"
         )
-    if handle.lower() in RESERVED_HANDLES:
+    if handle.lower() in RESERVED_HANDLES or handle.lower().startswith(RESERVED_PREFIXES):
         return "is reserved"
     return None
 

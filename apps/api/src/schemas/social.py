@@ -134,7 +134,9 @@ class InsightOut(BaseModel):
     concepts: list[str]
     explanation: str = Field(description="The app's explanation, shortened; written by the app")
     step: str | None = Field(description="The small step the insight suggests")
-    photo_ref: str | None = Field(description="An opaque reference; set only if the owner agreed")
+    has_photo: bool = Field(
+        description="The owner agreed to publish a photo with it; its address is not here yet"
+    )
     insight_version: int
     quran: list[QuranEvidenceOut]
     hadith: list[HadithEvidenceOut]
@@ -292,8 +294,12 @@ class ReportOut(BaseModel):
     id: PublicId
 
 
-# U+202A to U+202E (embeddings and overrides) and U+2066 to U+2069 (isolates).
-BIDI_OVERRIDES = frozenset("\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069")
+# U+202A to U+202E (embeddings and overrides), U+2066 to U+2069 (isolates), and the invisible
+# characters that make two different texts look the same or hide words from a reader.
+BIDI_OVERRIDES = frozenset(
+    "\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069"
+    "\u00ad\u180e\u200b\u2060\u2061\u2062\u2063\u2064\ufeff\u2028\u2029"
+)
 
 
 def clean_text(value: str | None, limit: int) -> str | None:
@@ -301,7 +307,7 @@ def clean_text(value: str | None, limit: int) -> str | None:
     Return `value` trimmed, or None when nothing is left.
 
     Control characters, the bidirectional overrides and isolates (which can make a line of text
-    read as something other than what it says) and anything longer than `limit` characters are
+    read as something other than what it says), the invisible characters and anything longer than `limit` characters are
     refused. Line breaks and tabs are kept (a reflection has paragraphs), and so are the plain
     right-to-left and left-to-right marks that Arabic text uses.
     """

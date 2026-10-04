@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from src.errors import AppError, ErrorCode
+from src.schemas.public_id import MAX_PUBLIC_ID
 
 
 @dataclass(frozen=True)
@@ -61,7 +62,11 @@ def decode(raw: str | None) -> Cursor | None:
     # A time with no zone cannot be compared with the database's times without a guess.
     zoned = at.tzinfo is not None and (as_of is None or as_of.tzinfo is not None)
     numeric = score is None or (isinstance(score, int | float) and not isinstance(score, bool))
-    identified = isinstance(cursor_id, int) and not isinstance(cursor_id, bool) and cursor_id >= 1
+    identified = (
+        isinstance(cursor_id, int)
+        and not isinstance(cursor_id, bool)
+        and 1 <= cursor_id <= MAX_PUBLIC_ID
+    )
     if not zoned or not numeric or not identified:
         raise invalid()
     return Cursor(at=at, id=cursor_id, as_of=as_of, score=None if score is None else float(score))

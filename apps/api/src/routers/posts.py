@@ -21,6 +21,7 @@ from src.deps import (
     InsightSourceDep,
     OptionalUser,
     PublicMember,
+    SettingsDep,
     TextGuardDep,
     limited,
     require_social,
@@ -51,7 +52,11 @@ async def _one(db: DbDep, row: PostRow, viewer: User | None) -> PostOut:
     dependencies=[limited(WriteKind.POST)],
 )
 async def create_post(
-    body: PostCreateIn, user: PublicMember, db: DbDep, source: InsightSourceDep
+    body: PostCreateIn,
+    user: PublicMember,
+    db: DbDep,
+    source: InsightSourceDep,
+    settings: SettingsDep,
 ) -> PostOut:
     """
     Copy one of the caller's verified insights into a publication and open a draft on it.
@@ -61,7 +66,9 @@ async def create_post(
     says why an insight cannot be published; 409 `PUBLIC_IDENTITY_REQUIRED` that the caller
     has no handle yet. Nothing is visible to anyone else until the draft is submitted.
     """
-    publication = await publication_service.create_publication(db, source, user, body.insight_id)
+    publication = await publication_service.create_publication(
+        db, source, user, body.insight_id, settings
+    )
     post = post_service.create_draft(db, user, publication, body.reflection, body.visibility)
     await db.flush()
     await db.commit()

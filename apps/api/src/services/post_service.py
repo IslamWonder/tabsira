@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from typing import Literal
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,6 +38,8 @@ from src.services.moderation_guard import NO_TEXT, TextGuard
 
 _LEAK_GUARD = LeakGuard()
 
+type Lock = Literal["update", "share"]
+
 
 @dataclass(frozen=True)
 class PostRow:
@@ -55,16 +58,27 @@ def gone() -> AppError:
     return AppError(ErrorCode.GONE, "This post is gone.", status_code=410)
 
 
-async def load_row(db: AsyncSession, post_id: int) -> PostRow | None:
-    """Load a post, its publication and its author, whatever its state."""
-    found = (
-        await db.execute(
-            select(Post, InsightPublication, User)
-            .join(User, User.id == Post.author_id)
-            .outerjoin(InsightPublication, InsightPublication.id == Post.publication_id)
-            .where(Post.id == post_id)
+async def load_row(db: AsyncSession, post_id: int, *, lock: Lock | None = None) -> PostRow | None:
+    """
+    Load a post, its publication and its author, whatever its state.
+
+    `lock` takes a row lock on the post until the transaction ends, and reads it fresh. A write
+    that depends on the post's state (an edit, a submission, a withdrawal) takes `"update"`, so
+    two of them never interleave; a write that adds something to the post (a like, a comment, a
+    report) takes `"share"`, so it either lands before a withdrawal and is erased by it, or
+    waits for it and finds the post gone.
+    """
+    statement = (
+        select(Post, InsightPublication, User)
+        .join(User, User.id == Post.author_id)
+        .outerjoin(InsightPublication, InsightPublication.id == Post.publication_id)
+        .where(Post.id == post_id)
+    )
+    if lock is not None:
+        statement = statement.with_for_update(read=lock == "share", of=Post).execution_options(
+            populate_existing=True
         )
-    ).one_or_none()
+    found = (await db.execute(statement)).one_or_none()
     return None if found is None else PostRow(*found)
 
 
@@ -92,6 +106,10 @@ async def check_access(db: AsyncSession, row: PostRow, viewer: User | None) -> N
     if not is_author:
         if post.status not in {PostStatus.PUBLISHED, PostStatus.REMOVED}:
             raise not_found()
+        # Only what was public can be gone: a draft, or a post held or refused and then removed,
+        # was never seen by anyone else, and its id must not say that it once existed.
+        if post.published_at is None:
+            raise not_found()
         if post.visibility is PostVisibility.FOLLOWERS and not (
             viewer is not None and await _follows(db, viewer, post.author_id)
         ):
@@ -100,9 +118,11 @@ async def check_access(db: AsyncSession, row: PostRow, viewer: User | None) -> N
         raise gone()
 
 
-async def get_readable(db: AsyncSession, post_id: int, viewer: User | None) -> PostRow:
+async def get_readable(
+    db: AsyncSession, post_id: int, viewer: User | None, *, lock: Lock | None = None
+) -> PostRow:
     """Load a post `viewer` may read, or raise 404 or 410."""
-    row = await load_row(db, post_id)
+    row = await load_row(db, post_id, lock=lock)
     if row is None:
         raise not_found()
     await check_access(db, row, viewer)
@@ -111,15 +131,15 @@ async def get_readable(db: AsyncSession, post_id: int, viewer: User | None) -> P
 
 async def get_interactable(db: AsyncSession, post_id: int, viewer: User) -> PostRow:
     """Load a post `viewer` may like, save, comment on or report: readable, and published."""
-    row = await get_readable(db, post_id, viewer)
+    row = await get_readable(db, post_id, viewer, lock="share")
     if row.post.status is not PostStatus.PUBLISHED:
         raise AppError(ErrorCode.CONFLICT, "This post is not published.", status_code=409)
     return row
 
 
 async def get_owned(db: AsyncSession, post_id: int, user: User) -> PostRow:
-    """Load one of the caller's own posts; someone else's is a 404, as is one that is gone."""
-    row = await load_row(db, post_id)
+    """Load and lock one of the caller's own posts; someone else's is a 404."""
+    row = await load_row(db, post_id, lock="update")
     if row is None or row.post.author_id != user.id:
         raise not_found()
     if row.post.status is PostStatus.REMOVED or row.publication is None:

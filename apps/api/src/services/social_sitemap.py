@@ -7,7 +7,8 @@ withdrawn, removed, held or switched to followers only, it leaves the list. A pr
 when its member has chosen a handle and has at least one such post, so an empty page is never
 advertised. Both are cut into pages by id, oldest first, so a new record lands in the last page
 and the pages before it keep their contents and their `lastmod`, which is the record's own
-change time.
+change time. A profile's is the time of its newest public post, never the account's own
+updated time, which moves when a password or an address changes.
 
 Importing this module registers both providers; `create_app` imports it.
 """
@@ -25,6 +26,7 @@ from src.services.sitemap_service import Entry, PageStamp, Section, register
 # What a stranger may read of a post: the same rule as `feed_service.readable_posts` for a guest.
 _PUBLIC_POSTS = (
     f"p.status = '{PostStatus.PUBLISHED.value}' AND p.visibility = '{PostVisibility.PUBLIC.value}' "
+    "AND p.publication_id IS NOT NULL "
     "AND u.is_active AND u.deleted_at IS NULL AND u.handle IS NOT NULL"
 )
 
@@ -86,6 +88,7 @@ class ProfilesProvider:
             FROM app.posts p
             WHERE p.status = '{PostStatus.PUBLISHED.value}'
               AND p.visibility = '{PostVisibility.PUBLIC.value}'
+              AND p.publication_id IS NOT NULL
             GROUP BY p.author_id
         ) latest ON latest.author_id = u.id
         WHERE u.handle IS NOT NULL AND u.is_active AND u.deleted_at IS NULL
@@ -98,7 +101,7 @@ class ProfilesProvider:
                 SELECT (numbered.n - 1) / :size AS page, max(numbered.changed) AS lastmod
                 FROM (
                     SELECT row_number() OVER (ORDER BY u.id) AS n,
-                           GREATEST(u.updated_at, latest.last_post) AS changed
+                           latest.last_post AS changed
                     {self._MEMBERS}
                 ) AS numbered
                 GROUP BY 1 ORDER BY 1
@@ -112,7 +115,7 @@ class ProfilesProvider:
         rows = await db.execute(
             text(
                 f"""
-                SELECT u.handle, GREATEST(u.updated_at, latest.last_post) AS changed
+                SELECT u.handle, latest.last_post AS changed
                 {self._MEMBERS}
                 ORDER BY u.id OFFSET :skip LIMIT :size
                 """

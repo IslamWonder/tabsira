@@ -235,13 +235,23 @@ async def test_an_insight_whose_snapshot_names_another_owner_or_id_is_not_truste
         assert response.status_code == 404
 
 
+async def agree_to_photos(member, **profile):
+    """Switch photo storage on, and say whatever else the profile should say."""
+    await member.http.post(
+        "/consents", json={"kind": "photo_storage", "version": "v1", "granted": True}
+    )
+    if profile:
+        await member.http.patch("/profile", json=profile)
+
+
 async def test_a_photo_is_kept_only_when_its_owner_agreed_and_the_scene_is_not_sensitive(
     make_member, make_insight, db_session
 ):
     author = await make_member("author")
+    await agree_to_photos(author)
     cases = {
         "agreed": ({"photo_ref": "photos/a", "photo_consent": True}, "photos/a"),
-        "no consent": ({"photo_ref": "photos/b", "photo_consent": False}, None),
+        "no consent for this insight": ({"photo_ref": "photos/b", "photo_consent": False}, None),
         "sensitive": (
             {"photo_ref": "photos/c", "photo_consent": True, "scene_sensitive": True},
             None,
@@ -251,8 +261,53 @@ async def test_a_photo_is_kept_only_when_its_owner_agreed_and_the_scene_is_not_s
     }
 
     for name, (overrides, expected) in cases.items():
-        body = (await create(author, make_insight(author, **overrides))).json()
-        assert body["insight"]["photo_ref"] == expected, name
+        response = await create(author, make_insight(author, **overrides))
+        body = response.json()
+        stored = await db_session.scalar(
+            select(InsightPublication).order_by(InsightPublication.id.desc())
+        )
+        assert body["insight"]["has_photo"] is (expected is not None), name
+        assert stored.photo_ref == expected, name
+        # The reference is the private key of the owner's copy: no response carries it.
+        assert "photos/" not in response.text, name
+
+
+async def test_the_photo_rules_are_checked_again_when_the_post_is_made(
+    make_member, make_insight, account_app, account_settings
+):
+    offered = {"photo_ref": "photos/a", "photo_consent": True}
+    switched_off = await make_member("off")
+    young = await make_member("young")
+    no_storage = await make_member("nostorage")
+    off_feature = await make_member("feature")
+    await agree_to_photos(switched_off)
+    await switched_off.http.post(
+        "/consents", json={"kind": "photo_storage", "version": "v2", "granted": False}
+    )
+    await agree_to_photos(young, age_range="under_13")
+    await agree_to_photos(off_feature)
+
+    # Nobody answered the photo question for `no_storage`: the account never agreed.
+    results = {
+        "withdrew the consent": (
+            await create(switched_off, make_insight(switched_off, **offered))
+        ).json(),
+        "under 13": (await create(young, make_insight(young, **offered))).json(),
+        "never agreed": (await create(no_storage, make_insight(no_storage, **offered))).json(),
+    }
+    account_app.state.settings = account_settings.model_copy(
+        update={"feature_photo_storage": False}
+    )
+    results["feature off"] = (
+        await create(off_feature, make_insight(off_feature, **offered))
+    ).json()
+
+    assert {name: body["insight"]["has_photo"] for name, body in results.items()} == {
+        "withdrew the consent": False,
+        "under 13": False,
+        "never agreed": False,
+        "feature off": False,
+    }
 
 
 async def test_concepts_are_trimmed_and_capped(make_member, make_insight):
@@ -285,9 +340,44 @@ async def test_text_that_can_reverse_how_a_line_reads_is_refused_but_the_arabic_
 
     override = await create(author, insight, reflection="safe \u202etxet")
     isolate = await create(author, insight, reflection="a \u2066b")
+    invisible = await create(author, insight, reflection="hid\u200bden")
+    soft = await create(author, insight, reflection="sof\u00adt")
     marks = await create(author, insight, reflection="\u200fنص\u200f")
 
-    assert (override.status_code, isolate.status_code, marks.status_code) == (422, 422, 201)
+    assert [r.status_code for r in (override, isolate, invisible, soft, marks)] == [
+        422,
+        422,
+        422,
+        422,
+        201,
+    ]
+
+
+async def test_an_id_that_was_never_public_never_answers_410(
+    make_member, make_insight, guard, db_session
+):
+    author = await make_member("author")
+    stranger = await make_member("stranger")
+    guest = await make_member(signed_in=False)
+    guard.verdict = REVIEW
+    held = (await create(author, make_insight(author), reflection="x")).json()["id"]
+    await author.http.post(f"/posts/{held}/submit")
+    guard.verdict = ALLOW
+    draft = (await create(author, make_insight(author))).json()["id"]
+    await author.http.delete(f"/posts/{draft}")
+    # A held post a moderator removed before it was ever published.
+    await db_session.execute(
+        text(
+            "UPDATE app.posts SET status = 'removed', removal_source = 'moderator' WHERE id = :id"
+        ),
+        {"id": int(held)},
+    )
+
+    for post_id in (held, draft):
+        assert (await stranger.http.get(f"/posts/{post_id}")).status_code == 404
+        assert (await guest.http.get(f"/posts/{post_id}")).status_code == 404
+        # Its author may learn that it is gone; nobody else may learn that it ever was.
+        assert (await author.http.get(f"/posts/{post_id}")).status_code == 410
 
 
 async def test_a_moderators_own_words_are_never_returned_as_the_reason(

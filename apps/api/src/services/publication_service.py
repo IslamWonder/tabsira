@@ -13,9 +13,12 @@ from __future__ import annotations
 
 from typing import NoReturn
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config import Settings
 from src.errors import AppError, ErrorCode
+from src.models.profile import AgeRange, Profile
 from src.models.social import (
     EXPLANATION_MAX,
     GLIMPSE_MAX,
@@ -27,6 +30,7 @@ from src.models.user import User
 from src.pipeline.leak_guard import LeakGuard
 from src.services import evidence_view
 from src.services.insight_source import InsightSnapshot, InsightSource
+from src.storage.photos import PhotoFacts
 
 MAX_REFS = 3
 MAX_CONCEPTS = 5
@@ -77,15 +81,33 @@ async def _check_evidence(db: AsyncSession, snapshot: InsightSnapshot) -> None:
         _refuse("a hadith it cites is missing or has no sahih or hasan ruling")
 
 
-def _photo_ref(snapshot: InsightSnapshot) -> str | None:
-    """Keep the photo's reference only if its owner agreed to publish it and the scene is not sensitive."""
-    if not snapshot.photo_consent or snapshot.scene_sensitive or not snapshot.photo_ref:
+async def _photo_ref(
+    db: AsyncSession, snapshot: InsightSnapshot, author: User, settings: Settings
+) -> str | None:
+    """
+    Keep the photo's reference only if the photo rules of section 19 still allow publishing it.
+
+    The insight's owner agreed to publish this photo and the scene is not sensitive; and, as
+    `PhotoFacts` checks again at publish time because facts change, the feature is on, the
+    account has not since said it is under 13 and it still agrees to keep photos. The reference
+    is the private key of the owner's own copy: it is stored for the owner and for the photo
+    store, and no public response carries it.
+    """
+    reference = snapshot.photo_ref
+    if not snapshot.photo_consent or not reference or len(reference) > PHOTO_REF_MAX:
         return None
-    return snapshot.photo_ref if len(snapshot.photo_ref) <= PHOTO_REF_MAX else None
+    profile = await db.scalar(select(Profile).where(Profile.user_id == author.id))
+    facts = PhotoFacts(
+        owner_id=author.id,
+        age_range=profile.age_range if profile else AgeRange.UNKNOWN,
+        sensitive_scene=snapshot.scene_sensitive,
+        photo_storage_consent=bool(profile and profile.photo_storage_consent),
+    )
+    return None if facts.refusal(settings) else reference
 
 
 async def create_publication(
-    db: AsyncSession, source: InsightSource, author: User, insight_id: int
+    db: AsyncSession, source: InsightSource, author: User, insight_id: int, settings: Settings
 ) -> InsightPublication:
     """Copy the author's verified insight into a publication, or refuse with a reason."""
     snapshot = await source.load_for_publishing(db, insight_id, author.id)
@@ -109,7 +131,7 @@ async def create_publication(
         ],
         explanation_excerpt=snapshot.explanation_excerpt.strip(),
         step_text=(snapshot.step_text or "").strip() or None,
-        photo_ref=_photo_ref(snapshot),
+        photo_ref=await _photo_ref(db, snapshot, author, settings),
     )
     db.add(publication)
     await db.flush()

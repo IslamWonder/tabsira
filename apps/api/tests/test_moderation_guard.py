@@ -52,9 +52,12 @@ def test_a_text_with_nothing_flagged_and_low_scores_is_allowed():
     assert verdict.details == {"flagged": [], "scores": {"hate": 0.01, "violence": 0.2}}
 
 
-def test_a_text_with_no_scores_at_all_is_allowed_only_when_nothing_is_flagged():
-    assert judge(result(False, [], {})).outcome is Outcome.ALLOW
-    assert judge(result(True, ["hate"], {})).outcome is Outcome.REVIEW
+def test_an_answer_with_no_scores_is_not_a_clean_text_whatever_it_flags():
+    for flagged in (False, True):
+        verdict = judge(result(flagged, [], {}))
+
+        assert (verdict.outcome, verdict.reason) == (Outcome.REVIEW, "guard_unavailable")
+        assert verdict.details == {"error": "no_scores"}
 
 
 def test_a_flagged_text_under_the_reject_score_waits_for_a_person():

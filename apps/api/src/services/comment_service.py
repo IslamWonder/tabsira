@@ -90,6 +90,23 @@ async def get_visible(
     return found[0], found[1]
 
 
+async def get_own(db: AsyncSession, post_id: int, comment_id: int, user: User) -> Comment:
+    """
+    Load the user's own comment of this post, in any state, or raise 404.
+
+    The post is not asked about: a person can take their words back after they unfollowed the
+    post's author or blocked them, which is when they can no longer read the post.
+    """
+    comment = await db.scalar(
+        select(Comment).where(
+            Comment.id == comment_id, Comment.post_id == post_id, Comment.author_id == user.id
+        )
+    )
+    if comment is None:
+        raise not_found()
+    return comment
+
+
 async def list_threads(
     db: AsyncSession,
     post_id: int,
@@ -156,7 +173,9 @@ async def create_comment(
                 status_code=409,
             )
         taken = await db.scalar(
-            select(func.count()).select_from(Comment).where(Comment.parent_id == parent.id)
+            select(func.count())
+            .select_from(Comment)
+            .where(Comment.parent_id == parent.id, Comment.status == CommentStatus.PUBLISHED)
         )
         if (taken or 0) >= MAX_REPLIES:
             raise AppError(

@@ -21,7 +21,8 @@ from typing import Any
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import clock
+from src import clock, messages
+from src.errors import AppError, ErrorCode
 from src.models.moderation import (
     ModerationAction,
     ModerationActionKind,
@@ -125,8 +126,42 @@ def settle(db: AsyncSession, item: Item, verdict: GuardVerdict) -> None:
 # ─── A moderator's decisions ───────────────────────────────────────────────────
 
 
+def known_reason(reason: str | None) -> str | None:
+    """Return the reason only if it is a code the app defines, never a moderator's own words."""
+    known = messages.OUTCOME_REASONS.keys() | messages.REASON_LABELS.keys()
+    return reason if reason in known else None
+
+
+def _wrong_state() -> AppError:
+    return AppError(
+        ErrorCode.CONFLICT,
+        "This decision does not apply to the item as it is now.",
+        status_code=409,
+    )
+
+
+async def _lock(db: AsyncSession, item: Item, allowed: set[str]) -> None:
+    """
+    Lock the item, read it fresh, and refuse a decision that does not fit its state.
+
+    The author may have withdrawn the post, or another moderator may have decided, since the
+    moderator's screen was drawn: a decision made on that screen must not undo it. A post its
+    author withdrew is never brought back, and a draft was never submitted, so neither is in
+    any set of states a decision applies to.
+    """
+    await db.refresh(item, with_for_update=True)
+    owner_withdrew = isinstance(item, Post) and item.removal_source is RemovalSource.OWNER
+    if owner_withdrew or item.status not in allowed:
+        raise _wrong_state()
+
+
 async def approve(db: AsyncSession, item: Item, actor_id: uuid.UUID) -> None:
-    """Publish a held or refused item, or restore a removed one."""
+    """Publish a held or refused item, or restore one a moderator removed."""
+    await _lock(
+        db,
+        item,
+        {PostStatus.PENDING_REVIEW.value, PostStatus.REJECTED.value, PostStatus.REMOVED.value},
+    )
     was = item.status
     now = clock.utcnow()
     is_post = isinstance(item, Post)
@@ -144,6 +179,7 @@ async def approve(db: AsyncSession, item: Item, actor_id: uuid.UUID) -> None:
 
 async def reject(db: AsyncSession, item: Item, actor_id: uuid.UUID, reason: str) -> None:
     """Refuse a held item; its author is told why."""
+    await _lock(db, item, {PostStatus.PENDING_REVIEW.value})
     _set_state(
         item,
         PostStatus.REJECTED if isinstance(item, Post) else CommentStatus.REJECTED,
@@ -164,6 +200,7 @@ async def reject(db: AsyncSession, item: Item, actor_id: uuid.UUID, reason: str)
 
 async def remove(db: AsyncSession, item: Item, actor_id: uuid.UUID, reason: str) -> None:
     """Take a published item down; everyone but the moderators stops seeing it at once."""
+    await _lock(db, item, {PostStatus.PUBLISHED.value})
     now = clock.utcnow()
     _set_state(
         item, PostStatus.REMOVED if isinstance(item, Post) else CommentStatus.REMOVED, reason, now

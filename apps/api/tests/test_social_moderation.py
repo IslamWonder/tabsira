@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select
+import pytest
+from sqlalchemy import select, text
 
+from src import clock
+from src.errors import AppError, ErrorCode
 from src.models import (
     CommentStatus,
     ModerationAction,
@@ -176,7 +179,7 @@ async def test_a_moderator_decides_on_comments_too(make_user, db_session):
     post = await new_post(db_session, author, status=PostStatus.PUBLISHED)
     held = await new_comment(db_session, post, reader, status=CommentStatus.PENDING_REVIEW)
     live = await new_comment(db_session, post, reader)
-    other = await new_comment(db_session, post, reader, status=CommentStatus.REJECTED)
+    other = await new_comment(db_session, post, reader, status=CommentStatus.PENDING_REVIEW)
     filed = await report(db_session, author, live, ReportTarget.COMMENT)
 
     await moderation_service.approve(db_session, held, MODERATOR)
@@ -260,3 +263,78 @@ async def test_the_reports_of_one_person_count_once_and_closed_ones_not_at_all(
     await db_session.flush()
     assert await moderation_service.hold_if_reported(db_session, comment, 1) is True
     assert comment.status is CommentStatus.PENDING_REVIEW
+
+
+async def test_a_decision_applies_only_to_the_states_it_is_for(make_user, db_session):
+    author = await make_user("a@example.com")
+    draft = await new_post(db_session, author)
+    published = await new_post(db_session, author, status=PostStatus.PUBLISHED)
+    held = await new_post(db_session, author, status=PostStatus.PENDING_REVIEW)
+    refused = await new_post(db_session, author, status=PostStatus.REJECTED)
+    withdrawn = await new_post(
+        db_session,
+        author,
+        status=PostStatus.REMOVED,
+        removal_source=RemovalSource.OWNER,
+        removed_at=clock.utcnow(),
+    )
+
+    attempts = [
+        (moderation_service.approve, draft),
+        (moderation_service.approve, published),
+        (moderation_service.approve, withdrawn),
+        (moderation_service.reject, draft),
+        (moderation_service.reject, published),
+        (moderation_service.reject, refused),
+        (moderation_service.reject, withdrawn),
+        (moderation_service.remove, draft),
+        (moderation_service.remove, held),
+        (moderation_service.remove, refused),
+        (moderation_service.remove, withdrawn),
+    ]
+    for decide, item in attempts:
+        args = (
+            (db_session, item, MODERATOR)
+            if decide is moderation_service.approve
+            else (
+                db_session,
+                item,
+                MODERATOR,
+                "abuse",
+            )
+        )
+        with pytest.raises(AppError) as caught:
+            await decide(*args)
+        assert (caught.value.code, caught.value.status_code) == (ErrorCode.CONFLICT, 409)
+
+    # What an author withdrew stays withdrawn, and nothing was logged for the refusals.
+    assert withdrawn.status is PostStatus.REMOVED
+    assert await logged(db_session) == []
+
+
+async def test_a_decision_reads_the_item_fresh_so_a_withdrawal_in_between_wins(
+    make_user, db_session
+):
+    author = await make_user("a@example.com")
+    post = await new_post(db_session, author, status=PostStatus.PENDING_REVIEW)
+    # The moderator's screen showed the post held; the author withdrew it since.
+    await db_session.execute(
+        text(
+            "UPDATE app.posts SET status = 'removed', removal_source = 'owner', "
+            "publication_id = NULL WHERE id = :id"
+        ),
+        {"id": post.id},
+    )
+
+    with pytest.raises(AppError):
+        await moderation_service.approve(db_session, post, MODERATOR)
+
+    assert post.status is PostStatus.REMOVED
+    assert post.publication_id is None
+
+
+def test_a_reason_is_known_only_when_the_app_defines_it():
+    assert moderation_service.known_reason("hate") == "hate"
+    assert moderation_service.known_reason("guard_uncertain") == "guard_uncertain"
+    assert moderation_service.known_reason("a moderator's own words") is None
+    assert moderation_service.known_reason(None) is None

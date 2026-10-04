@@ -60,8 +60,6 @@ class PostExport(BaseModel):
 
 
 class CommentExport(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: PublicId
     post_id: PublicId
     parent_id: PublicId | None

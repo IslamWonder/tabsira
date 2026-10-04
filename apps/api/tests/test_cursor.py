@@ -54,6 +54,7 @@ def test_no_cursor_is_no_position():
         encoded(i=0),
         encoded(i=-3),
         encoded(i=1.5),
+        encoded(i=2**63),
         encoded(t="yesterday"),
         encoded(t="2026-10-04T12:00:00"),
         encoded(a="2026-10-04T12:00:00"),

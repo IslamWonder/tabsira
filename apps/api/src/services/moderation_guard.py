@@ -67,6 +67,9 @@ def verdict_from(
     refused whenever flagged. Allowed: nothing flagged and every score under `allow_score`.
     Everything else is a person's to judge.
     """
+    if not result.scores:
+        # No scores is an answer in the wrong shape, not a clean text.
+        return GuardVerdict(Outcome.REVIEW, "guard_unavailable", {"error": "no_scores"})
     scores = {name: round(score, 3) for name, score in result.scores.items()}
     details: dict[str, object] = {"flagged": list(result.categories), "scores": scores}
     refused = [
@@ -77,7 +80,7 @@ def verdict_from(
     if refused:
         worst = max(refused, key=lambda name: scores.get(name, 0.0))
         return GuardVerdict(Outcome.REJECT, category_key(worst), details)
-    if not result.flagged and max(scores.values(), default=0.0) < allow_score:
+    if not result.flagged and max(scores.values()) < allow_score:
         return GuardVerdict(Outcome.ALLOW, "clear", details)
     return GuardVerdict(Outcome.REVIEW, "guard_uncertain", details)
 

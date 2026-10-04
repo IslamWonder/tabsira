@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 
 from sqlalchemy import func, select
 
@@ -149,3 +150,38 @@ async def test_deleting_the_account_removes_every_post_comment_and_reaction_and_
     # The moderation log holds no text and no author, so it outlives the account untouched.
     assert await db_session.scalar(select(func.count()).select_from(ModerationAction)) >= 2
     assert (await guest.http.get(f"/posts/{theirs}")).json()["comment_count"] == 0
+
+
+async def test_the_export_never_carries_a_moderators_own_words(
+    make_member, make_insight, guard, db_session
+):
+    from src.models import Post
+    from src.services import moderation_service
+
+    ann = await make_member("ann")
+    bob = await make_member("bob")
+    post_id = await publish_post(ann, make_insight)
+    other_id = await publish_post(bob, make_insight)
+    comment = (await ann.http.post(f"/posts/{other_id}/comments", json={"body": "تعليقي"})).json()[
+        "id"
+    ]
+    await moderation_service.remove(
+        db_session,
+        await db_session.get(Post, int(post_id)),
+        uuid.uuid4(),
+        "private moderator words",
+    )
+    await moderation_service.remove(
+        db_session, await db_session.get(Comment, int(comment)), uuid.uuid4(), "more private words"
+    )
+
+    response = await ann.http.get("/account/export")
+
+    social = response.json()["social"]
+    assert "private moderator words" not in response.text
+    assert "more private words" not in response.text
+    assert (social["posts"][0]["status"], social["posts"][0]["status_reason"]) == ("removed", None)
+    assert (social["comments"][0]["status"], social["comments"][0]["status_reason"]) == (
+        "removed",
+        None,
+    )

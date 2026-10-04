@@ -124,11 +124,12 @@ async def create_comment(
 async def delete_comment(
     post_id: PostIdPath, comment_id: CommentIdPath, user: CurrentUser, db: DbDep
 ) -> Response:
-    """Delete one's own comment, whatever its state; its replies go with it. Someone else's is a 404."""
-    await post_service.get_readable(db, post_id, user)
-    comment, _ = await comment_service.get_visible(db, post_id, comment_id, user)
-    if comment.author_id != user.id:
-        raise comment_service.not_found()
+    """
+    Delete one's own comment, whatever its state and whatever the caller can still read.
+
+    Its replies go with it. Someone else's comment is a 404, as is one that does not exist.
+    """
+    comment = await comment_service.get_own(db, post_id, comment_id, user)
     await comment_service.delete_comment(db, comment)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

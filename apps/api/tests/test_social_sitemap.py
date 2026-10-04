@@ -138,3 +138,34 @@ async def test_nothing_of_the_network_is_listed_while_its_feature_is_off(
 
     assert "posts" not in index and "profiles" not in index
     assert (await guest.http.get("/sitemap/posts")).status_code == 404
+
+
+async def test_a_published_post_with_no_publication_is_neither_listed_nor_counted(
+    make_member, make_insight, guard, db_session
+):
+    ann = await make_member("ann")
+    guest = await make_member(signed_in=False)
+    kept = await publish_post(ann, make_insight)
+    orphan = await publish_post(ann, make_insight)
+    await db_session.execute(
+        text("UPDATE app.posts SET publication_id = NULL WHERE id = :id"), {"id": int(orphan)}
+    )
+
+    assert await paths(guest, "posts") == [post_path(int(kept))]
+    assert (await guest.http.get("/u/ann")).json()["posts_count"] == 1
+
+
+async def test_a_profiles_date_does_not_move_when_private_account_details_change(
+    make_member, make_insight, guard, db_session
+):
+    ann = await make_member("ann")
+    guest = await make_member(signed_in=False)
+    await publish_post(ann, make_insight)
+    await db_session.execute(text("UPDATE app.posts SET updated_at = '2026-04-01T00:00:00Z'"))
+    await db_session.execute(
+        text("UPDATE app.users SET updated_at = '2026-09-01T00:00:00Z' WHERE handle = 'ann'")
+    )
+
+    index = (await guest.http.get("/sitemap")).json()["sections"]["profiles"]
+
+    assert index == [{"page": 0, "lastmod": "2026-04-01T00:00:00Z"}]

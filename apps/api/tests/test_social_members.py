@@ -66,7 +66,25 @@ async def test_a_verified_account_chooses_a_handle_and_name_and_never_uses_its_o
 
 @pytest.mark.parametrize(
     "handle",
-    ["ab", "1abc", "_abc", "a b", "مَحمد", "admin", "TABSIRA", "تبصرة", "الإدارة", "a" * 31, ""],
+    [
+        "ab",
+        "1abc",
+        "_abc",
+        "a b",
+        "مَحمد",
+        "admin",
+        "TABSIRA",
+        "تبصرة",
+        "الإدارة",
+        "a" * 31,
+        "",
+        # Anything that starts like the platform or its staff passes for them.
+        "tabsira_help",
+        "Admin2",
+        "supportteam",
+        "تبصرة_علي",
+        "مشرف_عام",
+    ],
 )
 async def test_a_handle_that_is_malformed_or_reserved_is_refused(make_member, handle):
     reader = await make_member(identity=False)
