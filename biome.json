@@ -69,6 +69,7 @@
       "!apps/api/tests/scripture/data",
       "!apps/api/tests/evaluation/results/evaluation-*.json",
       "!apps/api/tests/evaluation/results/retrieval-*.json",
+      "!apps/api/tests/evaluation/results/chat-*.json",
       "!docs/spec",
       "!services/vision/weights"
     ]
