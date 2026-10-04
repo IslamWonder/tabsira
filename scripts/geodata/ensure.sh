@@ -130,41 +130,9 @@ db_revision="$(geonames_psql -tA -c "SELECT version_num FROM geodata.alembic_ver
 banner "GeoNames from $(basename "$dump") into $DB_NAME"
 started=$SECONDS
 {
-	cat <<'SQL'
-BEGIN;
-SET LOCAL search_path = '';
-SET LOCAL maintenance_work_mem = '512MB';
-CREATE TEMP TABLE geodata_indexes ON COMMIT DROP AS
-SELECT format('%I.%I', n.nspname, ic.relname) AS name, pg_get_indexdef(i.indexrelid) AS definition
-FROM pg_index i
-JOIN pg_class ic ON ic.oid = i.indexrelid
-JOIN pg_class t ON t.oid = i.indrelid
-JOIN pg_namespace n ON n.oid = t.relnamespace
-WHERE n.nspname = 'geodata' AND t.relname <> 'alembic_version'
-  AND NOT EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conindid = i.indexrelid);
-TRUNCATE geodata.geonames_hierarchy, geodata.geonames_alternate_names,
-         geodata.geonames_country_info, geodata.geonames_postal_codes, geodata.geonames;
-DO $drop$
-DECLARE r record;
-BEGIN
-    FOR r IN SELECT name FROM pg_temp.geodata_indexes LOOP
-        EXECUTE 'DROP INDEX ' || r.name;
-    END LOOP;
-END
-$drop$;
-SQL
+	echo "\\ir $SCRIPT_DIR/restore-begin.sql"
 	pg_restore --data-only -L "$toc.list" -f - "$dump"
-	cat <<'SQL'
-DO $build$
-DECLARE r record;
-BEGIN
-    FOR r IN SELECT definition FROM pg_temp.geodata_indexes LOOP
-        EXECUTE r.definition;
-    END LOOP;
-END
-$build$;
-COMMIT;
-SQL
+	echo "\\ir $SCRIPT_DIR/restore-end.sql"
 	geonames_sql_analyze | sed 's/^ANALYZE /ANALYZE geodata./'
 } | geonames_psql -q >/dev/null
 

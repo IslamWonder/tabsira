@@ -7,7 +7,7 @@
 # of the stored text and of the retrieval document it was computed from, so an
 # import can refuse what no longer matches. The archive holds the vectors, a
 # manifest (counts, store fingerprints, the runs that made them), SHA256SUMS,
-# README.txt and import.sh. It is never committed: it goes to the owners' storage.
+# README.txt, import.sh and import.sql. It is never committed: it goes to the owners' storage.
 #
 # Usage: DATABASE_URL=postgresql://... scripts/vectors/export.sh [OUT_DIR]
 #   OUT_DIR defaults to ../tabsira-data/vectors next to the checkout.
@@ -53,7 +53,7 @@ SELECT json_build_object(
 );
 SQL
 
-cp "$HERE/import.sh" "$DIR/import.sh"
+cp "$HERE/import.sh" "$HERE/import.sql" "$DIR/"
 cat >"$DIR/README.txt" <<'TXT'
 TABSIRA scripture embeddings
 
@@ -64,7 +64,7 @@ nothing about any user is in this archive. docs/EMBEDDINGS.md in the repository
 explains how they are made.
 
 Contents: quran_verse_embeddings.tsv, hadith_embeddings.tsv, manifest.json (counts,
-store fingerprints, the runs that made them), SHA256SUMS, import.sh.
+store fingerprints, the runs that made them), SHA256SUMS, import.sh, import.sql.
 
 Import (the database needs the scripture store and the vectors schema, make migrate):
   tar -xzf <archive>.tar.gz && cd <archive>
@@ -73,7 +73,7 @@ A vector is imported only when its text is in the store with the same SHA-256;
 others are skipped and counted, and existing rows are kept. The engine's embedding
 step (python -m src.cli.embed_corpus) then computes only what is missing or changed.
 TXT
-(cd "$DIR" && sha256sum quran_verse_embeddings.tsv hadith_embeddings.tsv manifest.json import.sh README.txt >SHA256SUMS)
+(cd "$DIR" && sha256sum quran_verse_embeddings.tsv hadith_embeddings.tsv manifest.json import.sh import.sql README.txt >SHA256SUMS)
 
 echo "[vectors] packing"
 tar -C "$OUT_DIR" -czf "$DIR.tar.gz" "$NAME"

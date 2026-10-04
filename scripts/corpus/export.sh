@@ -13,7 +13,8 @@
 # manifest.json (row counts, a fingerprint of every table, a fingerprint of the
 # stored text hashes of the scripture tables, the dump's SHA-256, the Quran dump
 # versions, the ontology's and the learning path's sources and the active path
-# version), SHA256SUMS, README.txt, import.sh and state.sql. The state is read
+# version), SHA256SUMS, README.txt, import.sh and the SQL it runs (state.sql,
+# verify.sql, force-guard.sql). The state is read
 # before and after the dump; an export that saw the data change in between (the
 # daily Quran sync) stops, and is run again.
 #
@@ -89,7 +90,7 @@ SELECT jsonb_pretty(jsonb_build_object(
 ));
 SQL
 
-cp "$HERE/import.sh" "$HERE/state.sql" "$DIR/"
+cp "$HERE/import.sh" "$HERE/state.sql" "$HERE/verify.sql" "$HERE/force-guard.sql" "$DIR/"
 cat >"$DIR/README.txt" <<'TXT'
 TABSIRA reference data (the `corpus` schema)
 
@@ -101,7 +102,8 @@ SHA-256 of its UTF-8 bytes. Nothing about any user is in this archive.
 docs/CORPUS.md in the repository explains how it is made.
 
 Contents: corpus.dump (pg_dump custom format, schema corpus), manifest.json (counts,
-fingerprints, sources, the learning path version), SHA256SUMS, import.sh, state.sql.
+fingerprints, sources, the learning path version), SHA256SUMS, import.sh and the SQL
+it runs (state.sql, verify.sql, force-guard.sql).
 
 Import (the database must be migrated to the same corpus tables, make migrate):
   tar -xzf <archive>.tar.gz && cd <archive>
@@ -110,7 +112,7 @@ It refuses a database whose corpus already holds verses unless --force is given,
 restores the rows in one transaction, checks every stored text against its hash
 and every table against the manifest, and changes nothing when a check fails.
 TXT
-(cd "$DIR" && sha256sum corpus.dump manifest.json import.sh state.sql README.txt >SHA256SUMS)
+(cd "$DIR" && sha256sum corpus.dump manifest.json import.sh state.sql verify.sql force-guard.sql README.txt >SHA256SUMS)
 
 say "packing"
 tar -C "$OUT_DIR" -czf "$DIR.tar.gz" "$NAME"

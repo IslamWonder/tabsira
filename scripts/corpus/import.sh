@@ -76,7 +76,7 @@ if [[ -f "$source_path" ]]; then
 fi
 cd "$source_path"
 
-[[ -f SHA256SUMS && -f corpus.dump && -f manifest.json && -f state.sql ]] ||
+[[ -f SHA256SUMS && -f corpus.dump && -f manifest.json && -f state.sql && -f verify.sql && -f force-guard.sql ]] ||
 	die "$(pwd) is not an extracted corpus archive"
 say "checking the files against SHA256SUMS"
 sha256sum --check --quiet SHA256SUMS || die "a file does not match SHA256SUMS; download the archive again"
@@ -137,72 +137,15 @@ data_entries="$(grep -cE "^[0-9]+; [0-9]+ [0-9]+ TABLE DATA corpus " "$toc")"
 	# The scripture tables refuse writes outside an import (src/scripture/guard.py).
 	echo "SET LOCAL tabsira.scripture_write = 'import';"
 	if [[ "$FORCE" == "true" ]]; then
-		cat <<'SQL'
-DO $guard$
-DECLARE
-    r record;
-    n bigint;
-    found text := '';
-BEGIN
-    FOR r IN
-        SELECT kn.nspname AS schema_name, k.relname AS table_name,
-               (SELECT string_agg(format('%I IS NOT NULL', a.attname), ' AND ')
-                FROM pg_attribute a
-                WHERE a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)) AS points
-        FROM pg_constraint c
-        JOIN pg_class k ON k.oid = c.conrelid
-        JOIN pg_namespace kn ON kn.oid = k.relnamespace
-        JOIN pg_class f ON f.oid = c.confrelid
-        JOIN pg_namespace fn ON fn.oid = f.relnamespace
-        WHERE c.contype = 'f' AND fn.nspname = 'corpus' AND kn.nspname NOT IN ('corpus', 'vectors')
-    LOOP
-        EXECUTE format('SELECT count(*) FROM %I.%I WHERE %s', r.schema_name, r.table_name, r.points)
-        INTO n;
-        IF n > 0 THEN
-            found := found || format(' %s.%s (%s rows)', r.schema_name, r.table_name, n);
-        END IF;
-    END LOOP;
-    IF found <> '' THEN
-        RAISE EXCEPTION 'rows outside the corpus point at it:% -- replacing the corpus would lose them, so nothing was imported', found;
-    END IF;
-END
-$guard$;
-SQL
+		echo "\\ir force-guard.sql"
 		for ((index = ${#TABLES[@]} - 1; index >= 0; index--)); do
 			echo "DELETE FROM corpus.${TABLES[index]};"
 		done
 	fi
 	pg_restore --data-only -L "$toc.list" -f - corpus.dump
-	echo "\\i state.sql"
 	echo "SELECT set_config('tabsira.corpus_manifest', :'manifest', true);"
-	cat <<'SQL'
-DO $check$
-DECLARE
-    expected jsonb := current_setting('tabsira.corpus_manifest')::jsonb -> 'tables';
-    found jsonb := pg_temp.corpus_state();
-    bad bigint;
-    t text;
-BEGIN
-    FOREACH t IN ARRAY ARRAY['quran_verses', 'quran_verse_history', 'hadiths'] LOOP
-        EXECUTE format(
-            'SELECT count(*) FROM corpus.%I '
-            'WHERE text_sha256 IS DISTINCT FROM encode(sha256(convert_to(text, ''UTF8'')), ''hex'')', t)
-        INTO bad;
-        IF bad > 0 THEN
-            RAISE EXCEPTION 'corpus.%: % rows whose text does not match its stored hash; nothing was imported', t, bad;
-        END IF;
-    END LOOP;
-    FOR t IN SELECT jsonb_object_keys(expected) LOOP
-        IF found -> t IS DISTINCT FROM expected -> t THEN
-            RAISE EXCEPTION 'corpus.% does not match the manifest (expected %, found %); nothing was imported',
-                t, expected -> t, found -> t;
-        END IF;
-    END LOOP;
-END
-$check$;
-REFRESH MATERIALIZED VIEW corpus.quran_verse_spans;
-COMMIT;
-SQL
+	echo "\\ir verify.sql"
+	echo "COMMIT;"
 } | "${PSQL[@]}" -v manifest="$manifest" >/dev/null
 
 say "every verse and hadith matches its stored hash; every table matches the manifest"
