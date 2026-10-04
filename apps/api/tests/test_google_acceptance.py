@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, urlsplit
 from sqlalchemy import select
 
 from src.models import Consent, OAuthState, User
+from src.models.consent import ConsentKind
 from tests.test_google_routes import finish, google  # noqa: F401  (the `google` fixture)
 
 CURRENT = {"terms": "2026-10-04", "privacy": "2026-10-04"}
@@ -59,6 +60,25 @@ async def test_a_new_account_without_current_versions_records_nothing_and_is_ask
 
     assert await accepted(db_session) == set()
     assert (await web.get("/auth/me")).json()["legal_acceptance_required"] is True
+
+
+async def test_a_takeover_withdraws_the_strangers_acceptance_so_the_owner_is_asked(
+    web,
+    db_session,
+    google,  # noqa: F811
+    make_user,
+):
+    stranger = await make_user(verified=False)
+    for kind in (ConsentKind.TERMS, ConsentKind.PRIVACY):
+        db_session.add(Consent(user_id=stranger.id, kind=kind, version="2026-10-04", granted=True))
+    await db_session.flush()
+    state, nonce = await begin_with(web)
+
+    await finish(web, google, state, nonce)
+
+    assert (await web.get("/auth/me")).json()["legal_acceptance_required"] is True
+    withdrawn = await db_session.scalars(select(Consent).where(Consent.granted.is_(False)))
+    assert {row.kind for row in withdrawn} == {ConsentKind.TERMS, ConsentKind.PRIVACY}
 
 
 async def test_an_existing_account_signing_in_is_unaffected(

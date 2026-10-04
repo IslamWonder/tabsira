@@ -55,6 +55,12 @@ def record_acceptance(db: AsyncSession, settings: Settings, user_id: uuid.UUID) 
     )
 
 
+def record_withdrawal(db: AsyncSession, user_id: uuid.UUID) -> None:
+    """Add a `granted` false row for each text, so the account must accept again."""
+    for kind in LEGAL_KINDS:
+        db.add(Consent(user_id=user_id, kind=kind, version="withdrawn", granted=False))
+
+
 async def acceptance_required(db: AsyncSession, settings: Settings, user_id: uuid.UUID) -> bool:
     """
     Whether the account has to accept again.

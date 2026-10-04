@@ -239,6 +239,8 @@ async def _link_or_create(db: AsyncSession, identity: GoogleIdentity) -> tuple[U
         if user.password_hash is not None:
             user.password_hash = None
             await session_service.revoke_every_session(db, user.id)
+            # What the stranger accepted is not the owner's acceptance.
+            legal_service.record_withdrawal(db, user.id)
         user.email_verified_at = now
     try:
         async with db.begin_nested():
