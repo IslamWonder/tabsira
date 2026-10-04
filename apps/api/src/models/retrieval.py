@@ -9,6 +9,10 @@ of the text and the model-written concepts that describe it. Its SHA-256 is
 kept, so a text or an annotation that changed is embedded again and nothing
 else is. Nothing here is ever displayed.
 
+The tables live in the `vectors` schema (decision 48): derived, large and
+rebuildable from the published archive (docs/EMBEDDINGS.md), unlike the records
+in `app`. Their keys point at `app` rows and go with them (`ON DELETE CASCADE`).
+
 pgvector indexes a column of one size only, so each provider's default
 (model, dimensions), as measured by the retrieval benchmark (docs/BENCHMARK.md),
 has its own HNSW index: a partial index on the vector cast to its size
@@ -40,7 +44,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.models.base import Base
+from src.models.scripture import Hadith, QuranVerse
+from src.models.vectors_base import VectorsBase
 
 SHA256_LENGTH = 64
 # pgvector's HNSW index takes vectors of at most 2,000 dimensions.
@@ -92,7 +97,7 @@ def _now() -> Mapped[datetime]:
     return mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class QuranVerseEmbedding(Base):
+class QuranVerseEmbedding(VectorsBase):
     """The vector of one verse's retrieval document under one embedding model."""
 
     __tablename__ = "quran_verse_embeddings"
@@ -104,7 +109,7 @@ class QuranVerseEmbedding(Base):
     )
 
     verse_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("quran_verses.id", ondelete="CASCADE"), primary_key=True
+        BigInteger, ForeignKey(QuranVerse.id, ondelete="CASCADE"), primary_key=True
     )
     model: Mapped[str] = mapped_column(String(64), primary_key=True)
     dimensions: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
@@ -113,7 +118,7 @@ class QuranVerseEmbedding(Base):
     embedded_at: Mapped[datetime] = _now()
 
 
-class HadithEmbedding(Base):
+class HadithEmbedding(VectorsBase):
     """The vector of one hadith's retrieval document under one embedding model."""
 
     __tablename__ = "hadith_embeddings"
@@ -125,7 +130,7 @@ class HadithEmbedding(Base):
     )
 
     hadith_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("hadiths.id", ondelete="CASCADE"), primary_key=True
+        BigInteger, ForeignKey(Hadith.id, ondelete="CASCADE"), primary_key=True
     )
     model: Mapped[str] = mapped_column(String(64), primary_key=True)
     dimensions: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
@@ -134,7 +139,7 @@ class HadithEmbedding(Base):
     embedded_at: Mapped[datetime] = _now()
 
 
-class EmbeddingRun(Base):
+class EmbeddingRun(VectorsBase):
     """One run of `src.cli.embed_corpus` over one corpus: what it embedded and what it cost."""
 
     __tablename__ = "embedding_runs"

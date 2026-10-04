@@ -24,8 +24,8 @@ from src.retrieval.lexical import Hit
 EF_SEARCH = 100
 
 _TABLES = {
-    EmbeddedCorpus.QURAN: ("app.quran_verse_embeddings", "verse_id"),
-    EmbeddedCorpus.HADITH: ("app.hadith_embeddings", "hadith_id"),
+    EmbeddedCorpus.QURAN: ("vectors.quran_verse_embeddings", "verse_id"),
+    EmbeddedCorpus.HADITH: ("vectors.hadith_embeddings", "hadith_id"),
 }
 
 

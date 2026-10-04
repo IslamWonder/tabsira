@@ -96,6 +96,7 @@ from src.models.social import (
 )
 from src.models.timeseries import AiCall, EvidenceExposure, ScanEvent
 from src.models.user import OAuthAccount, User
+from src.models.vectors_base import VectorsBase
 from src.models.world import (
     RelationReason,
     Treasure,
@@ -197,6 +198,7 @@ __all__ = [
     "Treasure",
     "TreasureKind",
     "User",
+    "VectorsBase",
     "WorldPlace",
     "WorldRelation",
     "public_id_pk",

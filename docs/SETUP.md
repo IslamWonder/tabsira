@@ -31,7 +31,7 @@ Done when `psql "$(grep ^SYNC_DATABASE_URL= .env | cut -d= -f2- | sed 's/+psycop
 
 ### 3. Database schemas
 
-`make migrate` (geodata chain, then app, then vectors once task 05.1 lands). Always safe: it applies only what is missing.
+`make migrate` (geodata chain, then app, then vectors: decision 48). Always safe: it applies only what is missing.
 
 ### 4. The two corpora
 

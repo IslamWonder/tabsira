@@ -23,8 +23,9 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'app')
-     OR NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'geodata') THEN
-    RAISE EXCEPTION 'the schemas app and geodata are not both present in %', current_database();
+     OR NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'geodata')
+     OR NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'vectors') THEN
+    RAISE EXCEPTION 'the schemas app, geodata and vectors are not all present in %', current_database();
   END IF;
 
   RAISE NOTICE '% ready: postgres %, postgis %, vector %, timescaledb %',

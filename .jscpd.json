@@ -16,6 +16,7 @@
     "**/*.config.*",
     "**/alembic/versions/**",
     "**/alembic_geodata/versions/**",
+    "**/alembic_vectors/versions/**",
     "**/tests/**",
     "**/public/**",
     "data/**",

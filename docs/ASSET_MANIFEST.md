@@ -308,7 +308,7 @@ The dorar.net search link of each hadith (`https://dorar.net/hadith/search?q=<wo
 
 ## 11. Scripture vectors and reranker weights (4 October 2026)
 
-`python -m src.cli.embed_corpus` (a step of `make data`) embeds the retrieval document of every verse and hadith: the folded search copy (a hadith without its chain) followed by its model-written annotation or signal concepts, never the displayed text. The vectors live in `app.quran_verse_embeddings` and `app.hadith_embeddings`, keyed by model and size; every run is recorded in `app.embedding_runs` with its tokens and cost.
+`python -m src.cli.embed_corpus` (a step of `make data`) embeds the retrieval document of every verse and hadith: the folded search copy (a hadith without its chain) followed by its model-written annotation or signal concepts, never the displayed text. The vectors live in `vectors.quran_verse_embeddings` and `vectors.hadith_embeddings` (decision 48), keyed by model and size; every run is recorded in `vectors.embedding_runs` with its tokens and cost.
 
 | Model                    | Size | Verses | Hadiths |     Tokens |    Cost | Use                                                         |
 | ------------------------ | ---: | -----: | ------: | ---------: | ------: | ----------------------------------------------------------- |

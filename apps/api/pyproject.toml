@@ -154,6 +154,7 @@ ignore = [
 # Alembic migrations: docstring format is auto-generated; raw SQL is expected
 "alembic/**/*.py" = ["D213", "D400", "D415", "S608", "Q003", "D103"]
 "alembic_geodata/**/*.py" = ["D213", "D400", "D415", "S608", "Q003", "D103"]
+"alembic_vectors/**/*.py" = ["D213", "D400", "D415", "S608", "Q003", "D103"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["src"]

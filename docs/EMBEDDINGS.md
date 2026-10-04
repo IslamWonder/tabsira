@@ -25,13 +25,13 @@ Only our own store is embedded: the Quran from quranpedia.net edition 2 and the 
 | `bge-m3`                 | OVH AI Endpoints | 1024 | default when `AI_PROVIDER=ovh`          | 6,236  | 65,712  |
 | `text-embedding-3-small` | OpenAI           | 1536 | measured, not used (kept in the export) | 6,236  | 14,940  |
 
-`text-embedding-3-large` is asked for 1536 dimensions instead of its native 3072: pgvector indexes vectors of up to 2,000 dimensions. Vectors live in `app.quran_verse_embeddings` and `app.hadith_embeddings` today, one row per text, model and size, with a partial HNSW index per default model; decision 48 moves them, with `embedding_runs`, to the `vectors` schema (task 05.1), and the import script follows.
+`text-embedding-3-large` is asked for 1536 dimensions instead of its native 3072: pgvector indexes vectors of up to 2,000 dimensions. Vectors live in `vectors.quran_verse_embeddings` and `vectors.hadith_embeddings`, one row per text, model and size, with a partial HNSW index per default model. The `vectors` schema (decision 48) has its own Alembic chain, `apps/api/alembic_vectors`, which `make migrate` runs after the app chain because its keys point at `app.quran_verses` and `app.hadiths` (`ON DELETE CASCADE`).
 
 ## How they were computed (2026-10-04)
 
 `uv run python -m src.cli.embed_corpus [quran] [hadith] [--provider P] [--model M] [--dimensions N] [--collections a,b] [--batch-size N] [--concurrency N] [--max-cost USD] [--dry-run]`
 
-Every run is logged in `app.embedding_runs` (documents, already present, embedded, tokens, cost, times, error). A run sends only documents that are new or changed, so a second run sends nothing and a stopped run resumes where it stopped. Each text was embedded **once**:
+Every run is logged in `vectors.embedding_runs` (documents, already present, embedded, tokens, cost, times, error). A run sends only documents that are new or changed, so a second run sends nothing and a stopped run resumes where it stopped. Each text was embedded **once**:
 
 | Run | Corpus | Model                  | Embedded | Skipped (already there) | Cost    | Note                            |
 | --- | ------ | ---------------------- | -------- | ----------------------- | ------- | ------------------------------- |

@@ -15,8 +15,9 @@ from sqlalchemy.ext.asyncio import (
 from src.config import get_settings
 
 # Every connection sees the application schema first, then the geodata
-# reference schema, then public (where the PostgreSQL extensions live).
-SEARCH_PATH = "app,geodata,public"
+# reference schema, then the scripture vectors (decision 48), then public
+# (where the PostgreSQL extensions live).
+SEARCH_PATH = "app,geodata,vectors,public"
 
 
 @lru_cache(maxsize=1)

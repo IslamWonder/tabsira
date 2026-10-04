@@ -33,6 +33,7 @@ scan:
     - nginx/local/certs
     - alembic/versions
     - alembic_geodata/versions
+    - alembic_vectors/versions
   skip-files:
     - ".env"
     - ".env.*"

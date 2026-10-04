@@ -68,6 +68,7 @@ vision=$(tracked 'services/vision/*.py' | no_tests | lines)
 ops=$(tracked 'scripts/*' 'deploy/*' 'jenkins/*' 'nginx/*' 'Jenkinsfile' 'Makefile' | no_tests | lines)
 app_migrations=$(tracked 'apps/api/alembic/versions/*.py' | count)
 geo_migrations=$(tracked 'apps/api/alembic_geodata/versions/*.py' | count)
+vector_migrations=$(tracked 'apps/api/alembic_vectors/versions/*.py' | count)
 tables=$(tracked 'apps/api/src/models/*.py' | matches '__tablename__ *=')
 doc_files=$(tracked '*.md' | count)
 doc_lines=$(tracked '*.md' | lines)
@@ -97,7 +98,7 @@ printf 'Code      %s lines: api %s · web %s · vision %s · ops %s\n' "$(n "$co
 printf 'Tests     %s lines · %s written (api %s, web %s) · %s test lines per code line\n' "$(n "$test_total")" \
 	"$(n "$((api_cases + web_cases))")" "$(n "$api_cases")" "$(n "$web_cases")" \
 	"$(awk -v t="$test_total" -v c="$((api_src + web_src))" 'BEGIN { printf "%.1f", (c ? t / c : 0) }')"
-printf 'Schema    %s tables · %s app + %s geodata migrations\n' "$tables" "$app_migrations" "$geo_migrations"
+printf 'Schema    %s tables · %s app + %s geodata + %s vectors migrations\n' "$tables" "$app_migrations" "$geo_migrations" "$vector_migrations"
 printf 'Docs      %s files, %s lines\n' "$doc_files" "$(n "$doc_lines")"
 printf 'Coverage  %s\n' "$coverage"
 read -r added removed <<<"$churn"

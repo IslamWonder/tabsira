@@ -224,7 +224,7 @@ Measured on 04 October 2026 by `uv run python -m src.cli.retrieval_benchmark` (`
 | lexical search     | `fts`                           | MRR@10 0.219                |
 | reranker           | `bge-reranker-v2-m3`            | MRR@10 0.667, recall@3 80%  |
 
-Spend of the runs merged here: **$0.1484** (query embeddings and the LLM rerank baseline; the corpus vectors were paid by `src.cli.embed_corpus`, see `app.embedding_runs`).
+Spend of the runs merged here: **$0.1484** (query embeddings and the LLM rerank baseline; the corpus vectors were paid by `src.cli.embed_corpus`, see `vectors.embedding_runs`).
 <!-- /section:retrieval -->
 
 <!-- section:retrieval-notes -->
