@@ -15,13 +15,18 @@ whose first or last word lost a letter glued to it (a conjunction, a pronoun)
 is still the same quotation, and refusing it is the safe side. `search_copy`
 keeps letters and digits only, so no LIKE wildcard or escape can reach a
 pattern from model text.
+
+The runs go to the database as one array, each probed by its own index scan.
+An `OR` of the runs in one condition looks cheaper to the planner as a
+sequential scan, which on the 65,712 hadiths took about nine seconds an insight.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable
 
-from sqlalchemy import Select, literal, or_, select
+from sqlalchemy import Select, Text, bindparam, func, literal, select
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import HadithSearch, QuranVerseSearch
@@ -44,8 +49,16 @@ def patterns(texts: Iterable[str], window: int = WINDOW) -> list[str]:
 
 def statements(wanted: list[str]) -> list[Select[int]]:
     """Return one query per folded column, finding a row that holds any of the `wanted` runs."""
+    runs = (
+        func.unnest(bindparam("runs", wanted, type_=ARRAY(Text)))
+        .table_valued("run")
+        .render_derived(name="wanted")
+    )
     return [
-        select(literal(1)).where(or_(*(column.like(pattern) for pattern in wanted))).limit(1)
+        select(literal(1))
+        .select_from(runs)
+        .where(select(literal(1)).where(column.like(runs.c.run)).exists())
+        .limit(1)
         for column in COLUMNS
     ]
 
