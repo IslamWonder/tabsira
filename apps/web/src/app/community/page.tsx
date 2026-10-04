@@ -2,10 +2,10 @@ import type { Metadata } from 'next';
 import { ComingSoon } from '@/components/app/coming-soon';
 import { CommunityIcon } from '@/components/icons';
 import { FeedLayout } from '@/components/layout/layouts';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 
 export const metadata: Metadata = {
-  title: ar.nav.community,
+  title: messages.nav.community,
   alternates: { canonical: '/community' },
 };
 
@@ -17,12 +17,12 @@ export default function CommunityPage() {
       feed={
         <ComingSoon
           icon={<CommunityIcon width="28" height="28" />}
-          title={ar.pages.community.title}
-          description={ar.pages.community.description}
+          title={messages.pages.community.title}
+          description={messages.pages.community.description}
           className="py-10 tablet:py-16"
         />
       }
-      className="pb-nav tablet:pb-8"
+      className="pb-4 tablet:pb-8"
     />
   );
 }

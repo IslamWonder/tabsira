@@ -5,7 +5,7 @@ import { celebrate } from '@/components/fx/celebrate';
 import { CheckIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { cx } from '@/lib/cx';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 
 export type DoneStatus = 'idle' | 'saving' | 'done';
 
@@ -44,7 +44,7 @@ export function DoneButton({ status = 'idle', onDone, className }: DoneButtonPro
       className={cx('w-full', className)}
     >
       {status === 'done' ? <CheckIcon width="22" height="22" /> : null}
-      {ar.insight.done}
+      {messages.insight.done}
     </Button>
   );
 }

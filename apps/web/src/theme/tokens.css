@@ -40,6 +40,10 @@
   --link: #0f4c3a;
   --glow-gold: #ffd978;
   --glow-emerald: #0f4c3a;
+  /* the logo (brand/README.md): deep gold on day, 4.53:1 on the page */
+  --brand: #8d6e2c;
+  /* the wash over the page under a full-screen choice: light by day */
+  --scrim: rgba(246, 250, 247, 0.62);
   --photo-scrim: linear-gradient(
     180deg,
     rgba(246, 250, 247, 0.72) 0%,
@@ -156,6 +160,10 @@
     --link: #7fe3b8;
     --glow-gold: #e6c77f;
     --glow-emerald: #3fd69a;
+    /* the logo (brand/README.md): brand gold on night, 5.99:1 on the page */
+    --brand: #b28b38;
+    /* the wash over the page under a full-screen choice: dark at night */
+    --scrim: rgba(4, 10, 8, 0.62);
     --photo-scrim: linear-gradient(
       180deg,
       rgba(11, 18, 16, 0.78) 0%,
@@ -272,6 +280,10 @@
   --link: #7fe3b8;
   --glow-gold: #e6c77f;
   --glow-emerald: #3fd69a;
+  /* the logo (brand/README.md): brand gold on night, 5.99:1 on the page */
+  --brand: #b28b38;
+  /* the wash over the page under a full-screen choice: dark at night */
+  --scrim: rgba(4, 10, 8, 0.62);
   --photo-scrim: linear-gradient(
     180deg,
     rgba(11, 18, 16, 0.78) 0%,

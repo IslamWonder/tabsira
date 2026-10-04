@@ -43,9 +43,7 @@ export function OrnamentDivider({ label, className }: { label?: string; classNam
       <Rosette />
       {label === undefined ? null : (
         <>
-          <span className="font-heading font-semibold text-fg-soft text-sm tracking-wide">
-            {label}
-          </span>
+          <span className="font-semibold text-fg-soft text-sm">{label}</span>
           <Rosette />
         </>
       )}

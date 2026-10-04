@@ -1,6 +1,6 @@
 import { KHATAM_RATIO, starPoints } from './geometry';
 
-const CORNERS = ['top-start', 'top-end', 'bottom-start', 'bottom-end'] as const;
+const CORNERS = ['top-right', 'top-left', 'bottom-right', 'bottom-left'] as const;
 
 /**
  * The four corners of an RPG panel: a framed corner, an inner echo, two leaf

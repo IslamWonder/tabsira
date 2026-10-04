@@ -21,11 +21,11 @@ export function Beacon({ children }: { children: ReactNode }) {
         {children}
       </span>
       <span
-        className="absolute top-3 right-6 size-2 rounded-full"
+        className="absolute start-6 top-3 size-2 rounded-full"
         style={{ background: 'var(--point-gold-core)', boxShadow: '0 0 10px 3px var(--glow-gold)' }}
       />
       <span
-        className="absolute bottom-5 left-4 size-1.5 rounded-full"
+        className="absolute end-4 bottom-5 size-1.5 rounded-full"
         style={{
           background: 'var(--point-emerald-core)',
           boxShadow: '0 0 8px 2px var(--glow-emerald)',

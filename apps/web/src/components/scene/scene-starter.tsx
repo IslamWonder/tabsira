@@ -5,7 +5,7 @@ import { SummoningCircle } from '@/components/fx/summoning-circle';
 import { CameraIcon } from '@/components/icons';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { cx } from '@/lib/cx';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 import { isImageFile, normaliseImageLink } from './image-link';
 
 export interface SceneStarterProps {
@@ -37,7 +37,7 @@ export function SceneStarter({ onFile, onLink, className }: SceneStarterProps) {
       setError(null);
       onFile(file);
     } else {
-      setError(ar.scene.starter.notImage);
+      setError(messages.scene.starter.notImage);
     }
   };
 
@@ -56,7 +56,7 @@ export function SceneStarter({ onFile, onLink, className }: SceneStarterProps) {
     const field = event.currentTarget.elements.namedItem('link') as HTMLInputElement;
     const url = normaliseImageLink(field.value);
     if (url === null) {
-      setError(ar.scene.starter.invalidLink);
+      setError(messages.scene.starter.invalidLink);
       return;
     }
     setError(null);
@@ -65,7 +65,7 @@ export function SceneStarter({ onFile, onLink, className }: SceneStarterProps) {
 
   return (
     <section
-      aria-label={ar.scene.starter.prompt}
+      aria-label={messages.scene.starter.prompt}
       onDragOver={(event) => {
         event.preventDefault();
         setDragging(true);
@@ -82,8 +82,8 @@ export function SceneStarter({ onFile, onLink, className }: SceneStarterProps) {
     >
       <div className="flex flex-col items-center gap-3 text-center desktop:flex-row desktop:gap-4 desktop:text-start">
         <SummoningCircle active={dragging} size={96} />
-        <p className="m-0 font-heading font-semibold text-fg text-lg leading-snug">
-          {dragging ? ar.scene.starter.dropping : ar.scene.starter.prompt}
+        <p className="m-0 font-semibold text-fg text-lg leading-snug">
+          {dragging ? messages.scene.starter.dropping : messages.scene.starter.prompt}
         </p>
       </div>
 
@@ -95,7 +95,7 @@ export function SceneStarter({ onFile, onLink, className }: SceneStarterProps) {
             'cursor-pointer has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-[var(--focus)] has-[:focus-visible]:outline-offset-2'
           )}
         >
-          {ar.scene.starter.choose}
+          {messages.scene.starter.choose}
           <input id={fileId} type="file" accept="image/*" className="sr-only" onChange={onPick} />
         </label>
         {/* Phones open the camera straight away; larger screens rarely have one facing the scene. */}
@@ -107,7 +107,7 @@ export function SceneStarter({ onFile, onLink, className }: SceneStarterProps) {
           )}
         >
           <CameraIcon width="18" height="18" />
-          {ar.scene.starter.camera}
+          {messages.scene.starter.camera}
           <input
             id={cameraId}
             type="file"
@@ -124,7 +124,7 @@ export function SceneStarter({ onFile, onLink, className }: SceneStarterProps) {
           onClick={() => setLinkOpen((open) => !open)}
           className="border border-line"
         >
-          {ar.scene.starter.pasteLink}
+          {messages.scene.starter.pasteLink}
         </Button>
       </div>
 
@@ -136,7 +136,7 @@ export function SceneStarter({ onFile, onLink, className }: SceneStarterProps) {
         noValidate
       >
         <label className="flex min-w-0 flex-1 flex-col gap-1 text-fg-soft text-sm">
-          {ar.scene.starter.linkLabel}
+          {messages.scene.starter.linkLabel}
           <input
             name="link"
             type="url"
@@ -144,12 +144,12 @@ export function SceneStarter({ onFile, onLink, className }: SceneStarterProps) {
             dir="ltr"
             autoComplete="off"
             aria-describedby={error === null ? undefined : errorId}
-            aria-invalid={error === ar.scene.starter.invalidLink}
+            aria-invalid={error === messages.scene.starter.invalidLink}
             className="min-h-12 rounded-[var(--radius-card)] border border-line bg-surface px-3 text-base text-fg"
           />
         </label>
         <Button type="submit" variant="secondary">
-          {ar.scene.starter.useLink}
+          {messages.scene.starter.useLink}
         </Button>
       </form>
 

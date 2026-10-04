@@ -1,6 +1,6 @@
 'use client';
 
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 import { setThemePreference, type ThemePreference } from '@/theme/theme';
 import { useThemePreference } from '@/theme/use-theme-preference';
 import { Button } from './button';
@@ -20,7 +20,7 @@ const NEXT: Record<ThemePreference, ThemePreference> = {
 export function ThemeToggle() {
   const preference = useThemePreference();
   const Icon = THEME_ICONS[preference];
-  const label = ar.theme.toggle(ar.theme[preference]);
+  const label = messages.theme.toggle(messages.theme[preference]);
   return (
     <Button
       variant="icon"

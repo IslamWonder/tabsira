@@ -52,13 +52,12 @@ export const readexLatin = localFont({
   adjustFontFallback: false,
 });
 
-/** Headings and the wordmark. */
+/**
+ * Display headings of 24 px and more, bold only. Smaller text
+ * uses Readex Pro: set small, Reem Kufi's letters close up (src/theme/typography.test.ts).
+ */
 export const reemKufi = localFont({
   src: [
-    {
-      path: '../../node_modules/@fontsource/reem-kufi/files/reem-kufi-arabic-600-normal.woff2',
-      weight: '600',
-    },
     {
       path: '../../node_modules/@fontsource/reem-kufi/files/reem-kufi-arabic-700-normal.woff2',
       weight: '700',

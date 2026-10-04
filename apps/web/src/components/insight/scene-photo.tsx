@@ -4,7 +4,7 @@ import Image, { type StaticImageData } from 'next/image';
 import { type ReactNode, useId, useState } from 'react';
 import { cx } from '@/lib/cx';
 import { useBoxSize } from '@/lib/use-box-size';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 import { InsightPoint, type PointTone } from './insight-point';
 import { coverPlacement, gridCell, isRatio, labelSides } from './scene-geometry';
 
@@ -67,7 +67,7 @@ export function ScenePhoto({
 
   const spoken = (point: ScenePoint) => {
     const { row, column } = gridCell(point);
-    return ar.scene.positions[row][column];
+    return messages.scene.positions[row][column];
   };
 
   return (
@@ -119,7 +119,7 @@ export function ScenePhoto({
         )}
       >
         <h2 id={listHeadingId} className="mb-2 font-semibold text-base text-glass-fg">
-          {ar.scene.listHeading}
+          {messages.scene.listHeading}
         </h2>
         <ul className="flex flex-col gap-1">
           {valid.map((point) => (
@@ -134,7 +134,7 @@ export function ScenePhoto({
                 <span className="text-[0.8125rem] text-glass-fg-soft">
                   {point.glimpse === undefined
                     ? spoken(point)
-                    : ar.scene.glimpseAndPosition(point.glimpse, spoken(point))}
+                    : messages.scene.glimpseAndPosition(point.glimpse, spoken(point))}
                 </span>
               </button>
             </li>

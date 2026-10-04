@@ -1,6 +1,6 @@
 import { CheckIcon } from '@/components/icons';
 import { cx } from '@/lib/cx';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 
 export type QuestState = 'done' | 'current' | 'pending';
 
@@ -78,7 +78,7 @@ export function QuestLog({
           </span>
           <span className="sr-only tablet:not-sr-only">
             {label}
-            <span className="sr-only"> {ar.progress.status[state]}</span>
+            <span className="sr-only"> {messages.progress.status[state]}</span>
           </span>
         </li>
       ))}

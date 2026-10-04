@@ -3,7 +3,7 @@
 import { useId } from 'react';
 import type { ScenePoint } from '@/components/insight/scene-photo';
 import { cx } from '@/lib/cx';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 
 export interface SceneInsightListProps {
   points: readonly ScenePoint[];
@@ -22,7 +22,7 @@ export function SceneInsightList({ points, selectedId, onSelect }: SceneInsightL
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3">
       <h2 id={headingId} className="m-0 font-semibold text-[1.1875rem] text-fg">
-        {ar.scene.hint}
+        {messages.scene.hint}
       </h2>
       <ul className="m-0 flex list-none flex-col gap-3 p-0">
         {points.map((point) => {
@@ -50,7 +50,7 @@ export function SceneInsightList({ points, selectedId, onSelect }: SceneInsightL
                   }}
                 />
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="font-heading font-semibold text-fg text-lg">{point.title}</span>
+                  <span className="font-semibold text-fg text-lg">{point.title}</span>
                   {point.glimpse === undefined ? null : (
                     <span className="text-fg-soft text-sm">{point.glimpse}</span>
                   )}

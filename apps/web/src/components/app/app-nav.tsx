@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cx } from '@/lib/cx';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 import { CAPTURE, isActive, type NavItem, SECTIONS } from './nav-items';
 
 // Jakob's law: five tabs at the bottom, as in every app people already use.
@@ -50,7 +50,7 @@ export function AppNav() {
 
   return (
     <nav
-      aria-label={ar.nav.label}
+      aria-label={messages.nav.label}
       className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[var(--nav-gap)] tablet:hidden"
     >
       <ul className="nav-glass pointer-events-auto grid h-[var(--nav-height)] w-full max-w-md grid-cols-5 items-center rounded-full px-1">

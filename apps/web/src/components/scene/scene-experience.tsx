@@ -2,18 +2,18 @@
 
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { Wordmark } from '@/components/app/wordmark';
+import { LogoMark } from '@/components/brand/logo';
 import { OrnamentDivider } from '@/components/fx/ornament-divider';
 import { ScenePhoto, type ScenePoint } from '@/components/insight/scene-photo';
 import { StageLayout } from '@/components/layout/layouts';
 import { Chip } from '@/components/ui/chip';
 import { Sheet } from '@/components/ui/sheet';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 import { SceneInsightList } from './scene-insight-list';
 import { SceneIntro } from './scene-intro';
 import { SceneStarter } from './scene-starter';
 
-const EXAMPLE = ar.scene.example;
+const EXAMPLE = messages.scene.example;
 export const RAIN_PHOTO = { src: '/scene/rain-olive.jpg', width: 768, height: 1344 } as const;
 
 // Where the two insights sit on the rain photo, as ratios of the photo: the
@@ -68,7 +68,7 @@ export function SceneExperience() {
         stageLabel={EXAMPLE.alt}
         panel={
           <div className="hidden flex-col gap-7 pt-2 pb-6 tablet:flex">
-            <SceneIntro chip={<Chip>{ar.scene.prepared}</Chip>} />
+            <SceneIntro chip={<Chip>{messages.scene.prepared}</Chip>} />
             <SceneInsightList points={RAIN_POINTS} selectedId={selected} onSelect={setSelected} />
             <OrnamentDivider />
             <SceneStarter onFile={takeFile} onLink={takeLink} />
@@ -90,21 +90,19 @@ export function SceneExperience() {
             {/* The phone mockup: the name and the state on top, the hint and the way to a new scene below. */}
             <div className="absolute inset-x-0 top-0 flex items-center justify-between px-5 pt-[max(20px,env(safe-area-inset-top))] tablet:hidden">
               <h1 className="m-0">
-                <Wordmark className="text-[1.7rem] text-glass-fg" />
+                <LogoMark title={messages.brand.name} className="h-14" />
               </h1>
-              <Chip tone="glass">{ar.scene.prepared}</Chip>
+              <Chip tone="glass">{messages.scene.prepared}</Chip>
             </div>
             <div className="absolute inset-x-0 bottom-[calc(var(--nav-clearance)+4px)] flex flex-col items-center gap-0.5 px-5 text-center tablet:hidden">
-              <p className="m-0 font-heading font-semibold text-[1.3rem] text-fg">
-                {ar.scene.hint}
-              </p>
+              <p className="m-0 font-semibold text-[1.3rem] text-fg">{messages.scene.hint}</p>
               <button
                 type="button"
                 onClick={() => setStarterOpen(true)}
                 aria-haspopup="dialog"
                 className="flex min-h-12 items-center px-3 text-link"
               >
-                {ar.scene.captureOwn}
+                {messages.scene.captureOwn}
               </button>
             </div>
           </ScenePhoto>
@@ -118,13 +116,17 @@ export function SceneExperience() {
         description={point?.glimpse}
       >
         <div className="flex flex-col items-start gap-3 pb-2">
-          <Chip tone="primary">{ar.comingSoon.badge}</Chip>
+          <Chip tone="primary">{messages.comingSoon.badge}</Chip>
           <p className="m-0 text-fg leading-[1.9]">{EXAMPLE.opening}</p>
           <p className="m-0 text-fg-muted text-sm">{EXAMPLE.pending}</p>
         </div>
       </Sheet>
 
-      <Sheet open={starterOpen} onClose={() => setStarterOpen(false)} title={ar.nav.captureScene}>
+      <Sheet
+        open={starterOpen}
+        onClose={() => setStarterOpen(false)}
+        title={messages.nav.captureScene}
+      >
         <SceneStarter onFile={takeFile} onLink={takeLink} className="mb-2" />
       </Sheet>
 
@@ -132,7 +134,9 @@ export function SceneExperience() {
         open={received !== null}
         onClose={() => setReceived(null)}
         title={
-          received?.kind === 'link' ? ar.scene.received.linkTitle : ar.scene.received.photoTitle
+          received?.kind === 'link'
+            ? messages.scene.received.linkTitle
+            : messages.scene.received.photoTitle
         }
       >
         <div className="flex flex-col gap-4 pb-2">
@@ -140,7 +144,7 @@ export function SceneExperience() {
             <div className="relative h-64 overflow-hidden rounded-[var(--radius-panel)]">
               <Image
                 src={received.url}
-                alt={ar.scene.received.photoAlt}
+                alt={messages.scene.received.photoAlt}
                 fill
                 unoptimized
                 className="object-contain"
@@ -154,7 +158,7 @@ export function SceneExperience() {
               {received?.url}
             </p>
           )}
-          <p className="m-0 text-fg-soft leading-[1.9]">{ar.scene.received.note}</p>
+          <p className="m-0 text-fg-soft leading-[1.9]">{messages.scene.received.note}</p>
         </div>
       </Sheet>
     </>

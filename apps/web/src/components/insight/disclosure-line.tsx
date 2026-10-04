@@ -1,6 +1,6 @@
 import { SparkIcon } from '@/components/icons';
 import { cx } from '@/lib/cx';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 
 /**
  * The fixed AI disclosure (master prompt §12), shown on the result and in the
@@ -15,7 +15,7 @@ export function DisclosureLine({ className }: { className?: string }) {
       )}
     >
       <SparkIcon width="15" height="15" className="shrink-0" />
-      {ar.disclosure.ai}
+      {messages.disclosure.ai}
     </p>
   );
 }

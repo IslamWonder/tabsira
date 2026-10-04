@@ -136,10 +136,7 @@ export function InsightPoint({
         </span>
       </span>
       <span className="glass flex flex-col items-center rounded-[14px] px-3.5 py-1.5 text-center">
-        <span
-          id={titleId}
-          className="font-heading font-semibold text-[1.0625rem] text-glass-fg leading-snug"
-        >
+        <span id={titleId} className="font-semibold text-[1.0625rem] text-glass-fg leading-snug">
           {title}
         </span>
         {glimpse === undefined ? null : (

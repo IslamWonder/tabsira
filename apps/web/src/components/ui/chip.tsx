@@ -7,8 +7,8 @@ const TONES: Record<ChipTone, string> = {
   neutral: 'border border-line bg-surface text-fg-soft',
   primary:
     'border border-[var(--chip-primary-border)] bg-[var(--chip-primary-bg)] text-[var(--chip-primary-fg)]',
-  quran: 'bg-[var(--quran-label-bg)] font-heading text-[var(--quran-label)]',
-  sunnah: 'bg-[var(--sunnah-label-bg)] font-heading text-[var(--sunnah-label)]',
+  quran: 'bg-[var(--quran-label-bg)] font-semibold text-[var(--quran-label)]',
+  sunnah: 'bg-[var(--sunnah-label-bg)] font-semibold text-[var(--sunnah-label)]',
   // Over a photo: the glass keeps the label legible on its brightest pixels.
   glass: 'glass text-glass-fg-soft',
 };

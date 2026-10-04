@@ -2,7 +2,7 @@
 
 import { useId } from 'react';
 import { cx } from '@/lib/cx';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 import { setThemePreference, THEME_PREFERENCES } from '@/theme/theme';
 import { useThemePreference } from '@/theme/use-theme-preference';
 import { THEME_ICONS } from './theme-icons';
@@ -23,7 +23,7 @@ export function ThemeSwitcher({ className }: ThemeSwitcherProps) {
 
   return (
     <fieldset className={cx('flex flex-col gap-2', className)} aria-describedby={hintId}>
-      <legend className="mb-2 font-heading font-semibold text-fg text-lg">{ar.theme.legend}</legend>
+      <legend className="mb-2 font-semibold text-fg text-lg">{messages.theme.legend}</legend>
       <div className="grid grid-cols-3 gap-1 rounded-full border border-line bg-surface p-1">
         {THEME_PREFERENCES.map((option) => {
           const Icon = THEME_ICONS[option];
@@ -46,13 +46,13 @@ export function ThemeSwitcher({ className }: ThemeSwitcherProps) {
                 className="sr-only"
               />
               <Icon width="18" height="18" />
-              <span>{ar.theme[option]}</span>
+              <span>{messages.theme[option]}</span>
             </label>
           );
         })}
       </div>
       <p id={hintId} className="text-fg-muted text-sm">
-        {ar.theme.hint}
+        {messages.theme.hint}
       </p>
     </fieldset>
   );

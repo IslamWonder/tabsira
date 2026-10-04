@@ -79,10 +79,15 @@
   --color-step-title: var(--step-title);
   --color-danger: var(--danger);
   --color-focus: var(--focus);
+  --color-brand: var(--brand);
 
-  /* Headings Reem Kufi, interface Readex Pro, hadith Noto Naskh, Quran KFGQPC, ornate brackets Amiri. */
+  /*
+   * Display headings Reem Kufi, interface Readex Pro, hadith Noto Naskh, Quran KFGQPC, ornate brackets Amiri.
+   * Reem Kufi is a display face: below 24 px its letters close up (the word for «life» reads as another word), so
+   * `font-display` is kept for headings of 24 px and more (src/theme/typography.test.ts).
+   */
   --font-sans: var(--font-readex-arabic), var(--font-readex-latin), system-ui, sans-serif;
-  --font-heading: var(--font-reem-kufi), var(--font-readex-latin), system-ui, sans-serif;
+  --font-display: var(--font-reem-kufi), var(--font-readex-latin), system-ui, sans-serif;
   --font-hadith: var(--font-noto-naskh), serif;
   --font-quran: var(--font-uthmanic-hafs), var(--font-noto-naskh), serif;
   --font-ornament: var(--font-amiri), serif;
@@ -190,10 +195,12 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* Headings read in the interface face; a large display heading opts into Reem Kufi with `font-display`. */
   h1,
   h2,
   h3 {
-    font-family: var(--font-heading);
+    font-family: var(--font-sans);
+    font-weight: 600;
     line-height: 1.35;
     text-wrap: balance;
   }
@@ -308,7 +315,7 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* The gilded wordmark. A brand name has no contrast requirement (WCAG 1.4.3), but forced colours still win. */
+/* Gilded display headings (24 px and up, large text: 3:1 at every stop, src/theme/contrast.test.ts); forced colours still win. */
 @utility text-gilded {
   color: var(--gilded-fallback);
   background-image: var(--gilded);

@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 import { VICTORY_EVENT } from './celebrate';
 import { KHATAM_RATIO, starPoints } from './geometry';
 
 function Banner() {
-  const words = ar.victory.title.split(' ');
+  const words = messages.victory.title.split(' ');
   return (
     <div
       className="relative mx-auto flex origin-center flex-col items-center gap-2 py-7 text-center animate-[fx-banner_0.55s_cubic-bezier(0.22,1,0.36,1)_both]"
@@ -29,7 +29,7 @@ function Banner() {
           style={{ fill: 'var(--glow-gold)' }}
         />
       </svg>
-      <p className="m-0 font-bold font-heading text-[2.5rem] leading-[1.3] tablet:text-5xl">
+      <p className="m-0 font-bold font-display text-[2.5rem] leading-[1.3] tablet:text-5xl">
         {words.map((word, index) => (
           <span
             key={word}

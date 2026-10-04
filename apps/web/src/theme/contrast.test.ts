@@ -173,7 +173,8 @@ describe.each(Object.entries(THEMES))('WCAG 2.2 AA contrast, %s theme', (theme, 
 });
 
 describe.each(Object.entries(THEMES))('gilded headings, %s theme', (_theme, tokens) => {
-  // Headings set in the gold gradient are large text (28 px and up, bold): 3:1 at every stop.
+  // Gilded headings are display headings, 24 px and up (src/theme/typography.test.ts): large
+  // text, so 3:1 at every stop of the gradient.
   it('keeps every stop of the gilding at 3:1 on the page', () => {
     const stops = (tokens.gilded ?? '').match(/#[0-9a-f]{6}/g) ?? [];
     expect(stops.length).toBeGreaterThanOrEqual(3);

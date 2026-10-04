@@ -3,10 +3,10 @@ import { ComingSoon } from '@/components/app/coming-soon';
 import { EmptyStage } from '@/components/app/empty-stage';
 import { AtlasIcon } from '@/components/icons';
 import { MapLayout } from '@/components/layout/layouts';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 
 export const metadata: Metadata = {
-  title: ar.nav.atlas,
+  title: messages.nav.atlas,
   alternates: { canonical: '/atlas' },
 };
 
@@ -14,18 +14,18 @@ export const metadata: Metadata = {
 export default function AtlasPage() {
   return (
     <MapLayout
-      mapLabel={ar.pages.atlas.mapLabel}
+      mapLabel={messages.pages.atlas.mapLabel}
       mapClassName="hidden tablet:block"
       panel={
         <ComingSoon
           icon={<AtlasIcon width="28" height="28" />}
-          title={ar.pages.atlas.title}
-          description={ar.pages.atlas.description}
+          title={messages.pages.atlas.title}
+          description={messages.pages.atlas.description}
           className="py-10 tablet:py-12"
         />
       }
       map={<EmptyStage icon={<AtlasIcon width="28" height="28" />} />}
-      className="pb-nav tablet:pb-0"
+      className="pb-4 tablet:pb-0"
     />
   );
 }

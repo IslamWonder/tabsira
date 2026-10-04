@@ -19,9 +19,9 @@ const BASE =
 
 const VARIANTS: Record<ButtonVariant, string> = {
   // Von Restorff: one glowing fill per screen marks the action that matters.
-  primary: 'fill-primary font-heading font-bold hover:brightness-110',
+  primary: 'fill-primary font-semibold hover:brightness-110',
   // The call to capture a scene: gold by day, the glowing emerald by night.
-  cta: 'fill-cta font-heading font-bold hover:brightness-105',
+  cta: 'fill-cta font-semibold hover:brightness-105',
   secondary:
     'border-[1.5px] border-[var(--secondary-border)] bg-[var(--secondary-bg)] text-[var(--secondary-fg)] ' +
     'hover:bg-surface',

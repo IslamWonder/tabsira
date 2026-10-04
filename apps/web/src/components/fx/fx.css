@@ -108,6 +108,7 @@
   pointer-events: none;
 }
 
+/* Ornament, not layout: each corner is drawn for its physical corner, in any direction. */
 .fx-corner {
   position: absolute;
   width: 30px;
@@ -116,24 +117,24 @@
   pointer-events: none;
 }
 
-.fx-corner--top-start {
+.fx-corner--top-right {
   top: 1px;
   right: 1px;
   transform: scaleX(-1);
 }
 
-.fx-corner--top-end {
+.fx-corner--top-left {
   top: 1px;
   left: 1px;
 }
 
-.fx-corner--bottom-start {
+.fx-corner--bottom-right {
   bottom: 1px;
   right: 1px;
   transform: scale(-1);
 }
 
-.fx-corner--bottom-end {
+.fx-corner--bottom-left {
   bottom: 1px;
   left: 1px;
   transform: scaleY(-1);
@@ -260,7 +261,55 @@
   border-color: color-mix(in srgb, var(--ornament) 35%, transparent);
 }
 
+/* ─── The full-screen choices: a wash over the page, one composed entrance ─ */
+
+/* The page stays in sight under it: a soft wash, and a blur too slight to stop it being read. */
+.fx-scrim {
+  background-color: var(--scrim);
+  -webkit-backdrop-filter: blur(1.5px);
+  backdrop-filter: blur(1.5px);
+}
+
+/* The window itself stays calm to read: the page under the wash does not show through it. */
+.fx-ornate.fx-dialog-surface {
+  background-color: color-mix(in srgb, var(--bg) 94%, transparent);
+}
+
+/* Opacity only, on wrappers: nothing transforms the page (AGENTS.md lessons). */
+.fx-enter {
+  animation: fx-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.fx-enter--2 {
+  animation-delay: 140ms;
+}
+
+.fx-enter--3 {
+  animation-delay: 280ms;
+}
+
+/* Reduced motion: no fade and no wait, everything is there at once. */
+@media (prefers-reduced-motion: reduce) {
+  .fx-enter {
+    animation: none;
+  }
+}
+
+:root[data-motion="reduce"] .fx-enter {
+  animation: none;
+}
+
 /* ─── Keyframes ────────────────────────────────────────────────────── */
+
+@keyframes fx-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 
 @keyframes fx-drift-a {
   0%,

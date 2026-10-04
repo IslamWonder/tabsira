@@ -3,7 +3,7 @@ import { OrnateCorners } from '@/components/fx/ornate-corners';
 import { CheckIcon, ExternalIcon } from '@/components/icons';
 import { Chip } from '@/components/ui/chip';
 import { cx } from '@/lib/cx';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 import { type HadithRole, type HadithSpan, segmentHadith, spansAreValid } from './hadith-segments';
 
 interface EvidenceBase {
@@ -56,7 +56,7 @@ function ExternalLink({ href, children }: { href: string; children: string }) {
       className="inline-flex min-h-12 shrink-0 items-center gap-1.5 font-medium text-[0.875rem] text-link underline-offset-4 hover:underline"
     >
       {children}
-      <span className="sr-only"> {ar.a11y.opensInNewTab}</span>
+      <span className="sr-only"> {messages.a11y.opensInNewTab}</span>
       <ExternalIcon />
     </a>
   );
@@ -88,19 +88,21 @@ export function EvidenceCard(props: EvidenceCardProps) {
       <header className="flex items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Heading id={labelId} className="m-0 text-base">
-            <Chip tone={props.variant}>{isQuran ? ar.evidence.quran : ar.evidence.sunnah}</Chip>
+            <Chip tone={props.variant}>
+              {isQuran ? messages.evidence.quran : messages.evidence.sunnah}
+            </Chip>
           </Heading>
           <span className="text-[0.8125rem] text-fg-soft">{props.reference}</span>
           {props.verified ? (
             <Chip tone="primary" icon={<CheckIcon width="13" height="13" />}>
-              {ar.evidence.verified}
+              {messages.evidence.verified}
             </Chip>
           ) : null}
         </div>
         {props.variant === 'quran' ? (
-          <ExternalLink href={props.sourceHref}>{ar.evidence.openQuranpedia}</ExternalLink>
+          <ExternalLink href={props.sourceHref}>{messages.evidence.openQuranpedia}</ExternalLink>
         ) : (
-          <ExternalLink href={props.verifyHref}>{ar.evidence.verifyDorar}</ExternalLink>
+          <ExternalLink href={props.verifyHref}>{messages.evidence.verifyDorar}</ExternalLink>
         )}
       </header>
 
@@ -112,11 +114,11 @@ export function EvidenceCard(props: EvidenceCardProps) {
         >
           {/* The ornate brackets are their own elements, in Amiri, never part of the verse text. */}
           <span aria-hidden="true" className="font-ornament text-quran">
-            {ar.evidence.quranOpen}
+            {messages.evidence.quranOpen}
           </span>
           <span data-scripture="quran">{props.text}</span>
           <span aria-hidden="true" className="font-ornament text-quran">
-            {ar.evidence.quranClose}
+            {messages.evidence.quranClose}
           </span>
         </p>
       ) : (
@@ -128,9 +130,11 @@ export function EvidenceCard(props: EvidenceCardProps) {
           {props.ruling === undefined ? (
             <span />
           ) : (
-            <p className="m-0 text-[0.8125rem] text-fg-muted">{ar.evidence.ruling(props.ruling)}</p>
+            <p className="m-0 text-[0.8125rem] text-fg-muted">
+              {messages.evidence.ruling(props.ruling)}
+            </p>
           )}
-          <ExternalLink href={props.sourceHref}>{ar.evidence.openSource}</ExternalLink>
+          <ExternalLink href={props.sourceHref}>{messages.evidence.openSource}</ExternalLink>
         </footer>
       ) : null}
     </article>

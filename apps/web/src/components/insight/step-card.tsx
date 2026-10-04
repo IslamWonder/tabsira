@@ -2,7 +2,7 @@ import { useId } from 'react';
 import { CheckIcon, SeedlingIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { cx } from '@/lib/cx';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 
 export type StepStatus = 'idle' | 'saving' | 'saved' | 'deferred';
 
@@ -18,9 +18,9 @@ export interface StepCardProps {
 }
 
 const STATUS_TEXT: Record<Exclude<StepStatus, 'idle'>, string> = {
-  saving: ar.step.saving,
-  saved: ar.step.saved,
-  deferred: ar.step.deferred,
+  saving: messages.step.saving,
+  saved: messages.step.saved,
+  deferred: messages.step.deferred,
 };
 
 /**
@@ -55,10 +55,10 @@ export function StepCard({
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <h2
           id={titleId}
-          className="m-0 flex items-center gap-2 font-bold text-[1.0625rem] text-step-title"
+          className="m-0 flex items-center gap-2 font-semibold text-[1.0625rem] text-step-title"
         >
           <SeedlingIcon width="20" height="20" />
-          {ar.step.title}
+          {messages.step.title}
         </h2>
         <p className="m-0 text-[0.96875rem] text-fg leading-[1.85]">{body}</p>
         <p role="status" className="m-0 flex min-h-6 items-center gap-2 text-fg-soft text-sm">
@@ -75,7 +75,7 @@ export function StepCard({
             {confirmLabel}
           </Button>
           <Button variant="ghost" onClick={onDefer} disabled={saving}>
-            {ar.step.defer}
+            {messages.step.defer}
           </Button>
         </div>
       )}

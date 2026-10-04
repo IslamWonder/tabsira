@@ -2,7 +2,7 @@ import { QuestLog } from '@/components/fx/quest-log';
 import { StageOrbit } from '@/components/fx/stage-orbit';
 import { Button } from '@/components/ui/button';
 import { cx } from '@/lib/cx';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 
 export const STAGES = ['scene', 'evidence', 'verify', 'compose'] as const;
 export type StageId = (typeof STAGES)[number];
@@ -48,12 +48,12 @@ export function ProgressStages({
   className,
 }: ProgressStagesProps) {
   const done = current === 'done';
-  const label = done ? ar.progress.complete : ar.progress.stages[current];
+  const label = done ? messages.progress.complete : messages.progress.stages[current];
   const states = STAGES.map((stage) => stageState(stage, current));
 
   return (
     <section
-      aria-label={ar.progress.label}
+      aria-label={messages.progress.label}
       className={cx(
         'flex flex-col gap-4 tablet:flex-row tablet:items-center tablet:gap-10',
         className
@@ -64,25 +64,25 @@ export function ProgressStages({
         <div role="status" aria-live="polite" aria-atomic="true" className="flex flex-col gap-1">
           <p
             key={current}
-            className="m-0 font-heading font-semibold text-fg text-xl motion-safe:animate-fade-in"
+            className="m-0 font-semibold text-fg text-xl motion-safe:animate-fade-in"
           >
             {label}
           </p>
           {slow && !done ? (
-            <p className="m-0 max-w-sm text-fg-soft text-sm">{ar.progress.slow}</p>
+            <p className="m-0 max-w-sm text-fg-soft text-sm">{messages.progress.slow}</p>
           ) : null}
         </div>
         <QuestLog
           entries={STAGES.map((stage, index) => ({
             key: stage,
-            label: ar.progress.stages[stage],
+            label: messages.progress.stages[stage],
             state: states[index] as StageState,
           }))}
         />
         {onCancel === undefined || done ? null : (
           <div>
             <Button variant="ghost" onClick={onCancel} className="-ms-4">
-              {ar.progress.cancel}
+              {messages.progress.cancel}
             </Button>
           </div>
         )}

@@ -75,11 +75,12 @@ export function StageLayout({
         {/* From tablet up the photo melts into the page on the panel side and at the foot. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 hidden tablet:block"
-          style={{
-            background:
-              'linear-gradient(to left, var(--stage-fade) 0%, transparent 22%), linear-gradient(to top, var(--stage-fade) 0%, transparent 14%)',
-          }}
+          className={cx(
+            'pointer-events-none absolute inset-0 hidden tablet:block',
+            // Toward the panel, which sits on the start side in either direction.
+            'bg-[linear-gradient(to_right,var(--stage-fade)_0%,transparent_22%),linear-gradient(to_top,var(--stage-fade)_0%,transparent_14%)]',
+            'rtl:bg-[linear-gradient(to_left,var(--stage-fade)_0%,transparent_22%),linear-gradient(to_top,var(--stage-fade)_0%,transparent_14%)]'
+          )}
         />
       </section>
     </div>
