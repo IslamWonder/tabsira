@@ -124,6 +124,58 @@ def test_a_misspelt_provider_key_stops_startup_instead_of_being_ignored(monkeypa
     assert "AI_OVH__VISON_MODEL: Extra inputs are not permitted" in str(caught.value)
 
 
+def test_ai_call_limits_default_and_are_bounded(make_settings):
+    settings = make_settings()
+
+    assert settings.ai_timeout_seconds == 90.0
+    assert settings.ai_max_retries == 2
+    assert settings.ai_retry_backoff_seconds == 1.0
+    assert "AI_MAX_RETRIES" in errors_of(ai_max_retries=6)
+    assert "AI_TIMEOUT_SECONDS" in errors_of(ai_timeout_seconds=0)
+    assert "AI_RETRY_BACKOFF_SECONDS" in errors_of(ai_retry_backoff_seconds=-1)
+
+
+def test_each_provider_carries_its_price_table(make_settings, monkeypatch):
+    settings = make_settings()
+
+    assert settings.ai_ovh.prices["Qwen3.8-27B"].output == 3.19
+    assert settings.ai_openai.prices["gpt-5.4-mini-2026-03-17"].cached_input == 0.075
+    assert "gpt-5.4-mini-2026-03-17" not in settings.ai_ovh.prices
+
+    monkeypatch.setenv("AI_OVH__PRICES", '{"Qwen3.5-9B": {"input": 0.2, "output": 0.3}}')
+    replaced = make_settings()
+    assert list(replaced.ai_ovh.prices) == ["Qwen3.5-9B"]
+    assert replaced.ai_ovh.prices["Qwen3.5-9B"].cached_input is None
+
+
+def test_a_negative_or_unknown_price_field_is_refused():
+    assert "AI_OVH__PRICES" in errors_of(ai_ovh={"prices": {"m": {"input": -1}}})
+    assert "Extra inputs" in errors_of(ai_ovh={"prices": {"m": {"input": 1, "outptu": 2}}})
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"ai_ovh": {"vision_model": "gpt-oss-120b"}},
+        {"ai_openai": {"chat_model": "GPT-OSS-20B"}},
+        {"ai_openai": {"guard_model": "openai/gpt_oss_safeguard"}},
+        {"ai_ovh": {"prices": {"gpt-oss-20b": {"input": 0.05}}}},
+    ],
+)
+def test_gpt_oss_models_are_refused_everywhere(values):
+    message = errors_of(**values)
+
+    assert "is a gpt-oss model, which this project never uses" in message
+
+
+def test_reasoning_effort_accepts_only_the_known_levels(make_settings):
+    assert (
+        make_settings(ai_openai={"reasoning_effort": "none"}).ai_openai.reasoning_effort == "none"
+    )
+    assert make_settings().ai_ovh.reasoning_effort == ""
+    assert "AI_OVH__REASONING_EFFORT" in errors_of(ai_ovh={"reasoning_effort": "maximum"})
+
+
 def test_every_stage_has_a_model_field(make_settings):
     settings = make_settings(ai_ovh={f"{stage.value}_model": stage.value for stage in AiStage})
 

@@ -106,6 +106,51 @@ class ConfigError(RuntimeError):
     """The configuration is missing a key or holds an invalid one."""
 
 
+# AGENTS.md: gpt-oss models are never used, whatever the provider offers.
+FORBIDDEN_MODEL_MARKERS = ("gpt-oss", "gpt_oss", "gptoss")
+
+
+def refuse_forbidden_model(model: str) -> str:
+    """Return `model`, or raise ValueError when it belongs to a forbidden family."""
+    if any(marker in model.lower() for marker in FORBIDDEN_MODEL_MARKERS):
+        message = f"{model} is a gpt-oss model, which this project never uses"
+        raise ValueError(message)
+    return model
+
+
+class ModelPrice(BaseModel):
+    """What a model costs, in US dollars per million tokens."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    input: Annotated[float, Field(ge=0)]
+    output: Annotated[float, Field(ge=0)] = 0.0
+    # Input tokens served from the provider's prompt cache; None when it has no discount.
+    cached_input: Annotated[float, Field(ge=0)] | None = None
+
+
+# Prices as of 4 October 2026 (docs/research/ai-providers.md): OVH from its
+# /v1/models endpoint, OpenAI from its pricing page.
+OVH_PRICES = {
+    "Qwen3.8-27B": ModelPrice(input=0.47, output=3.19),
+    "Qwen3.6-27B": ModelPrice(input=0.47, output=3.19),
+    "Qwen3.5-397B-A17B": ModelPrice(input=0.71, output=4.25),
+    "Qwen3.5-9B": ModelPrice(input=0.12, output=0.18),
+    "Qwen2.5-VL-72B-Instruct": ModelPrice(input=1.01, output=1.01),
+    "bge-m3": ModelPrice(input=0.01),
+    "Qwen3-Embedding-8B": ModelPrice(input=0.12),
+    "Qwen3Guard-Gen-8B": ModelPrice(input=0.0),
+    "Qwen3Guard-Gen-0.6B": ModelPrice(input=0.0),
+}
+OPENAI_PRICES = {
+    "gpt-5.4-mini-2026-03-17": ModelPrice(input=0.75, output=4.5, cached_input=0.075),
+    "gpt-5.4-nano-2026-03-17": ModelPrice(input=0.2, output=1.25, cached_input=0.02),
+    "text-embedding-3-small": ModelPrice(input=0.02),
+    "text-embedding-3-large": ModelPrice(input=0.13),
+    "omni-moderation-latest": ModelPrice(input=0.0),
+}
+
+
 class ProviderSettings(BaseModel):
     """
     One AI provider: its endpoint, its key and the model of each stage.
@@ -127,6 +172,31 @@ class ProviderSettings(BaseModel):
     chat_model: str = ""
     embedding_model: str = ""
     guard_model: str = ""
+    # Sent as `reasoning_effort` when set; empty leaves the provider's default.
+    reasoning_effort: Annotated[str, Field(pattern=r"^(|none|minimal|low|medium|high|xhigh)$")] = ""
+    # Price of each model, keyed by model id; a model without a price is recorded with no cost.
+    prices: dict[str, ModelPrice] = Field(default_factory=dict)
+
+    @field_validator(
+        "vision_model",
+        "planner_model",
+        "rerank_model",
+        "verify_model",
+        "compose_model",
+        "chat_model",
+        "embedding_model",
+        "guard_model",
+    )
+    @classmethod
+    def _refuse_forbidden_models(cls, value: str) -> str:
+        return refuse_forbidden_model(value)
+
+    @field_validator("prices")
+    @classmethod
+    def _refuse_forbidden_prices(cls, value: dict[str, ModelPrice]) -> dict[str, ModelPrice]:
+        for model in value:
+            refuse_forbidden_model(model)
+        return value
 
     def model_for(self, stage: AiStage) -> str:
         """Return the model configured for `stage`; empty when none is set yet."""
@@ -137,12 +207,14 @@ class OvhSettings(ProviderSettings):
     """OVHcloud AI Endpoints (OpenAI-compatible API)."""
 
     base_url: str = OVH_BASE_URL
+    prices: dict[str, ModelPrice] = Field(default_factory=lambda: dict(OVH_PRICES))
 
 
 class OpenAISettings(ProviderSettings):
     """OpenAI."""
 
     base_url: str = OPENAI_BASE_URL
+    prices: dict[str, ModelPrice] = Field(default_factory=lambda: dict(OPENAI_PRICES))
 
 
 def _env_files(here: Path) -> tuple[Path, ...]:
@@ -312,6 +384,13 @@ class Settings(BaseSettings):
     ai_provider: AiProvider = AiProvider.OVH
     ai_ovh: OvhSettings = OvhSettings()
     ai_openai: OpenAISettings = OpenAISettings()
+    # Seconds one model request may take before it is abandoned (and retried).
+    ai_timeout_seconds: Annotated[float, Field(gt=0)] = 90.0
+    # Further attempts after a timeout, a network error, a 429, a 5xx or an
+    # answer that does not match its schema. Bounded: a stage never loops.
+    ai_max_retries: Annotated[int, Field(ge=0, le=5)] = 2
+    # Wait before the first retry; doubled for each later one.
+    ai_retry_backoff_seconds: Annotated[float, Field(ge=0)] = 1.0
 
     @field_validator("cors_origins", mode="before")
     @classmethod
