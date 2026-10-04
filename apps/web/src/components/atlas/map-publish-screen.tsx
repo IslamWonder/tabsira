@@ -141,6 +141,8 @@ export function MapPublishScreen() {
           source: chosen.source,
           meaning,
           measured_at: chosen.measuredAt,
+          // The photo choice has no control yet: the entry never shows the photo from here.
+          photo: false,
         }),
       P.saved
     );

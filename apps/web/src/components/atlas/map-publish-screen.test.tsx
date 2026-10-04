@@ -85,6 +85,7 @@ describe('MapPublishScreen', () => {
         source: 'device_capture',
         meaning: 'capture_point',
         measured_at: new Date(1_790_000_000_000).toISOString(),
+        photo: false,
       },
     ]);
     expect(screen.getByText('[موقع تقريبي ضمن نحو 1000 م]')).toBeInTheDocument();

@@ -251,7 +251,10 @@ async def test_a_photo_is_kept_only_when_its_owner_agreed_and_the_scene_is_not_s
     await agree_to_photos(author)
     cases = {
         "agreed": ({"photo_ref": "photos/a", "photo_consent": True}, "photos/a"),
-        "no consent for this insight": ({"photo_ref": "photos/b", "photo_consent": False}, None),
+        "no photo kept for this insight": (
+            {"photo_ref": "photos/b", "photo_consent": False},
+            None,
+        ),
         "sensitive": (
             {"photo_ref": "photos/c", "photo_consent": True, "scene_sensitive": True},
             None,
@@ -261,7 +264,7 @@ async def test_a_photo_is_kept_only_when_its_owner_agreed_and_the_scene_is_not_s
     }
 
     for name, (overrides, expected) in cases.items():
-        response = await create(author, make_insight(author, **overrides))
+        response = await create(author, make_insight(author, **overrides), photo=True)
         body = response.json()
         stored = await db_session.scalar(
             select(InsightPublication).order_by(InsightPublication.id.desc())
@@ -270,6 +273,14 @@ async def test_a_photo_is_kept_only_when_its_owner_agreed_and_the_scene_is_not_s
         assert stored.photo_ref == expected, name
         # The reference is the private key of the owner's copy: no response carries it.
         assert "photos/" not in response.text, name
+
+    # Without the owner's choice in the request, a kept photo is not offered either.
+    not_chosen = await create(author, make_insight(author, **cases["agreed"][0]))
+    stored = await db_session.scalar(
+        select(InsightPublication).order_by(InsightPublication.id.desc())
+    )
+    assert not_chosen.json()["insight"]["has_photo"] is False
+    assert stored.photo_ref is None
 
 
 async def test_the_photo_rules_are_checked_again_when_the_post_is_made(
@@ -290,16 +301,18 @@ async def test_the_photo_rules_are_checked_again_when_the_post_is_made(
     # Nobody answered the photo question for `no_storage`: the account never agreed.
     results = {
         "withdrew the consent": (
-            await create(switched_off, make_insight(switched_off, **offered))
+            await create(switched_off, make_insight(switched_off, **offered), photo=True)
         ).json(),
-        "under 13": (await create(young, make_insight(young, **offered))).json(),
-        "never agreed": (await create(no_storage, make_insight(no_storage, **offered))).json(),
+        "under 13": (await create(young, make_insight(young, **offered), photo=True)).json(),
+        "never agreed": (
+            await create(no_storage, make_insight(no_storage, **offered), photo=True)
+        ).json(),
     }
     account_app.state.settings = account_settings.model_copy(
         update={"feature_photo_storage": False}
     )
     results["feature off"] = (
-        await create(off_feature, make_insight(off_feature, **offered))
+        await create(off_feature, make_insight(off_feature, **offered), photo=True)
     ).json()
 
     assert {name: body["insight"]["has_photo"] for name, body in results.items()} == {

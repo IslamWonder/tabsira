@@ -130,6 +130,7 @@ export const OWNER_ENTRY: MapEntryOwner = {
     },
   },
   place: PLACE,
+  photo: false,
   published_at: null,
   withdrawn_at: null,
   created_at: '2026-10-04T08:00:00Z',

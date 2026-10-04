@@ -66,7 +66,10 @@ export function createDraft({
   reflection,
   visibility,
 }: DraftInput): Promise<Result<Post>> {
-  return attempt(api.POST('/posts', { body: { insight_id: insightId, reflection, visibility } }));
+  // The photo choice has no control yet: a post made from here never shows the photo.
+  return attempt(
+    api.POST('/posts', { body: { insight_id: insightId, reflection, visibility, photo: false } })
+  );
 }
 
 export function editDraft(

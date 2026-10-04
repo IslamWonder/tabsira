@@ -79,9 +79,11 @@ def snapshot_of(insight: Insight, scan: Scan | None) -> InsightSnapshot:
         ),
         step_text=str(step["text"]) if step.get("text") else None,
         concepts=tuple(insight.entity_ids or ()),
-        # No photo is kept with an insight today (src/models/scan.py): nothing to publish.
-        photo_ref=None,
-        photo_consent=False,
+        # The private key of the copy «تمّ» kept with the owner's consent (`photo_service`), or
+        # nothing. Whether this publication shows it is the owner's choice in the request body;
+        # whether the rules still allow it is checked again by `publication_service`.
+        photo_ref=insight.photo_key,
+        photo_consent=insight.photo_key is not None,
         scene_sensitive=scan is not None and scan.sensitive,
     )
 

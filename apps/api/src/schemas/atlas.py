@@ -37,6 +37,11 @@ class CapturePointIn(BaseModel):
     meaning: LocationMeaning = LocationMeaning.CAPTURE_POINT
     captured_at: datetime | None = None
     measured_at: datetime | None = None
+    photo: bool = Field(
+        default=False,
+        description="Show the insight's kept photo with the entry; nothing without a kept "
+        "photo and the owner's photo consent (v2 §19)",
+    )
 
 
 class CapturePointOut(BaseModel):
@@ -95,6 +100,7 @@ class MapEntryOwnerOut(BaseModel):
     capture: CapturePointOut | None = Field(description="Null once the entry is withdrawn")
     public: PublicLocationPreview | None = Field(description="Null once the entry is withdrawn")
     place: PlaceRef | None
+    photo: bool = Field(description="The owner chose to show the insight's photo with it")
     published_at: datetime | None
     withdrawn_at: datetime | None
     created_at: datetime

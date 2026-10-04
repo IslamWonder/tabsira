@@ -34,6 +34,7 @@ from src.models.moderation import (
 from src.models.social import (
     Comment,
     CommentStatus,
+    InsightPublication,
     Post,
     PostStatus,
     RemovalSource,
@@ -41,7 +42,9 @@ from src.models.social import (
     ReportStatus,
     ReportTarget,
 )
+from src.services import photo_service
 from src.services.moderation_guard import GuardVerdict, Outcome
+from src.storage.photos import PhotoStore
 
 type Item = Post | Comment | MapEntry
 
@@ -182,8 +185,30 @@ async def _lock(db: AsyncSession, item: Item, allowed: set[str]) -> None:
         raise _wrong_state()
 
 
-async def approve(db: AsyncSession, item: Item, actor_id: uuid.UUID) -> None:
-    """Publish a held or refused item, or restore one a moderator removed."""
+async def _sync_photo(db: AsyncSession, item: Item, photos: PhotoStore | None) -> None:
+    """After a post or an entry changes state, make or delete the public copy of its photo."""
+    if photos is None or isinstance(item, Comment):
+        return
+    if isinstance(item, MapEntry):
+        insight_id: int | None = item.insight_id if item.with_photo else None
+    else:
+        insight_id = await db.scalar(
+            select(InsightPublication.insight_id).where(
+                InsightPublication.id == item.publication_id,
+                InsightPublication.photo_ref.is_not(None),
+            )
+        )
+    await photo_service.sync_public_copy(db, photos, insight_id)
+
+
+async def approve(
+    db: AsyncSession, item: Item, actor_id: uuid.UUID, *, photos: PhotoStore | None = None
+) -> None:
+    """
+    Publish a held or refused item, or restore one a moderator removed.
+
+    With `photos`, a post or an entry that shows a photo gets its public copy back.
+    """
     await _lock(
         db,
         item,
@@ -202,6 +227,7 @@ async def approve(db: AsyncSession, item: Item, actor_id: uuid.UUID) -> None:
     action = ModerationActionKind.RESTORED if restored else ModerationActionKind.PUBLISHED
     log_action(db, item, action, ModerationSource.MODERATOR, actor_id=actor_id)
     await _close_reports(db, item, ReportStatus.DISMISSED, actor_id)
+    await _sync_photo(db, item, photos)
 
 
 async def reject(db: AsyncSession, item: Item, actor_id: uuid.UUID, reason: str) -> None:
@@ -231,8 +257,19 @@ async def reject(db: AsyncSession, item: Item, actor_id: uuid.UUID, reason: str)
     await _close_reports(db, item, ReportStatus.ACTIONED, actor_id)
 
 
-async def remove(db: AsyncSession, item: Item, actor_id: uuid.UUID, reason: str) -> None:
-    """Take a published item down; everyone but the moderators stops seeing it at once."""
+async def remove(
+    db: AsyncSession,
+    item: Item,
+    actor_id: uuid.UUID,
+    reason: str,
+    *,
+    photos: PhotoStore | None = None,
+) -> None:
+    """
+    Take a published item down; everyone but the moderators stops seeing it at once.
+
+    With `photos`, the public copy of the photo a post or an entry showed is deleted too.
+    """
     await _lock(db, item, {PostStatus.PUBLISHED.value})
     now = clock.utcnow()
     _set_state(item, _removed(item), reason, now)
@@ -250,6 +287,7 @@ async def remove(db: AsyncSession, item: Item, actor_id: uuid.UUID, reason: str)
         reason=reason,
     )
     await _close_reports(db, item, ReportStatus.ACTIONED, actor_id)
+    await _sync_photo(db, item, photos)
 
 
 # ─── Reports moving a published item back to the queue ─────────────────────────

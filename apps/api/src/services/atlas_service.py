@@ -49,12 +49,13 @@ from src.schemas.atlas import (
 from src.schemas.geo import GeoJsonPoint
 from src.schemas.social import MemberOut
 from src.services import cursor as cursors
-from src.services import geo_service, publication_service
+from src.services import geo_service, photo_service, publication_service
 from src.services.block_service import blocked_with
 from src.services.evidence_view import load_evidence
 from src.services.insight_table_source import explanation_excerpt, snapshot_of
 from src.services.insight_view import visible_parts, visible_step
 from src.services.post_view import outcome_message
+from src.storage.photos import PhotoStore
 
 # Entries returned for one map window at most; the client asks again for a smaller window.
 WINDOW_DEFAULT = 300
@@ -222,6 +223,7 @@ async def place(
     entry.public_geom = WKTElement(f"POINT({centre.lng} {centre.lat})", srid=4326)
     entry.cell_m = cell_m
     entry.location_meaning = body.meaning
+    entry.with_photo = body.photo
     for column, value in labels.items():
         setattr(entry, column, value)
     entry.status = MapEntryStatus.DRAFT
@@ -277,6 +279,7 @@ def owner_view(
         ),
         public=preview,
         place=_place_of(entry),
+        photo=entry.with_photo,
         published_at=entry.published_at,
         withdrawn_at=entry.withdrawn_at,
         created_at=entry.created_at,
@@ -299,8 +302,15 @@ async def list_mine(db: AsyncSession, user: User) -> list[MapEntryOwnerOut]:
     return [owner_view(entry, insight, point) for entry, insight, point in rows]
 
 
-async def publish(db: AsyncSession, user: User, insight_id: int) -> MapEntryOwnerOut:
-    """Show the entry on the atlas; a draft with a point only."""
+async def publish(
+    db: AsyncSession, user: User, insight_id: int, *, photos: PhotoStore
+) -> MapEntryOwnerOut:
+    """
+    Show the entry on the atlas; a draft with a point only.
+
+    When the owner chose to show the photo, its public copy is made now under the photo rules
+    checked again (`photo_service`); the public map says nothing of it yet.
+    """
     entry, insight = await _own_entry(db, user, insight_id)
     if entry.status is not MapEntryStatus.DRAFT or entry.public_lat is None:
         message = "Only a placed draft can be published."
@@ -310,15 +320,18 @@ async def publish(db: AsyncSession, user: User, insight_id: int) -> MapEntryOwne
     entry.status = MapEntryStatus.PUBLISHED
     entry.published_at = clock.utcnow()
     await db.flush()
+    if entry.with_photo:
+        await photo_service.sync_public_copy(db, photos, insight.id)
     return owner_view(entry, insight, await db.get(MapCapturePoint, entry.id))
 
 
-async def withdraw(db: AsyncSession, user: User, insight_id: int) -> None:
+async def withdraw(db: AsyncSession, user: User, insight_id: int, *, photos: PhotoStore) -> None:
     """
     Take the entry off the atlas and forget the exact point.
 
     The public point is cleared too: nothing of the location survives but the tombstone that
-    makes the entry's address answer 410.
+    makes the entry's address answer 410. The public copy of the photo goes unless a live post
+    still shows it.
     """
     insight = await _own_insight(db, user, insight_id)
     entry = await db.scalar(select(MapEntry).where(_live(insight.id)))
@@ -334,6 +347,14 @@ async def withdraw(db: AsyncSession, user: User, insight_id: int) -> None:
         await db.delete(entry)
         await db.flush()
         return
+    _clear_public_side(entry)
+    await db.flush()
+    if entry.with_photo:
+        await photo_service.sync_public_copy(db, photos, insight.id)
+
+
+def _clear_public_side(entry: MapEntry) -> None:
+    """Leave the withdrawn tombstone: no point, no label, no place."""
     entry.status = MapEntryStatus.WITHDRAWN
     entry.status_reason = None
     entry.withdrawn_at = clock.utcnow()
@@ -348,7 +369,6 @@ async def withdraw(db: AsyncSession, user: User, insight_id: int) -> None:
         "country_label",
     ):
         setattr(entry, column, None)
-    await db.flush()
 
 
 # ─── The public side ───

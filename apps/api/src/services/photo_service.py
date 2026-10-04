@@ -21,11 +21,13 @@ import logging
 
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
-from sqlalchemy import select
+from sqlalchemy import Select, exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.models.atlas import MapEntry, MapEntryStatus
 from src.models.profile import AgeRange, Profile
 from src.models.scan import Insight, Scan
+from src.models.social import InsightPublication, Post, PostStatus
 from src.scans import buffer
 from src.services.image_service import ImageRejectedError, process_photo_in_thread
 from src.storage.base import StorageError
@@ -84,6 +86,54 @@ async def keep_from_buffer(
     insight.photo_key = stored.key
     await db.flush()
     return True
+
+
+def _shown_by_a_live_publication(insight_id: int) -> Select[tuple[bool]]:
+    """Whether a published post or map entry shows the photo of the insight right now."""
+    post_shows = exists().where(
+        Post.publication_id == InsightPublication.id,
+        Post.status == PostStatus.PUBLISHED,
+        InsightPublication.insight_id == insight_id,
+        InsightPublication.photo_ref.is_not(None),
+    )
+    entry_shows = exists().where(
+        MapEntry.insight_id == insight_id,
+        MapEntry.status == MapEntryStatus.PUBLISHED,
+        MapEntry.with_photo.is_(True),
+    )
+    return select(or_(post_shows, entry_shows))
+
+
+async def sync_public_copy(db: AsyncSession, store: PhotoStore, insight_id: int | None) -> None:
+    """
+    Make the one public copy exist exactly while a live publication shows the photo.
+
+    Called after a post or a map entry is published, withdrawn or removed. The copy is made
+    only when a published post or entry of the insight asked for the photo and the rules still
+    allow it at this moment; otherwise an existing copy is deleted, so a consent withdrawn or
+    an age declared since takes the photo down with the next change of state.
+    """
+    if insight_id is None:
+        return
+    insight = await db.get(Insight, insight_id)
+    if insight is None or insight.photo_key is None:
+        return
+    scan = await db.get(Scan, insight.scan_id) if insight.scan_id is not None else None
+    facts = await facts_for(db, insight, scan)
+    wanted = (
+        bool(await db.scalar(_shown_by_a_live_publication(insight.id)))
+        and facts.refusal(store.settings) is None
+    )
+    try:
+        if wanted and insight.photo_public_key is None:
+            insight.photo_public_key = (await store.publish(facts, insight.photo_key)).key
+        elif not wanted and insight.photo_public_key is not None:
+            await store.withdraw(insight.photo_public_key)
+            insight.photo_public_key = None
+    except StorageError:
+        log.warning("public copy of insight %s not updated: the photo store failed", insight.id)
+        return
+    await db.flush()
 
 
 async def remove(store: PhotoStore, insight: Insight) -> None:

@@ -65,7 +65,12 @@ describe('PublishScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: 'أنشئ المسودة' }));
     expect(await screen.findByText(/أُنشئت المسودة/)).toBeInTheDocument();
     expect(await api.bodies('POST', '/posts')).toEqual([
-      { insight_id: '7000000000000000001', reflection: 'ما تعلمته', visibility: 'followers' },
+      {
+        insight_id: '7000000000000000001',
+        reflection: 'ما تعلمته',
+        visibility: 'followers',
+        photo: false,
+      },
     ]);
     expect(screen.getByRole('heading', { level: 2, name: 'هكذا يظهر منشورك' })).toBeInTheDocument();
     expect(screen.getByText('مسودة')).toBeInTheDocument();

@@ -45,7 +45,7 @@ class InsightSource(Protocol):
 
 It returns an `InsightSnapshot` (id, version, owner, verified, title, glimpse, relation type, explanation excerpt, evidence references, step, concepts, and the photo reference with `photo_consent` and `scene_sensitive`), or `None` for an insight that does not exist or is not the owner's. `services/insight_table_source.py` implements it over `app.insights` and `create_app` uses it unless a test hands in a double (`FakeInsightSource` in `tests/support_social.py`); an application built with no source at all answers `503 SERVICE_UNAVAILABLE` and invents nothing.
 
-A second plug point is the **photo**: a publication keeps the private reference of the owner's photo (`photo_ref`), for the owner and for the photo store; **no public response carries it**, they say only `has_photo`. Turning it into a public address (copying the photo to its public place when its owner publishes, and removing it when the post is withdrawn) belongs to the photo store, not to this module. The sitemap lists no image until that address exists.
+A second plug point is the **photo**: when the owner asks for it (`photo: true` in `POST /posts`) and «تمّ» kept a photo with their consent, a publication keeps the private reference of the owner's photo (`photo_ref`), for the owner and for the photo store; **no public response carries it**, they say only `has_photo`. The public copy is made by `services/photo_service.py` when the post is published and deleted when it is withdrawn or removed (or when the rules of v2 §19 no longer allow it at the next change of state), one copy per insight shared with a map entry that shows the same photo. No public response carries the copy's address yet, and the sitemap lists no image.
 
 ## Reactions
 

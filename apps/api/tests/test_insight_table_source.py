@@ -47,12 +47,28 @@ async def test_the_owner_s_pipeline_insight_is_copied_by_reference(db_session, m
     assert snapshot.explanation_excerpt == "قطرات على ورق نبتة."
     assert snapshot.step_text == "احفظ الدعاء الوارد في الحديث."
     assert snapshot.concepts == ("rain", "plant")
-    # No photo is kept with an insight: nothing is offered for publishing.
+    # No photo was kept with this insight: nothing is offered for publishing.
     assert (snapshot.photo_ref, snapshot.photo_consent, snapshot.scene_sensitive) == (
         None,
         False,
         False,
     )
+
+
+async def test_a_kept_photo_is_offered_by_its_private_key_and_never_its_public_one(
+    db_session, make_user
+):
+    user = await make_user("author@example.com")
+    private, public = "private/" + "a" * 32 + ".jpg", "public/" + "b" * 32 + ".jpg"
+    insight = await _insight(
+        db_session, Owner(user_id=user.id), photo_key=private, photo_public_key=public
+    )
+
+    snapshot = await InsightTableSource().load_for_publishing(db_session, insight.id, user.id)
+
+    assert snapshot is not None
+    assert (snapshot.photo_ref, snapshot.photo_consent) == (private, True)
+    assert public not in str(snapshot)
 
 
 async def test_another_account_s_insight_and_a_missing_one_answer_the_same(db_session, make_user):

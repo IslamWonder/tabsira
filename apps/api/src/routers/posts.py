@@ -20,6 +20,7 @@ from src.deps import (
     DbDep,
     InsightSourceDep,
     OptionalUser,
+    PhotoStoreDep,
     PublicMember,
     SettingsDep,
     TextGuardDep,
@@ -67,7 +68,7 @@ async def create_post(
     has no handle yet. Nothing is visible to anyone else until the draft is submitted.
     """
     publication = await publication_service.create_publication(
-        db, source, user, body.insight_id, settings
+        db, source, user, body.insight_id, settings, publish_photo=body.photo
     )
     post = post_service.create_draft(db, user, publication, body.reflection, body.visibility)
     await db.flush()
@@ -114,7 +115,7 @@ async def patch_post(
     dependencies=[limited(WriteKind.POST)],
 )
 async def submit_post(
-    post_id: PostIdPath, user: PublicMember, db: DbDep, guard: TextGuardDep
+    post_id: PostIdPath, user: PublicMember, db: DbDep, guard: TextGuardDep, photos: PhotoStoreDep
 ) -> PostOut:
     """
     Run a draft through the guard.
@@ -124,7 +125,7 @@ async def submit_post(
     publishes it. 409 for a post that is not a draft.
     """
     row = await post_service.get_owned(db, post_id, user)
-    post = await post_service.submit(db, row, guard)
+    post = await post_service.submit(db, row, guard, photos=photos)
     await db.commit()
     return await _one(db, PostRow(post, row.publication, user), user)
 
@@ -135,15 +136,18 @@ async def submit_post(
     summary="Withdraw a post",
     dependencies=[limited(WriteKind.POST)],
 )
-async def delete_post(post_id: PostIdPath, user: CurrentUser, db: DbDep) -> Response:
+async def delete_post(
+    post_id: PostIdPath, user: CurrentUser, db: DbDep, photos: PhotoStoreDep
+) -> Response:
     """
     Withdraw a post, a draft or a published one.
 
-    Its reflection, its comments, its likes and its saves are erased at once, it leaves every
-    feed and every profile, and its address answers 410 Gone from then on (this route too).
+    Its reflection, its comments, its likes and its saves are erased at once, with the public
+    copy of its photo, it leaves every feed and every profile, and its address answers 410 Gone
+    from then on (this route too).
     """
     row = await post_service.get_owned(db, post_id, user)
-    await post_service.withdraw(db, row)
+    await post_service.withdraw(db, row, photos=photos)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

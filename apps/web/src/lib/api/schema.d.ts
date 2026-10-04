@@ -828,8 +828,9 @@ export interface paths {
      * Withdraw a post
      * @description Withdraw a post, a draft or a published one.
      *
-     *     Its reflection, its comments, its likes and its saves are erased at once, it leaves every
-     *     feed and every profile, and its address answers 410 Gone from then on (this route too).
+     *     Its reflection, its comments, its likes and its saves are erased at once, with the public
+     *     copy of its photo, it leaves every feed and every profile, and its address answers 410 Gone
+     *     from then on (this route too).
      */
     delete: operations['delete_post_posts__post_id__delete'];
     options?: never;
@@ -1369,6 +1370,9 @@ export interface paths {
     /**
      * «تمّ»: complete the insight, once
      * @description Complete the insight; a second call saves nothing more and answers the same place.
+     *
+     *     The first «تمّ» of a signed-in owner who consented to keep photos also keeps the scan's
+     *     photo privately (v2 §19); nothing is kept for a guest or a sensitive scene.
      */
     post: operations['complete_insight_insights__insight_id__complete_post'];
     delete?: never;
@@ -1936,6 +1940,12 @@ export interface components {
       captured_at?: string | null;
       /** Measured At */
       measured_at?: string | null;
+      /**
+       * Photo
+       * @description Show the insight's kept photo with the entry; nothing without a kept photo and the owner's photo consent (v2 §19)
+       * @default false
+       */
+      photo: boolean;
     };
     /**
      * CapturePointOut
@@ -2966,7 +2976,7 @@ export interface components {
       step: string | null;
       /**
        * Has Photo
-       * @description The owner agreed to publish a photo with it; its address is not here yet
+       * @description The owner chose to show a photo with it; no address is served yet
        */
       has_photo: boolean;
       /** Insight Version */
@@ -3151,6 +3161,11 @@ export interface components {
       /** @description Null once the entry is withdrawn */
       public: components['schemas']['PublicLocationPreview'] | null;
       place: components['schemas']['PlaceRef'] | null;
+      /**
+       * Photo
+       * @description The owner chose to show the insight's photo with it
+       */
+      photo: boolean;
       /** Published At */
       published_at: string | null;
       /** Withdrawn At */
@@ -3365,6 +3380,12 @@ export interface components {
       reflection?: string | null;
       /** @default public */
       visibility: components['schemas']['PostVisibility'];
+      /**
+       * Photo
+       * @description Show the insight's kept photo with the post; nothing without a kept photo and the owner's photo consent (v2 §19)
+       * @default false
+       */
+      photo: boolean;
     };
     /** PostExport */
     PostExport: {

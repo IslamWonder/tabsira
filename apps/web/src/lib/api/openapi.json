@@ -1635,7 +1635,7 @@
       "delete": {
         "tags": ["posts"],
         "summary": "Withdraw a post",
-        "description": "Withdraw a post, a draft or a published one.\n\nIts reflection, its comments, its likes and its saves are erased at once, it leaves every\nfeed and every profile, and its address answers 410 Gone from then on (this route too).",
+        "description": "Withdraw a post, a draft or a published one.\n\nIts reflection, its comments, its likes and its saves are erased at once, with the public\ncopy of its photo, it leaves every feed and every profile, and its address answers 410 Gone\nfrom then on (this route too).",
         "operationId": "delete_post_posts__post_id__delete",
         "parameters": [
           {
@@ -2960,7 +2960,7 @@
       "post": {
         "tags": ["insights"],
         "summary": "«تمّ»: complete the insight, once",
-        "description": "Complete the insight; a second call saves nothing more and answers the same place.",
+        "description": "Complete the insight; a second call saves nothing more and answers the same place.\n\nThe first «تمّ» of a signed-in owner who consented to keep photos also keeps the scan's\nphoto privately (v2 §19); nothing is kept for a guest or a sensitive scene.",
         "operationId": "complete_insight_insights__insight_id__complete_post",
         "parameters": [
           {
@@ -4368,6 +4368,12 @@
               }
             ],
             "title": "Measured At"
+          },
+          "photo": {
+            "type": "boolean",
+            "title": "Photo",
+            "description": "Show the insight's kept photo with the entry; nothing without a kept photo and the owner's photo consent (v2 §19)",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -6798,7 +6804,7 @@
           "has_photo": {
             "type": "boolean",
             "title": "Has Photo",
-            "description": "The owner agreed to publish a photo with it; its address is not here yet"
+            "description": "The owner chose to show a photo with it; no address is served yet"
           },
           "insight_version": {
             "type": "integer",
@@ -7228,6 +7234,11 @@
               }
             ]
           },
+          "photo": {
+            "type": "boolean",
+            "title": "Photo",
+            "description": "The owner chose to show the insight's photo with it"
+          },
           "published_at": {
             "anyOf": [
               {
@@ -7268,6 +7279,7 @@
           "capture",
           "public",
           "place",
+          "photo",
           "published_at",
           "withdrawn_at",
           "created_at"
@@ -7779,6 +7791,12 @@
           "visibility": {
             "$ref": "#/components/schemas/PostVisibility",
             "default": "public"
+          },
+          "photo": {
+            "type": "boolean",
+            "title": "Photo",
+            "description": "Show the insight's kept photo with the post; nothing without a kept photo and the owner's photo consent (v2 §19)",
+            "default": false
           }
         },
         "additionalProperties": false,

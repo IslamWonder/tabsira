@@ -5,7 +5,7 @@ The insight is read through an `InsightSource` and copied once. Every rule that 
 may become public is applied here, whatever the source says: the insight must be verified and
 owned by the caller, its evidence must resolve in the scripture store (a hadith only while its
 ruling makes it eligible), none of its platform text may look like scripture, and the photo
-is kept only when its owner agreed to publish it and the scene is not sensitive. Scripture
+is kept only when its owner chose to show it and the scene is not sensitive. Scripture
 itself is never copied: only references are.
 """
 
@@ -82,19 +82,26 @@ async def _check_evidence(db: AsyncSession, snapshot: InsightSnapshot) -> None:
 
 
 async def _photo_ref(
-    db: AsyncSession, snapshot: InsightSnapshot, author: User, settings: Settings
+    db: AsyncSession,
+    snapshot: InsightSnapshot,
+    author: User,
+    settings: Settings,
+    *,
+    publish_photo: bool,
 ) -> str | None:
     """
     Keep the photo's reference only if the photo rules of section 19 still allow publishing it.
 
-    The insight's owner agreed to publish this photo and the scene is not sensitive; and, as
-    `PhotoFacts` checks again at publish time because facts change, the feature is on, the
-    account has not since said it is under 13 and it still agrees to keep photos. The reference
-    is the private key of the owner's own copy: it is stored for the owner and for the photo
-    store, and no public response carries it.
+    The owner chose to show the photo with this post (`publish_photo`), a photo was kept with
+    their consent and the scene is not sensitive; and, as `PhotoFacts` checks again at publish
+    time because facts change, the feature is on, the account has not since said it is under
+    13 and it still agrees to keep photos. The reference is the private key of the owner's own
+    copy: it is stored for the owner and for the photo store, and no public response carries it.
     """
     reference = snapshot.photo_ref
-    if not snapshot.photo_consent or not reference or len(reference) > PHOTO_REF_MAX:
+    if not publish_photo or not snapshot.photo_consent or not reference:
+        return None
+    if len(reference) > PHOTO_REF_MAX:
         return None
     profile = await db.scalar(select(Profile).where(Profile.user_id == author.id))
     facts = PhotoFacts(
@@ -121,9 +128,20 @@ async def check_publishable(db: AsyncSession, snapshot: InsightSnapshot) -> None
 
 
 async def create_publication(
-    db: AsyncSession, source: InsightSource, author: User, insight_id: int, settings: Settings
+    db: AsyncSession,
+    source: InsightSource,
+    author: User,
+    insight_id: int,
+    settings: Settings,
+    *,
+    publish_photo: bool = False,
 ) -> InsightPublication:
-    """Copy the author's verified insight into a publication, or refuse with a reason."""
+    """
+    Copy the author's verified insight into a publication, or refuse with a reason.
+
+    `publish_photo` is the owner's choice to show the kept photo with the post; the copy for
+    the public is made by `photo_service` once the post is published, never here.
+    """
     snapshot = await source.load_for_publishing(db, insight_id, author.id)
     if snapshot is None or snapshot.owner_id != author.id or snapshot.insight_id != insight_id:
         raise AppError(ErrorCode.NOT_FOUND, "No such insight.", status_code=404)
@@ -142,7 +160,7 @@ async def create_publication(
         ],
         explanation_excerpt=snapshot.explanation_excerpt.strip(),
         step_text=(snapshot.step_text or "").strip() or None,
-        photo_ref=await _photo_ref(db, snapshot, author, settings),
+        photo_ref=await _photo_ref(db, snapshot, author, settings, publish_photo=publish_photo),
     )
     db.add(publication)
     await db.flush()

@@ -13,7 +13,15 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Response, status
 
-from src.deps import CurrentUser, DbDep, OptionalUser, PublicMember, SettingsDep, limited
+from src.deps import (
+    CurrentUser,
+    DbDep,
+    OptionalUser,
+    PhotoStoreDep,
+    PublicMember,
+    SettingsDep,
+    limited,
+)
 from src.scans.deps import PublicIdPath, feature
 from src.schemas.atlas import (
     AtlasEntryOut,
@@ -73,10 +81,10 @@ async def my_entry(insight_id: PublicIdPath, user: CurrentUser, db: DbDep) -> Ma
     dependencies=[limited(WriteKind.POST)],
 )
 async def publish_entry(
-    insight_id: PublicIdPath, user: PublicMember, db: DbDep
+    insight_id: PublicIdPath, user: PublicMember, db: DbDep, photos: PhotoStoreDep
 ) -> MapEntryOwnerOut:
     """Publish a placed draft; 409 for an entry that is not a draft."""
-    result = await atlas_service.publish(db, user, insight_id)
+    result = await atlas_service.publish(db, user, insight_id, photos=photos)
     await db.commit()
     return result
 
@@ -87,9 +95,11 @@ async def publish_entry(
     summary="Withdraw the entry from the atlas",
     dependencies=[limited(WriteKind.POST)],
 )
-async def withdraw_entry(insight_id: PublicIdPath, user: CurrentUser, db: DbDep) -> Response:
+async def withdraw_entry(
+    insight_id: PublicIdPath, user: CurrentUser, db: DbDep, photos: PhotoStoreDep
+) -> Response:
     """Take the entry off the map and forget its exact point; its address answers 410 from then on."""
-    await atlas_service.withdraw(db, user, insight_id)
+    await atlas_service.withdraw(db, user, insight_id, photos=photos)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
