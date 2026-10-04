@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "The twelve chat cases of make eval (v2 §27.16). The challenge package names twelve official cases; the spec quotes four of them, which are here as `official`. The other eight are `derived`: written by the team from v2 §0, §10, §12 (the four content levels) and §14, until the package's own list is added. Each case asks one question in a fresh chat of a fixed insight whose verse is read from the store; a question may contain a learner's deliberately wrong wording, which is never shown as scripture.",
+  "description": "The twelve chat cases of make eval (v2 §27.16). The challenge package names twelve official cases; the spec quotes four of them, which are here as `official`. The other eight are `derived`: our own, written from v2 §0, §10, §12 (the four content levels) and §14. Each case asks one question in a fresh chat of a fixed insight whose verse is read from the store; a question may contain a learner's deliberately wrong wording, which is never shown as scripture.",
   "insights": [
     {
       "id": "rain",

@@ -42,7 +42,7 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 - **Depends on:** 05.1
 - **Touches:** apps/api/src/evaluation (chat cases and their report), src/cli/evaluate.py, apps/api/tests/evaluation/chat, scripts/eval.sh, docs/EVALUATION.md.
 - **Done when:** `make eval` reports each case; results written in docs/EVALUATION.md.
-- **Waiting on the owners:** the challenge package's own list of twelve. The spec quotes four (`official`); the other eight are ours (`derived`, from v2 §0, §10, §12, §14) and are replaced when the list arrives.
+- **Cases:** the four the spec quotes (`official`) and eight of our own from the spec (`derived`: v2 §0, §10, §12, §14). We follow our own spec; the challenge package's list is not awaited.
 
 ### 05.3 Insight quality tuning
 

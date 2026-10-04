@@ -91,7 +91,7 @@ What the runs show about quality, read from the raw answers: the phone lying alo
 
 Measured on 04 October 2026 by `make eval` (`apps/api/src/evaluation/chat_eval.py`) with openai (chat: `gpt-5.4-mini-2026-03-17`). Raw results: `apps/api/tests/evaluation/results/chat-2026-10-04.json` (not committed). This section is written by that command.
 
-Each case asks one question in a fresh chat of a fixed insight (`apps/api/tests/evaluation/chat/cases.json`), through the chat service itself, in a transaction that is rolled back. The spec quotes four of the challenge's twelve official cases (`official`); the other eight are the team's own (`derived`, from v2 §0, §10, §12 and §14) until the challenge package's list is added. Checked by rule: the kind of answer and the level, what the answer must name or avoid, the disclosure, and the scripture guard on every answer shown.
+Each case asks one question in a fresh chat of a fixed insight (`apps/api/tests/evaluation/chat/cases.json`), through the chat service itself, in a transaction that is rolled back. The spec quotes four of the challenge's twelve official cases (`official`); the other eight are our own, written from the spec (`derived`: v2 §0, §10, §12 and §14). Checked by rule: the kind of answer and the level, what the answer must name or avoid, the disclosure, and the scripture guard on every answer shown.
 
 | Measure                      | Result  |
 | ---------------------------- | ------- |
