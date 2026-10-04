@@ -162,7 +162,8 @@ def fetch_client(settings: Settings, resolver: Resolver = system_resolver) -> ht
         follow_redirects=False,
         trust_env=False,
         timeout=httpx.Timeout(settings.image_url_timeout_seconds),
-        headers={"User-Agent": USER_AGENT, "Accept": "image/*"},
+        # No compression: a small compressed body must not expand past the size limit.
+        headers={"User-Agent": USER_AGENT, "Accept": "image/*", "Accept-Encoding": "identity"},
     )
 
 
@@ -212,6 +213,10 @@ async def _read_image(response: httpx.Response, max_bytes: int) -> bytes:
     content_type = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
     if not content_type.startswith("image/"):
         raise FetchError(FetchRefusal.NOT_AN_IMAGE, f"content type {content_type or 'missing'}")
+    encoding = response.headers.get("content-encoding", "identity").strip().lower()
+    if encoding not in {"", "identity"}:
+        # Asked for none: a compressed body could expand far past the limit once decoded.
+        raise FetchError(FetchRefusal.NOT_AN_IMAGE, f"content encoding {encoding}")
     declared = response.headers.get("content-length", "")
     if declared.isdigit() and int(declared) > max_bytes:
         raise FetchError(FetchRefusal.TOO_LARGE, f"{declared} bytes announced")

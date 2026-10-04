@@ -149,6 +149,7 @@ async def test_the_fetch_client_follows_no_redirect_and_reads_no_proxy(flow_sett
     async with fetch_client(flow_settings) as client:
         assert client.follow_redirects is False
         assert client.headers["user-agent"] == fetch.USER_AGENT
+        assert client.headers["accept-encoding"] == "identity"
         assert isinstance(client._transport, fetch.PublicOnlyTransport)
         assert client.timeout.read == 12.0
 
@@ -216,6 +217,7 @@ async def test_a_redirect_to_a_private_address_is_refused(flow_settings):
             FetchRefusal.NOT_AN_IMAGE,
         ),
         (lambda r: httpx.Response(200, content=b"x"), FetchRefusal.NOT_AN_IMAGE),
+        (lambda r: image(chunks(10), **{"content-encoding": "gzip"}), FetchRefusal.NOT_AN_IMAGE),
         (lambda r: image(**{"content-length": "999999999"}), FetchRefusal.TOO_LARGE),
         (lambda r: image(b"x" * 2048), FetchRefusal.TOO_LARGE),
         (lambda r: image(chunks(600, 600)), FetchRefusal.TOO_LARGE),
