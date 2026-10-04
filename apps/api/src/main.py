@@ -15,7 +15,7 @@ from src.middleware.no_store import NoStoreMiddleware
 from src.middleware.origin_check import OriginCheckMiddleware
 from src.middleware.request_id import REQUEST_ID_HEADER, RequestIdMiddleware
 from src.responses import OrjsonResponse
-from src.routers import health
+from src.routers import account, auth, auth_email, google_auth, health, profile
 
 API_VERSION = "0.1.0"
 
@@ -78,6 +78,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     app.include_router(health.router)
+    app.include_router(auth.router)
+    app.include_router(auth_email.router)
+    app.include_router(google_auth.router)
+    app.include_router(profile.router)
+    app.include_router(account.router)
     return app
 
 
