@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy import select
 
 from src.ai.errors import AiCallError, AiErrorCode
-from src.models import EmbeddedCorpus, QuranVerse
+from src.models import EmbeddedCorpus, QuranVerse, ReligiousBackground
 from src.pipeline.engine import (
     EngineRequest,
     ExplanationPart,
@@ -26,6 +26,7 @@ from src.pipeline.insight.composer import (
     build_insight,
     citation,
     cites_only_its_own,
+    composer_message,
 )
 from src.pipeline.insight.context import SceneContext, build_context
 from src.pipeline.insight.engine import PipelineInsightEngine, scene_texts
@@ -54,9 +55,18 @@ from src.pipeline.insight.learning import (
     rank_key,
     unit_options,
 )
-from src.pipeline.insight.planner import InsightPlanner, PlannedCandidate, PlannerLeakError
+from src.pipeline.insight.planner import (
+    BACKGROUND_MUSLIM,
+    BACKGROUND_NON_MUSLIM,
+    BACKGROUND_UNKNOWN,
+    InsightPlanner,
+    PlannedCandidate,
+    PlannerLeakError,
+    learner_payload,
+)
 from src.pipeline.insight.search import Embedding, EvidenceSearch, Found, embed_queries
 from src.pipeline.leak_guard import LeakGuard
+from src.pipeline.prompt import load_prompt
 from src.pipeline.schemas import EvidenceStatus, SceneAction
 from src.retrieval.concepts import ConceptIndex
 from src.retrieval.documents import RetrievalDocument
@@ -407,6 +417,45 @@ async def test_seen_texts_are_found_by_reference_unless_personalisation_is_off(s
 
 
 # ─── Composer and guard ───
+
+
+def test_the_learner_payload_sends_the_profile_backgrounds_and_leaves_an_unknown_one_out():
+    """v2 §5: the composer's neutral rule is keyed on the values the payload actually sends."""
+    assert {BACKGROUND_MUSLIM, BACKGROUND_NON_MUSLIM, BACKGROUND_UNKNOWN} == {
+        value.value for value in ReligiousBackground
+    }
+    muslim = learner_payload(LearnerContext(religious_background="muslim"))
+    other = learner_payload(LearnerContext(religious_background="non_muslim", age_range="18_24"))
+    unknown = learner_payload(LearnerContext(goals=["reflection"]))
+
+    assert muslim == {"religious_background": "muslim"}
+    assert other == {"religious_background": "non_muslim", "age_range": "18_24"}
+    assert unknown == {"goals": ["reflection"]}
+    assert "religious_background" not in learner_payload(LearnerContext())
+
+
+def test_the_composer_prompt_rules_on_the_backgrounds_the_payload_sends():
+    prompt = load_prompt("insight_composer_system.v1").text
+    rule = next(line for line in prompt.splitlines() if line.startswith("- religious_background"))
+    sent = json.loads(
+        composer_message(rain_scene(), [], LearnerContext(religious_background="non_muslim"))
+    )
+    off = json.loads(
+        composer_message(
+            rain_scene(),
+            [],
+            LearnerContext(religious_background="muslim", personalization_enabled=False),
+        )
+    )
+
+    assert f'"{BACKGROUND_MUSLIM}"' in rule
+    assert f'"{BACKGROUND_NON_MUSLIM}"' in rule
+    assert f'"{BACKGROUND_UNKNOWN}" or absent' in rule
+    assert "«يعلّم الإسلام" in rule
+    assert "never assume belief" in rule
+    assert "exploring" not in prompt
+    assert sent["learner"]["religious_background"] == "non_muslim"
+    assert "religious_background" not in off["learner"]
 
 
 def test_a_personal_matter_ends_with_the_referral_and_steps_keep_their_kind():

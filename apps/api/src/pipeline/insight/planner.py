@@ -154,14 +154,29 @@ def planner_texts(output: PlannerOutput) -> dict[str, str]:
     return texts
 
 
+# The one background the composer may write for as a believer; every other value, and an
+# absent one, gets the neutral «يعلّم الإسلام» framing (v2 §5). The prompt names these.
+BACKGROUND_MUSLIM = "muslim"
+BACKGROUND_NON_MUSLIM = "non_muslim"
+BACKGROUND_UNKNOWN = "unknown"
+
+
 def learner_payload(learner: LearnerContext) -> dict[str, Any]:
-    """Return what the learner shared, without its history and its `unknown` fields."""
+    """
+    Return what the learner shared, without its history and its `unknown` fields.
+
+    The religious background stays as the profile enum writes it (`muslim`, `non_muslim`)
+    and is left out when unknown, so the composer prompt's rule, which is keyed on these very
+    values, fires for a non-Muslim and for a background that was never shared alike.
+    """
     shared = {
         "knowledge_level": learner.knowledge_level,
         "age_range": learner.age_range,
         "religious_background": learner.religious_background,
     }
-    payload: dict[str, Any] = {key: value for key, value in shared.items() if value != "unknown"}
+    payload: dict[str, Any] = {
+        key: value for key, value in shared.items() if value != BACKGROUND_UNKNOWN
+    }
     if learner.goals:
         payload["goals"] = list(learner.goals)
     return payload
