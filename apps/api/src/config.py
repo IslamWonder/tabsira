@@ -131,6 +131,10 @@ def refuse_forbidden_model(model: str) -> str:
     return model
 
 
+# A provider's `reasoning_effort` values; empty sends none and leaves its default.
+ReasoningEffort = Annotated[str, Field(pattern=r"^(|none|minimal|low|medium|high|xhigh)$")]
+
+
 class ModelPrice(BaseModel):
     """What a model costs, in US dollars per million tokens."""
 
@@ -186,7 +190,7 @@ class ProviderSettings(BaseModel):
     embedding_model: str = ""
     guard_model: str = ""
     # Sent as `reasoning_effort` when set; empty leaves the provider's default.
-    reasoning_effort: Annotated[str, Field(pattern=r"^(|none|minimal|low|medium|high|xhigh)$")] = ""
+    reasoning_effort: ReasoningEffort = ""
     # The coordinate system the vision prompt asks for and the server converts from.
     box_coordinates: BoxCoordinates = BoxCoordinates.PIXELS
     # Price of each model, keyed by model id; a model without a price is recorded with no cost.
@@ -222,6 +226,11 @@ class OvhSettings(ProviderSettings):
     """OVHcloud AI Endpoints (OpenAI-compatible API)."""
 
     base_url: str = OVH_BASE_URL
+    # Measured by docs/BENCHMARK.md (4 October 2026): Qwen3.8-27B without thinking
+    # (thinking added 36 s at p50 for no gain), boxes on its native 0-1000 grid.
+    vision_model: str = "Qwen3.8-27B"
+    reasoning_effort: ReasoningEffort = "none"
+    box_coordinates: BoxCoordinates = BoxCoordinates.THOUSANDTHS
     prices: dict[str, ModelPrice] = Field(default_factory=lambda: dict(OVH_PRICES))
 
 
@@ -229,6 +238,11 @@ class OpenAISettings(ProviderSettings):
     """OpenAI."""
 
     base_url: str = OPENAI_BASE_URL
+    # Measured by docs/BENCHMARK.md (4 October 2026): gpt-5.4-mini without
+    # reasoning, pixel boxes, and the free image moderation as the guard.
+    vision_model: str = "gpt-5.4-mini-2026-03-17"
+    reasoning_effort: ReasoningEffort = "none"
+    guard_model: str = "omni-moderation-latest"
     prices: dict[str, ModelPrice] = Field(default_factory=lambda: dict(OPENAI_PRICES))
 
 
@@ -396,7 +410,9 @@ class Settings(BaseSettings):
 
     # AI providers: one active provider, one settings block each. In the
     # environment the blocks are AI_OVH__API_KEY, AI_OPENAI__VISION_MODEL, ...
-    ai_provider: AiProvider = AiProvider.OVH
+    # OpenAI by measurement (docs/BENCHMARK.md): same quality as OVH's best on the
+    # gold scenes, scene analysis p95 5.7 s against 27 s.
+    ai_provider: AiProvider = AiProvider.OPENAI
     ai_ovh: OvhSettings = OvhSettings()
     ai_openai: OpenAISettings = OpenAISettings()
     # Seconds one model request may take before it is abandoned (and retried).

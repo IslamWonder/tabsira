@@ -47,6 +47,7 @@ async def test_production_serves_the_schema_but_not_the_interactive_docs(make_se
         session_cookie_domain=".tabsira.me",
         hash_secret="not-a-real-secret-but-long-enough-for-the-rule",
         ai_ovh={"api_key": "ovh-key-123"},
+        ai_openai={"api_key": "openai-key-123"},
     )
     async with client_for(main.create_app(settings)) as client:
         assert (await client.get("/openapi.json")).status_code == 200

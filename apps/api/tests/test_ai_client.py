@@ -167,8 +167,8 @@ async def test_the_request_carries_the_strict_schema_the_image_and_the_key():
         {"type": "text", "text": "which colours?"},
         {"type": "image_url", "image_url": {"url": "data:image/png;base64,YWJj"}},
     ]
-    # Nothing is sent that the settings did not ask for.
-    assert "reasoning_effort" not in body
+    # The measured default (docs/BENCHMARK.md); nothing else the settings did not ask for.
+    assert body["reasoning_effort"] == "none"
     assert "temperature" not in body
 
 
@@ -332,7 +332,7 @@ async def test_a_finish_reason_that_is_not_text_is_ignored():
 
 
 async def test_a_call_without_a_model_a_key_or_with_gpt_oss_is_refused_before_sending():
-    no_model = Harness([], settings=OvhSettings(api_key=KEY))
+    no_model = Harness([], settings=OvhSettings(api_key=KEY, vision_model=""))
     no_key = Harness([], settings=OvhSettings(vision_model="Qwen3.8-27B"))
     forbidden = Harness([])
 

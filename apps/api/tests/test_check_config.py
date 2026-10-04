@@ -23,7 +23,7 @@ def test_a_valid_configuration_is_reported_without_secrets(monkeypatch, capsys):
     monkeypatch.setenv(
         "DATABASE_URL", f"postgresql+asyncpg://tabsira:{PASSWORD}@127.0.0.1:5432/tabsira"
     )
-    monkeypatch.setenv("AI_OVH__API_KEY", "ovh-secret-key")
+    monkeypatch.setenv("AI_OPENAI__API_KEY", "openai-secret-key")
 
     code = check_config.main([])
 
@@ -33,7 +33,7 @@ def test_a_valid_configuration_is_reported_without_secrets(monkeypatch, capsys):
     assert "environment: test" in out.out
     assert "database: 127.0.0.1:5432/tabsira" in out.out
     assert "test database: not set" in out.out
-    assert "ai provider: ovh (api key set)" in out.out
+    assert "ai provider: openai (api key set)" in out.out
     assert (
         "features on: admin, atlas, camera_discovery, canonical_verify, chat, "
         "photo_storage, social, treasure, world"
@@ -41,7 +41,7 @@ def test_a_valid_configuration_is_reported_without_secrets(monkeypatch, capsys):
     assert "camera_anchor" not in out.out
     assert out.err == ""
     assert PASSWORD not in out.out + out.err
-    assert "ovh-secret-key" not in out.out + out.err
+    assert "openai-secret-key" not in out.out + out.err
 
 
 def test_the_report_marks_a_missing_key_and_a_set_test_database(monkeypatch, capsys):
@@ -55,7 +55,7 @@ def test_the_report_marks_a_missing_key_and_a_set_test_database(monkeypatch, cap
     assert check_config.main([]) == 0
 
     out = capsys.readouterr().out
-    assert "ai provider: ovh (api key NOT set)" in out
+    assert "ai provider: openai (api key NOT set)" in out
     assert "test database: set" in out
     assert "features on: none" in out
 

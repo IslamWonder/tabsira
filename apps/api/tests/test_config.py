@@ -12,6 +12,7 @@ from src.config import (
     BoxCoordinates,
     ConfigError,
     Environment,
+    ProviderSettings,
     Settings,
     format_validation_error,
     get_settings,
@@ -29,6 +30,7 @@ PRODUCTION = {
     "cors_origins": "https://tabsira.me",
     "session_cookie_domain": ".tabsira.me",
     "hash_secret": "not-a-real-secret-but-long-enough-for-the-rule",
+    "ai_provider": "ovh",
     "ai_ovh": {"api_key": "ovh-key-123"},
 }
 
@@ -80,15 +82,29 @@ def test_feature_flags_default_and_can_be_switched(make_settings, monkeypatch):
     assert switched.feature_camera_anchor is True
 
 
-def test_ai_defaults_name_both_providers_and_no_models(make_settings):
+def test_ai_defaults_are_what_the_benchmark_measured(make_settings):
     settings = make_settings()
 
-    assert settings.ai_provider is AiProvider.OVH
+    # docs/BENCHMARK.md, 4 October 2026: only the vision stage and the guard are measured.
+    assert settings.ai_provider is AiProvider.OPENAI
     assert settings.ai_ovh.base_url == config.OVH_BASE_URL
     assert settings.ai_openai.base_url == config.OPENAI_BASE_URL
-    for stage in AiStage:
-        assert settings.ai_ovh.model_for(stage) == ""
-        assert settings.ai_openai.model_for(stage) == ""
+    assert settings.ai_ovh.model_for(AiStage.VISION) == "Qwen3.8-27B"
+    assert settings.ai_ovh.reasoning_effort == "none"
+    assert settings.ai_ovh.box_coordinates is BoxCoordinates.THOUSANDTHS
+    assert settings.ai_openai.model_for(AiStage.VISION) == "gpt-5.4-mini-2026-03-17"
+    assert settings.ai_openai.model_for(AiStage.GUARD) == "omni-moderation-latest"
+    assert settings.ai_openai.reasoning_effort == "none"
+    assert settings.ai_openai.box_coordinates is BoxCoordinates.PIXELS
+    measured = {(AiProvider.OVH, AiStage.VISION), (AiProvider.OPENAI, AiStage.VISION)}
+    measured.add((AiProvider.OPENAI, AiStage.GUARD))
+    for provider, block in (
+        (AiProvider.OVH, settings.ai_ovh),
+        (AiProvider.OPENAI, settings.ai_openai),
+    ):
+        for stage in AiStage:
+            if (provider, stage) not in measured:
+                assert block.model_for(stage) == "", (provider, stage)
 
 
 def test_ai_property_follows_the_provider_switch(make_settings, monkeypatch):
@@ -169,12 +185,12 @@ def test_gpt_oss_models_are_refused_everywhere(values):
     assert "is a gpt-oss model, which this project never uses" in message
 
 
-def test_box_coordinates_are_pixels_unless_a_provider_says_otherwise(make_settings, monkeypatch):
-    assert make_settings().ai_openai.box_coordinates is BoxCoordinates.PIXELS
+def test_box_coordinates_can_be_switched_per_provider(make_settings, monkeypatch):
+    assert ProviderSettings().box_coordinates is BoxCoordinates.PIXELS
 
-    monkeypatch.setenv("AI_OVH__BOX_COORDINATES", "thousandths")
+    monkeypatch.setenv("AI_OVH__BOX_COORDINATES", "pixels")
 
-    assert make_settings().ai_ovh.box_coordinates is BoxCoordinates.THOUSANDTHS
+    assert make_settings().ai_ovh.box_coordinates is BoxCoordinates.PIXELS
     assert "AI_OVH__BOX_COORDINATES" in errors_of(ai_ovh={"box_coordinates": "inches"})
 
 
@@ -182,7 +198,8 @@ def test_reasoning_effort_accepts_only_the_known_levels(make_settings):
     assert (
         make_settings(ai_openai={"reasoning_effort": "none"}).ai_openai.reasoning_effort == "none"
     )
-    assert make_settings().ai_ovh.reasoning_effort == ""
+    assert make_settings().ai_ovh.reasoning_effort == "none"
+    assert ProviderSettings().reasoning_effort == ""
     assert "AI_OVH__REASONING_EFFORT" in errors_of(ai_ovh={"reasoning_effort": "maximum"})
 
 
@@ -394,7 +411,7 @@ def test_production_refuses_the_development_defaults_left_in_place():
     assert "SITE_URL" in message
     assert "API_URL" in message
     assert "CORS_ORIGINS" in message
-    assert "the key of the active AI provider (ovh) is empty" in message
+    assert "the key of the active AI provider (openai) is empty" in message
 
 
 def test_production_requires_the_key_of_the_active_provider(make_settings):

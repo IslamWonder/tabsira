@@ -91,7 +91,8 @@ def build(answer: dict[str, Any], coordinates: BoxCoordinates = BoxCoordinates.P
 
 
 async def test_the_model_sees_the_image_and_the_boxes_in_the_stated_pixels():
-    client = FakeModelClient(answers=[output()])
+    settings = OvhSettings(vision_model="fake-vision", box_coordinates="pixels")
+    client = FakeModelClient(settings=settings, answers=[output()])
 
     scene = await analyze_scene(SceneRequest(image=IMAGE, detector=DETECTOR), client=client)
 
