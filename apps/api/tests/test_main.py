@@ -44,6 +44,8 @@ async def test_production_serves_the_schema_but_not_the_interactive_docs(make_se
         site_url="https://tabsira.me",
         api_url="https://api.tabsira.me",
         cors_origins="https://tabsira.me",
+        session_cookie_domain=".tabsira.me",
+        hash_secret="not-a-real-secret-but-long-enough-for-the-rule",
         ai_ovh={"api_key": "ovh-key-123"},
     )
     async with client_for(main.create_app(settings)) as client:

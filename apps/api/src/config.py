@@ -9,11 +9,15 @@ Secrets are `SecretStr`, so printing or logging a `Settings` never shows them.
 
 from __future__ import annotations
 
+import hashlib
 import os
+import re
+from datetime import timedelta
+from email.utils import parseaddr
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Any, Self
+from typing import Annotated, Any, Literal, Self
 from urllib.parse import urlsplit
 
 from pydantic import (
@@ -37,6 +41,24 @@ ENV_FILE_OVERRIDE = "TABSIRA_ENV_FILE"
 # Where the services run when nothing else is configured: local development only.
 DEV_SITE_URL = "https://tabsira.test"
 DEV_API_URL = "https://api.tabsira.test"
+
+# Accounts. The cookie domain lets the web app and the API, on sibling subdomains,
+# share the session; the .test value is development-only like the URLs above.
+DEV_COOKIE_DOMAIN = ".tabsira.test"
+DEV_GOOGLE_REDIRECT_URI = f"{DEV_API_URL}/auth/google/callback"
+# Below this a production secret is refused; 32 characters is 190+ bits when random.
+MIN_HASH_SECRET_LENGTH = 32
+# The bcrypt work factor production must not go under.
+MIN_PRODUCTION_BCRYPT_ROUNDS = 12
+
+# Where transactional mail says it comes from. The sending domain is the real one
+# in development too: .test is not a mail domain.
+DEFAULT_MAIL_FROM = "تبصرة <no-reply@tabsira.me>"
+
+# A cookie name: RFC 6265 token characters we actually use. `__Host-` is refused
+# because it forbids the Domain attribute that sharing the cookie needs.
+_COOKIE_NAME = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
+_COOKIE_DOMAIN = re.compile(r"^\.?[a-z0-9-]+(\.[a-z0-9-]+)+$")
 
 OVH_BASE_URL = "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1"
 OPENAI_BASE_URL = "https://api.openai.com/v1"
@@ -156,6 +178,12 @@ def _host_is_test_domain(url: str) -> bool:
     return host == "test" or host.endswith(".test")
 
 
+def _domain_is_test(domain: str) -> bool:
+    """Return whether a cookie domain is a reserved `.test` development domain."""
+    host = domain.lstrip(".")
+    return host == "test" or host.endswith(".test")
+
+
 def _check_postgres_url(value: SecretStr, driver: str) -> SecretStr:
     """Validate a database URL without ever echoing it back in an error."""
     try:
@@ -214,6 +242,50 @@ class Settings(BaseSettings):
     db_pool_size: int = 5
     db_max_overflow: int = 5
 
+    # Sessions. The cookie is always httpOnly, Secure and SameSite=Lax; only its
+    # name, its domain and its lifetime are configurable.
+    session_cookie_name: str = "__Secure-tabsira_session"
+    session_cookie_domain: str = DEV_COOKIE_DOMAIN
+    session_ttl_days: Annotated[int, Field(ge=1, le=365)] = 30
+
+    # Key of the keyed hashes (HMAC-SHA256) of IP addresses and e-mail addresses
+    # kept for rate limiting and sessions. Required in production; empty
+    # elsewhere derives a per-installation key from DATABASE_URL.
+    hash_secret: SecretStr = SecretStr("")
+    # bcrypt work factor. Tests lower it; production may not go under 12.
+    password_bcrypt_rounds: Annotated[int, Field(ge=4, le=16)] = 12
+
+    # Rate limiting of sign-in and sign-up, kept in PostgreSQL.
+    auth_attempt_window_seconds: Annotated[int, Field(ge=1)] = 900
+    auth_max_attempts_per_ip: Annotated[int, Field(ge=1)] = 20
+    auth_max_attempts_per_email: Annotated[int, Field(ge=1)] = 5
+
+    # Google sign-in (OpenID Connect, authorization code flow with PKCE). An
+    # empty client id turns it off: its routes then answer 503.
+    google_client_id: str = ""
+    google_client_secret: SecretStr = SecretStr("")
+    google_redirect_uri: str = DEV_GOOGLE_REDIRECT_URI
+    google_state_ttl_seconds: Annotated[int, Field(ge=30, le=3600)] = 600
+
+    # Transactional mail (verification, password reset), sent by the API over
+    # SMTP, always encrypted. While SMTP_HOST is empty nothing is sent: the
+    # endpoints answer as usual and the API logs an error.
+    smtp_host: str = ""
+    smtp_port: Annotated[int, Field(ge=1, le=65535)] = 587
+    smtp_username: str = ""
+    smtp_password: SecretStr = SecretStr("")
+    # starttls (port 587 or 25) or ssl (port 465); never clear text.
+    smtp_security: Literal["starttls", "ssl"] = "starttls"
+    # Only for a server that a private certificate authority signed.
+    smtp_ca_file: str = ""
+    smtp_timeout_seconds: Annotated[float, Field(gt=0, le=120)] = 15.0
+    mail_from: str = DEFAULT_MAIL_FROM
+    mail_reply_to: str = ""
+    # Base of the links in mail. Empty uses SITE_URL.
+    web_base_url: str = ""
+    email_verification_expire_hours: Annotated[int, Field(ge=1, le=168)] = 24
+    password_reset_expire_minutes: Annotated[int, Field(ge=5, le=1440)] = 60
+
     # Feature flags. A feature that is off must not break the core journey.
     feature_chat: bool = True
     feature_world: bool = True
@@ -251,6 +323,58 @@ class Settings(BaseSettings):
     def _check_public_url(cls, value: str) -> str:
         return _origin(value)
 
+    @field_validator("session_cookie_name")
+    @classmethod
+    def _check_cookie_name(cls, value: str) -> str:
+        if not _COOKIE_NAME.match(value) or value.startswith("__Host-"):
+            message = "must be 1 to 64 letters, digits, dots, dashes or underscores, not __Host-"
+            raise ValueError(message)
+        return value
+
+    @field_validator("session_cookie_domain")
+    @classmethod
+    def _check_cookie_domain(cls, value: str) -> str:
+        domain = value.strip().lower()
+        if domain and not _COOKIE_DOMAIN.match(domain):
+            message = "must be a domain such as .tabsira.me, or empty for a host-only cookie"
+            raise ValueError(message)
+        return domain
+
+    @field_validator("mail_from", "mail_reply_to")
+    @classmethod
+    def _check_mail_address(cls, value: str) -> str:
+        if value and "@" not in parseaddr(value)[1]:
+            message = 'must be an address, with or without a name: "Name <a@example.com>"'
+            raise ValueError(message)
+        return value.strip()
+
+    @field_validator("web_base_url")
+    @classmethod
+    def _check_web_base_url(cls, value: str) -> str:
+        return _origin(value) if value.strip() else ""
+
+    @field_validator("smtp_ca_file")
+    @classmethod
+    def _check_ca_file(cls, value: str) -> str:
+        if value and not Path(value).is_file():
+            message = "must be the path of an existing file"
+            raise ValueError(message)
+        return value
+
+    @field_validator("google_client_id")
+    @classmethod
+    def _strip_client_id(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("google_redirect_uri")
+    @classmethod
+    def _check_redirect_uri(cls, value: str) -> str:
+        parts = urlsplit(value.strip())
+        if parts.scheme not in {"http", "https"} or not parts.hostname or parts.fragment:
+            message = "must be an http(s) URL with a host and no fragment"
+            raise ValueError(message)
+        return value.strip()
+
     @field_validator("sync_database_url", "test_database_url", mode="before")
     @classmethod
     def _empty_means_unset(cls, value: Any) -> Any:
@@ -283,7 +407,14 @@ class Settings(BaseSettings):
         """Stop a production process that still carries development values."""
         if self.environment != Environment.PRODUCTION:
             return self
+        problems = self._production_problems()
+        if problems:
+            message = "Refusing to start with ENVIRONMENT=production: " + "; ".join(problems)
+            raise ValueError(message)
+        return self
 
+    def _production_problems(self) -> list[str]:
+        """List what makes these settings unfit for production."""
         problems = [
             f"{name} points at the development host {url}"
             for name, url in (
@@ -294,14 +425,69 @@ class Settings(BaseSettings):
         ]
         if not self.ai.api_key.get_secret_value():
             problems.append(f"the key of the active AI provider ({self.ai_provider}) is empty")
-        if problems:
-            message = "Refusing to start with ENVIRONMENT=production: " + "; ".join(problems)
-            raise ValueError(message)
-        return self
+        if _domain_is_test(self.session_cookie_domain):
+            problems.append(
+                f"SESSION_COOKIE_DOMAIN is the development domain {self.session_cookie_domain}"
+            )
+        if len(self.hash_secret.get_secret_value()) < MIN_HASH_SECRET_LENGTH:
+            problems.append(f"HASH_SECRET must hold at least {MIN_HASH_SECRET_LENGTH} characters")
+        if self.password_bcrypt_rounds < MIN_PRODUCTION_BCRYPT_ROUNDS:
+            problems.append(f"PASSWORD_BCRYPT_ROUNDS is under {MIN_PRODUCTION_BCRYPT_ROUNDS}")
+        if self.web_base_url and _host_is_test_domain(self.web_base_url):
+            problems.append(f"WEB_BASE_URL points at the development host {self.web_base_url}")
+        if self.google_configured:
+            if not self.google_client_secret.get_secret_value():
+                problems.append("GOOGLE_CLIENT_ID is set but GOOGLE_CLIENT_SECRET is empty")
+            if _host_is_test_domain(self.google_redirect_uri):
+                problems.append(
+                    f"GOOGLE_REDIRECT_URI points at the development host {self.google_redirect_uri}"
+                )
+        return problems
 
     @property
     def is_production(self) -> bool:
         return self.environment == Environment.PRODUCTION
+
+    @property
+    def google_configured(self) -> bool:
+        """Whether Google sign-in is switched on: it needs a client id."""
+        return bool(self.google_client_id)
+
+    @property
+    def session_ttl(self) -> timedelta:
+        return timedelta(days=self.session_ttl_days)
+
+    @property
+    def smtp_configured(self) -> bool:
+        """Whether mail can be sent: a server and a sender are set."""
+        return bool(self.smtp_host and self.mail_from)
+
+    @property
+    def mail_link_base(self) -> str:
+        """Base of the links in mail: WEB_BASE_URL, else the web app's own address."""
+        return self.web_base_url or self.site_url
+
+    @property
+    def allowed_origins(self) -> frozenset[str]:
+        """Origins a browser may send state-changing requests from: the web app and this API."""
+        return frozenset([*self.cors_origins, self.api_url])
+
+    @property
+    def hash_key(self) -> bytes:
+        """
+        Key of the keyed hashes of IP and e-mail addresses.
+
+        Production must set HASH_SECRET. Elsewhere an empty one derives a key
+        from DATABASE_URL, which already holds this installation's random
+        password, so no secret is written in the source.
+        """
+        secret = self.hash_secret.get_secret_value()
+        if secret:
+            return secret.encode()
+        derived = hashlib.sha256(
+            b"tabsira-hash-key:" + self.database_url.get_secret_value().encode()
+        )
+        return derived.digest()
 
     @property
     def ai(self) -> ProviderSettings:

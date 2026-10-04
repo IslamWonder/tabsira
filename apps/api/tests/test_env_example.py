@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from dotenv import dotenv_values
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from src.config import AiStage, ProviderSettings, Settings
 
@@ -19,6 +19,9 @@ SECRETS = {
     "TEST_DATABASE_URL",
     "AI_OVH__API_KEY",
     "AI_OPENAI__API_KEY",
+    "HASH_SECRET",
+    "GOOGLE_CLIENT_SECRET",
+    "SMTP_PASSWORD",
 }
 
 
@@ -92,3 +95,21 @@ def test_an_untouched_copy_names_the_one_key_the_developer_must_fill_in(monkeypa
         Settings(_env_file=EXAMPLE)
 
     assert [error["loc"] for error in caught.value.errors()] == [("database_url",)]
+
+
+def test_every_secret_setting_is_known_to_this_test_so_none_is_shipped_filled():
+    secret_types = (SecretStr, SecretStr | None)
+    top_level = {
+        name.upper()
+        for name, field in Settings.model_fields.items()
+        if field.annotation in secret_types
+    }
+    nested = {
+        f"{name}__{sub}".upper()
+        for name, field in Settings.model_fields.items()
+        if isinstance(field.default, ProviderSettings)
+        for sub, sub_field in type(field.default).model_fields.items()
+        if sub_field.annotation is SecretStr
+    }
+
+    assert top_level | nested == SECRETS

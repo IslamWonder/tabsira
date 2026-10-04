@@ -26,6 +26,8 @@ PRODUCTION = {
     "site_url": "https://tabsira.me",
     "api_url": "https://api.tabsira.me",
     "cors_origins": "https://tabsira.me",
+    "session_cookie_domain": ".tabsira.me",
+    "hash_secret": "not-a-real-secret-but-long-enough-for-the-rule",
     "ai_ovh": {"api_key": "ovh-key-123"},
 }
 
@@ -387,3 +389,185 @@ def test_the_env_file_override_replaces_or_disables_the_lookup(monkeypatch):
 
     monkeypatch.setenv(config.ENV_FILE_OVERRIDE, "")
     assert config._env_files(Path("/app/src/config.py")) == ()
+
+
+# ─── Accounts, sessions, Google and mail ───────────────────────────
+
+
+def test_account_defaults(make_settings):
+    settings = make_settings()
+
+    assert settings.session_cookie_name == "__Secure-tabsira_session"
+    assert settings.session_cookie_domain == ".tabsira.test"
+    assert settings.session_ttl_days == 30
+    assert settings.hash_secret.get_secret_value() == ""
+    assert settings.password_bcrypt_rounds == 12
+    assert (
+        settings.auth_attempt_window_seconds,
+        settings.auth_max_attempts_per_ip,
+        settings.auth_max_attempts_per_email,
+    ) == (900, 20, 5)
+    assert settings.google_client_id == ""
+    assert not settings.google_configured
+    assert settings.google_redirect_uri == "https://api.tabsira.test/auth/google/callback"
+    assert settings.google_state_ttl_seconds == 600
+    assert (settings.smtp_host, settings.smtp_port, settings.smtp_security) == ("", 587, "starttls")
+    assert settings.mail_from == "تبصرة <no-reply@tabsira.me>"
+    assert not settings.smtp_configured
+
+
+def test_derived_values(make_settings):
+    settings = make_settings(
+        session_ttl_days=2,
+        google_client_id=" the-id ",
+        smtp_host="smtp.example.com",
+        site_url="https://tabsira.example",
+        api_url="https://api.tabsira.example",
+        cors_origins="https://tabsira.example,https://www.tabsira.example",
+    )
+
+    assert settings.session_ttl.total_seconds() == 2 * 86400
+    assert settings.google_client_id == "the-id"
+    assert settings.google_configured
+    assert settings.smtp_configured
+    assert settings.mail_link_base == "https://tabsira.example"
+    assert settings.allowed_origins == {
+        "https://tabsira.example",
+        "https://www.tabsira.example",
+        "https://api.tabsira.example",
+    }
+    assert (
+        make_settings(web_base_url="https://web.example/").mail_link_base == "https://web.example"
+    )
+    assert not make_settings(smtp_host="smtp.example.com", mail_from="").smtp_configured
+
+
+def test_the_hash_key_is_the_secret_or_one_derived_from_the_database_url(make_settings):
+    explicit = make_settings(hash_secret="s" * 40)
+    one = make_settings(database_url="postgresql+asyncpg://u:one@127.0.0.1/db")
+    two = make_settings(database_url="postgresql+asyncpg://u:two@127.0.0.1/db")
+
+    assert explicit.hash_key == b"s" * 40
+    assert len(one.hash_key) == 32
+    assert (
+        one.hash_key
+        == make_settings(database_url="postgresql+asyncpg://u:one@127.0.0.1/db").hash_key
+    )
+    assert one.hash_key != two.hash_key
+    assert b"one" not in one.hash_key
+
+
+@pytest.mark.parametrize("name", ["__Host-session", "has space", "semi;colon", "", "x" * 65])
+def test_a_session_cookie_name_must_be_a_plain_token(name):
+    assert "SESSION_COOKIE_NAME" in errors_of(session_cookie_name=name)
+
+
+@pytest.mark.parametrize("domain", ["tabsira", "https://tabsira.me", ".tabsira..me", "ta bsira.me"])
+def test_a_cookie_domain_must_be_a_domain(domain):
+    assert "SESSION_COOKIE_DOMAIN" in errors_of(session_cookie_domain=domain)
+
+
+def test_a_cookie_domain_is_lower_cased_and_may_be_empty_for_a_host_only_cookie(make_settings):
+    assert (
+        make_settings(session_cookie_domain=" .Tabsira.ME ").session_cookie_domain == ".tabsira.me"
+    )
+    assert make_settings(session_cookie_domain="").session_cookie_domain == ""
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("session_ttl_days", 0),
+        ("session_ttl_days", 366),
+        ("password_bcrypt_rounds", 3),
+        ("password_bcrypt_rounds", 17),
+        ("auth_attempt_window_seconds", 0),
+        ("auth_max_attempts_per_ip", 0),
+        ("auth_max_attempts_per_email", 0),
+        ("google_state_ttl_seconds", 10),
+        ("smtp_port", 0),
+        ("smtp_port", 70000),
+        ("smtp_timeout_seconds", 0),
+        ("email_verification_expire_hours", 0),
+        ("password_reset_expire_minutes", 1),
+    ],
+)
+def test_numbers_have_bounds(key, value):
+    assert key.upper() in errors_of(**{key: value})
+
+
+@pytest.mark.parametrize(
+    "uri", ["/auth/google/callback", "ftp://x.example/cb", "https://x.example/cb#frag"]
+)
+def test_the_google_redirect_uri_must_be_a_full_url(uri):
+    assert "GOOGLE_REDIRECT_URI" in errors_of(google_redirect_uri=uri)
+
+
+def test_mail_addresses_are_checked_but_a_name_is_allowed(make_settings):
+    assert "MAIL_FROM" in errors_of(mail_from="not an address")
+    assert "MAIL_REPLY_TO" in errors_of(mail_reply_to="nobody")
+    assert make_settings(mail_reply_to="").mail_reply_to == ""
+    assert make_settings(mail_reply_to=" help@tabsira.me ").mail_reply_to == "help@tabsira.me"
+
+
+def test_the_web_base_url_is_an_origin_or_empty(make_settings):
+    assert "WEB_BASE_URL" in errors_of(web_base_url="https://tabsira.me/app")
+    assert make_settings(web_base_url="  ").web_base_url == ""
+
+
+def test_the_smtp_ca_file_must_exist(make_settings, tmp_path):
+    assert "SMTP_CA_FILE" in errors_of(smtp_ca_file=str(tmp_path / "missing.pem"))
+    ca = tmp_path / "ca.pem"
+    ca.write_text("-")
+
+    assert make_settings(smtp_ca_file=str(ca)).smtp_ca_file == str(ca)
+    assert make_settings(smtp_ca_file="").smtp_ca_file == ""
+
+
+def test_smtp_security_is_starttls_or_ssl_only():
+    assert "SMTP_SECURITY" in errors_of(smtp_security="none")
+
+
+def test_production_refuses_a_development_cookie_domain_a_short_secret_and_cheap_bcrypt():
+    values = {
+        **PRODUCTION,
+        "session_cookie_domain": ".tabsira.test",
+        "hash_secret": "short",
+        "password_bcrypt_rounds": 10,
+    }
+
+    message = errors_of(**values)
+
+    assert "SESSION_COOKIE_DOMAIN is the development domain .tabsira.test" in message
+    assert "HASH_SECRET must hold at least 32 characters" in message
+    assert "PASSWORD_BCRYPT_ROUNDS is under 12" in message
+
+
+def test_production_with_google_needs_its_secret_and_a_real_redirect():
+    values = {**PRODUCTION, "google_client_id": "id"}
+
+    message = errors_of(**values)
+
+    assert "GOOGLE_CLIENT_ID is set but GOOGLE_CLIENT_SECRET is empty" in message
+    assert "GOOGLE_REDIRECT_URI points at the development host" in message
+
+
+def test_production_accepts_google_when_it_is_complete(make_settings):
+    settings = make_settings(
+        **PRODUCTION,
+        google_client_id="id",
+        google_client_secret="secret",
+        google_redirect_uri="https://api.tabsira.me/auth/google/callback",
+    )
+
+    assert settings.google_configured
+
+
+def test_production_leaves_google_alone_when_it_is_off(make_settings):
+    assert not make_settings(**PRODUCTION).google_configured
+
+
+def test_production_refuses_a_development_web_base_url():
+    message = errors_of(**{**PRODUCTION, "web_base_url": "https://tabsira.test"})
+
+    assert "WEB_BASE_URL points at the development host https://tabsira.test" in message
