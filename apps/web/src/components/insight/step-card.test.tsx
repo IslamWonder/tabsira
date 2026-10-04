@@ -1,0 +1,55 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import { StepCard, type StepStatus } from './step-card';
+
+function renderStep(status?: StepStatus) {
+  const onConfirm = vi.fn();
+  const onDefer = vi.fn();
+  render(
+    <StepCard
+      body="[الخطوة]"
+      confirmLabel="[الإقرار]"
+      onConfirm={onConfirm}
+      onDefer={onDefer}
+      status={status}
+      className="extra"
+    />
+  );
+  return { onConfirm, onDefer };
+}
+
+describe('StepCard', () => {
+  it('offers exactly two answers: doing it, or putting it off', async () => {
+    const { onConfirm, onDefer } = renderStep();
+    const section = screen.getByRole('region', { name: 'خطوة صغيرة' });
+    expect(section).toHaveClass('extra');
+    expect(screen.getAllByRole('button')).toHaveLength(2);
+    await userEvent.click(screen.getByRole('button', { name: '[الإقرار]' }));
+    await userEvent.click(screen.getByRole('button', { name: 'أجّل الآن' }));
+    expect(onConfirm).toHaveBeenCalledOnce();
+    expect(onDefer).toHaveBeenCalledOnce();
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
+  it('blocks a second tap while saving', () => {
+    renderStep('saving');
+    for (const button of screen.getAllByRole('button')) {
+      expect(button).toBeDisabled();
+    }
+    expect(screen.getByRole('region')).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByRole('status')).toHaveTextContent('أحفظ');
+  });
+
+  it('announces success only once saved, and removes the buttons', () => {
+    renderStep('saved');
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    expect(screen.getByRole('status')).toHaveTextContent('سُجّل ما صرّحت به.');
+  });
+
+  it('confirms a deferral without blame', () => {
+    renderStep('deferred');
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    expect(screen.getByRole('status')).toHaveTextContent('أجّلت الخطوة');
+  });
+});
