@@ -42,7 +42,7 @@ async def test_a_takeover_withdraws_the_strangers_acceptance_so_the_owner_is_ask
     google,  # noqa: F811
     make_user,
 ):
-    stranger = await make_user(verified=False)
+    stranger = await make_user(verified=False, accepted=False)
     for kind in (ConsentKind.TERMS, ConsentKind.PRIVACY):
         db_session.add(Consent(user_id=stranger.id, kind=kind, version="2026-10-04", granted=True))
     await db_session.flush()
@@ -61,7 +61,7 @@ async def test_an_existing_account_signing_in_gets_no_rows(
     google,  # noqa: F811
     make_user,
 ):
-    user = await make_user(email="reader@example.com", password=None, verified=True)
+    user = await make_user(email="reader@example.com", password=None, verified=True, accepted=False)
     state, nonce = await begin_with(web)
 
     await finish(web, google, state, nonce)

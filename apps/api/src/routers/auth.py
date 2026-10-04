@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 
-from src.deps import CurrentUser, DbDep, IpHashDep, SettingsDep
+from src.deps import DbDep, IpHashDep, SettingsDep, UngatedCurrentUser
 from src.models.email_token import TokenPurpose
 from src.schemas.auth import LegalAcceptIn, LoginIn, ProviderOut, ProvidersOut, SignupIn, UserOut
 from src.services import (
@@ -104,14 +104,14 @@ async def logout(request: Request, db: DbDep, settings: SettingsDep) -> Response
 
 
 @router.get("/me", summary="The signed-in account")
-async def me(user: CurrentUser, db: DbDep, settings: SettingsDep) -> UserOut:
+async def me(user: UngatedCurrentUser, db: DbDep, settings: SettingsDep) -> UserOut:
     """Return the caller's own account. The private profile fields are not part of it."""
     return await auth_service.describe(db, settings, user)
 
 
 @router.post("/legal/accept", summary="Accept the current terms of use and privacy policy")
 async def accept_legal(
-    body: LegalAcceptIn, user: CurrentUser, db: DbDep, settings: SettingsDep
+    body: LegalAcceptIn, user: UngatedCurrentUser, db: DbDep, settings: SettingsDep
 ) -> UserOut:
     """
     Record that the signed-in account accepts both texts, for a version that changed.

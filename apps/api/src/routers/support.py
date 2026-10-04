@@ -13,7 +13,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, status
 
-from src.deps import IpHashDep, OptionalUser, SettingsDep
+from src.deps import IpHashDep, SettingsDep, UngatedOptionalUser
 from src.errors import AppError, ErrorCode
 from src.schemas.auth import StatusOut
 from src.schemas.support import SupportIn
@@ -56,7 +56,9 @@ def enforce_limits(
     dependencies=[Depends(enforce_limits)],
     summary="Send a message to support",
 )
-async def send_support(body: SupportIn, user: OptionalUser, settings: SettingsDep) -> StatusOut:
+async def send_support(
+    body: SupportIn, user: UngatedOptionalUser, settings: SettingsDep
+) -> StatusOut:
     """
     Email the message to the support address, replies going to the visitor.
 

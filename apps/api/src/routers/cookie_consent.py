@@ -15,7 +15,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request, status
 
 from src import clock
-from src.deps import DbDep, IpHashDep, OptionalUser, SettingsDep
+from src.deps import DbDep, IpHashDep, SettingsDep, UngatedOptionalUser
 from src.errors import AppError, ErrorCode
 from src.schemas.cookie_consent import ConsentPolicyOut, CookieConsentIn, CookieConsentOut
 from src.services import cookie_consent_service
@@ -73,7 +73,7 @@ async def post_consent(
     request: Request,
     db: DbDep,
     settings: SettingsDep,
-    user: OptionalUser,
+    user: UngatedOptionalUser,
 ) -> CookieConsentOut:
     """
     Append the choice and return the consent id with what is in force.

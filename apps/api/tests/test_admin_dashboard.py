@@ -34,9 +34,9 @@ def stat(page, label):
 
 async def test_the_dashboard_counts_what_the_database_holds(admin, make_user, db_session):
     http, _ = admin
-    reader = await make_user("reader@example.com")
-    await make_user("off@example.com", is_active=False)
-    await make_user("gone@example.com", deleted_at=clock.utcnow())
+    reader = await make_user("reader@example.com", accepted=False)
+    await make_user("off@example.com", is_active=False, accepted=False)
+    await make_user("gone@example.com", deleted_at=clock.utcnow(), accepted=False)
     now = clock.utcnow()
     db_session.add_all(
         [

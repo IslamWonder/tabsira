@@ -22,7 +22,13 @@ async def test_every_route_documents_the_one_error_body(client):
     schema = (await client.get("/openapi.json")).json()
 
     error = schema["components"]["schemas"]["ErrorResponse"]
-    assert set(error["properties"]) == {"error", "detail", "fields"}
+    assert set(error["properties"]) == {
+        "error",
+        "detail",
+        "fields",
+        "terms_version",
+        "privacy_version",
+    }
     assert error["required"] == ["error", "detail"]
     assert "NOT_FOUND" in schema["components"]["schemas"]["ErrorCode"]["enum"]
     for path in ("/health", "/health/ready"):

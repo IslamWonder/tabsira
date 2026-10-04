@@ -14,7 +14,7 @@ CURRENT = {"terms_version": "2026-10-04", "privacy_version": "2026-10-04"}
 
 
 async def test_an_account_with_no_acceptance_is_asked_and_accepting_clears_it(web, make_user):
-    await make_user()
+    await make_user(accepted=False)
     await web.post("/auth/login", json=LOGIN)
     assert (await web.get("/auth/me")).json()["legal_acceptance_required"] is True
 
@@ -46,7 +46,7 @@ async def test_a_sign_up_is_not_asked_again(web):
 async def test_a_new_version_asks_again_for_either_text(
     web, make_user, db_session, make_settings, which
 ):
-    user = await make_user()
+    user = await make_user(accepted=False)
     await web.post("/auth/login", json=LOGIN)
     await web.post("/auth/legal/accept", json=CURRENT)
     newer = make_settings(**{f"{which}_version": "2027-01-01"})
@@ -55,7 +55,7 @@ async def test_a_new_version_asks_again_for_either_text(
 
 
 async def test_a_withdrawn_acceptance_asks_again(make_user, db_session, account_settings):
-    user = await make_user()
+    user = await make_user(accepted=False)
     for kind in (ConsentKind.TERMS, ConsentKind.PRIVACY):
         db_session.add(Consent(user_id=user.id, kind=kind, version="2026-10-04", granted=True))
     await db_session.flush()
@@ -79,7 +79,7 @@ async def test_a_withdrawn_acceptance_asks_again(make_user, db_session, account_
 async def test_accepting_an_old_version_is_refused_and_records_nothing(
     web, make_user, db_session, body
 ):
-    await make_user()
+    await make_user(accepted=False)
     await web.post("/auth/login", json=LOGIN)
 
     response = await web.post("/auth/legal/accept", json=body)

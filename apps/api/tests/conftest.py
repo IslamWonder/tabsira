@@ -314,10 +314,14 @@ async def web(account_app: FastAPI) -> AsyncIterator[AsyncClient]:
 
 @pytest.fixture
 async def make_user(db_session: AsyncSession, account_settings: Settings) -> Callable[..., Any]:
-    """Create an account straight in the database; `password` None makes a Google-only one."""
+    """Create an account straight in the database; `password` None makes a Google-only one.
+
+    It has accepted the current terms and privacy policy unless `accepted` is False (an admin
+    has not, unless `accepted` is True).
+    """
     from src import security
     from src.models.user import User
-    from src.services import profile_service
+    from src.services import legal_service, profile_service
 
     async def create(
         email: str = "reader@example.com",
@@ -325,6 +329,7 @@ async def make_user(db_session: AsyncSession, account_settings: Settings) -> Cal
         *,
         display_name: str = "Reader",
         verified: bool = False,
+        accepted: bool | None = None,
         **columns: Any,
     ) -> User:
         user = User(
@@ -344,6 +349,11 @@ async def make_user(db_session: AsyncSession, account_settings: Settings) -> Cal
         db_session.add(user)
         await db_session.flush()
         await profile_service.ensure_profile(db_session, user.id)
+        # Admins use the admin area, which has its own sign-in and no acceptance gate.
+        if accepted if accepted is not None else not user.is_admin:
+            # Most tests are about something else: the account has accepted the current texts.
+            legal_service.record_acceptance(db_session, account_settings, user.id)
+            await db_session.flush()
         return user
 
     return create

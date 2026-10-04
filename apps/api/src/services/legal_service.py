@@ -26,16 +26,30 @@ def is_current(settings: Settings, terms_version: str | None, privacy_version: s
     return terms_version == settings.terms_version and privacy_version == settings.privacy_version
 
 
+def acceptance_error(settings: Settings, status_code: int) -> AppError:
+    """
+    Build the `legal_acceptance_required` error, carrying the versions now in force.
+
+    422 when a request names versions that are not current, 403 when a signed-in account
+    that has not accepted them asks for something else.
+    """
+    return AppError(
+        ErrorCode.legal_acceptance_required,
+        "Accept the current terms of use and privacy policy.",
+        status_code=status_code,
+        extra={
+            "terms_version": settings.terms_version,
+            "privacy_version": settings.privacy_version,
+        },
+    )
+
+
 def require_current(
     settings: Settings, terms_version: str | None, privacy_version: str | None
 ) -> None:
     """Raise a 422 `legal_acceptance_required` unless both versions are the ones in force."""
     if not is_current(settings, terms_version, privacy_version):
-        raise AppError(
-            ErrorCode.legal_acceptance_required,
-            "Accept the current terms of use and privacy policy.",
-            status_code=422,
-        )
+        raise acceptance_error(settings, 422)
 
 
 def record_acceptance(db: AsyncSession, settings: Settings, user_id: uuid.UUID) -> None:

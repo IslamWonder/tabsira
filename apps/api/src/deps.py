@@ -11,7 +11,7 @@ from src.config import Settings
 from src.database import get_db
 from src.errors import AppError, ErrorCode
 from src.models.user import User
-from src.services import auth_service, session_service
+from src.services import auth_service, legal_service, session_service
 from src.services.google_oidc import GoogleOidc
 from src.services.insight_source import InsightSource
 from src.services.moderation_guard import OpenAiTextGuard, TextGuard
@@ -49,13 +49,17 @@ def get_google_oidc(request: Request, settings: SettingsDep) -> GoogleOidc:
 GoogleDep = Annotated[GoogleOidc, Depends(get_google_oidc)]
 
 
-async def optional_user(request: Request, db: DbDep, settings: SettingsDep) -> User | None:
+async def optional_user_ungated(request: Request, db: DbDep, settings: SettingsDep) -> User | None:
     """
-    Return the signed-in user, or None for a guest.
+    Return the signed-in user, or None for a guest, whatever they have accepted.
 
     Signed in means: the session cookie hashes to an unexpired session of an
     account that is active and not deleted. Knowing a user's id grants nothing;
     a route that needs an owner checks the owner against this user.
+
+    Only the routes that must work before the terms are accepted use this one
+    (`tests/test_legal_gate.py` lists them): everything else goes through
+    `OptionalUser` or `CurrentUser`, which also check the acceptance.
     """
     token = session_service.cookie_token(request, settings)
     if token is None:
@@ -69,11 +73,37 @@ async def optional_user(request: Request, db: DbDep, settings: SettingsDep) -> U
     return user
 
 
+UngatedOptionalUser = Annotated[User | None, Depends(optional_user_ungated)]
+
+
+async def current_user_ungated(user: UngatedOptionalUser) -> User:
+    """Return the signed-in user, or answer 401, whatever they have accepted."""
+    if user is None:
+        raise AppError(ErrorCode.UNAUTHORIZED, "Sign in first.", status_code=401)
+    return user
+
+
+UngatedCurrentUser = Annotated[User, Depends(current_user_ungated)]
+
+
+async def optional_user(user: UngatedOptionalUser, db: DbDep, settings: SettingsDep) -> User | None:
+    """
+    Return the signed-in user, or None for a guest; 403 while the user has to accept again.
+
+    The acceptance of the terms and the privacy policy is enforced here, on the server
+    (decision 35): a signed-in account whose acceptance is missing or out of date gets
+    `legal_acceptance_required` from every route that takes this dependency.
+    """
+    if user is not None and await legal_service.acceptance_required(db, settings, user.id):
+        raise legal_service.acceptance_error(settings, 403)
+    return user
+
+
 OptionalUser = Annotated[User | None, Depends(optional_user)]
 
 
 async def current_user(user: OptionalUser) -> User:
-    """Return the signed-in user, or answer 401."""
+    """Return the signed-in user, or answer 401; 403 while they have to accept again."""
     if user is None:
         raise AppError(ErrorCode.UNAUTHORIZED, "Sign in first.", status_code=401)
     return user

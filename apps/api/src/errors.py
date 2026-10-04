@@ -91,6 +91,9 @@ class ErrorResponse(BaseModel):
     detail: str
     # Only on VALIDATION_ERROR: the fields that were refused.
     fields: list[FieldError] | None = None
+    # Only on legal_acceptance_required: the versions to accept, so the page need not ask twice.
+    terms_version: str | None = None
+    privacy_version: str | None = None
 
 
 class AppError(Exception):
@@ -103,12 +106,15 @@ class AppError(Exception):
         *,
         status_code: int = HTTPStatus.BAD_REQUEST,
         headers: dict[str, str] | None = None,
+        extra: dict[str, str] | None = None,
     ) -> None:
         super().__init__(detail)
         self.code = code
         self.detail = detail
         self.status_code = int(status_code)
         self.headers = headers
+        # Further top-level fields of the error body (see `ErrorResponse`).
+        self.extra = extra or {}
 
 
 def error_response(
@@ -119,13 +125,16 @@ def error_response(
     *,
     headers: Mapping[str, str] | None = None,
     fields: list[FieldError] | None = None,
+    extra: Mapping[str, str] | None = None,
 ) -> Response:
     """Build the JSON error response, carrying the request id when there is one."""
     response_headers = dict(headers or {})
     request_id = getattr(request.state, "request_id", None)
     if request_id:
         response_headers[REQUEST_ID_HEADER] = request_id
-    body = ErrorResponse(error=code, detail=detail, fields=fields)
+    body = ErrorResponse.model_validate(
+        {"error": code, "detail": detail, "fields": fields, **(extra or {})}
+    )
     return OrjsonResponse(
         body.model_dump(mode="json", exclude_none=True),
         status_code=status_code,
@@ -150,7 +159,12 @@ async def handle_app_error(request: Request, exc: Exception) -> Response:
     """Answer a deliberate `AppError`."""
     error = _expect(exc, AppError)
     return error_response(
-        request, error.status_code, error.code, error.detail, headers=error.headers
+        request,
+        error.status_code,
+        error.code,
+        error.detail,
+        headers=error.headers,
+        extra=error.extra,
     )
 
 
