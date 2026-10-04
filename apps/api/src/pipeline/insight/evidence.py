@@ -36,9 +36,10 @@ from src.ai.client import ModelClient
 from src.config import AiStage
 from src.models import Hadith, QuranVerse
 from src.pipeline.engine import HadithRef, LearnerContext, QuranRef, RelationType
+from src.pipeline.insight.guard import EngineGuard
 from src.pipeline.insight.planner import PlannedCandidate, RelationName
 from src.pipeline.insight.search import Found
-from src.pipeline.leak_guard import LeakGuard, ScriptureLeakError
+from src.pipeline.leak_guard import ScriptureLeakError
 from src.pipeline.prompt import load_prompt
 from src.pipeline.schemas import SceneAnalysis
 from src.scripture import rulings
@@ -151,7 +152,7 @@ async def verify(
     client: ModelClient,
     scene: SceneAnalysis,
     shortlists: Sequence[Shortlist],
-    guard: LeakGuard,
+    guard: EngineGuard,
     *,
     attempts: int = 2,
 ) -> dict[int, dict[str, TextVerdict]]:
@@ -173,7 +174,7 @@ async def verify(
             if t.limit.strip()
         }
         try:
-            guard.ensure_clean(limits)
+            await guard.ensure_clean(limits)
         except ScriptureLeakError as error:
             if attempt == attempts:
                 raise VerifierLeakError(str(error)) from None

@@ -197,15 +197,14 @@ async def check_result(
     refs = [
         i.hadith.ref for i in result.insights if i.hadith and isinstance(i.hadith.ref, HadithRef)
     ]
-    guard = scripture_guard(quran, await hadith_texts(session, refs))
+    guard = scripture_guard(quran, await hadith_texts(session, refs), session)
     for index, insight in enumerate(result.insights):
         keys, broken = await resolve_evidence(session, insight)
         evidence += keys
         unresolved += broken
-        for field, text in insight_texts(insight).items():
-            if guard.check(text).leaked:
-                leaks.append(f"insights.{index}.{field}")
-    if result.clarification_question and guard.check(result.clarification_question).leaked:
+        refused = await guard.refused(insight_texts(insight))
+        leaks += [f"insights.{index}.{field}" for field in refused]
+    if result.clarification_question and await guard.leaks([result.clarification_question]):
         leaks.append("clarification_question")
     abstained = result.status in ABSTAINED
     correct = abstained if expectation.expect == "abstain" else result.status is EngineStatus.OK

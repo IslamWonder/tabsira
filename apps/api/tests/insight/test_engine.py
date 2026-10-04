@@ -12,7 +12,7 @@ from sqlalchemy.exc import OperationalError
 
 from src.ai.errors import AiCallError, AiErrorCode
 from src.config import AiProvider
-from src.models import Hadith, HadithClassification, HadithVerificationQueue
+from src.models import Hadith, HadithClassification, HadithVerificationQueue, QuranVerse
 from src.pipeline.engine import (
     EngineRequest,
     EngineStage,
@@ -27,6 +27,7 @@ from src.pipeline.insight.engine import PipelineInsightEngine, ResourceCache, bu
 from src.pipeline.insight.search import Embedding
 from src.retrieval.reranker import LlmReranker, RerankerClient
 from src.scripture.rulings import RulingInput, record_ruling
+from src.scripture.text import without_marks
 from tests.fakes import FakeModelClient
 from tests.insight.support import (
     compose_answer,
@@ -40,7 +41,9 @@ from tests.insight.support import (
     verify_answer,
 )
 from tests.retrieval.support import EmbeddingClient
+from tests.scans.conftest import store_extra
 from tests.scripture.fixtures import verse_text
+from tests.scripture.spelling import standard
 
 
 def _labels(call: dict[str, Any], candidate: int = 0) -> list[str]:
@@ -330,6 +333,98 @@ async def test_a_composer_that_keeps_leaking_leaves_no_insight(maker):
 
     assert result.status is EngineStatus.MODEL_UNAVAILABLE
     assert result.awaiting_ruling
+
+
+async def _today_3_190(maker) -> str:
+    """Al Imran 3:190 as a model would write it: read from the store, respelled, never typed."""
+    async with maker() as session, session.begin():
+        await store_extra(session)
+    async with maker() as session:
+        stored: str = await session.scalar(
+            select(QuranVerse.text).where(QuranVerse.surah == 3, QuranVerse.ayah == 190)
+        )
+    today = standard(stored)
+    assert today != stored
+    return today
+
+
+async def _unshown_hadith_words(maker) -> str:
+    """
+    The last words of Bukhari 2320, unvocalised as a model writes, from the store.
+
+    No stage of a rain scan is shown this hadith, and without its marks the pattern
+    rules see plain prose: only the store-wide check can find it.
+    """
+    async with maker() as session:
+        stored: str = await session.scalar(
+            select(Hadith.text).where(Hadith.collection == "bukhari", Hadith.number == "2320")
+        )
+    return " ".join(without_marks(stored).split()[-12:])
+
+
+async def test_a_planner_field_repeating_a_hadith_no_stage_was_shown_is_refused(maker):
+    await _today_3_190(maker)
+    words = await _unshown_hadith_words(maker)
+    engine, _ = make_engine(maker, [plan_answer(planned(value=f"تذكر {words}"))] * 2)
+
+    result = await engine.propose(EngineRequest(scan_id="s-unshown", scene=rain_scene()))
+
+    # The whole store is the corpus, not only the texts the stage saw.
+    assert result.status is EngineStatus.MODEL_UNAVAILABLE
+    assert result.insights == []
+
+
+def _verify_limited_by(limit: str) -> Any:
+    """A verifier that finds every text relevant and writes `limit` as each one's limit."""
+    relevant = verify_all()
+
+    def answer(call: dict[str, Any]) -> dict[str, Any]:
+        verdicts = relevant(call)
+        for item in verdicts["candidates"]:
+            for text in item["texts"]:
+                text["limit"] = limit
+        return verdicts
+
+    return answer
+
+
+@pytest.mark.parametrize(
+    "where", ["planner", "verifier", "explanation", "small_step", "scene_question"]
+)
+async def test_a_verse_in_todays_spelling_is_refused_wherever_a_model_writes_it(maker, where):
+    today = await _today_3_190(maker)
+    quoting = f"وفي ذلك {today}"
+    step = {"text": quoting, "kind": "reflection", "from_hadith": False}
+    answers: dict[str, list[Any]] = {
+        "planner": [plan_answer(planned(value=quoting))] * 2,
+        "verifier": [plan_answer(planned()), *[_verify_limited_by(quoting)] * 2],
+        "explanation": [
+            plan_answer(planned()),
+            verify_all(),
+            *[compose_answer(composed(life=quoting))] * 2,
+        ],
+        "small_step": [
+            plan_answer(planned()),
+            verify_all(),
+            *[compose_answer(composed(small_step=step))] * 2,
+        ],
+        "scene_question": [plan_answer()],
+    }
+    engine, _ = make_engine(maker, answers[where])
+    question = quoting if where == "scene_question" else None
+
+    result = await engine.propose(
+        EngineRequest(scan_id=f"s-{where}", scene=rain_scene(question=question))
+    )
+
+    assert result.insights == []
+    assert result.clarification_question is None
+    expected = (
+        EngineStatus.NO_RELEVANT_EVIDENCE
+        if where == "scene_question"
+        else EngineStatus.MODEL_UNAVAILABLE
+    )
+    assert result.status is expected
 
 
 async def test_the_reranker_reorders_and_a_down_reranker_keeps_the_fused_order(maker):
