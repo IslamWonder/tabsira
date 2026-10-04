@@ -15,7 +15,7 @@ from src.middleware.no_store import NoStoreMiddleware
 from src.middleware.origin_check import OriginCheckMiddleware
 from src.middleware.request_id import REQUEST_ID_HEADER, RequestIdMiddleware
 from src.responses import OrjsonResponse
-from src.routers import account, auth, auth_email, geo, google_auth, health, profile
+from src.routers import account, auth, auth_email, geo, google_auth, health, profile, scripture
 
 API_VERSION = "0.1.0"
 
@@ -28,6 +28,7 @@ OPENAPI_TAGS = [
     {"name": "profile", "description": "The optional profile and the consent records."},
     {"name": "account", "description": "Export and deletion of everything an account owns."},
     {"name": "geo", "description": "Place search, reverse lookup and countries from GeoNames."},
+    {"name": "scripture", "description": "Quran verses and hadith, read-only, exactly as stored."},
 ]
 
 
@@ -85,6 +86,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(profile.router)
     app.include_router(account.router)
     app.include_router(geo.router)
+    app.include_router(scripture.router)
     return app
 
 
