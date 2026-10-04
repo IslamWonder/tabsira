@@ -138,14 +138,16 @@ export function answer(method, pathname, state) {
 /**
  * Intercepts every request to `apiOrigin` and answers it from the samples.
  * CORS headers echo the page's origin, as the API does for its web app.
+ * `extra(method, pathname)` may answer first, with `{ status, body }`, or
+ * `{ status, raw, contentType }` for bytes and event streams.
  */
-export async function mockApi({ cdp, send }, { apiOrigin, siteOrigin, state }) {
+export async function mockApi({ cdp, send }, { apiOrigin, siteOrigin, state, extra }) {
   cdp.on('Fetch.requestPaused', async ({ requestId, request }) => {
     const url = new URL(request.url);
     const headers = [
       { name: 'Access-Control-Allow-Origin', value: siteOrigin },
       { name: 'Access-Control-Allow-Credentials', value: 'true' },
-      { name: 'Access-Control-Allow-Headers', value: 'Content-Type, Accept' },
+      { name: 'Access-Control-Allow-Headers', value: 'Content-Type, Accept, Last-Event-ID' },
       { name: 'Access-Control-Allow-Methods', value: 'GET, POST, PATCH, DELETE' },
       { name: 'Content-Type', value: 'application/json' },
       { name: 'Cache-Control', value: 'no-store' },
@@ -158,7 +160,20 @@ export async function mockApi({ cdp, send }, { apiOrigin, siteOrigin, state }) {
       });
       return;
     }
-    const { status, body } = answer(request.method, url.pathname, state.value);
+    const special = extra?.(request.method, url.pathname);
+    if (special?.raw !== undefined) {
+      await send('Fetch.fulfillRequest', {
+        requestId,
+        responseCode: special.status ?? 200,
+        responseHeaders: [
+          ...headers.filter((header) => header.name !== 'Content-Type'),
+          { name: 'Content-Type', value: special.contentType },
+        ],
+        body: Buffer.from(special.raw).toString('base64'),
+      });
+      return;
+    }
+    const { status, body } = special ?? answer(request.method, url.pathname, state.value);
     await send('Fetch.fulfillRequest', {
       requestId,
       responseCode: status,

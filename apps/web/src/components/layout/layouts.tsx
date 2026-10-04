@@ -74,8 +74,9 @@ export function StageLayout({
       <section
         aria-label={stageLabel}
         className={cx(
-          'relative h-[var(--app-height)] min-h-0 overflow-hidden tablet:h-auto',
-          stageClassName
+          'relative min-h-0 overflow-hidden tablet:h-auto',
+          // The phone height is full screen unless the page sets its own (the two would fight).
+          stageClassName ?? 'h-[var(--app-height)]'
         )}
       >
         {stage}

@@ -210,9 +210,9 @@ export function ScanScreen({ scanId }: { scanId: string }) {
       <StageLayout
         stageFirstOnPhone
         stageLabel={T.photoAlt}
-        stageClassName="h-[52dvh] min-h-[320px] tablet:h-auto"
+        stageClassName="h-[52dvh] min-h-[320px]"
         panel={
-          <div className="flex flex-col gap-6 px-4 pt-5 pb-10 tablet:p-0">
+          <div className="flex flex-col gap-6 px-4 pt-5 pb-[calc(var(--nav-clearance)+2rem)] tablet:p-0">
             <h1 className="m-0 font-bold font-display text-[2rem] text-gilded leading-[1.3]">
               {T.metaTitle}
             </h1>
