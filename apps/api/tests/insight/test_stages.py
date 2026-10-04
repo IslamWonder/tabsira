@@ -10,12 +10,21 @@ from sqlalchemy import select
 from src.models import EmbeddedCorpus, QuranVerse
 from src.pipeline.engine import (
     EngineRequest,
+    ExplanationPart,
     HadithRef,
     LearnerContext,
     QuranRef,
     RelationType,
+    SmallStep,
 )
-from src.pipeline.insight.composer import ComposedInsight, InsightComposer, build_insight
+from src.pipeline.insight.composer import (
+    ComposedInsight,
+    InsightComposer,
+    allowed_references,
+    build_insight,
+    citation,
+    cites_only_its_own,
+)
 from src.pipeline.insight.context import SceneContext, build_context
 from src.pipeline.insight.engine import scene_texts
 from src.pipeline.insight.evidence import (
@@ -474,5 +483,35 @@ def test_a_hadith_alone_makes_an_insight_without_a_verse_part():
 
     assert insight.quran is None
     assert [part.section for part in insight.explanation] == ["seen", "value", "sunnah", "life"]
+    assert insight.explanation[2].sources == ["hadith:bukhari:1"]
     assert insight.small_step is None
     assert insight.relation is RelationType.ACTION_BASED
+    assert cites_only_its_own(insight)
+
+
+def test_an_insight_citing_anything_but_its_own_texts_and_unit_is_refused():
+    result = GateResult(candidate(), quran=chosen(1), quran_ref=QuranRef(surah=30, ayah=50))
+    built = build_insight(
+        ComposedInsight.model_validate(composed()), result, rain_scene(), LearnerContext(), None
+    )
+    other_text = built.model_copy(
+        update={"explanation": [ExplanationPart(section="value", text="ش", sources=["quran:2:1"])]}
+    )
+    free_form = built.model_copy(
+        update={"explanation": [ExplanationPart(section="value", text="ش", sources=["تفسير"])]}
+    )
+    unit_as_ground = built.model_copy(
+        update={
+            "learning_unit_id": "T01_06",
+            "small_step": SmallStep(
+                text="خطوة", kind="text_grounded", grounded_in=["masar:T01_06"]
+            ),
+        }
+    )
+
+    assert allowed_references(built) == {"quran:30:50"}
+    assert cites_only_its_own(built)
+    assert not cites_only_its_own(other_text)
+    assert not cites_only_its_own(free_form)
+    assert not cites_only_its_own(unit_as_ground)
+    assert citation(HadithRef(collection="muslim", number="93")) == "hadith:muslim:93"
