@@ -51,19 +51,28 @@ log "Restoring $DUMP into $INTO"
 if [[ "$INTO" == "$LIVE_DB" ]]; then
 	run as_postgres dropdb --if-exists "$INTO"
 fi
-run as_postgres createdb -E UTF8 "$INTO"
+# Owned by the application role, like the live database.
+run as_postgres createdb -E UTF8 -O "${DB_USER:-tabsira}" "$INTO"
 # The extensions are created first, by a superuser: pg_restore as the owner
 # could not create postgis, timescaledb or the others.
 for ext in postgis vector timescaledb pg_trgm unaccent pgcrypto btree_gin btree_gist pg_stat_statements; do
 	run as_postgres psql -X -q -d "$INTO" -c "SET search_path = public; CREATE EXTENSION IF NOT EXISTS $ext;"
 done
 if is_dry; then
-	run as_postgres pg_restore --no-owner --role="${DB_USER:-tabsira}" --dbname "$INTO" "$DUMP"
+	run as_postgres pg_restore --dbname "$INTO" "$DUMP"
 else
 	# TimescaleDB wants this around a restore; errors about already existing
 	# extension objects are expected and listed, not fatal.
 	as_postgres psql -X -q -d "$INTO" -c "SELECT timescaledb_pre_restore();" || true
-	as_postgres pg_restore --no-owner --role="${DB_USER:-tabsira}" --dbname "$INTO" "$DUMP" || warn "pg_restore reported errors; read them above."
+	# Run as the superuser, so schemas, comments on extensions and the original
+	# owners (the application role) come back as they were. The extensions exist
+	# already: those "already exists" lines are expected, anything else is shown.
+	errors="$(as_postgres pg_restore --dbname "$INTO" "$DUMP" 2>&1 >/dev/null || true)"
 	as_postgres psql -X -q -d "$INTO" -c "SELECT timescaledb_post_restore();" || true
+	unexpected="$(grep -E '^pg_restore: error' <<<"$errors" | grep -v 'already exists' || true)"
+	if [[ -n "$unexpected" ]]; then
+		printf '%s\n' "$unexpected" >&2
+		warn "pg_restore reported errors other than 'already exists'; read them above."
+	fi
 fi
 ok "Restored into $INTO. Check it, then point DATABASE_URL at it or rename it."
