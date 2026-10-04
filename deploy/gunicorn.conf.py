@@ -44,18 +44,9 @@ def _dotenv(path: Path) -> dict[str, str]:
 _ENV = {**_dotenv(Path(os.environ.get("ENV_FILE", "/srv/tabsira/shared/.env"))), **os.environ}
 
 
-def _worker_class() -> str:
-    """The maintained uvicorn-worker package when installed, uvicorn's deprecated module otherwise."""
-    try:
-        import uvicorn_worker  # noqa: F401
-    except ImportError:
-        return "uvicorn.workers.UvicornWorker"
-    return "uvicorn_worker.UvicornWorker"
-
-
 bind = f"{_ENV.get('API_HOST', '127.0.0.1')}:{_ENV.get('API_PORT', '8000')}"
 workers = int(_ENV.get("API_WORKERS") or 2)
-worker_class = _worker_class()
+worker_class = "uvicorn_worker.UvicornWorker"
 
 # A worker that is being retired (TTOU, a reload, a stop) has this long to finish its requests.
 graceful_timeout = 30
