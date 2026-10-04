@@ -8,6 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 from src.ai.client import ProviderClient
+from src.ai.errors import AiCallError, AiErrorCode
 from src.ai.records import CallLog
 from src.config import AiProvider, BoxCoordinates
 from src.evaluation.benchmark import (
@@ -161,9 +162,10 @@ async def test_failures_leaks_and_partial_validity_are_counted(tmp_path, make_se
         calls["n"] += 1
         return broken(call) if calls["n"] % 2 else answer(box=None)(call)
 
-    cells = [cell("down"), cell("leaky"), cell("flaky")]
+    cells = [cell("down"), cell("leaky"), cell("flaky"), cell("offline")]
     behaviours = {
         "down": (broken, 1000),
+        "offline": (lambda _: AiCallError(AiErrorCode.NETWORK, "no route"), 33_000),
         "leaky": (answer(description=leaky), 1000),
         "flaky": (half_broken, 1000),
     }
@@ -186,6 +188,13 @@ async def test_failures_leaks_and_partial_validity_are_counted(tmp_path, make_se
     assert flaky.ineligible_because[0] == "valid answers 50% < 90%"
     assert flaky.boxes_given == 0
     assert flaky.box_drop_rate is None
+    offline = summaries["offline"]
+    assert (offline.unreachable, offline.failed) == (2, 2)
+    assert offline.errors == {"network": 2}
+    assert offline.schema_valid_rate is None
+    assert offline.vision_latency.count == 0
+    assert offline.ineligible_because == ["no valid answer"]
+    assert down.unreachable == 0
     assert setting(result, "AI_OVH__VISION_MODEL") == "(leave empty)"
     assert "down: no valid answer" in result.recommendations[0].reason
     assert not any(r.setting == "AI_PROVIDER" for r in result.recommendations)

@@ -69,7 +69,7 @@ def _quality_row(c: CellSummary) -> list[str]:
     quality = _num(c.quality) + ("" if c.eligible else " (not eligible)")
     return [
         f"`{c.cell.name}`",
-        f"{c.runs - c.skipped}/{c.runs}",
+        f"{c.runs - c.skipped - c.unreachable}/{c.runs}",
         _pct(c.schema_valid_rate),
         _pct(c.first_try_rate),
         _pct(c.entity_recall),

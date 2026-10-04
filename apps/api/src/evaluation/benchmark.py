@@ -26,7 +26,7 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.ai.client import ModelClient, ProviderClient
-from src.ai.errors import AiCallError
+from src.ai.errors import AiCallError, AiErrorCode
 from src.ai.records import CallLog, CallRecord
 from src.config import (
     AiProvider,
@@ -226,6 +226,8 @@ class CellSummary(BaseModel):
     failed: int
     leaks: int
     skipped: int
+    # Runs whose call never reached the provider: a network fault, not the model's.
+    unreachable: int
     errors: dict[str, int]
     schema_valid_rate: float | None
     first_try_rate: float | None
@@ -466,13 +468,15 @@ def summarize(cell: Cell, results: Sequence[RunResult]) -> CellSummary:
     everything = [result for result in results if result.cell == cell.name]
     mine = [result for result in everything if not result.blind]
     attempted = [result for result in mine if result.status != "skipped"]
+    network = AiErrorCode.NETWORK.value
+    measured = [result for result in attempted if result.error != network]
     blind = [r.score for r in everything if r.blind and r.score is not None]
     blind_given = sum(score.boxes_given for score in blind)
     blind_ious = [value for score in blind for value in score.reference_ious]
-    answered = [result for result in attempted if result.status in {"ok", "leak"}]
-    scores = [result.score for result in attempted if result.score is not None]
-    visions = [result.vision for result in attempted if result.vision is not None]
-    guards = [result.guard for result in attempted if result.guard is not None]
+    answered = [result for result in measured if result.status in {"ok", "leak"}]
+    scores = [result.score for result in measured if result.score is not None]
+    visions = [result.vision for result in measured if result.vision is not None]
+    guards = [result.guard for result in measured if result.guard is not None]
     first_try = [
         result for result in answered if result.vision is not None and result.vision.attempts == 1
     ]
@@ -488,7 +492,7 @@ def summarize(cell: Cell, results: Sequence[RunResult]) -> CellSummary:
     given = sum(score.boxes_given for score in scores)
     dropped = sum(score.boxes_dropped for score in scores)
     violations = sum(score.violations for score in scores)
-    scans = [result.cost_usd for result in attempted if result.vision is not None]
+    scans = [result.cost_usd for result in measured if result.vision is not None]
 
     summary = CellSummary(
         cell=cell,
@@ -497,9 +501,10 @@ def summarize(cell: Cell, results: Sequence[RunResult]) -> CellSummary:
         failed=sum(1 for result in mine if result.status == "failed"),
         leaks=sum(1 for result in mine if result.status == "leak"),
         skipped=len(mine) - len(attempted),
+        unreachable=len(attempted) - len(measured),
         errors=errors,
-        schema_valid_rate=_rate(len(answered), len(attempted)),
-        first_try_rate=_rate(len(first_try), len(attempted)),
+        schema_valid_rate=_rate(len(answered), len(measured)),
+        first_try_rate=_rate(len(first_try), len(measured)),
         entity_recall=_mean([s.required_found / s.required_total for s in scores]),
         action_recall=_mean(
             [s.expected_actions_found / s.expected_actions_total for s in with_actions]

@@ -16,6 +16,7 @@ $cells_table
 
 Metrics, scored by rule (`apps/api/src/evaluation/scoring.py`; patterns are matched on normalised Arabic and English words):
 
+- **Runs**: runs measured out of those planned. A run skipped by the spend cap, or whose call never reached the provider (a network fault on our side, listed under the findings), is not measured.
 - **Valid**: runs whose answer matched the JSON schema after the bounded retries; **first try**: without a retry.
 - **Entity recall**: share of the required entities named in the description or the entity labels. **Action recall**: share of the expected actions found among the reported actions and relations, over the scenes that expect one.
 - **Forbidden**: claims that must never be made as actions or relations: praying, spreading news, aggression, each scene's own (a still phone read or used, a scale nobody sees, watching an empty room's screen) and inferences reported as observed. **Identity**: words that state a person's gender, age or religion. **Invented**: entities the image does not contain.
