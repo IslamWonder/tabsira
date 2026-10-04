@@ -193,7 +193,7 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
         *(f"app.{table}" for table in APP_TABLES),
     } == tables
     assert set(EXTENSIONS) <= extensions
-    assert versions == {"app": "20261004_170000", "geodata": "20261004_130000"}
+    assert versions == {"app": "20261004_180000", "geodata": "20261004_130000"}
     # The models and the migrations describe the same database.
     assert {"ix_geonames_name_trgm", "ix_geonames_location_geom", "pk_geonames"} <= indexes
     # The scripture write guard exists after the migrations too, not only in a schema built
@@ -358,3 +358,50 @@ async def test_the_app_chain_builds_the_cookie_consent_guard_and_removes_it_agai
             )
         ).scalar_one()
     assert (functions, tables) == (0, 0)
+
+
+async def test_the_social_migration_makes_public_id_tables_and_removes_everything_it_made(migrated):
+    assert alembic(APP_CONFIG, "upgrade", "head").returncode == 0
+    tables = ("insight_publications", "posts", "comments", "reports")
+
+    async def present():
+        async with migrated.connect() as connection:
+            sequences = set(
+                (
+                    await connection.execute(
+                        text("SELECT sequencename FROM pg_sequences WHERE schemaname = 'app'")
+                    )
+                ).scalars()
+            )
+            defaults = (
+                await connection.execute(
+                    text(
+                        "SELECT table_name, column_default FROM information_schema.columns "
+                        "WHERE table_schema = 'app' AND column_name = 'id' "
+                        "AND table_name = ANY(:tables)"
+                    ),
+                    {"tables": list(tables)},
+                )
+            ).all()
+            triggers = (
+                await connection.execute(
+                    text(
+                        "SELECT count(*) FROM pg_proc WHERE proname IN "
+                        "('insight_publications_forbid_update', 'moderation_actions_forbid_change')"
+                    )
+                )
+            ).scalar_one()
+        return sequences, defaults, triggers
+
+    sequences, defaults, triggers = await present()
+    assert {f"{table}_id_seq" for table in tables} <= sequences
+    assert {row.table_name for row in defaults} == set(tables)
+    assert all("timestamp_id" in row.column_default for row in defaults)
+    assert triggers == 2
+
+    # Down to the revision before the social network, by name: a later migration must not shift it.
+    assert alembic(APP_CONFIG, "downgrade", "20261004_170000").returncode == 0
+    sequences, defaults, triggers = await present()
+    assert not {f"{table}_id_seq" for table in tables} & sequences
+    assert defaults == []
+    assert triggers == 0

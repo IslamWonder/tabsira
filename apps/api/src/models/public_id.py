@@ -87,7 +87,8 @@ def public_id_pk(table: str) -> Mapped[int]:
         BigInteger,
         primary_key=True,
         autoincrement=False,
-        server_default=text(f"{TIMESTAMP_ID_FUNCTION}('{table}')"),
+        # The cast is how PostgreSQL stores the default, so `alembic check` finds no difference.
+        server_default=text(f"{TIMESTAMP_ID_FUNCTION}('{table}'::text)"),
         info={PUBLIC_ID_INFO: True},
     )
 

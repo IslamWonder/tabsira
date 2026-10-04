@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib.util
 import re
-import uuid
 from pathlib import Path
 
 import pytest
@@ -35,8 +34,10 @@ from src.models import (
     User,
 )
 from src.models import moderation as moderation_model
+from src.models.public_id import create_sequence_sql
 from src.models.social import PUBLICATION_IMMUTABLE_STATEMENTS
 from src.models.user import HANDLE_PATTERN
+from tests.helpers import any_id
 
 API_DIR = Path(__file__).resolve().parents[1]
 MIGRATION = next((API_DIR / "alembic" / "versions").glob("*_create_social_network_tables.py"))
@@ -52,7 +53,7 @@ async def user(db_session, email="a@example.com", **columns):
 async def publication(db_session, author, **columns):
     values = {
         "author_id": author.id,
-        "insight_id": uuid.uuid4(),
+        "insight_id": any_id(),
         "insight_version": 1,
         "title": "t",
         "glimpse": "g",
@@ -164,7 +165,8 @@ async def test_a_publication_keeps_references_and_never_scripture_text(db_sessio
         concepts=["water"],
     )
 
-    assert row.id.version == 7
+    # A public id: time-ordered, 64 bits, not a row count.
+    assert row.id > 2**40
     assert row.concepts == ["water"]
     assert row.photo_ref is None
     assert {column.name for column in InsightPublication.__table__.columns} == {
@@ -310,7 +312,7 @@ async def test_a_reply_is_removed_with_its_parent_and_a_comment_starts_in_review
 
 async def test_a_report_is_one_per_reporter_and_target_and_outlives_its_target(db_session):
     reporter = await user(db_session)
-    target = uuid.uuid4()
+    target = any_id()
     db_session.add(
         Report(
             reporter_id=reporter.id,
@@ -393,7 +395,7 @@ async def test_deleting_a_user_removes_everything_they_published_and_did(db_sess
 async def log(db_session, **values):
     row = ModerationAction(
         target_type=values.pop("target_type", ModerationTarget.POST),
-        target_id=values.pop("target_id", uuid.uuid4()),
+        target_id=values.pop("target_id", any_id()),
         action=values.pop("action", ModerationActionKind.HELD),
         source=values.pop("source", ModerationSource.GUARD),
         **values,
@@ -467,7 +469,7 @@ async def test_the_database_refuses_a_decision_it_does_not_know(db_session):
                     "INSERT INTO app.moderation_actions (target_type, target_id, action, source) "
                     "VALUES ('post', :id, 'erase', 'guard')"
                 ),
-                {"id": uuid.uuid4()},
+                {"id": any_id()},
             )
 
 
@@ -512,6 +514,7 @@ def test_the_migration_and_the_models_build_the_same_hypertable_and_triggers(mon
     migration.upgrade()
 
     from_models = [
+        *(create_sequence_sql(table) for table in migration.PUBLIC_ID_TABLES),
         *(squash(statement) for statement in PUBLICATION_IMMUTABLE_STATEMENTS),
         *(squash(statement) for statement in moderation_model.HYPERTABLE_STATEMENTS),
         *(

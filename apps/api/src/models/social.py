@@ -22,6 +22,7 @@ from typing import Any
 
 from sqlalchemy import (
     DDL,
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -39,7 +40,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.models.base import Base, created_at_column, string_enum, uuid_pk
+from src.models.base import Base, created_at_column, string_enum
+from src.models.public_id import public_id_pk
 
 TITLE_MAX = 200
 GLIMPSE_MAX = 600
@@ -158,11 +160,11 @@ class InsightPublication(Base):
         Index("ix_insight_publications_insight_id", "insight_id"),
     )
 
-    id: Mapped[uuid.UUID] = uuid_pk()
+    id: Mapped[int] = public_id_pk("insight_publications")
     author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     # The insight this was copied from. No foreign key: the insight may be deleted, and the
     # publication, being a copy, does not depend on it.
-    insight_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    insight_id: Mapped[int] = mapped_column(BigInteger)
     insight_version: Mapped[int] = mapped_column(Integer)
     title: Mapped[str] = mapped_column(String(TITLE_MAX))
     glimpse: Mapped[str] = mapped_column(String(GLIMPSE_MAX))
@@ -252,10 +254,10 @@ class Post(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = uuid_pk()
+    id: Mapped[int] = public_id_pk("posts")
     author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    publication_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("insight_publications.id", ondelete="SET NULL"), unique=True
+    publication_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("insight_publications.id", ondelete="SET NULL"), unique=True
     )
     # The author's own words. Shown as theirs, never with the verified badge.
     reflection: Mapped[str | None] = mapped_column(String(REFLECTION_MAX))
@@ -300,7 +302,7 @@ class PostLike(Base):
         Index("ix_post_likes_user_id", "user_id"),
     )
 
-    post_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("posts.id", ondelete="CASCADE"))
+    post_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("posts.id", ondelete="CASCADE"))
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     created_at: Mapped[datetime] = created_at_column()
 
@@ -316,7 +318,7 @@ class Bookmark(Base):
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    post_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("posts.id", ondelete="CASCADE"))
+    post_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("posts.id", ondelete="CASCADE"))
     created_at: Mapped[datetime] = created_at_column()
 
 
@@ -335,12 +337,12 @@ class Comment(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = uuid_pk()
-    post_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("posts.id", ondelete="CASCADE"))
+    id: Mapped[int] = public_id_pk("comments")
+    post_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("posts.id", ondelete="CASCADE"))
     author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     # Set on a reply, to a comment that has none itself.
-    parent_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("comments.id", ondelete="CASCADE")
+    parent_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("comments.id", ondelete="CASCADE")
     )
     body: Mapped[str] = mapped_column(String(COMMENT_MAX))
     status: Mapped[CommentStatus] = mapped_column(
@@ -370,10 +372,10 @@ class Report(Base):
         Index("ix_reports_open", "created_at", postgresql_where=text("status = 'open'")),
     )
 
-    id: Mapped[uuid.UUID] = uuid_pk()
+    id: Mapped[int] = public_id_pk("reports")
     reporter_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     target_type: Mapped[ReportTarget] = mapped_column(string_enum(ReportTarget, "target_type"))
-    target_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    target_id: Mapped[int] = mapped_column(BigInteger)
     reason: Mapped[ReportReason] = mapped_column(string_enum(ReportReason, "reason"))
     details: Mapped[str | None] = mapped_column(String(REPORT_DETAILS_MAX))
     status: Mapped[ReportStatus] = mapped_column(

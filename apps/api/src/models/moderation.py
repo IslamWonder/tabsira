@@ -82,7 +82,7 @@ class ModerationAction(Base):
     target_type: Mapped[ModerationTarget] = mapped_column(
         string_enum(ModerationTarget, "target_type")
     )
-    target_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    target_id: Mapped[int] = mapped_column(BigInteger)
     action: Mapped[ModerationActionKind] = mapped_column(
         string_enum(ModerationActionKind, "action")
     )
