@@ -1,0 +1,171 @@
+"""
+Error responses.
+
+Every error the API returns has the same body, `{"error": CODE, "detail": text}`.
+The code is stable: clients branch on it and the web app maps it to an Arabic
+message. The detail is for developers and logs.
+"""
+
+from __future__ import annotations
+
+import logging
+from collections.abc import Mapping
+from enum import StrEnum
+from http import HTTPStatus
+
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import Response
+
+from src.middleware.request_id import REQUEST_ID_HEADER
+from src.responses import OrjsonResponse
+
+log = logging.getLogger("tabsira.errors")
+
+
+class ErrorCode(StrEnum):
+    """The stable error codes. A code is never renamed or reused."""
+
+    BAD_REQUEST = "BAD_REQUEST"
+    UNAUTHORIZED = "UNAUTHORIZED"
+    FORBIDDEN = "FORBIDDEN"
+    NOT_FOUND = "NOT_FOUND"
+    METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED"
+    CONFLICT = "CONFLICT"
+    VALIDATION_ERROR = "VALIDATION_ERROR"
+    RATE_LIMITED = "RATE_LIMITED"
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+    SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
+    HTTP_ERROR = "HTTP_ERROR"
+
+
+_CODE_BY_STATUS: dict[int, ErrorCode] = {
+    HTTPStatus.BAD_REQUEST: ErrorCode.BAD_REQUEST,
+    HTTPStatus.UNAUTHORIZED: ErrorCode.UNAUTHORIZED,
+    HTTPStatus.FORBIDDEN: ErrorCode.FORBIDDEN,
+    HTTPStatus.NOT_FOUND: ErrorCode.NOT_FOUND,
+    HTTPStatus.METHOD_NOT_ALLOWED: ErrorCode.METHOD_NOT_ALLOWED,
+    HTTPStatus.CONFLICT: ErrorCode.CONFLICT,
+    HTTPStatus.UNPROCESSABLE_ENTITY: ErrorCode.VALIDATION_ERROR,
+    HTTPStatus.TOO_MANY_REQUESTS: ErrorCode.RATE_LIMITED,
+    HTTPStatus.INTERNAL_SERVER_ERROR: ErrorCode.INTERNAL_ERROR,
+    HTTPStatus.SERVICE_UNAVAILABLE: ErrorCode.SERVICE_UNAVAILABLE,
+}
+
+
+class FieldError(BaseModel):
+    """One rejected field of a request: where it is and why it was refused."""
+
+    loc: list[str | int]
+    message: str
+    type: str
+
+
+class ErrorResponse(BaseModel):
+    """The body of every error response."""
+
+    error: ErrorCode
+    detail: str
+    # Only on VALIDATION_ERROR: the fields that were refused.
+    fields: list[FieldError] | None = None
+
+
+class AppError(Exception):
+    """An error a route raises on purpose, with its HTTP status and stable code."""
+
+    def __init__(
+        self,
+        code: ErrorCode,
+        detail: str,
+        *,
+        status_code: int = HTTPStatus.BAD_REQUEST,
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(detail)
+        self.code = code
+        self.detail = detail
+        self.status_code = int(status_code)
+        self.headers = headers
+
+
+def error_response(
+    request: Request,
+    status_code: int,
+    code: ErrorCode,
+    detail: str,
+    *,
+    headers: Mapping[str, str] | None = None,
+    fields: list[FieldError] | None = None,
+) -> Response:
+    """Build the JSON error response, carrying the request id when there is one."""
+    response_headers = dict(headers or {})
+    request_id = getattr(request.state, "request_id", None)
+    if request_id:
+        response_headers[REQUEST_ID_HEADER] = request_id
+    body = ErrorResponse(error=code, detail=detail, fields=fields)
+    return OrjsonResponse(
+        body.model_dump(mode="json", exclude_none=True),
+        status_code=status_code,
+        headers=response_headers,
+    )
+
+
+async def handle_app_error(request: Request, exc: Exception) -> Response:
+    """Answer a deliberate `AppError`."""
+    assert isinstance(exc, AppError)
+    return error_response(request, exc.status_code, exc.code, exc.detail, headers=exc.headers)
+
+
+async def handle_http_exception(request: Request, exc: Exception) -> Response:
+    """Answer an `HTTPException`, such as the 404 of an unknown path."""
+    assert isinstance(exc, StarletteHTTPException)
+    code = _CODE_BY_STATUS.get(exc.status_code, ErrorCode.HTTP_ERROR)
+    return error_response(request, exc.status_code, code, str(exc.detail), headers=exc.headers)
+
+
+async def handle_validation_error(request: Request, exc: Exception) -> Response:
+    """
+    Answer a request that does not match its schema.
+
+    The fields are listed by location and reason only. The rejected values are
+    left out: they can hold a password or a private note.
+    """
+    assert isinstance(exc, RequestValidationError)
+    fields = [
+        FieldError(loc=list(item["loc"]), message=item["msg"], type=item["type"])
+        for item in exc.errors()
+    ]
+    return error_response(
+        request,
+        HTTPStatus.UNPROCESSABLE_ENTITY,
+        ErrorCode.VALIDATION_ERROR,
+        "The request does not match the expected format.",
+        fields=fields,
+    )
+
+
+async def handle_unexpected_error(request: Request, exc: Exception) -> Response:
+    """Answer any other failure with a 500 that reveals nothing about it."""
+    log.error(
+        "unhandled error on %s %s (request %s)",
+        request.method,
+        request.url.path,
+        getattr(request.state, "request_id", "-"),
+        exc_info=exc,
+    )
+    return error_response(
+        request,
+        HTTPStatus.INTERNAL_SERVER_ERROR,
+        ErrorCode.INTERNAL_ERROR,
+        "Internal server error.",
+    )
+
+
+def register_error_handlers(app: FastAPI) -> None:
+    """Install the handlers that give every error the same JSON body."""
+    app.add_exception_handler(AppError, handle_app_error)
+    app.add_exception_handler(StarletteHTTPException, handle_http_exception)
+    app.add_exception_handler(RequestValidationError, handle_validation_error)
+    app.add_exception_handler(Exception, handle_unexpected_error)
