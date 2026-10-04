@@ -160,7 +160,7 @@ async def test_the_command_lists_the_queue_and_records_a_ruling(scripture_maker,
     async with scripture_maker() as session, session.begin():
         await enqueue_demand(session, (await _hadith(session)).id)
     ruling_file = tmp_path / "ruling.txt"
-    ruling_file.write_text(" [إسناده صحيح] \n", encoding="utf-8")
+    ruling_file.write_bytes(" [إسناده صحيح] \r\nx\n".encode())
     record = [
         "record",
         "bukhari",
@@ -208,7 +208,7 @@ async def test_the_command_lists_the_queue_and_records_a_ruling(scripture_maker,
         texts = (
             await session.scalars(select(HadithRuling.ruling_text).order_by(HadithRuling.id))
         ).all()
-    assert texts == [" [إسناده صحيح] ", "ضعيف"]
+    assert texts == [" [إسناده صحيح] \r\nx", "ضعيف"]
 
 
 async def test_the_command_refuses_an_unknown_hadith_or_a_bad_ruling(scripture_maker, capsys):

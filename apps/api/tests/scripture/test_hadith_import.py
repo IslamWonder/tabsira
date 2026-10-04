@@ -123,6 +123,8 @@ def test_malformed_or_ambiguous_sources_are_refused():
     with pytest.raises(HadithImportError, match="unexpected Open-Hadith-Data row"):
         parse_open_hadith_csv(b'"1"\n')
     assert parse_open_hadith_csv(b'"1"," "\n').skipped_empty == ["1"]
+    with pytest.raises(HadithImportError, match="not well-formed CSV"):
+        parse_open_hadith_csv(b'"1","a"b"\n')
 
     raw = load_json("ara-bukhari.json")
     raw["hadiths"].append(raw["hadiths"][1])

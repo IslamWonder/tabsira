@@ -205,9 +205,19 @@ def parse_fawaz(data: bytes) -> ParsedSource:
 
 
 def parse_open_hadith_csv(data: bytes) -> ParsedSource:
-    """Read an Open-Hadith-Data file: rows of number and text, no header, no grades."""
+    """
+    Read an Open-Hadith-Data file: rows of number and text, no header, no grades.
+
+    Strict CSV: a stray quote stops the import instead of being silently dropped
+    from a text.
+    """
     parsed = ParsedSource([], [])
-    for row in csv.reader(io.StringIO(data.decode("utf-8"), newline="")):
+    try:
+        rows = list(csv.reader(io.StringIO(data.decode("utf-8"), newline=""), strict=True))
+    except csv.Error as error:
+        message = f"the Open-Hadith-Data file is not well-formed CSV: {error}"
+        raise HadithImportError(message) from None
+    for row in rows:
         if len(row) != 2 or not row[0].isdigit():
             message = f"unexpected Open-Hadith-Data row starting {row[:1]!r}"
             raise HadithImportError(message)

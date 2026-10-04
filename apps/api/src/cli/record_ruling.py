@@ -84,7 +84,7 @@ async def _record(session: AsyncSession, args: argparse.Namespace) -> int:
     ruling_text = (
         args.ruling
         if args.ruling is not None
-        else args.ruling_file.read_text(encoding="utf-8").removesuffix("\n")
+        else args.ruling_file.read_bytes().decode("utf-8").removesuffix("\n")
     )
     ruling = RulingInput(
         ruling_text=ruling_text,
