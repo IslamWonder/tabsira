@@ -4,6 +4,7 @@ import pytest
 
 from src import arabic
 from src.arabic import (
+    bare_form,
     contains_arabic,
     normalize_arabic,
     search_variants,
@@ -64,6 +65,13 @@ def test_the_article_is_removed_only_when_a_stem_remains():
     # Particles fused to the article are left alone: «والدين» is parents, not religion.
     assert strip_article("والدين") == "والدين"
     assert arabic.ARTICLE == "ال"
+
+
+def test_the_bare_form_drops_the_article_of_every_word():
+    assert bare_form("الطَّائِرَةُ الكبيرة") == "طايره كبيره"
+    assert bare_form("سماء") == "سماء"
+    assert bare_form("ال") == "ال"
+    assert bare_form("") == ""
 
 
 def test_tokens_are_the_words_in_search_form():

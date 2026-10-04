@@ -46,7 +46,14 @@ from typing import NamedTuple, Protocol
 from sqlalchemy import desc, func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.arabic import contains_arabic, normalize_arabic, search_variants, strip_article, tokens
+from src.arabic import (
+    bare_form,
+    contains_arabic,
+    normalize_arabic,
+    search_variants,
+    strip_article,
+    tokens,
+)
 from src.models.ontology import OntologyEntity
 from src.services.ontology_hints import (
     CATCH_ALL_BY_ARABIC_WORD,
@@ -190,7 +197,7 @@ class _Query:
     @property
     def bare(self) -> str:
         """The form without articles: the search text of an entity holds indefinite forms."""
-        return min(self.variants, key=len)
+        return bare_form(self.text)
 
 
 def _query(text: str, via: Via, factor: float = 1.0) -> _Query | None:

@@ -61,6 +61,11 @@ def tokens(text: str) -> list[str]:
     return normalized.split(" ") if normalized else []
 
 
+def bare_form(text: str) -> str:
+    """Return the search form of `text` with the definite article removed from every word."""
+    return " ".join(strip_article(word) for word in tokens(text))
+
+
 def search_variants(text: str) -> list[str]:
     """
     Return the forms of `text` an entity label could be spelt in, most exact first.
@@ -73,11 +78,10 @@ def search_variants(text: str) -> list[str]:
     exact = normalize_arabic(text)
     if not exact:
         return []
-    words = [strip_article(word) for word in exact.split(" ")]
-    bare = " ".join(words)
-    first = words[0] if words[0].startswith(ARTICLE) else ARTICLE + words[0]
-    variants = [exact, bare, " ".join([first, *words[1:]])]
-    return list(dict.fromkeys(variants))
+    bare = bare_form(text)
+    first, *rest = bare.split(" ")
+    with_article = " ".join([first if first.startswith(ARTICLE) else ARTICLE + first, *rest])
+    return list(dict.fromkeys([exact, bare, with_article]))
 
 
 def contains_arabic(text: str) -> bool:
