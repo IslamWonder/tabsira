@@ -380,6 +380,7 @@ def test_the_engine_is_built_from_the_active_provider(make_settings):
     assert engine._embedding.model == "bge-m3"
     assert engine._reranker is not None
     assert without._embedding is None
+    assert build_engine(make_settings(reranker_url=""), http, None)._reranker is None  # type: ignore[arg-type]
 
 
 async def test_a_queued_hadith_is_counted_once_per_scan(maker):
