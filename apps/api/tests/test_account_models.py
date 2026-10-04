@@ -367,6 +367,20 @@ def test_every_table_lives_in_the_app_schema():
         "learning_domains",
         "learning_units",
         "learner_unit_states",
+        # The scripture store
+        "quran_surahs",
+        "quran_verses",
+        "quran_verse_search",
+        "quran_verse_history",
+        "quran_annotations",
+        "hadith_collections",
+        "hadiths",
+        "hadith_search",
+        "hadith_signals",
+        "hadith_rulings",
+        "hadith_verification_queue",
+        "scripture_sync_state",
+        "scripture_audit",
     }
 
     assert {name.removeprefix(f"{APP_SCHEMA}.") for name in Base.metadata.tables} == tables
