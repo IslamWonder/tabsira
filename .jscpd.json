@@ -21,7 +21,8 @@
     "data/**",
     "services/vision/weights/**",
     "docs/**",
-    "scripts/**"
+    "scripts/**",
+    "apps/web/src/lib/api/schema.d.ts"
   ],
   "absolute": false,
   "gitignore": true
