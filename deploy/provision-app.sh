@@ -33,7 +33,7 @@
 #   CERTBOT_EMAIL=<address> \
 #     deploy/provision-app.sh [--dry-run | --check] [--skip-tls]
 #
-# Environment: APP_HOST_VPN_IP (default: this host's address on wt0, found by itself), CERTBOT_EMAIL (required for TLS),
+# Environment: APP_HOST_VPN_IP (default: this host's address on wt0, found by itself), CERTBOT_EMAIL (only when a certificate must be issued; existing ones in /etc/letsencrypt/live are kept),
 # CERTBOT_DNS_PLUGIN and CERTBOT_DNS_CREDENTIALS (optional: issue the admin
 # certificate by DNS-01 instead of HTTP; the credentials file is mode 0600, supplied
 # by the owners, never in git), APP_USER (the account that ran sudo, else devops;
@@ -178,7 +178,6 @@ issue_lineage() {
 }
 
 issue_tls() {
-	[[ -n "$CERTBOT_EMAIL" ]] || die "Set CERTBOT_EMAIL (or pass --skip-tls)."
 	# Reload only a configuration that passes nginx -t.
 	install -D -m 0755 /dev/stdin /etc/letsencrypt/renewal-hooks/deploy/tabsira-nginx-reload.sh <<'HOOK'
 #!/bin/sh
@@ -187,6 +186,8 @@ HOOK
 	local webroot=(--webroot -w /var/www/certbot) name
 	if [[ ! -s "/etc/letsencrypt/live/$WEB_NAME/fullchain.pem" || ! -s "/etc/letsencrypt/live/$API_NAME/fullchain.pem" ||
 		(-z "$CERTBOT_DNS_PLUGIN" && ! -s "/etc/letsencrypt/live/$ADMIN_NAME/fullchain.pem") ]]; then
+		# Certificates made by hand are kept: the e-mail is only needed when one must be issued.
+		[[ -n "$CERTBOT_EMAIL" ]] || die "A certificate is missing in /etc/letsencrypt/live (one per name: $WEB_NAME, $API_NAME, $ADMIN_NAME): set CERTBOT_EMAIL to issue it, or pass --skip-tls."
 		# Nothing else answers port 80 yet: a bootstrap block serves the challenge files.
 		cat >/etc/nginx/conf.d/tabsira-bootstrap.conf <<EOF
 server {
@@ -205,7 +206,8 @@ EOF
 			issue_lineage "$ADMIN_NAME" "${webroot[@]}" -d "$ADMIN_NAME"
 		fi
 	fi
-	if [[ -n "$CERTBOT_DNS_PLUGIN" ]]; then
+	if [[ -n "$CERTBOT_DNS_PLUGIN" && ! -s "/etc/letsencrypt/live/$ADMIN_NAME/fullchain.pem" ]]; then
+		[[ -n "$CERTBOT_EMAIL" ]] || die "Set CERTBOT_EMAIL to issue the certificate of $ADMIN_NAME."
 		[[ -f "$CERTBOT_DNS_CREDENTIALS" ]] || die "CERTBOT_DNS_PLUGIN is set: give CERTBOT_DNS_CREDENTIALS, a 0600 file the owners supply."
 		chmod 0600 "$CERTBOT_DNS_CREDENTIALS"
 		issue_lineage "$ADMIN_NAME" "--dns-$CERTBOT_DNS_PLUGIN" "--dns-$CERTBOT_DNS_PLUGIN-credentials" "$CERTBOT_DNS_CREDENTIALS" -d "$ADMIN_NAME"
