@@ -72,6 +72,10 @@ DEFAULT_MAIL_FROM = "تبصرة <no-reply@tabsira.me>"
 DEFAULT_SUPPORT_EMAIL = "support@tabsira.me"
 DEFAULT_PRIVACY_EMAIL = "privacy@tabsira.me"
 # The date the first terms and privacy texts were written.
+# Cloudflare's published dummy keys start with 1x (always pass), 2x (always fail), 3x (forced
+# challenge). The site key shape is the one the web app accepts (apps/web/src/config/server-env.ts).
+TURNSTILE_TEST_KEY_PREFIXES = ("1x", "2x", "3x")
+TURNSTILE_SITE_KEY_PATTERN = re.compile(r"[0-9A-Za-z_-]{8,64}")
 DEFAULT_LEGAL_VERSION = "2026-10-04T20:00Z"
 DEFAULT_LANGUAGE = "ar"
 
@@ -1114,6 +1118,7 @@ class Settings(BaseSettings):
             if not value.startswith("__Secure-")
         )
         problems.extend(self._storage_problems())
+        problems.extend(self._turnstile_problems())
         if not self.ai.api_key.get_secret_value():
             problems.append(f"the key of the active AI provider ({self.ai_provider}) is empty")
         if _domain_is_test(self.session_cookie_domain):
@@ -1143,6 +1148,18 @@ class Settings(BaseSettings):
                     f"GOOGLE_REDIRECT_URI points at the development host {self.google_redirect_uri}"
                 )
         return problems + self._scan_workflow_problems()
+
+    def _turnstile_problems(self) -> list[str]:
+        """Refuse Cloudflare's dummy keys (1x, 2x, 3x) and a site key the web would drop."""
+        problems = []
+        secret = self.turnstile_secret_key.get_secret_value().strip()
+        site = self.turnstile_site_key.strip()
+        if site and not TURNSTILE_SITE_KEY_PATTERN.fullmatch(site):
+            problems.append("TURNSTILE_SITE_KEY must be 8 to 64 letters, digits, - or _")
+        for name, value in (("TURNSTILE_SITE_KEY", site), ("TURNSTILE_SECRET_KEY", secret)):
+            if value.startswith(TURNSTILE_TEST_KEY_PREFIXES):
+                problems.append(f"{name} is one of Cloudflare's test keys")
+        return problems
 
     def _scan_workflow_problems(self) -> list[str]:
         """List what the scan workflow refuses in production: an open Redis, the simulation."""

@@ -429,6 +429,41 @@ def test_a_correct_production_configuration_is_accepted(make_settings):
     assert settings.ai.api_key.get_secret_value() == "ovh-key-123"
 
 
+@pytest.mark.parametrize("prefix", ["1x", "2x", "3x"])
+def test_production_refuses_cloudflares_dummy_turnstile_keys(prefix):
+    message = errors_of(
+        **PRODUCTION,
+        turnstile_site_key=f"{prefix}00000000000000000000AA",
+        turnstile_secret_key=f"{prefix}0000000000000000000000000000AA",
+    )
+
+    assert "TURNSTILE_SITE_KEY is one of Cloudflare's test keys" in message
+    assert "TURNSTILE_SECRET_KEY is one of Cloudflare's test keys" in message
+
+
+@pytest.mark.parametrize("site_key", ["0x4AAA", "0x4AAAAAAAexample key", "0x4AAAAAAA" + "a" * 60])
+def test_production_refuses_a_site_key_the_web_app_would_drop(site_key):
+    message = errors_of(
+        **PRODUCTION, turnstile_site_key=site_key, turnstile_secret_key="0x4AAAAAAAsecretvalue"
+    )
+
+    assert "TURNSTILE_SITE_KEY must be 8 to 64 letters, digits, - or _" in message
+
+
+def test_production_accepts_real_looking_turnstile_keys(make_settings):
+    settings = make_settings(
+        **PRODUCTION,
+        turnstile_site_key="0x4AAAAAAAexample-key_1",
+        turnstile_secret_key="0x4AAAAAAAsecretvalue",
+    )
+
+    assert settings.turnstile_enabled
+
+
+def test_production_leaves_turnstile_alone_when_it_is_off(make_settings):
+    assert not make_settings(**PRODUCTION).turnstile_enabled
+
+
 def test_production_refuses_every_test_domain_url():
     message = errors_of(
         **{

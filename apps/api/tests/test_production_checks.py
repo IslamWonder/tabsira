@@ -607,8 +607,8 @@ def test_production_report_copes_with_a_missing_file(monkeypatch, tmp_path, caps
 # ─── Turnstile ──────────────────────────────────────────────────────
 
 TURNSTILE = {
-    "turnstile_site_key": "1x00000000000000000000AA",
-    "turnstile_secret_key": "1x0000000000000000000000000000AA",
+    "turnstile_site_key": "0x4AAAAAAAexample-key",
+    "turnstile_secret_key": "0x4AAAAAAAsecretvalue",
 }
 TURNSTILE_LINE = "TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY"
 
