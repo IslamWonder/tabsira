@@ -20,6 +20,11 @@ set -Eeuo pipefail
 # shellcheck disable=SC1091
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)/lib.sh"
 
+# On the data host the dump is taken as postgres, over the local socket; root has no database role.
+if [[ $EUID -eq 0 && " $* " != *" --url "* && " $* " != *" --dry-run "* ]] && id -u postgres >/dev/null 2>&1; then
+	exec runuser -u postgres -- bash "${BASH_SOURCE[0]}" "$@"
+fi
+
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/tabsira}"
 BACKUP_KEEP_DAYS="${BACKUP_KEEP_DAYS:-14}"
 BACKUP_KEEP_MIN="${BACKUP_KEEP_MIN:-3}"
