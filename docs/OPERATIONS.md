@@ -50,12 +50,19 @@ A release holds the sources, the API's and vision's virtual environments, and `w
 Order matters: the data host first, because the first deploy migrates the database.
 
 1. **Netbird** on both hosts (interface `wt0`). Note each host's VPN address. The scripts read the interface from `VPN_IFACE` (default `wt0`) and fail with "No address on wt0" when it is missing; on a machine without Netbird name the interface that carries the private network and pass `DATA_HOST_VPN_IP`.
-2. **Data host** (as root, from a checkout):
+2. **Database host and Redis host.** `deploy/provision-postgres.sh` and `deploy/provision-redis.sh` are standalone, like the earlier prototype's installers: copy the one file to its host and run it as root; neither needs the repository. Each is idempotent, `--check` prints the plan and changes nothing, and each ends by printing the lines for the application host's `.env`, passwords included.
 
    ```bash
-   APP_HOST_VPN_IP=<app host VPN address> deploy/provision-data.sh --dry-run
-   APP_HOST_VPN_IP=<app host VPN address> deploy/provision-data.sh
+   # database host (db.tabsira.me)
+   sudo ./provision-postgres.sh --check
+   sudo APP_HOST_VPN_IP=<app host VPN address> ./provision-postgres.sh   # without it: the VPN subnet
+
+   # Redis host (redis.tabsira.me)
+   sudo ./provision-redis.sh --check
+   sudo ./provision-redis.sh
    ```
+
+   Neither manages the firewall: allow 5432 and 6379 from the application host in the firewall you use. When both run on one data host, `deploy/provision-data.sh` (from a checkout) runs the two and adds the `ufw` rules described below.
 
    It installs PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, creates the role `tabsira` and the database `tabsira` with `search_path = app, geodata, public` and the nine extensions (`postgis`, `vector`, `timescaledb`, `pg_trgm`, `unaccent`, `pgcrypto`, `btree_gin`, `btree_gist`, `pg_stat_statements`), and installs Redis 8 with a password and protected mode. Both listen on `127.0.0.1` and the `wt0` address only (`DATA_HOST_VPN_IP` to name it). The script first sets `net.ipv4.ip_nonlocal_bind=1` (`/etc/sysctl.d/90-tabsira-nonlocal-bind.conf`), so a reboot that starts them before Netbird has given the address does not leave them down. `pg_hba.conf` has one managed block: the application role from `APP_HOST_VPN_IP/32` with `scram-sha-256`, no ranges, no trust. The firewall step adds `ufw` rules that allow 5432 and 6379 from the app host on `wt0` and deny them elsewhere; it does not enable `ufw` (a wrong default over ssh locks you out) unless `FIREWALL_ENABLE=true`. Passwords are generated into `/etc/tabsira/postgres.env` and `/etc/tabsira/redis.env` (root only); each script ends by printing the lines to paste into the application host's `.env`: `DATABASE_URL` and `SYNC_DATABASE_URL` with the generated password in them (48 hex characters, so no escaping), and for Redis `REDIS_URL` without a password plus `REDIS_PASSWORD`. `sudo deploy/show-env-lines.sh` prints all four again from the root-only files. Treat that output as a secret. The API refuses a Redis URL that carries a password.
 
