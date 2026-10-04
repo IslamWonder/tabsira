@@ -18,6 +18,7 @@ from src.models.atlas import MapEntry
 from src.models.social import Comment, Post, Report, ReportReason, ReportTarget
 from src.models.user import User
 from src.services import atlas_service, comment_service, moderation_service, post_service
+from src.storage.photos import PhotoStore
 
 
 def _own() -> AppError:
@@ -79,8 +80,13 @@ async def file_report(
     hold_threshold: int,
     social_on: bool,
     atlas_on: bool,
+    photos: PhotoStore | None = None,
 ) -> int:
-    """File a report and return its id; the same report filed again returns the first one's."""
+    """
+    File a report and return its id; the same report filed again returns the first one's.
+
+    With `photos`, an item the reports hold loses the public copy of its photo at once.
+    """
     target = await _target(
         db, reporter, target_type, target_id, social_on=social_on, atlas_on=atlas_on
     )
@@ -99,7 +105,7 @@ async def file_report(
         .returning(Report.id)
     )
     if created is not None:
-        await moderation_service.hold_if_reported(db, target, hold_threshold)
+        await moderation_service.hold_if_reported(db, target, hold_threshold, photos=photos)
         return created
     first: int = (
         await db.execute(

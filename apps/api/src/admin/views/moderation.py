@@ -401,7 +401,9 @@ class ModerationQueueView(BaseView):
                 if decision == "approve":
                     await moderation_service.approve(db, item, admin_id, photos=photos)
                 elif decision == "reject":
-                    await moderation_service.reject(db, item, admin_id, cast("str", reason))
+                    await moderation_service.reject(
+                        db, item, admin_id, cast("str", reason), photos=photos
+                    )
                 else:
                     await moderation_service.remove(
                         db, item, admin_id, cast("str", reason), photos=photos

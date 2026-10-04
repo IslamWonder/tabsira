@@ -230,8 +230,20 @@ async def approve(
     await _sync_photo(db, item, photos)
 
 
-async def reject(db: AsyncSession, item: Item, actor_id: uuid.UUID, reason: str) -> None:
-    """Refuse a held item; its author is told why."""
+async def reject(
+    db: AsyncSession,
+    item: Item,
+    actor_id: uuid.UUID,
+    reason: str,
+    *,
+    photos: PhotoStore | None = None,
+) -> None:
+    """
+    Refuse a held item; its author is told why.
+
+    With `photos`, a public copy of the photo the item still had (an item held by reports was
+    published before) is deleted: a refusal is a moderator's removal.
+    """
     await _lock(db, item, {PostStatus.PENDING_REVIEW.value})
     now = clock.utcnow()
     # A map entry has no words to refuse: a held one that is not approved is removed.
@@ -255,6 +267,7 @@ async def reject(db: AsyncSession, item: Item, actor_id: uuid.UUID, reason: str)
         reason=reason,
     )
     await _close_reports(db, item, ReportStatus.ACTIONED, actor_id)
+    await _sync_photo(db, item, photos)
 
 
 async def remove(
@@ -293,12 +306,15 @@ async def remove(
 # ─── Reports moving a published item back to the queue ─────────────────────────
 
 
-async def hold_if_reported(db: AsyncSession, item: Item, threshold: int) -> bool:
+async def hold_if_reported(
+    db: AsyncSession, item: Item, threshold: int, *, photos: PhotoStore | None = None
+) -> bool:
     """
     Send a published item back to the queue once enough different people have reported it.
 
     It is hidden until a moderator decides, which a brigade of reports could abuse, so the
-    number is a setting and 0 turns this off. Returns whether the item was held.
+    number is a setting and 0 turns this off. With `photos`, the public copy of the photo it
+    showed goes with it; a later approval makes the copy again. Returns whether the item was held.
     """
     if threshold <= 0 or item.status != _published(item).value:
         return False
@@ -320,4 +336,5 @@ async def hold_if_reported(db: AsyncSession, item: Item, threshold: int) -> bool
         reason=HELD_BY_REPORTS,
         details={"reporters": reporters},
     )
+    await _sync_photo(db, item, photos)
     return True

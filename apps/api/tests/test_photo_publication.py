@@ -19,7 +19,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import clock
-from src.models import Insight, InsightPublication, MapEntry, Post, PostStatus
+from src.models import (
+    Insight,
+    InsightPublication,
+    MapEntry,
+    Post,
+    PostStatus,
+    Report,
+    ReportReason,
+    ReportTarget,
+)
 from src.owner import Owner
 from src.services import moderation_service
 from src.services.insight_table_source import InsightTableSource
@@ -540,3 +549,68 @@ async def test_the_media_route_serves_the_public_prefix_alone_and_only_from_the_
     # With S3 the copies are read from `S3_PUBLIC_BASE_URL`, never through the API.
     account_app.state.photo_store = PhotoStore(cast("Storage", object()), photos.settings)
     assert (await reader.http.get(f"/media/{public}")).status_code == 404
+
+
+async def report(member: Member, target_type: str, target_id: Any) -> None:
+    response = await member.http.post(
+        "/reports",
+        json={"target_type": target_type, "target_id": str(target_id), "reason": "abuse"},
+    )
+    assert response.status_code == 201, response.text
+
+
+async def test_reports_that_hold_a_post_and_an_entry_take_their_copies_down_until_approved(
+    db_session, make_member, photos, media, world, account_app, account_settings
+):
+    account_app.state.settings = account_settings.model_copy(
+        update={"social_report_hold_threshold": 1}
+    )
+    author = await make_member("author")
+    reporter = await make_member("reporter")
+    await consent(author)
+    posted = await kept_insight(db_session, author, photos)
+    post_id = await post_with_photo(author, posted)
+    assert (await author.http.post(f"/posts/{post_id}/submit")).json()["status"] == "published"
+    placed = await kept_insight(db_session, author, photos)
+    await place_with_photo(author, placed)
+    published = await author.http.post(f"/insights/{placed.id}/map/publish")
+    assert (await keys_of(db_session, posted))[1] is not None
+    assert (await keys_of(db_session, placed))[1] is not None
+
+    await report(reporter, "post", post_id)
+    await report(reporter, "map_entry", published.json()["id"])
+
+    post = await db_session.get(Post, int(post_id))
+    entry = await db_session.get(MapEntry, int(published.json()["id"]))
+    assert post.status is PostStatus.PENDING_REVIEW and entry.status.value == "pending_review"
+    assert await keys_of(db_session, posted) == (posted.photo_key, None)
+    assert await keys_of(db_session, placed) == (placed.photo_key, None)
+    assert objects(media) == sorted([posted.photo_key, placed.photo_key])
+
+    # Approved: the copies come back. Refused after a hold: they go for good.
+    await moderation_service.approve(db_session, post, MODERATOR_ID, photos=photos)
+    await moderation_service.approve(db_session, entry, MODERATOR_ID, photos=photos)
+    assert (await keys_of(db_session, posted))[1] is not None
+    assert (await keys_of(db_session, placed))[1] is not None
+    # A hold without a store leaves the copy, as every path does; the refusal deletes it.
+    another = await make_member("another")
+    for target_type, item in ((ReportTarget.POST, post), (ReportTarget.MAP_ENTRY, entry)):
+        db_session.add(
+            Report(
+                reporter_id=another.user.id,
+                target_type=target_type,
+                target_id=item.id,
+                reason=ReportReason.ABUSE,
+            )
+        )
+    await db_session.flush()
+    assert await moderation_service.hold_if_reported(db_session, post, 1) is True
+    assert await moderation_service.hold_if_reported(db_session, entry, 1) is True
+    assert (await keys_of(db_session, posted))[1] is not None
+    assert (await keys_of(db_session, placed))[1] is not None
+    await moderation_service.reject(db_session, post, MODERATOR_ID, "spam", photos=photos)
+    await moderation_service.reject(db_session, entry, MODERATOR_ID, "wrong_place", photos=photos)
+    assert post.status is PostStatus.REJECTED and entry.status.value == "removed"
+    assert await keys_of(db_session, posted) == (posted.photo_key, None)
+    assert await keys_of(db_session, placed) == (placed.photo_key, None)
+    assert objects(media) == sorted([posted.photo_key, placed.photo_key])
