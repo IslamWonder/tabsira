@@ -10,8 +10,8 @@
 #   signals      data/corpus/sunnah-enriched.json, repaired from cp720 and linked
 #
 # The two files in data/corpus/ are the project's own corpora, too large for
-# git; docs/ASSET_MANIFEST.md names them and their SHA-256. The world ontology
-# and learning-path importers do not exist yet, and this script says so.
+# git; docs/ASSET_MANIFEST.md names them and their SHA-256. Then the world
+# ontology and the learning path (scripts/data-learning.sh).
 set -euo pipefail
 # shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -34,4 +34,8 @@ started=$SECONDS
 	download quran annotations hadith signals --cache-dir "$REPO_ROOT/data/cache" --corpus-dir "$CORPUS_DIR")
 ok "Scripture store imported in $((SECONDS - started)) s"
 
-warn "Not built yet: the world ontology and learning-path importers. make data imports the scripture store only."
+# shellcheck source=data-learning.sh
+source "$(dirname "${BASH_SOURCE[0]}")/data-learning.sh"
+banner "World ontology and learning path"
+import_ontology
+import_masar
