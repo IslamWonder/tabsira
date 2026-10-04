@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from sqlalchemy import select
 
@@ -13,6 +15,8 @@ from src.models import (
 )
 from src.retrieval.documents import RetrievalDocument, hadith_documents, quran_documents
 from src.retrieval.embedding_store import (
+    ABANDONED,
+    STALE_AFTER,
     CorpusEmbedder,
     SpendCapReachedError,
     batch_limit,
@@ -124,3 +128,24 @@ async def test_the_spend_cap_stops_a_run_before_the_next_batch(world_maker):
     (run,) = await _runs(world_maker)
     assert (run.status, run.embedded) == ("failed", 2)
     assert len(client.embedded) == 1
+
+
+async def test_a_run_whose_process_was_killed_is_closed_by_the_next_run(world_maker):
+    now = datetime.now(UTC)
+    async with world_maker() as session, session.begin():
+        for started in (now - STALE_AFTER - timedelta(minutes=1), now - timedelta(minutes=5)):
+            session.add(
+                EmbeddingRun(
+                    corpus="quran", provider="openai", model="m", dimensions=8, started_at=started
+                )
+            )
+    embedder = CorpusEmbedder(world_maker, EmbeddingClient(), model="m", dimensions=8)
+
+    await embedder.run(EmbeddedCorpus.QURAN, [])
+
+    killed, recent, finished = await _runs(world_maker)
+    assert (killed.status, killed.error) == ("failed", ABANDONED)
+    assert killed.finished_at is not None
+    # A run that may still be working elsewhere is left alone.
+    assert (recent.status, recent.error) == ("running", None)
+    assert finished.status == "done"
