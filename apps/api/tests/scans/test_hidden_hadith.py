@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from src.routers.scripture import read_hadith, read_verse
@@ -98,17 +100,22 @@ async def test_a_hidden_hadith_hides_its_section_on_an_insight(browser, store, f
 
 
 async def test_the_tutorial_says_nothing_of_a_hadith_before_its_ruling(browser, store):
-    waiting = (await browser.get("/tutorial/rain")).json()["insights"][0]
+    waiting = (await browser.get("/tutorial/rain")).json()["insights"]
     async with store() as db:
         await rule(db, "bukhari", "1032")
+        await rule(db, "bukhari", "2320")
         await db.commit()
-    ruled = (await browser.get("/tutorial/rain")).json()["insights"][0]
+    ruled = (await browser.get("/tutorial/rain")).json()["insights"]
 
-    assert [part["section"] for part in waiting["explanation"]] == ["seen", "value", "quran"]
-    assert [part["section"] for part in ruled["explanation"]] == [
-        "seen",
-        "value",
-        "quran",
-        "sunnah",
-        "life",
+    def sections(insight: dict[str, Any]) -> list[str]:
+        return [part["section"] for part in insight["explanation"]]
+
+    # The drop's life part names its hadith; the planting's value part restates its own.
+    assert [sections(insight) for insight in waiting] == [
+        ["seen", "value", "quran"],
+        ["seen", "quran", "life"],
+    ]
+    assert [sections(insight) for insight in ruled] == [
+        ["seen", "value", "quran", "sunnah", "life"],
+        ["seen", "value", "quran", "sunnah", "life"],
     ]
