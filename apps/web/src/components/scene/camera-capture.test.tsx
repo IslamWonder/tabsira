@@ -247,6 +247,29 @@ describe('CameraCapture', () => {
     });
   });
 
+  it('reopens the camera the reader last chose', async () => {
+    const { getUserMedia } = stubCamera('granted');
+    withDevices(['videoinput', 'videoinput']);
+    render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /التقط بالكاميرا/ }));
+    const flip = await screen.findByRole('button', { name: 'بدّل الكاميرا' });
+    await act(async () => {
+      fireEvent.click(flip);
+    });
+    await waitFor(() =>
+      expect(screen.getByLabelText('معاينة الكاميرا')).toHaveClass('-scale-x-100')
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'أغلق الكاميرا' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /التقط بالكاميرا/ }));
+    });
+    expect(getUserMedia).toHaveBeenLastCalledWith({
+      video: { facingMode: { ideal: 'user' } },
+      audio: false,
+    });
+  });
+
   it('has no switch on a device with one camera', async () => {
     stubCamera('granted');
     withDevices(['videoinput']);

@@ -184,9 +184,10 @@ export function CameraCapture({ onFile, onPick }: CameraCaptureProps) {
     }
   }, [starting]);
 
+  // Reopened after a pause or a close, the camera the reader last chose comes back.
   const open = () => {
     setFailed(false);
-    void camera.start();
+    void camera.start(camera.facing);
   };
 
   const shoot = async () => {
