@@ -50,6 +50,13 @@ dependencies = [
   "sqladmin>=0.32.0",
   "pyotp>=2.10.0",
   "cryptography>=50.0.2",
+  # The scan workflow: multipart photo uploads, Redis for progress and the job queue
+  # (taskiq on a Redis stream, one worker), server-sent events for the progress stream.
+  "python-multipart>=0.0.32",
+  "redis>=8.1.0",
+  "taskiq>=0.13.0",
+  "taskiq-redis>=1.2.4",
+  "sse-starlette>=3.5.0",
 ]
 
 [dependency-groups]
@@ -64,6 +71,7 @@ dev = [
   "types-openpyxl>=3.1.5",
   "hypothesis>=6.168.3",
   "moto[s3]>=5.2.3",
+  "fakeredis>=2.39.0",
 ]
 
 [tool.ruff]
