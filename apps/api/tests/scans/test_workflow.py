@@ -407,6 +407,33 @@ async def test_a_scan_that_runs_too_long_is_stopped(store, redis, http, make_set
     assert (await the_scan(store, scan_id)).error_code == "SCAN_TIMEOUT"
 
 
+async def test_a_guest_who_signs_in_during_a_scan_gets_its_insights_on_the_account(
+    store, redis, http, flow_settings
+):
+    from tests.scans.conftest import make_account
+
+    scan_id = await new_scan(store, redis)
+    user = await make_account(store)
+
+    class SignsIn:
+        async def propose(self, request, on_stage=None):
+            from src.services import guest_service
+
+            async with store() as db:
+                assert await guest_service.merge_into_user(db, flow_settings, GUEST, user.id)
+                await db.commit()
+            return EngineResult(status=EngineStatus.OK, insights=[proposed()])
+
+    services, _ = services_for(store, redis, http, flow_settings, SignsIn())
+
+    await run_scan(services, scan_id, 1)
+
+    assert (await the_scan(store, scan_id)).outcome is ScanOutcome.INSIGHTS
+    async with store() as db:
+        owners = (await db.execute(select(Insight.user_id, Insight.guest_key))).all()
+    assert [tuple(row) for row in owners] == [(user.id, None)]
+
+
 async def test_a_result_of_a_run_that_was_replaced_meanwhile_is_dropped(
     store, redis, http, flow_settings
 ):

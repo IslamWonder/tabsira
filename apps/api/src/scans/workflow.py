@@ -459,7 +459,13 @@ async def _save(
         delete(Insight).where(Insight.scan_id == job.scan_id, Insight.completed_at.is_(None))
     )
     rows = [
-        insight_row(job.owner, insight, scan=scan, position=position)
+        # The scan row's owner now: a guest who signed in meanwhile was merged into an account.
+        insight_row(
+            Owner(user_id=scan.user_id, guest_key=scan.guest_key),
+            insight,
+            scan=scan,
+            position=position,
+        )
         for position, insight in enumerate(insights)
     ]
     db.add_all(rows)
