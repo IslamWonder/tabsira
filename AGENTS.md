@@ -116,7 +116,7 @@ One Mac, two Windows laptops that develop inside Linux virtual machines, one Win
 
 ## Lessons already paid for
 
-- A vision model returns boxes in pixels of the image it received. Convert to 0–1 ratios on the server and drop boxes outside the image.
+- Vision models return boxes in their own coordinate system: GPT in pixels of the image it received, Qwen 3.x on a 0–1000 grid even when asked for pixels. The provider setting `BOX_COORDINATES` says which; convert to 0–1 ratios on the server and drop boxes outside the image.
 - Reranking with a large language model was the slowest stage (about 20 s of a 30–45 s scan). Measure a cross-encoder before choosing.
 - When the database is down the first page must still load: short connect timeout, an error handler, no unhandled rejection.
 - A page-level CSS transform breaks `position: fixed` children. Animate opacity on wrappers.
