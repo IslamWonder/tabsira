@@ -47,12 +47,12 @@ describe('LegalPage', () => {
     const { container } = render(<LegalPage document={terms} seo={SEO} />);
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(screen.getByRole('heading', { level: 1, name: 'شروط الاستخدام' })).toBeInTheDocument();
-    expect(screen.getByText('النسخة 2026-10-04')).toBeInTheDocument();
-    expect(container.querySelector('time')).toHaveAttribute('datetime', '2026-10-04');
+    expect(screen.getByText('النسخة 2026-10-04T20:00Z')).toBeInTheDocument();
+    expect(container.querySelector('time')).toHaveAttribute('datetime', '2026-10-04T20:00Z');
     const data = JSON.parse(
       container.querySelector('script[type="application/ld+json"]')?.textContent ?? ''
     );
-    expect(data).toMatchObject({ '@type': 'WebPage', dateModified: '2026-10-04' });
+    expect(data).toMatchObject({ '@type': 'WebPage', dateModified: '2026-10-04T20:00Z' });
   });
 
   it('anchors every section and lists each one in the table of contents', () => {
