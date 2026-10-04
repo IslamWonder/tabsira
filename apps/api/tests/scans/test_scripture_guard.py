@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import pytest
+
 from src.models import HadithClassification
 from src.pipeline.engine import ExplanationPart
 from src.scans.accept import accept
 from src.scripture import overlap
 from src.scripture.text import search_copy
-from tests.scans.builders import hadith, proposed, scene
-from tests.scans.conftest import rule
+from tests.scans.builders import hadith, insight_row, proposed, scan_row, scene
+from tests.scans.conftest import as_guest, rule
 from tests.scans.test_chat import an_insight, ask, said
 from tests.scripture.fixtures import hadith_text, verse_text
 
@@ -71,6 +73,48 @@ async def test_a_chat_answer_that_copies_any_stored_text_is_refused(
 ):
     insight_id = await an_insight(browser, store, flow_settings)
     model.answers.extend([said(answer=f"يقول النص {words_of(verse_text(2, 49), 2, 8)}"), said()])
+
+    refused = await ask(browser, insight_id)
+
+    assert (refused.status_code, refused.json()["error"]) == (502, "CHAT_ANSWER_REJECTED")
+
+
+NO_VERSE = {"quran_surah": None, "quran_ayah": None, "quran_evidence": None}
+NO_HADITH = {"hadith_collection": None, "hadith_number": None, "hadith_evidence": None}
+
+
+async def an_insight_with(browser, store, flow_settings, **values) -> str:
+    owner = await as_guest(browser, store, flow_settings)
+    async with store() as db:
+        scan = scan_row(owner, status="done")
+        db.add(scan)
+        await db.flush()
+        insight = insight_row(owner, scan_id=scan.id, small_step=None, **values)
+        db.add(insight)
+        await db.commit()
+        return str(insight.id)
+
+
+@pytest.mark.parametrize(
+    ("values", "ruling", "quoted"),
+    [
+        ({}, None, ("bukhari", 1032)),
+        ({}, HadithClassification.DAIF, ("bukhari", 1032)),
+        (NO_VERSE, None, ("bukhari", 1032)),
+        (NO_HADITH, None, (30, 50)),
+    ],
+)
+async def test_a_chat_answer_quoting_a_cited_text_is_refused_even_while_it_is_hidden(
+    browser, store, flow_settings, model, values, ruling, quoted
+):
+    insight_id = await an_insight_with(browser, store, flow_settings, **values)
+    if ruling is not None:
+        async with store() as db:
+            await rule(db, "bukhari", "1032", ruling)
+            await db.commit()
+    text = hadith_text(*quoted) if quoted[0] == "bukhari" else verse_text(*quoted)
+    # Six words: under the store-wide window, inside the cited texts' shingles.
+    model.answers.append(said(answer=f"ورد {words_of(text, 3, 6)}"))
 
     refused = await ask(browser, insight_id)
 

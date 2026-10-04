@@ -34,7 +34,7 @@ from src.ai.errors import AiCallError
 from src.ai.records import CallLog
 from src.config import AiStage, Settings
 from src.errors import AppError, ErrorCode
-from src.models import ChatMessage, ChatStatus, Insight
+from src.models import ChatMessage, ChatStatus, Hadith, Insight, QuranVerse
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
 from src.pipeline.prompt import load_prompt
 from src.scans.workflow import call_rows
@@ -128,6 +128,34 @@ async def _history(db: AsyncSession, insight: Insight) -> str:
     return "\n".join(f"- Q: {row.question}\n  A: {row.answer}" for row in rows)
 
 
+async def _cited_texts(db: AsyncSession, insight: Insight) -> list[str]:
+    """
+    Return the stored texts the insight cites, shown or not, as the leak guard's corpus.
+
+    A hadith hidden for its ruling (none yet, or not صحيح or حسن) is guarded
+    against all the same: the model must not quote it either.
+    """
+    texts: list[str | None] = []
+    if insight.quran_surah is not None and insight.quran_ayah is not None:
+        texts.append(
+            await db.scalar(
+                select(QuranVerse.text).where(
+                    QuranVerse.surah == insight.quran_surah, QuranVerse.ayah == insight.quran_ayah
+                )
+            )
+        )
+    if insight.hadith_collection is not None and insight.hadith_number is not None:
+        texts.append(
+            await db.scalar(
+                select(Hadith.text).where(
+                    Hadith.collection == insight.hadith_collection,
+                    Hadith.number == insight.hadith_number,
+                )
+            )
+        )
+    return [text for text in texts if text is not None]
+
+
 def _explanation(insight: Insight) -> str:
     return (
         "\n".join(f"- {part['section']}: {part['text']}" for part in insight.explanation)
@@ -185,13 +213,11 @@ async def _answer(
 ) -> None:
     verse, hadith, _awaiting = await shown_evidence(db, insight)
     references: list[str] = []
-    corpus: list[str] = []
+    corpus = await _cited_texts(db, insight)
     if verse is not None:
         references.append(f"{verse.surah_name} {verse.surah}:{verse.ayah}")
-        corpus.append(verse.text)
     if hadith is not None:
         references.append(f"{hadith.collection.name_ar} {hadith.number}")
-        corpus.append(hadith.text)
     user = load_prompt(USER_PROMPT).render(
         title=insight.title,
         glimpse=insight.glimpse,
