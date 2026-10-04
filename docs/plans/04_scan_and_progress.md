@@ -45,3 +45,11 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 - **Depends on:** 04.1
 - **Touches:** deploy/systemd/tabsira-worker.service, deploy/provision-app.sh, deploy/deploy.sh, deploy/provision-redis.sh, docs/OPERATIONS.md.
 - **Done when:** `--dry-run` shows the worker steps; shellcheck and shfmt clean.
+
+### 04.4 Tie chat answers to the texts shown when they were written
+
+- **Status:** ⬜ open, after 04.1
+- **Goal:** Each chat answer records the evidence ids shown when it was written; an answer whose texts are no longer all shown (a hadith since ruled out) is hidden or annotated and left out of the chat history sent to the model.
+- **Depends on:** 04.1
+- **Touches:** apps/api chat service and insight view, one migration.
+- **Done when:** A test rules a cited hadith ineligible after a chat answer and the answer no longer shows or reaches the model; scripture review passes.
