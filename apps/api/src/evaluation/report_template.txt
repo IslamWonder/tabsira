@@ -1,0 +1,62 @@
+# Benchmark: scene analysis
+
+Measured on $date by `make benchmark` (`apps/api/src/cli/benchmark.py`), in $duration minutes. This file is written by the benchmark; every answer and call record is in `$raw_path` (not committed), and the per-cell numbers in the summary file next to it. Decision 4 of `docs/spec/DECISIONS.md`: the measured result sets the default model of each stage.
+
+## Method
+
+- **Scenes**: $scene_count gold scenes from `$gold_path`, each with the entities a description must name, the actions it should report, the claims it must not make and whether it is sensitive ($sensitive_count sensitive). $provenance_note
+- **Runs**: each scene $runs times through each cell, plus $blind_runs blind run(s) with the detector hidden from the model (for the boxes only).
+- **Pipeline per scene**: the image validator (once), the detector of `services/vision` (once; `$detector_model`, available for $detector_available of $scene_count scenes), then for every cell and run the scene analyzer (the vision model sees the image and the detector's boxes) and the sensitivity guard (the scene's own flags, plus `omni-moderation-latest` on the image for OpenAI cells).
+- **Prompt**: `$prompt_version`.
+- **Call limits**: the configured `AI_TIMEOUT_SECONDS`, `AI_MAX_RETRIES` and `AI_RETRY_BACKOFF_SECONDS`; latency is the wall time of a call, retries included.
+
+Cells:
+
+$cells_table
+
+Metrics, scored by rule (`apps/api/src/evaluation/scoring.py`; patterns are matched on normalised Arabic and English words):
+
+- **Valid**: runs whose answer matched the JSON schema after the bounded retries; **first try**: without a retry.
+- **Entity recall**: share of the required entities named in the description or the entity labels. **Action recall**: share of the expected actions found among the reported actions and relations, over the scenes that expect one.
+- **Forbidden**: claims that must never be made as actions or relations: praying, spreading news, aggression, each scene's own (a still phone read or used, a scale nobody sees, watching an empty room's screen) and inferences reported as observed. **Identity**: words that state a person's gender, age or religion. **Invented**: entities the image does not contain.
+- **Sensitive**: the guard's verdict against the gold scene; FN a sensitive scene missed, FP an ordinary scene flagged. **Question**: a clarification asked exactly when the gold scene expects one.
+- **Boxes out**: model boxes outside the image, dropped by the server. **IoU vs detector**: median overlap between the model's box and the detector's box for the entities the model matched to a detection. Given the detector's boxes, models mostly copy them, so this only checks consistency; the blind runs below show where a model's own boxes land.
+- **Quality** = valid x sensitive accuracy x entity recall / (1 + violations per run), the violations being forbidden, identity and invented.
+
+Choice of a default: a cell is eligible when at least $min_valid of its answers are valid, it misses no sensitive scene, at most $max_drop of its boxes fall outside the image (with or without the detector) and its median IoU with the detector is at least $min_iou. Among eligible cells within $margin of the best quality, the lowest vision p95 wins, then the lowest cost per scan.
+
+## Results
+
+$quality_table
+
+$cost_table
+
+Boxes with the detector hidden (blind runs): how many boxes the model gave, how many fell outside the image, and how many land on a box of the detector (IoU at least $agreement_iou with one of them; the detector finds only some of the things a model names, so 100% is not expected, but a wrong coordinate system shows as a collapse):
+
+$blind_table
+
+Stages run once per scene:
+
+$stage_table
+
+## What the judge found
+
+Most frequent findings per cell, with their count over all runs:
+
+$findings
+
+## Recommended defaults
+
+$recommendations_table
+
+## Limits
+
+- The scenes are generated images, not photos from phones; real photos (noise, blur, odd framing, faces) may change the ranking.
+- $scene_count scenes with $sensitive_count sensitive: the sensitivity numbers show false positives and a missed alcohol scene, not the recall of nudity, drugs, gambling or violence. `omni-moderation-latest` classifies images for sexual content, violence and self-harm only.
+- No scene shows a rug and a bent posture or a raised hand: those rules are checked as claims that must never appear, not on images built to tempt them.
+- The judge works by word patterns. It does not grade the Arabic, and it cannot tell a correct description written in unexpected words from a wrong one; read the raw answers before trusting a small difference.
+- $runs runs per scene: a p95 over so few samples is close to the maximum.
+
+## Spend
+
+Total model spend of this run: **$total_cost** (prices of `AI_*__PRICES`; moderation is free).

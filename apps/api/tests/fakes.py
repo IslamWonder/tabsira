@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
@@ -45,7 +45,7 @@ def make_record(
     )
 
 
-Answer = BaseModel | dict[str, Any] | Exception
+Answer = BaseModel | dict[str, Any] | Exception | Callable[[dict[str, Any]], Any]
 Moderation = tuple[bool, list[str]] | Exception
 
 
@@ -115,6 +115,8 @@ class FakeModelClient(ModelClient):
         )
         chosen = model or self._settings.model_for(stage)
         answer = self.answers.pop(0)
+        if callable(answer):
+            answer = answer(self.calls[-1])
         if isinstance(answer, AiCallError):
             raise AiCallError(
                 answer.code,
