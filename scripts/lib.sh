@@ -70,9 +70,9 @@ not_implemented() {
 }
 
 # Every shell script in the repository, one path per line, relative to the root:
-# scripts/, jenkins/, docker/ and anything under services/ and apps/.
+# scripts/, jenkins/, deploy/, docker/ and anything under services/ and apps/.
 list_shell_files() {
-	(cd "$REPO_ROOT" && find scripts jenkins docker services apps \
+	(cd "$REPO_ROOT" && find scripts jenkins deploy docker services apps \
 		-type d \( -name node_modules -o -name .venv \) -prune -o \
 		-type f \( -name '*.sh' -o -path 'scripts/git-hooks/*' \) -print 2>/dev/null | sort)
 }
