@@ -54,6 +54,7 @@ APP_TABLES = {
     "hadith_verification_queue",
     "scripture_audit",
     "scripture_sync_state",
+    "admin_audit_log",
 }
 
 
@@ -181,7 +182,7 @@ async def test_both_chains_build_the_database_and_match_the_models(migrated):
         *(f"app.{table}" for table in APP_TABLES),
     } == tables
     assert set(EXTENSIONS) <= extensions
-    assert versions == {"app": "20261004_123000", "geodata": "20261004_130000"}
+    assert versions == {"app": "20261004_140000", "geodata": "20261004_130000"}
     # The models and the migrations describe the same database.
     assert {"ix_geonames_name_trgm", "ix_geonames_location_geom", "pk_geonames"} <= indexes
     # The scripture write guard exists after the migrations too, not only in a schema built

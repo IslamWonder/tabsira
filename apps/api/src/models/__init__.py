@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from src.models.admin_audit import AdminAuditLog, AuditAction
 from src.models.base import Base
 from src.models.consent import Consent, ConsentKind
 from src.models.cookie_consent import CookieConsent
@@ -51,8 +52,10 @@ from src.models.session import OAuthState, Session
 from src.models.user import OAuthAccount, User
 
 __all__ = [
+    "AdminAuditLog",
     "AgeRange",
     "AttemptKind",
+    "AuditAction",
     "Base",
     "CandidateKind",
     "CandidateStatus",

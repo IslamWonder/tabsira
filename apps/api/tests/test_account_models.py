@@ -383,6 +383,8 @@ def test_every_table_lives_in_the_app_schema():
         "hadith_verification_queue",
         "scripture_sync_state",
         "scripture_audit",
+        # The admin area
+        "admin_audit_log",
     }
 
     assert {name.removeprefix(f"{APP_SCHEMA}.") for name in Base.metadata.tables} == tables
