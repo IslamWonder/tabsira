@@ -1,16 +1,16 @@
 # 05 · Insight engine
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 14:51 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 14:56 (Tunis)
 
 Finds the verse and hadith that truly fit the scene, checks them, and writes the explanation. It cites texts by reference only.
 
 | Step                                             | Status | Notes                       |
 | ------------------------------------------------ | ------ | --------------------------- |
 | Search by full text, concepts and meaning, fused | ✅     | Built; merges after review. |
-| Re-ranking of the best candidates                | ✅     | Measured before choosing.   |
+| Re-ranking of the best candidates                | ✅     | bge-reranker; slow on CPU.  |
 | Evidence gate using editor rulings               | ✅     |                             |
 | Explanation, «لماذا ظهر هذا؟», small step        | ✅     |                             |
-| Evaluation on gold scenes (make eval)            | ✅     |                             |
+| Evaluation on gold scenes (make eval)            | ✅     | 13/15 as expected, 0 leaks. |
 | Plug into the scan workflow and merge            | 🔄     |                             |
 | The twelve official cases                        | ⬜     |                             |
 
