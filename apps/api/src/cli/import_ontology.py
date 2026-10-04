@@ -24,6 +24,7 @@ from pathlib import Path
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from src.config import ConfigError
 from src.database import dispose_engine, get_sessionmaker
 from src.services.ontology_import import (
     EXPECTED_COUNT,
@@ -119,7 +120,12 @@ async def execute(
         _write_json(parsed, options.json_path)
     if options.load_database:
         try:
-            await _load(parsed, session_factory or get_sessionmaker())
+            factory = session_factory or get_sessionmaker()
+        except ConfigError as error:
+            sys.stderr.write(f"{error}\n")
+            return 1
+        try:
+            await _load(parsed, factory)
         except (SQLAlchemyError, OSError) as error:
             sys.stderr.write(
                 f"Cannot load the ontology into the database ({type(error).__name__}). "

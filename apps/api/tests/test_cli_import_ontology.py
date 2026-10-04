@@ -11,6 +11,7 @@ from sqlalchemy.exc import OperationalError
 
 from src.cli import import_ontology
 from src.cli.import_ontology import Options, execute, main
+from src.config import ConfigError
 from src.models import OntologyEntity
 from src.services.ontology_import import export_json
 from tests.support_ontology import API_DIR, REAL_WORKBOOK, good_row, workbook_bytes
@@ -119,6 +120,20 @@ async def test_a_database_that_cannot_be_loaded_exits_one_without_its_error_text
     assert "hunter2" not in err
 
 
+async def test_a_missing_database_setting_is_reported_without_a_traceback(
+    monkeypatch, capsys, small_workbook
+):
+    def sessionmaker():
+        raise ConfigError("Invalid configuration, fix the .env:\n  - DATABASE_URL: Field required")
+
+    monkeypatch.setattr(import_ontology, "get_sessionmaker", sessionmaker)
+
+    code = await execute(options(source=small_workbook, expected_count=2, load_database=True))
+
+    assert code == 1
+    assert "DATABASE_URL: Field required" in capsys.readouterr().err
+
+
 async def test_without_a_session_factory_the_applications_engine_is_used_and_closed(
     monkeypatch, session_factory, small_workbook
 ):
@@ -141,10 +156,10 @@ async def test_the_engine_is_closed_even_when_the_load_fails(monkeypatch, small_
     async def dispose():
         closed.append(True)
 
-    def sessionmaker():
+    def refused():
         raise OSError("connection refused")
 
-    monkeypatch.setattr(import_ontology, "get_sessionmaker", sessionmaker)
+    monkeypatch.setattr(import_ontology, "get_sessionmaker", lambda: refused)
     monkeypatch.setattr(import_ontology, "dispose_engine", dispose)
 
     code = await execute(options(source=small_workbook, expected_count=2, load_database=True))
