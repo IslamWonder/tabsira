@@ -95,7 +95,11 @@
           <select id="ruling-classification" name="classification" class="form-select" required>
             <option value="">Choose</option>
             {% for item in classifications %}
-            <option value="{{ item.value }}" {% if values.classification == item.value %}selected{% endif %}>{{ item.value | replace('_', ' ') }}</option>
+            {% if values.classification == item.value %}
+            <option value="{{ item.value }}" selected>{{ item.value | replace('_', ' ') }}</option>
+            {% else %}
+            <option value="{{ item.value }}">{{ item.value | replace('_', ' ') }}</option>
+            {% endif %}
             {% endfor %}
           </select>
           <div class="form-hint">Only صحيح and حسن make the hadith eligible as evidence.</div>
