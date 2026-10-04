@@ -1,8 +1,37 @@
 #!/usr/bin/env bash
-# Import the corpora, the ontology and the learning path, and build the indexes
-# (make data). Not built yet: the importer lives in apps/api and checks the
-# Quran text against the Tanzil Uthmani edition (DECISIONS.md, decision 6).
+# Import the corpora (make data). Run `make migrate` first.
+#
+# The scripture store, in this order, every step idempotent:
+#   download     quranpedia's current dump and the nine hadith files, each
+#                checked against its SHA-256 (cached in data/cache/)
+#   quran        quranpedia mushaf 2 into app.quran_verses, with history on corrections
+#   annotations  data/corpus/quran-annotations.json, for retrieval only
+#   hadith       the nine books into app.hadiths
+#   signals      data/corpus/sunnah-enriched.json, repaired from cp720 and linked
+#
+# The two files in data/corpus/ are the project's own corpora, too large for
+# git; docs/ASSET_MANIFEST.md names them and their SHA-256. The world ontology
+# and learning-path importers do not exist yet, and this script says so.
 set -euo pipefail
 # shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
-not_implemented "make data" "The corpus, ontology and learning-path importers do not exist yet."
+
+CORPUS_DIR="$REPO_ROOT/data/corpus"
+CORPUS_FILES="quran-annotations.json sunnah-enriched.json"
+
+load_env
+[[ -n "${DATABASE_URL:-}" ]] || die "DATABASE_URL is not set. Run scripts/setup-db.sh, then make migrate."
+require_cmd uv "See https://docs.astral.sh/uv/"
+
+for name in $CORPUS_FILES; do
+	[[ -f "$CORPUS_DIR/$name" ]] ||
+		die "$CORPUS_DIR/$name is missing. Copy it there (docs/ASSET_MANIFEST.md names its source and SHA-256)."
+done
+
+banner "Scripture store"
+started=$SECONDS
+(cd "$REPO_ROOT/apps/api" && uv run --quiet python -m src.cli.import_scripture \
+	download quran annotations hadith signals --cache-dir "$REPO_ROOT/data/cache" --corpus-dir "$CORPUS_DIR")
+ok "Scripture store imported in $((SECONDS - started)) s"
+
+warn "Not built yet: the world ontology and learning-path importers. make data imports the scripture store only."
