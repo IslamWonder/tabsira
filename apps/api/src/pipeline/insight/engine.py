@@ -466,8 +466,12 @@ def build_engine(
         if block.embedding_model
         else None
     )
-    reranker = RerankerClient(
-        settings.reranker_url, http, timeout_seconds=settings.reranker_timeout_seconds
+    reranker = (
+        RerankerClient(
+            settings.reranker_url, http, timeout_seconds=settings.reranker_timeout_seconds
+        )
+        if settings.reranker_url
+        else None
     )
     return PipelineInsightEngine(
         sessionmaker,

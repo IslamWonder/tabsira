@@ -625,6 +625,7 @@ class Settings(BaseSettings):
     detector_timeout_seconds: Annotated[float, Field(gt=0)] = 30.0
     # The cross-encoder that reranks evidence candidates, served by services/vision
     # (POST /rerank). One that does not answer in time is skipped: the fused order is kept.
+    # Empty switches reranking off (docs/BENCHMARK.md: about 19 s per 30 passages on a CPU).
     reranker_url: str = "http://127.0.0.1:8100"
     reranker_timeout_seconds: Annotated[float, Field(gt=0)] = 15.0
 
@@ -812,10 +813,15 @@ class Settings(BaseSettings):
             raise ValueError(message)
         return value.strip()
 
-    @field_validator("detector_url", "reranker_url")
+    @field_validator("detector_url")
     @classmethod
     def _check_detector_url(cls, value: str) -> str:
         return _origin(value)
+
+    @field_validator("reranker_url")
+    @classmethod
+    def _check_reranker_url(cls, value: str) -> str:
+        return _origin(value) if value.strip() else ""
 
     @field_validator("glitchtip_dsn", "glitchtip_web_dsn")
     @classmethod
