@@ -63,6 +63,9 @@ DEFAULT_MAIL_FROM = "تبصرة <no-reply@tabsira.me>"
 _COOKIE_NAME = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 _COOKIE_DOMAIN = re.compile(r"^\.?[a-z0-9-]+(\.[a-z0-9-]+)+$")
 
+# What the sitemap protocol allows in one file.
+MAX_SITEMAP_PAGE_SIZE = 50_000
+
 OVH_BASE_URL = "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1"
 OPENAI_BASE_URL = "https://api.openai.com/v1"
 
@@ -425,6 +428,11 @@ class Settings(BaseSettings):
     # choice also lapses after CONSENT_REASK_DAYS (six months by default).
     cookie_policy_version: Annotated[str, Field(pattern=r"^[A-Za-z0-9._-]{1,32}$")] = "2026-10-04"
     consent_reask_days: Annotated[int, Field(ge=1, le=730)] = 182
+
+    # The most URLs one page of the sitemap holds. The protocol allows 50,000; a lower
+    # number keeps each page cheap to build and stable (a new record changes only the
+    # last page of its section).
+    sitemap_page_size: Annotated[int, Field(ge=1, le=MAX_SITEMAP_PAGE_SIZE)] = 10_000
 
     # AI providers: one active provider, one settings block each. In the
     # environment the blocks are AI_OVH__API_KEY, AI_OPENAI__VISION_MODEL, ...

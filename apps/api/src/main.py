@@ -28,6 +28,7 @@ from src.routers import (
     health,
     profile,
     scripture,
+    sitemap,
 )
 
 API_VERSION = "0.1.0"
@@ -46,6 +47,7 @@ OPENAPI_TAGS = [
     {"name": "account", "description": "Export and deletion of everything an account owns."},
     {"name": "geo", "description": "Place search, reverse lookup and countries from GeoNames."},
     {"name": "scripture", "description": "Quran verses and hadith, read-only, exactly as stored."},
+    {"name": "sitemap", "description": "The public pages for the web app's sitemaps."},
     {
         "name": "client-errors",
         "description": "Errors the browser saw, forwarded to GlitchTip when it is configured.",
@@ -123,6 +125,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(scripture.router)
     app.include_router(client_errors.router)
     app.include_router(cookie_consent.router)
+    app.include_router(sitemap.router)
     return app
 
 
