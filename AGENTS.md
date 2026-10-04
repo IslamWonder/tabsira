@@ -42,6 +42,7 @@ make eval        # gold scenes and the official contest cases
 make smoke       # HTTP checks against a running app
 make benchmark   # compare AI providers, detectors and rerankers on the same scenes
 make up          # docker compose up, whole stack
+make stats       # a few lines about the code: size, tests, coverage, today
 ```
 
 Before you say a task is done: `make lint && make coverage` pass, and `make smoke` passes if you touched a route.

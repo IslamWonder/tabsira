@@ -4,7 +4,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev migrate data test coverage lint format eval smoke benchmark up security audit
+.PHONY: help install dev migrate data test coverage lint format eval smoke benchmark up security audit stats
 
 help: ## List the targets
 	@grep -E '^[a-z]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
@@ -51,3 +51,6 @@ security: ## Blocking security gate: secrets and critical advisories
 
 audit: ## Advisory audit: SAST, dependency advisories, hygiene
 	@bash scripts/audit.sh
+
+stats: ## A few lines about the code: size, tests, schema, docs, coverage, today
+	@bash scripts/code-stats.sh
