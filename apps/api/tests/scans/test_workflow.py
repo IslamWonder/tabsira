@@ -292,7 +292,9 @@ async def test_a_scene_that_cannot_be_understood_fails_the_scan_honestly(
     async with store() as db:
         stages = (await db.scalars(select(ScanEvent).where(ScanEvent.scan_id == scan_id))).all()
     assert ("understand", "failed", reason) in {(e.stage, e.status, e.code) for e in stages}
+    # No verdict was reached: no copy of the photo is kept at all.
     assert await buffer.get(redis, scan_id, buffer.Copy.MODEL) is None
+    assert await buffer.get(redis, scan_id, buffer.Copy.FULL) is None
 
 
 async def test_a_photo_that_left_the_store_fails_as_a_missing_asset(

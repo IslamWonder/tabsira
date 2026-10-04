@@ -44,12 +44,9 @@ async def test_an_upload_starts_a_scan_for_a_new_guest_and_answers_at_once(
         "pipeline",
     )
     assert body["engine_label"] is None
-    assert body["image"] == {
-        "available": True,
-        "width": 96,
-        "height": 64,
-        "url": f"/scans/{body['id']}/image",
-    }
+    # No photo is shown back before the sensitivity verdict.
+    assert body["image"] == {"available": False, "width": 96, "height": 64, "url": None}
+    assert (await browser.get(f"/scans/{body['id']}/image")).status_code == 404
     assert body["events_url"] == f"/scans/{body['id']}/events"
     assert body["disclosure"] == "تبصرة أداة مدعومة بالذكاء الاصطناعي، وليست مفتيًا ولا عالمًا"
     # A public id travels as a string: it is beyond the integers JavaScript holds exactly.
@@ -179,9 +176,18 @@ async def test_only_the_owner_reaches_a_scan(browser, other, flow_app, store):
         assert (await browser.get(f"/scans/{malformed}")).status_code == 422
 
 
-async def test_the_owner_sees_the_photo_while_it_is_kept(browser, redis, monkeypatch):
+async def test_the_owner_sees_the_photo_while_it_is_kept(
+    browser, flow_app, store, redis, monkeypatch
+):
     body = await a_scan(browser)
     path = f"/scans/{body['id']}/image"
+    await run_queued(flow_app, store)
+    assert (await browser.get(f"/scans/{body['id']}")).json()["image"] == {
+        "available": True,
+        "width": 96,
+        "height": 64,
+        "url": path,
+    }
 
     shown = await browser.get(path)
     assert shown.headers["content-type"] == "image/jpeg"

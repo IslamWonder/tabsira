@@ -217,8 +217,11 @@ async def _fail(job: Run, code: ErrorCode, started: float) -> None:
             .where(Scan.id == job.scan_id, Scan.run == job.run)
             .values(status=ScanStatus.FAILED, error_code=code.value, finished_at=clock.utcnow())
         )
+        understood = await db.scalar(select(Scan.scene.is_not(None)).where(Scan.id == job.scan_id))
         await db.commit()
-    await buffer.drop(job.services.redis, job.scan_id, buffer.Copy.MODEL)
+    # Without a sensitivity verdict the photo is never shown, so nothing of it is kept.
+    copies = (buffer.Copy.MODEL,) if understood else tuple(buffer.Copy)
+    await buffer.drop(job.services.redis, job.scan_id, *copies)
     await job.publish("failed", {"code": code.value})
 
 

@@ -168,6 +168,11 @@ async def _owned_scan(db: AsyncSession, owner: Owner | None, scan_id: int) -> Sc
     return scan
 
 
+def photo_may_show(scan: Scan) -> bool:
+    """Tell whether a scan's photo may be shown: only after a verdict that it is not sensitive."""
+    return scan.scene is not None and not scan.sensitive
+
+
 async def describe(db: AsyncSession, scan: Scan, redis: RedisDep) -> ScanOut:
     """Return what the owner sees of a scan; never the photo of a sensitive scene."""
     scene = SceneAnalysis.model_validate(scan.scene) if scan.scene else None
@@ -179,7 +184,7 @@ async def describe(db: AsyncSession, scan: Scan, redis: RedisDep) -> ScanOut:
         )
     ).all()
     available = False
-    if not scan.sensitive:
+    if photo_may_show(scan):
         try:
             available = bool(await redis.exists(f"scan:{scan.id}:{buffer.Copy.FULL.value}"))
         except RedisError:
@@ -312,7 +317,7 @@ async def get_scan_image(
 ) -> Response:
     """Return the photo without its metadata to its owner, for the hour it is kept."""
     scan = await _owned_scan(db, owner, scan_id)
-    data = None if scan.sensitive else await buffer.get(redis, scan.id, buffer.Copy.FULL)
+    data = await buffer.get(redis, scan.id, buffer.Copy.FULL) if photo_may_show(scan) else None
     if data is None:
         raise AppError(
             ErrorCode.ASSET_MISSING,
