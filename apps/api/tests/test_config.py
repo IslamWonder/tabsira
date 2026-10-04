@@ -120,8 +120,8 @@ def test_ai_defaults_are_what_the_benchmark_measured(make_settings):
     assert settings.ai_openai.embedding_dimensions == 1536
     assert settings.ai_ovh.model_for(AiStage.EMBEDDING) == "bge-m3"
     assert settings.ai_ovh.embedding_dimensions is None
-    # Decision 41: the small text model reranks; OVH has none measured, so it reranks nothing.
-    assert settings.reranker is RerankerKind.LLM
+    # Decision 49: no reranking by default; the small text model stays set for RERANKER=llm.
+    assert settings.reranker is RerankerKind.OFF
     assert settings.ai_openai.model_for(AiStage.RERANK) == "gpt-5.4-nano-2026-03-17"
     assert settings.ai_ovh.model_for(AiStage.RERANK) == ""
     text_stages = (AiStage.PLANNER, AiStage.VERIFY, AiStage.COMPOSE)

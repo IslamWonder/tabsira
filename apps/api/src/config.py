@@ -645,7 +645,8 @@ class Settings(BaseSettings):
     # What reranks the evidence candidates (decision 41): the provider's small text
     # model by default. A reranker that fails or does not answer in time is skipped
     # and the fused order is kept.
-    reranker: RerankerKind = RerankerKind.LLM
+    # Decision 49: off by default; the verifier judges the fused head itself (docs/EVALUATION.md).
+    reranker: RerankerKind = RerankerKind.OFF
     # The cross-encoder of services/vision (POST /rerank), used when RERANKER=cross_encoder;
     # empty switches it off (docs/BENCHMARK.md: about 19 s per 30 passages on a CPU).
     reranker_url: str = "http://127.0.0.1:8100"
