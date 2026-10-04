@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
+from pydantic import BaseModel
 
 from src.admin import install_admin
 from src.config import Settings, get_settings
@@ -117,6 +119,30 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await dispose_engine()
 
 
+def document_models(app: FastAPI, models: Sequence[type[BaseModel]]) -> None:
+    """
+    Add `models` to the OpenAPI components.
+
+    A route that reads its own body (an upload or a JSON address on one path)
+    refers to its schema by name; FastAPI only registers the models it validates.
+    """
+    build = app.openapi
+
+    def openapi() -> dict[str, Any]:
+        if app.openapi_schema is not None:
+            return app.openapi_schema
+        schema = build()
+        components = schema.setdefault("components", {}).setdefault("schemas", {})
+        for model in models:
+            described = model.model_json_schema(ref_template="#/components/schemas/{model}")
+            components.update(described.pop("$defs", {}))
+            components[model.__name__] = described
+        app.openapi_schema = schema
+        return schema
+
+    app.openapi = openapi  # type: ignore[method-assign]
+
+
 def create_app(
     settings: Settings | None = None, *, insight_source: InsightSource | None = None
 ) -> FastAPI:
@@ -149,6 +175,7 @@ def create_app(
     )
     app.state.settings = settings
     app.state.insight_source = insight_source
+    document_models(app, scans.DOCUMENTED_BODIES)
 
     register_error_handlers(app)
 

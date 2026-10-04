@@ -19,6 +19,23 @@ async def test_openapi_is_published_with_the_health_routes(client):
     assert "Readiness" in schema["components"]["schemas"]
 
 
+def _refs(node: object) -> set[str]:
+    if isinstance(node, dict):
+        found = {node["$ref"]} if isinstance(node.get("$ref"), str) else set()
+        return found.union(*(_refs(value) for value in node.values()))
+    if isinstance(node, list):
+        return set().union(*(_refs(value) for value in node))
+    return set()
+
+
+async def test_every_reference_in_the_openapi_document_resolves(client):
+    schema = (await client.get("/openapi.json")).json()
+
+    named = {f"#/components/schemas/{name}" for name in schema["components"]["schemas"]}
+    assert _refs(schema) - named == set()
+    assert "ScanFromUrl" in schema["components"]["schemas"]
+
+
 async def test_every_route_documents_the_one_error_body(client):
     schema = (await client.get("/openapi.json")).json()
 

@@ -75,6 +75,8 @@ IMAGE_ERRORS: dict[ImageRejectedCode, tuple[ErrorCode, int]] = {
 URL_REFUSALS = frozenset(
     {FetchRefusal.INVALID_URL, FetchRefusal.FORBIDDEN_ADDRESS, FetchRefusal.TOO_MANY_REDIRECTS}
 )
+# The bodies POST /scans reads itself, registered in the OpenAPI document by name.
+DOCUMENTED_BODIES = (ScanFromUrl,)
 UPLOAD_BODY: dict[str, Any] = {
     "requestBody": {
         "required": True,
