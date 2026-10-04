@@ -25,6 +25,8 @@ the meridians 180 and -180 are one line and belong to the same column. A cell
 is never smaller than the requested size in either direction (its narrowest
 edge, the one nearer the pole, is at least `cell_m` wide) and is under twice
 that wide; rounding down the number of rows and columns errs on the private side.
+The two caps at the poles are the exception: each is a single cell, one row
+tall and the whole way round, since no ring that close to a pole is `cell_m` long.
 
 This is a rounding to a region, not a guarantee: a cell in a thinly populated
 area can still point at one house. The owner reviews the published point and
