@@ -14,12 +14,18 @@ import { messages } from '@/messages';
 import { ChatSheet } from './chat-sheet';
 import { CompletionPanel } from './completion-panel';
 import { DisclosureLine } from './disclosure-line';
-import { DoneButton } from './done-button';
 import { EngineLabel } from './engine-label';
 import { ExplanationSections } from './explanation-sections';
 import { InsightEvidence } from './insight-evidence';
-import { InsightHeader, InsightPhoto, InsightTools, SeenNote } from './insight-frame';
+import {
+  InsightActions,
+  InsightHeader,
+  InsightPhoto,
+  InsightTools,
+  SeenNote,
+} from './insight-frame';
 import { PhotoPlaceholder } from './photo-placeholder';
+import { ShareSheet } from './share-sheet';
 import { StepCard } from './step-card';
 import { type PhotoView, useInsight } from './use-insight';
 import { WhySheet } from './why-sheet';
@@ -74,6 +80,7 @@ export function InsightScreen({ insightId }: { insightId: string }) {
   const { load, photo, step, finish } = controls;
   const [whyOpen, setWhyOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [invitationClosed, setInvitationClosed] = useState(false);
 
   if (load.phase === 'loading') {
@@ -119,11 +126,12 @@ export function InsightScreen({ insightId }: { insightId: string }) {
                 <Notice tone="error">{finish.error}</Notice>
               </div>
             )}
-            <DoneButton
+            <InsightActions
               status={finish.status}
               onDone={() => {
                 void controls.complete();
               }}
+              onShare={() => setShareOpen(true)}
             />
           </div>
         }
@@ -183,6 +191,13 @@ export function InsightScreen({ insightId }: { insightId: string }) {
       </ReadingLayout>
 
       <WhySheet open={whyOpen} onClose={() => setWhyOpen(false)} insight={insight} />
+      <ShareSheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        insightId={insight.id}
+        insightTitle={insight.title}
+        published={insight.published_at !== null}
+      />
       <ChatSheet
         open={chatOpen}
         onClose={() => setChatOpen(false)}

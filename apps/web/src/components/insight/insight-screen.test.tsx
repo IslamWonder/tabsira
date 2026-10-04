@@ -218,6 +218,24 @@ describe('InsightScreen: why, the chat and the step', () => {
   });
 });
 
+describe('InsightScreen: sharing', () => {
+  it('opens the share sheet from the share button, for an insight not yet public', async () => {
+    await open();
+    await userEvent.click(screen.getByRole('button', { name: 'شارك' }));
+    const sheet = screen.getByRole('dialog', { name: 'شارك البصيرة' });
+    expect(within(sheet).getByRole('button', { name: 'انشر وشارك' })).toBeInTheDocument();
+    await userEvent.click(within(sheet).getByRole('button', { name: 'أغلق' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('opens it already public for an insight the owner published', async () => {
+    await open(insightOut({ published_at: '2026-10-04T09:00:00Z' }));
+    await userEvent.click(screen.getByRole('button', { name: 'شارك' }));
+    const sheet = screen.getByRole('dialog', { name: 'شارك البصيرة' });
+    expect(within(sheet).getByRole('button', { name: 'اسحب النشر' })).toBeInTheDocument();
+  });
+});
+
 describe('InsightScreen: «تمّ»', () => {
   it('saves once, shows what was earned, and leaves the button done', async () => {
     const api = await open(insightOut(), {
