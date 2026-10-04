@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from src.deps import DbDep, SettingsDep
 from src.owner import OptionalOwner
 from src.scans.deps import PublicIdPath, feature
-from src.schemas.world import PlaceOut, TreasureOut, WorldOut
+from src.schemas.world import TreasureOut, WorldOut, WorldPlaceOut
 from src.services import world_service
 
 router = APIRouter(prefix="/world", tags=["world"], dependencies=[Depends(feature("world"))])
@@ -26,7 +26,7 @@ async def get_world(db: DbDep, settings: SettingsDep, owner: OptionalOwner) -> W
 @router.post("/places/{place_id}/visit", summary="Open a place: a return can show its treasure")
 async def visit_place(
     place_id: PublicIdPath, db: DbDep, settings: SettingsDep, owner: OptionalOwner
-) -> PlaceOut:
+) -> WorldPlaceOut:
     """Record the visit and return the place with its insights and a treasure that is ready."""
     return await world_service.visit(db, settings, owner, place_id)
 

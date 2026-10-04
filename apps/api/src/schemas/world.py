@@ -38,7 +38,7 @@ class TreasureFlag(BaseModel):
     id: PublicId
 
 
-class PlaceOut(BaseModel):
+class WorldPlaceOut(BaseModel):
     id: PublicId
     region_id: str
     name: str
@@ -61,7 +61,7 @@ class WorldOut(BaseModel):
     version: str
     path_version: str
     regions: list[RegionOut]
-    places: list[PlaceOut]
+    places: list[WorldPlaceOut]
     relations: list[RelationOut]
 
 

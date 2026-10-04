@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from src.pipeline.engine import RelationType
 from src.pipeline.schemas import BBox
-from src.schemas.insight import ExplanationOut, InsightHadith, InsightQuran, StepOut, WhyOut
+from src.schemas.insight import ExplanationOut, InsightHadith, InsightQuran, InsightWhyOut, StepOut
 
 
 class TutorialImageOut(BaseModel):
@@ -32,7 +32,7 @@ class TutorialInsightOut(BaseModel):
     pair_complete: bool
     explanation_tag: str
     explanation: list[ExplanationOut]
-    why: WhyOut
+    why: InsightWhyOut
     small_step: StepOut | None
     learning_unit_id: str
 

@@ -41,7 +41,6 @@ from src.routers.scripture import HadithOut, QuranVerseOut
 from src.schemas.insight import InsightHadith, InsightQuran
 from src.schemas.world import (
     PlaceInsightOut,
-    PlaceOut,
     PositionOut,
     RegionOut,
     RelationOut,
@@ -49,6 +48,7 @@ from src.schemas.world import (
     TreasureOut,
     TreasureUnitOut,
     WorldOut,
+    WorldPlaceOut,
 )
 from src.services import learner_service, treasure
 from src.services.content import Region, load_regions
@@ -272,7 +272,7 @@ async def _places(db: AsyncSession, owner: Owner) -> list[WorldPlace]:
 
 async def place_out(
     db: AsyncSession, place: WorldPlace, treasures: dict[int, Treasure]
-) -> PlaceOut:
+) -> WorldPlaceOut:
     insights = (
         await db.scalars(
             select(Insight)
@@ -281,7 +281,7 @@ async def place_out(
         )
     ).all()
     ready = treasures.get(place.id)
-    return PlaceOut(
+    return WorldPlaceOut(
         id=place.id,
         region_id=place.region_id,
         name=load_regions().name_of(place.region_id),
@@ -357,7 +357,7 @@ async def world(db: AsyncSession, settings: Settings, owner: Owner | None) -> Wo
 
 async def visit(
     db: AsyncSession, settings: Settings, owner: Owner | None, place_id: int
-) -> PlaceOut:
+) -> WorldPlaceOut:
     """Record that the learner opened a place, and return it with a treasure that is now ready."""
     if owner is None:
         raise not_found(PLACE)

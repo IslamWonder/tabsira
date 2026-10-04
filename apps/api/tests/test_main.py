@@ -36,6 +36,16 @@ async def test_every_reference_in_the_openapi_document_resolves(client):
     assert "ScanFromUrl" in schema["components"]["schemas"]
 
 
+async def test_every_schema_has_one_plain_name(client):
+    schema = (await client.get("/openapi.json")).json()
+
+    # Two models of one name are published under their module paths; the web types follow.
+    assert [name for name in schema["components"]["schemas"] if "__" in name] == []
+    assert {"PlaceOut", "WorldPlaceOut", "InsightOut", "InsightDetailOut"} <= set(
+        schema["components"]["schemas"]
+    )
+
+
 async def test_a_public_id_in_a_path_is_documented_as_the_string_responses_send(client):
     schema = (await client.get("/openapi.json")).json()
 

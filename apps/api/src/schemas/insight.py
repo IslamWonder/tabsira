@@ -44,7 +44,7 @@ class ExplanationOut(BaseModel):
     text: str
 
 
-class WhyOut(BaseModel):
+class InsightWhyOut(BaseModel):
     """«لماذا ظهر هذا؟»: the clues, the concept, the limits, the reason of a personal choice."""
 
     visible_clues: list[str]
@@ -97,7 +97,7 @@ class InsightImageOut(BaseModel):
     url: str | None
 
 
-class InsightOut(BaseModel):
+class InsightDetailOut(BaseModel):
     id: PublicId
     scan_id: PublicId | None
     origin: InsightOrigin
@@ -117,7 +117,7 @@ class InsightOut(BaseModel):
     pair_complete: bool
     explanation_tag: str
     explanation: list[ExplanationOut]
-    why: WhyOut
+    why: InsightWhyOut
     small_step: StepOut | None
     learning_unit: LearningUnitOut | None
     action: ActionOut

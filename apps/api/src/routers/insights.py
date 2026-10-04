@@ -31,7 +31,7 @@ from src.schemas.insight import (
     ChatIn,
     ChatReply,
     CompletionOut,
-    InsightOut,
+    InsightDetailOut,
 )
 from src.services import chat_service, completion_service, insight_view
 
@@ -77,7 +77,7 @@ async def owned_insight(
 @router.get("/{insight_id}", summary="One insight, its scripture read from the store")
 async def get_insight(
     insight_id: PublicIdPath, db: DbDep, settings: SettingsDep, owner: OptionalOwner
-) -> InsightOut:
+) -> InsightDetailOut:
     """Return the insight: its verse and hadith exactly as stored, the explanation apart."""
     _owner, insight = await owned_insight(db, owner, insight_id)
     return await insight_view.describe(db, settings, insight)

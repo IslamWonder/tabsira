@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Path
 from src.deps import DbDep, SettingsDep
 from src.owner import WritingOwner
 from src.scans.deps import KEEP_LIMITS, address_limit
-from src.schemas.insight import InsightOut
+from src.schemas.insight import InsightDetailOut
 from src.schemas.tutorial import TutorialOut
 from src.services import insight_view, tutorial_service
 from src.services.content import load_tutorial
@@ -38,7 +38,7 @@ async def keep_rain_insight(
     db: DbDep,
     settings: SettingsDep,
     owner: WritingOwner,
-) -> InsightOut:
+) -> InsightDetailOut:
     """Return the caller's copy of the insight (made once), labelled «مثال موثّق مُعدّ»."""
     kept = await tutorial_service.keep(db, owner, load_tutorial(), slug)
     return await insight_view.describe(db, settings, kept)

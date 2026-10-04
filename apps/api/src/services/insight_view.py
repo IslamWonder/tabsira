@@ -30,13 +30,13 @@ from src.schemas.insight import (
     ChatOut,
     EvidenceWhy,
     ExplanationOut,
+    InsightDetailOut,
     InsightHadith,
     InsightImageOut,
-    InsightOut,
     InsightQuran,
+    InsightWhyOut,
     LearningUnitOut,
     StepOut,
-    WhyOut,
 )
 
 ACTION_MEANS = {"done": messages.ACTION_DONE_MEANS, "later": messages.ACTION_LATER_MEANS}
@@ -204,12 +204,12 @@ def _label(insight: Insight) -> str | None:
     return None
 
 
-async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> InsightOut:
+async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> InsightDetailOut:
     """Return the owner's insight, its scripture hydrated from the store."""
     verse, hadith, awaiting = await shown_evidence(db, insight)
     scan = await db.get(Scan, insight.scan_id) if insight.scan_id is not None else None
     sensitive = bool(scan and scan.sensitive)
-    return InsightOut(
+    return InsightDetailOut(
         id=insight.id,
         scan_id=insight.scan_id,
         origin=insight.origin,
@@ -235,7 +235,7 @@ async def describe(db: AsyncSession, settings: Settings, insight: Insight) -> In
         pair_complete=verse is not None and hadith is not None,
         explanation_tag=messages.EXPLANATION_TAG,
         explanation=explanation_out(insight.explanation, verse, hadith),
-        why=WhyOut(
+        why=InsightWhyOut(
             visible_clues=list(insight.why.get("visible_clues", [])),
             concept=str(insight.why.get("concept", "")),
             limits=list(insight.why.get("limits", [])),

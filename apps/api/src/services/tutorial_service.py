@@ -22,7 +22,7 @@ from src import messages
 from src.errors import AppError, ErrorCode
 from src.models import Insight, InsightOrigin
 from src.owner import Owner
-from src.schemas.insight import InsightHadith, InsightQuran, WhyOut
+from src.schemas.insight import InsightHadith, InsightQuran, InsightWhyOut
 from src.schemas.tutorial import TutorialImageOut, TutorialInsightOut, TutorialOut
 from src.services.content import Tutorial, TutorialInsight
 from src.services.insight_view import evidence, evidence_why, explanation_out, step_out
@@ -79,7 +79,7 @@ async def _insight(db: AsyncSession, insight: TutorialInsight) -> TutorialInsigh
         explanation=explanation_out(
             [part.model_dump(mode="json") for part in insight.explanation], verse, hadith
         ),
-        why=WhyOut(
+        why=InsightWhyOut(
             visible_clues=insight.why.visible_clues,
             concept=insight.why.concept,
             limits=insight.why.limits,
