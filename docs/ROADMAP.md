@@ -47,6 +47,7 @@ The order in which TABSIRA is built. Each line becomes one or more atomic commit
 - [ ] Gold scenes and the twelve official cases (`make eval`), smoke tests, developer inspector.
 - [ ] Terms and privacy page matching every data flow; robots, metadata, icons.
 - [ ] Dynamic sitemap index and section sitemaps from the API (decision 29).
+- [ ] SEO standard (`docs/SEO.md`): metadata, share cards, icons, JSON-LD, robots for AI crawlers, llms.txt, check:seo / check:site / check:a11y in CI, IndexNow in the production deploy.
 - [ ] Google Analytics with Consent Mode v2, off when `GA_MEASUREMENT_ID` is empty (decision 28).
 - [ ] Reviews: scripture integrity, privacy and security.
 - [ ] Delivery documents: sources and licences, benchmark, evaluation report, operations.
