@@ -36,6 +36,16 @@ class SupportIn(BaseModel):
     # A field no person sees: a bot that fills it is answered 202 and nothing is sent.
     website: Annotated[str | None, Field(max_length=500)] = None
 
+    @field_validator("email")
+    @classmethod
+    def _ascii_email(cls, value: str) -> str:
+        # Reply-To goes out in a header: an internationalised address would need SMTPUTF8,
+        # which many servers refuse, so the visitor is told to give an ASCII one.
+        if not value.isascii():
+            message = "must be an ASCII e-mail address"
+            raise ValueError(message)
+        return value
+
     @field_validator("name")
     @classmethod
     def _name(cls, value: str | None) -> str | None:

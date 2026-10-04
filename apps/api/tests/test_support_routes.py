@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import smtplib
 
@@ -143,6 +144,8 @@ async def test_nothing_is_stored_and_nothing_is_logged(web, mailbox, db_session,
     [
         {"email": "not an address"},
         {"email": "a@example.com\nBcc: x@example.com"},
+        {"email": "tést@example.com"},
+        {"email": "reader@exämple.com"},
         {"topic": "billing"},
         {"message": "too short"},
         {"message": " " * 30},
@@ -167,8 +170,19 @@ async def test_a_blank_name_is_treated_as_none(web, mailbox):
     assert "الاسم: -" in text_of(mailbox[0])
 
 
-async def test_the_body_is_limited_to_eight_kib(web, mailbox):
-    response = await web.post("/support", json={**BODY, "website": "x" * 9000})
+async def test_a_longest_arabic_message_fits_the_body_limit(web, mailbox):
+    # 4000 Arabic letters are about 8 KB in UTF-8, more than the old limit allowed.
+    raw = json.dumps({**BODY, "message": "ب" * 4000}, ensure_ascii=False).encode()
+    assert 8000 < len(raw) < 16 * 1024
+
+    response = await web.post("/support", content=raw, headers={"Content-Type": "application/json"})
+
+    assert response.status_code == 202
+    assert len(mailbox) == 1
+
+
+async def test_the_body_is_limited_to_sixteen_kib(web, mailbox):
+    response = await web.post("/support", json={**BODY, "website": "x" * 17000})
 
     assert response.status_code == 413
     assert mailbox == []

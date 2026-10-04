@@ -24,9 +24,9 @@ from src.services import auth_service, email_service, rate_limit
 
 router = APIRouter(prefix="/support", tags=["support"])
 
-# A message is at most 4000 characters; the rest is the JSON around it and some slack for
-# characters that take several bytes.
-MAX_BODY_BYTES = 8 * 1024
+# A message is at most 4000 characters, up to 16000 bytes in UTF-8 when none is ASCII (the
+# JSON escapes a few more); 16 KiB holds the longest message and the rest of the form.
+MAX_BODY_BYTES = 16 * 1024
 # A whole site (a /48) is one sender for the limit.
 SUPPORT_IPV6_PREFIX = 48
 
