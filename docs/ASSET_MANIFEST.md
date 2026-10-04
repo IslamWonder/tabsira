@@ -295,3 +295,11 @@ Downloaded on 4 October 2026. Tanzil served the file without accepting its downl
 Time: **72 s** for the first full run on an empty database, **38 s** for a second run, on a development machine under load (load average 12–14 on 8 cores, other test suites running). A second `make data` changes no verse and no hadith.
 
 The dorar.net search link of each hadith (`https://dorar.net/hadith/search?q=<words>&st=w`) was built from the dorar site search as open-source clients use it; dorar cannot be fetched from the server, so an owner must open a few of these links in a browser to confirm the format.
+## 10. Gold scenes of the benchmark
+
+`apps/api/tests/evaluation/scenes/`: 15 images (1.6 MB) and `gold.json`, which records for each image its sha256, its source and how it was made, and what a correct scene analysis must and must not say. Copied on 4 October 2026 from the old demo (`the earlier prototype`); a test checks every hash.
+
+- **None is a photograph.** The twelve images of the demo's `apps/web/public/demo/` and `rain-olive.jpg` were generated with the Freepik text-to-image API by the demo's `scripts/generate-demo-images.ts` and `scripts/generate-tabsirah-images.ts`; each prompt is in `gold.json`. Two of them are digital art (`hero.jpg`, `emblem.jpg`).
+- `glass-of-water.jpg` (the demo's `public/tabsira/test-glass-of-water.jpg`) and `sensitive-alcohol.jpg` (the demo's `tests/fixtures/`) have no generation record; their 1344×768 JFIF files without camera EXIF match the generated set, so they are most likely generated too.
+- Generated images can differ from their prompt: the market has no scale, the television shows a city rather than news, the rain is light. The expectations describe the image, not the prompt.
+- Licence: Freepik's terms for AI-generated content, not verified. No person in them can be identified; none is a user photo.

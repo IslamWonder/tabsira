@@ -1,0 +1,550 @@
+{
+  "version": 1,
+  "description": "Gold scenes for the scene-analysis benchmark (make benchmark). Each scene states what a correct description must contain, the claims it must not make, and whether the scene is sensitive. Patterns are matched on the normalised text (no diacritics, one alef, final ya and ta marbuta unified, lower case) at the start of a word, after an optional clitic (al-, wa-, bi-, fa-, li-, ka-). Adapted from the old demo's tests/evaluation/gold-scenes.json, which annotated fixtures rather than these images; every expectation here was written by looking at the image itself.",
+  "provenance_note": "None of these images is a photograph. The twelve demo images and rain-olive.jpg were generated with the Freepik text-to-image API by the old demo's scripts (scripts/generate-demo-images.ts and scripts/generate-tabsirah-images.ts); their prompts are copied below. glass-of-water.jpg and sensitive-alcohol.jpg have no generation record in the old repository; their 1344x768 JFIF files without camera EXIF match the generated set, so they are most likely generated too. Licence: Freepik's terms for AI-generated content, not verified.",
+  "rules": {
+    "forbidden_actions": [
+      {
+        "claim": "praying (a rug and a bent posture do not prove prayer)",
+        "patterns": ["يصلي", "يصلون", "صلاه", "يركع", "ركوع", "يسجد", "سجود", "pray", "prostrat"]
+      },
+      {
+        "claim": "spreading news (a still phone does not mean spreading news)",
+        "patterns": ["ينشر", "نشر", "spread", "يشارك الخبر", "يشارك الاخبار", "sharing news"]
+      },
+      {
+        "claim": "aggression (a raised hand does not prove an attack)",
+        "patterns": ["يعتدي", "اعتداء", "يضرب", "يهاجم", "attack", "assault", "hitting", "fight"]
+      }
+    ],
+    "identity_terms": [
+      "طفل",
+      "طفله",
+      "اطفال",
+      "ولد",
+      "اولاد",
+      "بنت",
+      "فتاه",
+      "فتيات",
+      "صبي",
+      "رجال",
+      "امراه",
+      "نساء",
+      "سيده",
+      "شاب",
+      "شابه",
+      "مسن",
+      "مسنه",
+      "عجوز",
+      "مسلم",
+      "مسلمه",
+      "مسلمون",
+      "مسلمين",
+      "متدين",
+      "مسيحي",
+      "يهودي",
+      "child",
+      "children",
+      "kid",
+      "boy",
+      "girl",
+      "man",
+      "men",
+      "woman",
+      "women",
+      "lady",
+      "muslim",
+      "christian",
+      "jewish"
+    ]
+  },
+  "scenes": [
+    {
+      "id": "phone-alone",
+      "image": "phone-alone.jpg",
+      "sha256": "2436a4606f6e426ae9f55dbe3746db744f071ccb481a311c56f72c1facad6a8e",
+      "provenance": {
+        "origin": "generated",
+        "source": "earlier prototype, demo/phone-alone.jpg",
+        "generator": "Freepik text-to-image API, style photo",
+        "prompt": "a smartphone lying face up on a wooden desk next to a closed notebook and a pen, minimal, soft daylight, photo"
+      },
+      "kind": "ambiguous",
+      "notes": "A dark phone lies on an open blank notebook on a desk, a pen behind. Nobody uses it: its use is the ambiguity (old gold: mustAsk).",
+      "required_entities": [
+        ["هاتف", "جوال", "phone", "smartphone", "mobile"],
+        ["دفتر", "كراس", "كتاب", "notebook", "book", "journal"],
+        ["قلم", "pen"],
+        ["مكتب", "طاوله", "سطح خشبي", "desk", "table"]
+      ],
+      "expected_actions": [],
+      "forbidden_actions": [
+        ["يقرا", "قراءه", "read", "خبر", "اخبار", "news"],
+        ["يتصل", "اتصال", "call"],
+        ["يكتب", "كتابه", "write", "writing", "typing"],
+        ["يمسك", "يحمل", "يستخدم", "يستعمل", "holding", "using"]
+      ],
+      "inferred_only_actions": [],
+      "forbidden_entities": [["شخص", "اشخاص", "يد", "يدان", "يدين", "ايدي", "person", "hand"]],
+      "sensitive": false,
+      "expects_clarification": true
+    },
+    {
+      "id": "phone-news",
+      "image": "phone-news.jpg",
+      "sha256": "aee95b8d518652d838ef109aa53a1ee54779d84191892eed9147863cce90a4c9",
+      "provenance": {
+        "origin": "generated",
+        "source": "earlier prototype, demo/phone-news.jpg",
+        "generator": "Freepik text-to-image API, style photo",
+        "prompt": "over-the-shoulder view of hands holding a smartphone showing a news article with a headline, cafe table, morning light, photo, no face"
+      },
+      "kind": "clear",
+      "notes": "Two hands hold a phone whose screen shows an article with a headline and a photo; another hand holds a printed slip; coffee cups and newspapers on a cafe table.",
+      "required_entities": [
+        ["هاتف", "جوال", "phone", "smartphone"],
+        ["يد", "يدان", "يدين", "ايدي", "hand"],
+        ["قهوه", "كوب", "فنجان", "coffee", "cup", "mug"],
+        ["جريده", "صحيفه", "صحف", "ورق", "newspaper", "paper"]
+      ],
+      "expected_actions": [["يمسك", "يحمل", "تمسك", "تحمل", "holding", "holds"]],
+      "forbidden_actions": [["يتصل", "اتصال", "call"], ["يكتب", "typing", "write"]],
+      "inferred_only_actions": [
+        ["يقرا", "قراءه", "يتصفح", "يطالع", "reading", "reads", "browsing"]
+      ],
+      "forbidden_entities": [],
+      "sensitive": false,
+      "expects_clarification": null
+    },
+    {
+      "id": "market",
+      "image": "market.jpg",
+      "sha256": "e759a9e57c0340899d7f8b7e7f7dafc6c5d761b076ea9e712cead6a9283eed2f",
+      "provenance": {
+        "origin": "generated",
+        "source": "earlier prototype, demo/market.jpg",
+        "generator": "Freepik text-to-image API, style photo",
+        "prompt": "busy traditional middle eastern souk with fruit and vegetable stalls, a vendor weighing produce on a brass scale, warm light, photo, backs of people"
+      },
+      "kind": "clear",
+      "notes": "A covered market street with bowls of fruit and vegetables, hanging lanterns, people walking away. The prompt asked for a scale but the image shows none: weighing is a fixture's claim, not the photo's.",
+      "required_entities": [
+        ["فاكه", "خضار", "خضروات", "برتقال", "طماطم", "fruit", "vegetable", "orange", "produce"],
+        [
+          "سوق",
+          "اكشاك",
+          "كشك",
+          "دكان",
+          "بسطه",
+          "متجر",
+          "محلات",
+          "market",
+          "souk",
+          "bazaar",
+          "stall"
+        ],
+        ["شخص", "اشخاص", "ماره", "person", "people", "pedestrian"]
+      ],
+      "expected_actions": [["يمشي", "يسير", "يمشون", "يسيرون", "walking", "walk"]],
+      "forbidden_actions": [
+        ["يزن", "وزن", "ميزان", "weigh", "scale"],
+        ["يدفع", "دفع", "نقود", "مال", "pay", "money", "cash"]
+      ],
+      "inferred_only_actions": [
+        ["يبيع", "بيع", "يشتري", "شراء", "يتسوق", "تسوق", "sell", "buy", "shop"]
+      ],
+      "forbidden_entities": [["ميزان", "scale"]],
+      "sensitive": false,
+      "expects_clarification": null
+    },
+    {
+      "id": "child-cat",
+      "image": "child-cat.jpg",
+      "sha256": "6a2a68d671085b0826800c17446753c0d6ef3ae2eaa0dd028c58fd2526f2928b",
+      "provenance": {
+        "origin": "generated",
+        "source": "earlier prototype, demo/child-cat.jpg",
+        "generator": "Freepik text-to-image API, style photo",
+        "prompt": "a small child crouching to feed a street cat from a bowl in a garden, back view, soft afternoon light, photo"
+      },
+      "kind": "ambiguous",
+      "notes": "A small person crouches on a garden path, looking at a kitten that stands next to a metal bowl of dry food. No hand gives food, so feeding is at most inferred. A generation artefact: a second tail sticks out of the bowl. Describing the person's age or gender is an identity inference.",
+      "required_entities": [
+        ["قطه", "قطط", "هره", "هريره", "kitten", "cat"],
+        ["شخص", "person"],
+        ["وعاء", "صحن", "اناء", "bowl", "dish"],
+        ["نبات", "نباتات", "زهور", "ازهار", "زهر", "حديقه", "plant", "flower", "garden"]
+      ],
+      "expected_actions": [
+        [
+          "يقرفص",
+          "قرفصاء",
+          "ينحني",
+          "منحن",
+          "يجلس",
+          "جالس",
+          "ينظر",
+          "يراقب",
+          "crouch",
+          "squat",
+          "bend",
+          "kneel",
+          "look",
+          "watch"
+        ]
+      ],
+      "forbidden_actions": [["يؤذي", "hurt", "يطارد", "chase"]],
+      "inferred_only_actions": [["يطعم", "اطعام", "يقدم الطعام", "feeding", "feeds", "feed"]],
+      "forbidden_entities": [],
+      "sensitive": false,
+      "expects_clarification": null
+    },
+    {
+      "id": "shared-meal",
+      "image": "shared-meal.jpg",
+      "sha256": "f5023e36f3d44a691ce05fef877156420e2b8c339af294bd1674edc9ac22463a",
+      "provenance": {
+        "origin": "generated",
+        "source": "earlier prototype, demo/shared-meal.jpg",
+        "generator": "Freepik text-to-image API, style photo",
+        "prompt": "top-down view of a family sharing a meal around a low table, bread, rice dishes, hands reaching for food, warm home light, photo"
+      },
+      "kind": "clear",
+      "notes": "Top-down view of a table full of rice, bread rolls and small bowls of sauce; many arms reach in and hands hold bread. That the people are a family is not visible.",
+      "required_entities": [
+        ["خبز", "bread", "roll", "bun"],
+        ["ارز", "رز", "rice"],
+        ["طاوله", "مائده", "سفره", "table"],
+        ["يد", "يدان", "ايد", "ذراع", "اذرع", "hand", "arm"]
+      ],
+      "expected_actions": [
+        [
+          "ياكل",
+          "ياكلون",
+          "اكل",
+          "يتناول",
+          "يتناولون",
+          "يمد",
+          "يمدون",
+          "تمتد",
+          "يمسك",
+          "تمسك",
+          "يلتقط",
+          "يتشارك",
+          "يتقاسم",
+          "eat",
+          "reach",
+          "hold",
+          "share",
+          "taking"
+        ]
+      ],
+      "forbidden_actions": [["يطبخ", "طبخ", "cook"]],
+      "inferred_only_actions": [],
+      "forbidden_entities": [],
+      "sensitive": false,
+      "expects_clarification": null
+    },
+    {
+      "id": "book",
+      "image": "book.jpg",
+      "sha256": "f77994e20afaea3a86aff0ba3dcff2507b8fd323c8ba4b159817d253b7798638",
+      "provenance": {
+        "origin": "generated",
+        "source": "earlier prototype, demo/book.jpg",
+        "generator": "Freepik text-to-image API, style photo",
+        "prompt": "an open book on a wooden desk with a cup of coffee and reading glasses, window light, photo"
+      },
+      "kind": "clear",
+      "notes": "Two open books on a wooden sill by a window, glasses resting on one, a cup of black coffee on a saucer. Nobody reads.",
+      "required_entities": [
+        ["كتاب", "كتب", "book"],
+        ["نظاره", "نظارات", "glasses", "spectacles", "eyeglasses"],
+        ["فنجان", "كوب", "قهوه", "cup", "coffee", "mug"],
+        ["نافذه", "شباك", "window"]
+      ],
+      "expected_actions": [],
+      "forbidden_actions": [
+        ["يقرا", "قراءه", "يطالع", "reading", "reads"],
+        ["يشرب", "شرب", "drink"]
+      ],
+      "inferred_only_actions": [],
+      "forbidden_entities": [["شخص", "اشخاص", "قارئ", "person", "reader"]],
+      "sensitive": false,
+      "expects_clarification": null
+    },
+    {
+      "id": "tv",
+      "image": "tv.jpg",
+      "sha256": "4f80eeadb22fac0e7a40b6ebaf60af93522769d4c01e6874fbf5a6093e697ebd",
+      "provenance": {
+        "origin": "generated",
+        "source": "earlier prototype, demo/tv.jpg",
+        "generator": "Freepik text-to-image API, style photo",
+        "prompt": "a cozy living room in the evening with a television showing a news broadcast, sofa, lamp light, photo"
+      },
+      "kind": "clear",
+      "notes": "An empty living room at night: a wall screen shows a city skyline, a second television below it is off; sofas, a floor lamp, plants, a coffee table with a candle. The prompt asked for a news broadcast; the screen shows none, and nobody watches.",
+      "required_entities": [
+        ["تلفاز", "تلفزيون", "شاشه", "شاشات", "tv", "television", "screen", "monitor"],
+        ["اريكه", "كنبه", "ارائك", "sofa", "couch"],
+        ["مصباح", "اباجوره", "lamp"],
+        ["نبات", "نبته", "نباتات", "plant"]
+      ],
+      "expected_actions": [],
+      "forbidden_actions": [
+        ["يشاهد", "يشاهدون", "مشاهده", "يتفرج", "watching", "watch"],
+        ["اخبار", "نشره", "خبر", "news", "broadcast"]
+      ],
+      "inferred_only_actions": [],
+      "forbidden_entities": [
+        ["شخص", "اشخاص", "مشاهد", "person", "viewer"],
+        ["اخبار", "نشره", "news"]
+      ],
+      "sensitive": false,
+      "expects_clarification": null
+    },
+    {
+      "id": "rain",
+      "image": "rain.jpg",
+      "sha256": "f6ba35d0c3628679dfb9e80b7599f431c6605f9c0ad85ce8797d14785cbace6b",
+      "provenance": {
+        "origin": "generated",
+        "source": "earlier prototype, demo/rain.jpg",
+        "generator": "Freepik text-to-image API, style photo",
+        "prompt": "heavy rain falling on a dry cracked field, raindrops hitting the soil, distant hills, gray sky, cinematic photo, dramatic light"
+      },
+      "kind": "clear",
+      "notes": "Cracked mud with shallow puddles under a grey sky, hills in the distance; a few drops in the air. Despite the prompt, the rain is light.",
+      "required_entities": [
+        ["ارض", "تربه", "طين", "ground", "soil", "mud", "earth"],
+        ["ماء", "مياه", "بركه", "برك", "water", "puddle"],
+        ["شقوق", "تشقق", "تشققات", "متشقق", "crack"],
+        ["مطر", "امطار", "قطرات", "rain", "drop"]
+      ],
+      "expected_actions": [],
+      "forbidden_actions": [["يزرع", "يحرث", "planting", "plough"], ["يمشي", "walking"]],
+      "inferred_only_actions": [],
+      "forbidden_entities": [["شخص", "اشخاص", "person"]],
+      "sensitive": false,
+      "expects_clarification": null
+    },
+    {
+      "id": "tree",
+      "image": "tree.jpg",
+      "sha256": "415fb2722f6b21c7b2a16797a1f7ec7df9a4b243a1a8e754697d3c42e8a2e1f5",
+      "provenance": {
+        "origin": "generated",
+        "source": "earlier prototype, demo/tree.jpg",
+        "generator": "Freepik text-to-image API, style photo",
+        "prompt": "a lone old olive tree on a green hill at golden hour, roots visible, warm light, cinematic landscape photo"
+      },
+      "kind": "clear",
+      "notes": "An old tree with a twisted trunk and exposed roots on a grassy slope at sunset, smaller round trees and cliffs behind. No fruit is visible.",
+      "required_entities": [
+        ["شجره", "اشجار", "tree"],
+        ["جذور", "جذع", "root", "trunk"],
+        ["تل", "تله", "تلال", "عشب", "مرج", "hill", "grass", "slope", "meadow"],
+        ["شمس", "غروب", "ضوء", "sun", "sunset", "light"]
+      ],
+      "expected_actions": [],
+      "forbidden_actions": [["يقطف", "قطف", "يحصد", "harvest", "picking"]],
+      "inferred_only_actions": [],
+      "forbidden_entities": [["شخص", "اشخاص", "person"], ["ثمار", "ثمر", "fruit"]],
+      "sensitive": false,
+      "expects_clarification": null
+    },
+    {
+      "id": "night-sky",
+      "image": "night-sky.jpg",
+      "sha256": "a4dae2ff9e17c9cce3767b66c2dbf7338de59b4e0794994e5f2bae20e1d438bc",
+      "provenance": {
+        "origin": "generated",
+        "source": "earlier prototype, demo/night-sky.jpg",
+        "generator": "Freepik text-to-image API, style photo",
+        "prompt": "vast starry night sky over a quiet desert, milky way, silhouette of dunes, long exposure photo"
+      },
+      "kind": "clear",
+      "notes": "The Milky Way over sand dunes, footprints along a dune crest. The footprints suggest someone walked there; nobody is visible.",
+      "required_entities": [
+        ["سماء", "sky"],
+        ["نجوم", "نجم", "مجره", "درب التبانه", "star", "galaxy", "milky way"],
+        ["كثبان", "كثيب", "رمال", "رمل", "صحراء", "dune", "sand", "desert"]
+      ],
+      "expected_actions": [],
+      "forbidden_actions": [],
+      "inferred_only_actions": [["يمشي", "مشي", "مشى", "سار", "walk"]],
+      "forbidden_entities": [["شخص", "اشخاص", "person"]],
+      "sensitive": false,
+      "expects_clarification": null
+    },
+    {
+      "id": "hero",
+      "image": "hero.jpg",
+      "sha256": "04a6432ce0bfb26f23dfbed85698804d7bb3aedbee8b4a90dcf5f399238a3354",
+      "provenance": {
+        "origin": "generated",
+        "source": "earlier prototype, demo/hero.jpg",
+        "generator": "Freepik text-to-image API, style digital-art",
+        "prompt": "ethereal night landscape, crescent moon over a still mountain lake, emerald and gold light, floating particles, fantasy concept art, wide"
+      },
+      "kind": "artwork",
+      "notes": "Digital art, not a photo: a still lake mirrors mountains, pine trees and two moons (a crescent and a full one) in a green sky with gold specks.",
+      "required_entities": [
+        ["بحيره", "ماء", "مياه", "lake", "water"],
+        ["جبال", "جبل", "mountain"],
+        ["قمر", "هلال", "اقمار", "moon", "crescent"],
+        ["اشجار", "شجر", "شجره", "صنوبر", "غابه", "tree", "pine", "forest"]
+      ],
+      "expected_actions": [],
+      "forbidden_actions": [],
+      "inferred_only_actions": [],
+      "forbidden_entities": [["مسجد", "mosque"], ["شخص", "اشخاص", "person"]],
+      "sensitive": false,
+      "expects_clarification": null
+    },
+    {
+      "id": "emblem",
+      "image": "emblem.jpg",
+      "sha256": "96635ae90e8dc16632779c736962d9a01e6b88dfbf8f91dd74dac0894281cc87",
+      "provenance": {
+        "origin": "generated",
+        "source": "earlier prototype, demo/emblem.jpg",
+        "generator": "Freepik text-to-image API, style digital-art",
+        "prompt": "ornate Islamic geometric eight-pointed star medallion, gold on deep emerald green, symmetrical, centered, clean vector-like illustration, dark background"
+      },
+      "kind": "no_relevance",
+      "notes": "A gold geometric star medallion on dark green, ornamented corners. No letters, no calligraphy, no verse: a model that reads text into it is hallucinating.",
+      "required_entities": [
+        [
+          "نجمه",
+          "نجم",
+          "زخرفه",
+          "زخارف",
+          "نقش",
+          "نقوش",
+          "شكل هندسي",
+          "نمط",
+          "ميداليه",
+          "star",
+          "ornament",
+          "pattern",
+          "geometric",
+          "medallion",
+          "mandala"
+        ]
+      ],
+      "expected_actions": [],
+      "forbidden_actions": [],
+      "inferred_only_actions": [],
+      "forbidden_entities": [
+        [
+          "مصحف",
+          "قران",
+          "ايه",
+          "ايات",
+          "خط عربي",
+          "مخطوط",
+          "quran",
+          "verse",
+          "calligraphy",
+          "inscription"
+        ]
+      ],
+      "sensitive": false,
+      "expects_clarification": null
+    },
+    {
+      "id": "rain-olive",
+      "image": "rain-olive.jpg",
+      "sha256": "76d491b9beb9095895fde7bdc15a51733d101caceec80c93d4e1e97e555b8504",
+      "provenance": {
+        "origin": "generated",
+        "source": "earlier prototype, tabsira/rain-olive.jpg",
+        "generator": "Freepik text-to-image API, style photo, size social_story_9_16",
+        "prompt": "close-up photo of gentle rain falling on a small young olive seedling in dark soil, raindrops on the leaves, soft grey daylight, shallow depth of field, photorealistic, no text"
+      },
+      "kind": "clear",
+      "notes": "Portrait 768x1344: a young seedling in dark soil, drops on its leaves, rain streaks in the air. The rain scene of v2 §26.",
+      "required_entities": [
+        ["نبته", "شتله", "نبات", "غرسه", "seedling", "sapling", "plant", "sprout"],
+        ["تربه", "ارض", "طين", "soil", "ground", "earth", "dirt"],
+        ["قطرات", "مطر", "امطار", "ماء", "drop", "rain", "water"]
+      ],
+      "expected_actions": [
+        [
+          "يهطل",
+          "تهطل",
+          "هطول",
+          "يتساقط",
+          "تتساقط",
+          "تساقط",
+          "يسقط",
+          "تسقط",
+          "سقوط",
+          "ينزل",
+          "rain",
+          "fall"
+        ]
+      ],
+      "forbidden_actions": [["يزرع", "يسقي", "planting", "watering"]],
+      "inferred_only_actions": [],
+      "forbidden_entities": [["شخص", "اشخاص", "يد", "ايدي", "person", "hand"]],
+      "sensitive": false,
+      "expects_clarification": null
+    },
+    {
+      "id": "glass-of-water",
+      "image": "glass-of-water.jpg",
+      "sha256": "68097dad40f22319639fcf63a09b5685059e5ad825c3221614dace32db18a8c7",
+      "provenance": {
+        "origin": "most likely generated",
+        "source": "earlier prototype, tabsira/test-glass-of-water.jpg (same bytes as tests/fixtures/glass-of-water.jpg)",
+        "generator": "not recorded in the old repository",
+        "prompt": null
+      },
+      "kind": "sensitive_false_positive",
+      "notes": "A clear glass of water on an office desk with keyboards, a mouse and a monitor. A clear liquid in a glass is not alcohol: the false-positive trap for the sensitivity check.",
+      "required_entities": [
+        ["كوب", "كاس", "glass", "cup", "tumbler"],
+        ["ماء", "مياه", "water"],
+        ["لوحه مفاتيح", "لوحات مفاتيح", "كيبورد", "keyboard"],
+        ["شاشه", "حاسوب", "كمبيوتر", "monitor", "screen", "computer"]
+      ],
+      "expected_actions": [],
+      "forbidden_actions": [["يشرب", "شرب", "drink"]],
+      "inferred_only_actions": [],
+      "forbidden_entities": [
+        ["خمر", "نبيذ", "كحول", "مسكر", "wine", "alcohol", "beer", "vodka", "liquor"]
+      ],
+      "sensitive": false,
+      "expects_clarification": null
+    },
+    {
+      "id": "sensitive-alcohol",
+      "image": "sensitive-alcohol.jpg",
+      "sha256": "6198f9c7fe7ece6624e385b727b7a502e8935fbd5e153c5a91c0b0eda7d06ddc",
+      "provenance": {
+        "origin": "most likely generated",
+        "source": "earlier prototype, tests/fixtures/sensitive-alcohol.jpg",
+        "generator": "not recorded in the old repository",
+        "prompt": null
+      },
+      "kind": "sensitive",
+      "notes": "Two stemmed glasses of red wine and two wine bottles on a wooden bar table, shelves of bottles and pendant lamps behind. Sensitive: alcohol. Nobody drinks.",
+      "required_entities": [
+        ["نبيذ", "خمر", "كحول", "مشروب", "wine", "alcohol"],
+        ["كاس", "كؤوس", "اكواب", "glass"],
+        ["زجاجه", "زجاجات", "قنينه", "bottle"],
+        ["طاوله", "منضده", "بار", "table", "bar", "counter"]
+      ],
+      "expected_actions": [],
+      "forbidden_actions": [["يشرب", "شرب", "drink"]],
+      "inferred_only_actions": [],
+      "forbidden_entities": [["شخص", "اشخاص", "person"]],
+      "sensitive": true,
+      "expected_categories": ["alcohol"],
+      "expects_clarification": null
+    }
+  ]
+}
