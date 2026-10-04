@@ -43,7 +43,7 @@ make format      # rewrite files the way the format check wants them
 make eval        # gold scenes and the official contest cases
 make smoke       # HTTP checks against a running app
 make benchmark   # compare AI providers, detectors and rerankers on the same scenes
-make up          # docker compose up, whole stack
+make up          # docker compose, which decision 20 ruled out: fails until a compose file exists
 make stats       # a few lines about the code: size, tests, coverage, today
 ```
 
