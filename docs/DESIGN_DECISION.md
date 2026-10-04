@@ -70,7 +70,7 @@ The hadith is shown whole, exactly as stored. The chain of narrators and the clo
 
 ### Motion and sound
 
-Motion on display and on events only, never on hover: the points breathe on first view, the insight sheet rises, the fog lifts from a place after «تمّ». Everything stops under reduced motion. Sound effects are off by default.
+Motion on display and on events only, never on hover: the points breathe on first view, the insight sheet rises, the fog lifts from a place after «تمّ». Everything stops under reduced motion. Sound effects are a separate later task (owner, 4 October 2026); none are built now.
 
 ### Responsive web application (added 4 October 2026)
 
@@ -92,6 +92,6 @@ Per screen:
 - **Community** — desktop: a centred feed column (≤ 640 px) with a side column for the «لك» / «أتابع» tabs and filters; phone: tabs on top of the feed.
 - **Me** — a settings layout with a section list on the start side on desktop, a single list on phones.
 
-Kept from the earlier prototype's look: the eight-point star mark beside the gilded wordmark, the soft aurora with a faint geometric pattern behind light-theme pages (it becomes a deep night aurora in dark), slow light motes (never pointer-driven), StageOrbit and QuestLog for progress, the burst on «تمّ», and event-only sound effects, off by default. Not kept: the bottom navigation on wide screens and the narrow centred column on desktop.
+Kept from the earlier prototype's look: the eight-point star mark beside the gilded wordmark, the soft aurora with a faint geometric pattern behind light-theme pages (it becomes a deep night aurora in dark), slow light motes (never pointer-driven), StageOrbit and QuestLog for progress, and the burst on «تمّ». Sound effects come later as a separate task. Not kept: the bottom navigation on wide screens and the narrow centred column on desktop.
 
 Desktop interactions: every action reachable by keyboard with visible focus; hover may change colour or reveal a tooltip but never moves or resizes anything; drag-and-drop has a button equivalent.
