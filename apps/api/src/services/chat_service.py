@@ -278,11 +278,22 @@ async def _answer(
     if not text.strip() or leaked:
         await _give_back(db, row, log, insight.id)
         raise _refused(ErrorCode.CHAT_ANSWER_REJECTED, "The answer was refused.", 502)
+    # An editor may have ruled while the model wrote: an answer about texts that
+    # are no longer the ones shown is refused before anyone reads it.
+    verse_now, hadith_now, _awaiting = await shown_evidence(db, insight)
+    shown = shown_ids(verse, hadith)
+    if shown_ids(verse_now, hadith_now) != shown:
+        await _give_back(db, row, log, insight.id)
+        raise _refused(
+            ErrorCode.CHAT_ANSWER_REJECTED,
+            "The texts shown changed while the answer was written.",
+            502,
+        )
     row.status = ChatStatus.ANSWERED
     row.answer = text
     row.level = output.level
     row.kind = kind
-    row.evidence_ids = sorted(shown_ids(verse, hadith))
+    row.evidence_ids = sorted(shown)
     row.answered_at = clock.utcnow()
     db.add_all(call_rows(log.records, insight_id=insight.id))
     await db.commit()

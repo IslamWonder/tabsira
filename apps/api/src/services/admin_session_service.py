@@ -34,13 +34,13 @@ TOKEN_MAX = 128
 CSRF_PURPOSE = "admin-csrf"
 
 
-def cookie_token(request: Request) -> str | None:
+def cookie_token(request: Request, settings: Settings) -> str | None:
     """Return the token the request's admin cookie carries, if it looks like one."""
-    token = request.cookies.get(ADMIN_COOKIE_NAME)
+    token = request.cookies.get(settings.cookie_name(ADMIN_COOKIE_NAME))
     return token if token and len(token) <= TOKEN_MAX else None
 
 
-def set_cookie(response: Response, token: str) -> None:
+def set_cookie(response: Response, settings: Settings, token: str) -> None:
     """
     Attach the admin cookie: httpOnly, Secure, SameSite=Strict, path /admin, twelve hours.
 
@@ -48,22 +48,22 @@ def set_cookie(response: Response, token: str) -> None:
     with the web app's subdomains the way the user cookie is.
     """
     response.set_cookie(
-        ADMIN_COOKIE_NAME,
+        settings.cookie_name(ADMIN_COOKIE_NAME),
         token,
         max_age=int(ADMIN_SESSION_TTL.total_seconds()),
         path=ADMIN_COOKIE_PATH,
-        secure=True,
+        secure=settings.cookie_secure,
         httponly=True,
         samesite="strict",
     )
 
 
-def clear_cookie(response: Response) -> None:
+def clear_cookie(response: Response, settings: Settings) -> None:
     """Tell the browser to drop the admin cookie."""
     response.delete_cookie(
-        ADMIN_COOKIE_NAME,
+        settings.cookie_name(ADMIN_COOKIE_NAME),
         path=ADMIN_COOKIE_PATH,
-        secure=True,
+        secure=settings.cookie_secure,
         httponly=True,
         samesite="strict",
     )

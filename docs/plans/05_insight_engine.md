@@ -49,7 +49,7 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 - **Status:** ✅ 2026-10-04 18:48: scan p50 26.7 s → about 18 s, p95 42.8 s → about 22 s; general reminders 9 of 32 → 2 to 5 of 16; chat cases 9 → 11 of 12 (docs/EVALUATION.md, «Runs of task 05.3»)
 - **Goal:** Better scene-to-text fit: abstain on empty scenes (the still phone), fewer thematic reminders, no loose verses (the market drew the ablution verse), more of the hoped-for texts. Tune the planner prompt and the gold expectations.
 - **Depends on:** 05.1
-- **Touches:** apps/api pipeline (verifier, composer, engine ranking, sensitivity), scans/workflow.py, the chat prompt, apps/api/tests/evaluation, docs/EVALUATION.md, decision 49.
+- **Touches:** apps/api pipeline (verifier, composer, engine ranking, sensitivity), scans/workflow.py, the chat prompt, apps/api/tests/evaluation, docs/EVALUATION.md, decision 50.
 - **Done when:** `make eval` improves on every measure above with no leak; scripture review passes.
 - **Not reached, for the owners:** about 12 s needs one call fewer (05.7); the still phone does not abstain (its photo shows a notebook and a pen; the spec asks only that the phone never trigger the news lesson, which holds: keep the gold's «abstain» or change it to «a reminder at most»?); the hoped-for texts stay at 1 to 3 of 9, with equally fitting verses chosen; the wine scene needs an alcohol entity in the ontology; the app's own referral line «اسأل أهل العلم…» is a masculine imperative (messages catalogue). The rebased branch was not run end to end (its tests pass).
 

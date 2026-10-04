@@ -134,7 +134,7 @@ The admin area is served only at `https://admin.tabsira.me`, over the VPN.
 - `api.tabsira.me` answers 404 for `/admin` and everything under it. The API also refuses `/admin` on any host but `ADMIN_URL`.
 - **DNS.** No public record exists for `admin.tabsira.me`. In the Netbird dashboard add a DNS nameserver entry (split DNS) for the domain `admin.tabsira.me`, or a custom zone with an A record, that resolves it to the app host's VPN address, and distribute it to the admins' peer group.
 - **TLS.** The host is not reachable from the internet, so its certificate is issued by a DNS-01 challenge: `certbot certonly --dns-<plugin> --dns-<plugin>-credentials <file> -d admin.tabsira.me`, run by `deploy/provision-app.sh`. The owners supply the DNS provider's certbot plugin name (`CERTBOT_DNS_PLUGIN`) and an API credential for the zone (`CERTBOT_DNS_CREDENTIALS`, a file mode 0600 that never goes in git). Renewal is automatic with the same credential.
-- Locally, `admin.tabsira.test` is added by `scripts/setup-nginx-local.sh` (mkcert certificate, `/etc/hosts` line) and answers this machine only.
+- Locally, `admin.tabsira.test` is added by `scripts/setup-nginx-local.sh` (plain HTTP on port 80, `/etc/hosts` line) and answers this machine only.
 
 ## Backups
 

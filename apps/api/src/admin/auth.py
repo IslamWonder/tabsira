@@ -109,7 +109,7 @@ class AdminAuth(AuthenticationBackend):
             },
             status_code=status_code,
         )
-        csrf.set_login_cookie(response, nonce)
+        csrf.set_login_cookie(response, self.settings, nonce)
         for name, value in (headers or {}).items():
             response.headers[name] = value
         return response
@@ -205,7 +205,7 @@ class AdminAuth(AuthenticationBackend):
         self, db: AsyncSession, request: Request, user: User, ip_hash: str, user_agent: str | None
     ) -> Response:
         """Open a session for the admin, end the one the browser held, and send them in."""
-        previous = admin_session_service.cookie_token(request)
+        previous = admin_session_service.cookie_token(request, self.settings)
         if previous is not None:
             await admin_session_service.revoke(db, previous)
         token = await admin_session_service.create(
@@ -214,15 +214,15 @@ class AdminAuth(AuthenticationBackend):
         await db.commit()
         await self.trail.write(request, AuditAction.SIGN_IN, admin_user_id=user.id)
         response = RedirectResponse(request.url_for("admin:index"), status_code=302)
-        admin_session_service.set_cookie(response, token)
-        csrf.clear_login_cookie(response)
+        admin_session_service.set_cookie(response, self.settings, token)
+        csrf.clear_login_cookie(response, self.settings)
         return response
 
     # ─── Every request ─────────────────────────────────────────────
 
     async def load(self, request: Request) -> Context | None:
         """Return who is signed in, or None; a session that no longer qualifies is deleted."""
-        token = admin_session_service.cookie_token(request)
+        token = admin_session_service.cookie_token(request, self.settings)
         if token is None:
             return None
         async with self.session_maker() as db:
@@ -269,10 +269,10 @@ class AdminAuth(AuthenticationBackend):
 
     def _signed_out(self, request: Request) -> Response | bool:
         """Answer a request with no valid session: back to the sign-in page, dropping a dead cookie."""
-        if admin_session_service.cookie_token(request) is None:
+        if admin_session_service.cookie_token(request, self.settings) is None:
             return False
         response = RedirectResponse(request.url_for("admin:login"), status_code=302)
-        admin_session_service.clear_cookie(response)
+        admin_session_service.clear_cookie(response, self.settings)
         return response
 
     async def _enrolment_redirect(self, request: Request, user: User) -> Response | None:
@@ -317,5 +317,5 @@ class AdminAuth(AuthenticationBackend):
 
     def _to_login(self, request: Request) -> Response:
         response = RedirectResponse(request.url_for("admin:login"), status_code=302)
-        admin_session_service.clear_cookie(response)
+        admin_session_service.clear_cookie(response, self.settings)
         return response

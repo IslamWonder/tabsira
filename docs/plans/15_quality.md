@@ -47,4 +47,12 @@ Every change is tested; nothing merges below 100 % coverage.
 - **Goal:** `make bootstrap` runs docs/SETUP.md end to end and skips every step whose data is already there: it checks before it imports (scripture counts, ontology and learning-path versions, `geodata.geonames` rows, vector counts), downloads the corpora, the GeoNames export and the vector archive from the owners' bucket when missing (URLs and paths from `.env`, with their `.sha256` checked), restores or imports, then prints the status table. `scripts/seed-geonames.sh` gains a guard that refuses to replace a populated table without `--force`.
 - **Depends on:** — (the vectors part after 05.1).
 - **Touches:** a new scripts/bootstrap.sh, the Makefile, scripts/seed-geonames.sh, scripts/data.sh, .env.example and the typed settings for the archive URLs, docs/SETUP.md.
-- **Done when:** On a fresh machine `make bootstrap` gets to a working `https://tabsira.test`; run a second time, it imports nothing and finishes in under a minute; `make smoke` passes.
+- **Done when:** On a fresh machine `make bootstrap` gets to a working `http://tabsira.test`; run a second time, it imports nothing and finishes in under a minute; `make smoke` passes.
+
+### 15.5 Local development over plain HTTP on port 80
+
+- **Status:** ✅ 2026-10-04 18:34
+- **Goal:** Serve `tabsira.test`, `api.tabsira.test` and `admin.tabsira.test` from nginx on port 80 without TLS (decision 49): cookies lose the Secure flag and the `__Secure-` prefix only where `SITE_URL` is http, production refuses http addresses, the setup script drops mkcert, the smoke test and the docs follow.
+- **Depends on:** —
+- **Touches:** nginx/local, scripts/setup-nginx-local.sh, scripts/smoke.sh, scripts/dev.sh, scripts/provision-dev.sh, .env.example, apps/api config and cookie services, docs.
+- **Done when:** `make smoke` passes against `http://tabsira.test`; the cookie and config tests pass; security review passes.

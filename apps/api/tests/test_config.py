@@ -120,7 +120,7 @@ def test_ai_defaults_are_what_the_benchmark_measured(make_settings):
     assert settings.ai_openai.embedding_dimensions == 1536
     assert settings.ai_ovh.model_for(AiStage.EMBEDDING) == "bge-m3"
     assert settings.ai_ovh.embedding_dimensions is None
-    # Decision 49: no reranking by default; the small text model stays set for RERANKER=llm.
+    # Decision 50: no reranking by default; the small text model stays set for RERANKER=llm.
     assert settings.reranker is RerankerKind.OFF
     assert settings.ai_openai.model_for(AiStage.RERANK) == "gpt-5.4-nano-2026-03-17"
     assert settings.ai_ovh.model_for(AiStage.RERANK) == ""
@@ -1191,3 +1191,49 @@ def test_an_empty_reranker_url_switches_reranking_off(make_settings):
     )
     with pytest.raises(ValidationError):
         make_settings(reranker_url="vision:8100")
+
+
+def test_cookies_are_secure_and_prefixed_only_where_the_web_app_is_served_over_https():
+    """Local development runs over plain HTTP on port 80 (decision 49); production over https."""
+    https = Settings(_env_file=None)
+    http = Settings(
+        _env_file=None,
+        site_url="http://tabsira.test",
+        api_url="http://api.tabsira.test",
+        admin_url="http://admin.tabsira.test",
+        cors_origins="http://tabsira.test",
+    )
+
+    assert https.cookie_secure is True
+    assert https.cookie_name("__Secure-tabsira_session") == "__Secure-tabsira_session"
+    assert http.cookie_secure is False
+    assert http.cookie_name("__Secure-tabsira_session") == "tabsira_session"
+    assert http.cookie_name("plain") == "plain"
+
+
+@pytest.mark.parametrize("name", ["site_url", "api_url", "admin_url"])
+def test_production_refuses_a_public_address_over_plain_http(name):
+    message = errors_of(**{**PRODUCTION, name: "http://tabsira.me"})
+
+    assert f"{name.upper()} must use https in production, not http://tabsira.me" in message
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("cors_origins", "https://tabsira.me,http://www.tabsira.me"),
+        ("web_base_url", "http://tabsira.me"),
+        ("google_redirect_uri", "http://api.tabsira.me/auth/google/callback"),
+    ],
+)
+def test_production_refuses_every_other_public_address_over_plain_http(name, value):
+    message = errors_of(**{**PRODUCTION, name: value})
+
+    assert f"{name.upper()} must use https in production, not http://" in message
+
+
+@pytest.mark.parametrize("name", ["session_cookie_name", "guest_cookie_name"])
+def test_production_keeps_the_secure_prefix_on_the_cookie_names(name):
+    message = errors_of(**{**PRODUCTION, name: "tabsira_plain"})
+
+    assert f"{name.upper()} must start with __Secure- in production, not tabsira_plain" in message

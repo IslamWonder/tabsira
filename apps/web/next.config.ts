@@ -44,7 +44,7 @@ export default function nextConfig(phase: string): NextConfig {
     // The floating dev badge sits on the phone navigation; the terminal reports the same.
     devIndicators: false,
     typedRoutes: true,
-    // `next dev` is reached through the local nginx (https://tabsira.test); its
+    // `next dev` is reached through the local nginx (http://tabsira.test); its
     // hot reload and dev assets refuse other origins unless they are listed.
     allowedDevOrigins: isDevServer ? [new URL(publicEnv.siteUrl).hostname] : [],
     // The component gallery (src/app/dev/ui/page.dev.tsx) is a route only under

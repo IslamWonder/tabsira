@@ -10,7 +10,7 @@
 // publish (signed in), post and profile (a guest) and dev-ui (the gallery,
 // `next dev` only); by default all but dev-ui. The API is answered with the samples of
 // scripts/lib/api-mock.mjs, so every screen is in a known state. The base URL
-// defaults to https://tabsira.test (the local nginx with mkcert TLS); --api names
+// defaults to http://tabsira.test (the local nginx on port 80); --api names
 // the API origin the page calls when it is not api.<host> of the base (a dev
 // server on a bare port whose build still points at the .test API).
 
@@ -61,7 +61,7 @@ async function main() {
   const out = args.find((arg) => arg.startsWith('--out='))?.slice('--out='.length) ?? DOCS;
   const apiArg = args.find((arg) => arg.startsWith('--api='))?.slice('--api='.length);
   const rest = args.filter((arg) => !arg.startsWith('--'));
-  const base = rest[0]?.startsWith('http') ? rest.shift() : 'https://tabsira.test';
+  const base = rest[0]?.startsWith('http') ? rest.shift() : 'http://tabsira.test';
   const names = rest.length > 0 ? rest : ['home', 'consent', 'signin', 'me'];
   mkdirSync(out, { recursive: true });
   const siteOrigin = new URL(base).origin;

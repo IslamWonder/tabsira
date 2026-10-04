@@ -39,7 +39,7 @@ const CHECKS = [
 ];
 
 async function main() {
-  const base = process.argv[2] ?? 'https://tabsira.test';
+  const base = process.argv[2] ?? 'http://tabsira.test';
   const siteOrigin = new URL(base).origin;
   const url = new URL(base);
   const apiOrigin = process.env.A11Y_API_ORIGIN || `${url.protocol}//api.${url.host}`;

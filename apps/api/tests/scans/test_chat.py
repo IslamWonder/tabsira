@@ -339,3 +339,47 @@ async def test_an_answer_written_while_its_hadith_awaited_a_ruling_stays_shown(
     shown = (await browser.get(f"/insights/{insight_id}")).json()["chat"]
 
     assert [m["answer"] for m in shown["messages"]] == ["جواب قبل الحكم."]
+
+
+class RulingWhileWriting(FakeModelClient):
+    """A model whose answer takes long enough for an editor to rule the hadith out."""
+
+    def __init__(self, store, **kwargs):
+        super().__init__(**kwargs)
+        self.store = store
+
+    async def chat_json(self, schema, **kwargs):
+        async with self.store() as db:
+            await rule(db, "bukhari", "1032", HadithClassification.DAIF)
+            await db.commit()
+        return await super().chat_json(schema, **kwargs)
+
+
+async def test_an_answer_written_while_its_hadith_was_ruled_out_is_refused_unread(
+    browser, store, flow_settings, flow_app
+):
+    insight_id = await an_insight(browser, store, flow_settings)
+    async with store() as db:
+        await rule(db, "bukhari", "1032")
+        await db.commit()
+    model = RulingWhileWriting(store, answers=[said(answer="جواب عن الحديث."), said()])
+
+    def client_factory(log):
+        model.log = log
+        return model
+
+    flow_app.state.model_client_factory = client_factory
+
+    refused = await ask(browser, insight_id, key="key-0001")
+    retried = await ask(browser, insight_id, key="key-0002")
+
+    assert (refused.status_code, refused.json()["error"]) == (502, "CHAT_ANSWER_REJECTED")
+    assert "جواب عن الحديث." not in refused.text
+    # The slot went back; the retry was written beside the verse alone and shows.
+    assert (retried.status_code, retried.json()["used"]) == (200, 1)
+    shown = (await browser.get(f"/insights/{insight_id}")).json()["chat"]
+    assert [m["question"] for m in shown["messages"]] == ["ما معنى الإحياء هنا؟"]
+    async with store() as db:
+        rows = (await db.scalars(select(ChatMessage))).all()
+        assert [row.evidence_ids for row in rows] == [["quran:30:50"]]
+        assert len((await db.scalars(select(AiCall))).all()) == 2

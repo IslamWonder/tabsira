@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run the API, the scan worker, the web app and (when present) the vision service,
-# behind https://tabsira.test (nginx and mkcert: scripts/setup-nginx-local.sh).
+# behind http://tabsira.test (nginx on port 80: scripts/setup-nginx-local.sh).
 #
 #   api     scripts/dev-api.sh             127.0.0.1:8000
 #   worker  scripts/dev-worker.sh          the scan jobs, from Redis
@@ -82,7 +82,7 @@ fi
 
 [[ ${#pids[@]} -gt 0 ]] || die "nothing to run: no app exists yet"
 
-log "running: ${names[*]}. Web https://tabsira.test, API https://api.tabsira.test. Ctrl-C stops all."
+log "running: ${names[*]}. Web http://tabsira.test, API http://api.tabsira.test. Ctrl-C stops all."
 while :; do
 	i=0
 	for pid in "${pids[@]}"; do
