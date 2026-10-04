@@ -3,13 +3,16 @@
 // docs/screenshots/). Drives a local Chromium through the DevTools protocol
 // (scripts/lib/chrome.mjs), with no npm dependency.
 //
-//   pnpm --filter @tabsira/web screenshots [base-url] [shot...] [--out=dir]
+//   pnpm --filter @tabsira/web screenshots [base-url] [shot...] [--out=dir] [--api=origin]
 //
 // Shots: home (the scene, cookie choice made), consent (the first visit's
-// cookie screen), signin, me, world and practice (signed in) and dev-ui (the gallery, `next dev`
-// only); by default all but dev-ui. The API is answered with the samples of
+// cookie screen), signin, me, world and practice (signed in), community and
+// publish (signed in), post and profile (a guest) and dev-ui (the gallery,
+// `next dev` only); by default all but dev-ui. The API is answered with the samples of
 // scripts/lib/api-mock.mjs, so every screen is in a known state. The base URL
-// defaults to https://tabsira.test (the local nginx with mkcert TLS).
+// defaults to https://tabsira.test (the local nginx with mkcert TLS); --api names
+// the API origin the page calls when it is not api.<host> of the base (a dev
+// server on a bare port whose build still points at the .test API).
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -17,6 +20,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { mockApi, recordedConsentId } from './lib/api-mock.mjs';
 import { emulate, visit, withPage } from './lib/chrome.mjs';
+import { POST_ID, PROFILE_HANDLE } from './lib/social-samples.mjs';
 
 const DOCS = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -33,6 +37,15 @@ const SHOTS = {
   me: { path: '/me', consent: 'decided', state: 'signed-in', full: true },
   world: { path: '/world', consent: 'decided', state: 'signed-in', full: true },
   practice: { path: '/me/practice', consent: 'decided', state: 'signed-in', full: true },
+  community: { path: '/community', consent: 'decided', state: 'signed-in', full: true },
+  post: { path: `/posts/${POST_ID}`, consent: 'decided', state: 'guest', full: true },
+  profile: { path: `/u/${PROFILE_HANDLE}`, consent: 'decided', state: 'guest', full: true },
+  publish: {
+    path: '/community/publish?insight=7000000000000000001',
+    consent: 'decided',
+    state: 'signed-in',
+    full: true,
+  },
   'dev-ui': { path: '/dev/ui', consent: 'decided', state: 'guest', full: true },
   // The first paint without JavaScript: the consent screen must already be there.
   'consent-nojs': { path: '/', consent: 'ask', state: 'guest', full: false, noScript: true },
@@ -46,6 +59,7 @@ function apiOriginFor(base) {
 async function main() {
   const args = process.argv.slice(2);
   const out = args.find((arg) => arg.startsWith('--out='))?.slice('--out='.length) ?? DOCS;
+  const apiArg = args.find((arg) => arg.startsWith('--api='))?.slice('--api='.length);
   const rest = args.filter((arg) => !arg.startsWith('--'));
   const base = rest[0]?.startsWith('http') ? rest.shift() : 'https://tabsira.test';
   const names = rest.length > 0 ? rest : ['home', 'consent', 'signin', 'me'];
@@ -57,7 +71,7 @@ async function main() {
   await withPage(async (page) => {
     const { send } = page;
     await send('Network.enable');
-    await mockApi(page, { apiOrigin: apiOriginFor(base), siteOrigin, state });
+    await mockApi(page, { apiOrigin: apiArg ?? apiOriginFor(base), siteOrigin, state });
     for (const name of names) {
       const shot = SHOTS[name];
       if (shot === undefined) {

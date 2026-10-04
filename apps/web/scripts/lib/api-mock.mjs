@@ -3,6 +3,7 @@
 // without a database, a mail server or the consent routes (still being built).
 // Sample data only: the names and texts below are examples, never shown as live.
 
+import { socialAnswer } from './social-samples.mjs';
 import { progressSample, worldSample } from './world-samples.mjs';
 
 const USER = {
@@ -131,6 +132,10 @@ export function answer(method, pathname, state) {
   }
   if (route === 'GET /me/progress') {
     return reply(200, progressSample());
+  }
+  const social = socialAnswer(method, pathname, state);
+  if (social !== undefined) {
+    return reply(200, social);
   }
   return reply(404, { error: 'NOT_FOUND', detail: `No sample answer for ${route}.` });
 }
