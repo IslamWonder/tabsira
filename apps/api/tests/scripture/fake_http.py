@@ -6,12 +6,14 @@ import gzip
 import json
 from collections.abc import Callable
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
 from src.scripture.files import bytes_sha256
+from src.scripture.hadith import CollectionSource
 from src.scripture.quranpedia import QuranpediaClient
-from tests.scripture.fixtures import fixture_path
+from tests.scripture.fixtures import HADITH_FIXTURES, fixture_path, fixture_sources
 
 Answer = httpx.Response | Callable[[httpx.Request], httpx.Response]
 
@@ -77,3 +79,13 @@ def dump_routes(version: str = "2026-10-03") -> dict[str, Answer]:
 
 def json_response(payload: Any) -> httpx.Response:
     return httpx.Response(200, content=json.dumps(payload, ensure_ascii=False).encode())
+
+
+def hadith_routes(sources: tuple[CollectionSource, ...] | None = None) -> dict[str, Answer]:
+    """Routes that serve each fixture hadith file at the path of its pinned URL."""
+    return {
+        urlsplit(source.url).path: httpx.Response(
+            200, content=fixture_path(HADITH_FIXTURES[source.slug]).read_bytes()
+        )
+        for source in sources or fixture_sources()
+    }

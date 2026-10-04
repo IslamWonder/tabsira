@@ -28,7 +28,9 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.scripture.files import bytes_sha256
 from src.scripture.guard import WritePurpose, allow_scripture_writes
+from src.scripture.hadith import COLLECTIONS, CollectionSource
 from src.scripture.quran import import_quran, parse_mushaf, parse_surahs
 
 FIXTURES = Path(__file__).resolve().parent / "data"
@@ -76,3 +78,37 @@ async def store_quran(session: AsyncSession, *, text_30_50: str | None = None) -
         dump_sha256="0" * 64,
         source=str(fixture_path("quranpedia-mushafs-2.json")),
     )
+
+
+# The books that have a fixture file, and that file.
+HADITH_FIXTURES = {
+    "bukhari": "ara-bukhari.json",
+    "muslim": "ara-muslim.json",
+    "abudawud": "ara-abudawud.json",
+    "ahmad": "musnad-ahmad.csv",
+    "darimi": "sunan-al-darimi.csv",
+}
+
+
+def fixture_sources() -> tuple[CollectionSource, ...]:
+    """The real collection sources, pointed at the fixture files and their hashes."""
+    return tuple(
+        CollectionSource(
+            source.slug,
+            source.name_ar,
+            source.display_order,
+            source.format,
+            source.remote_path,
+            bytes_sha256(fixture_path(HADITH_FIXTURES[source.slug]).read_bytes()),
+        )
+        for source in COLLECTIONS
+        if source.slug in HADITH_FIXTURES
+    )
+
+
+def cache_hadith_fixtures(cache_dir: Path) -> None:
+    """Put every fixture hadith file where the importer looks for its source."""
+    for source in fixture_sources():
+        path = source.cache_path(cache_dir)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(fixture_path(HADITH_FIXTURES[source.slug]).read_bytes())

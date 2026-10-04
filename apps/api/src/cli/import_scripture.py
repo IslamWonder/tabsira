@@ -5,9 +5,11 @@ Import the scripture store from its verified sources.
 
 Steps run in the order given; with none, all of them in this order:
 
-    download     fetch quranpedia's current dump, checked against its manifest
+    download     fetch quranpedia's current dump, checked against its manifest,
+                 and the nine hadith files from their pinned commits
     quran        import mushaf 2 from the newest verified dump in the cache
     annotations  import the annotations of data/corpus/quran-annotations.json
+    hadith       import the nine books from their pinned, verified files
 
 Every step can run again: what is already stored and unchanged stays as it is.
 Each step writes in one transaction (the scripture steps with the guard open),
@@ -29,6 +31,7 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.database import dispose_engine, get_sessionmaker
+from src.scripture import hadith as hadith_store
 from src.scripture.annotations import (
     ANNOTATIONS_FILE,
     ANNOTATIONS_SHA256,
@@ -79,6 +82,9 @@ async def step_download(context: Context) -> None:
         )
         files = cached
     _say(f"download: quranpedia dump {files.version} verified")
+    for source in hadith_store.COLLECTIONS:
+        await hadith_store.ensure_source_file(context.http, context.cache_dir, source)
+    _say(f"download: {len(hadith_store.COLLECTIONS)} hadith files verified")
 
 
 async def step_quran(context: Context) -> None:
@@ -115,10 +121,35 @@ async def step_annotations(context: Context) -> None:
     _say(f"annotations: {count} verses annotated, verse text of the corpus not read")
 
 
+async def step_hadith(context: Context) -> None:
+    parsed = [
+        (
+            source,
+            hadith_store.parse_source(
+                source,
+                require_verified(source.cache_path(context.cache_dir), source.sha256).read_bytes(),
+            ),
+        )
+        for source in hadith_store.COLLECTIONS
+    ]
+    async with context.sessionmaker() as session, session.begin():
+        await allow_scripture_writes(session, WritePurpose.IMPORT)
+        reports = [
+            await hadith_store.import_collection(session, source, records)
+            for source, records in parsed
+        ]
+    for report in reports:
+        _say(
+            f"hadith: {report.slug}, {report.inserted} inserted, {report.unchanged} unchanged, "
+            f"{report.skipped_empty} with an empty text in the source not stored"
+        )
+
+
 STEPS: dict[str, Callable[[Context], Awaitable[None]]] = {
     "download": step_download,
     "quran": step_quran,
     "annotations": step_annotations,
+    "hadith": step_hadith,
 }
 
 

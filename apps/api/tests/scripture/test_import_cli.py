@@ -10,12 +10,13 @@ from src.cli import import_scripture
 from src.models import QuranVerse
 from src.scripture import quran
 from src.scripture.quranpedia import fetch_dump_files
-from tests.scripture.fake_http import FakeQuranpedia, dump_routes
-from tests.scripture.fixtures import load_json
+from tests.scripture.fake_http import FakeQuranpedia, dump_routes, hadith_routes
+from tests.scripture.fixtures import cache_hadith_fixtures, fixture_sources, load_json
 
 
 def _whole(monkeypatch) -> None:
-    """Let the fixture dump, a few surahs only, pass for a whole mushaf."""
+    """Let the fixture dump, a few surahs only, pass for a whole mushaf, and use the fixture books."""
+    monkeypatch.setattr(import_scripture.hadith_store, "COLLECTIONS", fixture_sources())
     raw = load_json("quranpedia-mushafs-2.json")["data"]["surahs"]
     monkeypatch.setattr(quran, "COMPLETE_SURAHS", len(raw))
     monkeypatch.setattr(quran, "COMPLETE_VERSES", sum(len(s["ayahs"]) for s in raw))
@@ -36,22 +37,25 @@ async def test_download_then_quran_imports_the_verified_dump(
     _whole(monkeypatch)
     argv = ["download", "quran", "--cache-dir", str(tmp_path), "--corpus-dir", str(tmp_path)]
 
-    first = await import_scripture.run(
-        argv, sessionmaker=scripture_maker, http=_http(dump_routes())
-    )
-    second = await import_scripture.run(
-        argv, sessionmaker=scripture_maker, http=_http(dump_routes())
-    )
+    routes = {**dump_routes(), **hadith_routes()}
+    first = await import_scripture.run(argv, sessionmaker=scripture_maker, http=_http(routes))
+    second = await import_scripture.run(argv, sessionmaker=scripture_maker, http=_http(routes))
 
     out = capsys.readouterr().out
     assert (first, second) == (0, 0)
     assert await _count(scripture_maker) == quran.COMPLETE_VERSES
     assert "download: quranpedia dump 2026-10-03 verified" in out
+    assert "download: 5 hadith files verified" in out
+    assert "download: 5 hadith files verified" in out
     assert f"{quran.COMPLETE_VERSES} inserted" in out
     assert f"0 inserted, 0 corrected, {quran.COMPLETE_VERSES} unchanged" in out
 
 
-async def test_without_network_a_verified_cached_dump_is_kept(tmp_path, scripture_maker, capsys):
+async def test_without_network_a_verified_cached_dump_is_kept(
+    tmp_path, scripture_maker, capsys, monkeypatch
+):
+    monkeypatch.setattr(import_scripture.hadith_store, "COLLECTIONS", fixture_sources())
+    cache_hadith_fixtures(tmp_path)
     await fetch_dump_files(FakeQuranpedia(dump_routes()).client(), tmp_path)
     offline = {"/dumps/manifest.json": httpx.Response(503)}
 
