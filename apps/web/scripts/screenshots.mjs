@@ -1,154 +1,106 @@
 // Screenshots for the design review (DESIGN_DECISION.md «Game feel»: every
 // screen is reviewed at 375, 768 and 1440 px in both themes; the images go to
-// docs/screenshots/). Drives a local Chromium through the DevTools protocol,
-// with no npm dependency: Node's own WebSocket and fetch.
+// docs/screenshots/). Drives a local Chromium through the DevTools protocol
+// (scripts/lib/chrome.mjs), with no npm dependency.
 //
-//   CHROME_PATH=/path/to/chrome pnpm --filter @tabsira/web screenshots [base-url] [path...]
+//   pnpm --filter @tabsira/web screenshots [base-url] [shot...] [--out=dir]
 //
-// CHROME_PATH defaults to the headless shell that Playwright keeps in
-// ~/.cache/ms-playwright. The base URL defaults to https://tabsira.test (the
-// local nginx with mkcert TLS); the paths default to / and /dev/ui (the
-// gallery exists under `next dev` only).
+// Shots: home (the scene, cookie choice made), consent (the first visit's
+// cookie screen), signin, me (signed in) and dev-ui (the gallery, `next dev`
+// only); by default all but dev-ui. The API is answered with the samples of
+// scripts/lib/api-mock.mjs, so every screen is in a known state. The base URL
+// defaults to https://tabsira.test (the local nginx with mkcert TLS).
 
-import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
+import { mockApi, recordedConsentId } from './lib/api-mock.mjs';
+import { emulate, visit, withPage } from './lib/chrome.mjs';
 
-const OUT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../docs/screenshots');
+const DOCS = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../../docs/screenshots'
+);
 const WIDTHS = [375, 768, 1440];
 const HEIGHTS = { 375: 812, 768: 1024, 1440: 900 };
 const THEMES = ['dark', 'light'];
-const PORT = 9333;
 
-function findChrome() {
-  if (process.env.CHROME_PATH) {
-    return process.env.CHROME_PATH;
-  }
-  const cache = path.join(homedir(), '.cache/ms-playwright');
-  const shell = existsSync(cache)
-    ? readdirSync(cache).find((name) => name.startsWith('chromium_headless_shell'))
-    : undefined;
-  if (shell === undefined) {
-    throw new Error('Set CHROME_PATH to a Chromium or Chrome binary.');
-  }
-  const folder = path.join(cache, shell);
-  const layouts = [
-    ['chrome-headless-shell-linux64', 'chrome-headless-shell'],
-    ['chrome-linux', 'headless_shell'],
-  ];
-  const found = layouts
-    .map(([dir, binary]) => path.join(folder, dir, binary))
-    .find((candidate) => existsSync(candidate));
-  if (found === undefined) {
-    throw new Error(`No headless shell inside ${folder}; set CHROME_PATH.`);
-  }
-  return found;
-}
+const SHOTS = {
+  home: { path: '/', consent: 'decided', state: 'guest', full: false },
+  consent: { path: '/', consent: 'ask', state: 'guest', full: false },
+  signin: { path: '/signin', consent: 'decided', state: 'guest', full: true },
+  me: { path: '/me', consent: 'decided', state: 'signed-in', full: true },
+  'dev-ui': { path: '/dev/ui', consent: 'decided', state: 'guest', full: true },
+  // The first paint without JavaScript: the consent screen must already be there.
+  'consent-nojs': { path: '/', consent: 'ask', state: 'guest', full: false, noScript: true },
+};
 
-function client(url) {
-  const socket = new WebSocket(url);
-  let next = 1;
-  const pending = new Map();
-  const waiters = [];
-  socket.addEventListener('message', (event) => {
-    const message = JSON.parse(event.data);
-    if (message.id && pending.has(message.id)) {
-      const { resolve, reject } = pending.get(message.id);
-      pending.delete(message.id);
-      message.error ? reject(new Error(message.error.message)) : resolve(message.result);
-    } else if (message.method) {
-      for (const waiter of waiters.filter((w) => w.method === message.method)) {
-        waiters.splice(waiters.indexOf(waiter), 1);
-        waiter.resolve(message.params);
-      }
-    }
-  });
-  return {
-    ready: new Promise((resolve) => socket.addEventListener('open', resolve, { once: true })),
-    send(method, params = {}, sessionId) {
-      const id = next++;
-      socket.send(JSON.stringify({ id, method, params, sessionId }));
-      return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
-    },
-    once(method) {
-      return new Promise((resolve) => waiters.push({ method, resolve }));
-    },
-    close: () => socket.close(),
-  };
+function apiOriginFor(base) {
+  const url = new URL(base);
+  return `${url.protocol}//api.${url.host}`;
 }
 
 async function main() {
-  const [base = 'https://tabsira.test', ...paths] = process.argv.slice(2);
-  const pages = paths.length > 0 ? paths : ['/', '/dev/ui'];
-  mkdirSync(OUT, { recursive: true });
+  const args = process.argv.slice(2);
+  const out = args.find((arg) => arg.startsWith('--out='))?.slice('--out='.length) ?? DOCS;
+  const rest = args.filter((arg) => !arg.startsWith('--'));
+  const base = rest[0]?.startsWith('http') ? rest.shift() : 'https://tabsira.test';
+  const names = rest.length > 0 ? rest : ['home', 'consent', 'signin', 'me'];
+  mkdirSync(out, { recursive: true });
+  const siteOrigin = new URL(base).origin;
+  const state = { value: 'guest' };
+  const consentId = await recordedConsentId();
 
-  const chrome = spawn(
-    findChrome(),
-    [
-      `--remote-debugging-port=${PORT}`,
-      '--headless',
-      '--hide-scrollbars',
-      '--ignore-certificate-errors',
-      '--disable-gpu',
-      'about:blank',
-    ],
-    { stdio: 'ignore' }
-  );
-  try {
-    let version;
-    for (let attempt = 0; attempt < 50 && version === undefined; attempt += 1) {
-      await sleep(100);
-      version = await fetch(`http://127.0.0.1:${PORT}/json/version`)
-        .then((response) => response.json())
-        .catch(() => undefined);
-    }
-    const cdp = client(version.webSocketDebuggerUrl);
-    await cdp.ready;
-    const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-    const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-    const send = (method, params) => cdp.send(method, params, sessionId);
-    await send('Page.enable');
-
-    for (const page of pages) {
+  await withPage(async (page) => {
+    const { send } = page;
+    await send('Network.enable');
+    await mockApi(page, { apiOrigin: apiOriginFor(base), siteOrigin, state });
+    for (const name of names) {
+      const shot = SHOTS[name];
+      if (shot === undefined) {
+        throw new Error(`Unknown shot "${name}": ${Object.keys(SHOTS).join(', ')}`);
+      }
+      state.value = shot.state;
       for (const theme of THEMES) {
         for (const width of WIDTHS) {
           const height = HEIGHTS[width];
-          await send('Emulation.setDeviceMetricsOverride', {
-            width,
-            height,
-            deviceScaleFactor: 1,
-            mobile: width < 768,
-          });
-          await send('Emulation.setEmulatedMedia', {
-            features: [{ name: 'prefers-color-scheme', value: theme }],
-          });
-          const loaded = cdp.once('Page.loadEventFired');
-          await send('Page.navigate', { url: new URL(page, base).href });
-          await loaded;
-          // Let the fonts, the photo and the entrance animations settle.
-          await sleep(3500);
-          const full = page !== '/';
-          const metrics = await send('Page.getLayoutMetrics');
-          const contentHeight = Math.min(6000, Math.ceil(metrics.cssContentSize.height));
-          const shot = await send('Page.captureScreenshot', {
+          await send('Network.clearBrowserCookies');
+          if (shot.consent === 'decided') {
+            await send('Network.setCookie', {
+              name: 'tabsira_consent',
+              value: consentId,
+              url: siteOrigin,
+              path: '/',
+            });
+          }
+          await emulate(send, { width, height, theme });
+          await send('Emulation.setScriptExecutionDisabled', { value: shot.noScript === true });
+          await visit(page, new URL(shot.path, base).href);
+          let shotHeight = height;
+          if (shot.full) {
+            // A window as tall as the page, so the fixed backdrop covers all of it;
+            // full-height layouts keep the height of the real window.
+            await send('Runtime.evaluate', {
+              expression: `document.documentElement.style.setProperty('--app-height', '${height}px')`,
+            });
+            const metrics = await send('Page.getLayoutMetrics');
+            shotHeight = Math.min(6000, Math.ceil(metrics.cssContentSize.height));
+            await emulate(send, { width, height: shotHeight, theme });
+            await sleep(600);
+          }
+          const capture = await send('Page.captureScreenshot', {
             format: 'jpeg',
             quality: 82,
-            captureBeyondViewport: full,
-            clip: { x: 0, y: 0, width, height: full ? contentHeight : height, scale: 1 },
+            clip: { x: 0, y: 0, width, height: shotHeight, scale: 1 },
           });
-          const name = `${page === '/' ? 'home' : page.replaceAll('/', '-').replace(/^-/, '')}-${width}-${theme}.jpg`;
-          writeFileSync(path.join(OUT, name), Buffer.from(shot.data, 'base64'));
-          console.log(`docs/screenshots/${name}`);
+          const file = `${name}-${width}-${theme}.jpg`;
+          writeFileSync(path.join(out, file), Buffer.from(capture.data, 'base64'));
+          console.log(path.join(out, file));
         }
       }
     }
-    cdp.close();
-  } finally {
-    chrome.kill();
-  }
+  });
 }
 
 await main();
