@@ -1,14 +1,15 @@
 """
 The extension point of the admin area: where another part of the product adds its views.
 
-The scripture store (Quran verses, hadiths, their rulings and the verification queue) is
-built apart from the admin and adds its views here, without editing the admin:
+The admin's own views live in `src/admin/views/` (the rulings queue and the hadith rulings
+among them). A part of the product built apart from the admin adds its views here, without
+editing the admin:
 
     # src/admin/scripture.py
     from src.admin.registry import register_view
 
     @register_view
-    class HadithRulingAdmin(AdminView, model=HadithRuling): ...
+    class QuranVerseAdmin(ReadOnlyView, model=QuranVerse): ...
 
 `install_admin` imports each module named in `EXTENSION_MODULES` that exists, so the
 views a module registers are mounted after the built-in ones, in the order registered.

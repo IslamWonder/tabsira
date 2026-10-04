@@ -25,6 +25,7 @@ from starlette.datastructures import URL
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
+from src.admin.audit import client_of
 from src.admin.base import ReadOnlyView, current_admin, current_user, labelled
 from src.models.admin_audit import AuditAction
 from src.models.scripture import (
@@ -37,10 +38,11 @@ from src.scripture.links import dorar_search_url
 from src.scripture.rulings import (
     QueuedHadith,
     RulingInput,
-    classification_is_eligible,
+    is_eligible,
     record_ruling,
     verification_queue,
 )
+from src.services import admin_audit_service
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -68,11 +70,17 @@ FORM_FIELDS = (
 )
 REFUSED = "The ruling was not recorded. Check: {fields}."
 NO_HADITH = "No stored hadith has this id."
+# The audit reason of a form that was refused; the row names the fields to check.
+REFUSED_REASON = "refused"
+# An id the database could hold; anything else names no row and is not even looked up.
+MAX_ID = 2**63 - 1
+# The longest `recorded` query value read back: an id, in ASCII digits.
+RECORDED_MAX_DIGITS = 18
 
 
 @dataclass(frozen=True)
 class QueueRow:
-    """One waiting hadith as the queue page shows it."""
+    """One waiting hadith as the queue page shows it: its reference and hash, never its text."""
 
     hadith: Hadith
     demand_count: int
@@ -95,12 +103,34 @@ def _rows(waiting: list[QueuedHadith]) -> list[QueueRow]:
 
 
 def _submitted(form: Any) -> dict[str, str]:
-    """Return the form's fields as typed, without the token; a missing field is empty."""
-    return {name: str(form.get(name) or "") for name in FORM_FIELDS}
+    """
+    Return the form's fields as typed, without the token; a missing field is empty.
+
+    A browser sends a text area's line breaks as CRLF whatever the editor typed; the
+    command line stores LF. The CR is the form encoding's, not the editor's, and is dropped.
+    """
+    return {name: str(form.get(name) or "").replace("\r\n", "\n") for name in FORM_FIELDS}
 
 
-def _refused_fields(error: ValidationError) -> str:
-    names = sorted({str(item["loc"][0]) for item in error.errors() if item["loc"]})
+def _refused_names(error: ValidationError) -> list[str]:
+    return sorted({str(item["loc"][0]) for item in error.errors() if item["loc"]})
+
+
+def _hadith_id(request: Request) -> int | None:
+    """Return the hadith id of the address, or None when no row could have it."""
+    hadith_id = int(request.path_params["hadith_id"])
+    return hadith_id if 0 < hadith_id <= MAX_ID else None
+
+
+def _recorded_id(request: Request) -> int | None:
+    """Return the id of the ruling the address says was just recorded, if it reads as one."""
+    value = request.query_params.get("recorded", "")
+    if value.isascii() and value.isdigit() and len(value) <= RECORDED_MAX_DIGITS:
+        return int(value)
+    return None
+
+
+def _refused_fields(names: list[str]) -> str:
     return ", ".join(name.replace("_", " ") for name in names) or "the form"
 
 
@@ -141,7 +171,6 @@ class RulingsQueueView(BaseView):
             )
         ).all()
         queued = await db.get(HadithVerificationQueue, hadith.id)
-        latest = history[0] if history else None
         if values is None:
             values = dict.fromkeys(FORM_FIELDS, "")
             values["editor_name"] = current_user(request).display_name or ""
@@ -152,7 +181,8 @@ class RulingsQueueView(BaseView):
             "dorar_search": dorar_search_url(hadith.text),
             "queued": queued,
             "history": history,
-            "eligible": latest is not None and classification_is_eligible(latest.classification),
+            # The pipeline's own answer, so this page and an insight never disagree.
+            "eligible": await is_eligible(db, hadith.id),
             "classifications": list(HadithClassification),
             "values": values,
             "error": error,
@@ -175,21 +205,25 @@ class RulingsQueueView(BaseView):
         await self.admin.trail.write(
             request, AuditAction.LIST, admin_user_id=current_admin(request), model=IDENTITY
         )
+        recorded_id = _recorded_id(request)
         async with self.admin.db() as db:
             waiting = await verification_queue(db, QUEUE_LIMIT)
-        recorded = request.query_params.get("recorded", "")
+            # The banner names a ruling that exists; a crafted address shows nothing.
+            recorded = None if recorded_id is None else await db.get(HadithRuling, recorded_id)
         context: dict[str, Any] = {
             "title": self.name,
             "subtitle": "Hadiths the engine wanted that have no ruling yet, most wanted first.",
             "rows": _rows(waiting),
             "limit": QUEUE_LIMIT,
-            "recorded": int(recorded) if recorded.isdecimal() else None,
+            "recorded": recorded,
         }
         return await self.templates.TemplateResponse(request, QUEUE_TEMPLATE, context)
 
     @expose("/rulings-queue/hadith/{hadith_id:int}", methods=["GET"], identity=f"{IDENTITY}-hadith")
     async def hadith(self, request: Request) -> Response:
-        hadith_id = int(request.path_params["hadith_id"])
+        hadith_id = _hadith_id(request)
+        if hadith_id is None:
+            return await self._not_found(request)
         await self.admin.trail.write(
             request,
             AuditAction.VIEW,
@@ -209,10 +243,18 @@ class RulingsQueueView(BaseView):
         identity=f"{IDENTITY}-record",
     )
     async def record(self, request: Request) -> Response:
-        """Record the editor's ruling; the audit row names the fields, never what they hold."""
-        hadith_id = int(request.path_params["hadith_id"])
+        """
+        Record the editor's ruling; the audit row names the fields, never what they hold.
+
+        The ruling and its audit row are one transaction: neither exists without the other.
+        A refused form is an event too, and gets a row that names the fields to check.
+        """
+        hadith_id = _hadith_id(request)
+        if hadith_id is None:
+            return await self._not_found(request)
         admin_id: uuid.UUID = current_admin(request)
         values = _submitted(await request.form())
+        ip_hash, user_agent = client_of(self.admin.settings, request)
         async with self.admin.db() as db:
             hadith = await db.get(Hadith, hadith_id)
             if hadith is None:
@@ -220,21 +262,33 @@ class RulingsQueueView(BaseView):
             try:
                 ruling = RulingInput(**values, recorded_by=admin_id)
             except ValidationError as refused:
-                error = REFUSED.format(fields=_refused_fields(refused))
+                names = _refused_names(refused)
+                await self.admin.trail.write(
+                    request,
+                    AuditAction.CREATE,
+                    admin_user_id=admin_id,
+                    model=RULING_MODEL,
+                    record_id=None,
+                    fields=names,
+                    reason=REFUSED_REASON,
+                )
+                error = REFUSED.format(fields=_refused_fields(names))
                 return await self._hadith_page(
                     request, db, hadith, values=values, error=error, status_code=400
                 )
             row = await record_ruling(db, hadith.id, ruling)
+            await admin_audit_service.record(
+                db,
+                action=AuditAction.CREATE,
+                admin_user_id=admin_id,
+                model=RULING_MODEL,
+                record_id=str(row.id),
+                fields=FORM_FIELDS,
+                ip_hash=ip_hash,
+                user_agent=user_agent,
+            )
             await db.commit()
             recorded_id = row.id
-        await self.admin.trail.write(
-            request,
-            AuditAction.CREATE,
-            admin_user_id=admin_id,
-            model=RULING_MODEL,
-            record_id=str(recorded_id),
-            fields=FORM_FIELDS,
-        )
         return RedirectResponse(
             self._queue_url(request, recorded_id), status_code=status.HTTP_303_SEE_OTHER
         )

@@ -16,18 +16,10 @@ pre.recovery-codes {
   font-size: 1.1rem;
 }
 
-/* Scripture is shown whole, wrapped, in its own direction; the queue shows a few lines of it. */
+/* Scripture is shown whole, wrapped, in its own direction. */
 .hadith-text {
   white-space: pre-wrap;
   line-height: 2;
-}
-td.hadith-preview {
-  max-width: 32rem;
-  white-space: normal;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
 }
 .moderated-text {
   white-space: pre-wrap;

@@ -1,8 +1,8 @@
 {#
   The rulings queue: hadiths the engine wanted that have no ruling yet, most wanted first.
   The dorar.net link is a search the editor opens in their own browser; the server never
-  calls dorar.net (decision 18). The text here is a preview; the full text, byte for byte,
-  is on the hadith's page.
+  calls dorar.net (decision 18). The list shows each hadith's reference and stored hash; the
+  text, whole and byte for byte, is on the hadith's page and nowhere else.
 #}
 {% extends "sqladmin/layout.html" %}
 
@@ -10,8 +10,8 @@
 <div class="col-12">
   {% if recorded %}
   <div class="alert alert-success" role="alert">
-    Ruling {{ recorded }} recorded. The hadith left the queue; its history is under
-    <a href="{{ url_for('admin:details', identity='hadith-ruling', pk=recorded) }}">Hadith rulings</a>.
+    Ruling {{ recorded.id }} recorded. The hadith left the queue; its history is under
+    <a href="{{ url_for('admin:details', identity='hadith-ruling', pk=recorded.id) }}">Hadith rulings</a>.
   </div>
   {% endif %}
   <div class="card">
@@ -24,7 +24,7 @@
         <thead>
           <tr>
             <th>Hadith</th>
-            <th>Text</th>
+            <th>Hash (SHA-256)</th>
             <th>Wanted</th>
             <th>First wanted</th>
             <th>Last wanted</th>
@@ -37,7 +37,7 @@
             <td class="text-nowrap">
               <a href="{{ url_for('admin:view-rulings-queue-hadith', hadith_id=row.hadith.id) }}">{{ row.hadith.collection }} {{ row.hadith.number }}</a>
             </td>
-            <td class="hadith-preview" dir="rtl" lang="ar">{{ row.hadith.text }}</td>
+            <td><code>{{ row.hadith.text_sha256 }}</code></td>
             <td class="text-nowrap">{{ row.demand_count }}</td>
             <td class="text-nowrap">{{ row.first_requested_at.strftime('%Y-%m-%d %H:%M') }}</td>
             <td class="text-nowrap">{{ row.last_requested_at.strftime('%Y-%m-%d %H:%M') }}</td>

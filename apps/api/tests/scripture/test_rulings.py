@@ -6,11 +6,14 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import CheckConstraint, select
 
 from src.cli import record_ruling as ruling_command
 from src.models import Hadith, HadithClassification, HadithRuling, HadithVerificationQueue
 from src.scripture.links import distinctive_words, dorar_search_url, quranpedia_verse_url
+from src.scripture.rulings import (
+    DORAR_PAGE as DORAR_RULE,
+)
 from src.scripture.rulings import (
     RulingError,
     RulingInput,
@@ -113,12 +116,30 @@ async def test_a_ruling_for_no_stored_hadith_is_refused(db_session):
         {"dorar_url": "http://dorar.net/h/abc"},
         {"dorar_url": "https://dorar.net.example.org/h/abc"},
         {"dorar_url": "https://dorar.net/"},
+        # The parser would accept these; the database would not, so they stop here.
+        {"dorar_url": "https://DORAR.NET/h/abc"},
+        {"dorar_url": "https://dorar.net:443/h/abc"},
+        {"dorar_url": "https://editor@dorar.net/h/abc"},
+        {"dorar_url": "https://dor\tar.net/h/abc"},
+        {"scholar": "a\x00b"},
         {"classification": "قوي"},
     ],
 )
 def test_a_ruling_that_is_blank_off_dorar_or_unclassified_is_refused(changes):
     with pytest.raises(ValidationError):
         _ruling(**{"classification": HadithClassification.SAHIH, **changes})
+
+
+def test_the_address_rule_is_the_tables_check_constraint():
+    """What the validator lets through, the table stores: the two rules are one."""
+    constraint = next(
+        c
+        for c in HadithRuling.__table__.constraints
+        if isinstance(c, CheckConstraint) and str(c.sqltext).startswith("dorar_url ~")
+    )
+    database_rule = str(constraint.sqltext).split("~ '")[1].rstrip("'")
+
+    assert DORAR_RULE.pattern == f"{database_rule.lstrip('^')}\\S+"
 
 
 def test_the_dorar_page_may_be_on_either_host():

@@ -79,6 +79,12 @@ async def test_the_queue_lists_the_most_wanted_first_with_a_dorar_search_to_open
     assert "2 waiting" in body
     assert body.index(f"bukhari {wanted.number}") < body.index(f"muslim {other.number}")
     assert page_of(wanted.id) in body
+    # The list names each hadith and its stored hash; the text is on the hadith's page only.
+    listing = html.unescape(body.split("<tbody>")[1])
+    for hadith in (wanted, other):
+        assert f"<code>{hadith.text_sha256}</code>" in listing
+        assert hadith.text not in listing
+        assert hadith.text[:30] not in listing
     links = re.findall(r'href="(https://dorar\.net[^"]*)"', body)
     assert len(links) == 2
     parts = urlsplit(links[0].replace("&amp;", "&"))
@@ -158,6 +164,21 @@ async def test_an_unknown_hadith_has_no_page(admin, db_session):
     assert page.status_code == 404
     assert "No stored hadith has this id." in page.text
     assert posted.status_code == 404
+    # An id the database could not hold names nothing, and is not even looked up or audited.
+    huge = 10**23
+    assert (await http.get(page_of(huge))).status_code == 404
+    assert (await record(http, huge)).status_code == 404
+    assert (await http.get(page_of(0))).status_code == 404
+    assert not [r for r in await audit_rows(db_session) if r.record_id == str(huge)]
+
+
+async def test_the_recorded_banner_names_only_a_ruling_that_exists(admin, db_session, hadiths):
+    http, _ = admin
+
+    for crafted in ("5", "٣", "9" * 40, "abc", "-1"):
+        page = await http.get(f"{QUEUE}?recorded={crafted}")
+        assert page.status_code == 200, crafted
+        assert "recorded." not in page.text, crafted
 
 
 # ─── Recording a ruling ────────────────────────────────────────────
@@ -202,6 +223,7 @@ async def test_recording_a_ruling_takes_the_hadith_off_the_queue_and_audits_the_
 
     queue = await http.get(response.headers["location"])
     assert f"Ruling {ruling.id} recorded." in queue.text
+    assert f"/admin/hadith-ruling/details/{ruling.id}" in queue.text
     assert "1 waiting" in queue.text
     assert f"bukhari {wanted.number}" not in queue.text
     assert f"muslim {other.number}" in queue.text
@@ -233,8 +255,65 @@ async def test_a_refused_ruling_names_its_fields_and_records_nothing(admin, db_s
     assert "The ruling was not recorded. Check: dorar url, scholar." in response.text
     assert 'value="https://example.com/h/1"' in response.text
     assert (await db_session.scalars(select(HadithRuling))).all() == []
-    assert not [r for r in await audit_rows(db_session) if r.action is AuditAction.CREATE]
     assert "wanted 3 times" in response.text
+    # The attempt is an event: a row that names the fields to check, never what they held.
+    refused = [r for r in await audit_rows(db_session) if r.action is AuditAction.CREATE]
+    assert len(refused) == 1
+    assert (refused[0].model, refused[0].record_id) == ("hadith-ruling", None)
+    assert refused[0].details == {"reason": "refused", "fields": ["dorar_url", "scholar"]}
+    assert "example.com" not in repr(refused[0].details)
+
+
+@pytest.mark.parametrize(
+    "address",
+    [
+        "https://DORAR.NET/h/1",
+        "https://dorar.net:443/h/1",
+        "https://editor@dorar.net/h/1",
+        "https://dor\tar.net/h/1",
+        "https://dorar.net/h/1 ",
+    ],
+)
+async def test_an_address_the_database_would_refuse_is_refused_by_the_form_first(
+    admin, db_session, hadiths, address
+):
+    http, _ = admin
+    wanted, _ = hadiths
+
+    response = await record(http, wanted.id, dorar_url=address)
+
+    assert response.status_code == 400
+    assert "Check: dorar url." in response.text
+    assert (await db_session.scalars(select(HadithRuling))).all() == []
+
+
+async def test_a_nul_character_is_refused_not_stored(admin, db_session, hadiths):
+    http, _ = admin
+    wanted, _ = hadiths
+
+    response = await record(http, wanted.id, scholar="a\x00b")
+
+    assert response.status_code == 400
+    assert "Check: scholar." in response.text
+    assert (await db_session.scalars(select(HadithRuling))).all() == []
+
+
+async def test_a_rulings_line_breaks_are_stored_as_typed_and_shown_again_whole(
+    admin, db_session, hadiths
+):
+    http, _ = admin
+    wanted, _ = hadiths
+    typed = "\nسطر\r\nثم سطر\r\n"
+
+    shown_again = await record(http, wanted.id, ruling_text=typed, scholar="")
+    assert shown_again.status_code == 400
+    # The browser drops one line break right after the tag, so the template adds one.
+    assert "required>\n\nسطر\nثم سطر\n</textarea>" in shown_again.text
+
+    recorded = await record(http, wanted.id, ruling_text=typed)
+    assert recorded.status_code == 303
+    ruling = (await db_session.scalars(select(HadithRuling))).one()
+    assert ruling.ruling_text == "\nسطر\nثم سطر\n"
 
 
 async def test_a_ruling_with_a_missing_field_is_refused(admin, db_session, hadiths):

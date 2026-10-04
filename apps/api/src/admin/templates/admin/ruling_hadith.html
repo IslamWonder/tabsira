@@ -45,7 +45,7 @@
           {% for ruling in history %}
           <tr>
             <td class="text-nowrap"><a href="{{ url_for('admin:details', identity='hadith-ruling', pk=ruling.id) }}">{{ ruling.recorded_at.strftime('%Y-%m-%d %H:%M') }}</a></td>
-            <td dir="rtl" lang="ar">{{ ruling.classification.value }}</td>
+            <td dir="rtl" lang="ar">{{ ruling.classification.value | replace('_', ' ') }}</td>
             <td dir="rtl" lang="ar">{{ ruling.scholar }}</td>
             <td dir="rtl" lang="ar">{{ ruling.source_book }} {{ ruling.page }}</td>
             <td>{{ ruling.editor_name }}</td>
@@ -69,7 +69,8 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="mb-3">
           <label class="form-label" for="ruling-text">Ruling, exactly as dorar gives it</label>
-          <textarea id="ruling-text" name="ruling_text" class="form-control" rows="4" dir="rtl" lang="ar" required>{{ values.ruling_text }}</textarea>
+          <textarea id="ruling-text" name="ruling_text" class="form-control" rows="4" dir="rtl" lang="ar" required>
+{{ values.ruling_text }}</textarea>
         </div>
         <div class="mb-3">
           <label class="form-label" for="ruling-scholar">Scholar (المحدّث)</label>
@@ -94,7 +95,7 @@
           <select id="ruling-classification" name="classification" class="form-select" required>
             <option value="">Choose</option>
             {% for item in classifications %}
-            <option value="{{ item.value }}" {% if values.classification == item.value %}selected{% endif %}>{{ item.value }}</option>
+            <option value="{{ item.value }}" {% if values.classification == item.value %}selected{% endif %}>{{ item.value | replace('_', ' ') }}</option>
             {% endfor %}
           </select>
           <div class="form-hint">Only صحيح and حسن make the hadith eligible as evidence.</div>

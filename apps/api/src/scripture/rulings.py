@@ -13,10 +13,10 @@ insight shows its verse alone meanwhile. The dataset grades never decide.
 
 from __future__ import annotations
 
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from urllib.parse import urlsplit
 
 from pydantic import BaseModel, field_validator
 from sqlalchemy import delete, func, select
@@ -27,7 +27,8 @@ from src.models import Hadith, HadithClassification, HadithRuling, HadithVerific
 from src.scripture.errors import ScriptureError
 
 ELIGIBLE = frozenset({HadithClassification.SAHIH, HadithClassification.HASAN})
-DORAR_HOSTS = frozenset({"dorar.net", "www.dorar.net"})
+# Written out again as the check constraint of `hadith_rulings.dorar_url`; a test keeps them equal.
+DORAR_PAGE = re.compile(r"https://(www\.)?dorar\.net/\S+")
 
 
 class RulingError(ScriptureError):
@@ -52,17 +53,18 @@ class RulingInput(BaseModel):
         if not value.strip():
             message = "must not be blank"
             raise ValueError(message)
+        if "\x00" in value:
+            message = "must not hold a NUL character"
+            raise ValueError(message)
         return value
 
     @field_validator("dorar_url")
     @classmethod
     def _on_dorar(cls, value: str) -> str:
-        parts = urlsplit(value)
-        if (
-            parts.scheme != "https"
-            or parts.hostname not in DORAR_HOSTS
-            or not parts.path.strip("/")
-        ):
+        # The same rule as the table's check constraint, so what passes here is stored: an
+        # address the parser would accept but the database refuse (a port, a user part, an
+        # upper-case host) is refused here first.
+        if DORAR_PAGE.fullmatch(value) is None:
             message = "must be the https address of a dorar.net page"
             raise ValueError(message)
         return value
