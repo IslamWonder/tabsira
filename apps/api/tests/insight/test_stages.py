@@ -308,9 +308,10 @@ async def test_a_search_that_finds_nothing_returns_nothing(store):
     index = ConceptIndex(EmbeddedCorpus.QURAN, {})
     search = EvidenceSearch(embedding=None, reranker=None, concepts={EmbeddedCorpus.QURAN: index})
 
-    result = await search.search(store, EmbeddedCorpus.QURAN, ["زززز"], {})
+    found = await search.search(store, EmbeddedCorpus.QURAN, ["زززز"], {})
+    reranked = await search.rerank(["زززز"], found)
 
-    assert result.found == []
+    assert found == reranked.found == []
 
 
 async def test_anchors_alone_name_their_texts(store):
@@ -318,10 +319,10 @@ async def test_anchors_alone_name_their_texts(store):
     index = ConceptIndex(EmbeddedCorpus.QURAN, {})
     search = EvidenceSearch(embedding=None, reranker=None, concepts={EmbeddedCorpus.QURAN: index})
 
-    result = await search.search(store, EmbeddedCorpus.QURAN, ["زززز"], {}, anchors=[verse])
+    found = await search.search(store, EmbeddedCorpus.QURAN, ["زززز"], {}, anchors=[verse])
 
-    assert [item.key for item in result.found] == [verse]
-    assert result.found[0].matched_on == "زززز"
+    assert [item.key for item in found] == [verse]
+    assert found[0].matched_on == "زززز"
 
 
 # ─── Evidence ───

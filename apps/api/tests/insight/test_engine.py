@@ -25,8 +25,9 @@ from src.pipeline.engine import (
 from src.pipeline.insight import engine as engine_module
 from src.pipeline.insight.engine import PipelineInsightEngine, ResourceCache, build_engine
 from src.pipeline.insight.search import Embedding
-from src.retrieval.reranker import RerankerClient
+from src.retrieval.reranker import LlmReranker, RerankerClient
 from src.scripture.rulings import RulingInput, record_ruling
+from tests.fakes import FakeModelClient
 from tests.insight.support import (
     compose_answer,
     composed,
@@ -358,6 +359,26 @@ async def test_the_reranker_reorders_and_a_down_reranker_keeps_the_fused_order(m
     assert without.insights[0].quran.rerank_score is None
 
 
+async def test_the_small_model_reranks_every_list_of_a_scan_at_once(maker):
+    def scores(call: dict[str, Any]) -> dict[str, Any]:
+        listed = json.loads(call["user"].split("Passages: ", 1)[1])
+        return {"passages": [{"number": p["number"], "relevance": 5} for p in listed]}
+
+    small = FakeModelClient(answers=[scores, scores])
+    engine, client = make_engine(
+        maker,
+        [plan_answer(planned()), verify_all(), compose_answer(composed())],
+        reranker=LlmReranker(small, model="nano", timeout_seconds=1),
+    )
+
+    result = await engine.propose(EngineRequest(scan_id="s24", scene=rain_scene()))
+
+    assert result.insights[0].quran.rerank_score == 0.5
+    # One call per searched list (the verse and the hadith), none on the scan's own client.
+    assert [call["model"] for call in small.calls] == ["nano", "nano"]
+    assert [call["stage"].value for call in client.calls] == ["planner", "verify", "compose"]
+
+
 async def test_a_failed_query_embedding_falls_back_to_lexical_search(maker):
     engine, client = make_engine(
         maker, [plan_answer(planned()), verify_all(), compose_answer(composed())]
@@ -378,9 +399,18 @@ def test_the_engine_is_built_from_the_active_provider(make_settings):
     without = build_engine(plain, http, None)  # type: ignore[arg-type]
 
     assert engine._embedding.model == "bge-m3"
-    assert engine._reranker is not None
     assert without._embedding is None
-    assert build_engine(make_settings(reranker_url=""), http, None)._reranker is None  # type: ignore[arg-type]
+    # OVH has no rerank model measured: with the default RERANKER=llm it reranks nothing.
+    assert engine._reranker is None
+    small = build_engine(make_settings(ai_provider="openai"), http, None)  # type: ignore[arg-type]
+    assert isinstance(small._reranker, LlmReranker)
+    cross = make_settings(reranker="cross_encoder")
+    assert isinstance(build_engine(cross, http, None)._reranker, RerankerClient)  # type: ignore[arg-type]
+    for off in (
+        make_settings(reranker="cross_encoder", reranker_url=""),
+        make_settings(reranker="off", ai_provider="openai"),
+    ):
+        assert build_engine(off, http, None)._reranker is None  # type: ignore[arg-type]
 
 
 async def test_a_queued_hadith_is_counted_once_per_scan(maker):
