@@ -166,6 +166,10 @@ export const scanMessages = {
     badges: 'علامة تمرين جديدة',
     openWorld: 'افتح عالمي',
     newScan: 'صوّر مشهدًا آخر',
+    /** Why the third option (v2 §4.8) is not a button now; said in one line, never hidden. */
+    shareSignIn: 'سجّل الدخول لتشارك البصيرة؛ المشاركة متاحة لصاحب الحساب.',
+    shareExample: 'المثال المُعدّ لا يُشارك؛ شارك بصيرة من مشهدك أنت.',
+    shareUnavailable: 'المشاركة غير متاحة لهذه البصيرة الآن.',
     progressFailed: 'تعذّر عرض مهمة اليوم وعلاماتك الآن، وبصيرتك محفوظة.',
   },
 } as const;

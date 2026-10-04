@@ -19,6 +19,7 @@ function renderPanel(overrides: Partial<CompletionPanelProps> = {}) {
       returnTo={'/insight/1' as Route}
       onContinueAsGuest={onContinueAsGuest}
       invitationClosed={false}
+      share={{ kind: 'open', onOpen: vi.fn() }}
       {...overrides}
     />
   );
@@ -55,6 +56,37 @@ describe('CompletionPanel', () => {
       'href',
       '/'
     );
+  });
+
+  it('offers the share option third, under the API label, when the API lists it and the owner may publish', async () => {
+    const onOpen = vi.fn();
+    const { region } = renderPanel({ share: { kind: 'open', onOpen } });
+    const buttons = within(region).getAllByRole('button');
+    expect(buttons.map((button) => button.textContent)).toEqual(['شارك البصيرة']);
+    await userEvent.click(buttons[0] as HTMLElement);
+    expect(onOpen).toHaveBeenCalledOnce();
+    expect(within(region).queryByText(/المشاركة|سجّل الدخول/)).toBeNull();
+  });
+
+  it('says in one line why sharing is not offered, instead of hiding the option', () => {
+    const { region } = renderPanel({
+      share: { kind: 'blocked', reason: 'سجّل الدخول لتشارك البصيرة؛ المشاركة متاحة لصاحب الحساب.' },
+    });
+    expect(within(region).queryByRole('button', { name: 'شارك البصيرة' })).toBeNull();
+    expect(within(region).getByText(/سجّل الدخول لتشارك البصيرة/)).toBeInTheDocument();
+  });
+
+  it('shows no share button when the API did not list the option, and says so', () => {
+    const { region } = renderPanel({
+      completion: completionOut({
+        options: [
+          { id: 'open_world', label: 'افتح عالمي' },
+          { id: 'new_scan', label: 'صوّر مشهدًا آخر' },
+        ],
+      }),
+    });
+    expect(within(region).queryByRole('button', { name: 'شارك البصيرة' })).toBeNull();
+    expect(within(region).getByText('المشاركة غير متاحة لهذه البصيرة الآن.')).toBeInTheDocument();
   });
 
   it('falls back to its own words when the API sent no options, and says a known place is known', () => {

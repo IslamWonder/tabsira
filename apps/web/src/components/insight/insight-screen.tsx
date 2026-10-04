@@ -15,7 +15,7 @@ import { centre } from '@/lib/scan/spans';
 import { profileQuestionsMax } from '@/lib/site';
 import { messages } from '@/messages';
 import { ChatSheet } from './chat-sheet';
-import { CompletionPanel } from './completion-panel';
+import { CompletionPanel, type ShareOption } from './completion-panel';
 import { DisclosureLine } from './disclosure-line';
 import { EngineLabel } from './engine-label';
 import { ExplanationSections } from './explanation-sections';
@@ -120,6 +120,15 @@ export function InsightScreen({ insightId }: { insightId: string }) {
   const { chat } = insight;
   // The API publishes only a signed-in owner's insight from the real analysis; offer sharing only then.
   const canShare = session.status === 'signed-in' && insight.engine === 'pipeline';
+  const share: ShareOption = canShare
+    ? { kind: 'open', onOpen: () => setShareOpen(true) }
+    : {
+        kind: 'blocked',
+        reason:
+          insight.engine !== 'pipeline'
+            ? messages.completion.shareExample
+            : messages.completion.shareSignIn,
+      };
 
   return (
     <>
@@ -182,6 +191,7 @@ export function InsightScreen({ insightId }: { insightId: string }) {
             returnTo={`/insight/${insight.id}` as Route}
             onContinueAsGuest={() => setInvitationClosed(true)}
             invitationClosed={invitationClosed}
+            share={share}
           />
         )}
         {finish.completion?.first_time ? (

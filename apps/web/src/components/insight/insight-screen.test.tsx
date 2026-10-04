@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { forgetSession, setGuest, setSignedIn } from '@/account/session';
 import { apiError, mockApi, type Route } from '@/test/api';
-import { USER } from '@/test/fixtures';
+import { PROFILE, USER } from '@/test/fixtures';
 import {
   chatReply,
   completionOut,
@@ -241,17 +241,43 @@ describe('InsightScreen: sharing', () => {
     expect(within(sheet).getByRole('button', { name: 'اسحب النشر' })).toBeInTheDocument();
   });
 
-  it('offers no sharing to a guest, whom the API refuses', async () => {
+  it('offers no sharing to a guest, whom the API refuses, and says so after «تمّ»', async () => {
     setGuest();
-    await open();
+    await open(insightOut(), {
+      [`POST /insights/${ID}/complete`]: { body: completionOut() },
+      'GET /me/progress': { body: progressOut() },
+    });
     expect(screen.queryByRole('button', { name: 'شارك' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'تمّ' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
+    const panel = await screen.findByRole('region', { name: 'اكتملت بصيرتك' });
+    expect(within(panel).queryByRole('button', { name: 'شارك البصيرة' })).toBeNull();
+    expect(within(panel).getByText(/سجّل الدخول لتشارك البصيرة/)).toBeInTheDocument();
   });
 
-  it('offers no sharing for an insight that is not from the real analysis', async () => {
+  it('offers no sharing for an insight that is not from the real analysis, and says so', async () => {
     setSignedIn(USER);
-    await open(insightOut({ engine: 'demo' }));
+    await open(insightOut({ engine: 'demo' }), {
+      [`POST /insights/${ID}/complete`]: { body: completionOut() },
+      'GET /me/progress': { body: progressOut() },
+      'GET /profile': { body: { ...PROFILE, questions_asked: true } },
+    });
     expect(screen.queryByRole('button', { name: 'شارك' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
+    const panel = await screen.findByRole('region', { name: 'اكتملت بصيرتك' });
+    expect(within(panel).getByText(/المثال المُعدّ لا يُشارك/)).toBeInTheDocument();
+  });
+
+  it('opens the share sheet from the third option after «تمّ», for an owner who may publish', async () => {
+    setSignedIn(USER);
+    await open(insightOut(), {
+      [`POST /insights/${ID}/complete`]: { body: completionOut() },
+      'GET /me/progress': { body: progressOut() },
+      'GET /profile': { body: { ...PROFILE, questions_asked: true } },
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
+    const panel = await screen.findByRole('region', { name: 'اكتملت بصيرتك' });
+    await userEvent.click(within(panel).getByRole('button', { name: 'شارك البصيرة' }));
+    expect(screen.getByRole('dialog', { name: 'شارك البصيرة' })).toBeInTheDocument();
   });
 });
 
