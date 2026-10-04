@@ -573,3 +573,40 @@ async def test_the_attempt_is_counted_before_the_password_is_checked(
     await web.post("/auth/login", json=LOGIN)
 
     assert counted == [1]
+
+
+async def test_the_sign_up_attempt_is_counted_before_the_password_is_hashed(
+    web, db_session, monkeypatch
+):
+    from sqlalchemy import func, select
+
+    from src.models import LoginAttempt
+    from src.services import auth_service
+
+    original = auth_service.find_by_email
+    counted = []
+
+    async def spy(*args, **kwargs):
+        # Everything after this includes the slow hash; parallel sign-ups all pass a count made
+        # before it, so the attempt must already be on record here.
+        counted.append(await db_session.scalar(select(func.count()).select_from(LoginAttempt)))
+        return await original(*args, **kwargs)
+
+    monkeypatch.setattr(auth_service, "find_by_email", spy)
+
+    response = await web.post("/auth/signup", json=SIGNUP)
+
+    assert response.status_code == 201
+    assert counted == [1]
+
+
+async def test_a_refused_sign_up_counts_once(web, db_session):
+    from sqlalchemy import func, select
+
+    from src.models import LoginAttempt
+
+    await web.post("/auth/signup", json=SIGNUP)
+    again = await web.post("/auth/signup", json=SIGNUP)
+
+    assert again.status_code == 409
+    assert await db_session.scalar(select(func.count()).select_from(LoginAttempt)) == 2

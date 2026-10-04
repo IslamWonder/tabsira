@@ -82,23 +82,6 @@ def can_sign_in(user: User) -> bool:
     return user.is_active and user.deleted_at is None
 
 
-async def _refuse(
-    db: AsyncSession,
-    settings: Settings,
-    kind: AttemptKind,
-    *,
-    ip_hash: str,
-    email_hash: str,
-    error: AppError,
-) -> AppError:
-    """Record a failed attempt, commit it, and hand back the error to raise."""
-    await rate_limit.record(
-        db, settings, kind, ip_hash=ip_hash, email_hash=email_hash, succeeded=False
-    )
-    await db.commit()
-    return error
-
-
 async def signup(
     db: AsyncSession,
     settings: Settings,
@@ -111,14 +94,15 @@ async def signup(
     """Create an account with an e-mail address and a password, and its empty profile."""
     normalized = normalize_email(email)
     email_hash = hash_email(settings, normalized)
-    await rate_limit.check(db, settings, AttemptKind.SIGNUP, ip_hash=ip_hash, email_hash=email_hash)
+    # Every sign-up counts, so the attempt is taken before the slow hash and never settled.
+    await rate_limit.reserve(
+        db, settings, AttemptKind.SIGNUP, ip_hash=ip_hash, email_hash=email_hash
+    )
     taken = AppError(
         ErrorCode.EMAIL_TAKEN, "An account already uses this e-mail address.", status_code=409
     )
     if await find_by_email(db, normalized) is not None:
-        raise await _refuse(
-            db, settings, AttemptKind.SIGNUP, ip_hash=ip_hash, email_hash=email_hash, error=taken
-        )
+        raise taken
     password_hash = await asyncio.to_thread(
         security.hash_password, password, settings.password_bcrypt_rounds
     )
@@ -130,13 +114,8 @@ async def signup(
             db.add(user)
             await db.flush()
     except IntegrityError:
-        raise await _refuse(
-            db, settings, AttemptKind.SIGNUP, ip_hash=ip_hash, email_hash=email_hash, error=taken
-        ) from None
+        raise taken from None
     await profile_service.ensure_profile(db, user.id)
-    await rate_limit.record(
-        db, settings, AttemptKind.SIGNUP, ip_hash=ip_hash, email_hash=email_hash, succeeded=True
-    )
     return user
 
 
