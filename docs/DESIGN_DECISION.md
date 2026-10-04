@@ -1,6 +1,6 @@
 # Design decision
 
-**Status: pending.** No interface work starts until the owners record a choice below (AGENTS.md, Ask first).
+**Status: decided on 4 October 2026** by Ghazi Triki: direction **C · ليل الأنوار** for structure and the dark theme, with **A's colours for the light theme**. The owners left the remaining UI and UX choices to the implementer; nothing is taken from the challenge's own website.
 
 The three directions are drawn on one canvas, three phone screens each (the rain scene, the insight at full scroll height, the fog world): <https://claude.ai/artifact/E7FYkF4dw4aqzbh4HkM4XW>. The verse (Ar-Rum 30:50) and the hadith (al-Bukhari 1032) in the mockups were filled from the corpora and checked equal to their source, byte for byte.
 
@@ -30,6 +30,44 @@ All three use the KFGQPC Uthmanic Hafs font for the Quran.
 
 ## Choice
 
-- Direction: _(to fill: A, B, C, or a combination such as "A with C's full-bleed photo")_
-- Hadith display (chain quieter, text whole): _(to confirm)_
-- Date and owners:
+### Structure (from C, both themes)
+
+- The photo is the stage: full bleed on the scene screen, 330 px tall and fading into the page on the insight screen.
+- Insights on the photo are glowing points with glass labels; at most three, each a real `<button>` with an equivalent list for screen readers and keyboards.
+- Floating pill navigation with five tabs and the glowing capture button in the centre: عالمي، تواصل، التقط، الأطلس، ملفي.
+- Headings in **Reem Kufi**, interface text in **Readex Pro**, hadith in **Noto Naskh Arabic**, Quran in **KFGQPC Uthmanic Hafs**, ornate brackets ﴿ ﴾ in **Amiri**. All fonts self-hosted.
+- The world is a night map in dark mode and a mist map in light mode; places glow where an insight was saved; a thread joins two places only for a recorded relation, with «كيف ترتبطان؟» on it.
+
+### Themes
+
+The theme follows the device (`prefers-color-scheme`) and can be set to light, dark or automatic in «ملفي». Both themes share every layout and component; only tokens change.
+
+| Token | Dark (C) | Light (A colours) |
+| --- | --- | --- |
+| `bg` | `#0B1210` | `#F6FAF7` |
+| `surface` | `rgba(255,255,255,.05)` | `#FFFFFF` |
+| `surface-glass` | `rgba(20,32,28,.72)` + blur 16 px | `rgba(255,255,255,.86)` + blur 16 px |
+| `border` | `rgba(255,255,255,.14)` | `#DCE7E1` |
+| `text` | `#EEF3EF` | `#16302A` |
+| `text-soft` | `#C3D4CC` | `#4A635C` |
+| `text-muted` | `#93A79E` | `#5F6F69` |
+| `primary` | `#3FD69A` | `#0F4C3A` |
+| `primary-fill` | gradient `#4FDCA3 → #1F9E6E`, glow | `#0F4C3A`, soft shadow |
+| `on-primary` | `#04130D` | `#FFFFFF` |
+| `quran-accent` (label, frame, brackets) | `#E6C77F` | `#9A7430` (brackets), label on `#0F4C3A` |
+| `quran-surface` | gold wash `rgba(230,199,127,.12 → .03)` | mint `#EEF7F2`, border `#CFE6DA` |
+| `sunnah-accent` | `#8FEAC2` | `#7A5A1C` |
+| `sunnah-surface` | emerald wash `rgba(63,214,154,.10 → .02)` | warm `#FBF8F0`, border `#EFE4CB` |
+| `link` | `#7FE3B8` | `#0F4C3A` |
+| `photo-scrim` | night gradients | white gradients |
+| `glow` (points) | gold `#E6C77F` and emerald `#3FD69A` halos | emerald dot, gold `#FFD978` halo |
+
+Every text pair is checked at 4.5:1 (3:1 for 24 px and larger) in both themes before it ships; gold is never used for small text in light mode.
+
+### Hadith display
+
+The hadith is shown whole, exactly as stored. The chain of narrators and the closing notes are set smaller and in `text-muted`; the Prophet's words are set larger and stronger. This is presentation only: the spans are cut from the stored text by position and their concatenation is tested equal to it.
+
+### Motion and sound
+
+Motion on display and on events only, never on hover: the points breathe on first view, the insight sheet rises, the fog lifts from a place after «تمّ». Everything stops under reduced motion. Sound effects are off by default.
