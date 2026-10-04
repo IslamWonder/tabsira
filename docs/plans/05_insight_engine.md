@@ -1,17 +1,17 @@
 # 05 · Insight engine
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 16:41 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 17:51 (Tunis)
 
 Finds the verse and hadith that truly fit the scene, checks them, and writes the explanation. It cites texts by reference only.
 
 | Step                                             | Status | Notes                        |
 | ------------------------------------------------ | ------ | ---------------------------- |
-| Search by full text, concepts and meaning, fused | ✅     | Built; merges after review.  |
+| Search by full text, concepts and meaning, fused | ✅     | Merged with 05.1.            |
 | Re-ranking of the best candidates                | ✅     | Small model (nano), at once. |
 | Evidence gate using editor rulings               | ✅     |                              |
 | Explanation, «لماذا ظهر هذا؟», small step        | ✅     |                              |
 | Evaluation on gold scenes (make eval)            | ✅     | 13/15 as expected, 0 leaks.  |
-| Plug into the scan workflow and merge            | 🔄     |                              |
+| Plug into the scan workflow and merge            | ✅     | 2026-10-04 17:51             |
 | The twelve official cases                        | ⬜     |                              |
 
 **How we check it**
@@ -22,7 +22,7 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 
 ### 05.1 Insight engine: rebase, vectors schema, wiring, shared guards, review
 
-- **Status:** 🔄 branch `task/05.1-insight-engine` (committed, not merged)
+- **Status:** ✅ 2026-10-04 17:51: merged. Scripture review passed with notes (demand counted twice per scan, the Quran word runs loaded once per process, short fragments of unshown hadiths below the 7-word store check, a lone weak text). Not run on the machine that merged it, whose network blocks the owners' bucket, the scripture sources and OpenAI: the archive import, `make eval` and a real scan on `https://tabsira.test`.
 - **Goal:** Merge the insight engine and make it the scan workflow's real engine.
 - **Steps, in order:**
   1. Rebase onto main. Main's app chain ends at `20261004_192500` (profile motion); resolve the conflicts with the scan workflow (models/scripture.py, models/**init**.py, tests/test_migrations.py, test_account_models.py, config, messages).
