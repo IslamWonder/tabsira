@@ -6,9 +6,9 @@ Nothing here leaves our database: no geocoder is called (DECISIONS.md, decision 
 Search folds the query the way the stored names are folded (the database
 function `geodata.normalize_name`: case, accents, Arabic vowel marks, alef,
 ta marbuta and ya variants), then looks for it in the Arabic and English
-alternate names and in the GeoNames name, by prefix and by trigram similarity.
-Exact matches come first, then prefix matches, each by population, then the
-fuzzy ones by similarity.
+alternate names and in the GeoNames name: exact matches first, then names that
+start with it, each by population, then, if there are too few, names that are
+only similar to it, by similarity.
 
 Reverse lookup finds the nearest populated place within a radius with
 ST_DWithin on geography, in metres, which the geography index serves.
@@ -41,6 +41,11 @@ from src.schemas.geo import (
 
 DEFAULT_SEARCH_LIMIT = 10
 DEFAULT_RADIUS_M = 25_000.0
+# Shorter queries are matched by prefix only: a trigram match on three letters
+# is every name that has them somewhere.
+FUZZY_MIN_LENGTH = 4
+# Above every character, so that `name < prefix + this` holds for every name that starts with prefix.
+_AFTER_EVERY_CHARACTER = "\U0010ffff"
 
 # Feature codes of populated places that are not where a person is now: sections
 # of a populated place (a neighbourhood), and abandoned, destroyed and historical
@@ -73,39 +78,65 @@ LEFT JOIN geodata.geonames cg ON cg.geoname_id = ci.geoname_id AND cg.is_active
 ORDER BY t.rank
 """
 
-# `!` is the LIKE escape, so that a `%` or `_` typed by the user matches itself.
+# The search runs in tiers, each cheaper to run than the next and stronger as a match:
+#   0  the folded name equals the folded query, in an Arabic or English alternate
+#      name or in the GeoNames name;
+#   1  a folded name starts with the query. The GeoNames names are read in index
+#      order and cut at the most populated 100 places, which is all the final
+#      ranking can use, so a short common prefix costs milliseconds where a scan
+#      of a table of millions of places would cost seconds;
+#   2  a name is similar to the query (trigram). Only when tiers 0 and 1 gave fewer
+#      than :limit places, and when the query is long enough (:fuzzy): it is the
+#      fallback for a misspelling, and the costly one.
+# A prefix is a range, `>= :n AND < :n_hi`, in the operators of the text_pattern_ops
+# indexes, not a LIKE: the range works whatever way the statement is planned, and
+# a `%` or `_` typed by the user is just a character.
 _SEARCH = (
     """
-WITH typed AS (
-    SELECT geodata.normalize_name(:q) AS n, btrim(:q) AS raw
-), pat AS (
-    SELECT n, raw,
-           replace(replace(replace(n, '!', '!!'), '%', '!%'), '_', '!_') || '%' AS n_prefix,
-           replace(replace(replace(raw, '!', '!!'), '%', '!%'), '_', '!_') || '%' AS raw_prefix
-    FROM typed
-), hits AS (
-    SELECT a.geoname_id,
-           CASE WHEN a.name_norm = pat.n THEN 0
-                WHEN a.name_norm LIKE pat.n_prefix ESCAPE '!' THEN 1
-                ELSE 2 END AS tier,
-           similarity(a.name_norm, pat.n) AS sim
-    FROM geodata.geonames_alternate_names a CROSS JOIN pat
-    WHERE pat.n <> ''
-      AND a.iso_language IN ('ar', 'en')
-      AND (a.name_norm LIKE pat.n_prefix ESCAPE '!' OR a.name_norm % pat.n)
+WITH by_name AS MATERIALIZED (
+    SELECT a.geoname_id, 0 AS tier
+    FROM geodata.geonames_alternate_names a
+    WHERE a.iso_language IN ('ar', 'en') AND a.name_norm = :n
   UNION ALL
-    SELECT g.geoname_id,
-           CASE WHEN geodata.normalize_name(g.name) = pat.n THEN 0
-                WHEN geodata.normalize_name(g.name) LIKE pat.n_prefix ESCAPE '!' THEN 1
-                ELSE 2 END,
-           similarity(geodata.normalize_name(g.name), pat.n)
-    FROM geodata.geonames g CROSS JOIN pat
-    WHERE pat.n <> ''
-      AND g.is_active
-      AND (g.name ILIKE pat.raw_prefix ESCAPE '!' OR g.name % pat.raw)
+    SELECT g.geoname_id, 0
+    FROM geodata.geonames g
+    WHERE g.is_active AND g.name_norm = :n
+  UNION ALL
+    SELECT a.geoname_id, 1
+    FROM geodata.geonames_alternate_names a
+    WHERE a.iso_language IN ('ar', 'en') AND a.name_norm ~>=~ :n AND a.name_norm ~<~ :n_hi
+  UNION ALL
+    (SELECT g.geoname_id, 1
+     FROM geodata.geonames g
+     WHERE g.is_active AND g.name_norm ~>=~ :n AND g.name_norm ~<~ :n_hi
+     ORDER BY g.population DESC NULLS LAST
+     LIMIT 100)
+), sure AS MATERIALIZED (
+    SELECT h.geoname_id, min(h.tier) AS tier, 0::real AS sim
+    FROM by_name h
+    JOIN geodata.geonames g USING (geoname_id)
+    WHERE g.is_active AND g.feature_class IN ('P', 'A')
+      AND g.latitude IS NOT NULL AND g.longitude IS NOT NULL
+    GROUP BY h.geoname_id
+), fuzzy AS (
+    SELECT geoname_id, 2 AS tier, sim
+    FROM (
+        (SELECT a.geoname_id, similarity(a.name_norm, :n) AS sim
+         FROM geodata.geonames_alternate_names a
+         WHERE a.iso_language IN ('ar', 'en') AND a.name_norm % :n
+         ORDER BY sim DESC
+         LIMIT 100)
+      UNION ALL
+        (SELECT g.geoname_id, similarity(g.name_norm, :n) AS sim
+         FROM geodata.geonames g
+         WHERE g.is_active AND g.name % :raw
+         ORDER BY sim DESC
+         LIMIT 100)
+    ) AS candidates
+    WHERE CAST(:fuzzy AS boolean) AND (SELECT count(*) FROM sure) < :limit
 ), best AS (
     SELECT geoname_id, min(tier) AS tier, max(sim) AS sim
-    FROM hits
+    FROM (SELECT * FROM sure UNION ALL SELECT * FROM fuzzy) AS everything
     GROUP BY geoname_id
 ), found AS (
     SELECT g.*, NULL::float8 AS distance_m,
@@ -210,7 +241,20 @@ async def search_places(
 
     A query that folds to nothing (only punctuation) matches nothing.
     """
-    rows = (await db.execute(text(_SEARCH), {"q": query, "limit": limit})).mappings().all()
+    # The database folds the query, with the function that folded the names.
+    folded = (
+        await db.execute(text("SELECT geodata.normalize_name(:q)"), {"q": query})
+    ).scalar_one()
+    if not folded:
+        return []
+    params = {
+        "n": folded,
+        "n_hi": folded + _AFTER_EVERY_CHARACTER,
+        "raw": query.strip(),
+        "fuzzy": len(folded) >= FUZZY_MIN_LENGTH,
+        "limit": limit,
+    }
+    rows = (await db.execute(text(_SEARCH), params)).mappings().all()
     return [
         PlaceHit(**_place_fields(row), admin_area=_admin_area(row), country=_country(row))
         for row in rows

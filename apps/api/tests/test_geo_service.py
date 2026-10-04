@@ -95,6 +95,39 @@ async def test_a_prefix_and_a_misspelling_find_the_place(world):
     assert ids(await geo_service.search_places(world, "Mecka"))[:1] == [MECCA_CITY]
 
 
+async def test_similar_names_are_looked_for_only_when_the_exact_and_prefix_matches_are_few(world):
+    from src.models import GeoName
+
+    world.add(
+        GeoName(
+            geoname_id=7_000_001,
+            name="Tunes",
+            latitude=37.1,
+            longitude=-8.2,
+            feature_class="P",
+            feature_code="PPL",
+            country_code="PT",
+            population=6837,
+        )
+    )
+    await world.flush()
+
+    enough = await geo_service.search_places(world, "Tunes", limit=1)
+    room = await geo_service.search_places(world, "Tunes", limit=5)
+
+    # The one exact match fills the limit: Tunis, which is only similar, is not even looked for.
+    assert ids(enough) == [7_000_001]
+    assert ids(room)[0] == 7_000_001
+    assert TUNIS_CITY in ids(room)
+
+
+async def test_a_misspelling_of_four_letters_is_enough_for_a_similar_name(world):
+    # "unis" is not the start of any name, and is four letters, the shortest that is matched
+    # by similarity; a shorter piece would be matched by prefix only.
+    assert TUNIS_CITY in ids(await geo_service.search_places(world, "unis"))
+    assert await geo_service.search_places(world, "uni") == []
+
+
 async def test_only_arabic_and_english_names_are_searched(world):
     # Sfax has a French name in the tables; the import keeps no other language, and a
     # query in one finds nothing even if a row were there.
