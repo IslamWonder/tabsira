@@ -411,6 +411,8 @@ def test_the_engine_is_built_from_the_active_provider(make_settings):
         make_settings(reranker="off", ai_provider="openai"),
     ):
         assert build_engine(off, http, None)._reranker is None  # type: ignore[arg-type]
+    own = FakeModelClient()
+    assert build_engine(settings, http, None, client=own)._client is own  # type: ignore[arg-type]
 
 
 async def test_a_queued_hadith_is_counted_once_per_scan(maker):

@@ -443,6 +443,7 @@ def build_engine(
     http: httpx.AsyncClient,
     sessionmaker: async_sessionmaker[AsyncSession],
     *,
+    client: ModelClient | None = None,
     log: CallLog | None = None,
     resources: ResourceCache | None = None,
 ) -> PipelineInsightEngine:
@@ -451,9 +452,11 @@ def build_engine(
 
     This is the factory the scan workflow registers for the pipeline engine. It is
     cheap to call per scan: the concept indexes, the Quran shingles and the learning
-    path are loaded once per process (`SHARED_RESOURCES`).
+    path are loaded once per process (`SHARED_RESOURCES`). A scan passes its own
+    `client`, so every call of the engine is recorded with the scan's; without one
+    the engine gets a client of the active provider, recording into `log`.
     """
-    client = client_for(settings, http, log=log)
+    client = client or client_for(settings, http, log=log)
     block = settings.ai
     embedding = (
         Embedding(client, block.embedding_model, block.embedding_dimensions)
