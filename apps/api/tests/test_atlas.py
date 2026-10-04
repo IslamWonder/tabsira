@@ -20,6 +20,7 @@ from src.models import HadithClassification, MapCapturePoint, MapEntry
 from src.owner import Owner
 from src.scripture.rulings import RulingInput, find_hadith, record_ruling
 from src.scripture.text import sha256_hex
+from src.services import cursor as cursors
 from src.services import sitemap_service
 from src.services.sitemap_service import Section
 from tests import geo_dataset as world_data
@@ -407,6 +408,10 @@ async def test_a_place_page_lists_its_entries_newest_first_with_a_cursor(
     )
     assert [entry["id"] for entry in body["entries"]] == [second]
     assert body["next_cursor"] is not None
+    # The cursor carries the day of publication and the id, never the hour.
+    position = cursors.decode(body["next_cursor"])
+    assert position is not None and position.at.astimezone(UTC).timetuple()[3:6] == (0, 0, 0)
+    assert position.id == int(second)
     rest = await guest.http.get(
         f"/atlas/places/{TUNIS_CITY}", params={"limit": 1, "cursor": body["next_cursor"]}
     )
@@ -533,6 +538,9 @@ async def test_the_sitemap_lists_a_place_once_it_has_a_published_entry(
     entries = await provider.entries(db_session, 0, 10)
     assert [entry.path for entry in entries] == [f"/atlas/places/{TUNIS_CITY}"]
     assert entries[0].lastmod >= datetime(2026, 1, 1, tzinfo=UTC)
+    # A day, never the hour: the sitemap says no more than the place page does.
+    for stamp in (pages[0].lastmod, entries[0].lastmod):
+        assert stamp.astimezone(UTC).timetuple()[3:6] == (0, 0, 0), stamp
 
 
 def test_public_schemas_have_no_field_for_a_private_location():
