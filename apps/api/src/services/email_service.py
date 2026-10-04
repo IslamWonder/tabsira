@@ -65,7 +65,7 @@ def build_message(
     language: str | None = None,
 ) -> EmailMessage:
     """Render a template into a message: text part first, HTML as the alternative."""
-    catalog = messages.messages_for(language)
+    catalog = messages.messages_for(language, settings=settings)
     sender_domain = parseaddr(settings.mail_from)[1].rpartition("@")[2] or None
     page = {
         **context,
@@ -162,7 +162,7 @@ async def send_email_verification(settings: Settings, *, email: str, name: str, 
     return await send(
         settings,
         to=email,
-        subject=messages.messages_for().verify_email_subject,
+        subject=messages.messages_for(settings=settings).verify_email_subject,
         template="verify_email",
         context={
             "name": name,
@@ -178,7 +178,7 @@ async def send_password_reset(settings: Settings, *, email: str, name: str, toke
     return await send(
         settings,
         to=email,
-        subject=messages.messages_for().reset_password_subject,
+        subject=messages.messages_for(settings=settings).reset_password_subject,
         template="password_reset",
         context={
             "name": name,
@@ -210,7 +210,7 @@ def build_support_message(
     visitor's message with every line quoted by "> ", so nothing they type can pass for the
     lines above it, the account line included.
     """
-    catalog = messages.messages_for(language)
+    catalog = messages.messages_for(language, settings=settings)
     label = catalog.support_topics[topic]
     if account_match is None:
         match = catalog.support_match_guest

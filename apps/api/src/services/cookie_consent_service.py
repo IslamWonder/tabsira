@@ -28,27 +28,30 @@ from src.schemas.cookie_consent import (
 )
 from src.user_agent import user_agent_family
 
-# In the order a visitor sees them. The necessary one is first and cannot be refused.
-CATEGORIES: tuple[ConsentCategoryOut, ...] = (
-    ConsentCategoryOut(
-        key="necessary",
-        required=True,
-        title=messages_for().consent_necessary_title,
-        description=messages_for().consent_necessary_description,
-    ),
-    ConsentCategoryOut(
-        key="analytics",
-        required=False,
-        title=messages_for().consent_analytics_title,
-        description=messages_for().consent_analytics_description,
-    ),
-    ConsentCategoryOut(
-        key="behaviour",
-        required=False,
-        title=messages_for().consent_behaviour_title,
-        description=messages_for().consent_behaviour_description,
-    ),
-)
+
+def categories(settings: Settings) -> list[ConsentCategoryOut]:
+    """Return the categories in the order a visitor sees them; the necessary one is not optional."""
+    text = messages_for(settings=settings)
+    return [
+        ConsentCategoryOut(
+            key="necessary",
+            required=True,
+            title=text.consent_necessary_title,
+            description=text.consent_necessary_description,
+        ),
+        ConsentCategoryOut(
+            key="analytics",
+            required=False,
+            title=text.consent_analytics_title,
+            description=text.consent_analytics_description,
+        ),
+        ConsentCategoryOut(
+            key="behaviour",
+            required=False,
+            title=text.consent_behaviour_title,
+            description=text.consent_behaviour_description,
+        ),
+    ]
 
 
 def policy(settings: Settings) -> ConsentPolicyOut:
@@ -56,7 +59,7 @@ def policy(settings: Settings) -> ConsentPolicyOut:
     return ConsentPolicyOut(
         policy_version=settings.cookie_policy_version,
         reask_days=settings.consent_reask_days,
-        categories=list(CATEGORIES),
+        categories=categories(settings),
     )
 
 

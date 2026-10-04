@@ -110,25 +110,31 @@ class ConstraintOutcome:
     before_search: bool = False
 
 
-# The language of the questions is the default one until a language reaches the pipeline.
-_TEXT = messages_for()
-_QUESTIONS = {
-    ConstraintKind.SPECIFY_BEFORE_SEARCH: _TEXT.question_specify_before_search,
-    ConstraintKind.CONFIRM_SCENE_MEANING: _TEXT.question_confirm_scene_meaning,
-    ConstraintKind.CONFIRM_ROLE_OR_RELATION: _TEXT.question_confirm_role_or_relation,
-    ConstraintKind.CONFIRM_ACTION: _TEXT.question_confirm_action,
-    ConstraintKind.CONFIRM_WORSHIP_ACTION: _TEXT.question_confirm_worship_action,
-    ConstraintKind.CONFIRM_IDENTITY_OF_THING: _TEXT.question_confirm_identity_of_thing,
-    ConstraintKind.UNKNOWN: _TEXT.question_unknown_constraint,
-}
-_RULES = {
-    ConstraintKind.NO_DIAGNOSIS: (Forbidden.DIAGNOSIS, _TEXT.rule_no_diagnosis),
-    ConstraintKind.NO_PERSON_IDENTITY: (
-        Forbidden.PERSON_IDENTITY,
-        _TEXT.rule_no_person_identity,
-    ),
-}
-# An action the scene already shows needs no question; a role or a meaning never shows.
+def _question(kind: ConstraintKind) -> str:
+    """Return the question of a constraint, in the default language until one reaches the pipeline."""
+    text = messages_for()
+    return {
+        ConstraintKind.SPECIFY_BEFORE_SEARCH: text.question_specify_before_search,
+        ConstraintKind.CONFIRM_SCENE_MEANING: text.question_confirm_scene_meaning,
+        ConstraintKind.CONFIRM_ROLE_OR_RELATION: text.question_confirm_role_or_relation,
+        ConstraintKind.CONFIRM_ACTION: text.question_confirm_action,
+        ConstraintKind.CONFIRM_WORSHIP_ACTION: text.question_confirm_worship_action,
+        ConstraintKind.CONFIRM_IDENTITY_OF_THING: text.question_confirm_identity_of_thing,
+        ConstraintKind.UNKNOWN: text.question_unknown_constraint,
+    }[kind]
+
+
+def _rule(kind: ConstraintKind) -> tuple[Forbidden, str]:
+    text = messages_for()
+    return {
+        ConstraintKind.NO_DIAGNOSIS: (Forbidden.DIAGNOSIS, text.rule_no_diagnosis),
+        ConstraintKind.NO_PERSON_IDENTITY: (
+            Forbidden.PERSON_IDENTITY,
+            text.rule_no_person_identity,
+        ),
+    }[kind]
+
+
 _ASKED_ONLY_WHEN_ACTION_IS_NOT_SEEN = frozenset(
     {ConstraintKind.CONFIRM_ACTION, ConstraintKind.CONFIRM_WORSHIP_ACTION}
 )
@@ -152,7 +158,7 @@ def apply_constraint(
     if kind is None:
         return ConstraintOutcome(ConstraintAction.PROCEED, None)
     if kind in BLOCKING_KINDS:
-        forbids, rule = _RULES[kind]
+        forbids, rule = _rule(kind)
         return ConstraintOutcome(ConstraintAction.BLOCK, kind, rule=rule, forbids=forbids)
     if confirmed or (action_observed and kind in _ASKED_ONLY_WHEN_ACTION_IS_NOT_SEEN):
         return ConstraintOutcome(ConstraintAction.PROCEED, kind)
@@ -163,6 +169,6 @@ def apply_constraint(
     return ConstraintOutcome(
         ConstraintAction.CLARIFY,
         kind,
-        question=_QUESTIONS[kind].format(label=entity.label_ar),
+        question=_question(kind).format(label=entity.label_ar),
         before_search=kind is ConstraintKind.SPECIFY_BEFORE_SEARCH,
     )

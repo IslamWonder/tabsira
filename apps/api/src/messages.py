@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from src.config import DEFAULT_LANGUAGE
+from src.config import Settings, get_settings
 
 
 @dataclass(frozen=True)
@@ -164,6 +164,14 @@ ARABIC = Messages(
 CATALOGS: dict[str, Messages] = {ARABIC.language: ARABIC}
 
 
-def messages_for(language: str | None = None) -> Messages:
-    """Return the catalog of `language`, or of the default language when it is None or unknown."""
-    return CATALOGS.get(language or DEFAULT_LANGUAGE, CATALOGS[DEFAULT_LANGUAGE])
+def messages_for(language: str | None = None, *, settings: Settings | None = None) -> Messages:
+    """
+    Return the catalog of `language`.
+
+    The settings decide: `language` is used when it is one of SUPPORTED_LANGUAGES, else
+    DEFAULT_LANGUAGE is. A language with no catalog yet falls back to Arabic, the one
+    every text exists in. Without `settings` the process's own are read.
+    """
+    settings = settings or get_settings()
+    wanted = language if language in settings.supported_languages else settings.default_language
+    return CATALOGS.get(wanted, ARABIC)
