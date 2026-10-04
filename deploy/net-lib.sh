@@ -13,7 +13,8 @@ is_ipv4() {
 
 # The first global IPv4 (a.b.c.d/nn) on interface $1; nothing when there is none.
 iface_cidr() {
-	ip -4 -o addr show dev "$1" scope global 2>/dev/null | awk 'NR == 1 { print $4 }'
+	# A missing interface is an empty answer, not a failure (set -o pipefail).
+	{ ip -4 -o addr show dev "$1" scope global 2>/dev/null || true; } | awk 'NR == 1 { print $4 }'
 }
 
 # Is IPv4 address $1 one of this host's addresses?
@@ -38,7 +39,31 @@ resolve_listen_addr() {
 	printf '%s' "$given"
 }
 
-# The application host's VPN address: required, one host, never a network.
+# This host's own VPN address, for the scripts that run on the application host:
+# APP_HOST_VPN_IP when set, else the address on VPN_IFACE (wt0), else the first
+# 100.64.0.0/10 address. Nothing to pass by hand when Netbird is up.
+detect_app_host() {
+	if [[ -z "${APP_HOST_VPN_IP:-}" ]]; then
+		local cidr a
+		cidr="$(iface_cidr "${VPN_IFACE:-wt0}")"
+		APP_HOST_VPN_IP="${cidr%/*}"
+		if [[ -z "$APP_HOST_VPN_IP" ]]; then
+			for a in $(ip -4 -o addr show scope global 2>/dev/null | awk '{ split($4, p, "/"); print p[1] }'); do
+				case "$a" in 100.6[4-9].* | 100.[7-9][0-9].* | 100.1[01][0-9].* | 100.12[0-7].*)
+					APP_HOST_VPN_IP="$a"
+					break
+					;;
+				esac
+			done
+		fi
+		[[ -n "$APP_HOST_VPN_IP" ]] ||
+			die "No address on ${VPN_IFACE:-wt0} and no 100.64.0.0/10 address on this host. Is Netbird up? Otherwise set APP_HOST_VPN_IP."
+	fi
+	is_ipv4 "$APP_HOST_VPN_IP" || die "APP_HOST_VPN_IP '$APP_HOST_VPN_IP' must be a single IPv4 address, not a network."
+	export APP_HOST_VPN_IP
+}
+
+# The application host's VPN address, given by hand on another host: one host, never a network.
 require_app_host() {
 	[[ -n "${APP_HOST_VPN_IP:-}" ]] || die "Set APP_HOST_VPN_IP to the application host's Netbird address."
 	is_ipv4 "$APP_HOST_VPN_IP" || die "APP_HOST_VPN_IP '$APP_HOST_VPN_IP' must be a single IPv4 address, not a network."

@@ -30,10 +30,10 @@
 #      Jenkins and the owners call.
 #
 # Usage (as root, from a checkout of the repository, on the application host):
-#   APP_HOST_VPN_IP=<this host's Netbird address> CERTBOT_EMAIL=<address> \
+#   CERTBOT_EMAIL=<address> \
 #     deploy/provision-app.sh [--dry-run | --check] [--skip-tls]
 #
-# Environment: APP_HOST_VPN_IP (required), CERTBOT_EMAIL (required for TLS),
+# Environment: APP_HOST_VPN_IP (default: this host's address on wt0, found by itself), CERTBOT_EMAIL (required for TLS),
 # CERTBOT_DNS_PLUGIN and CERTBOT_DNS_CREDENTIALS (optional: issue the admin
 # certificate by DNS-01 instead of HTTP; the credentials file is mode 0600, supplied
 # by the owners, never in git), APP_USER (the account that ran sudo, else devops;
@@ -67,7 +67,7 @@ CERTBOT_DNS_CREDENTIALS="${CERTBOT_DNS_CREDENTIALS:-}"
 WEB_NAME="${TLS_NAME:-tabsira.me}"
 API_NAME="${API_TLS_NAME:-api.tabsira.me}"
 ADMIN_NAME="${ADMIN_TLS_NAME:-admin.tabsira.me}"
-require_app_host
+detect_app_host
 
 if is_dry; then
 	banner "DRY RUN: application host"

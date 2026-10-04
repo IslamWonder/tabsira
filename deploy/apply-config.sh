@@ -26,7 +26,7 @@
 #
 # Environment: APP_USER (devops, the existing account the application runs as),
 # APP_GROUP (its group), REPO_DIR (/opt/tabsira), ENV_FILE (/opt/tabsira/.env),
-# STATIC_DIR (/srv/tabsira/static), APP_HOME (the user's home), APP_HOST_VPN_IP (required),
+# STATIC_DIR (/srv/tabsira/static), APP_HOME (the user's home), APP_HOST_VPN_IP (default: this host's address on wt0),
 # VPN_SUBNET (100.64.0.0/10, Netbird's default), TLS_NAME (tabsira.me),
 # API_TLS_NAME (api.tabsira.me), ADMIN_TLS_NAME (admin.tabsira.me), LE_DIR
 # (/etc/letsencrypt/live). One certbot lineage per name, as `certbot certonly -d NAME` makes them.
@@ -57,7 +57,7 @@ TLS_NAME="${TLS_NAME:-tabsira.me}"
 API_TLS_NAME="${API_TLS_NAME:-api.tabsira.me}"
 ADMIN_TLS_NAME="${ADMIN_TLS_NAME:-admin.tabsira.me}"
 LE_DIR="${LE_DIR:-/etc/letsencrypt/live}"
-require_app_host
+detect_app_host
 [[ "$VPN_SUBNET" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/([0-9]|[12][0-9]|3[0-2])$ ]] || die "VPN_SUBNET must be an IPv4 CIDR."
 [[ "${VPN_SUBNET##*/}" -ge 8 ]] || die "Refusing VPN_SUBNET=$VPN_SUBNET: name the VPN's network, not the internet."
 
