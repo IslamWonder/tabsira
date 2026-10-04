@@ -32,3 +32,11 @@ Every change is tested; nothing merges below 100 % coverage.
 - **Depends on:** All phase 1 branches merged.
 - **Touches:** Git history only.
 - **Done when:** No mention in any commit; owners push once.
+
+### 15.3 Phase 1 test task: back to 100 %
+
+- **Status:** ⬜ open, at the end of phase 1
+- **Goal:** Write the tests that phase mode skipped (decision 42) and bring `make coverage` back to 100 % in web, API and vision before release.
+- **Depends on:** All phase 1 feature tasks merged.
+- **Touches:** Tests only, plus fixes for the bugs they find.
+- **Done when:** `make lint && make coverage` pass on main; `make smoke` passes.
