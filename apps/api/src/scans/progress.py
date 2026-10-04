@@ -19,7 +19,6 @@ and state is `started`, `done` or `failed`; `done` {run, outcome, insight_ids};
 from __future__ import annotations
 
 import json
-import uuid
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
@@ -57,20 +56,20 @@ class ProgressEvent(BaseModel):
         }
 
 
-def events_key(scan_id: uuid.UUID) -> str:
+def events_key(scan_id: int) -> str:
     return f"scan:{scan_id}:events"
 
 
-def sequence_key(scan_id: uuid.UUID) -> str:
+def sequence_key(scan_id: int) -> str:
     return f"scan:{scan_id}:seq"
 
 
-def channel(scan_id: uuid.UUID) -> str:
+def channel(scan_id: int) -> str:
     return f"scan:{scan_id}"
 
 
 async def publish(
-    redis: Redis, scan_id: uuid.UUID, event: str, data: dict[str, Any], *, ttl: int
+    redis: Redis, scan_id: int, event: str, data: dict[str, Any], *, ttl: int
 ) -> ProgressEvent:
     """Give an event its number, keep it for replay and send it to the readers of the scan."""
     number = int(await redis.incr(sequence_key(scan_id)))
@@ -86,7 +85,7 @@ async def publish(
     return published
 
 
-async def replay(redis: Redis, scan_id: uuid.UUID, after: int = 0) -> list[ProgressEvent]:
+async def replay(redis: Redis, scan_id: int, after: int = 0) -> list[ProgressEvent]:
     """Return the kept events numbered above `after`, in order."""
     raw = await redis.lrange(events_key(scan_id), 0, -1)
     events = [ProgressEvent.model_validate_json(item) for item in raw]
@@ -102,7 +101,7 @@ def parse_last_event_id(value: str | None) -> int:
 
 async def stream(
     redis: Redis,
-    scan_id: uuid.UUID,
+    scan_id: int,
     *,
     run: int,
     after: int,

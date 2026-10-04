@@ -8,7 +8,6 @@ by reference on every read; nothing a model wrote is shown as Quran or hadith.
 
 from __future__ import annotations
 
-import uuid
 from collections.abc import Callable
 from typing import Annotated
 
@@ -25,7 +24,7 @@ from src.deps import DbDep, SettingsDep
 from src.errors import AppError, ErrorCode
 from src.models import Insight
 from src.owner import INSIGHT, OptionalOwner, Owner, not_found
-from src.scans.deps import feature
+from src.scans.deps import PublicIdPath, feature
 from src.schemas.insight import (
     ActionIn,
     ActionOut,
@@ -62,7 +61,7 @@ ClientFactoryDep = Annotated[ClientFactory, Depends(model_client_factory)]
 
 
 async def owned_insight(
-    db: AsyncSession, owner: Owner | None, insight_id: uuid.UUID
+    db: AsyncSession, owner: Owner | None, insight_id: int
 ) -> tuple[Owner, Insight]:
     """Return the owner and their insight, or the 404 of an insight that does not exist."""
     if owner is None:
@@ -77,7 +76,7 @@ async def owned_insight(
 
 @router.get("/{insight_id}", summary="One insight, its scripture read from the store")
 async def get_insight(
-    insight_id: uuid.UUID, db: DbDep, settings: SettingsDep, owner: OptionalOwner
+    insight_id: PublicIdPath, db: DbDep, settings: SettingsDep, owner: OptionalOwner
 ) -> InsightOut:
     """Return the insight: its verse and hadith exactly as stored, the explanation apart."""
     _owner, insight = await owned_insight(db, owner, insight_id)
@@ -90,7 +89,7 @@ async def get_insight(
     dependencies=[Depends(feature("chat"))],
 )
 async def chat(
-    insight_id: uuid.UUID,
+    insight_id: PublicIdPath,
     body: ChatIn,
     db: DbDep,
     settings: SettingsDep,
@@ -116,7 +115,7 @@ async def chat(
 
 @router.post("/{insight_id}/action", summary="Declare the small step done, or for later")
 async def declare_action(
-    insight_id: uuid.UUID, body: ActionIn, db: DbDep, owner: OptionalOwner
+    insight_id: PublicIdPath, body: ActionIn, db: DbDep, owner: OptionalOwner
 ) -> ActionOut:
     """Record «نفّذته» or «سأفعله لاحقًا»: the learner's own statement, never a proof or a reward."""
     _owner, insight = await owned_insight(db, owner, insight_id)
@@ -133,7 +132,7 @@ async def declare_action(
 
 @router.post("/{insight_id}/complete", summary="«تمّ»: complete the insight, once")
 async def complete_insight(
-    insight_id: uuid.UUID, db: DbDep, settings: SettingsDep, owner: OptionalOwner
+    insight_id: PublicIdPath, db: DbDep, settings: SettingsDep, owner: OptionalOwner
 ) -> CompletionOut:
     """Complete the insight; a second call saves nothing more and answers the same place."""
     found, insight = await owned_insight(db, owner, insight_id)

@@ -14,7 +14,6 @@ does not exist. The photo goes to the AI provider for analysis
 
 from __future__ import annotations
 
-import uuid
 from typing import Annotated, Any
 
 import anyio
@@ -38,7 +37,7 @@ from src.pipeline.engine import RelationType
 from src.pipeline.image_validator import ImageRejectedCode, ImageRejectedError, validate_image
 from src.pipeline.schemas import BBox, ImageUpload, SceneAnalysis, ValidatedImage
 from src.scans import buffer, progress
-from src.scans.deps import FetcherDep, QueueDep, RedisDep
+from src.scans.deps import FetcherDep, PublicIdPath, QueueDep, RedisDep
 from src.scans.fetch import FetchError, FetchRefusal
 from src.scans.queue import QueueUnavailableError, ScanQueue
 from src.schemas.scan import (
@@ -160,7 +159,7 @@ async def _validated(data: bytes, settings: Settings) -> ValidatedImage:
         raise AppError(code, rejected.detail, status_code=http_status) from None
 
 
-async def _owned_scan(db: AsyncSession, owner: Owner | None, scan_id: uuid.UUID) -> Scan:
+async def _owned_scan(db: AsyncSession, owner: Owner | None, scan_id: int) -> Scan:
     if owner is None:
         raise not_found(SCAN)
     scan: Scan | None = await db.scalar(select(Scan).where(Scan.id == scan_id, owner.where(Scan)))
@@ -295,7 +294,9 @@ async def create_scan(
 
 
 @router.get("/{scan_id}", summary="A scan and what it found")
-async def get_scan(scan_id: uuid.UUID, db: DbDep, owner: OptionalOwner, redis: RedisDep) -> ScanOut:
+async def get_scan(
+    scan_id: PublicIdPath, db: DbDep, owner: OptionalOwner, redis: RedisDep
+) -> ScanOut:
     """Return the owner's scan: its state, its scene and its insights."""
     return await describe(db, await _owned_scan(db, owner, scan_id), redis)
 
@@ -307,7 +308,7 @@ async def get_scan(scan_id: uuid.UUID, db: DbDep, owner: OptionalOwner, redis: R
     responses={200: {"content": {"image/jpeg": {}}}},
 )
 async def get_scan_image(
-    scan_id: uuid.UUID, db: DbDep, owner: OptionalOwner, redis: RedisDep
+    scan_id: PublicIdPath, db: DbDep, owner: OptionalOwner, redis: RedisDep
 ) -> Response:
     """Return the photo without its metadata to its owner, for the hour it is kept."""
     scan = await _owned_scan(db, owner, scan_id)
@@ -328,7 +329,7 @@ async def get_scan_image(
     responses={200: {"content": {"text/event-stream": {}}}},
 )
 async def scan_events(
-    scan_id: uuid.UUID,
+    scan_id: PublicIdPath,
     db: StreamDb,
     settings: SettingsDep,
     owner: OptionalOwner,
@@ -409,7 +410,7 @@ async def _rerun(
     summary="Point at one thing in the scene and look again",
 )
 async def focus_scan(
-    scan_id: uuid.UUID,
+    scan_id: PublicIdPath,
     body: FocusIn,
     db: DbDep,
     settings: SettingsDep,
@@ -438,7 +439,7 @@ async def focus_scan(
     summary="Answer the one question the scan asked",
 )
 async def clarify_scan(
-    scan_id: uuid.UUID,
+    scan_id: PublicIdPath,
     body: ClarifyIn,
     db: DbDep,
     settings: SettingsDep,

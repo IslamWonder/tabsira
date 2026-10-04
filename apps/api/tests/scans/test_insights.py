@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import uuid
 
 import pytest
 
@@ -14,7 +13,7 @@ from tests.scans.conftest import as_guest, make_account, rule, sign_in
 from tests.scripture.fixtures import hadith_text, verse_text
 
 
-async def keep(store, owner: Owner, *, scan: bool = True, **values) -> uuid.UUID:
+async def keep(store, owner: Owner, *, scan: bool = True, **values) -> int:
     async with store() as db:
         if scan:
             row = scan_row(owner, status="done", **values.pop("scan_values", {}))
@@ -167,7 +166,7 @@ async def test_only_the_owner_reads_or_acts_on_an_insight(browser, other, store,
         assert (response.status_code, response.json()["error"]) == (404, "NOT_FOUND")
     browser.cookies.clear()
     assert (await browser.get(f"/insights/{insight_id}")).status_code == 404
-    assert (await other.get(f"/insights/{uuid.uuid4()}")).status_code == 404
+    assert (await other.get(f"/insights/{7_314_159_265_358_979_323}")).status_code == 404
 
 
 @pytest.mark.parametrize(

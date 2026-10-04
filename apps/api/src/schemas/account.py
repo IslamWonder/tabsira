@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 
 from src.schemas.cookie_consent import CookieConsentExport
 from src.schemas.profile import ConsentOut, ProfileOut
+from src.schemas.public_id import PublicId
 from src.schemas.social_export import SocialExport
 
 
@@ -57,7 +58,7 @@ class ScanExport(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: uuid.UUID
+    id: PublicId
     source: str
     status: str
     outcome: str | None
@@ -76,8 +77,8 @@ class InsightExport(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: uuid.UUID
-    scan_id: uuid.UUID | None
+    id: PublicId
+    scan_id: PublicId | None
     origin: str
     tutorial_slug: str | None
     engine: str
@@ -95,14 +96,14 @@ class InsightExport(BaseModel):
     action_state: str | None
     action_at: datetime | None
     completed_at: datetime | None
-    place_id: uuid.UUID | None
+    place_id: PublicId | None
     created_at: datetime
 
 
 class ChatMessageExport(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    insight_id: uuid.UUID
+    insight_id: PublicId
     question: str
     answer: str | None
     level: str | None
@@ -112,7 +113,7 @@ class ChatMessageExport(BaseModel):
 class PlaceExport(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: uuid.UUID
+    id: PublicId
     region_id: str
     created_at: datetime
     last_visited_at: datetime | None
@@ -121,7 +122,7 @@ class PlaceExport(BaseModel):
 class TreasureExport(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    insight_id: uuid.UUID
+    insight_id: PublicId
     kind: str
     quran_surah: int | None
     quran_ayah: int | None
@@ -149,7 +150,7 @@ class ExposureExport(BaseModel):
 
     at: datetime
     kind: str
-    insight_id: uuid.UUID | None
+    insight_id: PublicId | None
     quran_surah: int | None
     quran_ayah: int | None
     hadith_collection: str | None

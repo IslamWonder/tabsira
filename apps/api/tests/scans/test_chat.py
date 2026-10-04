@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
 from datetime import timedelta
 
 import pytest
@@ -111,7 +110,7 @@ async def test_a_message_being_answered_is_not_answered_twice_and_a_crashed_one_
     async with store() as db:
         db.add(
             ChatMessage(
-                insight_id=uuid.UUID(insight_id),
+                insight_id=int(insight_id),
                 idempotency_key="in-flight",
                 status=ChatStatus.PENDING,
                 question="؟",
@@ -120,7 +119,7 @@ async def test_a_message_being_answered_is_not_answered_twice_and_a_crashed_one_
         )
         db.add(
             ChatMessage(
-                insight_id=uuid.UUID(insight_id),
+                insight_id=int(insight_id),
                 idempotency_key="crashed-key",
                 status=ChatStatus.PENDING,
                 question="؟",

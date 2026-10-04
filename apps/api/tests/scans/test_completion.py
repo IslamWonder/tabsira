@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
-
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -190,7 +188,7 @@ async def test_the_world_and_the_treasure_can_be_switched_off(
         False,
     )
     async with store() as db:
-        assert (await db.get(Insight, uuid.UUID(plain))).completed_at is not None
+        assert (await db.get(Insight, int(plain))).completed_at is not None
         assert (await db.scalars(select(Treasure))).all() == []
 
 

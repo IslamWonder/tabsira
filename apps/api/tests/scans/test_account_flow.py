@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
-
 from redis.exceptions import RedisError
 from sqlalchemy import select
 
@@ -27,8 +25,8 @@ async def test_signing_in_merges_what_the_browser_saved_as_a_guest(browser, stor
     assert any("Max-Age=0" in c for c in cookies if c.startswith(flow_settings.guest_cookie_name))
     async with store() as db:
         assert (await db.scalars(select(Guest))).all() == []
-        assert (await db.get(Insight, uuid.UUID(kept["id"]))).user_id == user.id
-        assert (await db.get(Scan, uuid.UUID(scan["id"]))).user_id == user.id
+        assert (await db.get(Insight, int(kept["id"]))).user_id == user.id
+        assert (await db.get(Scan, int(scan["id"]))).user_id == user.id
         assert (await db.scalars(select(EvidenceExposure.user_id))).all() == [user.id]
     assert (await browser.get(f"/insights/{kept['id']}")).status_code == 200
     world = (await browser.get("/world")).json()
@@ -74,7 +72,7 @@ async def test_deleting_the_account_deletes_its_learning_and_its_kept_photos(bro
     await sign_in(browser)
     kept = (await browser.post("/tutorial/rain/insights/drop")).json()
     await browser.post(f"/insights/{kept['id']}/complete")
-    scan_id = uuid.UUID(
+    scan_id = int(
         (await browser.post("/scans", files={"image": ("a.jpg", photo(), "image/jpeg")})).json()[
             "id"
         ]

@@ -37,7 +37,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.models.base import Base, created_at_column, string_enum, uuid_pk
+from src.models.base import Base, created_at_column, string_enum
+from src.models.public_id import public_id_pk
 
 GUEST_KEY_LENGTH = 64
 ONE_OWNER = "num_nonnulls(user_id, guest_key) = 1"
@@ -124,7 +125,7 @@ class Scan(Base):
         Index("ix_scans_guest_key_created_at", "guest_key", "created_at"),
     )
 
-    id: Mapped[uuid.UUID] = uuid_pk()
+    id: Mapped[int] = public_id_pk("scans")
     user_id: Mapped[uuid.UUID | None] = _user_column()
     guest_key: Mapped[str | None] = _guest_column()
     source: Mapped[ScanSource] = mapped_column(string_enum(ScanSource, "source"))
@@ -205,10 +206,12 @@ class Insight(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = uuid_pk()
+    id: Mapped[int] = public_id_pk("insights")
     user_id: Mapped[uuid.UUID | None] = _user_column()
     guest_key: Mapped[str | None] = _guest_column()
-    scan_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("scans.id", ondelete="CASCADE"))
+    scan_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("scans.id", ondelete="CASCADE")
+    )
     origin: Mapped[InsightOrigin] = mapped_column(string_enum(InsightOrigin, "origin"))
     # The prepared scene and insight a tutorial copy came from, with the data version.
     tutorial_scene: Mapped[str | None] = mapped_column(String(64))
@@ -243,8 +246,8 @@ class Insight(Base):
     action_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # «تمّ»: the learner completed the insight. Completion, never mastery.
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    place_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("world_places.id", ondelete="SET NULL")
+    place_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("world_places.id", ondelete="SET NULL")
     )
     created_at: Mapped[datetime] = created_at_column()
 
@@ -267,7 +270,9 @@ class ChatMessage(Base):
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-    insight_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("insights.id", ondelete="CASCADE"))
+    insight_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("insights.id", ondelete="CASCADE")
+    )
     idempotency_key: Mapped[str] = mapped_column(String(64))
     status: Mapped[ChatStatus] = mapped_column(string_enum(ChatStatus, "status"))
     question: Mapped[str] = mapped_column(Text)

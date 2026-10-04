@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import uuid
-
 from fastapi import APIRouter, Depends
 
 from src.deps import DbDep, SettingsDep
 from src.owner import OptionalOwner
-from src.scans.deps import feature
+from src.scans.deps import PublicIdPath, feature
 from src.schemas.world import PlaceOut, TreasureOut, WorldOut
 from src.services import world_service
 
@@ -27,7 +25,7 @@ async def get_world(db: DbDep, settings: SettingsDep, owner: OptionalOwner) -> W
 
 @router.post("/places/{place_id}/visit", summary="Open a place: a return can show its treasure")
 async def visit_place(
-    place_id: uuid.UUID, db: DbDep, settings: SettingsDep, owner: OptionalOwner
+    place_id: PublicIdPath, db: DbDep, settings: SettingsDep, owner: OptionalOwner
 ) -> PlaceOut:
     """Record the visit and return the place with its insights and a treasure that is ready."""
     return await world_service.visit(db, settings, owner, place_id)
@@ -39,7 +37,7 @@ async def visit_place(
     dependencies=[Depends(feature("treasure"))],
 )
 async def reveal_treasure(
-    treasure_id: uuid.UUID, db: DbDep, settings: SettingsDep, owner: OptionalOwner
+    treasure_id: PublicIdPath, db: DbDep, settings: SettingsDep, owner: OptionalOwner
 ) -> TreasureOut:
     """Return the treasure's verified text from the store; 409 TREASURE_NOT_READY before the return."""
     return await world_service.reveal(db, settings, owner, treasure_id)

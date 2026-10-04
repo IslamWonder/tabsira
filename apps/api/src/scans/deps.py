@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, Path, Request
 from redis.asyncio import Redis
 
 from src.deps import SettingsDep
@@ -13,8 +13,11 @@ from src.errors import AppError, ErrorCode
 from src.redis_client import get_redis
 from src.scans.fetch import fetch_client, fetch_image
 from src.scans.queue import ScanQueue, get_scan_queue
+from src.schemas.public_id import MAX_PUBLIC_ID
 
 ImageFetcher = Callable[[str], Awaitable[bytes]]
+# A public id in a path (decision 37): a positive 64-bit number.
+PublicIdPath = Annotated[int, Path(ge=1, le=MAX_PUBLIC_ID)]
 
 
 def app_redis(request: Request, settings: SettingsDep) -> Redis:

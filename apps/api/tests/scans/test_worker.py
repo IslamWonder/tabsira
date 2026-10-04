@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
-
 import pytest
 from fastapi import FastAPI
 from starlette.requests import Request
@@ -48,35 +46,35 @@ async def test_the_worker_builds_its_services_once_and_closes_them(monkeypatch):
 
 
 async def test_the_task_runs_the_scan_it_names(monkeypatch):
-    ran: list[tuple[object, uuid.UUID, int]] = []
+    ran: list[tuple[object, int, int]] = []
 
     async def run_scan(services, scan_id, run):
         ran.append((services, scan_id, run))
 
     monkeypatch.setattr(worker, "run_scan", run_scan)
     monkeypatch.setattr(worker, "services", lambda: "services")
-    scan_id = uuid.uuid4()
+    scan_id = 7_314_159_265_358_979_323
 
-    await worker.run_scan_task.original_func(str(scan_id), 2)
+    await worker.run_scan_task.original_func(scan_id, 2)
 
     assert ran == [("services", scan_id, 2)]
 
 
 async def test_the_api_kicks_the_task_and_reports_a_queue_that_is_down(monkeypatch):
-    kicked: list[tuple[str, int]] = []
+    kicked: list[tuple[int, int]] = []
 
-    async def kiq(scan_id: str, run: int) -> None:
+    async def kiq(scan_id: int, run: int) -> None:
         kicked.append((scan_id, run))
 
     monkeypatch.setattr(worker.run_scan_task, "kiq", kiq)
     queue = TaskiqScanQueue()
-    scan_id = uuid.uuid4()
+    scan_id = 7_314_159_265_358_979_323
 
     await queue.enqueue(scan_id, 1)
-    assert kicked == [(str(scan_id), 1)]
+    assert kicked == [(scan_id, 1)]
     assert queue.used
 
-    async def broken(scan_id: str, run: int) -> None:
+    async def broken(scan_id: int, run: int) -> None:
         message = "connection refused"
         raise ConnectionError(message)
 

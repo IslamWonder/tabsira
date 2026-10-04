@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, Field
 
 from src.models import RelationReason, TreasureKind
 from src.schemas.insight import InsightHadith, InsightQuran
+from src.schemas.public_id import PublicId
 
 
 class PositionOut(BaseModel):
@@ -23,11 +23,11 @@ class RegionOut(BaseModel):
     domain_title: str
     position: PositionOut
     fog: bool = Field(description="True until an insight of this region is completed")
-    place_id: uuid.UUID | None
+    place_id: PublicId | None
 
 
 class PlaceInsightOut(BaseModel):
-    id: uuid.UUID
+    id: PublicId
     title: str
     completed_at: datetime
 
@@ -35,11 +35,11 @@ class PlaceInsightOut(BaseModel):
 class TreasureFlag(BaseModel):
     """A treasure ready to be revealed; its content stays hidden until the reveal."""
 
-    id: uuid.UUID
+    id: PublicId
 
 
 class PlaceOut(BaseModel):
-    id: uuid.UUID
+    id: PublicId
     region_id: str
     name: str
     created_at: datetime
@@ -49,12 +49,12 @@ class PlaceOut(BaseModel):
 
 
 class RelationOut(BaseModel):
-    place_a_id: uuid.UUID
-    place_b_id: uuid.UUID
+    place_a_id: PublicId
+    place_b_id: PublicId
     reason: RelationReason
     reason_label: str
     question: str
-    insight_ids: list[uuid.UUID]
+    insight_ids: list[PublicId]
 
 
 class WorldOut(BaseModel):
@@ -71,11 +71,11 @@ class TreasureUnitOut(BaseModel):
 
 
 class TreasureOut(BaseModel):
-    id: uuid.UUID
+    id: PublicId
     kind: TreasureKind
     kind_label: str
-    insight_id: uuid.UUID
-    place_id: uuid.UUID
+    insight_id: PublicId
+    place_id: PublicId
     quran: InsightQuran | None
     hadith: InsightHadith | None
     learning_unit: TreasureUnitOut | None

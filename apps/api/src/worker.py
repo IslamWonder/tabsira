@@ -12,8 +12,6 @@ first job and closed when the worker stops.
 
 from __future__ import annotations
 
-import uuid
-
 import httpx
 from taskiq import TaskiqEvents, TaskiqState
 from taskiq_redis import RedisStreamBroker
@@ -76,9 +74,9 @@ def services() -> ScanServices:
 
 
 @broker.task(task_name="scan.run")
-async def run_scan_task(scan_id: str, run: int) -> None:
+async def run_scan_task(scan_id: int, run: int) -> None:
     """Run one run of a scan."""
-    await run_scan(services(), uuid.UUID(scan_id), run)
+    await run_scan(services(), scan_id, run)
 
 
 @broker.on_event(TaskiqEvents.WORKER_SHUTDOWN)

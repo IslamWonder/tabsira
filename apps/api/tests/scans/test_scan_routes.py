@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
-
 import pytest
 from redis.exceptions import RedisError
 from sqlalchemy import select
@@ -54,7 +52,9 @@ async def test_an_upload_starts_a_scan_for_a_new_guest_and_answers_at_once(
     }
     assert body["events_url"] == f"/scans/{body['id']}/events"
     assert body["disclosure"] == "تبصرة أداة مدعومة بالذكاء الاصطناعي، وليست مفتيًا ولا عالمًا"
-    scan_id = uuid.UUID(body["id"])
+    # A public id travels as a string: it is beyond the integers JavaScript holds exactly.
+    assert isinstance(body["id"], str)
+    scan_id = int(body["id"])
     assert queue.runs == [(scan_id, 1)]
     assert [event.event for event in await progress.replay(redis, scan_id)] == ["queued"]
     assert await buffer.get(redis, scan_id, buffer.Copy.MODEL) is not None
@@ -66,7 +66,7 @@ async def test_an_upload_starts_a_scan_for_a_new_guest_and_answers_at_once(
     again = await upload(browser)
     assert "set-cookie" not in again.headers
     async with store() as db:
-        assert (await db.get(Scan, uuid.UUID(again.json()["id"]))).guest_key == scan.guest_key
+        assert (await db.get(Scan, int(again.json()["id"]))).guest_key == scan.guest_key
 
 
 async def test_an_address_is_fetched_by_the_server(browser, fetcher, store):
@@ -174,7 +174,9 @@ async def test_only_the_owner_reaches_a_scan(browser, other, flow_app, store):
         assert (response.status_code, response.json()["error"]) == (404, "NOT_FOUND")
     browser.cookies.clear()
     assert (await browser.get(path)).status_code == 404
-    assert (await browser.get(f"/scans/{uuid.uuid4()}")).status_code == 404
+    assert (await browser.get(f"/scans/{7_314_159_265_358_979_323}")).status_code == 404
+    for malformed in ("abc", "0", "-5", str(2**63)):
+        assert (await browser.get(f"/scans/{malformed}")).status_code == 422
 
 
 async def test_the_owner_sees_the_photo_while_it_is_kept(browser, redis, monkeypatch):
@@ -184,7 +186,7 @@ async def test_the_owner_sees_the_photo_while_it_is_kept(browser, redis, monkeyp
     shown = await browser.get(path)
     assert shown.headers["content-type"] == "image/jpeg"
     assert shown.headers["cache-control"] == "no-store"
-    assert shown.content == await buffer.get(redis, uuid.UUID(body["id"]), buffer.Copy.FULL)
+    assert shown.content == await buffer.get(redis, int(body["id"]), buffer.Copy.FULL)
 
     async def broken(*_args):
         message = "down"
@@ -193,7 +195,7 @@ async def test_the_owner_sees_the_photo_while_it_is_kept(browser, redis, monkeyp
     monkeypatch.setattr(redis, "exists", broken)
     assert (await browser.get(f"/scans/{body['id']}")).json()["image"]["available"] is False
     monkeypatch.undo()
-    await buffer.drop(redis, uuid.UUID(body["id"]))
+    await buffer.drop(redis, int(body["id"]))
     gone = await browser.get(path)
     assert (gone.status_code, gone.json()["error"]) == (404, "ASSET_MISSING")
 
@@ -234,7 +236,7 @@ async def test_a_finished_scan_whose_events_expired_answers_from_the_database(
     browser, flow_app, store, redis
 ):
     body = await a_scan(browser)
-    scan_id = uuid.UUID(body["id"])
+    scan_id = int(body["id"])
     await run_queued(flow_app, store, engine=_Static(EngineStatus.MODEL_UNAVAILABLE))
     await redis.delete(progress.events_key(scan_id))
 
@@ -282,9 +284,9 @@ async def test_focusing_runs_the_engine_again_on_the_same_scene(browser, flow_ap
         "queued",
     )
     assert drawn.json()["run"] == 3
-    assert queue.runs == [(uuid.UUID(body["id"]), 3)]
+    assert queue.runs == [(int(body["id"]), 3)]
     async with store() as db:
-        scan = await db.get(Scan, uuid.UUID(body["id"]))
+        scan = await db.get(Scan, int(body["id"]))
     assert scan.focus == {"box": {"x": 0.1, "y": 0.1, "width": 0.3, "height": 0.3}, "label": "ورقة"}
 
 
@@ -342,7 +344,7 @@ async def test_the_answer_to_the_scan_question_runs_the_engine_again(browser, fl
     )
     assert answered.status_code == 202
     async with store() as db:
-        stored = await db.get(Scan, uuid.UUID(scan["id"]))
+        stored = await db.get(Scan, int(scan["id"]))
     assert stored.clarification_answer == "مطر على نبتة"
     assert stored.outcome is ScanOutcome.INSIGHTS
     assert (await browser.post(f"{path}/clarify", json={"answer": ""})).status_code == 422
@@ -375,7 +377,7 @@ async def test_the_simulation_is_labelled(browser, flow_app, make_settings):
 async def test_a_running_scan_streams_until_its_run_ends(browser, redis):
     scan = await a_scan(browser)
     await progress.publish(
-        redis, uuid.UUID(scan["id"]), "failed", {"run": 1, "code": "SCAN_TIMEOUT"}, ttl=60
+        redis, int(scan["id"]), "failed", {"run": 1, "code": "SCAN_TIMEOUT"}, ttl=60
     )
 
     stream = await browser.get(f"/scans/{scan['id']}/events")

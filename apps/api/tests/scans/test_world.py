@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import uuid
 
 from sqlalchemy import select
 
@@ -161,7 +160,7 @@ async def test_only_the_owner_visits_or_reveals(browser, other, store, flow_sett
     for path in (
         f"/world/places/{place_id}/visit",
         f"/world/treasures/{treasure_id}/reveal",
-        f"/world/places/{uuid.uuid4()}/visit",
+        f"/world/places/{7_314_159_265_358_979_323}/visit",
     ):
         response = await other.post(path)
         assert (response.status_code, response.json()["error"]) == (404, "NOT_FOUND")
@@ -202,7 +201,7 @@ async def test_the_world_and_its_treasures_can_be_switched_off(
 
     flow_app.state.settings = make_settings(feature_treasure=False)
     no_treasure = (await browser.get("/world")).json()
-    reveal = await browser.post(f"/world/treasures/{uuid.uuid4()}/reveal")
+    reveal = await browser.post(f"/world/treasures/{7_314_159_265_358_979_323}/reveal")
     flow_app.state.settings = make_settings(feature_world=False)
     no_world = await browser.get("/world")
 

@@ -11,7 +11,6 @@ when the scene turns out to be sensitive (rule 8).
 
 from __future__ import annotations
 
-import uuid
 from enum import StrEnum
 from typing import cast
 
@@ -25,12 +24,12 @@ class Copy(StrEnum):
     MODEL = "model_image"
 
 
-def _key(scan_id: uuid.UUID, copy: Copy) -> str:
+def _key(scan_id: int, copy: Copy) -> str:
     return f"scan:{scan_id}:{copy.value}"
 
 
 async def put(
-    redis: Redis, scan_id: uuid.UUID, *, full: EncodedImage, model: EncodedImage, ttl: int
+    redis: Redis, scan_id: int, *, full: EncodedImage, model: EncodedImage, ttl: int
 ) -> None:
     """Keep both copies of a new scan's photo for `ttl` seconds."""
     async with redis.pipeline(transaction=True) as pipe:
@@ -39,12 +38,12 @@ async def put(
         await pipe.execute()
 
 
-async def get(redis: Redis, scan_id: uuid.UUID, copy: Copy) -> bytes | None:
+async def get(redis: Redis, scan_id: int, copy: Copy) -> bytes | None:
     """Return a copy while it lives, else None."""
     return cast("bytes | None", await redis.get(_key(scan_id, copy)))
 
 
-async def drop(redis: Redis, scan_id: uuid.UUID, *copies: Copy) -> None:
+async def drop(redis: Redis, scan_id: int, *copies: Copy) -> None:
     """Delete the given copies now (every copy when none is named)."""
     chosen = copies or tuple(Copy)
     await redis.delete(*(_key(scan_id, copy) for copy in chosen))

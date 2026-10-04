@@ -13,7 +13,6 @@ from __future__ import annotations
 import hashlib
 import io
 import json
-import uuid
 from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 from typing import Any
@@ -139,10 +138,10 @@ class FakeQueue:
     """Records the runs it is asked for; `broken` makes it refuse."""
 
     def __init__(self) -> None:
-        self.runs: list[tuple[uuid.UUID, int]] = []
+        self.runs: list[tuple[int, int]] = []
         self.broken = False
 
-    async def enqueue(self, scan_id: uuid.UUID, run: int) -> None:
+    async def enqueue(self, scan_id: int, run: int) -> None:
         from src.scans.queue import QueueUnavailableError
 
         if self.broken:

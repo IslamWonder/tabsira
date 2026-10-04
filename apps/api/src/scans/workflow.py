@@ -23,8 +23,7 @@ import asyncio
 import io
 import logging
 import time
-import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -129,7 +128,7 @@ class Trace:
 @dataclass
 class Run:
     services: ScanServices
-    scan_id: uuid.UUID
+    scan_id: int
     run: int
     owner: Owner
     calls: CallLog = field(default_factory=CallLog)
@@ -151,11 +150,11 @@ class Run:
         await self.publish("stage", {"stage": stage.value, "state": state})
 
 
-def lock_key(scan_id: uuid.UUID) -> str:
+def lock_key(scan_id: int) -> str:
     return f"scan:{scan_id}:lock"
 
 
-async def run_scan(services: ScanServices, scan_id: uuid.UUID, run: int) -> None:
+async def run_scan(services: ScanServices, scan_id: int, run: int) -> None:
     """Run one run of a scan once, whoever else was asked to run it."""
     lock_seconds = int(services.settings.scan_job_timeout_seconds) + 60
     if not await services.redis.set(lock_key(scan_id), run, nx=True, ex=lock_seconds):
@@ -170,7 +169,7 @@ async def run_scan(services: ScanServices, scan_id: uuid.UUID, run: int) -> None
 
 
 async def _claim(
-    sessionmaker: async_sessionmaker[AsyncSession], scan_id: uuid.UUID, run: int
+    sessionmaker: async_sessionmaker[AsyncSession], scan_id: int, run: int
 ) -> Owner | None:
     async with sessionmaker() as db:
         row = (
@@ -235,8 +234,8 @@ async def _save_trace(job: Run) -> None:
 def call_rows(
     records: list[CallRecord],
     *,
-    scan_id: uuid.UUID | None = None,
-    insight_id: uuid.UUID | None = None,
+    scan_id: int | None = None,
+    insight_id: int | None = None,
 ) -> list[AiCall]:
     """Return the `ai_calls` rows of some call records."""
     return [
@@ -443,7 +442,7 @@ async def _save(
     insights: list[ProposedInsight],
     question: str | None,
     result: EngineResult,
-) -> list[uuid.UUID] | None:
+) -> list[int] | None:
     """Save the run's result under a lock of the scan row; None when a newer run took over."""
     scan = await db.scalar(select(Scan).where(Scan.id == job.scan_id).with_for_update())
     if scan is None or scan.run != job.run:
@@ -494,6 +493,3 @@ def insight_row(owner: Owner, insight: ProposedInsight, *, scan: Scan, position:
         learning_unit_id=insight.learning_unit_id,
         learning_path_version=insight.learning_path_version,
     )
-
-
-JobRunner = Callable[[uuid.UUID, int], Awaitable[None]]

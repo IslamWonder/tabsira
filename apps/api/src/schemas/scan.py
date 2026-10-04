@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
 from typing import Annotated, Self
 
@@ -11,6 +10,7 @@ from pydantic import BaseModel, Field, model_validator
 from src.models import ScanOutcome, ScanSource, ScanStatus
 from src.pipeline.engine import RelationType
 from src.pipeline.schemas import BBox, EntityOrigin, EvidenceStatus
+from src.schemas.public_id import PublicId
 
 MAX_URL_LENGTH = 2048
 MAX_ANSWER_CHARS = 300
@@ -71,7 +71,7 @@ class ScanImageOut(BaseModel):
 
 
 class InsightSummary(BaseModel):
-    id: uuid.UUID
+    id: PublicId
     title: str
     glimpse: str
     anchor: BBox | None
@@ -81,7 +81,7 @@ class InsightSummary(BaseModel):
 
 
 class ScanOut(BaseModel):
-    id: uuid.UUID
+    id: PublicId
     status: ScanStatus
     outcome: ScanOutcome | None
     error_code: str | None = Field(description="A stable code (v2 §26) when the scan failed")

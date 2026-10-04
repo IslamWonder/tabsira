@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -131,7 +130,7 @@ def services_for(
     )
 
 
-async def new_scan(store, redis, *, keep_photo: bool = True, **values: Any) -> uuid.UUID:
+async def new_scan(store, redis, *, keep_photo: bool = True, **values: Any) -> int:
     async with store() as db:
         if await db.get(Guest, GUEST) is None:
             db.add(Guest(key=GUEST))
@@ -485,7 +484,7 @@ def test_call_records_become_rows_without_the_prompt_or_the_answer():
     record = make_record().model_copy(
         update={"error_code": AiErrorCode.TIMEOUT, "retried_errors": (AiErrorCode.NETWORK,)}
     )
-    row = workflow.call_rows([record], insight_id=uuid.UUID(int=1))[0]
+    row = workflow.call_rows([record], insight_id=1)[0]
 
     assert (row.provider, row.stage, row.kind, row.error_code) == (
         "ovh",
@@ -494,5 +493,5 @@ def test_call_records_become_rows_without_the_prompt_or_the_answer():
         "timeout",
     )
     assert row.retried_errors == ["network"]
-    assert row.insight_id == uuid.UUID(int=1)
+    assert row.insight_id == 1
     assert row.input_tokens == 1000

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
 
 from src.pipeline.schemas import EncodedImage
 from src.scans import buffer, progress
@@ -16,7 +15,7 @@ async def collect(redis, scan_id, **values) -> list[ProgressEvent]:
 
 
 async def test_events_are_numbered_kept_for_replay_and_expire(redis):
-    scan_id = uuid.uuid4()
+    scan_id = 7_314_159_265_358_979_323
 
     first = await progress.publish(redis, scan_id, "queued", {"run": 1}, ttl=60)
     second = await progress.publish(redis, scan_id, "stage", {"run": 1, "stage": "x"}, ttl=60)
@@ -29,7 +28,7 @@ async def test_events_are_numbered_kept_for_replay_and_expire(redis):
 
 
 async def test_the_replay_keeps_only_the_latest_events(redis):
-    scan_id = uuid.uuid4()
+    scan_id = 7_314_159_265_358_979_323
     for _ in range(progress.MAX_EVENTS + 5):
         await progress.publish(redis, scan_id, "stage", {"run": 1}, ttl=60)
 
@@ -60,7 +59,7 @@ def test_a_last_event_id_is_a_small_number_or_nothing():
 
 
 async def test_a_stream_replays_what_was_missed_and_ends_at_the_terminal_event(redis):
-    scan_id = uuid.uuid4()
+    scan_id = 7_314_159_265_358_979_323
     await progress.publish(redis, scan_id, "queued", {"run": 1}, ttl=60)
     await progress.publish(redis, scan_id, "stage", {"run": 1}, ttl=60)
     await progress.publish(redis, scan_id, "done", {"run": 1}, ttl=60)
@@ -71,7 +70,7 @@ async def test_a_stream_replays_what_was_missed_and_ends_at_the_terminal_event(r
 
 
 async def test_a_stream_skips_an_earlier_run(redis):
-    scan_id = uuid.uuid4()
+    scan_id = 7_314_159_265_358_979_323
     await progress.publish(redis, scan_id, "done", {"run": 1}, ttl=60)
     await progress.publish(redis, scan_id, "queued", {"run": 2}, ttl=60)
     await progress.publish(redis, scan_id, "failed", {"run": 2, "code": "X"}, ttl=60)
@@ -82,11 +81,11 @@ async def test_a_stream_skips_an_earlier_run(redis):
 async def test_a_finished_run_whose_events_expired_answers_from_the_database(redis):
     fallback = ProgressEvent(id=0, event="done", data={"run": 1})
 
-    assert await collect(redis, uuid.uuid4(), fallback=fallback) == [fallback]
+    assert await collect(redis, 7_314_159_265_358_979_323, fallback=fallback) == [fallback]
 
 
 async def test_a_stream_hears_live_events_once_and_stops_at_the_end(redis):
-    scan_id = uuid.uuid4()
+    scan_id = 7_314_159_265_358_979_323
     await progress.publish(redis, scan_id, "queued", {"run": 2}, ttl=60)
 
     async def later() -> None:
@@ -104,7 +103,7 @@ async def test_a_stream_hears_live_events_once_and_stops_at_the_end(redis):
 
 
 async def test_a_live_event_already_replayed_is_not_sent_again(redis):
-    scan_id = uuid.uuid4()
+    scan_id = 7_314_159_265_358_979_323
     stream = progress.stream(
         redis, scan_id, run=1, after=0, fallback=None, max_seconds=5
     ).__aiter__()
@@ -125,7 +124,7 @@ async def test_a_stream_without_news_ends_after_its_life(redis):
         event
         async for event in progress.stream(
             redis,
-            uuid.uuid4(),
+            7_314_159_265_358_979_323,
             run=1,
             after=0,
             fallback=None,
@@ -138,7 +137,7 @@ async def test_a_stream_without_news_ends_after_its_life(redis):
 
 
 async def test_the_photo_is_kept_for_its_time_and_dropped_on_demand(redis):
-    scan_id = uuid.uuid4()
+    scan_id = 7_314_159_265_358_979_323
     full = EncodedImage(data=b"full", width=4, height=4)
     small = EncodedImage(data=b"small", width=2, height=2)
 

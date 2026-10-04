@@ -34,7 +34,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.models.base import Base, created_at_column, string_enum, uuid_pk
+from src.models.base import Base, created_at_column, string_enum
+from src.models.public_id import public_id_pk
 from src.models.scan import GUEST_KEY_LENGTH, ONE_OWNER
 
 
@@ -74,7 +75,7 @@ class WorldPlace(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = uuid_pk()
+    id: Mapped[int] = public_id_pk("world_places")
     user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     guest_key: Mapped[str | None] = mapped_column(
         String(GUEST_KEY_LENGTH), ForeignKey("guests.key", ondelete="CASCADE")
@@ -100,12 +101,20 @@ class WorldRelation(Base):
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
-    place_a_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("world_places.id", ondelete="CASCADE"))
-    place_b_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("world_places.id", ondelete="CASCADE"))
+    place_a_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("world_places.id", ondelete="CASCADE")
+    )
+    place_b_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("world_places.id", ondelete="CASCADE")
+    )
     reason: Mapped[RelationReason] = mapped_column(string_enum(RelationReason, "reason"))
     # The two completed insights that recorded the relation.
-    insight_a_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("insights.id", ondelete="CASCADE"))
-    insight_b_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("insights.id", ondelete="CASCADE"))
+    insight_a_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("insights.id", ondelete="CASCADE")
+    )
+    insight_b_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("insights.id", ondelete="CASCADE")
+    )
     created_at: Mapped[datetime] = created_at_column()
 
 
@@ -128,9 +137,13 @@ class Treasure(Base):
         Index("ix_treasures_place_id", "place_id"),
     )
 
-    id: Mapped[uuid.UUID] = uuid_pk()
-    insight_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("insights.id", ondelete="CASCADE"))
-    place_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("world_places.id", ondelete="CASCADE"))
+    id: Mapped[int] = public_id_pk("treasures")
+    insight_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("insights.id", ondelete="CASCADE")
+    )
+    place_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("world_places.id", ondelete="CASCADE")
+    )
     kind: Mapped[TreasureKind] = mapped_column(string_enum(TreasureKind, "kind"))
     quran_surah: Mapped[int | None] = mapped_column(SmallInteger)
     quran_ayah: Mapped[int | None] = mapped_column(SmallInteger)

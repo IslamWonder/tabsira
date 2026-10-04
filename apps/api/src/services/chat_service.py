@@ -20,7 +20,6 @@ guard, with the insight's own texts as a corpus, and carries the disclosure.
 
 from __future__ import annotations
 
-import uuid
 from collections.abc import Callable
 from datetime import timedelta
 from typing import Annotated, Literal
@@ -241,9 +240,7 @@ def _compose(output: ChatModelOutput) -> tuple[str, str]:
     return output.answer.strip(), "answer"
 
 
-async def _give_back(
-    db: AsyncSession, row: ChatMessage, log: CallLog, insight_id: uuid.UUID
-) -> None:
+async def _give_back(db: AsyncSession, row: ChatMessage, log: CallLog, insight_id: int) -> None:
     """Free the slot of a message that got no answer; the call is still recorded."""
     await db.delete(row)
     db.add_all(call_rows(log.records, insight_id=insight_id))

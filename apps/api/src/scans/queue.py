@@ -11,14 +11,13 @@ own queue in `app.state.scan_queue`.
 
 from __future__ import annotations
 
-import uuid
 from typing import Protocol
 
 from fastapi import Request
 
 
 class ScanQueue(Protocol):
-    async def enqueue(self, scan_id: uuid.UUID, run: int) -> None:
+    async def enqueue(self, scan_id: int, run: int) -> None:
         """Ask for one run of a scan."""
 
 
@@ -32,12 +31,12 @@ class TaskiqScanQueue:
     def __init__(self) -> None:
         self.used = False
 
-    async def enqueue(self, scan_id: uuid.UUID, run: int) -> None:
+    async def enqueue(self, scan_id: int, run: int) -> None:
         from src.worker import run_scan_task
 
         self.used = True
         try:
-            await run_scan_task.kiq(str(scan_id), run)
+            await run_scan_task.kiq(scan_id, run)
         except Exception as error:
             raise QueueUnavailableError(type(error).__name__) from None
 

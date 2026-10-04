@@ -63,7 +63,7 @@ class ScanEvent(Base):
 
     at: Mapped[datetime] = created_at_column()
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True))
-    scan_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    scan_id: Mapped[int] = mapped_column(BigInteger)
     run: Mapped[int] = mapped_column(Integer)
     # validate, detect, understand, sensitivity, searching, verifying, composing, save, job
     stage: Mapped[str] = mapped_column(String(32))
@@ -86,8 +86,8 @@ class AiCall(Base):
     at: Mapped[datetime] = created_at_column()
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True))
     # What the call served: a scan, or the chat of an insight.
-    scan_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
-    insight_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    scan_id: Mapped[int | None] = mapped_column(BigInteger)
+    insight_id: Mapped[int | None] = mapped_column(BigInteger)
     provider: Mapped[str] = mapped_column(String(16))
     model: Mapped[str] = mapped_column(String(128))
     stage: Mapped[str] = mapped_column(String(16))
@@ -121,7 +121,7 @@ class EvidenceExposure(Base):
     # deletion and the guest expiry delete these rows themselves.
     user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     guest_key: Mapped[str | None] = mapped_column(String(GUEST_KEY_LENGTH))
-    insight_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    insight_id: Mapped[int | None] = mapped_column(BigInteger)
     # `completed` («تمّ») or `treasure` (a revealed treasure).
     kind: Mapped[str] = mapped_column(String(16))
     quran_surah: Mapped[int | None] = mapped_column(SmallInteger)

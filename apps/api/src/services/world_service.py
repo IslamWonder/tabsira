@@ -11,7 +11,6 @@ a lack in the learner; nothing here is a score.
 
 from __future__ import annotations
 
-import uuid
 from datetime import timedelta
 from typing import cast
 
@@ -84,9 +83,7 @@ async def ensure_place(db: AsyncSession, owner: Owner, region: Region) -> tuple[
     return place, created is not None
 
 
-async def record_relations(
-    db: AsyncSession, owner: Owner, insight: Insight, place_id: uuid.UUID
-) -> None:
+async def record_relations(db: AsyncSession, owner: Owner, insight: Insight, place_id: int) -> None:
     """Record the threads this completion, in place `place_id`, makes: same scene, prerequisites."""
     others = (
         await db.scalars(
@@ -111,7 +108,7 @@ async def record_relations(
             reasons.append(RelationReason.PREREQUISITE)
         for reason in reasons:
             # The query kept only insights that have a place.
-            other_place = cast("uuid.UUID", other.place_id)
+            other_place = cast("int", other.place_id)
             await _relate(db, (place_id, insight.id), (other_place, other.id), reason)
 
 
@@ -135,8 +132,8 @@ async def _prerequisites(db: AsyncSession, insight: Insight) -> set[str]:
 
 async def _relate(
     db: AsyncSession,
-    one: tuple[uuid.UUID, uuid.UUID],
-    other: tuple[uuid.UUID, uuid.UUID],
+    one: tuple[int, int],
+    other: tuple[int, int],
     reason: RelationReason,
 ) -> None:
     """Record a thread between two (place, insight) pairs, the lower place first."""
@@ -205,7 +202,7 @@ def _windows(settings: Settings) -> dict[str, timedelta]:
 
 async def ready_treasures(
     db: AsyncSession, settings: Settings, owner: Owner, places: list[WorldPlace]
-) -> dict[uuid.UUID, Treasure]:
+) -> dict[int, Treasure]:
     """Return, per place, a hidden treasure the learner may reveal now."""
     if not settings.feature_treasure or not places:
         return {}
@@ -224,7 +221,7 @@ async def ready_treasures(
     ).all()
     insights = {insight.id: insight for insight in completed}
     now = clock.utcnow()
-    ready: dict[uuid.UUID, Treasure] = {}
+    ready: dict[int, Treasure] = {}
     for item in hidden:
         source = insights.get(item.insight_id)
         concept = source.why.get("concept") if source is not None else None
@@ -266,7 +263,7 @@ async def _places(db: AsyncSession, owner: Owner) -> list[WorldPlace]:
 
 
 async def place_out(
-    db: AsyncSession, place: WorldPlace, treasures: dict[uuid.UUID, Treasure]
+    db: AsyncSession, place: WorldPlace, treasures: dict[int, Treasure]
 ) -> PlaceOut:
     insights = (
         await db.scalars(
@@ -351,7 +348,7 @@ async def world(db: AsyncSession, settings: Settings, owner: Owner | None) -> Wo
 
 
 async def visit(
-    db: AsyncSession, settings: Settings, owner: Owner | None, place_id: uuid.UUID
+    db: AsyncSession, settings: Settings, owner: Owner | None, place_id: int
 ) -> PlaceOut:
     """Record that the learner opened a place, and return it with a treasure that is now ready."""
     if owner is None:
@@ -370,7 +367,7 @@ async def visit(
 
 
 async def reveal(
-    db: AsyncSession, settings: Settings, owner: Owner | None, treasure_id: uuid.UUID
+    db: AsyncSession, settings: Settings, owner: Owner | None, treasure_id: int
 ) -> TreasureOut:
     """Reveal a treasure that is ready (again, idempotently, once revealed) and record the exposure."""
     if owner is None:

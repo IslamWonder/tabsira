@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
 from typing import Annotated, Literal
 
@@ -12,6 +11,7 @@ from src.models import ActionState, InsightOrigin
 from src.pipeline.engine import RelationType
 from src.pipeline.schemas import BBox
 from src.routers.scripture import HadithOut, QuranVerseOut
+from src.schemas.public_id import PublicId
 
 MAX_QUESTION_CHARS = 500
 
@@ -98,8 +98,8 @@ class InsightImageOut(BaseModel):
 
 
 class InsightOut(BaseModel):
-    id: uuid.UUID
-    scan_id: uuid.UUID | None
+    id: PublicId
+    scan_id: PublicId | None
     origin: InsightOrigin
     engine: str = Field(description="`pipeline`, `demo` (a declared simulation) or `prepared`")
     label: str | None = Field(
@@ -124,7 +124,7 @@ class InsightOut(BaseModel):
     chat: ChatOut
     image: InsightImageOut
     completed_at: datetime | None
-    place_id: uuid.UUID | None
+    place_id: PublicId | None
     created_at: datetime
     disclosure: str
 
@@ -157,14 +157,14 @@ class AfterOption(BaseModel):
 
 
 class PlaceOut(BaseModel):
-    id: uuid.UUID
+    id: PublicId
     region_id: str
     name: str
     created: bool = Field(description="The fog lifted from this place with this completion")
 
 
 class CompletionOut(BaseModel):
-    insight_id: uuid.UUID
+    insight_id: PublicId
     completed_at: datetime
     first_time: bool = Field(
         description="False when «تمّ» was already recorded: nothing was saved twice"

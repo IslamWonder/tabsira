@@ -193,7 +193,7 @@ async def _merge_places(db: AsyncSession, key: str, user_id: uuid.UUID) -> None:
     await db.flush()
 
 
-async def _move_relations(db: AsyncSession, old: uuid.UUID, new: uuid.UUID) -> None:
+async def _move_relations(db: AsyncSession, old: int, new: int) -> None:
     """
     Re-point the threads of a merged place; a thread that already exists is dropped.
 
