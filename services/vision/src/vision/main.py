@@ -26,9 +26,17 @@ from starlette.formparsers import MultiPartParser
 
 from vision.config import MAX_DETECTIONS_LIMIT, MAX_VOCABULARY, Settings
 from vision.detector import Detector, UltralyticsDetector
-from vision.errors import DetectorUnavailableError, VisionError
+from vision.errors import DetectorUnavailableError, RerankerUnavailableError, VisionError
 from vision.images import decode_image
-from vision.schemas import DetectJsonRequest, DetectResponse, ErrorResponse, HealthResponse
+from vision.reranker import Reranker, TransformersReranker
+from vision.schemas import (
+    DetectJsonRequest,
+    DetectResponse,
+    ErrorResponse,
+    HealthResponse,
+    RerankRequest,
+    RerankResponse,
+)
 from vision.vocabulary import normalise_vocabulary
 
 logger = logging.getLogger("vision")
@@ -128,11 +136,16 @@ def run_detection(
     )
 
 
-def create_app(settings: Settings | None = None, detector: Detector | None = None) -> FastAPI:
-    """Build the application; tests pass their own settings and detector."""
+def create_app(
+    settings: Settings | None = None,
+    detector: Detector | None = None,
+    reranker: Reranker | None = None,
+) -> FastAPI:
+    """Build the application; tests pass their own settings, detector and reranker."""
     configure_logging()
     settings = settings or Settings()
     detector = detector or UltralyticsDetector(settings)
+    reranker = reranker or TransformersReranker(settings)
     max_body = settings.vision_max_image_bytes * 4 // 3 + BODY_OVERHEAD_BYTES
     # Starlette writes an upload to a temporary file once it passes 1 MB. A photo is
     # kept in memory instead, up to the size that is accepted at all.
@@ -145,6 +158,11 @@ def create_app(settings: Settings | None = None, detector: Detector | None = Non
                 await run_in_threadpool(detector.warmup)
             except DetectorUnavailableError as exc:
                 logger.warning("warm-up skipped: %s", exc.detail)
+        if settings.vision_reranker_warmup:
+            try:
+                await run_in_threadpool(reranker.warmup)
+            except RerankerUnavailableError as exc:
+                logger.warning("reranker warm-up skipped: %s", exc.detail)
         yield
 
     app = FastAPI(title="TABSIRA vision", version="0.1.0", lifespan=lifespan)
@@ -166,6 +184,7 @@ def create_app(settings: Settings | None = None, detector: Detector | None = Non
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
         status = detector.status()
+        ranking = reranker.status()
         return HealthResponse(
             ok=status.error is None,
             detector=status.name,
@@ -175,6 +194,9 @@ def create_app(settings: Settings | None = None, detector: Detector | None = Non
             vocabulary_size=status.vocabulary_size,
             vocabulary_mode=status.vocabulary_mode,
             error=status.error,
+            reranker=ranking.model,
+            reranker_loaded=ranking.loaded,
+            reranker_error=ranking.error,
         )
 
     @app.post("/detect", response_model=DetectResponse, responses=ERROR_RESPONSES)
@@ -193,6 +215,11 @@ def create_app(settings: Settings | None = None, detector: Detector | None = Non
         return run_detection(
             settings, detector, data, body.vocabulary, body.conf, body.max_detections
         )
+
+    @app.post("/rerank", response_model=RerankResponse, responses=ERROR_RESPONSES)
+    def rerank(body: RerankRequest) -> RerankResponse:
+        result = reranker.rerank(body.query, body.passages)
+        return RerankResponse(scores=result.scores, model=result.model, ms=result.ms)
 
     return app
 

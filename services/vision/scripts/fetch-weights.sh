@@ -8,6 +8,8 @@
 #               argument DETECTOR_MODEL from the environment or the root .env decides.
 #
 # YOLOE needs about 630 MB in all (checkpoint 28 MB, MobileCLIP text encoder 600 MB).
+# Then the reranker of POST /rerank (VISION_RERANKER_MODEL, 2.3 GB for the default)
+# from the Hugging Face hub, into weights/rerankers/.
 
 set -Eeuo pipefail
 

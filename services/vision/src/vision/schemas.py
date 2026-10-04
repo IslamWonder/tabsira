@@ -8,7 +8,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-from vision.config import MAX_DETECTIONS_LIMIT
+from vision.config import MAX_DETECTIONS_LIMIT, MAX_PASSAGE_CHARS, MAX_PASSAGES, MAX_QUERY_CHARS
 
 
 class VocabularyMode(StrEnum):
@@ -75,6 +75,28 @@ class HealthResponse(CamelModel):
     vocabulary_size: int
     vocabulary_mode: VocabularyMode
     error: str | None = None
+    # The reranker of POST /rerank, reported apart: `ok` speaks for the detector.
+    reranker: str = ""
+    reranker_loaded: bool = False
+    reranker_error: str | None = None
+
+
+class RerankRequest(CamelModel):
+    """Body of `POST /rerank`: one query and the passages to score against it."""
+
+    query: Annotated[str, Field(min_length=1, max_length=MAX_QUERY_CHARS)]
+    passages: Annotated[
+        list[Annotated[str, Field(min_length=1, max_length=MAX_PASSAGE_CHARS)]],
+        Field(min_length=1, max_length=MAX_PASSAGES),
+    ]
+
+
+class RerankResponse(CamelModel):
+    """One relevance score from 0 to 1 per passage, in the order the passages were sent."""
+
+    scores: list[float]
+    model: str
+    ms: int
 
 
 class ErrorResponse(BaseModel):

@@ -30,6 +30,7 @@ dependencies = [
   # Ultralytics asks for the GUI build of OpenCV, which needs libGL on a server.
   # The headless build replaces it (see override-dependencies below).
   "opencv-python-headless>=5.0.0.93",
+  "transformers>=5.18.0",
 ]
 
 [project.scripts]

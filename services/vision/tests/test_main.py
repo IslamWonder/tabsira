@@ -112,6 +112,11 @@ def test_health_when_the_detector_is_loaded(client: TestClient) -> None:
         "vocabularySize": 114,
         "vocabularyMode": "open",
         "error": None,
+        "reranker": "BAAI/bge-reranker-v2-m3",
+        "rerankerLoaded": False,
+        "rerankerError": (
+            "the weights of BAAI/bge-reranker-v2-m3 are missing; run scripts/fetch-weights.sh"
+        ),
     }
 
 

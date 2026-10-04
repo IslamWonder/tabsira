@@ -18,3 +18,10 @@ class DetectorUnavailableError(VisionError):
 
     def __init__(self, detail: str) -> None:
         super().__init__(503, "detector_unavailable", detail)
+
+
+class RerankerUnavailableError(VisionError):
+    """The reranker's weights are missing or cannot be loaded; callers fall back to their own order."""
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(503, "reranker_unavailable", detail)
