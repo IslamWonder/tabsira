@@ -232,7 +232,7 @@ async def make_account(
     maker: async_sessionmaker[AsyncSession], email: str = "reader@example.com"
 ) -> User:
     from src import security
-    from src.services import profile_service
+    from src.services import legal_service, profile_service
 
     async with maker() as session:
         user = User(
@@ -243,6 +243,8 @@ async def make_account(
         session.add(user)
         await session.flush()
         await profile_service.ensure_profile(session, user.id)
+        # The account has accepted the texts in force: these tests are about the scans.
+        legal_service.record_acceptance(session, Settings(_env_file=None), user.id)
         await session.commit()
     return user
 
