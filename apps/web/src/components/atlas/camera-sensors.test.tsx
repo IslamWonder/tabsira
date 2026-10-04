@@ -157,6 +157,31 @@ describe('useCameraStream', () => {
     expect(result.current.failure).toBeNull();
   });
 
+  it('cancels a start when the page is hidden before the stream is granted', async () => {
+    const { getUserMedia, track } = stubCamera('granted');
+    let grant: (stream: MediaStream) => void = () => undefined;
+    getUserMedia.mockImplementationOnce(
+      () => new Promise<MediaStream>((resolve) => (grant = resolve))
+    );
+    const { result } = renderHook(() => useCameraStream());
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.start();
+    });
+    hidePage();
+    expect(result.current.state).toBe('paused');
+    await act(async () => {
+      grant({ getTracks: () => [track] } as unknown as MediaStream);
+      await pending;
+    });
+    expect(track.stop).toHaveBeenCalledOnce();
+    expect(result.current.state).toBe('paused');
+    // Settled, nothing is pending: hiding the page again changes nothing.
+    act(() => result.current.stop());
+    hidePage();
+    expect(result.current.state).toBe('idle');
+  });
+
   it('lets the tracks go when the screen is left', async () => {
     const { track } = stubCamera('granted');
     const { result, unmount } = renderHook(() => useCameraStream());

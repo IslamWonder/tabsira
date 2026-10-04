@@ -68,10 +68,14 @@ export function useCameraStream(): CameraStream {
   // Each start and each stop takes a new number: a stream granted after the
   // camera was closed, or after a newer start, is stopped instead of shown.
   const attemptRef = useRef(0);
+  // A start waiting for its stream: hiding the page then must cancel it too,
+  // or a grant arriving while the page is hidden would light the camera.
+  const pendingRef = useRef(false);
 
   // Lets the camera go without saying anything about the state: the callers do.
   const release = useCallback(() => {
     attemptRef.current += 1;
+    pendingRef.current = false;
     stopTracks(streamRef.current);
     streamRef.current = null;
     if (videoRef.current !== null) {
@@ -100,6 +104,7 @@ export function useCameraStream(): CameraStream {
       // One stream at a time: a phone refuses a second camera while the first still holds it.
       release();
       const attempt = attemptRef.current;
+      pendingRef.current = true;
       setFailure(null);
       setState('starting');
       try {
@@ -123,6 +128,10 @@ export function useCameraStream(): CameraStream {
         if (attempt === attemptRef.current) {
           fail(cameraFailureOf(error));
         }
+      } finally {
+        if (attempt === attemptRef.current) {
+          pendingRef.current = false;
+        }
       }
     },
     [fail, release]
@@ -130,7 +139,10 @@ export function useCameraStream(): CameraStream {
 
   useEffect(() => {
     const onVisibility = () => {
-      if (document.visibilityState === 'hidden' && streamRef.current !== null) {
+      if (
+        document.visibilityState === 'hidden' &&
+        (streamRef.current !== null || pendingRef.current)
+      ) {
         release();
         setState('paused');
       }
