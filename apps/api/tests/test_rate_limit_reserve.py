@@ -1,4 +1,4 @@
-"""`rate_limit.reserve`: count before the work is done, over a window of its own."""
+"""`rate_limit.reserve_budgets`: count before the work is done, over a window of its own."""
 
 from __future__ import annotations
 
