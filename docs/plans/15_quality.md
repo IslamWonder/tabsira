@@ -1,6 +1,6 @@
 # 15 · Quality gates
 
-**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 14:51 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 15:13 (Tunis)
 
 Every change is tested; nothing merges below 100 % coverage.
 
@@ -9,7 +9,7 @@ Every change is tested; nothing merges below 100 % coverage.
 | 100 % coverage, lint and type checks on every merge | ✅     |                  |
 | Code summary command (make stats)                   | ✅     |                  |
 | Gold scenes evaluation (make eval)                  | 🔄     | With the engine. |
-| HTTP smoke test (make smoke)                        | ⬜     |                  |
+| HTTP smoke test (make smoke)                        | ✅     | 2026-10-04 15:13 |
 
 **How we check it**
 
@@ -19,7 +19,7 @@ Every change is tested; nothing merges below 100 % coverage.
 
 ### 15.1 HTTP smoke test
 
-- **Status:** 🔄 main machine
+- **Status:** ✅ 2026-10-04 15:13
 - **Goal:** `make smoke` checks the main pages and API routes of a running app, locally and against tabsira.me.
 - **Depends on:** 04.1
 - **Touches:** scripts/smoke (new), Makefile.
