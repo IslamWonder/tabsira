@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Annotated, Any, Literal
@@ -44,6 +45,8 @@ from src.pipeline.leak_guard import ScriptureLeakError
 from src.pipeline.prompt import load_prompt
 from src.pipeline.schemas import SceneAnalysis
 from src.scripture import rulings
+
+log = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = "insight_verifier_system.v1"
 MAX_OUTPUT_TOKENS = 4096
@@ -69,10 +72,6 @@ class CandidateVerdict(BaseModel):
 
 class VerifierOutput(BaseModel):
     candidates: list[CandidateVerdict]
-
-
-class VerifierLeakError(RuntimeError):
-    """The verifier kept writing scripture-like text after every attempt."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,7 +186,7 @@ async def _verify_one(
     guard: EngineGuard,
     attempts: int,
 ) -> dict[str, TextVerdict]:
-    """Judge one candidate's texts; an answer whose limits leak is asked again."""
+    """Judge one candidate's texts; an answer whose limits leak is asked again, then dropped."""
     system = load_prompt(SYSTEM_PROMPT)
     user = verifier_message(scene, [shortlist])
     known = shortlist.labelled()
@@ -209,11 +208,12 @@ async def _verify_one(
         try:
             await guard.ensure_clean(limits)
         except ScriptureLeakError as error:
-            if attempt == attempts:
-                raise VerifierLeakError(str(error)) from None
+            log.warning("verifier answer refused (attempt %d): %s", attempt, error)
             continue
         return {t.label: t for item in mine for t in item.texts if t.label in known}
-    raise AssertionError  # the loop returns or raises
+    # Still leaking: this candidate gets no verdict, so none of its texts passes the
+    # gate; the others are judged in their own calls and go on.
+    return {}
 
 
 def _ordered(

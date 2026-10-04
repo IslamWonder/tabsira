@@ -33,7 +33,6 @@ from src.pipeline.insight.evidence import (
     Chosen,
     GateResult,
     Shortlist,
-    VerifierLeakError,
     pick,
     seen_ids,
     verify,
@@ -355,7 +354,7 @@ async def test_the_verifier_keeps_known_labels_of_known_candidates_only():
     assert set(verdicts[0]) == {"Q1", "H1"}
 
 
-async def test_a_leaking_verifier_is_asked_again_then_refused():
+async def test_a_leaking_verifier_is_asked_again_then_its_candidate_gets_no_verdict():
     leaking = {
         "candidates": [
             {
@@ -364,15 +363,15 @@ async def test_a_leaking_verifier_is_asked_again_then_refused():
             }
         ]
     }
-    shortlist = Shortlist(candidate(), [found(1)], [])
+    shortlists = [Shortlist(candidate(), [found(1)], []), Shortlist(candidate(), [found(2)], [])]
+    clean = {"candidates": [{"candidate": 0, "texts": [verdict("Q1")]}]}
+    # The fake answers at once, so the first candidate takes both its attempts first.
+    client = FakeModelClient(answers=[leaking, leaking, clean])
 
-    with pytest.raises(VerifierLeakError):
-        await verify(
-            FakeModelClient(answers=[leaking, leaking]),
-            rain_scene(),
-            [shortlist],
-            EngineGuard(LeakGuard(), None),
-        )
+    verdicts = await verify(client, rain_scene(), shortlists, EngineGuard(LeakGuard(), None))
+
+    assert verdicts == {0: {}, 1: {"Q1": verdicts[1]["Q1"]}}
+    assert len(client.calls) == 3
 
 
 def test_pick_prefers_an_unseen_text_of_the_strongest_tier_and_reviews_otherwise():

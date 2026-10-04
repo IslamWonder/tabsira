@@ -60,7 +60,6 @@ from src.pipeline.insight.context import SceneContext, build_context
 from src.pipeline.insight.evidence import (
     GateResult,
     Shortlist,
-    VerifierLeakError,
     gate,
     seen_ids,
     shortlist_of,
@@ -215,7 +214,7 @@ class PipelineInsightEngine:
                         awaiting_ruling=awaiting,
                         stage_ms=clock.stage_ms,
                     )
-        except (AiCallError, PlannerLeakError, VerifierLeakError) as error:
+        except (AiCallError, PlannerLeakError) as error:
             log.warning("insight engine stopped by a model: %s", error)
             status = EngineStatus.MODEL_UNAVAILABLE
         except (SQLAlchemyError, OSError) as error:
