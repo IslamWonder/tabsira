@@ -1,7 +1,7 @@
 """add_oauth_state_acceptance
 
 Revision ID: 20261004_180000
-Revises: 20261004_170000
+Revises: 20261004_175000
 Create Date: 2026-10-04 18:00:00.000000
 
 Decision 35: a Google sign-up accepts the terms and the privacy policy too. The versions the
@@ -18,7 +18,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "20261004_180000"
-down_revision: str | Sequence[str] | None = "20261004_170000"
+down_revision: str | Sequence[str] | None = "20261004_175000"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
