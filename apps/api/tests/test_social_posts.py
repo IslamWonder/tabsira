@@ -24,15 +24,21 @@ from src.services.post_view import outcome_message
 from src.services.social_limits import SocialLimits, WriteKind
 from tests.helpers import any_id
 from tests.scripture.fixtures import hadith_text, verse_text
-from tests.support_social import ALLOW, REJECT, REVIEW, snapshot_for
+from tests.support_social import (
+    ALLOW,
+    REJECT,
+    REVIEW,
+    draft_post,
+    publish_post,
+    snapshot_for,
+)
 
 MODERATOR = uuid.uuid4()
 
 # ─── Making a draft ───────────────────────────────────────────────────────────
 
 
-async def create(member, insight, **body):
-    return await member.http.post("/posts", json={"insight_id": str(insight.insight_id), **body})
+create = draft_post
 
 
 async def test_a_draft_is_made_from_a_verified_insight_and_cites_the_store_by_reference(
@@ -469,11 +475,7 @@ async def test_a_post_edited_while_the_guard_judged_it_is_not_settled_on_the_old
 # ─── Reading a published post ─────────────────────────────────────────────────
 
 
-async def published(member, make_insight, **body):
-    post_id = (await create(member, make_insight(member), **body)).json()["id"]
-    response = await member.http.post(f"/posts/{post_id}/submit")
-    assert response.json()["status"] == "published"
-    return post_id
+published = publish_post
 
 
 async def test_a_published_post_is_public_to_a_guest_without_the_authors_private_details(

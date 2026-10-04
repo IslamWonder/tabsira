@@ -38,11 +38,11 @@ LIMITS: dict[WriteKind, tuple[int, int, float]] = {
 
 
 class SocialLimits:
-    """One `AddressLimits` per kind of write, built from `LIMITS` unless a test gives others."""
+    """One `AddressLimits` per kind of write, from `LIMITS`; a test may replace some kinds."""
 
     def __init__(self, table: dict[WriteKind, tuple[int, int, float]] | None = None) -> None:
         self._limits = {
-            kind: AddressLimits(*numbers) for kind, numbers in (table or LIMITS).items()
+            kind: AddressLimits(*numbers) for kind, numbers in {**LIMITS, **(table or {})}.items()
         }
 
     def hit(self, kind: WriteKind, account: str) -> float | None:

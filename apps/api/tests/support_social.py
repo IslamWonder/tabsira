@@ -231,3 +231,22 @@ async def new_comment(db: AsyncSession, post: Post, author: User, **columns: Any
     db.add(comment)
     await db.flush()
     return comment
+
+
+# ─── Driving the post routes ───
+
+
+async def draft_post(member: Member, insight: InsightSnapshot, **body: Any) -> Any:
+    """Ask for a draft of `insight` as `member`; returns the response."""
+    return await member.http.post("/posts", json={"insight_id": str(insight.insight_id), **body})
+
+
+async def publish_post(member: Member, make_insight: MakeInsight, **body: Any) -> str:
+    """Make a draft of a fresh insight of `member` and submit it; returns the post's id.
+
+    The guard must allow it: use the `guard` fixture and leave its verdict at the default.
+    """
+    post_id: str = (await draft_post(member, make_insight(member), **body)).json()["id"]
+    response = await member.http.post(f"/posts/{post_id}/submit")
+    assert response.json()["status"] == "published", response.text
+    return post_id

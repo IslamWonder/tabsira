@@ -32,6 +32,7 @@ from src.services import public_identity
 
 # The id of a post in a path: a positive 64-bit number, so a larger one is a 422, not a database error.
 PostIdPath = Annotated[int, Path(ge=1, le=MAX_PUBLIC_ID, description="The post's public id")]
+CommentIdPath = Annotated[int, Path(ge=1, le=MAX_PUBLIC_ID, description="The comment's public id")]
 
 
 class PublicIdentityIn(BaseModel):

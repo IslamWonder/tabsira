@@ -23,6 +23,7 @@ from src.routers import (
     auth,
     auth_email,
     client_errors,
+    comments,
     cookie_consent,
     geo,
     google_auth,
@@ -30,6 +31,8 @@ from src.routers import (
     members,
     posts,
     profile,
+    reactions,
+    reports,
     scripture,
     sitemap,
 )
@@ -56,6 +59,9 @@ OPENAPI_TAGS = [
         "name": "posts",
         "description": "Posts made from verified insights: drafts, submission, withdrawal.",
     },
+    {"name": "reactions", "description": "Likes and bookmarks."},
+    {"name": "comments", "description": "Comments on a post and replies to them."},
+    {"name": "reports", "description": "Reports of posts and comments, with a reason."},
     {
         "name": "members",
         "description": "The public handle and name, public profiles, follows and blocks.",
@@ -150,6 +156,9 @@ def create_app(
     app.include_router(sitemap.router)
     app.include_router(members.router)
     app.include_router(posts.router)
+    app.include_router(reactions.router)
+    app.include_router(comments.router)
+    app.include_router(reports.router)
     # The admin area is not mounted at all while its feature flag is off.
     if settings.feature_admin:
         install_admin(app, settings)
