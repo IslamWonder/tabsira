@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ar } from '@/messages/ar';
+import { messages } from '@/messages';
 
 const SRC = path.resolve(__dirname, '..');
 
@@ -21,6 +21,9 @@ const isTest = (file: string) => /\.test\.tsx?$/.test(file) || relative(file).st
 describe('source guards', () => {
   it('keeps user-visible Arabic in src/messages only (AGENTS.md)', () => {
     const offenders = sourceFiles(SRC)
+      // schema.d.ts is generated from the API's OpenAPI document: its Arabic is
+      // the API's own enum values (hadith classifications), not interface copy.
+      .filter((file) => relative(file) !== 'lib/api/schema.d.ts')
       .filter((file) => !isTest(file) && !relative(file).startsWith('messages/'))
       .filter((file) =>
         /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(readFileSync(file, 'utf8'))
@@ -42,8 +45,8 @@ describe('source guards', () => {
 
 describe('messages', () => {
   it('keeps the page title and description short enough for search results (master prompt §25)', () => {
-    expect(ar.meta.title.length).toBeLessThanOrEqual(65);
-    expect(ar.meta.description.length).toBeLessThanOrEqual(165);
+    expect(messages.meta.title.length).toBeLessThanOrEqual(65);
+    expect(messages.meta.description.length).toBeLessThanOrEqual(165);
   });
 
   it('has no empty string', () => {
@@ -57,11 +60,11 @@ describe('messages', () => {
         }
       }
     };
-    walk(ar, 'ar');
+    walk(messages, 'messages');
     expect(empty).toEqual([]);
   });
 
   it('joins a glimpse and a position with an Arabic comma', () => {
-    expect(ar.scene.glimpseAndPosition('أ', 'ب')).toBe('أ، ب');
+    expect(messages.scene.glimpseAndPosition('أ', 'ب')).toBe('أ، ب');
   });
 });
