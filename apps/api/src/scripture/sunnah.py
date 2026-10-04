@@ -150,24 +150,32 @@ class TrigramMatcher:
         return math.log((total + 1) / (len(self.postings.get(gram, ())) + 1)) + 1
 
     def match(self, query_id: str, threshold: float) -> list[tuple[int, float]]:
-        """Return (document, coverage) for every document covering at least `threshold`."""
-        grams = self.queries[query_id]
-        weights = {gram: self._idf(gram) for gram in grams}
+        """
+        Return (document, coverage) for every document covering at least `threshold`.
+
+        The rare 3-grams pick the candidates and add up their weight through
+        the postings; a candidate that cannot reach the threshold even with
+        every common 3-gram is dropped before those are looked up.
+        """
+        weights = {gram: self._idf(gram) for gram in self.queries[query_id]}
         total = sum(weights.values())
-        candidates = {
-            document
-            for gram in grams
-            if 0 < len(self.postings.get(gram, ())) <= CANDIDATE_MAX_DF
-            for document in self.postings[gram]
-        }
-        scored = (
-            (document, sum(w for g, w in weights.items() if g in self.documents[document]) / total)
-            for document in candidates
-        )
-        return sorted(
-            ((document, coverage) for document, coverage in scored if coverage >= threshold),
-            key=lambda pair: (-pair[1], pair[0]),
-        )
+        needed = threshold * total
+        rare = [g for g in weights if 0 < len(self.postings.get(g, ())) <= CANDIDATE_MAX_DF]
+        common = [g for g in weights if len(self.postings.get(g, ())) > CANDIDATE_MAX_DF]
+        common_weight = sum(weights[gram] for gram in common)
+        partial: dict[int, float] = defaultdict(float)
+        for gram in rare:
+            for document in self.postings[gram]:
+                partial[document] += weights[gram]
+        found = []
+        for document, rare_score in partial.items():
+            if rare_score + common_weight < needed:
+                continue
+            grams = self.documents[document]
+            score = rare_score + sum(weights[gram] for gram in common if gram in grams)
+            if score >= needed:
+                found.append((document, score / total))
+        return sorted(found, key=lambda pair: (-pair[1], pair[0]))
 
 
 @dataclass

@@ -116,6 +116,26 @@ def test_the_matcher_weighs_rare_grams_and_ignores_common_ones_for_candidates(mo
     assert matcher.match("q", 0.0) == []
 
 
+def test_candidates_that_cannot_reach_the_threshold_are_dropped(monkeypatch):
+    from src.scripture import sunnah
+
+    monkeypatch.setattr(sunnah, "CANDIDATE_MAX_DF", 1)
+    rare, other_rare, common, common_too = (
+        ("a", "b", "c"),
+        ("d", "e", "f"),
+        ("g", "h", "i"),
+        ("j", "k", "l"),
+    )
+    matcher = TrigramMatcher({"q": {rare, other_rare, common, common_too}})
+    matcher.add(1, "a b c g h i")
+    matcher.add(2, "d e f")
+    matcher.add(3, "g h i j k l")
+    matcher.add(4, "j k l")
+
+    assert [document for document, _ in matcher.match("q", 0.45)] == [1]
+    assert matcher.match("q", 0.99) == []
+
+
 async def test_records_are_linked_to_the_hadith_their_text_matches(db_session):
     await store_hadiths(db_session)
 
