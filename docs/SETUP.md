@@ -1,6 +1,6 @@
 # Setting up a machine
 
-A new laptop (Linux, macOS, or Linux in a virtual machine on Windows) ready to work: the databases filled with the scripture store, GeoNames and the scripture vectors, and the app running at `https://tabsira.test`, **without importing anything that is already there**. Every step below is safe to run again, and each one starts with the check that tells you it is already done. Task 15.4 turns these steps into one command, `make bootstrap`.
+A new laptop (Linux, macOS, or Linux in a virtual machine on Windows) ready to work: the databases filled with the scripture store, GeoNames and the scripture vectors, and the app running at `https://tabsira.test`, **without importing anything that is already there**. Every step below is safe to run again, and each one starts with the check that tells you it is already done. Task 15.4 turns these steps into one command, `make bootstrap`. Windows itself, without a virtual machine: [docs/SETUP-WINDOWS.md](SETUP-WINDOWS.md).
 
 Artifacts you make while working (exports, reports) go beside the checkout in `../tabsira-artifact/`, never into the repository.
 
