@@ -13,12 +13,13 @@ from src.errors import AppError, ErrorCode
 from src.redis_client import get_redis
 from src.scans.fetch import fetch_client, fetch_image
 from src.scans.queue import ScanQueue, get_scan_queue
-from src.schemas.public_id import MAX_PUBLIC_ID
+from src.schemas.public_id import PublicId
 from src.services.window_limiter import AddressLimits, limits_of, too_many_requests
 
 ImageFetcher = Callable[[str], Awaitable[bytes]]
-# A public id in a path (decision 37): a positive 64-bit number.
-PublicIdPath = Annotated[int, Path(ge=1, le=MAX_PUBLIC_ID)]
+# A public id in a path (decision 37): documented as the decimal string responses send,
+# since it may exceed the 2^53 a JavaScript number holds; parsed to an int here.
+PublicIdPath = Annotated[PublicId, Path()]
 
 
 def app_redis(request: Request, settings: SettingsDep) -> Redis:

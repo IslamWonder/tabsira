@@ -36,6 +36,23 @@ async def test_every_reference_in_the_openapi_document_resolves(client):
     assert "ScanFromUrl" in schema["components"]["schemas"]
 
 
+async def test_a_public_id_in_a_path_is_documented_as_the_string_responses_send(client):
+    schema = (await client.get("/openapi.json")).json()
+
+    documented = [
+        (parameter["schema"]["type"], parameter["schema"].get("pattern"))
+        for path, operations in schema["paths"].items()
+        if path.startswith(("/scans/", "/insights/", "/world/"))
+        for operation in operations.values()
+        for parameter in operation.get("parameters", [])
+        if parameter["in"] == "path"
+    ]
+
+    # Beyond 2^53, which a JavaScript number cannot hold: the web sends the string it got.
+    assert len(documented) >= 10
+    assert set(documented) == {("string", "^[1-9][0-9]{0,18}$")}
+
+
 async def test_every_route_documents_the_one_error_body(client):
     schema = (await client.get("/openapi.json")).json()
 
