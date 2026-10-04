@@ -165,6 +165,26 @@ sudo deploy/apply-config.sh --check                # does the host match the rel
 
 Log rotation (`/etc/logrotate.d/tabsira`) covers `/var/log/tabsira`; nginx rotates its own logs; the journal follows `journald.conf`.
 
+## Cost, alternatives and content review
+
+**What a scan costs.** Measured by `make eval` on the fifteen gold scenes with the real providers and recorded in [docs/EVALUATION.md](EVALUATION.md): $0.0204 a scan with the small-model reranker, and about $0.016 a scan after task 05.3 (run 3, «Runs of task 05.3»: $0.246 for the fifteen scenes with `RERANKER=off`, the default since decision 50), at about 18 s at p50 and 22 s at p95. A chat answer costs about $0.0012 (the twelve cases, $0.014). The admin area shows the running figures (AI cost and latency, decision 14); `AI_*__PRICES` holds the prices the numbers are computed from, so a price change is one setting, not a code change.
+
+**Alternatives to each dependency.**
+
+- The AI provider is one setting, `AI_PROVIDER=openai | ovh`, and every stage has its own model setting under `AI_OPENAI__*` and `AI_OVH__*`; switching provider switches the vision, planner, verifier, composer, embedding and chat models together (decisions 33 and 46). [docs/BENCHMARK.md](BENCHMARK.md) compares them on the same scenes: OpenAI `gpt-5.4-mini` is the default on quality (0.98), zero violations and speed (vision p95 5.7 s against 27 s), OVH `Qwen3.8-27B` is the measured fallback (quality 0.97, $0.0045 against $0.0033 a scan for the vision stage). `make benchmark` re-measures when a model or price changes. gpt-oss models are never used (AGENTS.md).
+- The reranker is `RERANKER=off | llm | cross_encoder` (decision 50): off by default, the small model when the owners want it back, the cross-encoder in `services/vision` when no second model may be called.
+- The detector is `services/vision` (Ultralytics YOLOE / YOLO-World) at `DETECTOR_URL`; a scan goes on without boxes when the service is down, since the vision model describes the scene on its own, so the detector can be replaced or dropped without stopping scans.
+- Error tracking is optional (`GLITCHTIP_DSN` empty means off, decision 24); analytics are off unless `GA_MEASUREMENT_ID` and consent are both present (decision 28).
+- The scripture store depends on nothing live: quranpedia's dumps and the hadith files are imported with their hashes checked, and the daily sync only applies quranpedia's corrections ([docs/SOURCES-AND-LICENSES.md](SOURCES-AND-LICENSES.md)).
+
+**Who reviews content.**
+
+- _Scripture_ is never written or edited by anyone in the app: the admin shows Quran and hadith records read-only (decision 14), and tests compare displayed text with its stored hash.
+- _Hadith grades_ come from dorar.net only and are recorded by the owners' editors (decisions 18 and 47): an editor opens dorar in a browser and records the ruling in the admin rulings queue (`/admin/rulings-queue`, ordered by demand) or with `python -m src.cli.record_ruling`, starting with the rain-scene hadiths Bukhari 1032 and 2320. Until a hadith has a ruling, its insight shows the verse alone. [docs/ADMIN.md](ADMIN.md) describes the queue.
+- _Posts, comments and map entries_ go through the automatic text guard first; what it holds, and what enough readers report, waits in the admin moderation queue (`/admin/moderation-queue`, decision 14) for a person to publish, refuse or remove it. Every decision is written to the moderation log and the audit log.
+- _Ontology candidates_ (labels the detector saw that the world ontology does not know) are reviewed in the admin with the reviewer recorded.
+- _Insights_ themselves are not edited by a moderator: an insight is published or withdrawn by its owner, and a published one can be reported like a post.
+
 ## What the owners must supply
 
 Listed on the owners' board; none of it is in git.
