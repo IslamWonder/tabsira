@@ -176,6 +176,7 @@ fi
 systemctl daemon-reload
 systemctl enable tabsira-api.service tabsira-vision.service tabsira-worker.service >/dev/null
 systemctl enable --now tabsira-sync-quran.timer tabsira-audit-retention.timer >/dev/null
-log "Reloading nginx (graceful)"
-systemctl reload nginx
+log "Reloading nginx (graceful; started when it is not running yet)"
+systemctl enable nginx >/dev/null 2>&1 || true
+systemctl reload-or-restart nginx
 ok "Host configuration applied. The API, vision and worker units pick up a changed unit at their next restart."
