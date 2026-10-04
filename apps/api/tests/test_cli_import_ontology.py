@@ -51,7 +51,8 @@ async def test_the_json_is_written_where_asked_and_its_folder_is_made(
     code = await execute(options(json_path=target))
 
     assert code == 0
-    assert target.read_text(encoding="utf-8") == export_json(real_ontology)
+    # Byte for byte: a CRLF written on Windows would change a tracked file.
+    assert target.read_bytes() == export_json(real_ontology).encode("utf-8")
     assert f"json: wrote {target}" in capsys.readouterr().out
 
 

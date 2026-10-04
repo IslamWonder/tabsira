@@ -83,7 +83,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         _say(f"  {target} is up to date ({time.perf_counter() - started:.2f} s)")
         return 0
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(data, encoding="utf-8")
+    # LF on every system: the file is tracked, and Windows would write CRLF.
+    target.write_text(data, encoding="utf-8", newline="\n")
     _say(
         f"  wrote {target} ({len(data.encode()) / 1024:.0f} KiB, {time.perf_counter() - started:.2f} s)"
     )

@@ -26,7 +26,8 @@ def test_the_document_is_parsed_and_the_json_written_where_asked(capsys, tmp_pat
     assert code == 0
     assert "learning path tabsira-masar-1.0: 16 domains, 96 units" in out.out
     assert f"wrote {target}" in out.out
-    assert target.read_text(encoding="utf-8") == dumps(real_path)
+    # Byte for byte: a CRLF written on Windows would change a tracked file.
+    assert target.read_bytes() == dumps(real_path).encode("utf-8")
     assert out.err == ""
 
 
