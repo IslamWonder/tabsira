@@ -115,8 +115,50 @@ async def test_a_chat_answer_that_copies_any_stored_text_is_refused(
     assert (refused.status_code, refused.json()["error"]) == (502, "CHAT_ANSWER_REJECTED")
 
 
+TOLD = [
+    {"section": "seen", "text": "قطرات على ورق نبتة.", "sources": []},
+    {"section": "sunnah", "text": "يعلّم الحديث دعاء المطر.", "sources": []},
+    {"section": "life", "text": "ادع بالدعاء الوارد.", "sources": ["hadith:bukhari:1032"]},
+]
+GROUNDED = {"text": "احفظ الدعاء.", "kind": "text_grounded", "grounded_in": ["hadith:bukhari:1032"]}
+
+
 NO_VERSE = {"quran_surah": None, "quran_ayah": None, "quran_evidence": None}
 NO_HADITH = {"hadith_collection": None, "hadith_number": None, "hadith_evidence": None}
+
+
+@pytest.mark.parametrize("ruled", [False, True])
+@pytest.mark.parametrize("with_verse", [True, False])
+async def test_the_chat_model_is_told_only_what_the_learner_is_shown(
+    browser, store, flow_settings, model, ruled, with_verse
+):
+    owner = await as_guest(browser, store, flow_settings)
+    async with store() as db:
+        if ruled:
+            await rule(db, "bukhari", "1032")
+        scan = scan_row(owner, status="done")
+        db.add(scan)
+        await db.flush()
+        insight = insight_row(
+            owner,
+            scan_id=scan.id,
+            explanation=TOLD,
+            small_step=GROUNDED,
+            **({} if with_verse else NO_VERSE),
+        )
+        db.add(insight)
+        await db.commit()
+    model.answers.append(said())
+
+    await ask(browser, str(insight.id))
+
+    call = model.calls[0]
+    hidden = ["يعلّم الحديث دعاء المطر.", "ادع بالدعاء الوارد.", "احفظ الدعاء.", "1032"]
+    assert "قطرات على ورق نبتة." in call["user"]
+    assert [text in call["user"] for text in hidden] == [ruled] * len(hidden)
+    assert ("«الحديث المعروض»" in call["system"]) is ruled
+    assert ("no hadith is shown" in call["system"]) is not ruled
+    assert ("«الآية المعروضة»" in call["system"]) is with_verse
 
 
 async def an_insight_with(browser, store, flow_settings, **values) -> str:

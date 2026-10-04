@@ -10,6 +10,9 @@ $explanation
 Why it appeared (clues, concept, limits)
 $why
 
+The small step
+$step
+
 Earlier questions in this insight
 $history
 

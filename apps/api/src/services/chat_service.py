@@ -37,13 +37,14 @@ from src.errors import AppError, ErrorCode
 from src.models import ChatMessage, ChatStatus, Hadith, Insight, QuranVerse
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
 from src.pipeline.prompt import load_prompt
+from src.routers.scripture import HadithOut, QuranVerseOut
 from src.scans.workflow import call_rows
 from src.schemas.insight import ChatReply
 from src.scripture.overlap import repeats_store
-from src.services.insight_view import message_out, shown_evidence
+from src.services.insight_view import explanation_out, message_out, shown_evidence, step_out
 
-SYSTEM_PROMPT = "insight_chat_system.v1"
-USER_PROMPT = "insight_chat_user.v1"
+SYSTEM_PROMPT = "insight_chat_system.v2"
+USER_PROMPT = "insight_chat_user.v2"
 MAX_OUTPUT_TOKENS = 1200
 # A pending answer older than this was left by a crash; its slot is given back.
 CHAT_RESERVATION = timedelta(minutes=5)
@@ -156,11 +157,26 @@ async def _cited_texts(db: AsyncSession, insight: Insight) -> list[str]:
     return [text for text in texts if text is not None]
 
 
-def _explanation(insight: Insight) -> str:
-    return (
-        "\n".join(f"- {part['section']}: {part['text']}" for part in insight.explanation)
-        or "(none)"
-    )
+def _shown_texts(verse: QuranVerseOut | None, hadith: HadithOut | None) -> str:
+    """Say which texts the learner sees, so the model never names one that is not shown."""
+    if verse is not None and hadith is not None:
+        return "a verse and a hadith are shown; call them «الآية المعروضة» and «الحديث المعروض»."
+    if verse is not None:
+        return "a verse is shown and no hadith is shown; call it «الآية المعروضة»."
+    if hadith is not None:
+        return "a hadith is shown and no verse is shown; call it «الحديث المعروض»."
+    return "no verse and no hadith is shown."
+
+
+def _explanation(verse: QuranVerseOut | None, hadith: HadithOut | None, insight: Insight) -> str:
+    """Return the explanation the learner sees: nothing said about a text not shown."""
+    parts = explanation_out(insight.explanation, verse, hadith)
+    return "\n".join(f"- {part.section}: {part.text}" for part in parts) or "(none)"
+
+
+def _step(verse: QuranVerseOut | None, hadith: HadithOut | None, insight: Insight) -> str:
+    step = step_out(insight.small_step, verse, hadith)
+    return f"- {step.label}: {step.text}" if step is not None else "(none)"
 
 
 def _why(insight: Insight) -> str:
@@ -223,8 +239,9 @@ async def _answer(
         glimpse=insight.glimpse,
         relation=insight.relation,
         references="; ".join(references) or "(none)",
-        explanation=_explanation(insight),
+        explanation=_explanation(verse, hadith, insight),
         why=_why(insight),
+        step=_step(verse, hadith, insight),
         history=await _history(db, insight),
         question=row.question,
     )
@@ -234,7 +251,7 @@ async def _answer(
         result = await client.chat_json(
             ChatModelOutput,
             stage=AiStage.CHAT,
-            system=load_prompt(SYSTEM_PROMPT).text,
+            system=load_prompt(SYSTEM_PROMPT).render(shown_texts=_shown_texts(verse, hadith)),
             user=user,
             max_output_tokens=MAX_OUTPUT_TOKENS,
         )
