@@ -469,13 +469,24 @@ def build_engine(
     )
 
 
+def active_reranker(settings: Settings) -> RerankerKind:
+    """Return the reranker that runs: the one RERANKER names, or OFF when it has nothing to call."""
+    if settings.reranker is RerankerKind.LLM and not settings.ai.rerank_model:
+        return RerankerKind.OFF
+    if settings.reranker is RerankerKind.CROSS_ENCODER and not settings.reranker_url:
+        return RerankerKind.OFF
+    return settings.reranker
+
+
 def build_reranker(
     settings: Settings, http: httpx.AsyncClient, client: ModelClient
 ) -> Reranker | None:
-    """Return the reranker RERANKER names, or None when it is off or has nothing to call."""
+    """Return the active reranker, or None when reranking is off."""
     timeout = settings.reranker_timeout_seconds
-    if settings.reranker is RerankerKind.LLM and settings.ai.rerank_model:
-        return LlmReranker(client, model=settings.ai.rerank_model, timeout_seconds=timeout)
-    if settings.reranker is RerankerKind.CROSS_ENCODER and settings.reranker_url:
-        return RerankerClient(settings.reranker_url, http, timeout_seconds=timeout)
-    return None
+    match active_reranker(settings):
+        case RerankerKind.LLM:
+            return LlmReranker(client, model=settings.ai.rerank_model, timeout_seconds=timeout)
+        case RerankerKind.CROSS_ENCODER:
+            return RerankerClient(settings.reranker_url, http, timeout_seconds=timeout)
+        case RerankerKind.OFF:
+            return None
