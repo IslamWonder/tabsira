@@ -50,6 +50,7 @@ from src.routers import (
 from src.scans.queue import close_queue
 from src.services import social_sitemap  # noqa: F401 - registers the posts and profiles sitemaps
 from src.services.insight_source import InsightSource
+from src.services.insight_table_source import InsightTableSource
 from src.storage.notice import announce_storage
 from src.storage.probe import check_storage
 
@@ -159,7 +160,7 @@ def create_app(
     Build the application; `settings` defaults to the process-wide ones.
 
     `insight_source` is where the social network reads the insight a post publishes (see
-    `services/insight_source.py`); without one, publishing answers 503.
+    `services/insight_source.py`): the insights table unless a test hands in a double.
     """
     settings = settings or get_settings()
     # Before the application exists: the SDK hooks the framework as it is assembled.
@@ -184,7 +185,9 @@ def create_app(
         redoc_url=None if settings.is_production else "/redoc",
     )
     app.state.settings = settings
-    app.state.insight_source = insight_source
+    app.state.insight_source = (
+        insight_source if insight_source is not None else InsightTableSource()
+    )
     document_models(app, scans.DOCUMENTED_BODIES)
 
     register_error_handlers(app)
