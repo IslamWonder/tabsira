@@ -240,6 +240,13 @@ export function placeGrowing(shape: CardShape, parts: Parts): Placed {
   return { width: shape.width, height, layers: placed.layers(height) };
 }
 
+/**
+ * Messaging apps show a link preview only under about 300 KB (v2 §25). The card
+ * is a few flat colours and anti-aliased text on a dark ground, so a 256-colour
+ * palette keeps every pixel it shows and roughly halves the bytes of a tall card.
+ */
+export const CARD_MAX_BYTES = 300_000;
+
 export async function paint({ width, height, layers }: Placed): Promise<Buffer> {
   return sharp(background(width, height))
     .composite(
@@ -249,6 +256,6 @@ export async function paint({ width, height, layers }: Placed): Promise<Buffer> 
         top: Math.round(layer.top),
       }))
     )
-    .png({ compressionLevel: 6 })
+    .png({ palette: true, compressionLevel: 6 })
     .toBuffer();
 }

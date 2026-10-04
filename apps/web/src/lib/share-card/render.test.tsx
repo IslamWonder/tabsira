@@ -5,6 +5,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { messages } from '@/messages';
 import { HADITH_TEXT, sha256, VERSE_TEXT } from '@/test/scan';
 import { publicInsightOut, withLongScripture } from '@/test/share';
+import { CARD_MAX_BYTES } from './compose';
 import { renderCard } from './render';
 import { drawText, type TextSpec } from './text-image';
 
@@ -34,6 +35,21 @@ describe('the share card image', () => {
     const { png, info } = await render();
     expect(png.subarray(0, 8).toString('hex')).toBe(PNG_SIGNATURE);
     expect([info.width, info.height]).toEqual([1200, 630]);
+  });
+
+  it('stays under 300 KB, so messaging apps show it, from a typical card to the longest verse', async () => {
+    // The fixture verse is about 30 characters; forty of them are longer than the
+    // longest verse of the Quran, and twelve hadiths fill the tall card.
+    const cases = [
+      publicInsightOut(),
+      withLongScripture(publicInsightOut(), 12, 12),
+      withLongScripture(publicInsightOut(), 40, 12),
+      withLongScripture(publicInsightOut(), 40, 400),
+    ];
+    for (const insight of cases) {
+      const { png } = await render(insight);
+      expect(png.length).toBeLessThan(CARD_MAX_BYTES);
+    }
   });
 
   it('draws the verse and the hadith exactly as the API returns them, with their stored hashes', async () => {

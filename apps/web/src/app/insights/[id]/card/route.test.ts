@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CARD_MAX_BYTES } from '@/lib/share-card/compose';
 import { Busy } from '@/lib/share-card/limiter';
 import { apiError, mockApi } from '@/test/api';
 import { publicInsightOut } from '@/test/share';
@@ -22,6 +23,9 @@ describe('GET /insights/{id}/card', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store');
     const bytes = Buffer.from(await response.arrayBuffer());
     expect(bytes.subarray(1, 4).toString()).toBe('PNG');
+    // Under 300 KB, or messaging apps show no preview (v2 §25).
+    expect(bytes.length).toBeLessThan(CARD_MAX_BYTES);
+    expect(response.headers.get('Content-Length')).toBe(String(bytes.length));
   });
 
   it('answers 404 for anything that is not public, with nothing cached', async () => {
