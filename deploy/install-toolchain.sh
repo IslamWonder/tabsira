@@ -86,7 +86,11 @@ if [[ -s "$NVM_DIR/nvm.sh" ]]; then
 	if [[ "$(pnpm --version 2>/dev/null || true)" == "$PNPM_VERSION" ]]; then
 		ok "pnpm $PNPM_VERSION"
 	else
-		act "install pnpm $PNPM_VERSION" npm install -g "pnpm@$PNPM_VERSION"
+		# npm 11 runs a package's install scripts only when allowed, and pnpm links its
+		# platform binary in one (install.js): without the flag `pnpm` does not run.
+		act "install pnpm $PNPM_VERSION" npm install -g --allow-scripts=pnpm "pnpm@$PNPM_VERSION"
+		$CHECK || [[ "$(pnpm --version 2>/dev/null || true)" == "$PNPM_VERSION" ]] ||
+			die "pnpm $PNPM_VERSION does not run after the install; see npm's output above."
 	fi
 	if [[ "$(pm2 --version 2>/dev/null || true)" == "$PM2_VERSION" ]]; then
 		ok "pm2 $PM2_VERSION"
