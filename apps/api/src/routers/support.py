@@ -17,6 +17,7 @@ from src.config import Settings
 from src.deps import DbDep, SettingsDep, UngatedOptionalUser
 from src.errors import AppError, ErrorCode
 from src.models.login_attempt import AttemptKind
+from src.models.user import User
 from src.schemas.auth import StatusOut
 from src.schemas.support import SupportIn
 from src.services import auth_service, email_service, rate_limit
@@ -28,6 +29,15 @@ router = APIRouter(prefix="/support", tags=["support"])
 MAX_BODY_BYTES = 8 * 1024
 # A whole site (a /48) is one sender for the limit.
 SUPPORT_IPV6_PREFIX = 48
+
+
+def _matches_account(user: User | None, address: str) -> bool | None:
+    """None for a guest; else whether the typed address is the account's own, verified one."""
+    if user is None:
+        return None
+    return user.email_verified_at is not None and (
+        auth_service.normalize_email(address) == user.email
+    )
 
 
 async def _reserve(db: AsyncSession, settings: Settings, request: Request, address: str) -> None:
@@ -78,6 +88,7 @@ async def send_support(
         name=body.name,
         text=body.message,
         account_id=str(user.id) if user is not None else None,
+        account_match=_matches_account(user, body.email),
     )
     if not sent:
         raise AppError(

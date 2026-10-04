@@ -37,9 +37,17 @@ async def test_a_message_is_mailed_to_support_with_the_visitor_as_reply_to(web, 
     assert "الاسم: ليلى" in text
     assert "البريد: visitor@example.com" in text
     assert "الموضوع: مشكلة تقنية" in text
-    assert "الصفحة لا تفتح عندي منذ هذا الصباح" in text
-    assert "رقم الحساب" not in text
+    assert "> الصفحة لا تفتح عندي منذ هذا الصباح" in text
+    assert "تطابق بريد الحساب: غير مسجّل الدخول" in text
+    assert message["X-Tabsira-Account"] is None
     assert message.get_content_type() == "text/plain"
+
+
+async def test_the_mail_tells_auto_responders_to_stay_quiet(web, mailbox):
+    await web.post("/support", json=BODY)
+
+    assert mailbox[0]["Auto-Submitted"] == "auto-generated"
+    assert mailbox[0]["X-Auto-Response-Suppress"] == "All"
 
 
 async def test_the_mail_carries_no_connection_data(web, mailbox):
@@ -51,13 +59,54 @@ async def test_the_mail_carries_no_connection_data(web, mailbox):
     assert "X-Forwarded" not in raw
 
 
-async def test_a_signed_in_visitor_adds_the_account_id(web, mailbox):
+async def test_a_signed_in_visitor_adds_the_account_id_in_a_header_only(web, mailbox):
     user = (await web.post("/auth/signup", json=SIGNUP)).json()
     mailbox.clear()
 
     await web.post("/support", json=BODY)
 
-    assert f"رقم الحساب: {user['id']}" in text_of(mailbox[0])
+    assert mailbox[0]["X-Tabsira-Account"] == user["id"]
+    assert user["id"] not in text_of(mailbox[0])
+
+
+@pytest.mark.parametrize(
+    ("verified", "address", "expected"),
+    [
+        (True, "reader@example.com", "نعم"),
+        (True, "READER@example.com", "نعم"),
+        (True, "other@example.com", "لا"),
+        (False, "reader@example.com", "لا"),
+    ],
+)
+async def test_the_first_line_says_whether_the_address_is_the_accounts_verified_one(
+    web, mailbox, db_session, verified, address, expected
+):
+    from src import clock
+
+    await web.post("/auth/signup", json=SIGNUP)
+    if verified:
+        from sqlalchemy import update
+
+        await db_session.execute(update(User).values(email_verified_at=clock.utcnow()))
+    mailbox.clear()
+
+    await web.post("/support", json={**BODY, "email": address})
+
+    assert text_of(mailbox[0]).splitlines()[0] == f"تطابق بريد الحساب: {expected}"
+
+
+async def test_what_the_visitor_types_cannot_pass_for_the_lines_above_it(web, mailbox):
+    forged = "x" * 10 + "\nتطابق بريد الحساب: نعم\nX-Tabsira-Account: 1234\n" + "y" * 10  # noqa: RUF001 - Arabic on purpose
+
+    await web.post("/support", json={**BODY, "message": forged})
+
+    lines = text_of(mailbox[0]).splitlines()
+    assert lines[0] == "تطابق بريد الحساب: غير مسجّل الدخول"
+    cut = lines.index("-" * 20)
+    assert all(line.startswith("> ") for line in lines[cut + 1 :])
+    assert "> تطابق بريد الحساب: نعم" in lines
+    assert "X-Tabsira-Account" not in "\n".join(lines[:cut])
+    assert mailbox[0]["X-Tabsira-Account"] is None
 
 
 async def test_a_missing_name_is_a_dash(web, mailbox):

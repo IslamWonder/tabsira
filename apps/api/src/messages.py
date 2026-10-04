@@ -40,7 +40,10 @@ class Messages:
     support_label_topic: str
     support_label_name: str
     support_label_email: str
-    support_label_account: str
+    support_label_match: str
+    support_match_yes: str
+    support_match_no: str
+    support_match_guest: str
     support_label_message: str
     support_topics: dict[str, str]
     # Cookie consent: the categories a visitor chooses between (decision 32).
@@ -87,7 +90,10 @@ ARABIC = Messages(
     support_label_topic="الموضوع",
     support_label_name="الاسم",
     support_label_email="البريد",
-    support_label_account="رقم الحساب",
+    support_label_match="تطابق بريد الحساب",
+    support_match_yes="نعم",
+    support_match_no="لا",
+    support_match_guest="غير مسجّل الدخول",
     support_label_message="الرسالة",
     support_topics={
         "account": "الحساب",

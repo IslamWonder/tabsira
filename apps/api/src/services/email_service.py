@@ -197,24 +197,32 @@ def build_support_message(
     name: str | None,
     text: str,
     account_id: str | None,
+    account_match: bool | None = None,
     language: str | None = None,
 ) -> EmailMessage:
     """
     Build the mail the support form sends to SUPPORT_EMAIL, replies going to the visitor.
 
-    Plain text only. The body carries what the visitor wrote and the account id when
-    they were signed in; nothing about their connection (no IP, no user agent, no header).
+    Plain text only. Nothing about the visitor's connection goes in (no IP, no user agent).
+    The account id, when they were signed in, is in the `X-Tabsira-Account` header, which
+    the visitor cannot write to. The body starts with one header-like line saying whether
+    the typed address is the signed-in account's verified one; then, after a separator, the
+    visitor's message with every line quoted by "> ", so nothing they type can pass for the
+    lines above it, the account line included.
     """
     catalog = messages.messages_for(language)
     label = catalog.support_topics[topic]
+    if account_match is None:
+        match = catalog.support_match_guest
+    else:
+        match = catalog.support_match_yes if account_match else catalog.support_match_no
     lines = [
+        f"{catalog.support_label_match}: {match}",
         f"{catalog.support_label_topic}: {label}",
         f"{catalog.support_label_name}: {name or '-'}",
         f"{catalog.support_label_email}: {reply_to}",
     ]
-    if account_id is not None:
-        lines.append(f"{catalog.support_label_account}: {account_id}")
-    lines += ["", f"{catalog.support_label_message}:", text]
+    lines += ["-" * 20, *(f"> {line}" for line in text.splitlines())]
     sender_domain = parseaddr(settings.mail_from)[1].rpartition("@")[2] or None
     message = EmailMessage()
     message["Subject"] = catalog.support_subject.format(topic=label)
@@ -223,6 +231,11 @@ def build_support_message(
     message["Reply-To"] = reply_to
     message["Date"] = formatdate(localtime=False, usegmt=True)
     message["Message-ID"] = make_msgid(domain=sender_domain)
+    # Keeps auto-responders and vacation replies from answering the team's mailbox.
+    message["Auto-Submitted"] = "auto-generated"
+    message["X-Auto-Response-Suppress"] = "All"
+    if account_id is not None:
+        message["X-Tabsira-Account"] = account_id
     message.set_content("\n".join(lines))
     return message
 
@@ -235,6 +248,7 @@ async def send_support_message(
     name: str | None,
     text: str,
     account_id: str | None,
+    account_match: bool | None = None,
 ) -> bool:
     """
     Send one support message now. Returns False, never raising, when it cannot go.
@@ -253,6 +267,7 @@ async def send_support_message(
             name=name,
             text=text,
             account_id=account_id,
+            account_match=account_match,
         )
         await asyncio.to_thread(deliver, settings, message)
     except Exception as error:
