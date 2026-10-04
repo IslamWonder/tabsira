@@ -51,6 +51,7 @@ async def test_a_new_profile_has_every_answer_unknown_and_nothing_assumed(web, r
         "theme": "system",
         "reduced_motion": "system",
         "sound_enabled": False,
+        "questions_asked": False,
         "consent_version": None,
     }
     assert response.headers["cache-control"] == "no-store"
@@ -97,6 +98,45 @@ async def test_an_empty_patch_changes_nothing(web, reader):
     after = (await web.patch("/profile", json={})).json()
 
     assert after == before
+
+
+async def test_skipping_every_question_keeps_every_answer_unknown_and_never_asks_again(web, reader):
+    skipped = (await web.patch("/profile", json={"questions_asked": True})).json()
+
+    assert (skipped["goals"], skipped["knowledge_level"], skipped["age_range"]) == (
+        [],
+        "unknown",
+        "unknown",
+    )
+    assert skipped["questions_asked"] is True
+    # The next insight finds the flag set and offers nothing; an answer later leaves it set.
+    later = (await web.patch("/profile", json={"knowledge_level": "unknown"})).json()
+    assert (later["questions_asked"], later["knowledge_level"]) == (True, "unknown")
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        {"goals": []},
+        {"goals": ["reflection"]},
+        {"knowledge_level": "general"},
+        {"age_range": "unknown"},
+    ],
+)
+async def test_answering_or_skipping_one_question_records_that_they_were_asked(web, reader, answer):
+    assert (await web.get("/profile")).json()["questions_asked"] is False
+
+    body = (await web.patch("/profile", json=answer)).json()
+
+    assert body["questions_asked"] is True
+    for field, value in answer.items():
+        assert body[field] == value
+
+
+async def test_a_setting_outside_the_questions_does_not_mark_them_asked(web, reader):
+    body = (await web.patch("/profile", json={"theme": "dark", "gender": "woman"})).json()
+
+    assert body["questions_asked"] is False
 
 
 async def test_goals_take_several_values_including_curiosity_dropping_repeats_and_keeping_order(

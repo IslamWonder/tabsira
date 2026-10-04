@@ -8102,6 +8102,10 @@
             "type": "boolean",
             "title": "Sound Enabled"
           },
+          "questions_asked": {
+            "type": "boolean",
+            "title": "Questions Asked"
+          },
           "consent_version": {
             "anyOf": [
               {
@@ -8133,6 +8137,7 @@
           "theme",
           "reduced_motion",
           "sound_enabled",
+          "questions_asked",
           "consent_version",
           "updated_at"
         ],
@@ -8237,12 +8242,23 @@
               }
             ],
             "title": "Sound Enabled"
+          },
+          "questions_asked": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questions Asked"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "ProfilePatch",
-        "description": "The fields a user may change, any of them, alone.\n\nThe three consent switches are not here: they change only through\n`POST /consents`, which records the answer. A field sent as null is refused;\nto clear an answer, send `unknown` (or `[]` for the goals)."
+        "description": "The fields a user may change, any of them, alone.\n\nThe three consent switches are not here: they change only through\n`POST /consents`, which records the answer. A field sent as null is refused;\nto clear an answer, send `unknown` (or `[]` for the goals).\n\nSkipping the optional questions is `questions_asked: true` alone: every\nfield stays `unknown` and the questions are never offered again. Answering\nany of the three question fields records the same."
       },
       "ProgressOut": {
         "properties": {

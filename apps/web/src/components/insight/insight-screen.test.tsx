@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { setGuest, setSignedIn } from '@/account/session';
+import { forgetSession, setGuest, setSignedIn } from '@/account/session';
 import { apiError, mockApi, type Route } from '@/test/api';
 import { USER } from '@/test/fixtures';
 import {
@@ -20,6 +20,8 @@ const SCAN = '110000000000000001';
 
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
+  forgetSession();
+  window.localStorage.clear();
 });
 
 function serve(insight = insightOut(), extra: Record<string, Route> = {}) {
@@ -279,6 +281,33 @@ describe('InsightScreen: «تمّ»', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'أتابع كضيف' }));
     expect(screen.queryByRole('button', { name: 'أتابع كضيف' })).toBeNull();
     expect(screen.getByRole('region', { name: 'اكتملت بصيرتك' })).toBeInTheDocument();
+  });
+
+  it('offers a guest the optional questions after a first «تمّ», each skippable, and only then', async () => {
+    setGuest();
+    await open(insightOut(), {
+      [`POST /insights/${ID}/complete`]: { body: completionOut() },
+      'GET /me/progress': { body: progressOut() },
+    });
+    expect(screen.queryByRole('heading', { name: 'كيف تحب أن تتعلم وتتأمل؟' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
+    const questions = await screen.findByRole('region', { name: 'كيف تحب أن تتعلم وتتأمل؟' });
+    expect(within(questions).getByRole('button', { name: 'تخطَّ' })).toBeInTheDocument();
+    // The completion panel comes first: the questions never stand between «تمّ» and what it earned.
+    const panel = screen.getByRole('region', { name: 'اكتملت بصيرتك' });
+    expect(
+      panel.compareDocumentPosition(questions) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('asks no question when «تمّ» was already recorded on this insight', async () => {
+    setGuest();
+    await open(insightOut(), {
+      [`POST /insights/${ID}/complete`]: { body: completionOut({ first_time: false }) },
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
+    await screen.findByRole('region', { name: 'اكتملت بصيرتك' });
+    expect(screen.queryByRole('region', { name: 'كيف تحب أن تتعلم وتتأمل؟' })).toBeNull();
   });
 
   it('says the save failed, announces nothing, and lets the reader try again', async () => {

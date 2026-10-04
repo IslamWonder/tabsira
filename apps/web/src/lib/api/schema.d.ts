@@ -3468,6 +3468,8 @@ export interface components {
       reduced_motion: components['schemas']['ReducedMotion'];
       /** Sound Enabled */
       sound_enabled: boolean;
+      /** Questions Asked */
+      questions_asked: boolean;
       /** Consent Version */
       consent_version: string | null;
       /**
@@ -3483,6 +3485,10 @@ export interface components {
      *     The three consent switches are not here: they change only through
      *     `POST /consents`, which records the answer. A field sent as null is refused;
      *     to clear an answer, send `unknown` (or `[]` for the goals).
+     *
+     *     Skipping the optional questions is `questions_asked: true` alone: every
+     *     field stays `unknown` and the questions are never offered again. Answering
+     *     any of the three question fields records the same.
      */
     ProfilePatch: {
       /** Goals */
@@ -3497,6 +3503,8 @@ export interface components {
       reduced_motion?: components['schemas']['ReducedMotion'] | null;
       /** Sound Enabled */
       sound_enabled?: boolean | null;
+      /** Questions Asked */
+      questions_asked?: boolean | null;
     };
     /** ProgressOut */
     ProgressOut: {

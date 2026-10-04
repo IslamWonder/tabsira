@@ -3,6 +3,7 @@
 import type { Route } from 'next';
 import { useState } from 'react';
 import { useSession } from '@/account/session';
+import { FirstInsightQuestions } from '@/components/account/first-insight-questions';
 import { StatusScreen } from '@/components/app/status-screen';
 import { ReadingLayout } from '@/components/layout/layouts';
 import { Button, LinkButton } from '@/components/ui/button';
@@ -182,6 +183,7 @@ export function InsightScreen({ insightId }: { insightId: string }) {
             invitationClosed={invitationClosed}
           />
         )}
+        {finish.completion?.first_time ? <FirstInsightQuestions max={3} /> : null}
         {finish.status === 'done' && finish.completion === null ? (
           <div className="flex flex-col items-start gap-2">
             <p className="m-0 font-semibold text-fg">{T.done.alreadyTitle}</p>
