@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from '@/account/session';
 import { useCapture } from '@/components/capture/capture-provider';
-import { CameraIcon } from '@/components/icons';
-import { Button } from '@/components/ui/button';
+import { CameraIcon, ProfileIcon } from '@/components/icons';
+import { Button, LinkButton } from '@/components/ui/button';
 import { SoundToggle } from '@/components/ui/sound-toggle';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cx } from '@/lib/cx';
@@ -64,15 +64,22 @@ export function TopBar() {
         <div className="flex shrink-0 items-center gap-2">
           <SoundToggle />
           <ThemeToggle />
-          {/* Shown until the API says someone is signed in: most visitors are guests. */}
+          {/* Shown until the API says someone is signed in: most visitors are guests.
+              Signing in is a secondary button, never a second glowing fill (Von Restorff);
+              creating an account sits beside it from desktop width, and the sign-in page
+              offers it too, so a tablet loses nothing. */}
           {session.status === 'signed-in' ? null : (
-            <Link
-              href="/signin"
-              aria-current={pathname === '/signin' ? 'page' : undefined}
-              className="hidden min-h-12 items-center px-3 text-[0.9375rem] text-glass-fg-soft transition-colors duration-200 hover:text-glass-fg desktop:inline-flex"
-            >
-              {messages.nav.signIn}
-            </Link>
+            <>
+              <LinkButton href="/signin" variant="secondary" current={pathname === '/signin'}>
+                <ProfileIcon width="18" height="18" />
+                {messages.nav.signIn}
+              </LinkButton>
+              <span className="hidden desktop:contents">
+                <LinkButton href="/signup" variant="ghost" current={pathname === '/signup'}>
+                  {messages.nav.signUp}
+                </LinkButton>
+              </span>
+            </>
           )}
           <Button variant="cta" onClick={capture.open} aria-haspopup="dialog">
             <CameraIcon width="20" height="20" strokeWidth={2} />

@@ -61,6 +61,7 @@ export const ar = {
     me: 'ملفي',
     captureScene: 'صوّر مشهدًا',
     signIn: 'دخول',
+    signUp: 'أنشئ حسابًا',
   },
 
   comingSoon: {
