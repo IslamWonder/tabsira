@@ -13,7 +13,7 @@ import MePage, { metadata as meMetadata } from './me/page';
 import PracticePage, { metadata as practiceMetadata } from './me/practice/page';
 import NotFound, { metadata as notFoundMetadata } from './not-found';
 import OfflinePage, { metadata as offlineMetadata } from './offline/page';
-import ScenePage, { metadata as sceneMetadata } from './page';
+import HomePage, { metadata as homeMetadata } from './page';
 import WorldPage, { metadata as worldMetadata } from './world/page';
 
 vi.mock('next/navigation', () => ({
@@ -89,13 +89,12 @@ describe('placeholder routes', () => {
     );
   });
 
-  it('opens on the scene', () => {
-    // The root layout's CaptureProvider holds every page; the scene sends through it.
-    render(<ScenePage />, { wrapper: CaptureProvider });
-    expect(
-      screen.getByRole('img', { name: 'نبتة زيتون صغيرة تتلقى قطرات المطر' })
-    ).toBeInTheDocument();
-    expect(sceneMetadata.alternates?.canonical).toBe('/');
+  it('opens on the landing page, its camera one tap away', () => {
+    // The root layout's CaptureProvider holds every page; the landing page sends through it.
+    render(<HomePage />, { wrapper: CaptureProvider });
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('انظر إلى العالم');
+    expect(screen.getAllByRole('button', { name: /صوّر مشهدًا/ }).length).toBeGreaterThan(0);
+    expect(homeMetadata.alternates?.canonical).toBe('/');
   });
 });
 

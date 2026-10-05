@@ -9,6 +9,9 @@ describe('SiteFooter', () => {
   it('links the site pages under every page but the world, which fills the screen', () => {
     where.pathname = '/community';
     const { unmount } = render(<SiteFooter />);
+    expect(screen.getByRole('heading', { name: 'استكشف تبصرة' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'المساعدة والسياسات' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'كيف تعمل؟' })).toHaveAttribute('href', '/#how');
     expect(screen.getByRole('link', { name: 'سياسة الخصوصية' })).toBeInTheDocument();
     unmount();
 

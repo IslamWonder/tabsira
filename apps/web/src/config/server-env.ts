@@ -1,3 +1,4 @@
+import type { LandingFeatures } from '@/components/landing/landing-model';
 import { apiOrigin, siteOrigin } from '@/lib/site';
 
 /**
@@ -74,6 +75,24 @@ const TRUE_WORDS = new Set(['1', 'true', 't', 'yes', 'y', 'on']);
 export function featureFlag(name: string, env: Env = process.env): boolean {
   const value = env[`FEATURE_${name}`]?.trim().toLowerCase() ?? '';
   return value === '' ? true : TRUE_WORDS.has(value);
+}
+
+/**
+ * What the landing page may announce: the public subset of the flags, read here at request
+ * time and handed to the page as plain values. Nothing administrative is in it, and the
+ * camera anchor, off, is not a thing the page ever offers.
+ */
+export function landingFeatures(env: Env = process.env): LandingFeatures {
+  return {
+    chat: featureFlag('CHAT', env),
+    world: featureFlag('WORLD', env),
+    treasure: featureFlag('TREASURE', env),
+    social: featureFlag('SOCIAL', env),
+    atlas: featureFlag('ATLAS', env),
+    cameraDiscovery: featureFlag('CAMERA_DISCOVERY', env),
+    photoStorage: featureFlag('PHOTO_STORAGE', env),
+    canonicalVerify: featureFlag('CANONICAL_VERIFY', env),
+  };
 }
 
 /** The camera discovery, levels A and B (decision 9); off in production until proven on phones. */

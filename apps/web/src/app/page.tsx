@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
+import { LandingPage } from '@/components/landing/landing-page';
 import { JsonLd } from '@/components/legal/json-ld';
-import { SceneExperience } from '@/components/scene/scene-experience';
+import { landingFeatures } from '@/config/server-env';
 import { organizationJsonLd, pageMetadata, webSiteJsonLd } from '@/lib/seo';
 import { messages } from '@/messages';
 
@@ -12,13 +13,16 @@ export const metadata: Metadata = pageMetadata({
   share: messages.seo.homeShare,
 });
 
-/** The scene: the prepared rain photo first, before any account or permission (tajriba A01). */
-export default function ScenePage() {
+/**
+ * The landing page: what TABSIRA does, the prepared example and the camera, one tap each,
+ * before any account or permission (tajriba A01). Its features follow the server's flags.
+ */
+export default function HomePage() {
   return (
     <>
       <JsonLd data={organizationJsonLd()} />
       <JsonLd data={webSiteJsonLd()} />
-      <SceneExperience />
+      <LandingPage features={landingFeatures()} />
     </>
   );
 }

@@ -79,6 +79,23 @@ describe('CaptureProvider', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('offers the prepared example as the third way in, and closes on the way', async () => {
+    stubCamera('granted');
+    render(
+      <CaptureProvider>
+        <Opener />
+      </CaptureProvider>
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'صوّر مشهدًا' }));
+    const sheet = await screen.findByRole('dialog', { name: 'صوّر مشهدًا' });
+    const example = within(sheet).getByRole('link', { name: 'جرّب مثالًا' });
+    expect(example).toHaveAttribute('href', '/#example');
+
+    await userEvent.click(example);
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
   it('is needed by every page that captures', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     expect(() => renderHook(() => useCapture())).toThrow('outside a CaptureProvider');

@@ -428,3 +428,47 @@ export function OpenBookIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export function GemIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M6.5 4h11l3.5 5-9 11L3 9z" />
+      <path d="M3 9h18M9.5 4 8 9l4 11 4-11-1.5-5" />
+    </Icon>
+  );
+}
+
+export function PhotosIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="6.5" width="14" height="13" rx="2" />
+      <path d="M7 3.5h11.5a2 2 0 0 1 2 2V16" />
+      <path d="m3.5 16 4-4 3.5 3.5 2.5-2.5 4 4" />
+    </Icon>
+  );
+}
+
+export function PlayIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M8 5.5v13l10-6.5z" />
+    </Icon>
+  );
+}
+
+export function MenuIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </Icon>
+  );
+}
+
+export function VerifyIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8 12.5 2.5 2.5L16 9.5" />
+    </Icon>
+  );
+}
