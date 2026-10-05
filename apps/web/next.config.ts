@@ -36,6 +36,7 @@ export default function nextConfig(phase: string): NextConfig {
     // a path the tracer cannot follow; name the files so a standalone build carries them.
     outputFileTracingIncludes: {
       '/insights/[id]/card': [QURAN_SOURCE, ...TEXT_SOURCES].map((file) => `./${file}`),
+      '/insights/[id]/preview': TEXT_SOURCES.map((file) => `./${file}`),
     },
     // sharp is already a dependency; AVIF trims the landing cards further.
     images: { formats: ['image/avif', 'image/webp'] },

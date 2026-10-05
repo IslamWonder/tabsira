@@ -42,12 +42,18 @@ describe('the description', () => {
     expect(cut).toBe(`${'😀'.repeat(164)}…`);
   });
 
-  it('builds the page seo from the title and the glimpse only', () => {
+  it('builds the page seo from the title and the glimpse, with its own preview picture', () => {
     expect(publicInsightSeo(publicInsightOut({ id: '7' }))).toEqual({
       path: '/insights/7',
       title: 'عنوان البصيرة الأولى',
       description: 'لمحة البصيرة الأولى',
       type: 'article',
+      image: {
+        url: '/insights/7/preview',
+        width: 1200,
+        height: 630,
+        alt: 'عنوان البصيرة الأولى',
+      },
     });
   });
 });

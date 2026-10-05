@@ -4,6 +4,7 @@ import { createApiClient } from '@/lib/api/client';
 import { attempt, type Result } from '@/lib/api/result';
 import type { components } from '@/lib/api/schema';
 import { type PageSeo, pageMetadata } from '@/lib/seo';
+import { PREVIEW_HEIGHT, PREVIEW_WIDTH } from '@/lib/share-card/preview-size';
 
 export type PublicInsight = components['schemas']['PublicInsightOut'];
 
@@ -63,6 +64,13 @@ export function publicInsightSeo(insight: PublicInsight): PageSeo {
     title: insight.title,
     description: describe(insight.glimpse),
     type: 'article',
+    // Its own picture in a link preview: the published photo, if any, with the title.
+    image: {
+      url: `${publicInsightPath(insight.id)}/preview`,
+      width: PREVIEW_WIDTH,
+      height: PREVIEW_HEIGHT,
+      alt: insight.title,
+    },
   };
 }
 
