@@ -193,6 +193,18 @@ Decision 44. Production keeps consented photos in a private S3-compatible bucket
 
 The platform starts with about 1000 mock members (decision 63, plan 22). `tools/mockdata` writes `tabsira-mock-v1.json` to `../tabsira-data/mock/`; the owners upload it to their bucket (never committed). The importer reads it from a path or from `s3://bucket/key` with the same `S3_*` keys as the photos (no new setting).
 
+One command does it all, on a development machine or a host (like `make data`, it checks before it writes):
+
+```bash
+scripts/mock-data.sh import                                                        # ../tabsira-data/mock/tabsira-mock-v1.json
+scripts/mock-data.sh import s3://<bucket>/mock/tabsira-mock-v1.json --allow-production   # on production
+scripts/mock-data.sh reset s3://<bucket>/mock/tabsira-mock-v1.json --allow-production    # clean, then import
+scripts/mock-data.sh clean --allow-production                                      # remove every mock row
+scripts/mock-data.sh status                                                        # how many mock members, insights, posts
+```
+
+`import` and `reset` first apply any missing migration and stop when the scripture store, the hadiths or GeoNames are not installed. The Make targets call the importer directly:
+
 ```bash
 make mock-import MOCK_FILE=../tabsira-data/mock/tabsira-mock-v1.json
 make mock-import MOCK_FILE=s3://<bucket>/mock/tabsira-mock-v1.json MOCK_ARGS=--allow-production   # on production
