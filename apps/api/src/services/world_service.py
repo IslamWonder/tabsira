@@ -11,6 +11,12 @@ a lack in the learner; nothing here is a score.
 A treasure is read from the store when it shows, like any evidence: one whose
 text no longer shows (its hadith since ruled other than صحيح or حسن) is neither
 flagged nor revealed, and records no exposure.
+
+The world picture (decision 59) shows what was learned as circles lifted from
+its clouds: one reveal per owner and concept, made by the completion that
+learned the concept first, in the lowest slot its region's layout still has
+free, and never moved. Learning a concept again widens nothing; a region whose
+slots are all taken widens no more, and its insights gather under its landmark.
 """
 
 from __future__ import annotations
@@ -18,7 +24,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import cast
 
-from sqlalchemy import or_, select
+from sqlalchemy import Text, exists, func, literal, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,6 +41,7 @@ from src.models import (
     Treasure,
     WorldPlace,
     WorldRelation,
+    WorldReveal,
 )
 from src.owner import PLACE, TREASURE, Owner, not_found
 from src.pipeline.engine import HadithRef, QuranRef
@@ -45,6 +52,7 @@ from src.schemas.world import (
     PositionOut,
     RegionOut,
     RelationOut,
+    RevealOut,
     TreasureFlag,
     TreasureOut,
     TreasureUnitOut,
@@ -52,7 +60,7 @@ from src.schemas.world import (
     WorldPlaceOut,
 )
 from src.services import learner_service, treasure
-from src.services.content import Region, load_regions
+from src.services.content import Region, load_layout, load_regions
 from src.services.insight_view import evidence
 
 
@@ -87,6 +95,213 @@ async def ensure_place(db: AsyncSession, owner: Owner, region: Region) -> tuple[
         )
     ).one()
     return place, created is not None
+
+
+def concept_key(insight: Insight) -> str:
+    """
+    Name the concept an insight teaches: its learning path unit, whose id the path keeps.
+
+    masar.md gives its 96 units fixed ids that a machine-made title never replaces; an
+    insight with no unit is its own concept, so two unknown ones are never merged.
+    """
+    if insight.learning_unit_id:
+        return f"unit:{insight.learning_unit_id}"
+    return f"insight:{insight.id}"
+
+
+# `concept_key` written in SQL, for the repair's query.
+_CONCEPT_OF_INSIGHT = func.coalesce(
+    literal("unit:") + func.nullif(Insight.learning_unit_id, ""),
+    literal("insight:") + Insight.id.cast(Text),
+)
+
+
+async def _reveal_of(db: AsyncSession, owner: Owner, key: str) -> WorldReveal | None:
+    found: WorldReveal | None = await db.scalar(
+        select(WorldReveal).where(owner.where(WorldReveal), WorldReveal.concept_key == key)
+    )
+    return found
+
+
+async def _taken_slots(
+    db: AsyncSession, owner: Owner, layout_version: str, region_id: str
+) -> set[int]:
+    return set(
+        await db.scalars(
+            select(WorldReveal.slot).where(
+                owner.where(WorldReveal),
+                WorldReveal.layout_version == layout_version,
+                WorldReveal.region_id == region_id,
+            )
+        )
+    )
+
+
+async def reveal_concept(
+    db: AsyncSession, owner: Owner, insight: Insight, place: WorldPlace
+) -> tuple[WorldReveal | None, bool]:
+    """
+    Give a learned insight's concept its circle of the picture, once; say whether it was made now.
+
+    The concept's reveal, when the owner already has one, comes back unchanged. Otherwise
+    the concept takes the lowest slot of its region the layout still has free, with the
+    circle the layout gives that slot, and None comes back when no slot is free. Two
+    completions at once take neither one concept nor one slot twice: both are unique, and
+    the one that loses the race reads again and takes the next slot or the winner's reveal.
+    """
+    key = concept_key(insight)
+    layout = load_layout()
+    region = layout.region(place.region_id)
+    # Each lost race means another reveal was made: one per slot at most, then the concept's.
+    attempts = len(region.slots) + 1 if region is not None else 1
+    for _attempt in range(attempts):
+        existing = await _reveal_of(db, owner, key)
+        if existing is not None:
+            return existing, False
+        if region is None:
+            return None, False
+        taken = await _taken_slots(db, owner, layout.version, region.id)
+        free = next((index for index in range(len(region.slots)) if index not in taken), None)
+        if free is None:
+            return None, False
+        slot = region.slots[free]
+        made = await db.scalar(
+            insert(WorldReveal)
+            .values(
+                **owner.columns(),
+                insight_id=insight.id,
+                place_id=place.id,
+                concept_key=key,
+                region_id=region.id,
+                layout_version=layout.version,
+                slot=free,
+                theme=region.theme,
+                x=slot.x,
+                y=slot.y,
+                radius=slot.radius,
+                learned_at=insight.completed_at or clock.utcnow(),
+            )
+            .on_conflict_do_nothing()
+            .returning(WorldReveal.id)
+        )
+        if made is not None:
+            return await db.get_one(WorldReveal, made), True
+    return None, False
+
+
+async def _place_of(db: AsyncSession, owner: Owner, insight: Insight) -> WorldPlace:
+    """Return the insight's place, making it (and pointing the insight at it) when it has none."""
+    if insight.place_id is not None:
+        return await db.get_one(WorldPlace, insight.place_id)
+    place, _created = await ensure_place(db, owner, await region_of(db, insight))
+    insight.place_id = place.id
+    await db.flush()
+    return place
+
+
+async def ensure_reveals(db: AsyncSession, owner: Owner) -> bool:
+    """
+    Reveal every learned concept of the owner that has no reveal yet, in the order learned.
+
+    A completion makes its reveal in its own transaction; this gives one to what was
+    learned before reveals existed or while the world was switched off, from the
+    completed insights alone, and is safe to run again or at the same time. What it
+    makes counts as shown: an old learning does not play the effect of a new one. A
+    concept whose region has no free slot left is passed over without a query, so a
+    full region costs nothing on later loads. Return whether it made anything.
+    """
+    pending = (
+        await db.scalars(
+            select(Insight)
+            .where(
+                owner.where(Insight),
+                Insight.completed_at.is_not(None),
+                ~exists().where(
+                    owner.where(WorldReveal), WorldReveal.concept_key == _CONCEPT_OF_INSIGHT
+                ),
+            )
+            .order_by(Insight.completed_at, Insight.id)
+        )
+    ).all()
+    if not pending:
+        return False
+    layout = load_layout()
+    places = {place.id: place for place in await _places(db, owner)}
+    taken: dict[str, int] = {}
+    for given in await _reveals(db, owner):
+        if given.layout_version == layout.version:
+            taken[given.region_id] = taken.get(given.region_id, 0) + 1
+    made = False
+    done: set[str] = set()
+    for insight in pending:
+        key = concept_key(insight)
+        if key in done:
+            # A later insight of a concept this loop already revealed, or found no room for.
+            continue
+        done.add(key)
+        known = places.get(insight.place_id) if insight.place_id is not None else None
+        if known is not None and not _has_room(known.region_id, taken):
+            continue
+        place = known or await _place_of(db, owner, insight)
+        reveal, created = await reveal_concept(db, owner, insight, place)
+        if reveal is not None and created:
+            reveal.shown_at = clock.utcnow()
+            taken[place.region_id] = taken.get(place.region_id, 0) + 1
+            made = True
+    await db.flush()
+    return made
+
+
+def _has_room(region_id: str, taken: dict[str, int]) -> bool:
+    """Tell whether the current layout still has a free slot in a region, from the slots taken."""
+    region = load_layout().region(region_id)
+    return region is not None and taken.get(region_id, 0) < len(region.slots)
+
+
+async def mark_shown(db: AsyncSession, owner: Owner | None, reveal_ids: list[int]) -> None:
+    """Record that the world played these reveals of the owner's; another owner's ids change nothing."""
+    if owner is None:
+        return
+    await db.execute(
+        update(WorldReveal)
+        .where(
+            owner.where(WorldReveal),
+            WorldReveal.id.in_(reveal_ids),
+            WorldReveal.shown_at.is_(None),
+        )
+        .values(shown_at=clock.utcnow())
+    )
+    await db.commit()
+
+
+def reveal_out(reveal: WorldReveal) -> RevealOut:
+    region = load_layout().region(reveal.region_id)
+    return RevealOut(
+        id=reveal.id,
+        place_id=reveal.place_id,
+        region_id=reveal.region_id,
+        insight_id=reveal.insight_id,
+        landmark=reveal.slot == 0,
+        theme=reveal.theme,
+        icon=region.icon if region is not None else "",
+        x=reveal.x,
+        y=reveal.y,
+        radius=reveal.radius,
+        learned_at=reveal.learned_at,
+        shown=reveal.shown_at is not None,
+    )
+
+
+async def _reveals(db: AsyncSession, owner: Owner) -> list[WorldReveal]:
+    return list(
+        (
+            await db.scalars(
+                select(WorldReveal)
+                .where(owner.where(WorldReveal))
+                .order_by(WorldReveal.learned_at, WorldReveal.id)
+            )
+        ).all()
+    )
 
 
 async def record_relations(db: AsyncSession, owner: Owner, insight: Insight, place_id: int) -> None:
@@ -272,8 +487,16 @@ async def _places(db: AsyncSession, owner: Owner) -> list[WorldPlace]:
 
 
 async def place_out(
-    db: AsyncSession, place: WorldPlace, treasures: dict[int, Treasure]
+    db: AsyncSession,
+    place: WorldPlace,
+    treasures: dict[int, Treasure],
+    reveals: dict[str, int] | None = None,
 ) -> WorldPlaceOut:
+    """
+    Return a place with its completed insights; `reveals` maps concept keys to reveal ids.
+
+    Without `reveals` the owner's reveals are read here, for a place returned alone.
+    """
     insights = (
         await db.scalars(
             select(Insight)
@@ -281,6 +504,9 @@ async def place_out(
             .order_by(Insight.completed_at)
         )
     ).all()
+    if reveals is None:
+        owner = Owner(user_id=place.user_id, guest_key=place.guest_key)
+        reveals = {row.concept_key: row.id for row in await _reveals(db, owner)}
     ready = treasures.get(place.id)
     return WorldPlaceOut(
         id=place.id,
@@ -289,7 +515,12 @@ async def place_out(
         created_at=place.created_at,
         last_visited_at=place.last_visited_at,
         insights=[
-            PlaceInsightOut(id=row.id, title=row.title, completed_at=row.completed_at)
+            PlaceInsightOut(
+                id=row.id,
+                title=row.title,
+                completed_at=row.completed_at,
+                reveal_id=reveals.get(concept_key(row)),
+            )
             for row in insights
             if row.completed_at is not None
         ],
@@ -298,8 +529,17 @@ async def place_out(
 
 
 async def world(db: AsyncSession, settings: Settings, owner: Owner | None) -> WorldOut:
-    """Return the whole map: every region with its fog, the owner's places and threads."""
+    """
+    Return the whole map: every region with its fog, the owner's places, reveals and threads.
+
+    What was learned without a reveal (before reveals existed, or with the world off)
+    gets one first, so the picture always says what the completed insights say.
+    """
     regions = load_regions()
+    if owner is not None and await ensure_reveals(db, owner):
+        await db.commit()
+    reveals = await _reveals(db, owner) if owner is not None else []
+    by_concept = {reveal.concept_key: reveal.id for reveal in reveals}
     places = await _places(db, owner) if owner is not None else []
     by_region = {place.region_id: place for place in places}
     rows = await db.execute(
@@ -329,6 +569,7 @@ async def world(db: AsyncSession, settings: Settings, owner: Owner | None) -> Wo
     return WorldOut(
         version=regions.version,
         path_version=regions.path_version,
+        layout_version=load_layout().version,
         regions=[
             RegionOut(
                 id=region.id,
@@ -341,7 +582,7 @@ async def world(db: AsyncSession, settings: Settings, owner: Owner | None) -> Wo
             )
             for region in regions.regions
         ],
-        places=[await place_out(db, place, treasures) for place in places],
+        places=[await place_out(db, place, treasures, by_concept) for place in places],
         relations=[
             RelationOut(
                 place_a_id=relation.place_a_id,
@@ -353,6 +594,7 @@ async def world(db: AsyncSession, settings: Settings, owner: Owner | None) -> Wo
             )
             for relation in relations
         ],
+        reveals=[reveal_out(reveal) for reveal in reveals],
     )
 
 

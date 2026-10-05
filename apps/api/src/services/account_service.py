@@ -20,7 +20,7 @@ from src.models.scan import ChatMessage, ChatStatus, Insight, Scan
 from src.models.session import Session
 from src.models.timeseries import EvidenceExposure
 from src.models.user import OAuthAccount, User
-from src.models.world import Treasure, WorldPlace
+from src.models.world import Treasure, WorldPlace, WorldReveal
 from src.scans import buffer
 from src.schemas.account import AccountExport, LearningExport, PhotoExport
 from src.schemas.cookie_consent import CookieConsentExport
@@ -85,6 +85,13 @@ async def export_learning(db: AsyncSession, user_id: uuid.UUID) -> LearningExpor
             select(WorldPlace).where(WorldPlace.user_id == user_id).order_by(WorldPlace.created_at)
         )
     ).all()
+    reveals = (
+        await db.scalars(
+            select(WorldReveal)
+            .where(WorldReveal.user_id == user_id)
+            .order_by(WorldReveal.learned_at, WorldReveal.id)
+        )
+    ).all()
     treasures = (
         await db.scalars(
             select(Treasure)
@@ -113,6 +120,7 @@ async def export_learning(db: AsyncSession, user_id: uuid.UUID) -> LearningExpor
             "insights": insights,
             "chat_messages": await _chat_export(db, insights, messages),
             "places": places,
+            "reveals": reveals,
             "treasures": treasures,
             "learner_units": units,
             "exposures": exposures,

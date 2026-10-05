@@ -1,6 +1,6 @@
 # 07 · Personal world
 
-**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 16:09 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-05 12:00 (Tunis)
 
 Each completed insight lights a place in a fog-covered world, organised by the learning path. Hidden treasures are found along the way.
 
@@ -8,6 +8,8 @@ Each completed insight lights a place in a fog-covered world, organised by the l
 | ------------------------------------------- | ------ | --------------------------- |
 | World data: places, threads, treasures      | ✅     | Built; merges after review. |
 | World screen with fog, places and treasures | 🔄     | In progress.                |
+| Reveals of the world picture (decision 59)  | ✅     | API, layout and repair.     |
+| World picture screen (decision 59)          | 🔄     | In progress.                |
 
 **How we check it**
 
@@ -22,3 +24,11 @@ Each completed insight lights a place in a fog-covered world, organised by the l
 - **Depends on:** 04.1
 - **Touches:** apps/web world components and route.
 - **Done when:** Empty state for a new guest works; related tests pass.
+
+### 07.2 The world as one picture under clouds (decision 59)
+
+- **Status:** 🔄 2026-10-05 12:00 — API done (`world_reveals`, layout 1, the reveal at «تمّ», the repair of earlier completions, `POST /world/reveals/shown`); the screen is in progress.
+- **Goal:** The owners' world kit: clouds over one landscape, a reveal per learned concept, «بصائري».
+- **Depends on:** 07.1
+- **Touches:** apps/api world models, services and routes; data/world/layout-1.json; apps/web world components and route.
+- **Done when:** A newcomer sees clouds only; a completion lifts its concept's circle once, kept on the server and shown after a reload or on another device; repeats and races make one reveal; «بصائري» lists every learned insight; related tests pass.
