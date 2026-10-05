@@ -122,7 +122,7 @@ function community(features: LandingFeatures): Story {
   }
   return {
     id: 'community',
-    image: { src: '/landing/treasure-community.webp', alt: F.community.alt },
+    image: { src: '/landing/courtyard-lanterns.webp', alt: F.community.alt },
     tag: F.community.tag,
     title: F.community.title,
     lead: F.community.lead,
