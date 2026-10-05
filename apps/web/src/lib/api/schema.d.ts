@@ -1719,6 +1719,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/atlas/entries/page': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The entries of a map window, nearest the centre first
+     * @description Return one page of the window's visible entries by distance from the map's centre, and the total.
+     *
+     *     `total` counts every visible entry of the window, not the page. Ask for the next page with the
+     *     same window and centre and the `next_cursor`. The centre is used for this request only; no
+     *     distance is returned. Entries of members a block stands between are left out.
+     */
+    get: operations['entries_page_atlas_entries_page_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/atlas/entries/{entry_id}': {
     parameters: {
       query?: never;
@@ -2093,6 +2117,21 @@ export interface components {
        * @description West, south, east, north of the members' public points, to zoom to the group
        */
       bbox: number[];
+    };
+    /**
+     * AtlasEntriesPage
+     * @description One page of the entries in a window, nearest the map's centre first.
+     */
+    AtlasEntriesPage: {
+      /** Items */
+      items: components['schemas']['AtlasFeature'][];
+      /** Next Cursor */
+      next_cursor: string | null;
+      /**
+       * Total
+       * @description Visible entries in the whole window, not in the page
+       */
+      total: number;
     };
     /**
      * AtlasEntryFeature
@@ -8239,6 +8278,47 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['AtlasClusterCollection'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  entries_page_atlas_entries_page_get: {
+    parameters: {
+      query: {
+        west: number;
+        south: number;
+        east: number;
+        north: number;
+        center_lat: number;
+        center_lng: number;
+        since?: string | null;
+        country?: string | null;
+        concept?: string | null;
+        cursor?: string | null;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AtlasEntriesPage'];
         };
       };
       /** @description An error */

@@ -226,6 +226,14 @@ class AtlasClusterCollection(BaseModel):
     truncated: bool = Field(description="More groups lie in the window than were returned")
 
 
+class AtlasEntriesPage(BaseModel):
+    """One page of the entries in a window, nearest the map's centre first."""
+
+    items: list[AtlasFeature]
+    next_cursor: str | None
+    total: int = Field(ge=0, description="Visible entries in the whole window, not in the page")
+
+
 class AtlasEntryOut(BaseModel):
     """A published entry on its own page: the insight by reference, the public point, its place."""
 

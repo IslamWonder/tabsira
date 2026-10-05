@@ -58,6 +58,7 @@ from src.schemas.atlas import (
     AtlasClusterCollection,
     AtlasClusterFeature,
     AtlasClusterProperties,
+    AtlasEntriesPage,
     AtlasEntryFeature,
     AtlasEntryOut,
     AtlasEntryProperties,
@@ -98,6 +99,8 @@ _MERCATOR_TILE_PX = 256
 _MERCATOR_HALF_M = 20_037_508.342789244
 # Web Mercator stops here; a point nearer the pole is placed in the last row of cells.
 _MERCATOR_MAX_LAT = 85.0511287798
+# A cursor holds a distance, not a time; `at` is a fixed one so that the shared cursor fits.
+_DISTANCE_CURSOR_AT = datetime(1970, 1, 1, tzinfo=UTC)
 PLACE_PAGE_DEFAULT = 20
 PLACE_PAGE_MAX = 50
 ORPHAN_RADIUS_DEFAULT_M = 150_000
@@ -851,6 +854,61 @@ async def clusters_in(
             )
         )
     return AtlasClusterCollection(features=features, truncated=truncated)
+
+
+async def entries_page(
+    db: AsyncSession,
+    window: Window,
+    centre: tuple[float, float],
+    filters: Filters,
+    cursor: cursors.Cursor | None,
+    limit: int,
+    viewer: User | None = None,
+    *,
+    sponsoring: bool = True,
+) -> AtlasEntriesPage:
+    """
+    Return a page of the visible entries in a window, nearest the centre first, with their total.
+
+    The distance is on the globe, from the centre `(lat, lng)` to the entry's public point;
+    ties break by id, so a cursor `(distance, id)` never skips or repeats an entry. The centre is
+    used for these queries only: no distance is returned and nothing is kept.
+    """
+    here = cast(func.ST_SetSRID(func.ST_MakePoint(centre[1], centre[0]), 4326), Geography)
+    distance = func.ST_Distance(cast(MapEntry.public_geom, Geography), here)
+
+    def inside(*columns: Any) -> Select[Any]:
+        statement = _visible(_joined(*columns), filters, viewer, sponsoring=sponsoring)
+        return statement.where(_envelopes(window))
+
+    total = await db.scalar(inside(func.count(MapEntry.id)))
+    statement = inside(MapEntry, Insight, User, distance.label("distance")).order_by(
+        distance, MapEntry.id
+    )
+    if cursor is not None:
+        if cursor.score is None:
+            raise cursors.invalid()
+        statement = statement.where(
+            (distance > cursor.score) | ((distance == cursor.score) & (MapEntry.id > cursor.id))
+        )
+    rows = (await db.execute(statement.limit(limit + 1))).all()
+    page = rows[:limit]
+    sponsors = await _sponsors(db, [row[0].id for row in page], viewer, sponsoring)
+    last = page[-1] if len(rows) > limit else None
+    return AtlasEntriesPage(
+        items=[
+            _feature(entry, insight, author, sponsors.get(entry.id), sponsoring=sponsoring)
+            for entry, insight, author, _ in page
+        ],
+        next_cursor=(
+            None
+            if last is None
+            else cursors.encode(
+                cursors.Cursor(at=_DISTANCE_CURSOR_AT, id=last[0].id, score=float(last[3]))
+            )
+        ),
+        total=int(total or 0),
+    )
 
 
 async def published_entry(db: AsyncSession, entry_id: int, viewer: User | None = None) -> MapEntry:

@@ -30,6 +30,7 @@ from src.features import FeatureFlag
 from src.scans.deps import PublicIdPath
 from src.schemas.atlas import (
     AtlasClusterCollection,
+    AtlasEntriesPage,
     AtlasEntryOut,
     AtlasFeatureCollection,
     AtlasOrphansOut,
@@ -196,6 +197,42 @@ async def clusters_in_window(
         Window(west=west, south=south, east=east, north=north),
         Filters(since=since, country=country, concept=concept),
         zoom,
+        viewer,
+        sponsoring=settings.is_enabled(FeatureFlag.ATLAS_SPONSORSHIP),
+    )
+
+
+@router.get("/atlas/entries/page", summary="The entries of a map window, nearest the centre first")
+async def entries_page(
+    db: DbDep,
+    settings: SettingsDep,
+    viewer: OptionalUser,
+    west: Degrees,
+    south: Latitude,
+    east: Degrees,
+    north: Latitude,
+    center_lat: Latitude,
+    center_lng: Degrees,
+    since: date | None = None,
+    country: Country = None,
+    concept: Concept = None,
+    cursor: str | None = None,
+    limit: PageLimit = atlas_service.PLACE_PAGE_DEFAULT,
+) -> AtlasEntriesPage:
+    """
+    Return one page of the window's visible entries by distance from the map's centre, and the total.
+
+    `total` counts every visible entry of the window, not the page. Ask for the next page with the
+    same window and centre and the `next_cursor`. The centre is used for this request only; no
+    distance is returned. Entries of members a block stands between are left out.
+    """
+    return await atlas_service.entries_page(
+        db,
+        Window(west=west, south=south, east=east, north=north),
+        (center_lat, center_lng),
+        Filters(since=since, country=country, concept=concept),
+        cursors.decode(cursor),
+        limit,
         viewer,
         sponsoring=settings.is_enabled(FeatureFlag.ATLAS_SPONSORSHIP),
     )

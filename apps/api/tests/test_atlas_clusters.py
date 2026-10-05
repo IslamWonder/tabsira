@@ -14,6 +14,7 @@ import pytest
 
 from src.geo.privacy import approximate
 from src.services import atlas_service
+from src.services import cursor as cursors
 from tests import geo_dataset as world_data
 from tests.test_atlas import CELL_M, EXACT, _insight, _place, keys_of
 
@@ -254,12 +255,147 @@ async def test_a_bad_window_or_zoom_is_refused(make_member, world):
     ).status_code == 422
 
 
+# ─── The page ───
+
+
+def _page_params(**extra):
+    return {**WHOLE, "center_lat": 36.8, "center_lng": 10.18, **extra}
+
+
+async def _page(client, **extra):
+    return await client.http.get("/atlas/entries/page", params=_page_params(**extra))
+
+
+async def _seed_by_distance(db, author) -> list[str]:
+    """Five entries; the ids come back nearest the centre first, the two nearest tied."""
+    far = await _at(db, author, 37.5, 10.2)
+    near_a = await _at(db, author, *EXACT)
+    mid = await _at(db, author, 37.0, 10.2)
+    near_b = await _at(db, author, *EXACT)
+    farthest = await _at(db, author, 40.0, 10.2)
+    assert near_a != near_b
+    return [near_a, near_b, mid, far, farthest]
+
+
+async def test_the_page_lists_the_nearest_first_with_a_cursor_and_the_total(
+    db_session, make_member, world
+):
+    author = await make_member("author")
+    guest = await make_member(signed_in=False)
+    expected = await _seed_by_distance(db_session, author)
+
+    first = await _page(guest, limit=2)
+    second = await _page(guest, limit=2, cursor=first.json()["next_cursor"])
+    third = await _page(guest, limit=2, cursor=second.json()["next_cursor"])
+
+    assert first.status_code == 200, first.text
+    assert first.headers["cache-control"] == "no-store"
+    pages = [r.json() for r in (first, second, third)]
+    assert [[i["id"] for i in p["items"]] for p in pages] == [
+        expected[:2],
+        expected[2:4],
+        expected[4:],
+    ]
+    # The tie of the two nearest, and of any two, breaks by id.
+    assert int(expected[0]) < int(expected[1])
+    assert [p["total"] for p in pages] == [5, 5, 5]
+    assert pages[2]["next_cursor"] is None
+    assert set(pages[0]) == {"items", "next_cursor", "total"}
+    assert pages[0]["items"][0]["properties"]["author"]["handle"] == "author"
+    # A distance is used to order and never shown.
+    assert "distance" not in keys_of(pages[0]) and "distance" not in first.text
+    assert str(EXACT[0]) not in first.text and str(EXACT[1]) not in first.text
+
+
+async def test_the_pages_neither_skip_nor_repeat_when_an_entry_appears_between_them(
+    db_session, make_member, world
+):
+    author = await make_member("author")
+    guest = await make_member(signed_in=False)
+    expected = await _seed_by_distance(db_session, author)
+    first = await _page(guest, limit=2)
+
+    newcomer = await _at(db_session, author, 36.8, 10.18)
+    second = await _page(guest, limit=2, cursor=first.json()["next_cursor"])
+
+    assert [i["id"] for i in second.json()["items"]] == expected[2:4]
+    assert second.json()["total"] == 6
+    assert newcomer not in {i["id"] for i in second.json()["items"]}
+
+
+async def test_the_total_follows_the_window_the_filters_and_the_blocks(
+    db_session, make_member, world
+):
+    author = await make_member("author")
+    other = await make_member("other")
+    reader = await make_member("reader")
+    guest = await make_member(signed_in=False)
+    await _at(db_session, author, *EXACT, entity_ids=["rain"])
+    await _at(db_session, other, 37.0, 10.2, entity_ids=["tree"])
+    await _at(db_session, other, -33.9, 151.2, entity_ids=["rain"])
+
+    async def total(client, **extra):
+        response = await _page(client, limit=1, **extra)
+        assert response.status_code == 200, response.text
+        return response.json()["total"]
+
+    assert await total(guest) == 3
+    assert await total(guest, **TUNIS_WINDOW) == 2
+    assert await total(guest, concept="rain") == 2
+    assert await total(guest, country="FR") == 0
+    assert await total(guest, since="2999-01-01") == 0
+    assert (await _page(guest, since="2999-01-01")).json()["items"] == []
+    assert (await reader.http.put("/blocks/other")).status_code == 204
+    assert await total(reader) == 1
+    assert (await _page(reader)).json()["items"][0]["properties"]["author"]["handle"] == "author"
+
+
+async def test_the_page_crosses_the_antimeridian(db_session, make_member, world):
+    author = await make_member("author")
+    guest = await make_member(signed_in=False)
+    east = await _at(db_session, author, 0.5, 179.9)
+    west = await _at(db_session, author, 0.5, -179.9)
+    await _at(db_session, author, *EXACT)
+
+    response = await guest.http.get(
+        "/atlas/entries/page",
+        params={
+            "west": 170,
+            "south": -10,
+            "east": -170,
+            "north": 10,
+            "center_lat": 0.5,
+            "center_lng": 179.95,
+        },
+    )
+
+    assert {i["id"] for i in response.json()["items"]} == {east, west}
+    assert response.json()["total"] == 2
+
+
+async def test_a_bad_page_request_is_refused(make_member, world):
+    guest = await make_member(signed_in=False)
+    assert (await guest.http.get("/atlas/entries/page", params=WHOLE)).status_code == 422
+    for bad in ({"limit": 0}, {"limit": 51}, {"center_lat": 91}, {"center_lng": -181}):
+        assert (await _page(guest, **bad)).status_code == 422
+    assert (await _page(guest, cursor="not-a-cursor")).status_code == 400
+    # A cursor of another list holds no distance: it is not this one's.
+    elsewhere = cursors.encode(cursors.Cursor(at=atlas_service._DISTANCE_CURSOR_AT, id=1))
+    assert (await _page(guest, cursor=elsewhere)).json()["error"] == "INVALID_CURSOR"
+    # The page still answers on a window with nothing in it.
+    empty = await _page(guest)
+    assert empty.json() == {"items": [], "next_cursor": None, "total": 0}
+
+
 async def test_the_new_routes_answer_404_while_the_atlas_is_off(make_member, world, account_app):
     guest = await make_member(signed_in=False)
     settings = account_app.state.settings
     account_app.state.settings = settings.model_copy(update={"disabled_features": "atlas"})
     try:
-        for url, params in (("/atlas/clusters", {**WHOLE, "zoom": 3}),):
+        for url, params in (
+            ("/atlas/clusters", {**WHOLE, "zoom": 3}),
+            ("/atlas/entries/page", _page_params()),
+        ):
             off = await guest.http.get(url, params=params)
             assert (off.status_code, off.json()["error"]) == (404, "FEATURE_DISABLED")
     finally:
