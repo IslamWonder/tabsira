@@ -20,7 +20,9 @@ export function MeSection({ id, title, description, className, children }: MeSec
       as="section"
       id={id}
       aria-labelledby={titleId}
-      className={cx('flex scroll-mt-28 flex-col gap-5 tablet:p-7', className)}
+      // Focused when it opens from the menu, so a screen reader starts reading it there.
+      tabIndex={-1}
+      className={cx('flex scroll-mt-28 flex-col gap-5 outline-none tablet:p-7', className)}
     >
       <header className="flex flex-col gap-1">
         <h2 id={titleId} className="m-0 text-subheading text-fg">

@@ -331,24 +331,33 @@ Served by the web app itself (no third-party request from the visitor's browser)
 | `meaning-dialogue.webp`   | An olive seedling in the rain                                                               | stand-in cut from the project's own pictures (docs/plans/10_design_brand_app.md)                                                                                                                                                                                                                                                                                                                      | —                                                                  | the project's own                                                                                                                                          |
 | `world-atlas.webp`        | A wide coastal landscape with paths, lakes and a domed building                             | stand-in cut from the project's own pictures (docs/plans/10_design_brand_app.md)                                                                                                                                                                                                                                                                                                                      | —                                                                  | the project's own                                                                                                                                          |
 
-## 13. Landing page emblems (`apps/web/src/components/landing/emblem-data.ts`)
+## 13. Emblems (`apps/web/src/components/ui/emblem-data.ts`)
 
-Fifteen icons of one premium Magnific family, **Good Ware Lineal** (family 546, author Good Ware), chosen by the owners on 5 October 2026 and downloaded as SVG through the owners' Freepik API key the same day. Licence: Magnific (Flaticon) premium licence for the owners' account; no attribution is shown on the page. Each SVG's path data is kept in the module above, rounded to a tenth of a unit and drawn in `currentColor` (the landing's gold), so the visitor's browser fetches nothing from Magnific; the originals are not kept in the repository.
+Twenty-four icons of one premium Magnific family, **Good Ware Lineal** (family 546, author Good Ware), chosen by the owners on 5 October 2026 (the landing page, then the menu of «ملفي») and downloaded as SVG through the owners' Freepik API key the same day. Licence: Magnific (Flaticon) premium licence for the owners' account; no attribution is shown on the page. Each SVG's path data is kept in the module above, rounded to a tenth of a unit and drawn in `currentColor` (the landing's gold), so the visitor's browser fetches nothing from Magnific; the originals are not kept in the repository.
 
-| Name        | Magnific id | Title          | Where                         |
-| ----------- | ----------- | -------------- | ----------------------------- |
-| `camera`    | 686497      | Camera         | step 1, «عدسة البصيرة»        |
-| `chat`      | 4803742     | Talk           | «حاور بصيرتك»                 |
-| `verify`    | 3633411     | Success        | «تحقّق من المصدر»             |
-| `world`     | 1086914     | Globe          | «عالمي»                       |
-| `atlas`     | 4746152     | Map            | «أطلس بصائر العالم»           |
-| `around`    | 2933564     | Compass        | «اكتشف حولك»                  |
-| `treasure`  | 5999315     | Treasure chest | «الكنز الخفي»                 |
-| `community` | 3633449     | Team           | «تبصرة تواصل»                 |
-| `photos`    | 4618132     | Photos         | «صورك، باختيارك»              |
-| `book`      | 6007509     | Open book      | step 2, «النصّ مع مصدره»      |
-| `sprout`    | 2683226     | Sprout         | step 3                        |
-| `lantern`   | 5987673     | Lantern        | «المعنى قريب منك»             |
-| `choice`    | 3718115     | Safety         | «الاختيار بيدك»               |
-| `reflect`   | 784338      | Eye            | the example's «التأمّل» panel |
-| `quest`     | 3783897     | Steps          | the small step in that panel  |
+| Name                 | Magnific id | Title          | Where                         |
+| -------------------- | ----------- | -------------- | ----------------------------- |
+| `camera`             | 686497      | Camera         | step 1, «عدسة البصيرة»        |
+| `chat`               | 4803742     | Talk           | «حاور بصيرتك»                 |
+| `verify`             | 3633411     | Success        | «تحقّق من المصدر»             |
+| `world`              | 1086914     | Globe          | «عالمي»                       |
+| `atlas`              | 4746152     | Map            | «أطلس بصائر العالم»           |
+| `around`             | 2933564     | Compass        | «اكتشف حولك»                  |
+| `treasure`           | 5999315     | Treasure chest | «الكنز الخفي»                 |
+| `community`          | 3633449     | Team           | «تبصرة تواصل»                 |
+| `photos`             | 4618132     | Photos         | «صورك، باختيارك»              |
+| `book`               | 6007509     | Open book      | step 2, «النصّ مع مصدره»      |
+| `sprout`             | 2683226     | Sprout         | step 3                        |
+| `lantern`            | 5987673     | Lantern        | «المعنى قريب منك»             |
+| `choice`             | 3718115     | Safety         | «الاختيار بيدك»               |
+| `reflect`            | 784338      | Eye            | the example's «التأمّل» panel |
+| `quest`              | 3783897     | Steps          | the small step in that panel  |
+| `me_account`         | 5987462     | Profile        | «ملفي»: حسابك                 |
+| `me_about`           | 783886      | ID             | «ملفي»: عنك                   |
+| `me_identity`        | 6554498     | Account        | «ملفي»: هويتك العامة          |
+| `me_appearance`      | 2150453     | Brightness     | «ملفي»: المظهر والصوت         |
+| `me_personalization` | 4677510     | Settings       | «ملفي»: التخصيص والخصوصية     |
+| `me_practice`        | 694629      | Archery        | «ملفي»: تمرينك                |
+| `me_app`             | 1410135     | Smartphone     | «ملفي»: التطبيق               |
+| `me_data`            | 6911110     | Server         | «ملفي»: بياناتك               |
+| `me_cookies`         | 766386      | Biscuit        | «ملفي»: ملفات تعريف الارتباط  |

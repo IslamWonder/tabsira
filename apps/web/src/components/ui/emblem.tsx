@@ -27,6 +27,7 @@ export function Emblem({ name, ...props }: EmblemProps) {
 }
 
 const TILE = {
+  sm: { box: 'size-10 rounded-[12px]', icon: 22 },
   md: { box: 'size-12 rounded-[14px]', icon: 26 },
   lg: { box: 'size-14 rounded-[16px]', icon: 30 },
 } as const;

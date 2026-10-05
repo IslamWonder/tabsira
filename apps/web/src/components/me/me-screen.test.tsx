@@ -1,6 +1,6 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readSession } from '@/account/session';
 import { writeConsentId } from '@/consent/cookie';
 import { apiError, mockApi, type Route } from '@/test/api';
@@ -27,6 +27,23 @@ function signedIn(extra: Record<string, Route> = {}, user = USER): Record<string
 
 const section = (name: string) => screen.getByRole('region', { name });
 
+/** «ملفي» opened at one of its sections (`/me#data`), as a link or a shared address would. */
+function renderAt(id?: string) {
+  window.history.replaceState(null, '', id === undefined ? '/me' : `/me#${id}`);
+  return render(<MeScreen />);
+}
+
+/** A tap on an entry of the menu: the address names the section. */
+const go = (id: string) =>
+  act(() => {
+    window.history.pushState(null, '', `/me#${id}`);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  });
+
+afterEach(() => {
+  window.history.replaceState(null, '', '/');
+});
+
 describe('MeScreen for a guest', () => {
   it('keeps the device settings and the cookie choice, and invites to sign in', async () => {
     mockApi({ 'GET /auth/me': apiError(401, 'UNAUTHORIZED') });
@@ -41,15 +58,24 @@ describe('MeScreen for a guest', () => {
       'href',
       '/signup?next=/me'
     );
+    go('appearance');
     expect(screen.getByRole('group', { name: 'المظهر' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'الحركة الزخرفية' })).toBeInTheDocument();
+    go('personalization');
     expect(screen.queryByRole('switch', { name: 'التخصيص' })).toBeNull();
+    expect(
+      within(section('التخصيص والخصوصية')).getByText(/خيارات لحسابك، تجدها هنا بعد الدخول/)
+    ).toBeInTheDocument();
+    // A guest has no data to export: the entry is not offered, and its address opens nothing.
+    go('data');
     expect(screen.queryByRole('region', { name: 'بياناتك' })).toBeNull();
+    go('practice');
     expect(screen.getByText(/هذه علامات على التمرين والمواظبة لا على الإيمان/)).toBeInTheDocument();
     expect(within(section('تمرينك')).getByRole('link', { name: 'افتح تمرينك' })).toHaveAttribute(
       'href',
       '/me/practice'
     );
+    go('cookies');
     expect(within(section('ملفات تعريف الارتباط')).getByText('لم تختر بعد.')).toBeInTheDocument();
   });
 
@@ -70,21 +96,24 @@ describe('MeScreen signed in', () => {
     expect(await screen.findByText('[اسم القارئ]')).toBeInTheDocument();
     expect(screen.getByText('reader@example.com')).toBeInTheDocument();
     expect(screen.getByText('مؤكَّد')).toBeInTheDocument();
-    const nav = screen.getByRole('navigation', { name: 'أقسام ملفي' });
-    expect(
-      within(nav)
-        .getAllByRole('link')
-        .map((link) => link.getAttribute('href'))
-    ).toEqual([
-      '#account',
-      '#about',
-      '#identity',
-      '#settings',
-      '#practice',
-      '#app',
-      '#data',
-      '#cookies',
-    ]);
+    // The menu beside the section (from tablet up) and the phone's hub list the same entries.
+    for (const nav of screen.getAllByRole('navigation', { name: 'أقسام ملفي' })) {
+      expect(
+        within(nav)
+          .getAllByRole('link')
+          .map((link) => link.getAttribute('href'))
+      ).toEqual([
+        '#account',
+        '#about',
+        '#identity',
+        '#appearance',
+        '#personalization',
+        '#practice',
+        '#app',
+        '#data',
+        '#cookies',
+      ]);
+    }
     await userEvent.click(screen.getByRole('button', { name: 'اخرج' }));
     expect(await screen.findByText('خرجت من حسابك على هذا الجهاز.')).toBeInTheDocument();
     expect(readSession()).toEqual({ status: 'guest' });
@@ -107,7 +136,7 @@ describe('MeScreen signed in', () => {
     const api = mockApi(
       signedIn({ 'PATCH /profile': { body: { ...PROFILE, knowledge_level: 'advanced' } } })
     );
-    render(<MeScreen />);
+    renderAt('about');
     const about = await screen.findByRole('region', { name: 'عنك' });
     expect(within(about).getByText(/نستخدم اختياراتك وبصائرك السابقة/)).toBeInTheDocument();
     await userEvent.click(within(about).getByRole('radio', { name: 'متقدم' }));
@@ -137,7 +166,7 @@ describe('MeScreen signed in', () => {
         'PATCH /profile': { body: { ...PROFILE, gender: 'woman' } },
       })
     );
-    render(<MeScreen />);
+    renderAt('personalization');
     const memory = await screen.findByRole('switch', { name: 'الذاكرة' });
     await userEvent.click(memory);
     await waitFor(() => expect(memory).not.toBeChecked());
@@ -147,6 +176,7 @@ describe('MeScreen signed in', () => {
       { kind: 'memory', version: '2026-10-05', granted: false },
     ]);
     expect(screen.getByRole('switch', { name: 'التخصيص' })).toBeChecked();
+    go('appearance');
     expect(screen.getByRole('switch', { name: 'المؤثر الصوتي' })).toBeChecked();
   });
 
@@ -160,7 +190,7 @@ describe('MeScreen signed in', () => {
         'PATCH /profile': { body: { ...PROFILE, religious_background: 'non_muslim' } },
       })
     );
-    render(<MeScreen />);
+    renderAt('personalization');
     const photos = await screen.findByRole('switch', { name: 'حفظ صوري' });
     await userEvent.click(photos);
     await waitFor(() => expect(photos).toBeChecked());
@@ -180,7 +210,7 @@ describe('MeScreen signed in', () => {
         },
       })
     );
-    render(<MeScreen />);
+    renderAt('about');
     const about = await screen.findByRole('region', { name: 'عنك' });
     await userEvent.click(within(about).getByRole('radio', { name: 'متقدم' }));
     await userEvent.click(within(about).getByRole('radio', { name: 'متخصص' }));
@@ -199,7 +229,7 @@ describe('MeScreen signed in', () => {
         'POST /consents': apiError(403, 'CONSENT_NOT_ALLOWED'),
       })
     );
-    render(<MeScreen />);
+    renderAt('personalization');
     const photos = await screen.findByRole('switch', { name: 'حفظ صوري' });
     expect(photos).toBeDisabled();
     expect(photos).toHaveAccessibleDescription(/دون 13 عامًا/);
@@ -213,11 +243,11 @@ describe('MeScreen signed in', () => {
 
   it('says when the profile cannot be read, and tries again', async () => {
     mockApi(signedIn({ 'GET /profile': apiError(500, 'INTERNAL_ERROR') }));
-    render(<MeScreen />);
+    renderAt('personalization');
     expect(await screen.findByText(/حدث خطأ من جهتنا/)).toBeInTheDocument();
     mockApi(signedIn());
     await userEvent.click(
-      within(section('الإعدادات')).getByRole('button', { name: 'أعد المحاولة' })
+      within(section('التخصيص والخصوصية')).getByRole('button', { name: 'أعد المحاولة' })
     );
     expect(await screen.findByRole('switch', { name: 'الذاكرة' })).toBeInTheDocument();
   });
@@ -232,7 +262,7 @@ describe('MeScreen data', () => {
     const click = vi
       .spyOn(HTMLAnchorElement.prototype, 'click')
       .mockImplementation(() => undefined);
-    render(<MeScreen />);
+    renderAt('data');
     await userEvent.click(await screen.findByRole('button', { name: 'نزّل بياناتي' }));
     expect(await screen.findByText('نُزّل الملف.')).toBeInTheDocument();
     expect(click).toHaveBeenCalledOnce();
@@ -241,7 +271,7 @@ describe('MeScreen data', () => {
 
   it('says when the export failed', async () => {
     mockApi(signedIn({ 'GET /account/export': apiError(401, 'UNAUTHORIZED') }));
-    render(<MeScreen />);
+    renderAt('data');
     await userEvent.click(await screen.findByRole('button', { name: 'نزّل بياناتي' }));
     expect(await screen.findByText('انتهت جلستك. ادخل من جديد لتكمل.')).toBeInTheDocument();
   });
@@ -259,7 +289,7 @@ describe('MeScreen data', () => {
         },
       })
     );
-    render(<MeScreen />);
+    renderAt('data');
     const summary = await screen.findByText('سجل الموافقات');
     await userEvent.click(summary);
     const items = await screen.findAllByRole('listitem');
@@ -277,12 +307,12 @@ describe('MeScreen data', () => {
 
   it('shows an empty history and a failed one', async () => {
     mockApi(signedIn({ 'GET /account/export': { body: { consents: [] } } }));
-    const { unmount } = render(<MeScreen />);
+    const { unmount } = renderAt('data');
     await userEvent.click(await screen.findByText('سجل الموافقات'));
     expect(await screen.findByText('لا موافقات مسجّلة بعد.')).toBeInTheDocument();
     unmount();
     mockApi(signedIn({ 'GET /account/export': 'network-error' }));
-    render(<MeScreen />);
+    renderAt('data');
     await userEvent.click(await screen.findByText('سجل الموافقات'));
     expect(await screen.findByText(/تعذّر الوصول إلى تبصرة/)).toBeInTheDocument();
   });
@@ -290,7 +320,7 @@ describe('MeScreen data', () => {
   it('deletes the account only after an in-page confirmation', async () => {
     const confirm = vi.spyOn(window, 'confirm');
     const api = mockApi(signedIn({ 'DELETE /account': apiError(500, 'INTERNAL_ERROR') }));
-    render(<MeScreen />);
+    renderAt('data');
     await userEvent.click(await screen.findByRole('button', { name: 'احذف حسابي' }));
     const title = await screen.findByRole('heading', { name: 'هل تحذف حسابك نهائيًا؟' });
     await waitFor(() => expect(title).toHaveFocus());
@@ -318,7 +348,7 @@ describe('MeScreen cookies', () => {
         body: { ...RECORD, decided_at: new Date().toISOString() },
       },
     });
-    render(<MeScreen />);
+    renderAt('cookies');
     const cookies = section('ملفات تعريف الارتباط');
     await waitFor(() => expect(within(cookies).getByText('قياس الاستعمال')).toBeInTheDocument());
     expect(within(cookies).getAllByText('مسموح')).toHaveLength(1);
@@ -327,5 +357,80 @@ describe('MeScreen cookies', () => {
     await userEvent.click(within(cookies).getByRole('button', { name: 'غيّر اختياراتي' }));
     const { readConsent } = await import('@/consent/store');
     expect(readConsent().settingsOpen).toBe(true);
+  });
+});
+
+describe('MeScreen menu', () => {
+  it('opens on a menu of three short groups, each entry with its emblem and what it holds', async () => {
+    mockApi(signedIn());
+    renderAt();
+    await screen.findByText('[اسم القارئ]');
+    const [, hub] = screen.getAllByRole('navigation', { name: 'أقسام ملفي' });
+    const groups = within(hub as HTMLElement).getAllByRole('region');
+    expect(groups.map((group) => group.getAttribute('aria-label'))).toEqual([
+      'أنت',
+      'تجربتك',
+      'خصوصيتك',
+    ]);
+    const data = within(hub as HTMLElement).getByRole('link', { name: /بياناتك/ });
+    expect(data).toHaveTextContent('نزّل بياناتك، وسجل موافقاتك، وحذف الحساب.');
+    // The emblem is decoration: the entry's name is its words.
+    expect(data.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    // Nothing is open yet: no way back to show.
+    expect(screen.queryByRole('button', { name: 'كل أقسام ملفي' })).toBeNull();
+  });
+
+  it('describes the account entry as an invitation for a guest', async () => {
+    mockApi({ 'GET /auth/me': apiError(401, 'UNAUTHORIZED') });
+    renderAt();
+    await screen.findByRole('link', { name: 'ادخل' });
+    const [, hub] = screen.getAllByRole('navigation', { name: 'أقسام ملفي' });
+    expect(within(hub as HTMLElement).getByRole('link', { name: /حسابك/ })).toHaveTextContent(
+      'ادخل لتحفظ مسارك وبصائرك على أي جهاز.'
+    );
+  });
+
+  it('opens one section at a time, gives it the focus, and goes back to the whole menu', async () => {
+    mockApi(signedIn());
+    renderAt();
+    await screen.findByText('[اسم القارئ]');
+    go('data');
+    const data = section('بياناتك');
+    expect(data).toHaveFocus();
+    expect(screen.queryByRole('region', { name: 'حسابك' })).toBeNull();
+    // The menu beside it marks it as the page shown.
+    const [side] = screen.getAllByRole('navigation', { name: 'أقسام ملفي' });
+    expect(within(side as HTMLElement).getByRole('link', { name: 'بياناتك' })).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
+
+    // Every entry opens its own section.
+    go('identity');
+    expect(screen.getAllByRole('region').some((region) => region.id === 'identity')).toBe(true);
+    go('app');
+    expect(section('التطبيق')).toHaveFocus();
+
+    await userEvent.click(screen.getByRole('button', { name: 'كل أقسام ملفي' }));
+    expect(window.location.hash).toBe('');
+    expect(window.location.href.endsWith('#')).toBe(false);
+    expect(screen.queryByRole('button', { name: 'كل أقسام ملفي' })).toBeNull();
+  });
+
+  it("follows the browser's back button, and opens nothing for an address it does not know", async () => {
+    mockApi(signedIn());
+    renderAt('nothing-here');
+    await screen.findByText('[اسم القارئ]');
+    expect(screen.queryByRole('button', { name: 'كل أقسام ملفي' })).toBeNull();
+    // From tablet up the first section shows beside the menu.
+    expect(section('حسابك')).toBeInTheDocument();
+
+    go('cookies');
+    expect(section('ملفات تعريف الارتباط')).toBeInTheDocument();
+    act(() => {
+      window.history.pushState(null, '', '/me');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(screen.queryByRole('button', { name: 'كل أقسام ملفي' })).toBeNull();
   });
 });

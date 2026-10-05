@@ -2,8 +2,8 @@ import Image from 'next/image';
 import type { CSSProperties } from 'react';
 import { SparkIcon } from '@/components/icons';
 import { RAIN_PHOTO } from '@/components/scene/rain-scene';
+import { Emblem } from '@/components/ui/emblem';
 import { messages } from '@/messages';
-import { Emblem } from './emblem';
 
 const P = messages.landing.phone;
 const DROP = messages.scene.example.insights[0] as { title: string; glimpse: string };
