@@ -11,6 +11,17 @@ import { shareMessages } from './share';
  * id and is displayed byte for byte. The gallery's placeholders say so openly.
  */
 
+/** «بصيرة» counted the Arabic way: one, two, three to ten, eleven and more. */
+function insightCount(count: number): string {
+  if (count === 1) {
+    return 'بصيرة واحدة';
+  }
+  if (count === 2) {
+    return 'بصيرتان';
+  }
+  return count <= 10 ? `${count} بصائر` : `${count} بصيرة`;
+}
+
 export const ar = {
   meta: {
     siteName: 'تبصرة',
@@ -76,9 +87,9 @@ export const ar = {
       next: 'وبعده تصوّر مشهدك أنت.',
     },
     world: {
-      mapLabel: 'خريطة عالمي',
+      mapLabel: 'عالمي',
       title: 'عالمي',
-      description: 'خريطتك الخاصة: يتّضح فيها مكانٌ كلما حفظت بصيرة، وتصل بين مكانين صلةٌ مسجّلة.',
+      description: 'عالمك الخاص: منظر تكسوه الغيوم، ينكشف منه موضع كلما تعلّمت بصيرة.',
     },
     community: {
       title: 'تبصرة تواصل',
@@ -295,35 +306,71 @@ export const ar = {
     title: 'اكتُشِف المعنى',
   },
 
-  /** The personal world: a fog map of the learning path's regions (master prompt v2 §16-17). */
+  /** The personal world: one picture under clouds, lifted where something was learned (decision 59). */
   world: {
-    loading: 'نفتح خريطة عالمك…',
-    unavailable: 'تعذّر فتح عالمك الآن. حاول بعد قليل.',
+    title: 'عالمي',
+    brand: 'تبصرة',
+    mapLabel: 'عالمك: منظر تكسوه الغيوم، ينكشف منه ما تعلّمته',
+    mapHelp:
+      'اسحب لتحرّك العالم، وكبّر بإصبعين أو بعجلة الفأرة. بلوحة المفاتيح: الأسهم للتحريك، و+ و− للتكبير والتصغير، وHome لإعادته.',
+    loading: 'نفتح عالمك…',
+    unavailable: 'تعذّر فتح عالمك الآن، وما تعلّمته محفوظ كما هو. أعد المحاولة بعد قليل.',
     retry: 'أعد المحاولة',
-    summary: (opened: number, total: number) =>
-      `انقشع الضباب عن ${opened} من ${total} مناطق. الضباب يدلّ على ما لم يُكتشف بعد، لا على نقص فيك.`,
-    empty: {
-      title: 'عالمك ينتظر أول بصيرة',
-      body: 'يكسو الضباب خريطتك كلها الآن. حين تتمّ بصيرة ينقشع الضباب عن موضعها ويبقى لك. ابدأ بمشهد المطر الموثّق، أو صوّر مشهدك أنت.',
-      cta: 'ابدأ بأول مشهد',
+    invitation: 'كلّ بصيرة تفتح أفقًا.',
+    discoverFirst: 'اكتشف أول بصيرة',
+    discoverMore: 'اكتشف بصيرة أخرى',
+    back: 'رجوع',
+    help: 'كيف يعمل عالمي؟',
+    mine: 'بصائري',
+    controls: 'التحكم في العرض',
+    zoomIn: 'كبّر',
+    zoomOut: 'صغّر',
+    recenter: 'أعد العالم إلى موضعه',
+    count: insightCount,
+    landmark: (name: string, count: number, title: string) =>
+      count === 1
+        ? `افتح البصيرة المتعلّمة: ${title}`
+        : `افتح ما تعلّمته في ${name}: ${insightCount(count)}`,
+    revealed: (names: readonly string[]) =>
+      names.length === 1
+        ? `حُفظت بصيرتك، وانكشف ${names[0]}.`
+        : `حُفظت بصائرك، وانكشف في عالمك: ${names.join('، ')}.`,
+    widened: (name: string) => `حُفظت بصيرتك، واتّسع ${name}.`,
+    panel: {
+      close: 'أغلق',
+      placeLead: 'ما تعلّمته في هذا الموضع.',
+      learned: 'بصيرة متعلّمة',
+      learnedOn: (when: string) => `تعلّمتها في ${when}`,
+      meaning: 'المعنى',
+      sources: 'المصدر',
+      step: 'خطوة عملية',
+      open: 'افتح البصيرة',
+      goTo: 'انتقل إلى موضعها',
+      chat: 'حاور بصيرتك',
+      others: 'بصائر أخرى في هذا الموضع',
+      loading: 'نحمّل البصيرة…',
+      failed: 'تعذّر تحميل هذه البصيرة الآن.',
+      retry: 'أعد المحاولة',
+      // The API's surah name already reads «سورة …».
+      quranReference: (surah: string, ayah: number) => `${surah} · ${ayah}`,
+      hadithReference: (book: string, number: string) => `${book} · ${number}`,
     },
-    list: {
-      title: 'المناطق',
-      opened: (count: number) => (count === 1 ? 'بصيرة واحدة محفوظة' : `${count} بصائر محفوظة`),
-      openedNoInsights: 'مفتوحة',
-      fog: 'تحت الضباب',
-      withTreasure: (state: string) => `${state}، فيها كنز ينتظر`,
+    mineView: {
+      title: 'بصائري',
+      lead: 'كل ما تعلّمته، الأحدث أولًا. اختر بصيرة لتراها وتنتقل إلى موضعها.',
+      item: (place: string, when: string) => `${place} · ${when}`,
     },
-    map: {
-      select: (name: string, state: string) => `${name}، ${state}`,
-    },
-    detail: {
-      back: 'أغلق التفاصيل',
-      fogBody:
-        'ينقشع الضباب عن هذه المنطقة حين تتمّ بصيرة تنتمي إليها، فيظهر لك موضعها هنا. لا عجلة في ذلك.',
-      lastVisit: (when: string) => `آخر زيارة: ${when}`,
-      insights: 'بصائر هذا الموضع',
-      insightMeta: (when: string) => `أُتمّت في ${when}`,
+    helpView: {
+      title: 'كيف يعمل عالمي؟',
+      lead: 'عالمك منظر واحد تكسوه الغيوم، وهو لك وحدك.',
+      items: [
+        'حين تتعلّم بصيرة وتضغط «تمّ» تنقشع الغيوم عن موضع يوافق معناها، ويظهر فيه معلم يعيدك إليها.',
+        'الغيوم تعني ما لم تكتشفه بعد، لا نقصًا فيك ولا مقارنة بأحد.',
+        'إعادة تعلّم المعنى نفسه تُحفظ في بصائرك ولا تكشف موضعًا جديدًا.',
+        'اسحب لتحرّك العالم، وكبّر بإصبعين أو بعجلة الفأرة أو بالزرّين. بلوحة المفاتيح: الأسهم للتحريك، و+ و− للتكبير، وHome لإعادته.',
+        '«بصائري» تجمع كل ما تعلّمته في قائمة، دون أن تحتاج إلى تحريك العالم.',
+      ],
+      pages: 'صفحات الموقع',
     },
     treasure: {
       title: 'كنز مخبوء',
@@ -336,13 +383,6 @@ export const ar = {
       verifiedSources: 'من المصادر المتحقَّق منها نفسها',
       quranReference: (surah: string, ayah: number) => `${surah} · ${ayah}`,
       hadithReference: (book: string, number: string) => `${book} · ${number}`,
-    },
-    threads: {
-      title: 'الخيوط بين المواضع',
-      lead: 'يصل خيطٌ بين موضعين حين تكون بينهما صلة مسجّلة، لا غير.',
-      between: (a: string, b: string) => `بين «${a}» و«${b}»`,
-      insights: 'البصائر الواصلة',
-      none: 'لا خيوط بعد. تظهر حين تصل صلة مسجّلة بين موضعين.',
     },
   },
 
@@ -1261,9 +1301,8 @@ export const ar = {
     title: 'عالمي وتمرينك على بيانات تجريبية',
     description: 'حالات الشاشتين في المظهرين: نصوصها بين أقواس لأنها ليست من الخادم.',
     states: {
-      world: 'عالم فيه موضعان وخيط',
-      opened: 'موضع مفتوح',
-      newcomer: 'عالم ضيف جديد تحت الضباب',
+      world: 'عالم انكشف منه موضعان',
+      newcomer: 'عالم ضيف جديد تحت الغيوم',
       practice: 'تمرينك',
       practiceEmpty: 'تمرينك لضيف جديد',
     },

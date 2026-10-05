@@ -1,5 +1,5 @@
 import type { Progress } from '@/progress/api';
-import type { Place, Region, Relation, Treasure, World } from '@/world/api';
+import type { Place, Region, Relation, Reveal, Treasure, World } from '@/world/api';
 
 /*
  * Sample answers of the world and practice routes, in the shapes the API
@@ -37,7 +37,14 @@ export const PLACE_ONE: Place = {
   name: '[موضع أول]',
   created_at: '2026-10-01T08:00:00Z',
   last_visited_at: '2026-10-03T08:00:00Z',
-  insights: [{ id: '9001', title: '[بصيرة أولى]', completed_at: '2026-10-01T08:00:00Z' }],
+  insights: [
+    {
+      id: '9001',
+      title: '[بصيرة أولى]',
+      completed_at: '2026-10-01T08:00:00Z',
+      reveal_id: '6001',
+    },
+  ],
   treasure: null,
 };
 
@@ -48,8 +55,18 @@ export const PLACE_TWO: Place = {
   created_at: '2026-10-02T08:00:00Z',
   last_visited_at: null,
   insights: [
-    { id: '9002', title: '[بصيرة ثانية]', completed_at: '2026-10-02T08:00:00Z' },
-    { id: '9003', title: '[بصيرة ثالثة]', completed_at: '2026-10-02T09:00:00Z' },
+    {
+      id: '9002',
+      title: '[بصيرة ثانية]',
+      completed_at: '2026-10-02T08:00:00Z',
+      reveal_id: '6002',
+    },
+    {
+      id: '9003',
+      title: '[بصيرة ثالثة]',
+      completed_at: '2026-10-02T09:00:00Z',
+      reveal_id: '6003',
+    },
   ],
   treasure: { id: '8001' },
 };
@@ -63,20 +80,77 @@ export const RELATION: Relation = {
   insight_ids: ['9001', '9002', '9999'],
 };
 
+/** Circles of layout 1 (data/world/layout-1.json): the two landmarks, and one widening of T01. */
+export const REVEALS: Reveal[] = [
+  {
+    id: '6001',
+    place_id: '7001',
+    region_id: 'T00',
+    insight_id: '9001',
+    landmark: true,
+    theme: 'knowledge',
+    icon: 'eye',
+    x: 0.3,
+    y: 0.86,
+    radius: 0.12,
+    learned_at: '2026-10-01T08:00:00Z',
+    shown: true,
+  },
+  {
+    id: '6002',
+    place_id: '7002',
+    region_id: 'T01',
+    insight_id: '9002',
+    landmark: true,
+    theme: 'water',
+    icon: 'drop',
+    x: 0.33,
+    y: 0.46,
+    radius: 0.15,
+    learned_at: '2026-10-02T08:00:00Z',
+    shown: true,
+  },
+  {
+    id: '6003',
+    place_id: '7002',
+    region_id: 'T01',
+    insight_id: '9003',
+    landmark: false,
+    theme: 'water',
+    icon: 'drop',
+    x: 0.471,
+    y: 0.493,
+    radius: 0.093,
+    learned_at: '2026-10-02T09:00:00Z',
+    shown: true,
+  },
+];
+
 export const WORLD: World = {
   version: '1.0',
   path_version: 'tabsira-masar-1.0',
+  layout_version: '1',
   regions: REGIONS,
   places: [PLACE_ONE, PLACE_TWO],
   relations: [RELATION],
+  reveals: REVEALS,
 };
 
-/** A newcomer: the whole map under fog. */
+/** A newcomer: the whole picture under clouds. */
 export const WORLD_UNDER_FOG: World = {
   ...WORLD,
   regions: REGIONS.map((item) => ({ ...item, fog: true, place_id: null })),
   places: [],
   relations: [],
+  reveals: [],
+};
+
+/** Right after a first «تمّ» elsewhere: one reveal the world has not played yet. */
+export const WORLD_JUST_LEARNED: World = {
+  ...WORLD,
+  places: [PLACE_ONE],
+  relations: [],
+  reveals: [{ ...(REVEALS[0] as Reveal), shown: false }],
 };
 
 export const QURAN_TEXT = '[نص الآية يأتي من الخادم]';

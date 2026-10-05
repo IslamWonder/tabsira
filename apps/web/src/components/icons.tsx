@@ -374,3 +374,57 @@ export function PlusIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export function MinusIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M5 12h14" />
+    </Icon>
+  );
+}
+
+/** Back, in a right-to-left page: the arrow points to where the reader came from, the right. */
+export function BackIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </Icon>
+  );
+}
+
+/** Onward, in a right-to-left page: a chevron pointing left. */
+export function OnwardIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m14.5 6-6 6 6 6" />
+    </Icon>
+  );
+}
+
+export function CompassIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m15.5 8.5-2 5-5 2 2-5z" />
+    </Icon>
+  );
+}
+
+export function RecenterIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
+      <path d="M4.5 4.5v3.7h3.7" />
+    </Icon>
+  );
+}
+
+export function OpenBookIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 5.5c2.5-1 5.5-1 8 .5 2.5-1.5 5.5-1.5 8-.5V19c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z" />
+      <path d="M12 6v13.5" />
+    </Icon>
+  );
+}

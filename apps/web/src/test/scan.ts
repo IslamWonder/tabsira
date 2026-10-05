@@ -202,6 +202,7 @@ export function completionOut(overrides: Partial<Completion> = {}): Completion {
     completed_at: '2026-10-04T08:05:00Z',
     first_time: true,
     place: { id: '110000000000000009', region_id: 'T01', name: 'واحة الغيث', created: true },
+    reveal: { id: '110000000000000012', landmark: true, created: true },
     treasure_prepared: false,
     badges_earned: ['first-look'],
     options: [

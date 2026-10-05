@@ -11,7 +11,7 @@ function routes(extra: Record<string, Route> = {}): Record<string, Route> {
   return { 'GET /consent/policy': { body: POLICY }, 'POST /consent': { body: RECORD }, ...extra };
 }
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/world' }));
+vi.mock('next/navigation', () => ({ usePathname: () => '/community' }));
 
 const dialog = () => screen.getByRole('dialog', { name: 'اختر ما تسمح به' });
 
@@ -169,7 +169,7 @@ describe('ConsentScreen without JavaScript', () => {
     expect(form).toHaveAttribute('method', 'post');
     expect(form).toHaveAttribute('action', '/consent');
     const fields = new FormData(form);
-    expect(fields.get('return')).toBe('/world');
+    expect(fields.get('return')).toBe('/community');
     expect(fields.get('policy_version')).toBe(POLICY.policy_version);
     for (const [name, value] of [
       ['قبول الكل', 'accept'],

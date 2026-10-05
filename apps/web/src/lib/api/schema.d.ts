@@ -1449,10 +1449,34 @@ export interface paths {
      * @description Return every region with its fog, the caller's places, threads and ready treasures.
      *
      *     A newcomer gets the whole map under fog: there is nothing to hide and nothing to make.
+     *     A concept learned without a reveal yet (before reveals existed, or with the world
+     *     off) gets one here first, shown without its effect.
      */
     get: operations['get_world_world_get'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/world/reveals/shown': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record that the world played these reveals
+     * @description Mark the caller's reveals as shown, so their effect never plays again; asking again changes nothing.
+     *
+     *     Ids of another owner's reveals, or of none, are ignored, never reported.
+     */
+    post: operations['reveals_shown_world_reveals_shown_post'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1690,7 +1714,8 @@ export interface paths {
      * @description Return the rain scene with «الحياة في قطرة» and «الغرس الذي يتعدّاك».
      *
      *     The verses come from the store; each hadith shows once an editor has
-     *     recorded its dorar.net ruling, and until then the insight says so.
+     *     recorded its dorar.net ruling, or before it when it counts as one of the
+     *     enriched Sunnah file's (decision 58), and otherwise the insight says it waits.
      */
     get: operations['rain_tutorial_rain_get'];
     put?: never;
@@ -2270,6 +2295,8 @@ export interface components {
        */
       first_time: boolean;
       place: components['schemas']['PlaceOut'] | null;
+      /** @description The reveal of the insight's concept; null with the world off, or when its region had no room left */
+      reveal: components['schemas']['CompletionRevealOut'] | null;
       /**
        * Treasure Prepared
        * @description A hidden treasure waits; it shows on return
@@ -2286,6 +2313,24 @@ export interface components {
       suggest_account: string | null;
       /** Disclosure */
       disclosure: string;
+    };
+    /**
+     * CompletionRevealOut
+     * @description What the completion lifted from the clouds of the world picture (decision 59).
+     */
+    CompletionRevealOut: {
+      /** Id */
+      id: string;
+      /**
+       * Landmark
+       * @description The region's landmark: the first concept learned there
+       */
+      landmark: boolean;
+      /**
+       * Created
+       * @description Made by this completion; false when the concept was learned before
+       */
+      created: boolean;
     };
     /**
      * ConsentCategories
@@ -3137,6 +3182,8 @@ export interface components {
       chat_messages: components['schemas']['ChatMessageExport'][];
       /** Places */
       places: components['schemas']['PlaceExport'][];
+      /** Reveals */
+      reveals: components['schemas']['RevealExport'][];
       /** Treasures */
       treasures: components['schemas']['TreasureExport'][];
       /** Learner Units */
@@ -3419,6 +3466,11 @@ export interface components {
        * Format: date-time
        */
       completed_at: string;
+      /**
+       * Reveal Id
+       * @description The reveal of the insight's concept, made by it or by an earlier insight of the same concept; null when its region had no room left
+       */
+      reveal_id: string | null;
     };
     /** PlaceOut */
     PlaceOut: {
@@ -4168,6 +4220,104 @@ export interface components {
       /** Password */
       password: string;
     };
+    /** RevealExport */
+    RevealExport: {
+      /** Id */
+      id: string;
+      /** Insight Id */
+      insight_id: string;
+      /** Place Id */
+      place_id: string;
+      /** Concept Key */
+      concept_key: string;
+      /** Region Id */
+      region_id: string;
+      /** Layout Version */
+      layout_version: string;
+      /** Slot */
+      slot: number;
+      /** Theme */
+      theme: string;
+      /** X */
+      x: number;
+      /** Y */
+      y: number;
+      /** Radius */
+      radius: number;
+      /**
+       * Learned At
+       * Format: date-time
+       */
+      learned_at: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Shown At */
+      shown_at: string | null;
+    };
+    /**
+     * RevealOut
+     * @description A circle of the world picture one learned concept lifted from the clouds (decision 59).
+     */
+    RevealOut: {
+      /** Id */
+      id: string;
+      /** Place Id */
+      place_id: string;
+      /** Region Id */
+      region_id: string;
+      /**
+       * Insight Id
+       * @description The first completed insight of the concept
+       */
+      insight_id: string;
+      /**
+       * Landmark
+       * @description The region's landmark (its first reveal), where its marker stands
+       */
+      landmark: boolean;
+      theme: components['schemas']['WorldTheme'];
+      /**
+       * Icon
+       * @description The landmark's drawing in the web app's icon set
+       */
+      icon: string;
+      /**
+       * X
+       * @description The centre, as a ratio of the picture's width from the left
+       */
+      x: number;
+      /**
+       * Y
+       * @description The centre, as a ratio of the picture's height from the top
+       */
+      y: number;
+      /**
+       * Radius
+       * @description As a ratio of the picture's width
+       */
+      radius: number;
+      /**
+       * Learned At
+       * Format: date-time
+       */
+      learned_at: string;
+      /**
+       * Shown
+       * @description The world already played this reveal; until then it plays once
+       */
+      shown: boolean;
+    };
+    /**
+     * RevealsShownIn
+     * @description The reveals whose effect the world just played, so it never plays them again.
+     */
+    RevealsShownIn: {
+      /** Ids */
+      ids: string[];
+    };
     /**
      * ReverseResult
      * @description What is near a point. Every field is null when no populated place is in range.
@@ -4771,12 +4921,22 @@ export interface components {
       version: string;
       /** Path Version */
       path_version: string;
+      /**
+       * Layout Version
+       * @description The version of the world picture's layout
+       */
+      layout_version: string;
       /** Regions */
       regions: components['schemas']['RegionOut'][];
       /** Places */
       places: components['schemas']['WorldPlaceOut'][];
       /** Relations */
       relations: components['schemas']['RelationOut'][];
+      /**
+       * Reveals
+       * @description The owner's reveals, in the order learned
+       */
+      reveals: components['schemas']['RevealOut'][];
     };
     /** WorldPlaceOut */
     WorldPlaceOut: {
@@ -4797,6 +4957,12 @@ export interface components {
       insights: components['schemas']['PlaceInsightOut'][];
       treasure: components['schemas']['TreasureFlag'] | null;
     };
+    /**
+     * WorldTheme
+     * @description How a region's reveal looks: a design symbol for learning, never a ruling or a measure of faith.
+     * @enum {string}
+     */
+    WorldTheme: 'water' | 'planting' | 'knowledge' | 'patience' | 'kinship' | 'justice';
     /**
      * ScanFromUrl
      * @description A photo given by its public address; the server fetches it (v2 §6).
@@ -7122,6 +7288,37 @@ export interface operations {
         content: {
           'application/json': components['schemas']['WorldOut'];
         };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  reveals_shown_world_reveals_shown_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RevealsShownIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description An error */
       default: {

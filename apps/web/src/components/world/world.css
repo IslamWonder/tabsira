@@ -1,0 +1,206 @@
+/*
+ * The world picture (decision 59). The stage carries one transform for the
+ * ground, the clouds and the landmarks; a landmark undoes the zoom on itself,
+ * so its button and its name keep their size on screen. A reveal's accent
+ * plays once, on the event, and ends still and invisible; under reduced motion
+ * the global rules cut it to nothing and the script adds no arrival at all.
+ */
+
+/*
+ * The kit's colours: the picture is the same by day and by night, and so is
+ * what is drawn on it. On :root, because the world's panels open in a portal.
+ */
+:root {
+  --world-green: #0f4c3a;
+  --world-deep: #082e25;
+  --world-gold: #c6a15b;
+  --world-pearl-line: #dce7e1;
+  --world-ink: #16302a;
+}
+
+.world-root {
+  background-color: var(--world-deep);
+}
+
+/* What shows until the clouds are drawn, and if their picture fails: never the ground. */
+.world-clouds {
+  background:
+    url("/world/clouds-1.webp") center / cover no-repeat,
+    linear-gradient(135deg, #dcebe4, #b9d6cb 50%, #8fbcae);
+}
+
+/* Pearl controls over the picture: opaque enough to read on any cloud. */
+.world-pearl {
+  background-color: rgb(246 250 247 / 0.94);
+  border: 1px solid var(--world-pearl-line);
+  color: var(--world-ink);
+  box-shadow: 0 6px 20px rgb(8 46 37 / 0.18);
+}
+
+.world-control {
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  color: var(--world-ink);
+  transition: background-color 200ms, color 200ms;
+}
+
+.world-control:hover:not(:disabled) {
+  background-color: rgb(15 76 58 / 0.08);
+}
+
+.world-control:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.world-control:disabled {
+  cursor: not-allowed;
+  color: #788a83;
+}
+
+.world-control + .world-control {
+  border-top: 1px solid var(--world-pearl-line);
+}
+
+@media (max-height: 480px) {
+  .world-control + .world-control {
+    border-top: 0;
+    border-inline-start: 1px solid var(--world-pearl-line);
+  }
+}
+
+.world-marker {
+  background-color: var(--world-green);
+  box-shadow:
+    0 0 0 4px rgb(246 250 247 / 0.35),
+    0 8px 20px rgb(8 46 37 / 0.45);
+}
+
+.world-name {
+  white-space: nowrap;
+  border-radius: 10px;
+  border: 1px solid var(--world-pearl-line);
+  background-color: rgb(246 250 247 / 0.95);
+  padding: 1px 10px;
+  color: var(--world-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.7;
+  box-shadow: 0 4px 12px rgb(8 46 37 / 0.2);
+}
+
+.world-stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.world-landmark {
+  position: absolute;
+  transform: translate(-50%, -24px) scale(calc(1 / var(--world-zoom, 1)));
+  transform-origin: 50% 24px;
+}
+
+.world-landmark--arriving {
+  animation: world-landmark-arrive 520ms var(--ease-out-soft) both;
+}
+
+@keyframes world-landmark-arrive {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -24px) scale(calc(0.55 / var(--world-zoom, 1)));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -24px) scale(calc(1 / var(--world-zoom, 1)));
+  }
+}
+
+/* One accent per theme, centred on the landmark and as wide as its circle. */
+.world-accent {
+  position: absolute;
+  width: var(--accent-size);
+  height: var(--accent-size);
+  margin-left: calc(var(--accent-size) / -2);
+  margin-top: calc(var(--accent-size) / -2);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+}
+
+/* Water: a short turquoise ripple, twice. */
+.world-accent--water {
+  border: 3px solid var(--accent);
+  animation: world-ripple 1100ms var(--ease-out-soft) 2 both;
+}
+
+/* Planting, kinship: a soft green or warm bloom that settles. */
+.world-accent--planting,
+.world-accent--kinship {
+  background: radial-gradient(circle, var(--accent) 0%, transparent 62%);
+  animation: world-bloom 1400ms var(--ease-out-soft) both;
+}
+
+/* Knowledge, justice: a short light that widens from the landmark. */
+.world-accent--knowledge,
+.world-accent--justice {
+  background: radial-gradient(circle, rgba(255, 248, 225, 0.95) 0%, var(--accent) 22%, transparent 58%);
+  animation: world-light 1300ms var(--ease-out-soft) both;
+}
+
+/* Patience: a stone-coloured ring that opens slowly along with the way. */
+.world-accent--patience {
+  border: 2px dashed var(--accent);
+  animation: world-ripple 1600ms var(--ease-out-soft) both;
+}
+
+@keyframes world-ripple {
+  from {
+    opacity: 0.85;
+    transform: scale(0.2);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes world-bloom {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  35% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes world-light {
+  0% {
+    opacity: 0;
+    transform: scale(0.15);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* The invitation sits on the clouds themselves: a pearl glow keeps it legible on any of them. */
+.world-invitation {
+  text-shadow:
+    0 0 18px rgb(246 250 247 / 0.95),
+    0 0 4px rgb(246 250 247 / 0.9);
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { openConsentSettings } from '@/consent/store';
 import { messages } from '@/messages';
 
@@ -19,6 +20,11 @@ const PAGES = [
  * it is a button that says so, styled as a quiet link.
  */
 export function SiteFooter() {
+  const pathname = usePathname();
+  // The world fills the screen with nothing under it (decision 59): its help panel holds these links.
+  if (pathname === '/world') {
+    return null;
+  }
   return (
     <footer className="mx-auto w-full max-w-[1440px] px-4 pt-4 pb-nav tablet:px-6 tablet:pb-6 desktop:px-10">
       <nav aria-label={messages.footer.label} className="border-line border-t pt-2">
