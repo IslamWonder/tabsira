@@ -58,6 +58,7 @@ from src.schemas.scan import (
     ScanImageOut,
     ScanOut,
 )
+from src.services import account_gate
 
 router = APIRouter(prefix="/scans", tags=["scans"])
 
@@ -313,7 +314,13 @@ async def create_scan(
     queue: QueueDep,
     fetch: FetcherDep,
 ) -> ScanOut:
-    """Check the photo, keep it for an hour, queue the scan and answer at once."""
+    """
+    Check the photo, keep it for an hour, queue the scan and answer at once.
+
+    403 `account_required` for a guest that holds its one scan, 403 `profile_required` for an
+    account that has not completed its profile (decision 63), both before the photo is read.
+    """
+    await account_gate.require_may_scan(db, owner)
     data, source = await _photo_bytes(request, settings, fetch)
     image = await _validated(data, settings)
     scan = Scan(

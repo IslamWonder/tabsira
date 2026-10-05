@@ -57,9 +57,13 @@ class ErrorCode(StrEnum):
     UNDER_13_CANNOT_PUBLISH = "UNDER_13_CANNOT_PUBLISH"
     INVALID_CURSOR = "INVALID_CURSOR"
     GONE = "GONE"
-    # The two codes below are lower case on purpose: they are the strings the web app matches.
+    # The codes below are lower case on purpose: they are the strings the web app matches.
     legal_acceptance_required = "legal_acceptance_required"
     mail_unavailable = "mail_unavailable"
+    # Decision 63, HTTP 403: a guest who holds one scan of its own must sign up; an account
+    # whose profile is not completed must complete it. The web app matches the strings.
+    account_required = "account_required"
+    profile_required = "profile_required"
     # The bot check (Cloudflare Turnstile, decision 56) was missing or refused: HTTP 403.
     turnstile_failed = "turnstile_failed"
     UNSUPPORTED_MEDIA_TYPE = "UNSUPPORTED_MEDIA_TYPE"

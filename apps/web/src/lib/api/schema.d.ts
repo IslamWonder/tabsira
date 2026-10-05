@@ -151,7 +151,9 @@ export interface paths {
      * @description Record that the signed-in account accepts both texts, for a version that changed.
      *
      *     The versions must be the current ones (`GET /legal`); anything else is a 422
-     *     `legal_acceptance_required`. Two consent rows are appended; none is ever edited.
+     *     `legal_acceptance_required`. Two consent rows are appended; none is ever edited. It also
+     *     takes, for a Google account, the real full name (`display_name`) and the answer to the
+     *     `public_full_name` consent (decision 63); both are optional.
      */
     post: operations['accept_legal_auth_legal_accept_post'];
     delete?: never;
@@ -669,16 +671,17 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * The caller's handle and public name
-     * @description Return the identity the caller appears under, or nulls until they choose one.
+     * The caller's handle and the name shown beside it
+     * @description Return the handle the caller appears under (null until they choose one) and the name shown.
      */
     get: operations['get_public_identity_me_public_identity_get'];
     /**
-     * Choose or change the handle and public name
-     * @description Set the handle (`/u/<handle>`) and the name every public page shows for the caller.
+     * Choose or change the handle
+     * @description Set the handle (`/u/<handle>`) every public page shows for the caller.
      *
      *     Needs a verified e-mail address. The handle is unique whatever its case: 409
-     *     `HANDLE_TAKEN` when somebody else holds it. The account's own name is never used.
+     *     `HANDLE_TAKEN` when somebody else holds it. The full name shows beside it only while the
+     *     `public_full_name` consent is given (`POST /consents`); `public_name` in the body is ignored.
      */
     put: operations['put_public_identity_me_public_identity_put'];
     post?: never;
@@ -697,7 +700,7 @@ export interface paths {
     };
     /**
      * A public profile
-     * @description Return a member's public profile: handle, public name, month joined and three counts.
+     * @description Return a member's public profile: handle, name (with consent), month joined and three counts.
      *
      *     404 for a handle nobody holds, and for one that a block stands in front of, in either
      *     direction. Nothing from the member's private profile, and no e-mail address, ever.
@@ -744,7 +747,7 @@ export interface paths {
     };
     /**
      * The members the caller has blocked
-     * @description List the members the caller blocked, newest first, by handle and public name only.
+     * @description List the members the caller blocked, newest first, by handle, and name only with consent.
      */
     get: operations['list_blocks_blocks_get'];
     put?: never;
@@ -1188,6 +1191,9 @@ export interface paths {
     /**
      * Start a scan of a photo or of a photo's address
      * @description Check the photo, keep it for an hour, queue the scan and answer at once.
+     *
+     *     403 `account_required` for a guest that holds its one scan, 403 `profile_required` for an
+     *     account that has not completed its profile (decision 63), both before the photo is read.
      */
     post: operations['create_scan_scans_post'];
     delete?: never;
@@ -1333,7 +1339,8 @@ export interface paths {
      *
      *     The same `idempotencyKey` returns the same answer and counts once; the
      *     fourth successful message answers 409 CHAT_LIMIT_REACHED. A request for
-     *     another text runs the retrieval and the verification again (v2 §14).
+     *     another text runs the retrieval and the verification again (v2 §14). 403
+     *     `profile_required` for an account that has not completed its profile (decision 63).
      */
     post: operations['chat_insights__insight_id__chat_post'];
     delete?: never;
@@ -2380,7 +2387,13 @@ export interface components {
      * ConsentKind
      * @enum {string}
      */
-    ConsentKind: 'terms' | 'privacy' | 'photo_storage' | 'personalization' | 'memory';
+    ConsentKind:
+      | 'terms'
+      | 'privacy'
+      | 'photo_storage'
+      | 'personalization'
+      | 'memory'
+      | 'public_full_name';
     /** ConsentOut */
     ConsentOut: {
       kind: components['schemas']['ConsentKind'];
@@ -2601,6 +2614,8 @@ export interface components {
       | 'GONE'
       | 'legal_acceptance_required'
       | 'mail_unavailable'
+      | 'account_required'
+      | 'profile_required'
       | 'turnstile_failed'
       | 'UNSUPPORTED_MEDIA_TYPE'
       | 'FEATURE_DISABLED'
@@ -3227,6 +3242,10 @@ export interface components {
       terms_version: string;
       /** Privacy Version */
       privacy_version: string;
+      /** Display Name */
+      display_name?: string | null;
+      /** Public Full Name */
+      public_full_name?: boolean | null;
     };
     /**
      * LegalOut
@@ -3320,13 +3339,13 @@ export interface components {
     MapEntryStatus: 'draft' | 'published' | 'pending_review' | 'removed' | 'withdrawn';
     /**
      * MemberOut
-     * @description A person as the network shows them: the two things they chose, and nothing else.
+     * @description A person as the network shows them: the handle, and the full name only with consent.
      */
     MemberOut: {
       /** Handle */
       handle: string;
       /** Public Name */
-      public_name: string;
+      public_name: string | null;
     };
     /**
      * MemberProfileOut
@@ -3336,7 +3355,7 @@ export interface components {
       /** Handle */
       handle: string;
       /** Public Name */
-      public_name: string;
+      public_name: string | null;
       /**
        * Joined Month
        * @description `YYYY-MM`, in UTC
@@ -3652,6 +3671,8 @@ export interface components {
       sound_enabled: boolean;
       /** Questions Asked */
       questions_asked: boolean;
+      /** Profile Completed At */
+      profile_completed_at: string | null;
       /** Consent Version */
       consent_version: string | null;
       /**
@@ -3671,6 +3692,11 @@ export interface components {
      *     Skipping the optional questions is `questions_asked: true` alone: every
      *     field stays `unknown` and the questions are never offered again. Answering
      *     any of the three question fields records the same.
+     *
+     *     `complete_profile: true` completes the profile (decision 63) and needs an explicit answer
+     *     to every question in the same body: `goals` (`[]` is «أفضّل عدم الإجابة»),
+     *     `knowledge_level`, `age_range`, `religious_background` and `gender` (`unknown` is that
+     *     answer). A body that leaves one out is a 422.
      */
     ProfilePatch: {
       /** Goals */
@@ -3687,6 +3713,8 @@ export interface components {
       sound_enabled?: boolean | null;
       /** Questions Asked */
       questions_asked?: boolean | null;
+      /** Complete Profile */
+      complete_profile?: true | null;
     };
     /** ProgressOut */
     ProgressOut: {
@@ -3719,13 +3747,13 @@ export interface components {
     };
     /**
      * PublicAuthorOut
-     * @description The only things a public insight says about its owner: the handle and name they chose.
+     * @description The only things a public insight says about its owner: the handle, and the name if consented.
      */
     PublicAuthorOut: {
       /** Handle */
       handle: string;
       /** Public Name */
-      public_name: string;
+      public_name: string | null;
     };
     /**
      * PublicHadith
@@ -3742,23 +3770,28 @@ export interface components {
     };
     /**
      * PublicIdentityIn
-     * @description The handle and public name an account chooses to appear under.
+     * @description The handle an account chooses to appear under.
      */
     PublicIdentityIn: {
       /** Handle */
       handle: string;
-      /** Public Name */
-      public_name: string;
+      /**
+       * Public Name
+       * @deprecated
+       */
+      public_name?: string | null;
     };
     /**
      * PublicIdentityOut
-     * @description The caller's own handle and public name; both null until they have chosen.
+     * @description The caller's own handle, and the name public pages show beside it.
      */
     PublicIdentityOut: {
       /** Handle */
       handle: string | null;
       /** Public Name */
       public_name: string | null;
+      /** Public Full Name */
+      public_full_name: boolean;
     };
     /**
      * PublicInsightOut
@@ -4542,6 +4575,11 @@ export interface components {
       accepted_terms_version: string;
       /** Accepted Privacy Version */
       accepted_privacy_version: string;
+      /**
+       * Public Full Name
+       * @default false
+       */
+      public_full_name: boolean;
     };
     /**
      * SitemapEntry
@@ -4849,6 +4887,8 @@ export interface components {
       handle: string | null;
       /** Public Name */
       public_name: string | null;
+      /** Public Full Name */
+      public_full_name: boolean;
       /** Is Admin */
       is_admin: boolean;
       /** Is Active */
@@ -4895,6 +4935,10 @@ export interface components {
       created_at: string;
       /** Legal Acceptance Required */
       legal_acceptance_required: boolean;
+      /** Profile Completed */
+      profile_completed: boolean;
+      /** Public Full Name */
+      public_full_name: boolean;
     };
     /** VerifyEmailIn */
     VerifyEmailIn: {

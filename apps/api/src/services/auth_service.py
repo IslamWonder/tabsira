@@ -23,7 +23,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import clock, security
 from src.config import Settings
 from src.errors import AppError, ErrorCode
+from src.models.consent import ConsentKind
 from src.models.login_attempt import AttemptKind
+from src.models.profile import Profile
 from src.models.user import GOOGLE, OAuthAccount, User
 from src.schemas.auth import DISPLAY_NAME_MAX, UserOut
 from src.services import legal_service, profile_service, rate_limit, session_service
@@ -65,6 +67,9 @@ async def describe(db: AsyncSession, settings: Settings, user: User) -> UserOut:
     providers = (
         await db.scalars(select(OAuthAccount.provider).where(OAuthAccount.user_id == user.id))
     ).all()
+    completed_at = await db.scalar(
+        select(Profile.profile_completed_at).where(Profile.user_id == user.id)
+    )
     return UserOut(
         id=user.id,
         email=user.email,
@@ -75,6 +80,8 @@ async def describe(db: AsyncSession, settings: Settings, user: User) -> UserOut:
         providers=sorted(providers),
         created_at=user.created_at,
         legal_acceptance_required=await legal_service.acceptance_required(db, settings, user.id),
+        profile_completed=completed_at is not None,
+        public_full_name=user.public_full_name,
     )
 
 
@@ -93,13 +100,15 @@ async def signup(
     ip_hash: str,
     accepted_terms_version: str,
     accepted_privacy_version: str,
+    public_full_name: bool = False,
 ) -> User:
     """
     Create an account with an e-mail address and a password, and its empty profile.
 
     The versions of the terms and the privacy policy the person accepted must be the
     current ones; that is checked first, so a sign-up that did not accept creates and
-    counts nothing. The acceptance is recorded in the same transaction as the account.
+    counts nothing. The acceptance is recorded in the same transaction as the account, and so
+    is the consent to show the full name when the box was ticked (decision 63).
     """
     legal_service.require_current(settings, accepted_terms_version, accepted_privacy_version)
     normalized = normalize_email(email)
@@ -127,7 +136,41 @@ async def signup(
         raise taken from None
     await profile_service.ensure_profile(db, user.id)
     legal_service.record_acceptance(db, settings, user.id)
+    if public_full_name:
+        await profile_service.record_consent(
+            db,
+            user.id,
+            ConsentKind.PUBLIC_FULL_NAME,
+            settings.privacy_version,
+            granted=True,
+        )
     return user
+
+
+async def record_name_choices(
+    db: AsyncSession,
+    settings: Settings,
+    user: User,
+    *,
+    display_name: str | None,
+    public_full_name: bool | None,
+) -> None:
+    """
+    Take the real full name and the answer to the full-name consent, after sign-up (Google).
+
+    Each is optional. A name replaces the display name; an answer, true or false, is appended
+    to the consent history and mirrored on the account. Absent leaves things as they are.
+    """
+    if display_name is not None:
+        user.display_name = display_name
+    if public_full_name is not None:
+        await profile_service.record_consent(
+            db,
+            user.id,
+            ConsentKind.PUBLIC_FULL_NAME,
+            settings.privacy_version,
+            granted=public_full_name,
+        )
 
 
 async def login(

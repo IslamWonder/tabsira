@@ -162,16 +162,16 @@ VerifiedUser = Annotated[User, Depends(verified_user)]
 
 async def public_member(user: VerifiedUser) -> User:
     """
-    Return a verified user who has chosen a public handle and name.
+    Return a verified user who has chosen a public handle.
 
-    Everything that puts a person's name on something other people read (a post, a
-    comment, a follow) depends on this: the account's own name may be a real one, and
-    only the identity chosen for the network is ever shown.
+    Everything that puts a person on something other people read (a post, a comment, a
+    follow) depends on this: only the handle chosen for the network is ever shown, and the
+    real full name beside it only with its own consent (`public_identity.shown_name`).
     """
-    if user.handle is None or user.public_name is None:
+    if user.handle is None:
         raise AppError(
             ErrorCode.PUBLIC_IDENTITY_REQUIRED,
-            "Choose a public handle and name first.",
+            "Choose a public handle first.",
             status_code=409,
         )
     return user

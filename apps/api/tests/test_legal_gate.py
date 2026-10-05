@@ -9,7 +9,7 @@ from src.deps import CurrentUser
 from src.main import create_app
 from tests.test_auth_routes import LOGIN
 
-VERSIONS = {"terms_version": "2026-10-04T20:00Z", "privacy_version": "2026-10-04T23:00Z"}
+VERSIONS = {"terms_version": "2026-10-05T12:00Z", "privacy_version": "2026-10-05T12:00Z"}
 
 # Routes that answer an account which has not accepted: it must be able to read what it is
 # asked to accept, say so, sign out, and leave (export, delete), and the open routes keep

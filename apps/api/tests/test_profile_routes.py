@@ -33,7 +33,7 @@ async def test_the_profile_needs_a_session(web, method):
     assert (await getattr(web, method)("/profile", **kwargs)).status_code == 401
 
 
-async def test_a_new_profile_has_every_answer_unknown_and_nothing_assumed(web, reader):
+async def test_a_new_profile_has_every_answer_unknown_and_nothing_assumed(web, newcomer):
     response = await web.get("/profile")
 
     body = response.json()
@@ -52,6 +52,7 @@ async def test_a_new_profile_has_every_answer_unknown_and_nothing_assumed(web, r
         "reduced_motion": "system",
         "sound_enabled": False,
         "questions_asked": False,
+        "profile_completed_at": None,
         "consent_version": None,
     }
     assert response.headers["cache-control"] == "no-store"
@@ -449,3 +450,80 @@ async def test_the_withdrawal_names_an_unversioned_text_when_none_was_ever_answe
 
     (row,) = (await db_session.scalars(select(Consent).where(Consent.kind.not_in(LEGAL)))).all()
     assert (row.kind.value, row.version, row.granted) == ("photo_storage", "unversioned", False)
+
+
+# ─── Completing the profile (decision 63) ─────────────────────────────────────
+
+ANSWERS = {
+    "goals": [],
+    "knowledge_level": "unknown",
+    "age_range": "unknown",
+    "religious_background": "unknown",
+    "gender": "unknown",
+}
+
+
+@pytest.fixture
+async def newcomer(web, make_user):
+    """A signed-in account whose profile was never completed."""
+    user = await make_user(profile_done=False)
+    await web.post("/auth/login", json=LOGIN)
+    return user
+
+
+async def test_a_profile_is_not_completed_until_it_says_so(web, newcomer):
+    profile = (await web.get("/profile")).json()
+    me = (await web.get("/auth/me")).json()
+
+    assert profile["profile_completed_at"] is None
+    assert me["profile_completed"] is False
+
+
+async def test_unknown_and_no_goals_are_a_full_answer_that_completes_the_profile(web, newcomer):
+    response = await web.patch("/profile", json={"complete_profile": True, **ANSWERS})
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["profile_completed_at"] is not None
+    assert body["questions_asked"] is True
+    assert (body["religious_background"], body["gender"], body["goals"]) == ("unknown",) * 2 + ([],)
+    assert (await web.get("/auth/me")).json()["profile_completed"] is True
+
+
+@pytest.mark.parametrize("missing", sorted(ANSWERS))
+async def test_completing_needs_an_explicit_answer_to_every_question(web, newcomer, missing):
+    body = {"complete_profile": True, **{k: v for k, v in ANSWERS.items() if k != missing}}
+
+    response = await web.patch("/profile", json=body)
+
+    assert response.status_code == 422
+    assert missing in response.text
+    assert (await web.get("/profile")).json()["profile_completed_at"] is None
+
+
+async def test_the_answers_of_an_earlier_patch_do_not_count_for_the_completion(web, newcomer):
+    await web.patch("/profile", json=ANSWERS)
+
+    response = await web.patch("/profile", json={"complete_profile": True})
+
+    assert response.status_code == 422
+
+
+async def test_completion_can_only_be_asked_for_never_withdrawn_and_the_date_stays(web, newcomer):
+    first = (await web.patch("/profile", json={"complete_profile": True, **ANSWERS})).json()
+
+    assert (await web.patch("/profile", json={"complete_profile": False})).status_code == 422
+    assert (await web.patch("/profile", json={"complete_profile": None})).status_code == 422
+    again = await web.patch(
+        "/profile", json={"complete_profile": True, **ANSWERS, "gender": "woman"}
+    )
+
+    assert again.json()["gender"] == "woman"
+    assert again.json()["profile_completed_at"] == first["profile_completed_at"]
+
+
+async def test_the_profile_routes_stay_open_to_an_account_that_has_not_completed_it(web, newcomer):
+    assert (await web.get("/profile")).status_code == 200
+    assert (await web.get("/auth/me")).status_code == 200
+    assert (await web.get("/account/export")).status_code == 200
+    assert (await web.delete("/account")).status_code == 204

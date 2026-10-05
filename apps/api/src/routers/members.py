@@ -20,11 +20,21 @@ from src.deps import (
     require_social_or_atlas,
 )
 from src.errors import AppError, ErrorCode
+from src.models.user import User
 from src.schemas.social import MemberOut, MemberProfileOut, PublicIdentityIn, PublicIdentityOut
 from src.services import block_service, member_service, public_identity
 from src.services.social_limits import WriteKind
 
 router = APIRouter(tags=["members"])
+
+
+def _identity(user: User) -> PublicIdentityOut:
+    return PublicIdentityOut(
+        handle=user.handle,
+        public_name=public_identity.shown_name(user),
+        public_full_name=user.public_full_name,
+    )
+
 
 # The handle and public name are what the atlas publishes under as well, so choosing them is
 # open while either feature is on; profiles, follows and blocks belong to the network alone.
@@ -34,39 +44,38 @@ _social = [Depends(require_social)]
 
 @router.get(
     "/me/public-identity",
-    summary="The caller's handle and public name",
+    summary="The caller's handle and the name shown beside it",
     dependencies=_either,
 )
 async def get_public_identity(user: CurrentUser) -> PublicIdentityOut:
-    """Return the identity the caller appears under, or nulls until they choose one."""
-    return PublicIdentityOut(handle=user.handle, public_name=user.public_name)
+    """Return the handle the caller appears under (null until they choose one) and the name shown."""
+    return _identity(user)
 
 
 @router.put(
     "/me/public-identity",
-    summary="Choose or change the handle and public name",
+    summary="Choose or change the handle",
     dependencies=[*_either, limited(WriteKind.IDENTITY)],
 )
 async def put_public_identity(
     body: PublicIdentityIn, user: VerifiedUser, db: DbDep
 ) -> PublicIdentityOut:
     """
-    Set the handle (`/u/<handle>`) and the name every public page shows for the caller.
+    Set the handle (`/u/<handle>`) every public page shows for the caller.
 
     Needs a verified e-mail address. The handle is unique whatever its case: 409
-    `HANDLE_TAKEN` when somebody else holds it. The account's own name is never used.
+    `HANDLE_TAKEN` when somebody else holds it. The full name shows beside it only while the
+    `public_full_name` consent is given (`POST /consents`); `public_name` in the body is ignored.
     """
-    await public_identity.set_public_identity(
-        db, user, handle=body.handle, public_name=body.public_name
-    )
+    await public_identity.set_public_identity(db, user, handle=body.handle)
     await db.commit()
-    return PublicIdentityOut(handle=user.handle, public_name=user.public_name)
+    return _identity(user)
 
 
 @router.get("/u/{handle}", summary="A public profile", dependencies=_social)
 async def get_profile(handle: str, viewer: OptionalUser, db: DbDep) -> MemberProfileOut:
     """
-    Return a member's public profile: handle, public name, month joined and three counts.
+    Return a member's public profile: handle, name (with consent), month joined and three counts.
 
     404 for a handle nobody holds, and for one that a block stands in front of, in either
     direction. Nothing from the member's private profile, and no e-mail address, ever.
@@ -105,12 +114,12 @@ async def unfollow_member(handle: str, user: CurrentUser, db: DbDep) -> Response
 
 @router.get("/blocks", summary="The members the caller has blocked", dependencies=_social)
 async def list_blocks(user: CurrentUser, db: DbDep) -> list[MemberOut]:
-    """List the members the caller blocked, newest first, by handle and public name only."""
+    """List the members the caller blocked, newest first, by handle, and name only with consent."""
     blocked = await block_service.blocked_accounts(db, user)
     return [
-        MemberOut(handle=member.handle, public_name=member.public_name)
+        MemberOut(handle=member.handle, public_name=public_identity.shown_name(member))
         for member in blocked
-        if member.handle is not None and member.public_name is not None
+        if member.handle is not None
     ]
 
 

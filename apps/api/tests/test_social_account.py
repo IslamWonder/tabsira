@@ -94,7 +94,7 @@ async def test_the_export_carries_the_public_identity_and_ids_as_strings(
 
     body = (await ann.http.get("/account/export")).json()
 
-    assert (body["user"]["handle"], body["user"]["public_name"]) == ("ann", "ann name")
+    assert (body["user"]["handle"], body["user"]["public_full_name"]) == ("ann", True)
     assert body["social"]["posts"][0]["id"] == post_id
     assert isinstance(body["social"]["posts"][0]["id"], str)
 

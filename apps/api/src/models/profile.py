@@ -147,6 +147,10 @@ class Profile(Base):
     # The three optional questions were offered once, after the first insight
     # (master prompt v2 §5 and §4.9): answered or skipped, they are never asked again.
     questions_asked: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # Set once, when the person has given an explicit answer to every question of the profile
+    # (`unknown` is an answer: «أفضّل عدم الإجابة»). Empty until then, and the scan and the
+    # chat answer 403 `profile_required` (decision 63).
+    profile_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Version of the latest consent text the user answered.
     consent_version: Mapped[str | None] = mapped_column(String(32))
     updated_at: Mapped[datetime] = mapped_column(

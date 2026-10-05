@@ -1,11 +1,10 @@
 """
 The public identity of an account: a handle and a name chosen on purpose.
 
-The account's own display name may be a real name, or the one Google gave, so it is never
-shown on the network. A person who wants to publish picks a handle (their address,
-`/u/<handle>`) and a public name here; the two are the only things any public page says
-about them. A handle is unique whatever its case. Nothing here reads, guesses or copies
-anything from the profile.
+A person who wants to publish picks a handle (their address, `/u/<handle>`). Beside it a public
+page shows the person's real full name (`display_name`) only while the `public_full_name`
+consent is given (decision 63); withdrawn or never given, the handle is all it says. A handle
+is unique whatever its case. Nothing here reads, guesses or copies anything from the profile.
 """
 
 from __future__ import annotations
@@ -18,7 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.errors import AppError, ErrorCode
-from src.models.user import HANDLE_PATTERN, PUBLIC_NAME_MAX, User
+from src.models.user import HANDLE_PATTERN, User
 
 _HANDLE = re.compile(HANDLE_PATTERN)
 # Names that say "this is the platform" or "this is staff"; nobody may take them.
@@ -62,9 +61,6 @@ RESERVED_PREFIXES = (
     "الإدارة",
     "الادارة",
 )
-# An address or a link in a name would put a stranger's contact details on a public page.
-_NAME_FORBIDDEN = re.compile(r"[@<>]|https?:|www\.", re.IGNORECASE)
-_SPACES = re.compile(r"\s+")
 
 
 def clean_handle(raw: str) -> str:
@@ -84,34 +80,26 @@ def handle_problem(handle: str) -> str | None:
     return None
 
 
-def clean_public_name(raw: str) -> str:
-    """Return the name with its whitespace collapsed to single spaces."""
-    return _SPACES.sub(" ", unicodedata.normalize("NFKC", raw)).strip()
+def shown_name(user: User) -> str | None:
+    """
+    Return the name a public answer carries beside the handle, or None for the handle alone.
 
-
-def public_name_problem(name: str) -> str | None:
-    """Return why a cleaned public name cannot be used, or None when it can."""
-    if not 1 <= len(name) <= PUBLIC_NAME_MAX:
-        return f"must be 1 to {PUBLIC_NAME_MAX} characters"
-    if any(unicodedata.category(char).startswith("C") for char in name):
-        return "must not contain control characters"
-    if _NAME_FORBIDDEN.search(name):
-        return "must not contain an address or a link"
-    return None
+    The real full name, and only while the person's consent to show it is given; every public
+    answer that names an account goes through here, so withdrawing the consent is enough.
+    """
+    return user.display_name if user.public_full_name else None
 
 
 def _taken() -> AppError:
     return AppError(ErrorCode.HANDLE_TAKEN, "This handle is taken.", status_code=409)
 
 
-async def set_public_identity(
-    db: AsyncSession, user: User, *, handle: str, public_name: str
-) -> User:
+async def set_public_identity(db: AsyncSession, user: User, *, handle: str) -> User:
     """
-    Give the account its handle and public name, or change them.
+    Give the account its handle, or change it.
 
     The handle must be free, whatever the case of the one that holds it; the person's own
-    current handle counts as free, so they may change only its case, or only their name.
+    current handle counts as free, so they may change only its case.
     """
     holder = await db.scalar(
         select(User.id).where(func.lower(User.handle) == handle.lower(), User.id != user.id)
@@ -119,7 +107,6 @@ async def set_public_identity(
     if holder is not None:
         raise _taken()
     user.handle = handle
-    user.public_name = public_name
     try:
         # A savepoint, so losing a race for the handle leaves the transaction usable.
         async with db.begin_nested():

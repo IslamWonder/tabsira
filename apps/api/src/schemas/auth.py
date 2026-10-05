@@ -28,6 +28,15 @@ def _clean_display_name(value: str) -> str:
     return name
 
 
+def _checked_display_name(value: str) -> str:
+    """Clean the person's full name and bound it."""
+    name = _clean_display_name(value)
+    if len(name) > DISPLAY_NAME_MAX:
+        message = f"must have at most {DISPLAY_NAME_MAX} characters"
+        raise ValueError(message)
+    return name
+
+
 def _checked_password(value: str) -> str:
     problem = security.password_problem(value)
     if problem is not None:
@@ -45,17 +54,12 @@ class SignupIn(BaseModel):
     # the current ones (decision 35); the check answers `legal_acceptance_required`.
     accepted_terms_version: LegalVersion
     accepted_privacy_version: LegalVersion
+    # The separate, unticked box «أوافق على ظهور اسمي الكامل مع منشوراتي» (decision 63): the
+    # display name is the person's real full name, shown publicly only while this is true.
+    public_full_name: bool = False
 
     _password = field_validator("password")(_checked_password)
-
-    @field_validator("display_name")
-    @classmethod
-    def _display_name(cls, value: str) -> str:
-        name = _clean_display_name(value)
-        if len(name) > DISPLAY_NAME_MAX:
-            message = f"must have at most {DISPLAY_NAME_MAX} characters"
-            raise ValueError(message)
-        return name
+    _display_name = field_validator("display_name")(_checked_display_name)
 
 
 class LoginIn(BaseModel):
@@ -106,6 +110,11 @@ class UserOut(BaseModel):
     # True when the latest accepted terms or privacy version is not the current one, or there is
     # none: the web app then asks for the acceptance (`POST /auth/legal/accept`) before going on.
     legal_acceptance_required: bool
+    # False until the whole profile was answered (decision 63): the web app then shows the
+    # profile form before anything else, and the scan and the chat answer `profile_required`.
+    profile_completed: bool
+    # Whether the full name may be shown beside the handle on public pages.
+    public_full_name: bool
 
 
 class LegalAcceptIn(BaseModel):
@@ -115,6 +124,16 @@ class LegalAcceptIn(BaseModel):
 
     terms_version: LegalVersion
     privacy_version: LegalVersion
+    # A Google account arrives with the name Google holds: here the person gives their real full
+    # name, and says whether it may be shown (true or false is a recorded answer; absent leaves
+    # the choice as it is).
+    display_name: Annotated[str, Field(min_length=1, max_length=DISPLAY_NAME_MAX * 2)] | None = None
+    public_full_name: bool | None = None
+
+    @field_validator("display_name")
+    @classmethod
+    def _display_name(cls, value: str | None) -> str | None:
+        return None if value is None else _checked_display_name(value)
 
 
 class ProviderOut(BaseModel):

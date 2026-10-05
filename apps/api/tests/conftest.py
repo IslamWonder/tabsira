@@ -361,7 +361,8 @@ async def make_user(db_session: AsyncSession, account_settings: Settings) -> Cal
     """Create an account straight in the database; `password` None makes a Google-only one.
 
     It has accepted the current terms and privacy policy unless `accepted` is False (an admin
-    has not, unless `accepted` is True).
+    has not, unless `accepted` is True), and has completed its profile unless `profile_done` is
+    False (decision 63: only then may it scan and chat).
     """
     from src import security
     from src.models.user import User
@@ -374,6 +375,7 @@ async def make_user(db_session: AsyncSession, account_settings: Settings) -> Cal
         display_name: str = "Reader",
         verified: bool = False,
         accepted: bool | None = None,
+        profile_done: bool = True,
         **columns: Any,
     ) -> User:
         user = User(
@@ -392,7 +394,11 @@ async def make_user(db_session: AsyncSession, account_settings: Settings) -> Cal
             user.email_verified_at = clock.utcnow()
         db_session.add(user)
         await db_session.flush()
-        await profile_service.ensure_profile(db_session, user.id)
+        profile = await profile_service.ensure_profile(db_session, user.id)
+        if profile_done:
+            from src import clock
+
+            profile.profile_completed_at = clock.utcnow()
         # Admins use the admin area, which has its own sign-in and no acceptance gate.
         if accepted if accepted is not None else not user.is_admin:
             # Most tests are about something else: the account has accepted the current texts.

@@ -22,7 +22,7 @@ async def test_an_account_has_no_public_identity_until_it_chooses_one(make_membe
     response = await reader.http.get("/me/public-identity")
 
     assert response.status_code == 200
-    assert response.json() == {"handle": None, "public_name": None}
+    assert response.json() == {"handle": None, "public_name": None, "public_full_name": False}
 
 
 async def test_the_identity_routes_need_a_session(make_member):
@@ -44,24 +44,33 @@ async def test_an_unverified_account_cannot_choose_a_public_identity(make_member
     assert response.json()["error"] == "EMAIL_NOT_VERIFIED"
 
 
-async def test_a_verified_account_chooses_a_handle_and_name_and_never_uses_its_own_name(
+async def test_a_verified_account_chooses_a_handle_and_its_full_name_shows_only_with_consent(
     make_member, db_session
 ):
     reader = await make_member(identity=False, display_name="Real Person")
 
     response = await reader.http.put(
-        "/me/public-identity", json={"handle": "  Nur_1 ", "public_name": "  نور   الدين "}
+        "/me/public-identity", json={"handle": "  Nur_1 ", "public_name": "ignored"}
     )
 
     assert response.status_code == 200
-    assert response.json() == {"handle": "Nur_1", "public_name": "نور الدين"}
-    assert (await reader.http.get("/me/public-identity")).json() == response.json()
+    # The old `public_name` of the body is ignored; no consent, so the handle alone shows.
+    assert response.json() == {"handle": "Nur_1", "public_name": None, "public_full_name": False}
     stored = await db_session.scalar(select(User).where(User.id == reader.user.id))
     assert (stored.handle, stored.public_name, stored.display_name) == (
         "Nur_1",
-        "نور الدين",
+        None,
         "Real Person",
     )
+
+    consent = {"kind": "public_full_name", "version": "v1", "granted": True}
+    assert (await reader.http.post("/consents", json=consent)).status_code == 201
+    shown = (await reader.http.get("/me/public-identity")).json()
+    assert shown == {"handle": "Nur_1", "public_name": "Real Person", "public_full_name": True}
+
+    consent["granted"] = False
+    assert (await reader.http.post("/consents", json=consent)).status_code == 201
+    assert (await reader.http.get("/me/public-identity")).json()["public_name"] is None
 
 
 @pytest.mark.parametrize(
@@ -98,23 +107,6 @@ async def test_a_handle_that_is_malformed_or_reserved_is_refused(make_member, ha
     assert response.json()["fields"][0]["loc"][-1] == "handle"
 
 
-@pytest.mark.parametrize(
-    "name",
-    ["", "a@b.co", "see https://x.example", "www.x.example", "<b>x</b>", "x" * 41, "a\u0007b"],
-)
-async def test_a_public_name_with_a_link_an_address_or_control_characters_is_refused(
-    make_member, name
-):
-    reader = await make_member(identity=False)
-
-    response = await reader.http.put(
-        "/me/public-identity", json={"handle": "okay", "public_name": name}
-    )
-
-    assert response.status_code == 422
-    assert response.json()["fields"][0]["loc"][-1] == "public_name"
-
-
 async def test_a_handle_in_a_compatibility_form_is_stored_in_its_plain_form(make_member):
     reader = await make_member(identity=False)
 
@@ -138,7 +130,11 @@ async def test_a_handle_is_taken_whatever_its_case_but_its_holder_may_change_its
 
     assert (taken.status_code, taken.json()["error"]) == (409, "HANDLE_TAKEN")
     assert again.status_code == 200
-    assert again.json() == {"handle": "BASIRA", "public_name": "New name"}
+    assert again.json() == {
+        "handle": "BASIRA",
+        "public_name": "Basira name",
+        "public_full_name": True,
+    }
 
 
 async def test_losing_a_race_for_a_handle_is_a_conflict_and_not_a_crash(make_member, db_session):
@@ -148,9 +144,7 @@ async def test_losing_a_race_for_a_handle_is_a_conflict_and_not_a_crash(make_mem
     # The pre-check saw the handle free; the unique index still refuses the write.
     db_session.scalar = AsyncMock(return_value=None)
     with pytest.raises(AppError) as caught:
-        await public_identity.set_public_identity(
-            db_session, late.user, handle="RACER", public_name="Name"
-        )
+        await public_identity.set_public_identity(db_session, late.user, handle="RACER")
 
     assert caught.value.code is ErrorCode.HANDLE_TAKEN
 
@@ -174,7 +168,7 @@ async def test_a_member_is_found_by_handle_in_any_case_unless_disabled_or_delete
 
 
 async def test_a_profile_is_public_and_says_only_what_the_member_chose(make_member):
-    author = await make_member("author", display_name="Secret Real Name")
+    author = await make_member("author", display_name="Secret Real Name", public_full_name=False)
     guest = await make_member(signed_in=False)
 
     response = await guest.http.get("/u/AUTHOR")
@@ -190,7 +184,8 @@ async def test_a_profile_is_public_and_says_only_what_the_member_chose(make_memb
         "following_count",
         "viewer",
     }
-    assert (body["handle"], body["public_name"]) == ("author", "author name")
+    # No consent to show the full name: the handle alone.
+    assert (body["handle"], body["public_name"]) == ("author", None)
     assert body["joined_month"] == author.user.created_at.strftime("%Y-%m")
     assert (body["posts_count"], body["followers_count"], body["following_count"]) == (0, 0, 0)
     assert body["viewer"] is None
@@ -213,6 +208,21 @@ async def test_a_profile_of_nobody_or_of_a_disabled_account_is_a_404(make_member
     gone.user.is_active = False
     await db_session.flush()
     assert (await guest.http.get("/u/gone")).status_code == 404
+
+
+async def test_a_profile_shows_the_full_name_while_the_consent_is_given_and_not_after(
+    make_member,
+):
+    author = await make_member("author", display_name="Real Person")
+    guest = await make_member(signed_in=False)
+
+    assert (await guest.http.get("/u/author")).json()["public_name"] == "Real Person"
+    withdrawn = {"kind": "public_full_name", "version": "v1", "granted": False}
+    assert (await author.http.post("/consents", json=withdrawn)).status_code == 201
+
+    after = await guest.http.get("/u/author")
+    assert after.json()["public_name"] is None
+    assert "Real Person" not in after.text
 
 
 async def test_a_profile_counts_what_it_counts_and_tells_the_viewer_whether_they_follow(
@@ -434,7 +444,7 @@ async def test_the_atlas_alone_opens_the_public_identity_and_nothing_else_of_the
     )
     assert chosen.status_code == 200, chosen.text
     shown = await reader.http.get("/me/public-identity")
-    assert shown.json() == {"handle": "basira", "public_name": "Basira"}
+    assert shown.json() == {"handle": "basira", "public_name": None, "public_full_name": False}
     for method, path in (
         ("GET", "/u/basira"),
         ("PUT", "/u/basira/follow"),

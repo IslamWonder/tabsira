@@ -68,7 +68,14 @@ async def make_member(
             return Member(None, guest, None)  # type: ignore[arg-type]
         email = f"{handle or 'member'}@example.com"
         if identity and handle is not None:
-            columns = {"handle": handle, "public_name": f"{handle} name", **columns}
+            # A member who consented to show their full name (decision 63); a test that wants
+            # the handle alone passes `public_full_name=False`.
+            columns = {
+                "handle": handle,
+                "display_name": f"{handle} name",
+                "public_full_name": True,
+                **columns,
+            }
         user = await make_user(email, verified=verified, **columns)
         browser = browser_for(account_app)
         browsers.append(browser)

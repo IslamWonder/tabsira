@@ -38,12 +38,14 @@ CommentIdPath = Annotated[PublicId, Path(description="The comment's public id")]
 
 
 class PublicIdentityIn(BaseModel):
-    """The handle and public name an account chooses to appear under."""
+    """The handle an account chooses to appear under."""
 
     model_config = ConfigDict(extra="forbid")
 
     handle: Annotated[str, Field(min_length=1, max_length=64)]
-    public_name: Annotated[str, Field(min_length=1, max_length=160)]
+    # Kept so a client written before decision 63 still validates; ignored. The name a public
+    # page shows is the account's full name, and only with the `public_full_name` consent.
+    public_name: Annotated[str | None, Field(max_length=160, deprecated=True)] = None
 
     @field_validator("handle")
     @classmethod
@@ -56,28 +58,28 @@ class PublicIdentityIn(BaseModel):
 
     @field_validator("public_name")
     @classmethod
-    def _public_name(cls, value: str) -> str:
-        name = public_identity.clean_public_name(value)
-        problem = public_identity.public_name_problem(name)
-        if problem is not None:
-            raise ValueError(problem)
-        return name
+    def _public_name(cls, value: str | None) -> None:
+        # Never stored and never shown: nothing to clean, nothing to keep.
+        return None
 
 
 class PublicIdentityOut(BaseModel):
-    """The caller's own handle and public name; both null until they have chosen."""
+    """The caller's own handle, and the name public pages show beside it."""
 
     handle: str | None
+    # The full name while `public_full_name` is true; null otherwise (the handle alone shows).
     public_name: str | None
+    public_full_name: bool
 
 
 class MemberOut(BaseModel):
-    """A person as the network shows them: the two things they chose, and nothing else."""
+    """A person as the network shows them: the handle, and the full name only with consent."""
 
     model_config = ConfigDict(from_attributes=True)
 
     handle: str
-    public_name: str
+    # The real full name while the person's `public_full_name` consent is given, else null.
+    public_name: str | None
 
 
 class ViewerRelationOut(BaseModel):

@@ -69,7 +69,7 @@ async def profile_of(db: AsyncSession, member: User, viewer: User | None) -> Mem
         )
     return MemberProfileOut(
         handle=member.handle or "",
-        public_name=member.public_name or "",
+        public_name=public_identity.shown_name(member),
         joined_month=member.created_at.strftime("%Y-%m"),
         posts_count=posts or 0,
         followers_count=followers or 0,

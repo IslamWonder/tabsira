@@ -24,6 +24,7 @@ class UserExport(BaseModel):
     # The public identity chosen for the social network, when there is one.
     handle: str | None
     public_name: str | None
+    public_full_name: bool
     is_admin: bool
     is_active: bool
     email_verified_at: datetime | None

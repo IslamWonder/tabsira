@@ -621,7 +621,7 @@ published = publish_post
 async def test_a_published_post_is_public_to_a_guest_without_the_authors_private_details(
     make_member, make_insight, guard
 ):
-    author = await make_member("author", display_name="Secret Real Name")
+    author = await make_member("author", display_name="Secret Real Name", public_full_name=False)
     guest = await make_member(signed_in=False)
     post_id = await published(author, make_insight, reflection="تأمل")
 

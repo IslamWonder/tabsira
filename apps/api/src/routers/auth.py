@@ -49,6 +49,7 @@ async def signup(
         ip_hash=ip_hash,
         accepted_terms_version=body.accepted_terms_version,
         accepted_privacy_version=body.accepted_privacy_version,
+        public_full_name=body.public_full_name,
     )
     token = await session_service.start_for_request(
         db, settings, request, user_id=user.id, ip_hash=ip_hash
@@ -122,10 +123,15 @@ async def accept_legal(
     Record that the signed-in account accepts both texts, for a version that changed.
 
     The versions must be the current ones (`GET /legal`); anything else is a 422
-    `legal_acceptance_required`. Two consent rows are appended; none is ever edited.
+    `legal_acceptance_required`. Two consent rows are appended; none is ever edited. It also
+    takes, for a Google account, the real full name (`display_name`) and the answer to the
+    `public_full_name` consent (decision 63); both are optional.
     """
     legal_service.require_current(settings, body.terms_version, body.privacy_version)
     legal_service.record_acceptance(db, settings, user.id)
+    await auth_service.record_name_choices(
+        db, settings, user, display_name=body.display_name, public_full_name=body.public_full_name
+    )
     await db.commit()
     return await auth_service.describe(db, settings, user)
 

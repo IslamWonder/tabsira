@@ -35,7 +35,7 @@ from src.schemas.insight import (
     PublicAuthorOut,
     PublicInsightOut,
 )
-from src.services import insight_view
+from src.services import insight_view, public_identity
 from src.services.insight_table_source import PUBLISHABLE_ENGINE
 
 
@@ -156,8 +156,8 @@ async def read_public(db: AsyncSession, insight_id: int) -> PublicInsightOut:
         relation=RelationType(insight.relation),
         relation_label=texts.relation_labels[insight.relation],
         **insight_view.shown_fields(insight, verse, hadith, awaiting, public=True),
-        author=PublicAuthorOut(handle=owner.handle, public_name=owner.public_name)
-        if owner.handle is not None and owner.public_name is not None
+        author=PublicAuthorOut(handle=owner.handle, public_name=public_identity.shown_name(owner))
+        if owner.handle is not None
         else None,
         published_at=insight.published_at,
         disclosure=texts.ai_disclosure,

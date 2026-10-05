@@ -213,7 +213,7 @@
       "post": {
         "tags": ["auth"],
         "summary": "Accept the current terms of use and privacy policy",
-        "description": "Record that the signed-in account accepts both texts, for a version that changed.\n\nThe versions must be the current ones (`GET /legal`); anything else is a 422\n`legal_acceptance_required`. Two consent rows are appended; none is ever edited.",
+        "description": "Record that the signed-in account accepts both texts, for a version that changed.\n\nThe versions must be the current ones (`GET /legal`); anything else is a 422\n`legal_acceptance_required`. Two consent rows are appended; none is ever edited. It also\ntakes, for a Google account, the real full name (`display_name`) and the answer to the\n`public_full_name` consent (decision 63); both are optional.",
         "operationId": "accept_legal_auth_legal_accept_post",
         "requestBody": {
           "content": {
@@ -1227,8 +1227,8 @@
     "/me/public-identity": {
       "get": {
         "tags": ["members"],
-        "summary": "The caller's handle and public name",
-        "description": "Return the identity the caller appears under, or nulls until they choose one.",
+        "summary": "The caller's handle and the name shown beside it",
+        "description": "Return the handle the caller appears under (null until they choose one) and the name shown.",
         "operationId": "get_public_identity_me_public_identity_get",
         "responses": {
           "200": {
@@ -1255,8 +1255,8 @@
       },
       "put": {
         "tags": ["members"],
-        "summary": "Choose or change the handle and public name",
-        "description": "Set the handle (`/u/<handle>`) and the name every public page shows for the caller.\n\nNeeds a verified e-mail address. The handle is unique whatever its case: 409\n`HANDLE_TAKEN` when somebody else holds it. The account's own name is never used.",
+        "summary": "Choose or change the handle",
+        "description": "Set the handle (`/u/<handle>`) every public page shows for the caller.\n\nNeeds a verified e-mail address. The handle is unique whatever its case: 409\n`HANDLE_TAKEN` when somebody else holds it. The full name shows beside it only while the\n`public_full_name` consent is given (`POST /consents`); `public_name` in the body is ignored.",
         "operationId": "put_public_identity_me_public_identity_put",
         "requestBody": {
           "content": {
@@ -1296,7 +1296,7 @@
       "get": {
         "tags": ["members"],
         "summary": "A public profile",
-        "description": "Return a member's public profile: handle, public name, month joined and three counts.\n\n404 for a handle nobody holds, and for one that a block stands in front of, in either\ndirection. Nothing from the member's private profile, and no e-mail address, ever.",
+        "description": "Return a member's public profile: handle, name (with consent), month joined and three counts.\n\n404 for a handle nobody holds, and for one that a block stands in front of, in either\ndirection. Nothing from the member's private profile, and no e-mail address, ever.",
         "operationId": "get_profile_u__handle__get",
         "parameters": [
           {
@@ -1403,7 +1403,7 @@
       "get": {
         "tags": ["members"],
         "summary": "The members the caller has blocked",
-        "description": "List the members the caller blocked, newest first, by handle and public name only.",
+        "description": "List the members the caller blocked, newest first, by handle, and name only with consent.",
         "operationId": "list_blocks_blocks_get",
         "responses": {
           "200": {
@@ -2524,7 +2524,7 @@
       "post": {
         "tags": ["scans"],
         "summary": "Start a scan of a photo or of a photo's address",
-        "description": "Check the photo, keep it for an hour, queue the scan and answer at once.",
+        "description": "Check the photo, keep it for an hour, queue the scan and answer at once.\n\n403 `account_required` for a guest that holds its one scan, 403 `profile_required` for an\naccount that has not completed its profile (decision 63), both before the photo is read.",
         "operationId": "create_scan_scans_post",
         "requestBody": {
           "content": {
@@ -2856,7 +2856,7 @@
       "post": {
         "tags": ["insights"],
         "summary": "Ask one question about the insight (three at most)",
-        "description": "Answer a question classified by its content level, grounded in the insight.\n\nThe same `idempotencyKey` returns the same answer and counts once; the\nfourth successful message answers 409 CHAT_LIMIT_REACHED. A request for\nanother text runs the retrieval and the verification again (v2 §14).",
+        "description": "Answer a question classified by its content level, grounded in the insight.\n\nThe same `idempotencyKey` returns the same answer and counts once; the\nfourth successful message answers 409 CHAT_LIMIT_REACHED. A request for\nanother text runs the retrieval and the verification again (v2 §14). 403\n`profile_required` for an account that has not completed its profile (decision 63).",
         "operationId": "chat_insights__insight_id__chat_post",
         "parameters": [
           {
@@ -5379,7 +5379,14 @@
       },
       "ConsentKind": {
         "type": "string",
-        "enum": ["terms", "privacy", "photo_storage", "personalization", "memory"],
+        "enum": [
+          "terms",
+          "privacy",
+          "photo_storage",
+          "personalization",
+          "memory",
+          "public_full_name"
+        ],
         "title": "ConsentKind"
       },
       "ConsentOut": {
@@ -5787,6 +5794,8 @@
           "GONE",
           "legal_acceptance_required",
           "mail_unavailable",
+          "account_required",
+          "profile_required",
           "turnstile_failed",
           "UNSUPPORTED_MEDIA_TYPE",
           "FEATURE_DISABLED",
@@ -7332,6 +7341,30 @@
             "maxLength": 32,
             "minLength": 1,
             "title": "Privacy Version"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "public_full_name": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Full Name"
           }
         },
         "additionalProperties": false,
@@ -7536,14 +7569,21 @@
             "title": "Handle"
           },
           "public_name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Public Name"
           }
         },
         "type": "object",
         "required": ["handle", "public_name"],
         "title": "MemberOut",
-        "description": "A person as the network shows them: the two things they chose, and nothing else."
+        "description": "A person as the network shows them: the handle, and the full name only with consent."
       },
       "MemberProfileOut": {
         "properties": {
@@ -7552,7 +7592,14 @@
             "title": "Handle"
           },
           "public_name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Public Name"
           },
           "joined_month": {
@@ -8414,6 +8461,18 @@
             "type": "boolean",
             "title": "Questions Asked"
           },
+          "profile_completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Completed At"
+          },
           "consent_version": {
             "anyOf": [
               {
@@ -8446,6 +8505,7 @@
           "reduced_motion",
           "sound_enabled",
           "questions_asked",
+          "profile_completed_at",
           "consent_version",
           "updated_at"
         ],
@@ -8561,12 +8621,24 @@
               }
             ],
             "title": "Questions Asked"
+          },
+          "complete_profile": {
+            "anyOf": [
+              {
+                "type": "boolean",
+                "const": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complete Profile"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "ProfilePatch",
-        "description": "The fields a user may change, any of them, alone.\n\nThe three consent switches are not here: they change only through\n`POST /consents`, which records the answer. A field sent as null is refused;\nto clear an answer, send `unknown` (or `[]` for the goals).\n\nSkipping the optional questions is `questions_asked: true` alone: every\nfield stays `unknown` and the questions are never offered again. Answering\nany of the three question fields records the same."
+        "description": "The fields a user may change, any of them, alone.\n\nThe three consent switches are not here: they change only through\n`POST /consents`, which records the answer. A field sent as null is refused;\nto clear an answer, send `unknown` (or `[]` for the goals).\n\nSkipping the optional questions is `questions_asked: true` alone: every\nfield stays `unknown` and the questions are never offered again. Answering\nany of the three question fields records the same.\n\n`complete_profile: true` completes the profile (decision 63) and needs an explicit answer\nto every question in the same body: `goals` (`[]` is «أفضّل عدم الإجابة»),\n`knowledge_level`, `age_range`, `religious_background` and `gender` (`unknown` is that\nanswer). A body that leaves one out is a 422."
       },
       "ProgressOut": {
         "properties": {
@@ -8651,14 +8723,21 @@
             "title": "Handle"
           },
           "public_name": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Public Name"
           }
         },
         "type": "object",
         "required": ["handle", "public_name"],
         "title": "PublicAuthorOut",
-        "description": "The only things a public insight says about its owner: the handle and name they chose."
+        "description": "The only things a public insight says about its owner: the handle, and the name if consented."
       },
       "PublicHadith": {
         "properties": {
@@ -8686,17 +8765,24 @@
             "title": "Handle"
           },
           "public_name": {
-            "type": "string",
-            "maxLength": 160,
-            "minLength": 1,
-            "title": "Public Name"
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Name",
+            "deprecated": true
           }
         },
         "additionalProperties": false,
         "type": "object",
-        "required": ["handle", "public_name"],
+        "required": ["handle"],
         "title": "PublicIdentityIn",
-        "description": "The handle and public name an account chooses to appear under."
+        "description": "The handle an account chooses to appear under."
       },
       "PublicIdentityOut": {
         "properties": {
@@ -8721,12 +8807,16 @@
               }
             ],
             "title": "Public Name"
+          },
+          "public_full_name": {
+            "type": "boolean",
+            "title": "Public Full Name"
           }
         },
         "type": "object",
-        "required": ["handle", "public_name"],
+        "required": ["handle", "public_name", "public_full_name"],
         "title": "PublicIdentityOut",
-        "description": "The caller's own handle and public name; both null until they have chosen."
+        "description": "The caller's own handle, and the name public pages show beside it."
       },
       "PublicInsightOut": {
         "properties": {
@@ -10366,6 +10456,11 @@
             "maxLength": 32,
             "minLength": 1,
             "title": "Accepted Privacy Version"
+          },
+          "public_full_name": {
+            "type": "boolean",
+            "title": "Public Full Name",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -11141,6 +11236,10 @@
             ],
             "title": "Public Name"
           },
+          "public_full_name": {
+            "type": "boolean",
+            "title": "Public Full Name"
+          },
           "is_admin": {
             "type": "boolean",
             "title": "Is Admin"
@@ -11179,6 +11278,7 @@
           "display_name",
           "handle",
           "public_name",
+          "public_full_name",
           "is_admin",
           "is_active",
           "email_verified_at",
@@ -11229,6 +11329,14 @@
           "legal_acceptance_required": {
             "type": "boolean",
             "title": "Legal Acceptance Required"
+          },
+          "profile_completed": {
+            "type": "boolean",
+            "title": "Profile Completed"
+          },
+          "public_full_name": {
+            "type": "boolean",
+            "title": "Public Full Name"
           }
         },
         "type": "object",
@@ -11241,7 +11349,9 @@
           "has_password",
           "providers",
           "created_at",
-          "legal_acceptance_required"
+          "legal_acceptance_required",
+          "profile_completed",
+          "public_full_name"
         ],
         "title": "UserOut",
         "description": "The signed-in user's own account. Nothing of the private profile is here."

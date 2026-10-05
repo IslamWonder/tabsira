@@ -240,10 +240,10 @@ class PublicationOut(BaseModel):
 
 
 class PublicAuthorOut(BaseModel):
-    """The only things a public insight says about its owner: the handle and name they chose."""
+    """The only things a public insight says about its owner: the handle, and the name if consented."""
 
     handle: str
-    public_name: str
+    public_name: str | None
 
 
 class PublicInsightOut(BaseModel):

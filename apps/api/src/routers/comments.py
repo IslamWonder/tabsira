@@ -32,7 +32,7 @@ from src.schemas.social import (
     MemberOut,
     PostIdPath,
 )
-from src.services import comment_service, post_service
+from src.services import comment_service, post_service, public_identity
 from src.services import cursor as cursors
 from src.services.comment_service import Thread
 from src.services.post_view import outcome_message
@@ -50,7 +50,9 @@ def _out(
     mine = viewer_id is not None and comment.author_id == viewer_id
     return CommentOut(
         id=comment.id,
-        author=MemberOut(handle=author.handle or "", public_name=author.public_name or ""),
+        author=MemberOut(
+            handle=author.handle or "", public_name=public_identity.shown_name(author)
+        ),
         body=comment.body,
         created_at=comment.created_at,
         status=comment.status,

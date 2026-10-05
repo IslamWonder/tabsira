@@ -96,10 +96,10 @@ async def test_the_owner_publishes_and_a_stranger_reads_scripture_as_stored(brow
     assert str(user.id) not in response.text
 
 
-async def test_the_author_is_the_handle_and_name_the_owner_chose_and_nothing_else(
-    browser, other, store
-):
-    user = await verified_account(store, browser, handle="basira_fan", public_name="قارئ")
+async def test_the_author_is_the_handle_and_the_full_name_only_with_consent(browser, other, store):
+    user = await verified_account(
+        store, browser, handle="basira_fan", display_name="قارئ", public_full_name=True
+    )
     insight_id = await keep(store, user.id)
     await browser.put(f"/insights/{insight_id}/publication")
 
