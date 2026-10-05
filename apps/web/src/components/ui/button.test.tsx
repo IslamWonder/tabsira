@@ -64,4 +64,17 @@ describe('LinkButton', () => {
     expect(link).toHaveAttribute('href', '/world');
     expect(link.className).toContain('min-h-12');
   });
+
+  it('marks the link that leads to the page being shown', () => {
+    render(
+      <>
+        <LinkButton href="/world" current>
+          عالمي
+        </LinkButton>
+        <LinkButton href="/atlas">الأطلس</LinkButton>
+      </>
+    );
+    expect(screen.getByRole('link', { name: 'عالمي' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'الأطلس' })).not.toHaveAttribute('aria-current');
+  });
 });

@@ -204,6 +204,34 @@ describe('CommunityScreen and what a card changes in the feed', () => {
   });
 });
 
+describe('CommunityScreen addresses and empty private tabs', () => {
+  it('gates «محفوظاتي» for a guest who reaches it by its address', async () => {
+    window.history.replaceState(null, '', '/community#saved');
+    guest();
+    render(<CommunityScreen />);
+    expect(await screen.findByText(/لم تحفظ منشورًا بعد/)).toBeInTheDocument();
+  });
+
+  it('follows the fragment when it changes under the screen', async () => {
+    guest();
+    render(<CommunityScreen />);
+    await screen.findByRole('heading', { level: 2, name: '[عنوان البصيرة]' });
+    window.history.replaceState(null, '', '/community#latest');
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'الأحدث' })).toHaveAttribute('aria-selected', 'true')
+    );
+  });
+
+  it('says a member has published nothing yet', async () => {
+    member({ 'GET /me/posts': { body: { items: [], next_cursor: null } } });
+    render(<CommunityScreen />);
+    await waitFor(() => expect(screen.getAllByRole('tab')).toHaveLength(5));
+    await userEvent.click(screen.getByRole('tab', { name: 'منشوراتي' }));
+    expect(await screen.findByText(/لم تنشر بصيرة بعد/)).toBeInTheDocument();
+  });
+});
+
 describe('tabFromHash', () => {
   it('names a tab from the fragment and falls back to «لك»', () => {
     expect(tabFromHash('#latest')).toBe('latest');

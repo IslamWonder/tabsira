@@ -94,6 +94,10 @@ describe('ShareSheet', () => {
     expect(within(sheet).queryByRole('link', { name: 'انشر على الخريطة' })).toBeNull();
     expect(within(sheet).getByRole('link', { name: 'انشر في تواصل' })).toBeInTheDocument();
     sheet.remove();
+    const mapOnly = renderSheet({ publishTo: { atlas: true, community: false } });
+    expect(within(mapOnly).getByRole('link', { name: 'انشر على الخريطة' })).toBeInTheDocument();
+    expect(within(mapOnly).queryByRole('link', { name: 'انشر في تواصل' })).toBeNull();
+    mapOnly.remove();
     const bare = renderSheet();
     expect(within(bare).queryByRole('region', { name: 'طرق نشر أخرى' })).toBeNull();
     expect(within(bare).queryByRole('link')).toBeNull();
@@ -147,6 +151,18 @@ describe('ShareSheet', () => {
     expect(await within(sheet).findByText('نُسخ الرابط.')).toBeInTheDocument();
   });
 
+  it('copies the address when the share dialog fails with a DOM error that is not a closing', async () => {
+    mockApi({ [`PUT /insights/${ID}/publication`]: { body: PUBLISHED } });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubShare(vi.fn().mockRejectedValue(new DOMException('denied', 'NotAllowedError')), {
+      writeText,
+    });
+    const sheet = renderSheet();
+    await userEvent.click(within(sheet).getByRole('button', { name: 'انشر وشارك' }));
+    expect(await within(sheet).findByText('نُسخ الرابط.')).toBeInTheDocument();
+    expect(writeText).toHaveBeenCalledWith(URL_OF_PAGE);
+  });
+
   it('leaves the address on screen to copy by hand when nothing can copy it', async () => {
     mockApi({ [`PUT /insights/${ID}/publication`]: { body: PUBLISHED } });
     stubShare(undefined, undefined);
@@ -176,6 +192,16 @@ describe('ShareSheet', () => {
     expect(await within(sheet).findByRole('alert')).toHaveTextContent('لا يمكن نشر هذه البصيرة');
     expect(within(sheet).getByRole('button', { name: 'انشر وشارك' })).toBeEnabled();
     expect(within(sheet).queryByRole('button', { name: 'اسحب النشر' })).toBeNull();
+  });
+
+  it('falls back to the general message for a conflict it has no words for', async () => {
+    mockApi({ [`PUT /insights/${ID}/publication`]: apiError(409, 'SOMETHING_ELSE') });
+    const sheet = renderSheet();
+    await userEvent.click(within(sheet).getByRole('button', { name: 'انشر وشارك' }));
+    const alert = await within(sheet).findByRole('alert');
+    expect(alert).not.toHaveTextContent('لا يمكن نشر هذه البصيرة');
+    expect(alert).not.toHaveTextContent('دون 13 سنة');
+    expect(within(sheet).getByRole('button', { name: 'انشر وشارك' })).toBeEnabled();
   });
 
   it('says that an account under 13 publishes nothing, and stays unpublished', async () => {

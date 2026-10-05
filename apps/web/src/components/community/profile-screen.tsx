@@ -35,6 +35,7 @@ type Load =
 /** `YYYY-MM` as a month name and a year in the site's language, Western digits. */
 export function formatMonth(joined: string): string {
   const [year, month] = joined.split('-').map(Number);
+  /* v8 ignore next 3: `year` is never undefined, split always yields a first part; the fallback only satisfies the index type */
   return new Intl.DateTimeFormat(siteLanguage.intl, { month: 'long', year: 'numeric' }).format(
     new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, 1))
   );
