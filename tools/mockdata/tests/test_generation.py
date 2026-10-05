@@ -9,11 +9,11 @@ from pathlib import Path
 import pytest
 
 from mockdata import cli, output
-from mockdata.activity import Knobs, make_activity, parse
+from mockdata.activity import MAX_PHOTO_USES, Knobs, make_activity, parse
 from mockdata.catalogue import Photo
 from mockdata.members import EMAIL_DOMAIN, NameFactory, make_members
 from mockdata.output import MockFile
-from mockdata.places import COUNTRIES, City, Gazetteer, haversine_km
+from mockdata.places import COUNTRIES, City, Gazetteer, Place, haversine_km
 
 from .conftest import NOW
 
@@ -94,16 +94,62 @@ def test_photo_reuse_rule(gazetteer: Gazetteer, photos: list[Photo]) -> None:
     file = generate(gazetteer, photos)
     country = {m.ref: m.country for m in file.members}
     uses = Counter(i.image for i in file.insights)
-    assert max(uses.values()) <= 3
+    assert max(uses.values()) <= MAX_PHOTO_USES
+    # Sixty photos and 300 insights: a free country is always found, so none repeats.
     pairs = [(i.image, country[i.member]) for i in file.insights]
     assert len(pairs) == len(set(pairs))
 
 
-def test_insights_are_capped_by_the_catalogue(gazetteer: Gazetteer) -> None:
+def test_a_photo_spreads_its_uses_over_months(gazetteer: Gazetteer) -> None:
+    file = generate(gazetteer, [Photo(1, "cat.jpg", "cat", 1, 1)])
+    months = Counter(i.created_at[:7] for i in file.insights)
+    assert len(months) >= 4
+    assert max(months.values()) <= 3
+
+
+def test_insights_are_capped_by_the_photos(gazetteer: Gazetteer) -> None:
     few = [Photo(1, "cat.jpg", "cat", 1, 1)]
     file = generate(gazetteer, few)
-    assert len(file.insights) == 3
+    assert len(file.insights) == MAX_PHOTO_USES
     assert [i.placepix_id for i in file.images] == [1]
+
+
+def test_a_country_repeats_a_photo_only_when_no_other_is_free() -> None:
+    one_country = Gazetteer(
+        (City(1, "A", "أ", 10.0, 20.0, "TN", 100_000),), {1: (Place(10, 10.0, 20.0),)}
+    )
+    members = [
+        output.Member(
+            ref=f"m{n}",
+            handle=f"h{n}",
+            display_name="اسم",
+            email=f"h{n}@{EMAIL_DOMAIN}",
+            country="TN",
+            city_geoname_id=1,
+            joined_at="2026-04-05T10:00:00Z",
+        )
+        for n in range(30)
+    ]
+    file_insights = make_activity(
+        42, members, [Photo(1, "cat.jpg", "cat", 1, 1)], one_country, KNOBS, NOW
+    ).insights
+    assert len(file_insights) == MAX_PHOTO_USES
+
+
+def test_the_members_and_the_follows_do_not_depend_on_the_photos(
+    gazetteer: Gazetteer, photos: list[Photo]
+) -> None:
+    small, large = generate(gazetteer, photos[:10]), generate(gazetteer, photos)
+    assert small.members == large.members
+    assert small.follows == large.follows
+
+
+def test_the_library_insight_is_carried(gazetteer: Gazetteer, photos: list[Photo]) -> None:
+    args = argparse.Namespace(seed=42, members=220, **vars(KNOBS))
+    file = cli.build(args, photos, gazetteer, NOW, {photos[0].id: {"insight": {"title": "t"}}})
+    carried = {i.placepix_id: i.insight for i in file.images}
+    assert carried[photos[0].id] == {"title": "t"}
+    assert carried[photos[1].id] is None
 
 
 def test_points_are_close_to_a_real_place_of_the_members_city(

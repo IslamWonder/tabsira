@@ -28,7 +28,7 @@ One short file per feature: what it is, where it stands, what is waiting on the 
 | 20  | [Prompts and search: where they live](20_prompts.md)                     | 1     | High     | 🔄     |
 | 21  | [An Islamic spirit for «تبصرة تواصل»](21_social_spirit.md)               | 2     | Medium   | ⬜     |
 | 22  | [Account after the first scan, full profile](22_account_profile_gate.md) | 1     | High     | 🔄     |
-| 23  | [Mock members to start the platform](23_mock_data.md)                    | 2     | High     | 🔄     |
+| 23  | [Mock members to start the platform](23_mock_data.md)                    | 2     | High     | ✅     |
 
 ## Taking a task
 

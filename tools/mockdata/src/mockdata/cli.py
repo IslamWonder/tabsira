@@ -1,4 +1,10 @@
-"""Command line: `python -m mockdata.cli` writes the mock file of version 1."""
+"""
+Command line: `python -m mockdata.cli` writes the mock file of version 1.
+
+The photos are the photo library's that gave an insight (`make mock-photos`), with that
+insight; the members, their places and the follows depend on the seed alone, so they stay the
+same when only the library grows.
+"""
 
 from __future__ import annotations
 
@@ -7,11 +13,12 @@ import os
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import httpx
 import psycopg
 
-from mockdata import catalogue, places
+from mockdata import catalogue, library, places
 from mockdata.activity import Knobs, make_activity
 from mockdata.catalogue import Photo
 from mockdata.members import make_members
@@ -49,6 +56,19 @@ def fetch_photos() -> list[Photo]:
         return catalogue.fetch_catalogue(client)
 
 
+def library_photos(path: Path) -> tuple[list[Photo], dict[int, dict[str, Any]]]:
+    """The photos of the photo library that gave an insight, and their library entries."""
+    if not path.exists():
+        message = f"{path} does not exist: run make mock-photos first"
+        raise SystemExit(message)
+    kept = library.kept_photos(library.photos(path))
+    photos = [
+        Photo(pid, entry["filename"], entry["category"], entry["width"], entry["height"])
+        for pid, entry in kept.items()
+    ]
+    return photos, kept
+
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="mockdata", description="Generate the mock members file.")
     env = os.environ.get
@@ -56,9 +76,8 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--members", type=int, default=int(env("MOCK_MEMBERS", "1000")))
     p.add_argument("--now", help="fixed UTC time, 2026-10-05T10:00:00Z; default: current time")
     p.add_argument("--out", type=Path, default=DATA_DIR / OUT_NAME)
-    p.add_argument("--catalogue", type=Path, default=DATA_DIR / "placepix-catalogue.json")
+    p.add_argument("--photos-from", type=Path, default=DATA_DIR / library.PHOTOS_NAME)
     p.add_argument("--places-cache", type=Path, default=DATA_DIR / "places-cache.json")
-    p.add_argument("--refresh-catalogue", action="store_true")
     p.add_argument("--refresh-places", action="store_true")
     p.add_argument("--env-file", type=Path, default=REPO_ROOT / ".env")
     defaults = Knobs()
@@ -82,7 +101,11 @@ def load_gazetteer(
 
 
 def build(
-    args: argparse.Namespace, photos: list[Photo], gazetteer: Gazetteer, now: datetime
+    args: argparse.Namespace,
+    photos: list[Photo],
+    gazetteer: Gazetteer,
+    now: datetime,
+    content: dict[int, dict[str, Any]] | None = None,
 ) -> MockFile:
     cities: dict[str, list[City]] = {}
     for city in gazetteer.cities:
@@ -100,6 +123,7 @@ def build(
             width=p.width,
             height=p.height,
             scene=describe(p.filename, p.category),
+            insight=(content or {}).get(p.id, {}).get("insight"),
         )
         for p in photos
         if p.id in used
@@ -121,20 +145,17 @@ def build(
 def main(
     argv: Sequence[str] | None = None,
     *,
-    fetch: Callable[[], list[Photo]] = fetch_photos,
     connect: Callable[[str], Connection] = connect_read_only,
 ) -> int:
     args = parser().parse_args(argv)
     now = resolve_now(args.now)
-    photos = catalogue.filter_photos(
-        catalogue.get_catalogue(args.catalogue, args.refresh_catalogue, fetch)
-    )
+    photos, content = library_photos(args.photos_from)
     gazetteer = load_gazetteer(
         args.places_cache,
         args.refresh_places,
         lambda: connect(database_url(args.env_file)),
     )
-    file = build(args, photos, gazetteer, now)
+    file = build(args, photos, gazetteer, now, content)
     write(args.out, file)
     print(
         f"{args.out}: {len(file.members)} members, {len(file.images)} images, "

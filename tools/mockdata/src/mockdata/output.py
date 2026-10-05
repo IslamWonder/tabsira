@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -33,8 +34,8 @@ class Image(_Row):
     width: int
     height: int
     scene: Scene
-    # Filled by task 22.4 with the pipeline's outcome; null until then.
-    insight: None = None
+    # The pipeline's insight from the photo library (task 22.4), in the importer's shape.
+    insight: dict[str, Any] | None = None
 
 
 class Member(_Row):

@@ -19,7 +19,10 @@ from mockdata.output import (
 )
 from mockdata.places import Gazetteer, draw_point
 
-MAX_PHOTO_USES = 3
+# About seven insights per photo: 150 photos give the 1000 members over a thousand insights.
+MAX_PHOTO_USES = 7
+# Draws of a time before a photo's use may fall in a month it was already used in.
+MONTH_TRIES = 6
 SAME_COUNTRY_SHARE = 0.6
 REPLY_SHARE = 0.3
 # Decision 61: «انتفعتُ بها» and «جزاك الله خيرًا», one of each per member and post.
@@ -69,25 +72,29 @@ def make_insights(
     count: int,
     now: datetime,
 ) -> list[Insight]:
-    """Prolific and quiet members; a photo at most three times and once per country."""
+    """
+    Prolific and quiet members; a photo at most `MAX_PHOTO_USES` times.
+
+    A photo goes to a country it has not been seen in when one is free, and its uses fall in
+    different months when the member's months allow it, so the feed does not repeat itself.
+    """
     weights = _weights(rng, len(members))
     uses = dict.fromkeys((p.id for p in photos), 0)
     countries: dict[int, set[str]] = {p.id: set() for p in photos}
+    months: dict[int, set[str]] = {p.id: set() for p in photos}
     ordered = sorted(photos, key=lambda p: p.id)
     out: list[Insight] = []
     for member in rng.choices(members, weights=weights, k=count):
-        free = [
-            p
-            for p in ordered
-            if uses[p.id] < MAX_PHOTO_USES and member.country not in countries[p.id]
-        ]
+        free = [p for p in ordered if uses[p.id] < MAX_PHOTO_USES]
         if not free:
             continue
-        photo = rng.choice(free)
+        elsewhere = [p for p in free if member.country not in countries[p.id]]
+        photo = rng.choice(elsewhere or free)
         uses[photo.id] += 1
         countries[photo.id].add(member.country)
         place = rng.choice(gazetteer.places[member.city_geoname_id])
-        created = between(rng, parse(member.joined_at), now - timedelta(minutes=5))
+        created = _new_month(rng, parse(member.joined_at), now, months[photo.id])
+        months[photo.id].add(created.strftime("%Y-%m"))
         done = created + timedelta(seconds=rng.randrange(15, 90))
         out.append(
             Insight(
@@ -101,6 +108,16 @@ def make_insights(
         )
     out.sort(key=lambda i: (i.created_at, i.member, i.image))
     return [i.model_copy(update={"ref": f"i{n:05d}"}) for n, i in enumerate(out, start=1)]
+
+
+def _new_month(rng: random.Random, joined: datetime, now: datetime, taken: set[str]) -> datetime:
+    """A moment after `joined`, in a month not `taken` when a few draws find one."""
+    created = between(rng, joined, now - timedelta(minutes=5))
+    for _ in range(MONTH_TRIES):
+        if created.strftime("%Y-%m") not in taken:
+            break
+        created = between(rng, joined, now - timedelta(minutes=5))
+    return created
 
 
 def make_posts(
