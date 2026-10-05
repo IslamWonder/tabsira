@@ -35,6 +35,7 @@ Each feature file ends with numbered tasks. A task is one unit of work for one p
 1. Pick a task marked ⬜ open whose **Depends on** has merged. Read `AGENTS.md`, `docs/spec/DECISIONS.md` and the feature file first.
 2. Claim it: set its status to `🔄 <name>, <machine>`, commit that one line on `main` and push it before you start, so nobody else takes it.
 3. Work on a branch named `task/<id>-<short-name>`, touching only what **Touches** lists. If you need another area, say so in the task first.
+   A task that adds a configuration key also adds it to `.env.example`, `deploy/env.production.example` and the production checklist (`apps/api/src/cli/production_checks.py`), and writes a **Production `.env`** note in its feature file: the key, who provides its value, and what the checklist refuses. `deploy/deploy.sh` runs that checklist before migrating and stops when the owners' file lacks a key of the example, so the note is how they learn of it before the deploy.
 4. Before merging: rebase onto the latest `main`, re-chain any migration onto the current head, run the gate once (`make lint && make coverage`, under `flock /tmp/tabsira-gate.lock` when several agents share a machine), and get the review the task names.
 5. Merge, set the task to ✅ with the date, and update the steps table above it in the same commit.
 

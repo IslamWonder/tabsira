@@ -66,7 +66,7 @@ Before you say a task is done: `make lint && make coverage` pass, and `make smok
 
 - Read the existing code before adding code, and follow its naming and structure.
 - Check the latest version of a dependency in its registry (npm, PyPI) when you add it. Never guess a version.
-- Add every new configuration key to the typed settings and to `.env.example` in the same commit.
+- Add every new configuration key, in the same commit, to the typed settings, to `.env.example` and to `deploy/env.production.example` (the two mirror each other key for key), to the production checklist in `apps/api/src/cli/production_checks.py` (what a good production value looks like; `deploy/deploy.sh` runs it and stops on a `fix` line, and it refuses a file missing any key of the example), and to the task's plan file under a «Production `.env`» note: the key, who provides its value, and what the checklist refuses. A key nobody told the owners about is the deploy that fails at night.
 - Update the terms and privacy text in the same commit as any new data flow.
 - Update the step's status in `docs/plans/` in the same commit as the change.
 - Say plainly what you did not do, what failed, and what you could not verify.
