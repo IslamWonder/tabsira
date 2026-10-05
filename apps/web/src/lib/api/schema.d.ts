@@ -5439,6 +5439,12 @@ export interface components {
       bookmarked: boolean;
       /** Is Author */
       is_author: boolean;
+      /**
+       * Follows Author
+       * @description The reader follows the post's author, so a card can offer it
+       * @default false
+       */
+      follows_author: boolean;
     };
     /**
      * ViewerRelationOut
