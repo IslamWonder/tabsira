@@ -197,6 +197,16 @@ class PhotoExport(BaseModel):
     published: bool = Field(description="A post or a map entry shows a public copy right now")
 
 
+class FeedbackExport(BaseModel):
+    """The owner's rating of one insight, as they gave it."""
+
+    insight_id: PublicId
+    helpful: bool
+    reasons: list[str]
+    note: str | None
+    updated_at: datetime
+
+
 class LearningExport(BaseModel):
     """Everything the scan workflow keeps for the account."""
 
@@ -209,6 +219,7 @@ class LearningExport(BaseModel):
     learner_units: list[LearnerUnitExport]
     exposures: list[ExposureExport]
     photos: list[PhotoExport]
+    feedback: list[FeedbackExport] = Field(default_factory=list)
 
 
 class AccountExport(BaseModel):

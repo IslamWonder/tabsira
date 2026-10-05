@@ -3002,6 +3002,58 @@
         }
       }
     },
+    "/insights/{insight_id}/feedback": {
+      "put": {
+        "tags": ["insights"],
+        "summary": "Rate the insight: useful or not, and why",
+        "description": "Record the owner's rating, replacing an earlier one; only the owner and the team read it.",
+        "operationId": "rate_insight_insights__insight_id__feedback_put",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/insights/{insight_id}/complete": {
       "post": {
         "tags": ["insights"],
@@ -6543,6 +6595,119 @@
         "title": "FeedPage",
         "description": "A page of a feed, and how to ask for the next one."
       },
+      "FeedbackExport": {
+        "properties": {
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id"
+          },
+          "helpful": {
+            "type": "boolean",
+            "title": "Helpful"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": ["insight_id", "helpful", "reasons", "note", "updated_at"],
+        "title": "FeedbackExport",
+        "description": "The owner's rating of one insight, as they gave it."
+      },
+      "FeedbackIn": {
+        "properties": {
+          "helpful": {
+            "type": "boolean",
+            "title": "Helpful"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackReason"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Reasons",
+            "description": "Why it was not useful; empty when it was"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": ["helpful"],
+        "title": "FeedbackIn",
+        "description": "The owner's rating of the insight: useful or not, and why not."
+      },
+      "FeedbackOut": {
+        "properties": {
+          "helpful": {
+            "type": "boolean",
+            "title": "Helpful"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackReason"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": ["helpful", "reasons", "note", "updated_at"],
+        "title": "FeedbackOut"
+      },
+      "FeedbackReason": {
+        "type": "string",
+        "enum": ["wrong_text", "misread_scene", "wrong_explanation", "offensive", "other"],
+        "title": "FeedbackReason",
+        "description": "Why a reader found an insight not good; chosen from a list, never inferred."
+      },
       "FieldError": {
         "properties": {
           "loc": {
@@ -6987,6 +7152,17 @@
           },
           "image": {
             "$ref": "#/components/schemas/InsightImageOut"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedbackOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The owner's own rating, never shown to anyone else"
           },
           "completed_at": {
             "anyOf": [
@@ -7672,6 +7848,13 @@
             },
             "type": "array",
             "title": "Photos"
+          },
+          "feedback": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackExport"
+            },
+            "type": "array",
+            "title": "Feedback"
           }
         },
         "type": "object",

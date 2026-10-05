@@ -16,7 +16,7 @@ from src import clock
 from src.errors import AppError, ErrorCode
 from src.models.consent import Consent
 from src.models.learning import LearnerUnitState
-from src.models.scan import ChatMessage, ChatStatus, Insight, Scan
+from src.models.scan import ChatMessage, ChatStatus, Insight, InsightFeedback, Scan
 from src.models.session import Session
 from src.models.timeseries import EvidenceExposure
 from src.models.user import OAuthAccount, User
@@ -122,6 +122,14 @@ async def export_learning(db: AsyncSession, user_id: uuid.UUID) -> LearningExpor
             .order_by(EvidenceExposure.at)
         )
     ).all()
+    feedback = (
+        await db.scalars(
+            select(InsightFeedback)
+            .join(Insight, Insight.id == InsightFeedback.insight_id)
+            .where(Insight.user_id == user_id)
+            .order_by(InsightFeedback.id)
+        )
+    ).all()
     return LearningExport.model_validate(
         {
             "scans": scans,
@@ -137,6 +145,7 @@ async def export_learning(db: AsyncSession, user_id: uuid.UUID) -> LearningExpor
                 for insight in insights
                 if insight.photo_key is not None
             ],
+            "feedback": feedback,
         },
         from_attributes=True,
     )

@@ -89,7 +89,7 @@ DEFAULT_LEGAL_VERSION = "2026-10-05T18:00Z"
 # The privacy policy moved on with the per-account photo folder (15:00Z), then both texts with
 # «كفالة بصيرة» (decision 60): an entry's place widens, and a sponsor is named; and with
 # decision 64 (one guest scan, the full profile, the consented full name, shown by name).
-DEFAULT_PRIVACY_VERSION = "2026-10-05T18:00Z"
+DEFAULT_PRIVACY_VERSION = "2026-10-05T20:00Z"
 DEFAULT_LANGUAGE = "ar"
 
 # A cookie name: RFC 6265 token characters we actually use. `__Host-` is refused

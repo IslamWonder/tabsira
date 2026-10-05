@@ -41,6 +41,8 @@ from src.schemas.insight import (
     ChatIn,
     ChatReply,
     CompletionOut,
+    FeedbackIn,
+    FeedbackOut,
     InsightDetailOut,
     PublicationOut,
 )
@@ -48,6 +50,7 @@ from src.services import (
     account_gate,
     chat_service,
     completion_service,
+    feedback_service,
     insight_view,
     public_insight_service,
 )
@@ -169,6 +172,15 @@ async def declare_action(
         at=insight.action_at,
         means=insight_view.action_means(body.choice.value),
     )
+
+
+@router.put("/{insight_id}/feedback", summary="Rate the insight: useful or not, and why")
+async def rate_insight(
+    insight_id: PublicIdPath, body: FeedbackIn, db: DbDep, owner: OptionalOwner
+) -> FeedbackOut:
+    """Record the owner's rating, replacing an earlier one; only the owner and the team read it."""
+    _owner, insight = await owned_insight(db, owner, insight_id)
+    return await feedback_service.rate(db, insight, body)
 
 
 @router.post("/{insight_id}/complete", summary="«تمّ»: complete the insight, once")

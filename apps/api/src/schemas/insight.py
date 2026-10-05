@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
-from src.models import ActionState, InsightOrigin
+from src.models import ActionState, FeedbackReason, InsightOrigin
 from src.pipeline.engine import RelationType
 from src.pipeline.schemas import BBox
 from src.routers.scripture import HadithOut, QuranVerseOut
@@ -160,11 +160,48 @@ class InsightDetailOut(BaseModel):
     action: ActionOut
     chat: ChatOut
     image: InsightImageOut
+    feedback: FeedbackOut | None = Field(
+        default=None, description="The owner's own rating, never shown to anyone else"
+    )
     completed_at: datetime | None
     place_id: PublicId | None
     published_at: datetime | None = Field(description="Set while the owner has the insight public")
     created_at: datetime
     disclosure: str
+
+
+FEEDBACK_NOTE_MAX = 300
+
+
+class FeedbackIn(BaseModel):
+    """The owner's rating of the insight: useful or not, and why not."""
+
+    helpful: bool
+    reasons: list[FeedbackReason] = Field(
+        default_factory=list,
+        max_length=len(FeedbackReason),
+        description="Why it was not useful; empty when it was",
+    )
+    note: str | None = Field(default=None, max_length=FEEDBACK_NOTE_MAX)
+
+    @model_validator(mode="after")
+    def _reasons_only_when_not_helpful(self) -> FeedbackIn:
+        if self.helpful and self.reasons:
+            message = "a useful insight carries no reason"
+            raise ValueError(message)
+        if len(set(self.reasons)) != len(self.reasons):
+            message = "each reason once"
+            raise ValueError(message)
+        note = (self.note or "").strip()
+        self.note = note or None
+        return self
+
+
+class FeedbackOut(BaseModel):
+    helpful: bool
+    reasons: list[FeedbackReason]
+    note: str | None
+    updated_at: datetime
 
 
 class ActionIn(BaseModel):

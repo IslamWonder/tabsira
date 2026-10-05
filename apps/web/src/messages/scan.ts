@@ -107,6 +107,33 @@ export const scanMessages = {
   },
 
   insightPage: {
+    /** The discreet rating of an insight (plan 04.16): at the end, and from the small menu. */
+    feedback: {
+      question: 'هل كانت هذه البصيرة مفيدة؟',
+      yes: 'نعم',
+      no: 'لا',
+      menu: 'قيّم البصيرة أو أبلغ عن خطأ',
+      title: 'قيّم هذه البصيرة',
+      choiceLegend: 'هل كانت مفيدة؟',
+      helpful: 'مفيدة',
+      notHelpful: 'غير مفيدة',
+      reasonsLegend: 'ما الذي لم يكن مناسبًا؟ (اختياري)',
+      reasons: {
+        wrong_text: 'الآية أو الحديث لا يناسبان المشهد',
+        misread_scene: 'لم تُفهم الصورة جيدًا',
+        wrong_explanation: 'الشرح غير صحيح أو غير واضح',
+        offensive: 'محتوى مسيء أو غير لائق',
+        other: 'سبب آخر',
+      },
+      noteLabel: 'ملاحظة (اختيارية)',
+      noteHint: 'يقرؤها فريقنا وحده لتحسين الأجوبة، ولا تُنشر.',
+      send: 'أرسل التقييم',
+      thanks: 'شكرًا، وصلنا تقييمك.',
+      ratedHelpful: 'قيّمتها مفيدة.',
+      ratedNotHelpful: 'قيّمتها غير مفيدة.',
+      change: 'غيّر تقييمك',
+      failed: 'لم يُحفظ تقييمك. أعد المحاولة.',
+    },
     metaTitle: 'بصيرتك',
     loading: 'نفتح بصيرتك…',
     retry: 'أعد المحاولة',
