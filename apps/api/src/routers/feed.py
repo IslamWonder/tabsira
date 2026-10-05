@@ -75,7 +75,7 @@ async def feed_for_you(
     Return the newest readable posts, ranked, each with `why` («لماذا أرى هذا؟»).
 
     The ranking uses freshness, the members the caller follows, variety of topics and what the
-    caller has already liked, saved or commented on. It never uses religion or any personal
+    caller has already reacted to, saved or commented on. It never uses religion or any personal
     detail, and the caller can switch personalisation off, which leaves freshness and variety.
     The first request pins the moment of ranking in `next_cursor`, so the next pages continue the
     same list.

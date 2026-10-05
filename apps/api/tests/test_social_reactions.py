@@ -1,10 +1,10 @@
-"""Likes («أثر») and bookmarks: one each, safe to repeat, and only on what the caller may read."""
+"""Reactions («انتفعتُ بها», «جزاك الله خيرًا») and bookmarks: one each, safe to repeat, and only on what the caller may read."""
 
 from __future__ import annotations
 
 from sqlalchemy import func, select
 
-from src.models import Bookmark, PostLike
+from src.models import Bookmark, PostReaction
 from src.services.social_limits import SocialLimits, WriteKind
 from tests.helpers import any_id
 from tests.support_social import draft_post, publish_post
@@ -14,10 +14,12 @@ async def count(db_session, model):
     return await db_session.scalar(select(func.count()).select_from(model))
 
 
-# ─── Likes ────────────────────────────────────────────────────────────────────
+# ─── Reactions ────────────────────────────────────────────────────────────────
+
+NONE = {"benefited": 0, "jazak": 0}
 
 
-async def test_a_like_is_one_per_account_and_the_count_is_read_from_the_rows(
+async def test_a_reaction_is_one_per_kind_and_account_and_counts_are_read_from_the_rows(
     make_member, make_insight, guard, db_session
 ):
     author = await make_member("author")
@@ -25,37 +27,72 @@ async def test_a_like_is_one_per_account_and_the_count_is_read_from_the_rows(
     two = await make_member("two")
     post_id = await publish_post(author, make_insight)
 
-    first = await one.http.put(f"/posts/{post_id}/like")
-    again = await one.http.put(f"/posts/{post_id}/like")
-    other = await two.http.put(f"/posts/{post_id}/like")
+    first = await one.http.put(f"/posts/{post_id}/reactions/benefited")
+    again = await one.http.put(f"/posts/{post_id}/reactions/benefited")
+    jazak = await one.http.put(f"/posts/{post_id}/reactions/jazak")
+    other = await two.http.put(f"/posts/{post_id}/reactions/benefited")
 
-    assert first.json() == {"liked": True, "like_count": 1}
-    assert again.json() == {"liked": True, "like_count": 1}
-    assert other.json() == {"liked": True, "like_count": 2}
-    assert await count(db_session, PostLike) == 2
+    assert first.json() == {"reactions": {"benefited": 1, "jazak": 0}, "mine": ["benefited"]}
+    assert again.json() == first.json()
+    assert jazak.json() == {
+        "reactions": {"benefited": 1, "jazak": 1},
+        "mine": ["benefited", "jazak"],
+    }
+    assert other.json() == {"reactions": {"benefited": 2, "jazak": 1}, "mine": ["benefited"]}
+    assert await count(db_session, PostReaction) == 3
     seen = (await one.http.get(f"/posts/{post_id}")).json()
-    assert (seen["like_count"], seen["viewer"]["liked"]) == (2, True)
-    assert (await author.http.get(f"/posts/{post_id}")).json()["viewer"]["liked"] is False
+    assert seen["reactions"] == {"benefited": 2, "jazak": 1}
+    assert seen["viewer"]["reactions"] == ["benefited", "jazak"]
+    by_author = (await author.http.get(f"/posts/{post_id}")).json()
+    assert (by_author["reactions"], by_author["viewer"]["reactions"]) == (
+        {"benefited": 2, "jazak": 1},
+        [],
+    )
+    assert (await guest_get(make_member, post_id))["reactions"] == {"benefited": 2, "jazak": 1}
 
 
-async def test_taking_back_a_like_is_safe_to_repeat_and_keeps_the_others(
+async def guest_get(make_member, post_id):
+    guest = await make_member(signed_in=False)
+    return (await guest.http.get(f"/posts/{post_id}")).json()
+
+
+async def test_taking_back_a_reaction_is_safe_to_repeat_and_keeps_the_others(
     make_member, make_insight, guard
 ):
     author = await make_member("author")
     one = await make_member("one")
     two = await make_member("two")
     post_id = await publish_post(author, make_insight)
-    await one.http.put(f"/posts/{post_id}/like")
-    await two.http.put(f"/posts/{post_id}/like")
+    await one.http.put(f"/posts/{post_id}/reactions/benefited")
+    await one.http.put(f"/posts/{post_id}/reactions/jazak")
+    await two.http.put(f"/posts/{post_id}/reactions/benefited")
 
-    first = await one.http.delete(f"/posts/{post_id}/like")
-    again = await one.http.delete(f"/posts/{post_id}/like")
+    first = await one.http.delete(f"/posts/{post_id}/reactions/benefited")
+    again = await one.http.delete(f"/posts/{post_id}/reactions/benefited")
 
-    assert first.json() == {"liked": False, "like_count": 1}
-    assert again.json() == {"liked": False, "like_count": 1}
+    assert first.json() == {"reactions": {"benefited": 1, "jazak": 1}, "mine": ["jazak"]}
+    assert again.json() == first.json()
+    last = await one.http.delete(f"/posts/{post_id}/reactions/jazak")
+    assert last.json() == {"reactions": {"benefited": 1, "jazak": 0}, "mine": []}
 
 
-async def test_a_like_needs_a_verified_session_and_a_post_the_caller_may_read(
+async def test_a_post_with_no_reaction_says_zero_and_the_old_like_routes_are_gone(
+    make_member, make_insight, guard
+):
+    author = await make_member("author")
+    reader = await make_member("reader")
+    post_id = await publish_post(author, make_insight)
+
+    seen = (await reader.http.get(f"/posts/{post_id}")).json()
+
+    assert seen["reactions"] == NONE
+    assert seen["viewer"]["reactions"] == []
+    assert "like_count" not in seen
+    assert (await reader.http.put(f"/posts/{post_id}/like")).status_code == 404
+    assert (await reader.http.delete(f"/posts/{post_id}/like")).status_code == 404
+
+
+async def test_a_reaction_needs_a_verified_session_and_a_post_the_caller_may_read(
     make_member, make_insight, guard
 ):
     author = await make_member("author")
@@ -65,22 +102,27 @@ async def test_a_like_needs_a_verified_session_and_a_post_the_caller_may_read(
     public_id = await publish_post(author, make_insight)
     private_id = await publish_post(author, make_insight, visibility="followers")
 
-    assert (await guest.http.put(f"/posts/{public_id}/like")).status_code == 401
-    assert (await guest.http.delete(f"/posts/{public_id}/like")).status_code == 401
-    assert (await unverified.http.put(f"/posts/{public_id}/like")).status_code == 403
-    assert (await stranger.http.put(f"/posts/{private_id}/like")).status_code == 404
-    assert (await stranger.http.put(f"/posts/{any_id()}/like")).status_code == 404
-    assert (await stranger.http.put("/posts/0/like")).status_code == 422
-    assert (await stranger.http.put(f"/posts/{2**63}/like")).status_code == 422
+    def route(post_id: object, kind: str = "jazak") -> str:
+        return f"/posts/{post_id}/reactions/{kind}"
+
+    assert (await guest.http.put(route(public_id))).status_code == 401
+    assert (await guest.http.delete(route(public_id))).status_code == 401
+    assert (await unverified.http.put(route(public_id))).status_code == 403
+    assert (await stranger.http.put(route(private_id))).status_code == 404
+    assert (await stranger.http.put(route(any_id()))).status_code == 404
+    assert (await stranger.http.put(route(0))).status_code == 422
+    assert (await stranger.http.put(route(2**63))).status_code == 422
+    assert (await stranger.http.put(route(public_id, "like"))).status_code == 422
+    assert (await stranger.http.delete(route(public_id, "like"))).status_code == 422
 
 
-async def test_a_post_that_is_not_published_cannot_be_liked_even_by_its_author(
+async def test_a_post_that_is_not_published_takes_no_reaction_even_from_its_author(
     make_member, make_insight, guard
 ):
     author = await make_member("author")
     post_id = (await draft_post(author, make_insight(author))).json()["id"]
 
-    response = await author.http.put(f"/posts/{post_id}/like")
+    response = await author.http.put(f"/posts/{post_id}/reactions/jazak")
 
     assert (response.status_code, response.json()["error"]) == (409, "CONFLICT")
 
@@ -91,26 +133,28 @@ async def test_nobody_reacts_across_a_block_or_to_a_post_that_is_gone(
     author = await make_member("author")
     reader = await make_member("reader")
     post_id = await publish_post(author, make_insight)
-    await reader.http.put(f"/posts/{post_id}/like")
+    await reader.http.put(f"/posts/{post_id}/reactions/jazak")
     await author.http.put("/blocks/reader")
 
-    assert (await reader.http.put(f"/posts/{post_id}/like")).status_code == 404
-    assert (await reader.http.delete(f"/posts/{post_id}/like")).status_code == 404
+    assert (await reader.http.put(f"/posts/{post_id}/reactions/jazak")).status_code == 404
+    assert (await reader.http.delete(f"/posts/{post_id}/reactions/jazak")).status_code == 404
     assert (await reader.http.put(f"/posts/{post_id}/bookmark")).status_code == 404
     await author.http.delete("/blocks/reader")
     await author.http.delete(f"/posts/{post_id}")
-    assert (await reader.http.put(f"/posts/{post_id}/like")).status_code == 410
-    assert (await reader.http.delete(f"/posts/{post_id}/like")).status_code == 410
+    assert (await reader.http.put(f"/posts/{post_id}/reactions/jazak")).status_code == 410
+    assert (await reader.http.delete(f"/posts/{post_id}/reactions/jazak")).status_code == 410
 
 
-async def test_likes_are_rate_limited_per_account(make_member, make_insight, guard, account_app):
+async def test_reactions_are_rate_limited_per_account(
+    make_member, make_insight, guard, account_app
+):
     author = await make_member("author")
     reader = await make_member("reader")
     post_id = await publish_post(author, make_insight)
     account_app.state.social_limits = SocialLimits({WriteKind.REACTION: (1, 100, 60)})
 
-    first = await reader.http.put(f"/posts/{post_id}/like")
-    second = await reader.http.put(f"/posts/{post_id}/like")
+    first = await reader.http.put(f"/posts/{post_id}/reactions/benefited")
+    second = await reader.http.put(f"/posts/{post_id}/reactions/jazak")
 
     assert (first.status_code, second.status_code) == (200, 429)
 

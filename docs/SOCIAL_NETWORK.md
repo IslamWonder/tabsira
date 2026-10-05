@@ -1,6 +1,6 @@
 # «تبصرة تواصل»: the social network
 
-What the API does for the social network, and where each piece plugs in. Scope is decision 2: posts made from verified insights, the feeds «لك» and «أتابع» with cursors, follow, like, comments, bookmark, report, block and moderation states. There are no reposts, polls, mentions, push notifications or direct messages. Code: `apps/api/src/routers/{members,posts,reactions,comments,reports,feed}.py`, services of the same names in `apps/api/src/services`, models in `models/social.py` and `models/moderation.py`. What is stored and why is in `docs/PRIVACY.md`.
+What the API does for the social network, and where each piece plugs in. Scope is decision 2: posts made from verified insights, the feeds «لك» and «أتابع» with cursors, follow, reactions, comments, bookmark, report, block and moderation states. There are no reposts, polls, mentions, push notifications or direct messages. Code: `apps/api/src/routers/{members,posts,reactions,comments,reports,feed}.py`, services of the same names in `apps/api/src/services`, models in `models/social.py` and `models/moderation.py`. What is stored and why is in `docs/PRIVACY.md`.
 
 The whole network sits behind the `social` feature (decision 63): with it off every route below answers 404 and its sitemap sections are not advertised. Comments have their own switch, `social_comments`, off until the owners name it in `ENABLED_FEATURES`: while it is off the comment routes and the report of a comment answer 404 and the web shows no thread, count or comment link (decision 63).
 
@@ -16,7 +16,7 @@ The whole network sits behind the `social` feature (decision 63): with it off ev
 1. `POST /posts {insight_id, reflection?, visibility}` reads one of the caller's own insights through the **`InsightSource`** (below), checks it, copies it into an immutable **publication** and opens a **draft** on it. Nothing is visible to anyone else.
 2. `PATCH /posts/{id}` edits a draft or a refused post (which becomes a draft again). A post waiting for review or published is not editable.
 3. `POST /posts/{id}/submit` runs the guard (below): `published`, `rejected` with its reason, or `pending_review`. The answer carries the outcome in Arabic for the author.
-4. `DELETE /posts/{id}` withdraws a post, draft or published. Its reflection, publication, comments, likes and bookmarks are erased; the address answers **410 Gone** from then on, for everyone who could have read it and on every route (an id that was never public, a draft or a post removed before it was published, answers 404 to everyone but its author, so an id never says that something once existed), and the post leaves every feed, profile and sitemap. A post a moderator removes keeps its content (for an appeal) and answers 410 to everyone but the moderators; its author sees it in `GET /me/posts` with the reason.
+4. `DELETE /posts/{id}` withdraws a post, draft or published. Its reflection, publication, comments, reactions and bookmarks are erased; the address answers **410 Gone** from then on, for everyone who could have read it and on every route (an id that was never public, a draft or a post removed before it was published, answers 404 to everyone but its author, so an id never says that something once existed), and the post leaves every feed, profile and sitemap. A post a moderator removes keeps its content (for an appeal) and answers 410 to everyone but the moderators; its author sees it in `GET /me/posts` with the reason.
 
 `GET /posts/{id}` answers 404 for what the caller may not see (a draft, a post held or refused, a followers-only post of someone the caller does not follow, a post behind a block, a post of a disabled account), so an id reveals nothing. `visibility` is `public` or `followers`; following needs no approval, so «المتابعون» means whoever follows.
 
@@ -49,10 +49,10 @@ A second plug point is the **photo**: when the owner asks for it (`photo: true` 
 
 ## Reactions
 
-- **Like** («أثر»): `PUT` and `DELETE /posts/{id}/like`, one per account and post, safe to repeat, answers the state and the count. Who liked is never listed.
+- **Reactions with a meaning** (decision 61): `PUT` and `DELETE /posts/{id}/reactions/{kind}`, where `kind` is `benefited` («انتفعتُ بها») or `jazak` («جزاك الله خيرًا»). One of each kind per account and post, safe to repeat; the answer is `{reactions: {benefited, jazak}, mine: [kind…]}`. Posts and feed items carry the same counts as `reactions` and the reader's own kinds as `viewer.reactions`. The counts are public; who reacted is never listed. The earlier likes («أثر») became `benefited` when the table was replaced.
 - **Bookmark**: `PUT` and `DELETE /posts/{id}/bookmark` (204), and `GET /me/bookmarks`. Private: nobody sees whose a bookmark is, and no response counts them.
 - **Follow**: `PUT` and `DELETE /u/{handle}/follow`. Nobody follows themselves.
-- Counts are never stored on the post: likes and comments are counted from their rows for each page of a feed in a fixed number of queries, so a count cannot drift.
+- Counts are never stored on the post: reactions and comments are counted from their rows for each page of a feed in a fixed number of queries, so a count cannot drift.
 
 ## Comments
 
@@ -77,7 +77,7 @@ The cursor of the chronological feeds is the `(published_at, id)` of the last it
 
 ### How «لك» ranks
 
-`services/ranking.py`, pure arithmetic with four inputs, each one told to the reader: **freshness** (halves every 24 hours), **follows** (+0.5 for an author the reader follows), **variety** (each earlier post in the list on the same concept lowers a post by 0.15, up to 0.6) and **already met** (-0.8 for a post the reader liked, saved or commented on). It never uses religion, age, gender or any profile answer, learns nothing from clicks, and uses no model. A reader who switches personalisation off (`POST /consents`, kind `personalization`) and a guest get freshness and variety only. The 200 newest readable posts are ranked; the cursor pins the moment of ranking and the score of the last item, so the next page continues the list that was computed.
+`services/ranking.py`, pure arithmetic with four inputs, each one told to the reader: **freshness** (halves every 24 hours), **follows** (+0.5 for an author the reader follows), **variety** (each earlier post in the list on the same concept lowers a post by 0.15, up to 0.6) and **already met** (-0.8 for a post the reader reacted to, saved or commented on). It never uses religion, age, gender or any profile answer, learns nothing from clicks, and uses no model. A reader who switches personalisation off (`POST /consents`, kind `personalization`) and a guest get freshness and variety only. The 200 newest readable posts are ranked; the cursor pins the moment of ranking and the score of the last item, so the next page continues the list that was computed.
 
 `why` is one of `followed_author` («لأنك تتابع …»), `fresh`, `new_topic` and `community`. When the learner's insight exposures (decision 13) exist, `feed_service.seen_post_ids` is where a post about an insight the learner has already been shown is added to "already met".
 
@@ -99,11 +99,11 @@ The author is told the outcome by `status`, `status_reason` (only a code the app
 
 ## Limits
 
-Every write has a budget per account and one over all accounts, counted in memory by the shared window limiter (`services/social_limits.py`): identity 5 an hour, posts 20 an hour, comments 15 in ten minutes, reactions 120 a minute, reports 10 an hour, blocks 30 an hour. A refusal is `429 RATE_LIMITED` with `Retry-After`. The numbers bound spam and a runaway client; with N workers the ceiling is N times higher. Responses of every route of the network carry `Cache-Control: no-store`, since they say what the viewer liked, saved and follows.
+Every write has a budget per account and one over all accounts, counted in memory by the shared window limiter (`services/social_limits.py`): identity 5 an hour, posts 20 an hour, comments 15 in ten minutes, reactions 120 a minute, reports 10 an hour, blocks 30 an hour. A refusal is `429 RATE_LIMITED` with `Retry-After`. The numbers bound spam and a runaway client; with N workers the ceiling is N times higher. Responses of every route of the network carry `Cache-Control: no-store`, since they say what the viewer reacted to, saved and follows.
 
 ## Account export and deletion
 
-`GET /account/export` includes a `social` object: the posts with their reflections and publications, the comments, the members followed and blocked (by handle only), the likes and bookmarks, and the reports filed. `DELETE /account` removes all of it by cascade, and the posts, comments, follows and reactions with it; what is left is the moderation log, which names no author and holds no text.
+`GET /account/export` includes a `social` object: the posts with their reflections and publications, the comments, the members followed and blocked (by handle only), the reactions (post, kind, time) and bookmarks, and the reports filed. `DELETE /account` removes all of it by cascade, and the posts, comments, follows and reactions with it; what is left is the moderation log, which names no author and holds no text.
 
 ## The web screens
 

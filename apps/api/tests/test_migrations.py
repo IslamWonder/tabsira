@@ -49,7 +49,7 @@ APP_TABLES = {
     "blocks",
     "insight_publications",
     "posts",
-    "post_likes",
+    "post_reactions",
     "bookmarks",
     "comments",
     "reports",
@@ -228,7 +228,7 @@ async def test_the_three_chains_build_the_database_and_match_the_models(migrated
     } == tables
     assert set(EXTENSIONS) <= extensions
     assert versions == {
-        "app": "20261005_150000",
+        "app": "20261005_160000",
         "geodata": "20261004_130000",
         "vectors": "20261004_200000",
     }
@@ -527,3 +527,67 @@ async def test_the_social_migration_makes_public_id_tables_and_removes_everythin
     assert not {f"{table}_id_seq" for table in tables} & sequences
     assert defaults == []
     assert triggers == 0
+
+
+async def test_the_reactions_migration_turns_every_like_into_benefited_and_back(migrated):
+    assert alembic(APP_CONFIG, "upgrade", "20261005_150000").returncode == 0
+    async with migrated.begin() as connection:
+        await connection.execute(
+            text(
+                "INSERT INTO app.users (id, email, display_name) VALUES "
+                "('00000000-0000-0000-0000-000000000001', 'a@example.com', 'A'), "
+                "('00000000-0000-0000-0000-000000000002', 'b@example.com', 'B')"
+            )
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO app.posts (author_id) VALUES ('00000000-0000-0000-0000-000000000001')"
+            )
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO app.post_likes (post_id, user_id, created_at) "
+                "SELECT p.id, u.id, '2026-10-01 10:00:00+00' FROM app.posts p, app.users u"
+            )
+        )
+
+    up = alembic(APP_CONFIG, "upgrade", "head")
+    assert up.returncode == 0, up.stderr
+    async with migrated.connect() as connection:
+        rows = (
+            await connection.execute(
+                text(
+                    "SELECT kind, (created_at AT TIME ZONE 'UTC')::text FROM app.post_reactions ORDER BY user_id"
+                )
+            )
+        ).all()
+        likes_left = (
+            await connection.execute(text("SELECT to_regclass('app.post_likes')"))
+        ).scalar_one()
+    assert [tuple(row) for row in rows] == [("benefited", "2026-10-01 10:00:00")] * 2
+    assert likes_left is None
+
+    async with migrated.begin() as connection:
+        await connection.execute(
+            text(
+                "INSERT INTO app.post_reactions (post_id, user_id, kind) "
+                "SELECT post_id, user_id, 'jazak' FROM app.post_reactions"
+            )
+        )
+    down = alembic(APP_CONFIG, "downgrade", "20261005_150000")
+    assert down.returncode == 0, down.stderr
+    async with migrated.connect() as connection:
+        likes = (
+            (
+                await connection.execute(
+                    text("SELECT (created_at AT TIME ZONE 'UTC')::text FROM app.post_likes")
+                )
+            )
+            .scalars()
+            .all()
+        )
+        reactions_left = (
+            await connection.execute(text("SELECT to_regclass('app.post_reactions')"))
+        ).scalar_one()
+    assert likes == ["2026-10-01 10:00:00"] * 2
+    assert reactions_left is None

@@ -15,7 +15,7 @@ from src.models.social import (
     Follow,
     InsightPublication,
     Post,
-    PostLike,
+    PostReaction,
     Report,
 )
 from src.models.user import User
@@ -25,6 +25,7 @@ from src.schemas.social_export import (
     PostExport,
     PostMarkExport,
     PublicationExport,
+    ReactionExport,
     ReportExport,
     SocialExport,
 )
@@ -53,7 +54,7 @@ def _publication(publication: InsightPublication, copy_exists: bool | None) -> P
 
 
 async def collect(db: AsyncSession, user: User) -> SocialExport:
-    """Gather the user's posts, comments, follows, blocks, likes, bookmarks and reports."""
+    """Gather the user's posts, comments, follows, blocks, reactions, bookmarks and reports."""
     # The insight's public key says whether a copy exists now; the key itself never leaves.
     posts = await db.execute(
         select(Post, InsightPublication, Insight.photo_public_key.is_not(None))
@@ -65,10 +66,10 @@ async def collect(db: AsyncSession, user: User) -> SocialExport:
     comments = await db.scalars(
         select(Comment).where(Comment.author_id == user.id).order_by(Comment.created_at, Comment.id)
     )
-    likes = await db.execute(
-        select(PostLike.post_id, PostLike.created_at)
-        .where(PostLike.user_id == user.id)
-        .order_by(PostLike.created_at, PostLike.post_id)
+    reactions = await db.execute(
+        select(PostReaction.post_id, PostReaction.kind, PostReaction.created_at)
+        .where(PostReaction.user_id == user.id)
+        .order_by(PostReaction.created_at, PostReaction.post_id, PostReaction.kind)
     )
     bookmarks = await db.execute(
         select(Bookmark.post_id, Bookmark.created_at)
@@ -123,7 +124,9 @@ async def collect(db: AsyncSession, user: User) -> SocialExport:
             .where(Block.blocker_id == user.id, User.handle.is_not(None))
             .order_by(Block.created_at.desc(), User.id),
         ),
-        likes=[PostMarkExport(post_id=post_id, at=at) for post_id, at in likes],
+        reactions=[
+            ReactionExport(post_id=post_id, kind=kind, at=at) for post_id, kind, at in reactions
+        ],
         bookmarks=[PostMarkExport(post_id=post_id, at=at) for post_id, at in bookmarks],
         reports=[ReportExport.model_validate(report) for report in reports],
     )

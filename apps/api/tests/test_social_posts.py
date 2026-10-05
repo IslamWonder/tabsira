@@ -14,9 +14,10 @@ from src.models import (
     InsightPublication,
     ModerationAction,
     Post,
-    PostLike,
+    PostReaction,
     PostStatus,
     PostVisibility,
+    ReactionKind,
 )
 from src.scripture.text import sha256_hex
 from src.services.insight_source import HadithRef, QuranRef
@@ -630,7 +631,7 @@ async def test_a_published_post_is_public_to_a_guest_without_the_authors_private
     body = response.json()
     assert response.status_code == 200
     assert body["viewer"] is None
-    assert (body["like_count"], body["comment_count"]) == (0, 0)
+    assert (body["reactions"], body["comment_count"]) == ({"benefited": 0, "jazak": 0}, 0)
     assert (body["status_reason"], body["status_message"], body["why"]) == (None, None, None)
     assert body["status"] == "published"
     assert body["insight"]["photo_url"] is None
@@ -698,8 +699,9 @@ async def test_the_counts_and_the_viewers_own_flags_are_read_from_the_rows(
     post_id = await published(author, make_insight)
     db_session.add_all(
         [
-            PostLike(post_id=int(post_id), user_id=reader.user.id),
-            PostLike(post_id=int(post_id), user_id=author.user.id),
+            PostReaction(post_id=int(post_id), user_id=reader.user.id, kind=ReactionKind.BENEFITED),
+            PostReaction(post_id=int(post_id), user_id=reader.user.id, kind=ReactionKind.JAZAK),
+            PostReaction(post_id=int(post_id), user_id=author.user.id, kind=ReactionKind.JAZAK),
             Bookmark(user_id=reader.user.id, post_id=int(post_id)),
             Comment(
                 post_id=int(post_id),
@@ -720,9 +722,20 @@ async def test_the_counts_and_the_viewers_own_flags_are_read_from_the_rows(
     seen_by_reader = (await reader.http.get(f"/posts/{post_id}")).json()
     seen_by_author = (await author.http.get(f"/posts/{post_id}")).json()
 
-    assert (seen_by_reader["like_count"], seen_by_reader["comment_count"]) == (2, 1)
-    assert seen_by_reader["viewer"] == {"liked": True, "bookmarked": True, "is_author": False}
-    assert seen_by_author["viewer"] == {"liked": True, "bookmarked": False, "is_author": True}
+    assert (seen_by_reader["reactions"], seen_by_reader["comment_count"]) == (
+        {"benefited": 1, "jazak": 2},
+        1,
+    )
+    assert seen_by_reader["viewer"] == {
+        "reactions": ["benefited", "jazak"],
+        "bookmarked": True,
+        "is_author": False,
+    }
+    assert seen_by_author["viewer"] == {
+        "reactions": ["jazak"],
+        "bookmarked": False,
+        "is_author": True,
+    }
 
 
 # ─── Withdrawing ──────────────────────────────────────────────────────────────
@@ -738,7 +751,7 @@ async def test_a_withdrawn_post_is_gone_everywhere_and_its_content_is_erased(
     pid = int(post_id)
     db_session.add_all(
         [
-            PostLike(post_id=pid, user_id=reader.user.id),
+            PostReaction(post_id=pid, user_id=reader.user.id, kind=ReactionKind.JAZAK),
             Bookmark(user_id=reader.user.id, post_id=pid),
             Comment(
                 post_id=pid, author_id=reader.user.id, body="c", status=CommentStatus.PUBLISHED
@@ -762,7 +775,7 @@ async def test_a_withdrawn_post_is_gone_everywhere_and_its_content_is_erased(
     assert (post.status, post.reflection, post.publication_id) == (PostStatus.REMOVED, None, None)
     assert post.removal_source.value == "owner"
     assert post.removed_at is not None
-    for model in (InsightPublication, PostLike, Bookmark, Comment):
+    for model in (InsightPublication, PostReaction, Bookmark, Comment):
         assert await db_session.scalar(select(func.count()).select_from(model)) == 0, model
     actions = (
         await db_session.scalars(select(ModerationAction).order_by(ModerationAction.id))

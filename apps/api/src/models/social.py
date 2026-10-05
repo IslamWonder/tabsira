@@ -7,9 +7,9 @@ evidence and never the scripture itself; readers' responses put the stored text 
 reference. The author's own words live apart, in `Post.reflection`, and are labelled as
 theirs wherever they are shown.
 
-Nothing here is a counter: likes, comments and followers are counted from their own
+Nothing here is a counter: reactions, comments and followers are counted from their own
 rows, so a count cannot drift from what it counts. Every foreign key to `users` cascades,
-so deleting an account removes its posts, comments, follows, likes, bookmarks, blocks and
+so deleting an account removes its posts, comments, follows, reactions, bookmarks, blocks and
 reports with it.
 """
 
@@ -79,6 +79,13 @@ class RemovalSource(StrEnum):
 
     OWNER = "owner"
     MODERATOR = "moderator"
+
+
+class ReactionKind(StrEnum):
+    """What a reader says to a post: it benefited them, or thanks to its author."""
+
+    BENEFITED = "benefited"
+    JAZAK = "jazak"
 
 
 class ReportTarget(StrEnum):
@@ -217,7 +224,7 @@ class Post(Base):
     A publication shared with an audience, with the author's own reflection beside it.
 
     A post an owner withdraws stays as a tombstone (so its address answers 410 Gone): its
-    reflection and its publication are erased, its likes, bookmarks and comments go with it.
+    reflection and its publication are erased, its reactions, bookmarks and comments go with it.
     One a moderator removes keeps its content, which an appeal or an audit may need, and is
     hidden from everyone.
     """
@@ -295,17 +302,18 @@ class Post(Base):
     )
 
 
-class PostLike(Base):
-    """«أثر»: one per account and post."""
+class PostReaction(Base):
+    """A reaction with a meaning (decision 61): one of each kind per account and post."""
 
-    __tablename__ = "post_likes"
+    __tablename__ = "post_reactions"
     __table_args__ = (
-        PrimaryKeyConstraint("post_id", "user_id", name="pk_post_likes"),
-        Index("ix_post_likes_user_id", "user_id"),
+        PrimaryKeyConstraint("post_id", "user_id", "kind", name="pk_post_reactions"),
+        Index("ix_post_reactions_user_id", "user_id"),
     )
 
     post_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("posts.id", ondelete="CASCADE"))
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    kind: Mapped[ReactionKind] = mapped_column(string_enum(ReactionKind, "kind"))
     created_at: Mapped[datetime] = created_at_column()
 
 

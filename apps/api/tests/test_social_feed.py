@@ -242,7 +242,7 @@ async def test_switching_personalisation_off_removes_the_follow_lift_and_the_met
     older = await publish_post(bob, make_insight)
     newer = await publish_post(carol, make_insight)
     await ann.http.put("/u/bob/follow")
-    await ann.http.put(f"/posts/{newer}/like")
+    await ann.http.put(f"/posts/{newer}/reactions/benefited")
     personal = await ids(await feed(ann, "for-you"))
 
     await ann.http.post(
@@ -255,13 +255,13 @@ async def test_switching_personalisation_off_removes_the_follow_lift_and_the_met
     assert all(i["why"]["code"] != "followed_author" for i in plain["items"])
 
 
-async def test_a_post_the_reader_already_liked_saved_or_commented_on_sinks(
+async def test_a_post_the_reader_already_reacted_to_saved_or_commented_on_sinks(
     make_member, make_insight, guard
 ):
     ann = await make_member("ann")
     bob = await make_member("bob")
     posts = [await publish_post(bob, make_insight) for _ in range(4)]
-    await ann.http.put(f"/posts/{posts[3]}/like")
+    await ann.http.put(f"/posts/{posts[3]}/reactions/jazak")
     await ann.http.put(f"/posts/{posts[2]}/bookmark")
     await ann.http.post(f"/posts/{posts[1]}/comments", json={"body": "x"})
 

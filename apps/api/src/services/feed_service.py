@@ -27,7 +27,7 @@ from src.models.social import (
     Follow,
     InsightPublication,
     Post,
-    PostLike,
+    PostReaction,
     PostStatus,
     PostVisibility,
 )
@@ -164,14 +164,14 @@ async def seen_post_ids(db: AsyncSession, viewer: User, post_ids: list[int]) -> 
     """
     Return which of these posts the viewer has already met.
 
-    Met means the viewer's own doing: they liked it, saved it or commented on it. Opening a post
+    Met means the viewer's own doing: they reacted to it, saved it or commented on it. Opening a post
     is not recorded anywhere, so it is not counted. When the learner's insight exposures
     (decision 13) exist, this is where they are added: a post about an insight the learner has
     already been shown is met too.
     """
     met = union(
-        select(PostLike.post_id).where(
-            PostLike.user_id == viewer.id, PostLike.post_id.in_(post_ids)
+        select(PostReaction.post_id).where(
+            PostReaction.user_id == viewer.id, PostReaction.post_id.in_(post_ids)
         ),
         select(Bookmark.post_id).where(
             Bookmark.user_id == viewer.id, Bookmark.post_id.in_(post_ids)

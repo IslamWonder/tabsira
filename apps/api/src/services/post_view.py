@@ -1,8 +1,8 @@
 """
 Turning posts into responses, a page at a time.
 
-A page costs a fixed number of queries whatever its size: the like counts, the comment counts,
-the viewer's own likes and bookmarks, and the scripture the publications cite. Nothing is
+A page costs a fixed number of queries whatever its size: the reaction counts, the comment counts,
+the viewer's own reactions and bookmarks, and the scripture the publications cite. Nothing is
 counted on a stored column: a count is a count of rows. A reader's response puts scripture in
 by reference from the store (`evidence_view`); the author's reflection is labelled as theirs.
 """
@@ -20,20 +20,21 @@ from src.models.social import (
     Comment,
     CommentStatus,
     InsightPublication,
-    PostLike,
     PostStatus,
     PostVisibility,
+    ReactionKind,
 )
 from src.models.user import User
 from src.schemas.social import (
     InsightOut,
     MemberOut,
     PostOut,
+    ReactionCountsOut,
     ReflectionOut,
     ViewerPostOut,
     WhyOut,
 )
-from src.services import photo_service
+from src.services import photo_service, reaction_service
 from src.services.evidence_view import Evidence, load_evidence
 from src.services.moderation_service import known_reason
 from src.services.post_service import PostRow
@@ -84,15 +85,6 @@ def insight_of(
     )
 
 
-async def _like_counts(db: AsyncSession, post_ids: list[int]) -> dict[int, int]:
-    rows = await db.execute(
-        select(PostLike.post_id, func.count())
-        .where(PostLike.post_id.in_(post_ids))
-        .group_by(PostLike.post_id)
-    )
-    return dict(rows.all())
-
-
 async def _comment_counts(db: AsyncSession, post_ids: list[int]) -> dict[int, int]:
     """Count the published comments, replies included: the ones a reader can read."""
     rows = await db.execute(
@@ -119,8 +111,8 @@ def _post_out(
     evidence: Evidence,
     photo_urls: dict[int, str],
     viewer: User | None,
-    counts: tuple[dict[int, int], dict[int, int]],
-    flags: tuple[set[int], set[int]],
+    counts: tuple[dict[int, ReactionCountsOut], dict[int, int]],
+    flags: tuple[dict[int, list[ReactionKind]], set[int]],
     why: WhyOut | None,
 ) -> PostOut:
     post = row.post
@@ -128,8 +120,8 @@ def _post_out(
         photo_urls.get(publication.insight_id) if _shows_photo_publicly(row, publication) else None
     )
     is_author = viewer is not None and viewer.id == post.author_id
-    likes, comments = counts
-    liked, saved = flags
+    reactions, comments = counts
+    given, saved = flags
     return PostOut(
         id=post.id,
         author=MemberOut(handle=row.author.handle or "", public_name=row.author.public_name or ""),
@@ -147,13 +139,15 @@ def _post_out(
         status_message=outcome_message(post.status, post.status_reason) if is_author else None,
         published_at=post.published_at,
         created_at=post.created_at,
-        like_count=likes.get(post.id, 0),
+        reactions=reactions.get(post.id, reaction_service.counts_of({})),
         comment_count=comments.get(post.id, 0),
         viewer=(
             None
             if viewer is None
             else ViewerPostOut(
-                liked=post.id in liked, bookmarked=post.id in saved, is_author=is_author
+                reactions=given.get(post.id, []),
+                bookmarked=post.id in saved,
+                is_author=is_author,
             )
         ),
         why=why,
@@ -178,16 +172,10 @@ async def build_posts(
     if not shown:
         return []
     post_ids = [row.post.id for row in shown]
-    liked: set[int] = set()
+    given: dict[int, list[ReactionKind]] = {}
     saved: set[int] = set()
     if viewer is not None:
-        liked = set(
-            await db.scalars(
-                select(PostLike.post_id).where(
-                    PostLike.user_id == viewer.id, PostLike.post_id.in_(post_ids)
-                )
-            )
-        )
+        given = await reaction_service.mine(db, post_ids, viewer)
         saved = set(
             await db.scalars(
                 select(Bookmark.post_id).where(
@@ -201,7 +189,7 @@ async def build_posts(
         [(r["surah"], r["ayah"]) for p in publications for r in p.quran_refs],
         [(r["collection"], r["number"]) for p in publications for r in p.hadith_refs],
     )
-    counts = (await _like_counts(db, post_ids), await _comment_counts(db, post_ids))
+    counts = (await reaction_service.counts(db, post_ids), await _comment_counts(db, post_ids))
     photo_urls = await photo_service.public_urls(
         db,
         photos,
@@ -220,7 +208,7 @@ async def build_posts(
             photo_urls=photo_urls,
             viewer=viewer,
             counts=counts,
-            flags=(liked, saved),
+            flags=(given, saved),
             why=None if why is None else why.get(row.post.id),
         )
         for row in shown

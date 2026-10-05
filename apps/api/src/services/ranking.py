@@ -25,7 +25,8 @@ from src.schemas.social import WhyOut
 # A post's freshness halves every day: new enough to matter, never forever.
 HALF_LIFE_HOURS = 24.0
 FOLLOW_BONUS = 0.5
-# Already met (liked, saved or discussed by the reader): pushed down, not hidden.
+# Already met (reacted to, saved or discussed by the reader): pushed down, not hidden. Either
+# reaction counts the same: the ranking reads the reader's own doing, never other members' counts.
 SEEN_PENALTY = 0.8
 # Each earlier post in the list on the same concept lowers a post by this much, up to the cap.
 DIVERSITY_STEP = 0.15

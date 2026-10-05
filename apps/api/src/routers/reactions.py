@@ -1,5 +1,5 @@
 """
-Likes («أثر») and bookmarks.
+Reactions («انتفعتُ بها», «جزاك الله خيرًا») and bookmarks.
 
 Every route reads the post through `post_service`, so a reaction needs a post the caller may
 read and, to be added, one that is published. A like is counted from its rows; who liked is
@@ -11,6 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query, Response, status
 
 from src.deps import CurrentUser, DbDep, PhotoStoreDep, VerifiedUser, limited, require_social
+from src.models.social import ReactionKind
 from src.schemas.social import FeedPage, PostIdPath, ReactionOut
 from src.services import cursor as cursors
 from src.services import feed_service, post_service, post_view, reaction_service
@@ -22,34 +23,34 @@ PAGE_DEFAULT = 20
 PAGE_MAX = 50
 
 
-async def _state(db: DbDep, post_id: int, *, liked: bool) -> ReactionOut:
-    return ReactionOut(liked=liked, like_count=await reaction_service.like_count(db, post_id))
-
-
 @router.put(
-    "/posts/{post_id}/like",
-    summary="Like a post («أثر»)",
+    "/posts/{post_id}/reactions/{kind}",
+    summary="React to a post: «انتفعتُ بها» or «جزاك الله خيرًا»",
     dependencies=[limited(WriteKind.REACTION)],
 )
-async def like_post(post_id: PostIdPath, user: VerifiedUser, db: DbDep) -> ReactionOut:
-    """Like a published post the caller may read; liking again changes nothing."""
+async def react_to_post(
+    post_id: PostIdPath, kind: ReactionKind, user: VerifiedUser, db: DbDep
+) -> ReactionOut:
+    """React to a published post the caller may read; reacting again changes nothing."""
     await post_service.get_interactable(db, post_id, user)
-    await reaction_service.like(db, post_id, user)
+    await reaction_service.react(db, post_id, user, kind)
     await db.commit()
-    return await _state(db, post_id, liked=True)
+    return await reaction_service.state(db, post_id, user)
 
 
 @router.delete(
-    "/posts/{post_id}/like",
-    summary="Take back a like",
+    "/posts/{post_id}/reactions/{kind}",
+    summary="Take back a reaction",
     dependencies=[limited(WriteKind.REACTION)],
 )
-async def unlike_post(post_id: PostIdPath, user: CurrentUser, db: DbDep) -> ReactionOut:
-    """Take back the caller's like; safe to repeat."""
+async def unreact_to_post(
+    post_id: PostIdPath, kind: ReactionKind, user: CurrentUser, db: DbDep
+) -> ReactionOut:
+    """Take back the caller's reaction of this kind; safe to repeat."""
     await post_service.get_readable(db, post_id, user)
-    await reaction_service.unlike(db, post_id, user)
+    await reaction_service.unreact(db, post_id, user, kind)
     await db.commit()
-    return await _state(db, post_id, liked=False)
+    return await reaction_service.state(db, post_id, user)
 
 
 @router.put(

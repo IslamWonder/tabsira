@@ -26,7 +26,7 @@ from src.models.social import (
     Follow,
     InsightPublication,
     Post,
-    PostLike,
+    PostReaction,
     PostStatus,
     PostVisibility,
     RemovalSource,
@@ -65,7 +65,7 @@ async def load_row(db: AsyncSession, post_id: int, *, lock: Lock | None = None) 
 
     `lock` takes a row lock on the post until the transaction ends, and reads it fresh. A write
     that depends on the post's state (an edit, a submission, a withdrawal) takes `"update"`, so
-    two of them never interleave; a write that adds something to the post (a like, a comment, a
+    two of them never interleave; a write that adds something to the post (a reaction, a comment, a
     report) takes `"share"`, so it either lands before a withdrawal and is erased by it, or
     waits for it and finds the post gone.
     """
@@ -131,7 +131,7 @@ async def get_readable(
 
 
 async def get_interactable(db: AsyncSession, post_id: int, viewer: User) -> PostRow:
-    """Load a post `viewer` may like, save, comment on or report: readable, and published."""
+    """Load a post `viewer` may react to, save, comment on or report: readable, and published."""
     row = await get_readable(db, post_id, viewer, lock="share")
     if row.post.status is not PostStatus.PUBLISHED:
         raise AppError(ErrorCode.CONFLICT, "This post is not published.", status_code=409)
@@ -249,7 +249,7 @@ async def withdraw(db: AsyncSession, row: PostRow, *, photos: PhotoStore) -> Non
     """
     Take a post back: its address answers 410, every feed drops it, and its content is erased.
 
-    The reflection, the publication, the comments, the likes and the bookmarks go, and so does
+    The reflection, the publication, the comments, the reactions and the bookmarks go, and so does
     the public copy of the photo unless another live publication still shows it; what stays
     is the tombstone that makes the address answer 410, and the moderation log, which holds
     no text. A draft goes the same way, so it needs no special case.
@@ -257,7 +257,7 @@ async def withdraw(db: AsyncSession, row: PostRow, *, photos: PhotoStore) -> Non
     post = row.post
     now = clock.utcnow()
     await db.execute(delete(Comment).where(Comment.post_id == post.id))
-    await db.execute(delete(PostLike).where(PostLike.post_id == post.id))
+    await db.execute(delete(PostReaction).where(PostReaction.post_id == post.id))
     await db.execute(delete(Bookmark).where(Bookmark.post_id == post.id))
     post.reflection = None
     post.reflection_looks_like_scripture = False

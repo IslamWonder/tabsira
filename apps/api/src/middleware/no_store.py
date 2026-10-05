@@ -9,7 +9,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 # The routes that answer about one person or set a session or guest cookie:
 # accounts, sign-in, the profile, the consents, the export, the social routes,
-# whose answers carry the viewer's own likes, saves and follows, and the scan
+# whose answers carry the viewer's own reactions, saves and follows, and the scan
 # workflow (scans, insights, the world, progress, kept tutorial insights). Their responses carry
 # `Cache-Control: no-store`, redirects and errors included, which is why this is
 # a middleware: a route that returns its own Response would escape a dependency.
@@ -19,7 +19,7 @@ PRIVATE_PREFIXES = (
     "/profile",
     "/consents",
     "/consent",
-    # The social network answers with what the viewer liked, saved and follows.
+    # The social network answers with what the viewer reacted to, saved and follows.
     "/me/",
     "/u/",
     "/blocks",
