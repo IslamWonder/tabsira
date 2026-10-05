@@ -10,6 +10,7 @@ import {
   OWNER_ENTRY,
   PLACE,
   SECOND_FEATURE,
+  SPONSOR,
   SPONSORSHIP,
 } from '@/test/atlas';
 import { USER } from '@/test/fixtures';
@@ -536,5 +537,67 @@ describe('AtlasScreen with sponsoring', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'بصائر الناس' }));
     expect(screen.queryByRole('region', { name: S.list.heading })).toBeNull();
     expect(await screen.findByRole('region', { name: S.orphans.heading })).toBeInTheDocument();
+  });
+
+  it("shows an orphaned entry of the member's own with its label, and a sponsored one with its sponsor", async () => {
+    setSignedIn(USER);
+    const orphaned = {
+      ...OWNER_ENTRY,
+      id: '7400000000000000004',
+      insight_id: '7000000000000000004',
+      title: '[بصيرتي اليتيمة]',
+      status: 'orphaned' as const,
+      public: { ...(OWNER_ENTRY.public as NonNullable<typeof OWNER_ENTRY.public>), cell: null },
+    };
+    const sponsored = {
+      ...orphaned,
+      id: '7400000000000000005',
+      insight_id: '7000000000000000005',
+      title: '[بصيرتي المكفولة]',
+      status: 'published' as const,
+      sponsor: SPONSOR,
+    };
+    guest({
+      'GET /atlas/orphans': orphans([]),
+      'GET /me/map-entries': { body: [orphaned, sponsored] },
+    });
+    render(<AtlasScreen sponsorship />);
+    await loadedMap();
+    await userEvent.click(await screen.findByRole('radio', { name: 'بصائري المنشورة' }));
+    const mine = await screen.findByRole('region', { name: 'بصائري على الأطلس' });
+    expect(await within(mine).findByText('[بصيرتي اليتيمة]')).toBeInTheDocument();
+    expect(within(mine).getByText(`${S.mine.orphaned}`)).toBeInTheDocument();
+    expect(within(mine).getByText('بصيرة تنتظر من يكفلها، [تونس]')).toBeInTheDocument();
+    expect(within(mine).getByText(S.mine.by('[اسم الكافل] @quiet_keeper'))).toBeInTheDocument();
+    expect(within(mine).getAllByRole('link', { name: 'افتحها على الأطلس' })).toHaveLength(2);
+  });
+
+  it('tells the author, on their own entry, that its place was widened for anonymity', async () => {
+    setSignedIn(USER);
+    const widened = {
+      ...OWNER_ENTRY,
+      title: '[بصيرتي الموسعة]',
+      status: 'published' as const,
+      widened: { level: 'region' as const, label: '[ولاية تونس]', at: '2026-10-05T04:10:00Z' },
+    };
+    const unnamed = {
+      ...widened,
+      id: '7400000000000000006',
+      insight_id: '7000000000000000006',
+      title: '[بلا اسم]',
+      widened: { level: 'country' as const, label: null, at: '2026-10-05T04:10:00Z' },
+    };
+    guest({
+      'GET /atlas/orphans': orphans([]),
+      'GET /me/map-entries': { body: [widened, unnamed] },
+    });
+    render(<AtlasScreen />);
+    await loadedMap();
+    await userEvent.click(await screen.findByRole('radio', { name: 'بصائري المنشورة' }));
+    const mine = await screen.findByRole('region', { name: 'بصائري على الأطلس' });
+    expect(
+      await within(mine).findByText(/اتسع موضعها العام إلى \[ولاية تونس\]/)
+    ).toBeInTheDocument();
+    expect(within(mine).getByText(/اتسع موضعها العام إلى دولتها/)).toBeInTheDocument();
   });
 });

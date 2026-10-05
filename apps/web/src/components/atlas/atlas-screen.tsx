@@ -35,6 +35,7 @@ import { OrphansSection } from './orphans-section';
 import { entryPath, placePath } from './paths';
 
 const A = messages.atlas;
+const S = messages.atlas.sponsor;
 const PERIODS: readonly Period[] = ['all', 'week', 'month', 'year'];
 /** Whose entries the list shows: everyone's inside the window, or the signed-in owner's own. */
 type Scope = 'public' | 'mine' | 'sponsored';
@@ -344,9 +345,27 @@ function MyEntries({ onShow }: { onShow: (point: [number, number]) => void }) {
                   <span className="text-[0.8125rem] text-fg-muted">
                     {A.joinLabels([A.publish.status[entry.status], entry.place?.label])}
                   </span>
+                  {entry.sponsor == null ? null : (
+                    <span className="text-[0.8125rem] text-fg-soft">
+                      {S.mine.by(`${entry.sponsor.public_name} @${entry.sponsor.handle}`)}
+                    </span>
+                  )}
+                  {entry.widened == null ? null : (
+                    <span className="text-[0.8125rem] text-fg-muted leading-[1.8]">
+                      {S.mine.widened(
+                        entry.widened.label ?? S.mine.levels[entry.widened.level],
+                        formatDay(entry.widened.at)
+                      )}
+                    </span>
+                  )}
+                  {entry.status === 'orphaned' && entry.sponsor == null && entry.widened == null ? (
+                    <span className="text-[0.8125rem] text-fg-muted leading-[1.8]">
+                      {S.mine.orphaned}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {entry.status === 'published' ? (
+                  {entry.status === 'published' || entry.status === 'orphaned' ? (
                     <LinkButton
                       href={entryPath(entry.id)}
                       variant="secondary"
