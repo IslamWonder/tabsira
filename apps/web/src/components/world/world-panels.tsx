@@ -79,7 +79,7 @@ export function PlaceContent({
   );
 }
 
-/** «بصائري»: every learned insight, the latest first, reachable without moving the picture. */
+/** The learner's list (messages.world.mine): every learned insight, the latest first, reachable without moving the picture. */
 export function MineContent({
   items,
   onPick,

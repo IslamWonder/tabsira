@@ -30,13 +30,13 @@ type TabId = (typeof TABS)[number]['id'];
 type Load = { status: 'loading' } | { status: 'failed' } | { status: 'ready'; tutorial: Tutorial };
 
 /**
- * «المشهد واحد. والبصائر تتّسع.»: the prepared rain scene and its two insights,
+ * The example section (messages.landing.example): the prepared rain scene and its two insights,
  * one per tab (the arrows, Home and End move between them). Each insight's verse
  * and hadith come from the API's prepared scene, through the same cards as an
  * insight, byte for byte, with the API's notice when a hadith waits for its
  * ruling; the reflection and the small step (under the API's own label) stand
  * apart from them, and the label says it is a prepared example, never an
- * analysis. «افتح البصيرة» keeps the tab's own insight, as the scene always
+ * analysis. Its open button keeps the tab's own insight, as the scene always
  * has, and opens it.
  */
 export function InsightExample() {

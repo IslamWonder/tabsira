@@ -136,7 +136,7 @@ function community(features: LandingFeatures): Story {
   };
 }
 
-/** The three stories of «تبدأ بصورة», each with only what is switched on; none left empty. */
+/** The three stories of the features section, each with only what is switched on; none left empty. */
 export function featureStories(features: LandingFeatures): Story[] {
   return [meaning(features), world(features), community(features)].filter(
     (story) => story.benefits.length > 0

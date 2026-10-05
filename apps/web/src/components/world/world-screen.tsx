@@ -41,7 +41,7 @@ const TABLET_UP = '(min-width: 48rem)';
 // Enough zoom for the picture to move a spot out from under a panel.
 const ASIDE_ZOOM = 1.5;
 
-/** What the world is doing (the kit's states); `saving` happens on the insight's screen, at «تمّ». */
+/** What the world is doing (the kit's states); `saving` happens on the insight's screen, at completion. */
 export type WorldPhase = 'loading' | 'unavailable' | 'ready-empty' | 'ready-progress' | 'revealing';
 
 export type WorldPanelState =
@@ -96,7 +96,7 @@ function RoundButton({
 
 /**
  * The few controls the world keeps (the kit's HUD): its name with the brand at
- * the start; back, help and «بصائري» (once something was learned) at the end.
+ * the start; back, help and the learner's list (once something was learned) at the end.
  * They stay the size of the screen, whatever the zoom.
  */
 function Header({ onMine, onHelp }: { onMine: (() => void) | null; onHelp: (() => void) | null }) {
@@ -192,11 +192,11 @@ export interface WorldViewProps {
 
 /**
  * The personal world as one picture under clouds (decision 59, the owners'
- * world kit). A newcomer sees clouds only, an invitation and «اكتشف أول
- * بصيرة»: no ground, no names, no list, no count. Each concept learned with
- * «تمّ» has lifted the clouds from its circle, with a landmark where its
+ * world kit). A newcomer sees clouds only, an invitation and the call to
+ * discover a first insight: no ground, no names, no list, no count. Each concept
+ * completed has lifted the clouds from its circle, with a landmark where its
  * region's first concept was learned; a landmark opens what was learned there,
- * «بصائري» lists all of it. A reveal the world has not shown yet plays here
+ * the learner's list holds all of it. A reveal the world has not shown yet plays here
  * once, wherever the learning happened, and is announced; the camera goes to
  * it once, and never moves by itself otherwise.
  */

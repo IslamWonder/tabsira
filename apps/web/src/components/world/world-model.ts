@@ -5,7 +5,7 @@ import type { Place, PlaceInsight, Reveal, World, WorldTheme } from '@/world/api
 /*
  * What the world screen shows, derived from the one answer of GET /world
  * (decision 59): the landmarks of the regions something was learned in, and
- * every learned insight for «بصائري». Nothing here knows a region still under
+ * every learned insight for the learner's list. Nothing here knows a region still under
  * the clouds: only what was learned is drawn, named or listed.
  */
 
@@ -82,7 +82,7 @@ export function revealName(world: World, reveal: Reveal): string {
 }
 
 /**
- * What a screen reader hears once reveals have played (the kit's «حُفظت بصيرتك، وانكشف …»):
+ * What a screen reader hears once reveals have played (messages.world.revealed and widened):
  * the landmarks that appeared, or the region that widened; nothing for reveals it does not know.
  */
 export function announcement(world: World, ids: readonly string[]): string {

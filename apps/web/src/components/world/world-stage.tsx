@@ -45,7 +45,7 @@ import { type Landmark, THEME_COLORS } from './world-model';
 import { CLOUDS_SRC, LANDSCAPE_SRC, loadPicture } from './world-pictures';
 
 const M = messages.world;
-/** A flight the reader asked for («انتقل إلى موضعها», the reset): short, eased out. */
+/** A flight the reader asked for (go to an insight's spot, the reset): short, eased out. */
 const FLIGHT_MS = 520;
 // One notch of a mouse wheel zooms by about a sixth.
 const WHEEL_ZOOM = 0.0015;

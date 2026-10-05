@@ -23,7 +23,7 @@ export interface WorldPanelProps {
  * modal dialog (tajriba §10): titled and described, focus kept inside, Escape
  * and the close button both close it, and focus returns to what opened it. Its
  * body scrolls on its own, so the close button never leaves the screen. When
- * what it shows changes (a place opened from «بصائري»), focus moves to the new
+ * what it shows changes (a place opened from the learner's list), focus moves to the new
  * title, so nothing focused is ever removed under the reader.
  */
 export function WorldPanel({ open, onClose, title, description, icon, children }: WorldPanelProps) {

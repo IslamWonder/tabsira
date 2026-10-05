@@ -442,7 +442,7 @@ function Closing() {
  * The landing page (the owners' landing prompt of 5 October 2026): what TABSIRA
  * does and the two ways in, a photo of one's own or the prepared example, with
  * one tap each. The hero's phone is a still picture; no camera runs and no
- * permission is asked until the reader taps «صوّر مشهدًا». The features shown
+ * permission is asked until the reader taps the capture button. The features shown
  * are the ones switched on, from the server's flags.
  */
 export function LandingPage({ features }: { features: LandingFeatures }) {

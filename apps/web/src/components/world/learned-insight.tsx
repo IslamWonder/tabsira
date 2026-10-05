@@ -67,7 +67,7 @@ function Sources({ insight }: { insight: Insight }) {
 /**
  * One learned insight in the world's panel (decision 59): its title, its
  * meaning, its sources by reference, its small step and the day it was
- * learned, read from the API when the panel opens. «افتح البصيرة» leads to its
+ * learned, read from the API when the panel opens. Its open link leads to its
  * own screen, where the texts and the conversation are.
  */
 export function LearnedInsight({ id, onGoTo }: { id: string; onGoTo: () => void }) {
