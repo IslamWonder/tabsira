@@ -31,6 +31,10 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib.sh"
 
+if is_macos; then
+	exec bash "$SCRIPT_DIR/install-postgres-macos.sh"
+fi
+
 PG_VERSION="${PG_VERSION:-18}"
 # Libraries the server must load at start. timescaledb goes first when absent.
 PRELOAD_REQUIRED=(timescaledb pg_stat_statements)

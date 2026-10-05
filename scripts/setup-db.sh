@@ -36,7 +36,8 @@
 #   SYNC_DATABASE_URL   postgresql+psycopg://tabsira:<password>@127.0.0.1:5432/tabsira
 #   TEST_DATABASE_URL   postgresql+asyncpg://tabsira:<password>@127.0.0.1:5432/tabsira_test
 #
-# Idempotent. Superuser steps use `sudo -u postgres` (peer authentication);
+# Idempotent. Superuser steps use `sudo -u postgres` (peer authentication), or on
+# macOS your own account, which Homebrew's server makes its superuser;
 # the application role connects over 127.0.0.1 with its password, as the app will.
 # Only objects named tabsira, tabsira_test and the role tabsira are touched: no
 # other database or role on the server is read or changed.
@@ -80,9 +81,15 @@ production)
 *) die "ENVIRONMENT must be development, test or production (got '$ENVIRONMENT')" ;;
 esac
 
+# Homebrew's PostgreSQL has no postgres account: the superuser is whoever ran
+# brew, so macOS needs neither sudo nor Homebrew's keg-only bin on PATH by hand.
+if is_macos && ! have psql && have brew; then
+	pg_prefix="$(brew --prefix "postgresql@${PG_VERSION:-18}" 2>/dev/null || true)"
+	[[ -x "$pg_prefix/bin/psql" ]] && export PATH="$pg_prefix/bin:$PATH"
+fi
 require_cmd psql "Run: bash scripts/install-postgres.sh"
 require_cmd openssl "Install openssl."
-require_sudo
+is_macos || require_sudo
 
 # psql_admin DB [psql arguments]: as the postgres superuser, from / so the
 # postgres user is not asked to enter this checkout.
@@ -90,7 +97,7 @@ psql_admin() {
 	local db="$1"
 	shift
 	# client_min_messages=warning keeps "already exists, skipping" out of re-runs.
-	if [[ "$(id -un)" == "postgres" ]]; then
+	if [[ "$(id -un)" == "postgres" ]] || is_macos; then
 		(cd / && PGOPTIONS="-c client_min_messages=warning" psql -X -q -v ON_ERROR_STOP=1 -d "$db" "$@")
 	else
 		(cd / && sudo -u postgres env PGOPTIONS="-c client_min_messages=warning" psql -X -q -v ON_ERROR_STOP=1 -d "$db" "$@")
