@@ -20,6 +20,7 @@ import { memberLabel, profilePath } from '@/social/identity';
 import type { MemberProfile, Post } from '@/social/types';
 import { usePages } from '@/social/use-pages';
 import { FeedList } from './feed-list';
+import { FollowToggle } from './follow-toggle';
 import { ShareProfile } from './share-profile';
 import { BlockSheet } from './sheets';
 
@@ -67,51 +68,18 @@ function FollowButton({
   profile: MemberProfile;
   onChange: (profile: MemberProfile) => void;
 }) {
-  const access = useAccess();
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
-  const follows = profile.viewer?.follows === true;
-  if (access === 'guest') {
-    return (
-      <LinkButton href={signInHref(profilePath(profile.handle))} variant="secondary">
-        {P.signIn}
-      </LinkButton>
-    );
-  }
-  if (access === 'unverified' && !follows) {
-    return <p className="m-0 text-fg-soft text-sm">{P.verify}</p>;
-  }
-  const toggle = async () => {
-    setBusy(true);
-    setFailure(null);
-    const result = await setFollow(profile.handle, !follows);
-    setBusy(false);
-    if (result.ok) {
-      onChange({
-        ...profile,
-        followers_count: profile.followers_count + (follows ? -1 : 1),
-        viewer: { follows: !follows, is_self: false },
-      });
-    } else {
-      setFailure(failureMessage(result));
-    }
-  };
   return (
-    <div className="flex flex-col items-start gap-2">
-      <Button
-        variant={follows ? 'secondary' : 'primary'}
-        aria-pressed={follows}
-        onClick={toggle}
-        disabled={busy || access === 'unknown'}
-      >
-        {follows ? P.following : P.follow}
-      </Button>
-      {failure === null ? null : (
-        <div role="alert">
-          <Notice tone="error">{failure}</Notice>
-        </div>
-      )}
-    </div>
+    <FollowToggle
+      handle={profile.handle}
+      follows={profile.viewer?.follows === true}
+      onChange={(follows) =>
+        onChange({
+          ...profile,
+          followers_count: profile.followers_count + (follows ? 1 : -1),
+          viewer: { follows, is_self: false },
+        })
+      }
+    />
   );
 }
 
