@@ -104,16 +104,20 @@ export function EntryScreen({ entryId }: { entryId: string }) {
                 {load.entry.glimpse}
               </p>
               <p className="m-0 text-[0.875rem] text-fg-muted">
-                {A.card.by('')}
-                <Link
-                  href={profilePath(load.entry.author.handle)}
-                  className="text-link underline-offset-4 hover:underline"
-                >
-                  {load.entry.author.public_name}
-                </Link>
+                {load.entry.author === null ? null : (
+                  <>
+                    {A.card.by('')}
+                    <Link
+                      href={profilePath(load.entry.author.handle)}
+                      className="text-link underline-offset-4 hover:underline"
+                    >
+                      {load.entry.author.public_name}
+                    </Link>
+                  </>
+                )}
                 {load.entry.place === null ? null : (
                   <>
-                    {' · '}
+                    {load.entry.author === null ? null : ' · '}
                     <Link
                       href={placePath(load.entry.place.geoname_id)}
                       className="text-link underline-offset-4 hover:underline"

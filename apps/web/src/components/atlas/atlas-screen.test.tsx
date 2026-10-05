@@ -85,6 +85,17 @@ describe('AtlasScreen', () => {
     expect(new URL(api.requests.at(-1)?.url ?? '').searchParams.get('west')).toBe('39');
   });
 
+  it('names no author beside an entry whose place was widened', async () => {
+    const widened = { ...FEATURE, properties: { ...FEATURE.properties, author: null } };
+    guest({ 'GET /atlas/entries': collection([widened]) });
+    render(<AtlasScreen />);
+    await loadedMap();
+    await userEvent.click(await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ }));
+    const card = screen.getAllByRole('article', { name: /^\[عنوان البصيرة\]/ })[0] as HTMLElement;
+    expect(within(card).queryByRole('link', { name: '[اسم عام]' })).toBeNull();
+    expect(within(card).getByRole('link', { name: 'افتح البصيرة' })).toBeInTheDocument();
+  });
+
   it('says when a window is empty or cut short, and when the API fails', async () => {
     guest({ 'GET /atlas/entries': collection([], false) });
     const { unmount } = render(<AtlasScreen />);

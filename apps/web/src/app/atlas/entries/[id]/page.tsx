@@ -18,6 +18,8 @@ function path(id: string): string {
 /**
  * A published entry is indexable with its title and glimpse (docs/SEO.md); one
  * that is gone, unreachable or not an id carries `noindex` and the generic title.
+ * One whose place was widened (an orphan, or one a member sponsors) is anonymous and
+ * carries `noindex` too, so that a search engine does not keep it beside a person.
  * The server reads it without the viewer's cookies: only what a stranger may see.
  */
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
@@ -36,6 +38,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     title: result.data.title,
     description: result.data.glimpse,
     type: 'article',
+    noindex: result.data.location.widened_level != null,
   });
 }
 
@@ -50,7 +53,7 @@ export default async function AtlasEntryPage({ params }: Params) {
             path: path(id),
             headline: result.data.title,
             datePublished: result.data.published_on,
-            authorName: result.data.author.public_name,
+            ...(result.data.author === null ? {} : { authorName: result.data.author.public_name }),
           })}
         />
       ) : null}

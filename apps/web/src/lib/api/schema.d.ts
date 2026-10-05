@@ -1043,7 +1043,7 @@ export interface paths {
     get?: never;
     put?: never;
     /**
-     * Report a post, a comment or a map entry
+     * Report a post, a comment, a map entry or a sponsor's reflection
      * @description Tell the moderators about something the caller may read.
      *
      *     The reasons include a false attribution of a religious claim, a photo published without
@@ -1671,7 +1671,9 @@ export interface paths {
     };
     /**
      * One published entry
-     * @description Return the entry's page: the insight with its scripture from the store, the public point and its place; 410 once withdrawn.
+     * @description Return the entry's page: the insight with its scripture from the store, the public point and its place.
+     *
+     *     410 once withdrawn, and for the id an entry had before its place was widened.
      */
     get: operations['entry_atlas_entries__entry_id__get'];
     put?: never;
@@ -1694,6 +1696,102 @@ export interface paths {
      * @description «ذاكرة المكان»: the place from GeoNames and its published entries, newest first; 404 without any.
      */
     get: operations['place_entries_atlas_places__geoname_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/atlas/orphans': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Orphaned entries near a point, at their widened place
+     * @description Entries nobody looks after near the position, newest first.
+     *
+     *     Near means the entry's public point is within `radius` metres, or the position lies inside the
+     *     city, region or country the place was widened to. Each is shown at the place it was widened
+     *     to, with no author's name. The position is snapped to a grid of about 0.05 degrees before
+     *     anything is asked, used for this request and kept nowhere; the answer is never cached. A block
+     *     changes nothing here: the author is anonymous.
+     */
+    get: operations['orphans_near_atlas_orphans_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/atlas/entries/{entry_id}/sponsorship': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Sponsor an orphaned entry
+     * @description Look after an orphaned entry: it returns to the atlas at its widened place, under the caller's handle.
+     *
+     *     404 for an entry the caller cannot see (a block against its sponsor; a block against its
+     *     anonymous author changes nothing), 409 for their own entry, one that has a sponsor or one that
+     *     is not orphaned, and
+     *     `UNDER_13_CANNOT_PUBLISH` for an account that declared it is under 13. One sponsor at a time.
+     */
+    put: operations['sponsor_entry_atlas_entries__entry_id__sponsorship_put'];
+    post?: never;
+    /**
+     * End the caller's sponsorship
+     * @description Stop looking after the entry; the reflection goes with it and the entry stays on the atlas for now.
+     */
+    delete: operations['end_sponsorship_atlas_entries__entry_id__sponsorship_delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/atlas/entries/{entry_id}/sponsorship/reflection': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Write or replace the sponsor's reflection
+     * @description Put the sponsor's own words under the entry; the guard judges them as it judges a comment.
+     *
+     *     The answer says what it decided: `published`, `rejected` with its reason, or `pending_review`
+     *     while a person looks, and until it is published only its sponsor sees it. 422 for words that
+     *     read like Quran or hadith, 404 without an open sponsorship of the caller's.
+     */
+    put: operations['write_reflection_atlas_entries__entry_id__sponsorship_reflection_put'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/me/sponsorships': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The caller's sponsorships, with the state of their reflections */
+    get: operations['my_sponsorships_me_sponsorships_get'];
     put?: never;
     post?: never;
     delete?: never;
@@ -1816,6 +1914,8 @@ export interface components {
       social: components['schemas']['SocialExport'];
       /** Map Entries */
       map_entries: components['schemas']['MapEntryOwnerOut'][];
+      /** Sponsorships */
+      sponsorships: components['schemas']['SponsorshipOut'][];
       learning: components['schemas']['LearningExport'];
     };
     /**
@@ -1893,7 +1993,26 @@ export interface components {
       step: string | null;
       /** Concepts */
       concepts: string[];
-      author: components['schemas']['MemberOut'];
+      /** @description Null once the entry was orphaned, and for good after it: no handle beside a widened place */
+      author: components['schemas']['MemberOut'] | null;
+      /**
+       * Orphaned
+       * @description Nobody looks after it: any verified member may sponsor it
+       * @default false
+       */
+      orphaned: boolean;
+      /** @description Who looks after it; the sponsor chose to be named */
+      sponsor?: components['schemas']['MemberOut'] | null;
+      /**
+       * Sponsor Reflection
+       * @description The sponsor's own words, once published; never scripture, never the author's
+       */
+      sponsor_reflection?: string | null;
+      /**
+       * Sponsor Reflection Id
+       * @description The id to report the reflection by (`target_type` sponsorship); null without one
+       */
+      sponsor_reflection_id?: string | null;
       location: components['schemas']['PublicLocationOut'];
       place: components['schemas']['PlaceRef'] | null;
       /** Quran */
@@ -1959,7 +2078,8 @@ export interface components {
       title: string;
       /** Glimpse */
       glimpse: string;
-      author: components['schemas']['MemberOut'];
+      /** @description Null once the entry was orphaned: a widened place carries no author's name */
+      author: components['schemas']['MemberOut'] | null;
       place: components['schemas']['PlaceRef'] | null;
       /** Cell M */
       cell_m: number;
@@ -1971,6 +2091,31 @@ export interface components {
        * @description The day, never the time: no trail of a person's hours
        */
       published_on: string;
+      /**
+       * Orphaned
+       * @description Nobody looks after it: it can be sponsored (decision 60)
+       * @default false
+       */
+      orphaned: boolean;
+      widened_level?: components['schemas']['WidenLevel'] | null;
+      /** @description Who looks after it; chosen in public by the sponsor */
+      sponsor?: components['schemas']['MemberOut'] | null;
+    };
+    /**
+     * AtlasOrphansOut
+     * @description Orphaned entries near a point, each at its widened place, newest first.
+     */
+    AtlasOrphansOut: {
+      /**
+       * Type
+       * @default FeatureCollection
+       * @constant
+       */
+      type: 'FeatureCollection';
+      /** Features */
+      features: components['schemas']['AtlasFeature'][];
+      /** Next Cursor */
+      next_cursor: string | null;
     };
     /**
      * AtlasPlaceOut
@@ -3343,6 +3488,10 @@ export interface components {
        * @description The owner chose to show the insight's photo with it
        */
       photo: boolean;
+      /** @description Who looks after the entry now, when it is sponsored (decision 60) */
+      sponsor?: components['schemas']['MemberOut'] | null;
+      /** @description When and to what level the entry's public place was widened, if it was */
+      widened?: components['schemas']['WidenedOut'] | null;
       /** Published At */
       published_at: string | null;
       /** Withdrawn At */
@@ -3358,10 +3507,11 @@ export interface components {
      * @description Where an entry is in its life.
      *
      *     Placed but not shown; shown; hidden by reports until a moderator decides; taken down by a
-     *     moderator (kept for an appeal); or withdrawn by its owner (a tombstone with no location).
+     *     moderator (kept for an appeal); withdrawn by its owner (a tombstone with no location); or
+     *     orphaned, which is shown at a widened place without its author's name until someone sponsors it.
      * @enum {string}
      */
-    MapEntryStatus: 'draft' | 'published' | 'pending_review' | 'removed' | 'withdrawn';
+    MapEntryStatus: 'draft' | 'published' | 'pending_review' | 'removed' | 'withdrawn' | 'orphaned';
     /**
      * MemberOut
      * @description A person as the network shows them: the two things they chose, and nothing else.
@@ -3867,6 +4017,8 @@ export interface components {
       meaning: components['schemas']['LocationMeaning'];
       /** Meaning Label */
       meaning_label: string;
+      /** @description Set once the place was widened to a city, a region or a country (decision 60): the point is then that area's centre, and it is never narrowed again */
+      widened_level?: components['schemas']['WidenLevel'] | null;
     };
     /**
      * PublicLocationPreview
@@ -3881,7 +4033,10 @@ export interface components {
       meaning: components['schemas']['LocationMeaning'];
       /** Meaning Label */
       meaning_label: string;
-      cell: components['schemas']['GeoJsonPolygon'];
+      /** @description Set once the place was widened to a city, a region or a country (decision 60): the point is then that area's centre, and it is never narrowed again */
+      widened_level?: components['schemas']['WidenLevel'] | null;
+      /** @description Null once the place was widened: there is no cell any more */
+      cell?: components['schemas']['GeoJsonPolygon'] | null;
     };
     /**
      * PublicQuran
@@ -4271,7 +4426,7 @@ export interface components {
      * ReportTarget
      * @enum {string}
      */
-    ReportTarget: 'post' | 'comment' | 'map_entry';
+    ReportTarget: 'post' | 'comment' | 'map_entry' | 'sponsorship';
     /** ResetPasswordIn */
     ResetPasswordIn: {
       /** Token */
@@ -4661,6 +4816,54 @@ export interface components {
      * @enum {string}
      */
     SpanRole: 'chain' | 'body' | 'words' | 'tail';
+    /**
+     * SponsorshipOut
+     * @description One of the caller's sponsorships, with the state of their own reflection.
+     */
+    SponsorshipOut: {
+      /** Entry Id */
+      entry_id: string;
+      /** Title */
+      title: string;
+      place: components['schemas']['PlaceRef'] | null;
+      widened_level: components['schemas']['WidenLevel'] | null;
+      /**
+       * Id
+       * @description The sponsorship's id: what a report of its reflection names
+       */
+      id: string;
+      /**
+       * Active
+       * @description Always true: a sponsorship that ends is deleted. Kept for the client.
+       */
+      active: boolean;
+      /**
+       * Started At
+       * Format: date-time
+       */
+      started_at: string;
+      /**
+       * Ended At
+       * @description Always null, for the same reason
+       */
+      ended_at: string | null;
+      /** Reflection */
+      reflection: string | null;
+      reflection_status: components['schemas']['CommentStatus'] | null;
+      /**
+       * Reflection Message
+       * @description What happened to the reflection, in Arabic, for its sponsor
+       */
+      reflection_message: string | null;
+    };
+    /**
+     * SponsorshipReflectionIn
+     * @description The sponsor's own words under the entry: one, replaced by the next.
+     */
+    SponsorshipReflectionIn: {
+      /** Reflection */
+      reflection: string;
+    };
     /** StarOut */
     StarOut: {
       /** Concept */
@@ -4980,6 +5183,26 @@ export interface components {
       code: 'followed_author' | 'fresh' | 'new_topic' | 'community';
       /** Text */
       text: string;
+    };
+    /**
+     * WidenLevel
+     * @description How far an orphaned entry's public place was widened; from the finest to the coarsest.
+     * @enum {string}
+     */
+    WidenLevel: 'grid' | 'city' | 'region' | 'country';
+    /**
+     * WidenedOut
+     * @description What the owner is told about the widening of their entry's place (never the earlier cell).
+     */
+    WidenedOut: {
+      level: components['schemas']['WidenLevel'];
+      /** Label */
+      label: string | null;
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
     };
     /** WorldOut */
     WorldOut: {
@@ -7857,6 +8080,166 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['TutorialOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  orphans_near_atlas_orphans_get: {
+    parameters: {
+      query: {
+        lat: number;
+        lng: number;
+        /** @description Metres */
+        radius?: number;
+        cursor?: string | null;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AtlasOrphansOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  sponsor_entry_atlas_entries__entry_id__sponsorship_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        entry_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SponsorshipOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  end_sponsorship_atlas_entries__entry_id__sponsorship_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        entry_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  write_reflection_atlas_entries__entry_id__sponsorship_reflection_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        entry_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SponsorshipReflectionIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SponsorshipOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  my_sponsorships_me_sponsorships_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SponsorshipOut'][];
         };
       };
       /** @description An error */

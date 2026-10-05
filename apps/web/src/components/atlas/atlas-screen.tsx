@@ -83,17 +83,19 @@ export function EntryCard({ feature, onClose }: { feature: AtlasFeature; onClose
         <div className="flex gap-2">
           <dd className="m-0">{properties.precision_label}</dd>
         </div>
-        <div className="flex gap-2">
-          <dd className="m-0">
-            {A.card.by('')}
-            <Link
-              href={profilePath(properties.author.handle)}
-              className="text-link underline-offset-4 hover:underline"
-            >
-              {properties.author.public_name}
-            </Link>
-          </dd>
-        </div>
+        {properties.author === null ? null : (
+          <div className="flex gap-2">
+            <dd className="m-0">
+              {A.card.by('')}
+              <Link
+                href={profilePath(properties.author.handle)}
+                className="text-link underline-offset-4 hover:underline"
+              >
+                {properties.author.public_name}
+              </Link>
+            </dd>
+          </div>
+        )}
         <div className="flex gap-2">
           <dd className="m-0">
             <time dateTime={properties.published_on}>

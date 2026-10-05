@@ -24,6 +24,7 @@ export const FEATURE: AtlasFeature = {
     cell_m: 1000,
     precision_label: '[موقع تقريبي ضمن نحو 1000 م]',
     published_on: '2026-10-04',
+    orphaned: false,
   },
 };
 
@@ -53,6 +54,7 @@ export const ENTRY: AtlasEntry = {
   step: '[خطوة صغيرة]',
   concepts: ['rain'],
   author: AUTHOR,
+  orphaned: false,
   location: {
     point: { type: 'Point', coordinates: [10.1815, 36.8065] },
     cell_m: 1000,

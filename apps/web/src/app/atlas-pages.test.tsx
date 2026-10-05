@@ -33,6 +33,18 @@ describe('the atlas entry page metadata', () => {
     expect(JSON.stringify(metadata)).not.toContain('36.80');
   });
 
+  it('keeps an entry whose place was widened out of results, with its words', async () => {
+    const widened = {
+      ...ENTRY,
+      author: null,
+      location: { ...ENTRY.location, widened_level: 'region' as const },
+    };
+    mockApi({ [`GET /atlas/entries/${ENTRY.id}`]: { body: widened } });
+    const metadata = await entryMetadata(params({ id: ENTRY.id }));
+    expect(metadata.robots).toEqual(NOINDEX);
+    expect(metadata.title).toBe('[عنوان البصيرة]');
+  });
+
   it('keeps a gone, missing, unreachable or malformed entry out of results', async () => {
     for (const route of [
       apiError(410, 'GONE'),
@@ -56,6 +68,14 @@ describe('the atlas entry page metadata', () => {
       '"[اسم عام]"'
     );
     expect(screen.getByText('نحمّل البصائر…')).toBeInTheDocument();
+  });
+
+  it('names no author in the article data of an entry whose place was widened', async () => {
+    mockApi({ [`GET /atlas/entries/${ENTRY.id}`]: { body: { ...ENTRY, author: null } } });
+    const { container } = render(await AtlasEntryPage(params({ id: ENTRY.id })));
+    const data = container.querySelector('script[type="application/ld+json"]')?.textContent;
+    expect(data).toContain('"headline"');
+    expect(data).not.toContain('"author"');
   });
 });
 
