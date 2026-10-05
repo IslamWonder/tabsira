@@ -324,7 +324,9 @@ export function CameraScreen() {
   const panel = (
     <div className="flex flex-col gap-5 px-4 py-6 tablet:px-0">
       <header className="flex flex-col gap-1.5">
-        <h1 className="m-0 font-bold font-display text-[2rem] text-gilded">{C.title}</h1>
+        <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
+          {C.title}
+        </h1>
         <p className="m-0 text-fg-soft leading-[1.85]">{C.lead}</p>
       </header>
       {phase === 'intro' ? (
@@ -334,7 +336,7 @@ export function CameraScreen() {
           aria-label={C.needs.heading}
           className="flex flex-col gap-4"
         >
-          <h2 className="m-0 font-semibold text-[1.125rem] text-fg">{C.needs.heading}</h2>
+          <h2 className="m-0 font-semibold text-lg text-fg">{C.needs.heading}</h2>
           <ul className="m-0 flex list-disc flex-col gap-2 ps-5 text-fg-soft leading-[1.85]">
             <li>{C.needs.camera}</li>
             <li>{C.needs.location}</li>
@@ -398,7 +400,7 @@ export function CameraScreen() {
             <p className="m-0 text-[0.8125rem] text-fg-muted">{C.headingNote}</p>
           ) : null}
           <section aria-label={C.list} className="flex flex-col gap-3">
-            <h2 className="m-0 flex items-baseline justify-between font-semibold text-[1.125rem] text-fg">
+            <h2 className="m-0 flex items-baseline justify-between font-semibold text-lg text-fg">
               <span>{C.listHeading}</span>
               <span className="text-[0.875rem] text-fg-muted">{A.count(items.length)}</span>
             </h2>
@@ -529,7 +531,7 @@ export function CameraScreen() {
       stage={stage}
       stageLabel={C.stageLabel}
       stageFirstOnPhone
-      stageClassName="h-[56dvh] tablet:h-auto"
+      stageClassName="h-[56dvh]"
       className="pb-4 tablet:pb-0"
     />
   );
