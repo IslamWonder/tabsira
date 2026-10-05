@@ -31,6 +31,7 @@ from src.scans.engines import engine_factory
 from src.scans.workflow import ScanServices, run_scan
 from src.services import photo_service
 from src.storage.photos import build_photo_store
+from src.storage.sounds import SoundStore
 
 QUEUE = "tabsira:scans"
 CONSUMER_GROUP = "tabsira-scan-workers"
@@ -82,6 +83,7 @@ def build_services() -> ScanServices:
         detector=DetectorClient(
             settings.detector_url, http, timeout_seconds=settings.detector_timeout_seconds
         ),
+        sounds=SoundStore.from_settings(settings),
     )
 
 
