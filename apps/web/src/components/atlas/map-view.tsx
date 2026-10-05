@@ -17,6 +17,7 @@ import { DEFAULT_VIEW, lngLatOf, MAP_STYLE_URL } from '@/atlas/types';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 import { basemapColours, MAP_MODES, type MapMode, type ThemableMap, themeBasemap } from './basemap';
+import { drawPin, PIN_IMAGE, PIN_PIXEL_RATIO } from './map-pin';
 
 const A = messages.atlas;
 
@@ -95,6 +96,7 @@ const OWN_LAYERS: ReadonlySet<string> = new Set([
   'cluster-count',
   'point-halo',
   'points',
+  'point-selected',
   'cell-fill',
   'cell-line',
   'marker-halo',
@@ -102,6 +104,24 @@ const OWN_LAYERS: ReadonlySet<string> = new Set([
 ]);
 
 const SELECTED: ExpressionSpecification = ['boolean', ['feature-state', 'selected'], false];
+
+/** The maps that draw their places with the pin; the others keep the circles. */
+const PINNED = new WeakSet<MapLibreMap>();
+
+/** How large the pin shows: a place, and the place chosen (map-pin.ts draws it 48 × 60). */
+const PIN_SIZE = 0.62;
+const PIN_SIZE_CHOSEN = 0.82;
+
+/** The pin, standing on its tip, never hidden by a label or another pin. */
+function pinLayout(size: number) {
+  return {
+    'icon-image': PIN_IMAGE,
+    'icon-size': size,
+    'icon-anchor': 'bottom' as const,
+    'icon-allow-overlap': true,
+    'icon-ignore-placement': true,
+  };
+}
 
 /**
  * Paint the insight points the way the scene photo draws its points (a soft
@@ -123,13 +143,16 @@ function paintOwnLayers(map: MapLibreMap): void {
   set('clusters', 'circle-color', emeraldHalo);
   set('clusters', 'circle-stroke-color', goldHalo);
   set('point-halo', 'circle-color', ['case', SELECTED, goldHalo, emeraldHalo]);
-  set('points', 'circle-color', ['case', SELECTED, goldCore, emeraldCore]);
-  set('points', 'circle-stroke-color', ring);
   set('cell-fill', 'fill-color', goldHalo);
   set('cell-line', 'line-color', goldHalo);
   set('marker-halo', 'circle-color', goldHalo);
-  set('marker', 'circle-color', goldCore);
-  set('marker', 'circle-stroke-color', ring);
+  // The pin keeps its own emerald and gold in both themes; only the circles take the tokens.
+  if (!PINNED.has(map)) {
+    set('points', 'circle-color', ['case', SELECTED, goldCore, emeraldCore]);
+    set('points', 'circle-stroke-color', ring);
+    set('marker', 'circle-color', goldCore);
+    set('marker', 'circle-stroke-color', ring);
+  }
 }
 
 /** Repaint the basemap for the theme in force and the chosen view, then the app's layers. */
@@ -283,6 +306,11 @@ export function MapView({
             layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 13 },
             paint: { 'text-color': '#04130d' },
           });
+          const pin = drawPin();
+          if (pin !== null) {
+            instance.addImage(PIN_IMAGE, pin, { pixelRatio: PIN_PIXEL_RATIO });
+            PINNED.add(instance);
+          }
           instance.addLayer({
             id: 'point-halo',
             type: 'circle',
@@ -291,19 +319,40 @@ export function MapView({
             paint: {
               'circle-radius': ['case', SELECTED, 20, 14],
               'circle-blur': 0.85,
-              'circle-opacity': 0.6,
+              // Under a pin, the glow is the chosen place's alone, at its foot.
+              'circle-opacity': pin === null ? 0.6 : ['case', SELECTED, 0.6, 0],
             },
           });
-          instance.addLayer({
-            id: 'points',
-            type: 'circle',
-            source: SOURCE,
-            filter: single,
-            paint: {
-              'circle-radius': ['case', SELECTED, 8, 6],
-              'circle-stroke-width': 2,
-            },
-          });
+          if (pin === null) {
+            instance.addLayer({
+              id: 'points',
+              type: 'circle',
+              source: SOURCE,
+              filter: single,
+              paint: {
+                'circle-radius': ['case', SELECTED, 8, 6],
+                'circle-stroke-width': 2,
+              },
+            });
+          } else {
+            // Every place as a pin; the chosen one as a larger pin, drawn above the others.
+            instance.addLayer({
+              id: 'points',
+              type: 'symbol',
+              source: SOURCE,
+              filter: single,
+              layout: pinLayout(PIN_SIZE),
+              paint: { 'icon-opacity': ['case', SELECTED, 0, 1] },
+            });
+            instance.addLayer({
+              id: 'point-selected',
+              type: 'symbol',
+              source: SOURCE,
+              filter: single,
+              layout: pinLayout(PIN_SIZE_CHOSEN),
+              paint: { 'icon-opacity': ['case', SELECTED, 1, 0] },
+            });
+          }
           instance.addSource(CELL_SOURCE, {
             type: 'geojson',
             data: { type: 'FeatureCollection', features: [] },
@@ -330,23 +379,35 @@ export function MapView({
             source: MARKER_SOURCE,
             paint: { 'circle-radius': 20, 'circle-blur': 0.85, 'circle-opacity': 0.6 },
           });
-          instance.addLayer({
-            id: 'marker',
-            type: 'circle',
-            source: MARKER_SOURCE,
-            paint: { 'circle-radius': 8, 'circle-stroke-width': 2 },
-          });
+          instance.addLayer(
+            pin === null
+              ? {
+                  id: 'marker',
+                  type: 'circle',
+                  source: MARKER_SOURCE,
+                  paint: { 'circle-radius': 8, 'circle-stroke-width': 2 },
+                }
+              : {
+                  id: 'marker',
+                  type: 'symbol',
+                  source: MARKER_SOURCE,
+                  layout: pinLayout(PIN_SIZE_CHOSEN),
+                }
+          );
           applyTheme(instance, modeRef.current);
           ready.current = true;
           applyMarker(instance, latest.current.marker, latest.current.cell);
           applySelection(instance, latest.current.features, latest.current.selectedId);
 
-          instance.on('click', 'points', (event) => {
-            const id = event.features?.[0]?.properties?.id;
-            if (typeof id === 'string') {
-              handlers.current.onSelect?.(id);
-            }
-          });
+          const pointLayers = pin === null ? ['points'] : ['points', 'point-selected'];
+          for (const layer of pointLayers) {
+            instance.on('click', layer, (event) => {
+              const id = event.features?.[0]?.properties?.id;
+              if (typeof id === 'string') {
+                handlers.current.onSelect?.(id);
+              }
+            });
+          }
           instance.on('click', 'clusters', (event) => {
             const feature = event.features?.[0];
             const clusterId = feature?.properties?.cluster_id;
@@ -366,7 +427,7 @@ export function MapView({
           });
           instance.on('click', (event) => {
             const hits = instance.queryRenderedFeatures(event.point, {
-              layers: ['points', 'clusters'],
+              layers: [...pointLayers, 'clusters'],
             });
             if (hits.length === 0) {
               handlers.current.onPick?.([event.lngLat.lng, event.lngLat.lat]);
