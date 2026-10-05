@@ -27,7 +27,6 @@ export function PostEvidence({
       headingLevel={headingLevel}
       text={verse.text}
       reference={M.quranReference(verse.surah_name, verse.ayah)}
-      sourceHref={verse.source_url}
       verified={verse.verified}
     />
   ));

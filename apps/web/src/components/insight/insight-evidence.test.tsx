@@ -33,14 +33,11 @@ describe('InsightEvidence', () => {
     expect(verse).toContain('  ');
   });
 
-  it('shows the reference, the ruling as recorded, its source and the two links', () => {
+  it('shows the reference, the ruling as recorded, its source and the links', () => {
     render(<InsightEvidence insight={insightOut()} />);
     const quran = screen.getByRole('article', { name: 'القرآن' });
     expect(within(quran).getByText('سورة اختبار، الآية 50')).toBeInTheDocument();
-    expect(within(quran).getByRole('link', { name: /افتح في قرآنبيديا/ })).toHaveAttribute(
-      'href',
-      'https://quranpedia.net/surah/30/ayah/50'
-    );
+    expect(within(quran).queryByRole('link')).toBeNull();
     const sunnah = screen.getByRole('article', { name: 'السنة' });
     expect(within(sunnah).getByText('صحيح اختبار، رقم 1032')).toBeInTheDocument();
     expect(within(sunnah).getByText('حكم الدرر: إسناده صحيح')).toBeInTheDocument();

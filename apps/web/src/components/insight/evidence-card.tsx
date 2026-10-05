@@ -11,8 +11,6 @@ interface EvidenceBase {
   text: string;
   /** Where the text comes from, e.g. the surah and verse number, or the book and hadith number. */
   reference: string;
-  /** The text on its source site: the verse's quranpedia page, the hadith's source. */
-  sourceHref: string;
   /** Level of the card's heading in the page outline. */
   headingLevel?: 2 | 3;
   /** The API matched the displayed text to its stored hash: say so beside the label. */
@@ -24,7 +22,7 @@ export interface QuranEvidenceProps extends EvidenceBase {
   variant: 'quran';
 }
 
-export interface SunnahEvidenceProps extends Omit<EvidenceBase, 'sourceHref'> {
+export interface SunnahEvidenceProps extends EvidenceBase {
   variant: 'sunnah';
   /** The hadith on its source site; left out when the API gives the dorar link alone. */
   sourceHref?: string;
@@ -110,11 +108,9 @@ export function EvidenceCard(props: EvidenceCardProps) {
             </Chip>
           ) : null}
         </div>
-        {props.variant === 'quran' ? (
-          <ExternalLink href={props.sourceHref}>{messages.evidence.openQuranpedia}</ExternalLink>
-        ) : (
+        {props.variant === 'sunnah' ? (
           <ExternalLink href={props.verifyHref}>{messages.evidence.verifyDorar}</ExternalLink>
-        )}
+        ) : null}
       </header>
 
       {props.variant === 'quran' ? (
