@@ -170,6 +170,9 @@ class ViewerPostOut(BaseModel):
     reactions: list[ReactionKind] = Field(description="The reactions the reader gave")
     bookmarked: bool
     is_author: bool
+    follows_author: bool = Field(
+        default=False, description="The reader follows the post's author, so a card can offer it"
+    )
 
 
 class WhyOut(BaseModel):
