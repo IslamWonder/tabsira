@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { forgetSession, setGuest } from '@/account/session';
 import { CaptureProvider } from '@/components/capture/capture-provider';
 import { mockApi } from '@/test/api';
 import { USER } from '@/test/fixtures';
@@ -33,6 +34,7 @@ function page(features: LandingFeatures = ALL_ON) {
 
 beforeEach(() => {
   mockApi({ 'GET /tutorial/rain': () => new Promise(() => undefined) });
+  forgetSession();
 });
 
 describe('LandingPage', () => {
@@ -51,6 +53,7 @@ describe('LandingPage', () => {
   });
 
   it('says what TABSIRA does, with its two ways in before the picture', () => {
+    setGuest();
     page();
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
@@ -151,12 +154,44 @@ describe('LandingPage', () => {
     await vi.waitFor(() => expect(screen.queryByRole('link', { name: 'دخول' })).toBeNull());
   });
 
+  it('holds both openings while the session is unknown, the device mark choosing one before paint', () => {
+    mockApi({
+      'GET /tutorial/rain': () => new Promise(() => undefined),
+      'GET /auth/me': () => new Promise(() => undefined),
+    });
+    const { container } = page();
+
+    // The welcome is hidden by CSS on a device that last saw an account with its own insight,
+    // the capture on every other; no flash of the one that does not apply (globals.css).
+    const welcome = container.querySelector('.only-without-own-insight');
+    const capture = container.querySelector('.only-with-own-insight');
+    expect(welcome).toBeInstanceOf(HTMLElement);
+    expect(capture).toBeInstanceOf(HTMLElement);
+    expect(welcome?.querySelector('#landing-title')).toBeInstanceOf(HTMLElement);
+    expect(capture?.querySelector('#landing-own-title')).toBeInstanceOf(HTMLElement);
+    expect(container.querySelectorAll('[id="landing-title"]')).toHaveLength(1);
+  });
+
+  it('keeps only the welcome for a guest once the session is known', async () => {
+    mockApi({
+      'GET /tutorial/rain': () => new Promise(() => undefined),
+      'GET /auth/me': { status: 401, body: { error: 'UNAUTHORIZED', detail: 'x' } },
+    });
+    const { container } = page();
+    await vi.waitFor(() => expect(container.querySelector('.only-with-own-insight')).toBeNull());
+    expect(container.querySelector('.only-without-own-insight')).toBeNull();
+    expect(container.querySelector('#landing-title')).not.toBeNull();
+  });
+
   it('gives an account with an insight of its own the capture card, and no example', async () => {
     mockApi({
       'GET /tutorial/rain': () => new Promise(() => undefined),
       'GET /auth/me': { body: { ...USER, has_own_insight: true } },
     });
-    page();
+    const { container } = page();
+    // Once the session is known, only the capture is left, and the device remembers it.
+    await vi.waitFor(() => expect(container.querySelector('.only-with-own-insight')).toBeNull());
+    expect(window.localStorage.getItem('tabsira.own-insight')).toBe('1');
 
     const card = await screen.findByRole('region', { name: 'صوّر مشهدك أنت' });
     expect(within(card).getByRole('button', { name: 'التقط صورة' })).toBeInTheDocument();

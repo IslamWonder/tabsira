@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { OWN_INSIGHT_KEY } from '@/account/own-insight';
 import { THEME_STORAGE_KEY } from '@/theme/theme';
 import { PREFERENCES_INIT_SCRIPT } from './init-script';
 import { MOTION_STORAGE_KEY } from './motion';
@@ -17,11 +18,20 @@ describe('the inline preferences script', () => {
     expect(document.documentElement.dataset.motion).toBe('reduce');
   });
 
+  it('marks the page for the home capture when the account last seen held its own insight', () => {
+    window.localStorage.setItem(OWN_INSIGHT_KEY, '1');
+    run();
+    expect(document.documentElement.hasAttribute('data-own-insight')).toBe(true);
+    document.documentElement.removeAttribute('data-own-insight');
+    window.localStorage.removeItem(OWN_INSIGHT_KEY);
+  });
+
   it('leaves the device in charge otherwise', () => {
     window.localStorage.setItem(THEME_STORAGE_KEY, 'purple');
     run();
     expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
     expect(document.documentElement.hasAttribute('data-motion')).toBe(false);
+    expect(document.documentElement.hasAttribute('data-own-insight')).toBe(false);
   });
 
   it('survives blocked storage', () => {

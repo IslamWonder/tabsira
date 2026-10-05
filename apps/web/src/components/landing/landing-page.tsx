@@ -428,10 +428,10 @@ function OwnCapture() {
   const capture = useCapture();
   return (
     <section
-      aria-labelledby="landing-title"
+      aria-labelledby="landing-own-title"
       className={cx(CONTAINER, 'flex min-h-[70dvh] flex-col items-center justify-center gap-4')}
     >
-      <h1 id="landing-title" className="sr-only">
+      <h1 id="landing-own-title" className="sr-only">
         {messages.brand.name}
       </h1>
       <CaptureCard onCamera={capture.open} onFile={capture.send} className="w-full max-w-[34rem]" />
@@ -553,17 +553,44 @@ export function LandingPage({
   features: LandingFeatures;
   community?: ReactNode;
 }) {
-  const tutorial = tutorialOffered(useSession());
+  const session = useSession();
+  const tutorial = tutorialOffered(session);
+  // The page is the same for everyone and the session is known only in the browser: until it
+  // is, both openings are there and the device's mark (own-insight.ts) hides one before paint.
+  const known = session.status === 'signed-in' || session.status === 'guest';
   return (
     <div className="flex flex-col gap-10 pb-10 tablet:gap-14 tablet:pt-6 desktop:gap-[68px]">
       <div className="flex flex-col">
         <PhoneHeader />
-        {tutorial ? <Hero /> : <OwnCapture />}
+        {known ? (
+          tutorial ? (
+            <Hero />
+          ) : (
+            <OwnCapture />
+          )
+        ) : (
+          <>
+            <div className="only-without-own-insight">
+              <Hero />
+            </div>
+            <div className="only-with-own-insight">
+              <OwnCapture />
+            </div>
+          </>
+        )}
       </div>
       <Journey />
       {community}
       <Stories features={features} tutorial={tutorial} />
-      {tutorial ? <Example /> : null}
+      {known ? (
+        tutorial ? (
+          <Example />
+        ) : null
+      ) : (
+        <div className="only-without-own-insight">
+          <Example />
+        </div>
+      )}
       <Trust />
       <Questions />
       <Closing />

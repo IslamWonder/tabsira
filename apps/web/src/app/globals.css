@@ -379,3 +379,12 @@
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
 }
+
+/*
+ * The home page's two openings while the session is not yet known (landing-page.tsx): the
+ * mark set before the first paint (src/account/own-insight.ts) shows the one that applies.
+ */
+:root[data-own-insight] .only-without-own-insight,
+:root:not([data-own-insight]) .only-with-own-insight {
+  display: none;
+}

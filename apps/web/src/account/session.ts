@@ -5,6 +5,7 @@ import { api } from '@/lib/api/client';
 import { onLegalRequired } from '@/lib/api/legal-signal';
 import { attempt, type Failure } from '@/lib/api/result';
 import type { components } from '@/lib/api/schema';
+import { rememberOwnInsight } from './own-insight';
 
 /**
  * The account. `legal_acceptance_required` (owner decision 35) is not in the
@@ -35,6 +36,12 @@ const listeners = new Set<() => void>();
 
 function publish(next: SessionState): SessionState {
   state = next;
+  // Known only once the API answered: remember it for the next first paint (own-insight.ts).
+  if (next.status === 'signed-in') {
+    rememberOwnInsight(next.user.has_own_insight === true);
+  } else if (next.status === 'guest') {
+    rememberOwnInsight(false);
+  }
   for (const listener of listeners) {
     listener();
   }

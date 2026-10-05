@@ -4,15 +4,16 @@
 
 The night and day themes, the AAA game feel, the logo everywhere, phone to desktop, installable as an app.
 
-| Step                                                         | Status | Notes                                                                                                          |
-| ------------------------------------------------------------ | ------ | -------------------------------------------------------------------------------------------------------------- |
-| Logo cleaned and used everywhere, icons and share image      | ✅     | Deep gold by day for contrast.                                                                                 |
-| Responsive shell, both themes, motion that respects settings | ✅     |                                                                                                                |
-| Large headings in Reem Kufi only, readable text elsewhere    | ✅     |                                                                                                                |
-| Accessibility checks clean                                   | ✅     |                                                                                                                |
-| Installable app and offline page                             | ✅     | Install offer after a first «تمّ», iPhone steps, «ملفي» › التطبيق, update notice, icon shortcuts (2026-10-05). |
-| Progress in the top bar                                      | ✅     | Insights completed and days in a row, from `/me/progress`, leading to the practice page (2026-10-05).          |
-| Landing page from the owners' landing prompt                 | ✅     | Stand-in feature pictures.                                                                                     |
+| Step                                                         | Status | Notes                                                                                                                                                                                         |
+| ------------------------------------------------------------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Logo cleaned and used everywhere, icons and share image      | ✅     | Deep gold by day for contrast.                                                                                                                                                                |
+| Responsive shell, both themes, motion that respects settings | ✅     |                                                                                                                                                                                               |
+| Large headings in Reem Kufi only, readable text elsewhere    | ✅     |                                                                                                                                                                                               |
+| Accessibility checks clean                                   | ✅     |                                                                                                                                                                                               |
+| Installable app and offline page                             | ✅     | Install offer after a first «تمّ», iPhone steps, «ملفي» › التطبيق, update notice, icon shortcuts (2026-10-05).                                                                                |
+| Progress in the top bar                                      | ✅     | Insights completed and days in a row, from `/me/progress`, leading to the practice page (2026-10-05).                                                                                         |
+| No flash of the welcome for an account with its own insight  | ✅     | The device remembers it (`tabsira.own-insight`), the head script marks `<html data-own-insight>` before the first paint, CSS shows the right opening until the session is known (2026-10-05). |
+| Landing page from the owners' landing prompt                 | ✅     | Stand-in feature pictures.                                                                                                                                                                    |
 
 **How we check it**
 
