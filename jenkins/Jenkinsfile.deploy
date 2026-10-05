@@ -1,0 +1,113 @@
+// TABSIRA production deploy: ssh to the application host over Netbird and run
+// the clone's own deploy there, as an owner would by hand:
+//
+//   cd /opt/tabsira && git pull && ./deploy/deploy.sh [api] [worker] [vision] [web]
+//
+// deploy/deploy.sh does the rest (dependencies, migrations, web build, one
+// process at a time, health gate, rollback on failure). Nothing is built on
+// the Jenkins agent. The job is created by jenkins/apply-jobs.sh.
+//
+// Parameters left blank fall back to the global SITES_* variables, then to the
+// defaults below. The ssh key is the shared `jenkins-ssh-deploy-devops` credential.
+
+def ALLOWED_PARTS = ['api', 'worker', 'vision', 'web']
+
+pipeline {
+  agent any
+  options {
+    timeout(time: 45, unit: 'MINUTES')
+    disableConcurrentBuilds()
+    timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+  parameters {
+    string(name: 'PARTS', defaultValue: '', trim: true,
+      description: 'What to deploy, space separated: api worker vision web. Blank = all of them. `api` brings the migrations and the scan worker.')
+    booleanParam(name: 'DRY_RUN', defaultValue: false,
+      description: 'Print the steps on the host (deploy.sh --dry-run) and change nothing.')
+    string(name: 'REMOTE_HOST', defaultValue: '100.73.99.6', trim: true,
+      description: 'Netbird address of the application host (tabsira.me).')
+    string(name: 'REMOTE_USER', defaultValue: '', trim: true,
+      description: 'Override only. Empty = global SITES_SSH_USER, else devops.')
+    string(name: 'SSH_PORT', defaultValue: '', trim: true,
+      description: 'Override only. Empty = global SITES_SSH_PORT, else 22.')
+    string(name: 'HEALTHCHECK_URLS', defaultValue: 'https://api.tabsira.me/health/ready https://tabsira.me/', trim: true,
+      description: 'Each must return HTTP 200 after the deploy. Blank skips the check.')
+  }
+  environment {
+    TARGET_HOST = "${params.REMOTE_HOST?.trim() ?: (env.SITES_HOST ?: '')}"
+    TARGET_USER = "${params.REMOTE_USER?.trim() ?: (env.SITES_SSH_USER ?: 'devops')}"
+    TARGET_PORT = "${params.SSH_PORT?.trim() ?: (env.SITES_SSH_PORT ?: '22')}"
+  }
+  stages {
+    stage('Resolve target') {
+      steps {
+        script {
+          if (!env.TARGET_HOST) { error 'No host: pass REMOTE_HOST or set the global SITES_HOST.' }
+          def parts = (params.PARTS ?: '').split(/\s+/).findAll { it }
+          def unknown = parts.findAll { !(it in ALLOWED_PARTS) }
+          if (unknown) { error "Unknown part(s): ${unknown.join(', ')}. Use: ${ALLOWED_PARTS.join(' ')}" }
+          env.DEPLOY_ARGS = ((params.DRY_RUN ? ['--dry-run'] : []) + parts).join(' ')
+          def what = parts ? parts.join(' ') : 'all'
+          currentBuild.description = "${what}${params.DRY_RUN ? ' (dry run)' : ''} on ${env.TARGET_HOST}"
+          echo "Target: ${env.TARGET_USER}@${env.TARGET_HOST}:${env.TARGET_PORT}, deploy.sh ${env.DEPLOY_ARGS}"
+        }
+      }
+    }
+    stage('Deploy TABSIRA') {
+      steps {
+        sshagent(credentials: ['jenkins-ssh-deploy-devops']) {
+          sh '''
+            set -eu
+            ssh -p "$TARGET_PORT" \
+                -o StrictHostKeyChecking=accept-new \
+                -o ConnectTimeout=15 \
+                -o ServerAliveInterval=30 \
+                "$TARGET_USER@$TARGET_HOST" "DEPLOY_ARGS='$DEPLOY_ARGS' bash -s" <<'REMOTE'
+set -euo pipefail
+# A non-interactive ssh session reads no profile: put the user's toolchain on the PATH.
+export PATH="$HOME/.local/bin:$PATH"
+export NVM_DIR="$HOME/.nvm"
+# shellcheck disable=SC1091
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+cd /opt/tabsira
+command -v nvm >/dev/null && nvm use --silent >/dev/null
+git pull --ff-only
+# shellcheck disable=SC2086  # the parts are words checked by the job
+./deploy/deploy.sh $DEPLOY_ARGS
+REMOTE
+          '''
+        }
+      }
+    }
+    stage('Health check') {
+      when { expression { params.HEALTHCHECK_URLS?.trim() && !params.DRY_RUN } }
+      steps {
+        sh '''
+          set -eu
+          for url in $HEALTHCHECK_URLS; do
+            echo "Waiting for $url to return 200"
+            i=1
+            while :; do
+              code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "$url" || echo 000)
+              echo "  attempt $i: HTTP $code"
+              [ "$code" = "200" ] && break
+              if [ "$i" -ge 30 ]; then
+                echo "UNHEALTHY: $url never returned 200 (waited 5 min)"
+                exit 1
+              fi
+              i=$((i + 1))
+              sleep 10
+            done
+          done
+          echo "HEALTHY: $HEALTHCHECK_URLS"
+        '''
+      }
+    }
+  }
+  post {
+    success { echo "TABSIRA deployed (${currentBuild.description})" }
+    failure { echo 'TABSIRA deploy FAILED: check ssh access, then the deploy.sh output above (it rolls the code back itself).' }
+    always { step([$class: 'ZulipNotifier']) }
+  }
+}
