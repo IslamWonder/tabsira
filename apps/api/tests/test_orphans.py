@@ -91,21 +91,37 @@ async def test_a_quiet_unsponsored_entry_is_orphaned_and_the_others_are_left_alo
     }
 
 
-async def test_the_job_takes_the_entries_in_a_shuffled_order_so_new_ids_keep_no_placing_order(
-    db_session, factory, make_member, make_settings, world
+async def test_the_job_takes_the_entries_in_the_order_the_shuffle_gives_so_ids_keep_no_placing_order(
+    db_session, factory, make_member, make_settings, world, monkeypatch
 ):
     author = await make_member(HANDLE)
     entries = [await entry_row(db_session, author) for _ in range(5)]
     store = build_photo_store(make_settings())
+    given: list[int] = []
+    taken: list[int] = []
+    mark_one = orphan_service.mark_one
 
-    await orphan_service.mark_orphans(factory, 30, store, shuffle=lambda ids: ids.reverse())
+    async def recording_mark_one(db, entry_id, cutoff, photo_store):
+        taken.append(entry_id)
+        return await mark_one(db, entry_id, cutoff, photo_store)
+
+    def reverse(ids: list[int]) -> None:
+        given.extend(ids)
+        ids.reverse()
+
+    monkeypatch.setattr(orphan_service, "mark_one", recording_mark_one)
+
+    await orphan_service.mark_orphans(factory, 30, store, shuffle=reverse)
     db_session.expunge_all()
 
-    # Reversed here: the last placed got the first new id.
-    new_ids = [(await fresh(db_session, entry)).id for entry in entries]
-    assert new_ids == sorted(new_ids, reverse=True)
+    # `due` orders nothing, and two new ids minted in one millisecond share their time part,
+    # so neither the query's order nor the ids can stand for the order taken; the calls do.
+    assert sorted(given) == sorted(entry.id for entry in entries)
+    assert taken == list(reversed(given))
     for entry in entries:
-        assert (await fresh(db_session, entry)).status is MapEntryStatus.ORPHANED
+        renumbered = await fresh(db_session, entry)
+        assert renumbered.status is MapEntryStatus.ORPHANED
+        assert renumbered.id != entry.id
 
 
 async def test_the_default_order_is_a_shuffle_of_the_system_generator():
