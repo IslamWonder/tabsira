@@ -137,3 +137,16 @@ export function endSponsorship(entryId: string): Promise<Result<unknown>> {
     })
   );
 }
+
+export function writeReflection(entryId: string, reflection: string): Promise<Result<Sponsorship>> {
+  return attempt(
+    api.PUT('/atlas/entries/{entry_id}/sponsorship/reflection', {
+      params: { path: { entry_id: entryId } },
+      body: { reflection },
+    })
+  );
+}
+
+export function mySponsorships(): Promise<Result<Sponsorship[]>> {
+  return attempt(api.GET('/me/sponsorships'));
+}

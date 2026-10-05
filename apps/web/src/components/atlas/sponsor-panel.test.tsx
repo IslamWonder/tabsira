@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AtlasEntry } from '@/atlas/types';
@@ -106,6 +106,7 @@ describe('the sponsoring part of an entry page', () => {
         sponsor_reflection: null,
       }),
       [`PUT ${SPONSORSHIP_PATH}`]: { body: SPONSORSHIP },
+      'GET /me/sponsorships': { body: [SPONSORSHIP] },
     });
     await open();
     await userEvent.click(screen.getByRole('button', { name: S.entry.action }));
@@ -116,6 +117,7 @@ describe('the sponsoring part of an entry page', () => {
     expect(screen.getByText(S.entry.by)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /\[قارئ\]/ })).toHaveAttribute('href', '/u/reader');
     expect(screen.getByRole('button', { name: S.end.action })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: S.reflection.label })).toBeInTheDocument();
     // The entry still names no author.
     expect(screen.queryByRole('link', { name: '[اسم عام]' })).toBeNull();
   });
@@ -199,6 +201,7 @@ describe('the sponsoring part of an entry page', () => {
     const mine = { ...SPONSORED_ENTRY, sponsor: ME, sponsor_reflection: null };
     const api = member({
       [ENTRY_PATH]: entries(mine, ORPHAN_ENTRY),
+      'GET /me/sponsorships': { body: [SPONSORSHIP] },
       [`DELETE ${SPONSORSHIP_PATH}`]: { status: 204 },
     });
     await open();
@@ -226,6 +229,7 @@ describe('the sponsoring part of an entry page', () => {
     const mine = { ...SPONSORED_ENTRY, sponsor: ME, sponsor_reflection: null };
     member({
       [ENTRY_PATH]: { body: mine },
+      'GET /me/sponsorships': { body: [SPONSORSHIP] },
       [`DELETE ${SPONSORSHIP_PATH}`]: apiError(503, 'SERVICE_UNAVAILABLE'),
     });
     await open();
@@ -234,11 +238,149 @@ describe('the sponsoring part of an entry page', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(messages.errors.server);
   });
 
+  describe('the reflection', () => {
+    const mine = { ...SPONSORED_ENTRY, sponsor: ME, sponsor_reflection: null };
+    const reflectionPath = `PUT ${SPONSORSHIP_PATH}/reflection`;
+
+    it('starts from the sponsor’s own saved words, counts characters and limits them to 500', async () => {
+      member({
+        [ENTRY_PATH]: { body: mine },
+        'GET /me/sponsorships': {
+          body: [
+            {
+              ...SPONSORSHIP,
+              reflection: '[كلماتي]',
+              reflection_status: 'pending_review',
+              reflection_message: '[رسالة المراجعة]',
+            },
+          ],
+        },
+      });
+      await open();
+      const box = await screen.findByRole('textbox', { name: S.reflection.label });
+      await waitFor(() => expect(box).toHaveValue('[كلماتي]'));
+      expect(screen.getByText('8 / 500')).toBeInTheDocument();
+      expect(
+        screen.getByText(`${S.reflection.status}: ${S.reflection.statuses.pending_review}`)
+      ).toBeInTheDocument();
+      expect(screen.getByText('[رسالة المراجعة]')).toBeInTheDocument();
+      await userEvent.clear(box);
+      expect(screen.getByRole('button', { name: S.reflection.save })).toBeDisabled();
+      await userEvent.click(box);
+      await userEvent.paste('ك'.repeat(501));
+      expect(screen.getByRole('button', { name: S.reflection.save })).toBeDisabled();
+    });
+
+    it('saves it, shows the status and the message of the server, and reads the entry again', async () => {
+      let saved = 0;
+      const api = member({
+        [ENTRY_PATH]: entries(mine, { ...mine, sponsor_reflection: '[تأملي]' }),
+        'GET /me/sponsorships': { body: [SPONSORSHIP] },
+        [reflectionPath]: (): Reply =>
+          saved++ === 0
+            ? {
+                body: {
+                  ...SPONSORSHIP,
+                  reflection: '[تأملي]',
+                  reflection_status: 'published',
+                  reflection_message: '[نُشر تأملك]',
+                },
+              }
+            : {
+                body: {
+                  ...SPONSORSHIP,
+                  reflection: null,
+                  reflection_status: 'pending_review',
+                  reflection_message: null,
+                },
+              },
+      });
+      await open();
+      const box = await screen.findByRole('textbox', { name: S.reflection.label });
+      await userEvent.click(box);
+      await userEvent.paste('  [تأملي]  ');
+      await userEvent.click(screen.getByRole('button', { name: S.reflection.save }));
+      expect(await screen.findByText('[نُشر تأملك]')).toBeInTheDocument();
+      expect(
+        screen.getByText(`${S.reflection.status}: ${S.reflection.statuses.published}`)
+      ).toBeInTheDocument();
+      await expect(api.bodies('PUT', `${SPONSORSHIP_PATH}/reflection`)).resolves.toEqual([
+        { reflection: '[تأملي]' },
+      ]);
+      expect(await screen.findByText('[تأملي]', { selector: 'p' })).toBeInTheDocument();
+      // A second save is answered with no message of the server: the status stands alone.
+      await userEvent.click(screen.getByRole('button', { name: S.reflection.save }));
+      expect(
+        await screen.findByText(`${S.reflection.status}: ${S.reflection.statuses.pending_review}`)
+      ).toBeInTheDocument();
+      expect(screen.queryByText('[نُشر تأملك]')).toBeNull();
+      expect(box).toHaveValue('[تأملي]');
+    });
+
+    it('refuses words that read like scripture with its own message', async () => {
+      member({
+        [ENTRY_PATH]: { body: mine },
+        'GET /me/sponsorships': { body: [SPONSORSHIP] },
+        [reflectionPath]: apiError(422, 'VALIDATION_ERROR'),
+      });
+      await open();
+      await userEvent.type(await screen.findByRole('textbox', { name: S.reflection.label }), 'x');
+      await userEvent.click(screen.getByRole('button', { name: S.reflection.save }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(S.reflection.scripture);
+    });
+
+    it('says another failure the usual way', async () => {
+      member({
+        [ENTRY_PATH]: { body: mine },
+        'GET /me/sponsorships': { body: [SPONSORSHIP] },
+        [reflectionPath]: 'network-error',
+      });
+      await open();
+      await userEvent.type(await screen.findByRole('textbox', { name: S.reflection.label }), 'x');
+      await userEvent.click(screen.getByRole('button', { name: S.reflection.save }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(messages.errors.network);
+    });
+
+    it('keeps the form empty when the sponsorships cannot be read, and when none is standing', async () => {
+      member({
+        [ENTRY_PATH]: { body: mine },
+        'GET /me/sponsorships': apiError(503, 'SERVICE_UNAVAILABLE'),
+      });
+      const { unmount } = render(<EntryScreen entryId={ID} sponsorship />);
+      expect(await screen.findByRole('textbox', { name: S.reflection.label })).toHaveValue('');
+      unmount();
+      member({ [ENTRY_PATH]: { body: mine }, 'GET /me/sponsorships': { body: [] } });
+      render(<EntryScreen entryId={ID} sponsorship />);
+      expect(await screen.findByRole('textbox', { name: S.reflection.label })).toHaveValue('');
+    });
+  });
+
   it('shows no points, counts or reward wording on a sponsored entry', async () => {
     member({ [ENTRY_PATH]: { body: { ...SPONSORED_ENTRY, sponsor: ME } } });
     await open();
     const section = await screen.findByRole('region', { name: S.entry.section });
     expect(section.textContent).not.toMatch(/أجر|حسنات|نقاط|مستوى/);
+  });
+
+  it('shows the message of a removed reflection to its sponsor', async () => {
+    member({
+      [ENTRY_PATH]: { body: { ...SPONSORED_ENTRY, sponsor: ME, sponsor_reflection: null } },
+      'GET /me/sponsorships': {
+        body: [
+          {
+            ...SPONSORSHIP,
+            reflection: '[كلماتي]',
+            reflection_status: 'removed',
+            reflection_message: '[أزالها مشرف]',
+          },
+        ],
+      },
+    });
+    await open();
+    expect(
+      await screen.findByText(`${S.reflection.status}: ${S.reflection.statuses.removed}`)
+    ).toBeInTheDocument();
+    expect(screen.getByText('[أزالها مشرف]')).toBeInTheDocument();
   });
 
   it('breaks nothing when the feature is off and the entry comes as a plain widened one', async () => {

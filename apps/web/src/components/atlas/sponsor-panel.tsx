@@ -2,15 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { signInHref } from '@/account/links';
-import { endSponsorship, sponsorEntry } from '@/atlas/api';
-import type { AtlasEntry } from '@/atlas/types';
+import { endSponsorship, mySponsorships, sponsorEntry, writeReflection } from '@/atlas/api';
+import type { AtlasEntry, Sponsorship } from '@/atlas/types';
 import { IdentityForm } from '@/components/community/identity-section';
 import { AccessNote } from '@/components/community/sheets';
 import { Button } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
 import { Notice } from '@/components/ui/notice';
 import { Sheet } from '@/components/ui/sheet';
+import { TextArea } from '@/components/ui/text-area';
 import { failureMessage } from '@/lib/api/failure-message';
 import type { Failure } from '@/lib/api/result';
 import { messages } from '@/messages';
@@ -19,6 +21,7 @@ import { profilePath } from '@/social/identity';
 import { useIdentity } from '@/social/identity-store';
 
 const S = messages.atlas.sponsor;
+const REFLECTION_MAX = 500;
 
 /** Why a 409 CONFLICT was answered: the entry as it is now tells which of the three it was. */
 function conflictMessage(entry: AtlasEntry | null): string {
@@ -79,11 +82,93 @@ function SponsorLine({
   );
 }
 
+function ReflectionForm({
+  entry,
+  refresh,
+}: {
+  entry: AtlasEntry;
+  refresh: () => Promise<unknown>;
+}) {
+  const [current, setCurrent] = useState<Sponsorship | null>(null);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  // The sponsor's own reflection in any state, which the public entry shows only once published.
+  useEffect(() => {
+    let live = true;
+    void mySponsorships().then((result) => {
+      if (!live || !result.ok) {
+        return;
+      }
+      const mine = result.data.find((item) => item.entry_id === entry.id) ?? null;
+      setCurrent(mine);
+      setText(mine?.reflection ?? '');
+    });
+    return () => {
+      live = false;
+    };
+  }, [entry.id]);
+
+  const length = Array.from(text).length;
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setProblem(null);
+    const result = await writeReflection(entry.id, text.trim());
+    setBusy(false);
+    if (result.ok) {
+      setCurrent(result.data);
+      setText(result.data.reflection ?? text.trim());
+      void refresh();
+    } else {
+      setProblem(
+        result.code === 'VALIDATION_ERROR' ? S.reflection.scripture : failureMessage(result)
+      );
+    }
+  };
+
+  return (
+    <form onSubmit={save} aria-label={S.reflection.label} className="flex flex-col gap-3">
+      <TextArea
+        label={S.reflection.label}
+        hint={S.reflection.hint}
+        value={text}
+        maxChars={REFLECTION_MAX}
+        onChange={(event) => setText(event.target.value)}
+      />
+      {problem === null ? null : (
+        <div role="alert">
+          <Notice tone="error">{problem}</Notice>
+        </div>
+      )}
+      {current?.reflection_status == null ? null : (
+        <div role="status" className="flex flex-col items-start gap-2">
+          <Chip tone={current.reflection_status === 'published' ? 'primary' : 'neutral'}>
+            {S.reflection.status}: {S.reflection.statuses[current.reflection_status]}
+          </Chip>
+          {current.reflection_message === null ? null : (
+            <p className="m-0 text-fg-soft text-sm leading-[1.8]">{current.reflection_message}</p>
+          )}
+        </div>
+      )}
+      <Button
+        type="submit"
+        variant="secondary"
+        disabled={busy || text.trim() === '' || length > REFLECTION_MAX}
+        className="self-start"
+      >
+        {busy ? S.reflection.saving : S.reflection.save}
+      </Button>
+    </form>
+  );
+}
+
 /**
  * Sponsoring on the entry's page (decision 60). An orphaned entry offers
  * the sponsor action to a verified member with a public identity, and to others the
  * missing step; a sponsored one names its sponsor and shows the published reflection;
- * the sponsor alone gets the end action (after a confirmation).
+ * the sponsor alone gets the end action (after a confirmation) and the reflection form.
  * Nothing here counts or rewards. The server judges every action; this only says why not.
  */
 export function SponsorPanel({
@@ -194,6 +279,7 @@ export function SponsorPanel({
       {mine ? (
         <>
           <p className="m-0 text-fg-soft">{S.entry.mine}</p>
+          <ReflectionForm entry={entry} refresh={refresh} />
           <Button variant="ghost" onClick={() => setEnding(true)} className="self-start">
             {S.end.action}
           </Button>
