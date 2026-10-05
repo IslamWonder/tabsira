@@ -111,7 +111,8 @@ export function usePages<T>(
           if (!match(item)) {
             return [item];
           }
-          const updated = typeof next === 'function' ? next(item) : next;
+          // A function here is always the updater; T itself is a data record.
+          const updated = typeof next === 'function' ? (next as (item: T) => T | null)(item) : next;
           return updated === null ? [] : [updated];
         })
       );
