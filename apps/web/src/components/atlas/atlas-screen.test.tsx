@@ -292,7 +292,8 @@ describe('AtlasScreen', () => {
     const map = await loadedMap();
     expect(map.options).toMatchObject({ center: [30, 27] });
     await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
-    expect(window.location.hash).toBe('#c=10,36,8');
+    // The address follows the view in an effect of its own, a tick after the list shows.
+    await waitFor(() => expect(window.location.hash).toBe('#c=10,36,8'));
   });
 
   it('filters by a concept the address names, says so, and lets the reader clear it', async () => {
