@@ -174,28 +174,32 @@ async def test_each_case_is_asked_in_a_fresh_chat_that_leaves_nothing(
 
 
 def relevant_where(word: str):
-    """A verifier that finds relevant exactly the texts holding `word`."""
+    """A verifier that accepts exactly the texts holding `word`, and pairs the first of each."""
 
     def answer(call: dict[str, Any]) -> dict[str, Any]:
         payload = json.loads(call["user"])
-        return {
-            "candidates": [
-                {
-                    "candidate": item["candidate"],
-                    "texts": [
-                        {
-                            "label": text["label"],
-                            "relevant": word in text["text"],
-                            "strength": "strong",
-                            "relation": "direct",
-                            "limit": "لا يثبت النص ما قبل الصورة",
-                        }
-                        for text in item["texts"]
-                    ],
-                }
-                for item in payload["candidates"]
-            ]
-        }
+        texts = [
+            {
+                "label": text["label"],
+                "accepted": word in text["text"],
+                "relation": "direct" if word in text["text"] else "none",
+                "basis_words": [1, 2] if word in text["text"] else [],
+                "link": "يذكر النص المعنى" if word in text["text"] else "",
+                "needed_context": None,
+                "assumptions": [],
+                "reject_reason": None if word in text["text"] else "meaning_not_supported",
+            }
+            for text in payload["texts"]
+        ]
+        accepted = [text["label"] for text in texts if text["accepted"]]
+        quran = next((label for label in accepted if label.startswith("Q")), None)
+        hadith = next((label for label in accepted if label.startswith("H")), None)
+        pair = (
+            {"quran": quran, "hadith": hadith, "shared_meaning": "المعنى"}
+            if quran or hadith
+            else None
+        )
+        return {"texts": texts, "pair": pair}
 
     return answer
 
@@ -241,7 +245,7 @@ async def test_a_request_for_another_text_runs_the_retrieval_against_the_case_sc
 
 
 def _labels(payload: dict[str, Any]) -> list[str]:
-    return [text["label"] for text in payload["candidates"][0]["texts"]]
+    return [text["label"] for text in payload["texts"]]
 
 
 class FlagsEverything(LeakDetector):

@@ -66,6 +66,7 @@ def evidence_why(evidence: dict[str, Any] | None) -> EvidenceWhy | None:
         relation=relation,
         relation_label=messages_for().relation_labels[relation.value],
         matched_on=str(evidence.get("matched_on", "")),
+        link=str(evidence["link"]) if evidence.get("link") else None,
     )
 
 

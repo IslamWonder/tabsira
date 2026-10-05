@@ -20,6 +20,7 @@ from src.models import (
     AiCall,
     ChatMessage,
     ChatStatus,
+    EmbeddedCorpus,
     Guest,
     Hadith,
     HadithClassification,
@@ -28,9 +29,10 @@ from src.models import (
 )
 from src.owner import Owner
 from src.pipeline.insight.engine import ResourceCache
+from src.retrieval.reranker import RerankOutcome
 from src.scripture.text import search_copy
-from src.services import chat_service
-from src.services.chat_retrieval import query_for
+from src.services import chat_retrieval, chat_service
+from src.services.chat_retrieval import intent_for, own_ids, query_for
 from tests.fakes import FakeModelClient
 from tests.retrieval.support import EmbeddingClient
 from tests.scans.builders import insight_row, scan_row, scene
@@ -50,34 +52,38 @@ def wants(kind: str = "either") -> dict[str, Any]:
 
 
 def relevant_where(word: str):
-    """A verifier that finds relevant exactly the texts holding `word`, and nothing else."""
+    """A verifier that accepts exactly the texts holding `word`, and pairs the first of each."""
 
     def answer(call: dict[str, Any]) -> dict[str, Any]:
         payload = json.loads(call["user"])
-        return {
-            "candidates": [
-                {
-                    "candidate": item["candidate"],
-                    "texts": [
-                        {
-                            "label": text["label"],
-                            "relevant": word in text["text"],
-                            "strength": "strong",
-                            "relation": "direct",
-                            "limit": "لا يثبت النص ما قبل الصورة",
-                        }
-                        for text in item["texts"]
-                    ],
-                }
-                for item in payload["candidates"]
-            ]
-        }
+        texts = [
+            {
+                "label": text["label"],
+                "accepted": word in text["text"],
+                "relation": "direct" if word in text["text"] else "none",
+                "basis_words": [1, 2] if word in text["text"] else [],
+                "link": "يذكر النص المعنى" if word in text["text"] else "",
+                "needed_context": None,
+                "assumptions": [],
+                "reject_reason": None if word in text["text"] else "meaning_not_supported",
+            }
+            for text in payload["texts"]
+        ]
+        accepted = [text["label"] for text in texts if text["accepted"]]
+        quran = next((label for label in accepted if label.startswith("Q")), None)
+        hadith = next((label for label in accepted if label.startswith("H")), None)
+        pair = (
+            {"quran": quran, "hadith": hadith, "shared_meaning": "المعنى"}
+            if quran or hadith
+            else None
+        )
+        return {"texts": texts, "pair": pair}
 
     return answer
 
 
 def labels(call: dict[str, Any]) -> list[str]:
-    return [text["label"] for text in json.loads(call["user"])["candidates"][0]["texts"]]
+    return [text["label"] for text in json.loads(call["user"])["texts"]]
 
 
 async def an_insight(browser, store, flow_settings, *, with_scene: bool = False) -> str:
@@ -307,14 +313,14 @@ async def test_a_request_for_another_text_searches_again_verifies_and_shows_the_
     assert model.embedded == [[query_for("الإحياء", "أعطني آية أخرى عن الماء والنبات")]]
     payload = json.loads(model.calls[1]["user"])
     assert payload["scene"]["description"] == "نبتة صغيرة تحت المطر"
-    assert payload["candidates"][0]["concept"] == "الإحياء"
+    assert payload["intent"]["candidate_concept"] == "الإحياء"
     shown = [label[0] for label in labels(model.calls[1])]
     assert "Q" in shown
     assert "H" in shown
     # The verifier reads folded search copies: the insight's own verse must not be among them.
     own_copy = search_copy(await stored_verse(store, 30, 50))
     other_copy = search_copy(await stored_verse(store, 6, 99))
-    offered = [text["text"] for text in payload["candidates"][0]["texts"]]
+    offered = [text["text"] for text in payload["texts"]]
     assert offered
     assert all(not text.startswith(own_copy[:30]) for text in offered)
     assert any(text.startswith(other_copy[:30]) for text in offered)
@@ -462,6 +468,89 @@ async def test_a_verifier_that_fails_gives_the_slot_back(browser, store, flow_se
     async with store() as db:
         stages = sorted(c.stage for c in (await db.scalars(select(AiCall))).all())
     assert stages == ["chat", "chat", "verify"]
+
+
+async def test_a_query_embedding_that_fails_is_a_model_fault_not_an_empty_search(
+    browser, store, flow_settings, flow_app
+):
+    insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
+    model = searching_model(flow_app, wants(), said())
+    model.fail_on_call = 1
+
+    failed = await ask(browser, insight_id, "أعطني آية أخرى عن الماء والنبات")
+    retried = await ask(browser, insight_id)
+
+    assert (failed.status_code, failed.json()["error"]) == (503, "MODEL_UNAVAILABLE")
+    assert retried.json()["used"] == 1
+    # No verifier was called: the search never ran, and nothing was answered from memory.
+    assert [call["stage"].value for call in model.calls] == ["chat", "chat"]
+
+
+async def test_a_verifier_that_keeps_leaking_is_a_model_fault_not_an_empty_search(
+    browser, store, flow_settings, flow_app
+):
+    insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
+    verse = await stored_verse(store, 6, 99)
+    accepting = relevant_where("نبات")
+
+    def leaking(call: dict[str, Any]) -> dict[str, Any]:
+        answer = accepting(call)
+        for text in answer["texts"]:
+            text["link"] = f"قال تعالى: «{verse}»"
+        return answer
+
+    model = searching_model(flow_app, wants("verse"), leaking, leaking, said())
+
+    failed = await ask(browser, insight_id, "أعطني آية أخرى عن الماء والنبات")
+    retried = await ask(browser, insight_id)
+
+    assert (failed.status_code, failed.json()["error"]) == (503, "MODEL_UNAVAILABLE")
+    assert retried.json()["used"] == 1
+    assert [call["stage"].value for call in model.calls] == ["chat", "verify", "verify", "chat"]
+
+
+async def test_a_reranker_that_fails_keeps_the_fused_order_and_says_so(
+    browser, store, flow_settings, flow_app, monkeypatch, caplog
+):
+    insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
+    searching_model(flow_app, wants("verse"), relevant_where("نبات"))
+
+    class Down:
+        async def rerank(self, query: str, passages: list[str]) -> RerankOutcome:
+            return RerankOutcome(None, None, 1, "timeout")
+
+    monkeypatch.setattr(chat_retrieval, "build_reranker", lambda *_args: Down())
+
+    body = (await ask(browser, insight_id, "أعطني آية أخرى عن الماء والنبات")).json()
+
+    assert body["message"]["kind"] == "answer"
+    assert "reranker skipped: timeout" in caplog.text
+
+
+async def test_the_chat_intent_rests_on_the_insight_and_never_on_a_general_reminder(store):
+    owner = Owner(user_id=None, guest_key="g" * 32)
+    reminder = insight_row(
+        owner,
+        relation="thematic_reminder",
+        entity_ids=["e1"],
+        action_ids=[],
+        quran_surah=None,
+        quran_ayah=None,
+        hadith_collection="bukhari",
+        hadith_number="1032",
+    )
+
+    intent = intent_for(reminder, "آية عن الماء", "verse")
+    async with store() as db:
+        verses, hadiths = await own_ids(db, reminder)
+
+    assert intent.relation.value == "close_conceptual"
+    assert intent.queries_of(EmbeddedCorpus.HADITH).empty
+    assert intent.queries_of(EmbeddedCorpus.QURAN).semantic == (
+        query_for("الإحياء", "آية عن الماء"),
+    )
+    assert verses == frozenset()
+    assert len(hadiths) == 1
 
 
 def test_the_query_keeps_the_concept_and_the_first_words_of_the_message():

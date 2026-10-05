@@ -3,18 +3,20 @@ A chat request for another text runs the retrieval and the verification again (v
 
 «طلب نص إضافي يعيد الاسترجاع والتحقق؛ لا جواب من الذاكرة»: when the learner asks
 for a verse or a hadith the insight does not show, no model answers from memory.
-The planner is not called: one candidate is built from the insight's concept and
-the learner's own words, and goes through the engine's stages as a scan does:
+The planner is not called: one search intent is built from the insight's
+concept and the learner's own words, and goes through the engine's stages as a
+scan does:
 
 - the hybrid search of `src.pipeline.insight.search`, with the embedding and
   the reranker the settings name, the insight's own texts left out;
-- the verifier, judging the shortlist against the scan's stored scene;
+- the relevance verifier, testing the shortlist against the scan's stored scene;
 - the gate, with its rules unchanged: a hadith that is not eligible
-  (decisions 18 and 58) is queued for an editor and never shown, a remote
-  companion is dropped.
+  (decisions 18 and 58) is queued for an editor and never shown.
 
-The cost is one embedding call and one verifier call. Nothing here writes a
-text: the result is references, read from the store by the view.
+The cost is one embedding call and one verifier call. A query embedding that
+fails is raised as the model fault it is, never answered as «nothing found».
+Nothing here writes a text: the result is references, read from the store by
+the view.
 """
 
 from __future__ import annotations
@@ -29,14 +31,22 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.ai.client import ModelClient
+from src.ai.errors import AiCallError, AiErrorCode
 from src.config import Settings
 from src.models import EmbeddedCorpus, Hadith, Insight, QuranVerse, Scan
 from src.pipeline.engine import HadithRef, RelationType
 from src.pipeline.insight.engine import ResourceCache, build_reranker
-from src.pipeline.insight.evidence import gate, shortlist_of, verify
+from src.pipeline.insight.evidence import EvidenceRelevanceVerifier, gate, shortlist_of
 from src.pipeline.insight.guard import scripture_guard
-from src.pipeline.insight.planner import PlannedCandidate
-from src.pipeline.insight.search import Embedding, EvidenceSearch, Found, embed_queries
+from src.pipeline.insight.intents import IntentQueries, SearchIntent
+from src.pipeline.insight.search import (
+    Embedding,
+    EvidenceSearch,
+    Found,
+    SearchResult,
+    embed_queries,
+    rerank_query,
+)
 from src.pipeline.schemas import SceneAnalysis
 from src.routers.scripture import HadithOut, QuranVerseOut, read_hadith, read_verse
 
@@ -78,26 +88,37 @@ def query_for(concept: str, question: str) -> str:
     return " ".join(words[:QUERY_WORDS])
 
 
-def candidate_for(insight: Insight, question: str, kind: TextKind) -> PlannedCandidate:
-    """Build the one candidate of the run from what the insight already settled."""
+CHAT_INTENT_ID = "chat"
+NONE = IntentQueries((), ())
+
+
+def intent_for(insight: Insight, question: str, kind: TextKind) -> SearchIntent:
+    """Build the one intent of the run from what the insight already settled."""
     why = insight.why
-    query = query_for(str(why.get("concept", "")), question)
-    queries = (query,)
-    return PlannedCandidate(
-        title=insight.title,
-        glimpse=insight.glimpse,
-        concept=str(why.get("concept", "")),
-        value=insight.glimpse,
-        relation=RelationType(insight.relation),
+    concept = str(why.get("concept", ""))
+    query = query_for(concept, question)
+    # The learner's sentence is both the keyword query and the sentence the vectors read.
+    queries = IntentQueries(lexical=(query,), semantic=(query,))
+    relation = RelationType(insight.relation)
+    if relation is RelationType.THEMATIC_REMINDER:
+        relation = RelationType.CLOSE_CONCEPTUAL
+    return SearchIntent(
+        intent_id=CHAT_INTENT_ID,
         entity_ids=tuple(insight.entity_ids),
         action_ids=tuple(insight.action_ids),
-        quran_queries=queries if kind in {"verse", "either"} else (),
-        hadith_queries=queries if kind in {"hadith", "either"} else (),
-        ontology_ids=(),
-        unit=None,
+        observable_meaning=insight.glimpse,
+        relation_description=None,
+        candidate_concept=concept,
+        concept_basis=insight.glimpse,
+        relation=relation,
         content_level="a",
-        visible_clues=tuple(str(clue) for clue in why.get("visible_clues", [])),
-        limits=tuple(str(limit) for limit in why.get("limits", [])),
+        uncertainties=tuple(str(limit) for limit in why.get("limits", [])),
+        unsupported_assumptions=(),
+        queries={
+            EmbeddedCorpus.QURAN: queries if kind in {"verse", "either"} else NONE,
+            EmbeddedCorpus.HADITH: queries if kind in {"hadith", "either"} else NONE,
+        },
+        ontology_ids=(),
     )
 
 
@@ -189,31 +210,35 @@ async def _find(
         reranker=build_reranker(settings, http, client),
         concepts=loaded.concepts,
     )
-    candidate = candidate_for(insight, question, kind)
-    queries = [*candidate.quran_queries, *candidate.hadith_queries]
-    vectors, embed_error = await embed_queries(embedding, queries)
+    intent = intent_for(insight, question, kind)
+    sentences = [q for corpus in EmbeddedCorpus for q in intent.queries_of(corpus).semantic]
+    vectors, embed_error = await embed_queries(embedding, sentences)
     if embed_error:
-        log.warning("query embedding skipped: %s; searching without vectors", embed_error)
+        raise AiCallError(AiErrorCode(embed_error), "the query embedding failed")
     own_verses, own_hadiths = await own_ids(db, insight)
-    searched: list[tuple[tuple[str, ...], list[Found]]] = []
-    for corpus, corpus_queries, own in (
-        (EmbeddedCorpus.QURAN, candidate.quran_queries, own_verses),
-        (EmbeddedCorpus.HADITH, candidate.hadith_queries, own_hadiths),
-    ):
-        found = await search.search(db, corpus, corpus_queries, vectors) if corpus_queries else []
-        searched.append((corpus_queries, _without(found, own)))
-    results = await asyncio.gather(*(search.rerank(q, found) for q, found in searched))
+    searched: list[tuple[str, list[Found]]] = []
+    for corpus, own in ((EmbeddedCorpus.QURAN, own_verses), (EmbeddedCorpus.HADITH, own_hadiths)):
+        queries = intent.queries_of(corpus)
+        found = [] if queries.empty else await search.search(db, corpus, queries, vectors)
+        searched.append((rerank_query(queries, intent.observable_meaning), _without(found, own)))
+    results: list[SearchResult] = await asyncio.gather(
+        *(search.rerank(q, found) for q, found in searched)
+    )
     for result in results:
         if result.rerank_error:
             log.warning("reranker skipped: %s; fused order kept", result.rerank_error)
-    shortlist = shortlist_of(candidate, results[0].found, results[1].found)
-    if not shortlist.quran and not shortlist.hadith:
+    shortlist = shortlist_of(intent, results[0].found, results[1].found)
+    if shortlist.empty:
         return NewText()
     texts = [found.document.text for found in shortlist.hadith]
-    verdicts = await verify(client, scene, [shortlist], scripture_guard(loaded.quran, texts, db))
-    gated = await gate(
-        db, shortlist, verdicts.get(0, {}), seen_verses=frozenset(), seen_hadiths=frozenset()
+    verdicts = await EvidenceRelevanceVerifier(client).verify(
+        scene, [shortlist], scripture_guard(loaded.quran, texts, db)
     )
+    verdict = verdicts.get(0)
+    if verdict is None:
+        # The verifier kept writing scripture-like text: a model fault, never «nothing found».
+        raise AiCallError(AiErrorCode.INVALID_OUTPUT, "the verifier kept leaking")
+    gated = await gate(db, shortlist, verdict, seen_verses=frozenset(), seen_hadiths=frozenset())
     verse = (
         await read_verse(db, gated.quran_ref.surah, gated.quran_ref.ayah)
         if gated.quran_ref is not None

@@ -99,7 +99,7 @@ async def test_the_model_sees_the_image_and_the_boxes_in_the_stated_pixels():
     call = client.calls[0]
     assert call["schema"] is SceneModelOutput
     assert call["stage"] is AiStage.VISION
-    assert call["system"] == load_prompt("scene_analyzer_system.v2").text
+    assert call["system"] == load_prompt("scene_analyzer_system.v3").text
     assert call["images"][0].data == b"jpeg"
     assert call["max_output_tokens"] == 8192
     user = call["user"]
@@ -124,7 +124,7 @@ async def test_the_model_sees_the_image_and_the_boxes_in_the_stated_pixels():
     ]
     assert scene.provider is AiProvider.OVH
     assert scene.model == "fake-vision"
-    assert scene.prompt_version.startswith("scene_analyzer_system.v2@")
+    assert scene.prompt_version.startswith("scene_analyzer_system.v3@")
     assert "+scene_analyzer_user.v1@" in scene.prompt_version
 
 

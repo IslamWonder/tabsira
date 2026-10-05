@@ -76,3 +76,20 @@ async def nearest(
         _statement(corpus, dimensions, by_collection=by_collection), parameters
     )
     return [Hit(int(row.key), float(row.similarity)) for row in rows]
+
+
+async def has_vectors(
+    session: AsyncSession, corpus: EmbeddedCorpus, *, model: str, dimensions: int | None
+) -> bool:
+    """Whether the store holds at least one vector of `model` (of that size) for `corpus`."""
+    table, _ = _TABLES[corpus]
+    where = "e.model = :model"
+    parameters: dict[str, Any] = {"model": model}
+    if dimensions is not None:
+        where += " AND e.dimensions = :dimensions"
+        parameters["dimensions"] = dimensions
+    row = await session.execute(
+        text(f"SELECT 1 FROM {table} e WHERE {where} LIMIT 1"),  # noqa: S608 - fixed names
+        parameters,
+    )
+    return row.first() is not None

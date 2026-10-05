@@ -22,6 +22,10 @@ class EvidenceWhy(BaseModel):
     relation: RelationType
     relation_label: str
     matched_on: str
+    link: str | None = Field(
+        default=None,
+        description="«وجه الصلة»: how the text's own meaning meets the scene, as the checker found it",
+    )
 
 
 class InsightQuran(BaseModel):

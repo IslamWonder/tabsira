@@ -357,6 +357,8 @@ async def test_a_photo_that_left_the_store_fails_as_a_missing_asset(
     [
         (EngineResult(status=EngineStatus.SOURCE_UNAVAILABLE), "SOURCE_UNAVAILABLE"),
         (EngineResult(status=EngineStatus.MODEL_UNAVAILABLE), "MODEL_UNAVAILABLE"),
+        (EngineResult(status=EngineStatus.CORPUS_UNAVAILABLE), "CORPUS_UNAVAILABLE"),
+        (EngineResult(status=EngineStatus.RETRIEVAL_ERROR), "RETRIEVAL_ERROR"),
         (AiCallError(AiErrorCode.RATE_LIMITED, "busy"), "MODEL_UNAVAILABLE"),
         (RuntimeError("bug"), "INTERNAL_ERROR"),
     ],
@@ -411,6 +413,11 @@ async def test_an_engine_that_cannot_answer_fails_the_scan_with_its_code(
             None,
         ),
         (
+            EngineResult(status=EngineStatus.INCOMPLETE_EVIDENCE_PAIR, trace={"status": "x"}),
+            ScanOutcome.INCOMPLETE_EVIDENCE_PAIR,
+            None,
+        ),
+        (
             EngineResult(status=EngineStatus.OK, insights=[proposed(quran=None, hadith=None)]),
             ScanOutcome.NO_RELEVANT_EVIDENCE,
             None,
@@ -433,6 +440,8 @@ async def test_a_scan_without_insights_ends_with_a_question_or_an_honest_no_resu
         outcome,
         question,
     )
+    # The engine's record is kept with the run; an empty one is stored as none.
+    assert scan.engine_trace == (result.trace or None)
 
 
 async def test_a_scan_that_runs_too_long_is_stopped(store, redis, http, make_settings):

@@ -19,8 +19,11 @@ from src.pipeline.engine import (
     RelationType,
     SmallStep,
 )
-from src.pipeline.insight.composer import SYSTEM_PROMPT as COMPOSER_PROMPT
 from src.pipeline.insight.composer import (
+    BACKGROUND_MUSLIM,
+    BACKGROUND_NON_MUSLIM,
+    BACKGROUND_UNKNOWN,
+    Composable,
     ComposedInsight,
     InsightComposer,
     allowed_references,
@@ -28,22 +31,40 @@ from src.pipeline.insight.composer import (
     citation,
     cites_only_its_own,
     composer_message,
+    learner_payload,
+    limits_of,
 )
-from src.pipeline.insight.context import SceneContext, build_context
-from src.pipeline.insight.engine import PipelineInsightEngine, scene_texts
+from src.pipeline.insight.composer import SYSTEM_PROMPT as COMPOSER_PROMPT
+from src.pipeline.insight.context import build_context
+from src.pipeline.insight.engine import PipelineInsightEngine, unit_texts, visible_clues
 from src.pipeline.insight.evidence import (
     Chosen,
+    EvidenceRelevanceVerifier,
     GateResult,
+    PairChoice,
     Shortlist,
-    pick,
+    TextJudgement,
+    Verdict,
+    VerifierOutput,
+    gate,
     seen_ids,
-    verify,
+    verdict_texts,
+    verifier_message,
 )
 from src.pipeline.insight.guard import (
     STORE_FINDING,
     EngineGuard,
     scripture_guard,
     without_honorific,
+)
+from src.pipeline.insight.intents import (
+    SYSTEM_PROMPT as PLANNER_PROMPT,
+)
+from src.pipeline.insight.intents import (
+    IntentQueries,
+    PlannerLeakError,
+    SearchIntent,
+    SemanticIntentPlanner,
 )
 from src.pipeline.insight.learning import (
     LearningPath,
@@ -54,18 +75,17 @@ from src.pipeline.insight.learning import (
     load_path,
     personalised_reason,
     rank_key,
+    unit_for,
     unit_options,
 )
-from src.pipeline.insight.planner import (
-    BACKGROUND_MUSLIM,
-    BACKGROUND_NON_MUSLIM,
-    BACKGROUND_UNKNOWN,
-    InsightPlanner,
-    PlannedCandidate,
-    PlannerLeakError,
-    learner_payload,
+from src.pipeline.insight.search import (
+    Embedding,
+    EvidenceSearch,
+    Found,
+    channel_weights,
+    embed_queries,
+    rerank_query,
 )
-from src.pipeline.insight.search import Embedding, EvidenceSearch, Found, embed_queries
 from src.pipeline.leak_guard import LeakGuard
 from src.pipeline.prompt import load_prompt
 from src.pipeline.schemas import EvidenceStatus, SceneAction
@@ -75,37 +95,39 @@ from src.scripture.text import without_marks
 from src.services.chat_service import SYSTEM_PROMPT as CHAT_PROMPT
 from tests.fakes import FakeModelClient
 from tests.insight.support import (
-    compose_answer,
     composed,
     entity,
+    intent,
+    judged,
     plan_answer,
-    planned,
+    queries,
     rain_scene,
     scene,
-    verdict,
+    verify_answer,
 )
 from tests.retrieval.support import EmbeddingClient
 from tests.scripture.fixtures import hadith_text, verse_text
 
+RAIN = IntentQueries(("إحياء الأرض",), ("ينزل المطر فتحيا الأرض",))
 
-def candidate(**fields: Any) -> PlannedCandidate:
-    return PlannedCandidate(
+
+def an_intent(**fields: Any) -> SearchIntent:
+    return SearchIntent(
         **(
             {
-                "title": "عنوان",
-                "glimpse": "لمحة",
-                "concept": "إحياء الأرض",
-                "value": "رحمة",
-                "relation": RelationType.DIRECT,
+                "intent_id": "i1",
                 "entity_ids": ("e1",),
                 "action_ids": (),
-                "quran_queries": ("إحياء الأرض",),
-                "hadith_queries": (),
-                "ontology_ids": (),
-                "unit": None,
+                "observable_meaning": "مطر على أرض",
+                "relation_description": None,
+                "candidate_concept": "إحياء الأرض",
+                "concept_basis": "ماء يصل أرضًا يابسة",
+                "relation": RelationType.DIRECT,
                 "content_level": "a",
-                "visible_clues": (),
-                "limits": (),
+                "uncertainties": ("لا تظهر الصورة ما قبلها",),
+                "unsupported_assumptions": (),
+                "queries": {EmbeddedCorpus.QURAN: RAIN, EmbeddedCorpus.HADITH: RAIN},
+                "ontology_ids": (),
             }
             | fields
         )
@@ -113,11 +135,31 @@ def candidate(**fields: Any) -> PlannedCandidate:
 
 
 def found(key: int, corpus: EmbeddedCorpus = EmbeddedCorpus.QURAN, text: str = "نص") -> Found:
-    return Found(corpus, key, 0.5, None, "إحياء الأرض", RetrievalDocument(corpus, key, text, ()))
+    return Found(
+        corpus,
+        key,
+        0.5,
+        key,
+        None,
+        "إحياء الأرض",
+        (("fts:0", 1),),
+        RetrievalDocument(corpus, key, text, ()),
+    )
 
 
-def chosen(key: int, *, review: bool = False) -> Chosen:
-    return Chosen(found(key), RelationType.DIRECT, "حد", review=review, unseen_preferred=False)
+def chosen(
+    key: int, *, review: bool = False, relation: RelationType = RelationType.DIRECT
+) -> Chosen:
+    return Chosen(
+        found(key),
+        relation,
+        "وجه",
+        (),
+        None,
+        (1, 3),
+        review=review,
+        unseen_preferred=False,
+    )
 
 
 # ─── Context ───
@@ -176,20 +218,31 @@ def test_unit_options_mark_completed_and_ready_units_and_ignore_history_when_off
     assert domain_counts(path, LearnerContext(completed_units=["A", "Z"])) == {"T01": 1}
 
 
-def test_masar_order_puts_focus_relation_next_step_novelty_and_coverage_in_turn():
+def test_the_server_chooses_the_unit_of_a_confirmed_intent_or_none():
+    path = _path()
+
+    assert unit_for(path, ["المطر"], LearnerContext()).unit.unit_id == "A"
+    assert unit_for(path, ["سيارة"], LearnerContext()) is None
+    assert unit_for(None, ["المطر"], LearnerContext()) is None
+    texts = unit_texts(rain_scene(), an_intent(relation_description="يسقي"))
+    assert texts == ["إحياء الأرض", "مطر على أرض", "يسقي", rain_scene().description]
+
+
+def test_masar_order_puts_focus_pair_relation_next_step_novelty_and_coverage_in_turn():
     ready = UnitOption(_path().units["B"], completed=False, ready=True, match=1)
     items = [
-        RankedInsight(False, RelationType.DIRECT, None, 0, 0),
-        RankedInsight(True, RelationType.THEMATIC_REMINDER, None, 0, 0),
-        RankedInsight(False, RelationType.DIRECT, ready, 0, 0),
-        RankedInsight(False, RelationType.OPPOSITE, None, 2, 0),
+        RankedInsight(False, True, RelationType.DIRECT, None, 0, 0),
+        RankedInsight(True, False, RelationType.OPPOSITE, None, 0, 0),
+        RankedInsight(False, True, RelationType.DIRECT, ready, 0, 0),
+        RankedInsight(False, False, RelationType.DIRECT, None, 2, 0),
+        RankedInsight(False, True, RelationType.OPPOSITE, None, 2, 0),
     ]
 
     ordered = sorted(items, key=rank_key)
 
     assert ordered[0].on_focus
     assert ordered[1].unit is ready
-    assert ordered[-1].relation is RelationType.OPPOSITE
+    assert ordered[-1].pair_complete is False
 
 
 def test_the_personal_reason_is_honest_about_what_was_used():
@@ -213,16 +266,28 @@ async def test_no_active_learning_path_offers_no_unit(db_session):
     assert await load_path(db_session) is None
 
 
-def test_scene_texts_include_the_answer_the_person_gave():
-    request = EngineRequest(scan_id="s", scene=rain_scene(), clarification_answer="أقصد المطر")
+def test_visible_clues_are_the_scenes_own_words_for_the_anchors():
+    shown = SceneAction(
+        id="a1",
+        label="يسقي",
+        actor_ids=["e1"],
+        target_ids=["e2"],
+        visible_evidence=["ماء"],
+        status=EvidenceStatus.OBSERVED,
+    )
+    seen = rain_scene(actions=[shown])
 
-    assert "أقصد المطر" in scene_texts(request, SceneContext({}))
+    assert visible_clues(seen, an_intent(entity_ids=("e1", "e2", "e9"), action_ids=("a1",))) == (
+        "مطر",
+        "تربة",
+        "يسقي",
+    )
 
 
-# ─── Planner ───
+# ─── Intent planner ───
 
 
-async def test_the_planner_checks_every_candidate_against_the_scene(store):
+async def test_the_planner_checks_every_intent_against_the_scene(store):
     shown = SceneAction(
         id="a1",
         label="يسقي",
@@ -239,10 +304,13 @@ async def test_the_planner_checks_every_candidate_against_the_scene(store):
     client = FakeModelClient(
         answers=[
             plan_answer(
-                planned(relation="action_based", action_ids=["a1", "a9"]),
-                planned(relation="direct", entity_ids=["e1", "e9"]),
-                planned(entity_ids=["e2"]),
-                planned(quran_queries=[], hadith_queries=["كلمة " * 20]),
+                intent(relation="action_based", scene_anchor_ids=["a1", "a9"]),
+                intent(relation="direct", scene_anchor_ids=["e1", "e9", "e1"]),
+                intent(scene_anchor_ids=["e2"]),
+                intent(
+                    quran=queries([], ["كلمة " * 40]),
+                    hadith=queries([" ", "كلمة " * 9], []),
+                ),
                 needs_clarification=True,
                 clarification_question="ماذا تقصد؟",
                 unknown_concepts=["مفهوم جديد", " "],
@@ -252,58 +320,82 @@ async def test_the_planner_checks_every_candidate_against_the_scene(store):
     request = EngineRequest(
         scan_id="s",
         scene=seen,
-        max_insights=3,
         learner=LearnerContext(goals=["reflection"], knowledge_level="beginner"),
     )
 
-    plan = await InsightPlanner(client).plan(request, context, [], EngineGuard(LeakGuard(), None))
+    plan = await SemanticIntentPlanner(client).plan(
+        request, context, EngineGuard(LeakGuard(), None)
+    )
 
-    assert [c.relation for c in plan.candidates] == [
+    assert [i.relation for i in plan.intents] == [
         RelationType.CLOSE_CONCEPTUAL,
         RelationType.CLOSE_CONCEPTUAL,
     ]
-    assert plan.candidates[0].action_ids == ("a1",)
-    assert plan.candidates[1].entity_ids == ("e1",)
-    assert plan.dropped == ["candidate 2: rests only on blocked or unanswered entities"]
+    assert plan.intents[0].action_ids == ("a1",)
+    # Anchored on the action alone, the intent rests on the action's participants.
+    assert plan.intents[0].entity_ids == ("e1", "e2")
+    assert plan.intents[1].entity_ids == ("e1",)
+    # The server names the intents; the model writes no id.
+    assert [i.intent_id for i in plan.intents] == ["i1", "i2"]
+    assert plan.dropped == [
+        "intent 2: rests only on blocked or unanswered entities",
+        "intent 3: no usable query",
+    ]
+    assert plan.waiting_on == []
     assert plan.question == "ماذا تقصد؟"
     assert plan.unknown_concepts == ["مفهوم جديد"]
-    assert '"goals": ["reflection"]' in client.calls[0]["user"]
-    assert plan.candidates[0].unit is None
+    # The learner never reaches the planner (the brief of 2026-10-05, §14).
+    assert "reflection" not in client.calls[0]["user"]
+    assert "learner" not in json.loads(client.calls[0]["user"])
+    assert plan.intents[0].as_trace()["queries"]["quran"]["lexical"] == ["إحياء الأرض بالمطر"]
 
 
-async def test_the_planner_drops_candidates_off_the_focus_or_without_queries(store):
+async def test_the_planner_drops_intents_off_the_focus_or_without_queries(store):
     context = await build_context(store, rain_scene(), clarified=False)
     client = FakeModelClient(
         answers=[
             plan_answer(
-                planned(entity_ids=["e2"]),
-                planned(quran_queries=[], hadith_queries=[]),
+                intent(scene_anchor_ids=["e2"]),
+                intent(quran=queries([], []), hadith=queries([], [])),
             )
         ]
     )
     request = EngineRequest(scan_id="s", scene=rain_scene(), focus_entity_id="e1")
 
-    plan = await InsightPlanner(client).plan(request, context, [], EngineGuard(LeakGuard(), None))
+    plan = await SemanticIntentPlanner(client).plan(
+        request, context, EngineGuard(LeakGuard(), None)
+    )
 
-    assert plan.candidates == []
-    assert plan.dropped == ["candidate 0: not about the focus", "candidate 1: no usable query"]
+    assert plan.intents == []
+    assert plan.dropped == ["intent 0: not about the focus", "intent 1: no usable query"]
     assert plan.question is None
 
 
 async def test_a_leaking_plan_is_asked_again_then_refused(store):
     context = await build_context(store, rain_scene(), clarified=False)
-    leaking = plan_answer(planned(glimpse=f"قال تعالى: «{verse_text(30, 50)}»"))
+    leaking = plan_answer(intent(observable_meaning=f"قال تعالى: «{verse_text(30, 50)}»"))
     request = EngineRequest(scan_id="s", scene=rain_scene())
 
-    recovered = await InsightPlanner(
-        FakeModelClient(answers=[leaking, plan_answer(planned())])
-    ).plan(request, context, [], EngineGuard(LeakGuard(), None))
+    recovered = await SemanticIntentPlanner(
+        FakeModelClient(answers=[leaking, plan_answer(intent())])
+    ).plan(request, context, EngineGuard(LeakGuard(), None))
     with pytest.raises(PlannerLeakError):
-        await InsightPlanner(FakeModelClient(answers=[leaking, leaking])).plan(
-            request, context, [], EngineGuard(LeakGuard(), None)
+        await SemanticIntentPlanner(FakeModelClient(answers=[leaking, leaking])).plan(
+            request, context, EngineGuard(LeakGuard(), None)
         )
 
-    assert len(recovered.candidates) == 1
+    assert len(recovered.intents) == 1
+
+
+def test_the_planner_prompt_holds_no_example_scene_text_or_learner():
+    prompt = load_prompt(PLANNER_PROMPT).text
+
+    assert "learner" not in prompt
+    assert "learning_units" not in prompt
+    assert "phone" not in prompt
+    assert "prayer" not in prompt
+    assert "hypothesis" in prompt
+    assert "lexical" in prompt and "semantic" in prompt
 
 
 # ─── Search ───
@@ -323,86 +415,242 @@ async def test_query_embedding_is_one_call_and_its_failure_is_a_reason():
     assert failed == ({}, "timeout")
 
 
+def test_each_channel_weighs_one_whatever_the_number_of_its_queries():
+    weights = channel_weights(["fts:0", "fts:1", "concepts:0", "concepts:1", "vector:0"])
+
+    assert weights == {"fts": 0.5, "concepts": 0.5, "vector": 1.0}
+    assert channel_weights([]) == {}
+
+
+def test_the_reranker_reads_the_intents_sentence_or_its_meaning():
+    assert rerank_query(RAIN, "معنى") == "ينزل المطر فتحيا الأرض"
+    assert rerank_query(IntentQueries(("كلمة",), ()), "معنى") == "معنى"
+
+
 async def test_a_search_that_finds_nothing_returns_nothing(store):
     index = ConceptIndex(EmbeddedCorpus.QURAN, {})
     search = EvidenceSearch(embedding=None, reranker=None, concepts={EmbeddedCorpus.QURAN: index})
+    nothing = IntentQueries(("زززز",), ("زززز زززز",))
 
-    found = await search.search(store, EmbeddedCorpus.QURAN, ["زززز"], {})
-    reranked = await search.rerank(["زززز"], found)
+    found = await search.search(store, EmbeddedCorpus.QURAN, nothing, {})
+    reranked = await search.rerank("زززز", found)
 
     assert found == reranked.found == []
 
 
-async def test_anchors_alone_name_their_texts(store):
-    verse = await store.scalar(select(QuranVerse.id).where(QuranVerse.surah == 112))
+async def test_a_search_records_the_channels_and_the_query_that_ranked_a_text_best(store):
     index = ConceptIndex(EmbeddedCorpus.QURAN, {})
-    search = EvidenceSearch(embedding=None, reranker=None, concepts={EmbeddedCorpus.QURAN: index})
+    client = EmbeddingClient()
+    search = EvidenceSearch(
+        embedding=Embedding(client, "m", 8), reranker=None, concepts={EmbeddedCorpus.QURAN: index}
+    )
+    vectors, _ = await embed_queries(Embedding(client, "m", 8), list(RAIN.semantic))
 
-    found = await search.search(store, EmbeddedCorpus.QURAN, ["زززز"], {}, anchors=[verse])
+    found = await search.search(store, EmbeddedCorpus.QURAN, RAIN, vectors)
 
-    assert [item.key for item in found] == [verse]
-    assert found[0].matched_on == "زززز"
+    assert found
+    assert found[0].retrieval_rank == 1
+    assert found[0].matched_on == "إحياء الأرض"
+    assert all(name.startswith("fts:") for name, _ in found[0].channels)
+    assert found[0].as_trace()["channels"] == ["fts:0@1"]
 
 
 # ─── Evidence ───
 
 
-async def test_the_verifier_keeps_known_labels_of_known_candidates_only():
-    shortlist = Shortlist(candidate(), [found(1)], [found(2, EmbeddedCorpus.HADITH)])
+async def test_the_verifier_keeps_known_labels_only_and_skips_an_empty_shortlist():
+    shortlist = Shortlist(an_intent(), [found(1)], [found(2, EmbeddedCorpus.HADITH)])
     client = FakeModelClient(
-        answers=[
-            {
-                "candidates": [
-                    {"candidate": 0, "texts": [verdict("Q1"), verdict("Q7"), verdict("H1")]},
-                    {"candidate": 5, "texts": [verdict("Q1")]},
-                ]
-            }
-        ]
+        answers=[verify_answer([judged("Q1"), judged("Q7"), judged("H1")])],
     )
 
-    verdicts = await verify(client, rain_scene(), [shortlist], EngineGuard(LeakGuard(), None))
+    verdicts = await EvidenceRelevanceVerifier(client).verify(
+        rain_scene(),
+        [Shortlist(an_intent(), [], []), shortlist],
+        EngineGuard(LeakGuard(), None),
+    )
 
-    assert set(verdicts) == {0}
-    assert set(verdicts[0]) == {"Q1", "H1"}
+    assert set(verdicts) == {1}
+    assert set(verdicts[1].judged) == {"Q1", "H1"}
+    assert verdicts[1].pair.quran == "Q1"
+    assert len(client.calls) == 1
+    payload = json.loads(client.calls[0]["user"])
+    assert payload["intent"]["candidate_concept"] == "إحياء الأرض"
+    assert "learner" not in payload
+    assert verifier_message(rain_scene(), shortlist) == client.calls[0]["user"]
 
 
-async def test_a_leaking_verifier_is_asked_again_then_its_candidate_gets_no_verdict():
-    leaking = {
-        "candidates": [
-            {
-                "candidate": 0,
-                "texts": [verdict("Q1") | {"limit": f"قال تعالى: «{verse_text(30, 50)}»"}],
-            }
-        ]
+def test_every_free_text_of_a_verdict_meets_the_guard():
+    answer = VerifierOutput.model_validate(
+        verify_answer(
+            [
+                judged("Q1", needed_context="سياق الآية", assumptions=["يفترض كذا", " "]),
+                judged("H1", accepted=False),
+            ]
+        )
+    )
+
+    assert verdict_texts(answer) == {
+        "Q1.link": "يذكر النص إحياء الأرض بالماء",
+        "Q1.needed_context": "سياق الآية",
+        "Q1.assumptions.0": "يفترض كذا",
+        "pair.shared_meaning": "إحياء الأرض بالماء",
     }
-    shortlists = [Shortlist(candidate(), [found(1)], []), Shortlist(candidate(), [found(2)], [])]
-    clean = {"candidates": [{"candidate": 0, "texts": [verdict("Q1")]}]}
-    # The fake answers at once, so the first candidate takes both its attempts first.
+
+
+async def test_a_leaking_verifier_is_asked_again_then_its_intent_gets_no_verdict():
+    leaking = verify_answer([judged("Q1", link=f"قال تعالى: «{verse_text(30, 50)}»")])
+    shortlists = [Shortlist(an_intent(), [found(1)], []), Shortlist(an_intent(), [found(2)], [])]
+    clean = verify_answer([judged("Q1")])
+    # The fake answers at once, so the first intent takes both its attempts first.
     client = FakeModelClient(answers=[leaking, leaking, clean])
 
-    verdicts = await verify(client, rain_scene(), shortlists, EngineGuard(LeakGuard(), None))
+    verdicts = await EvidenceRelevanceVerifier(client).verify(
+        rain_scene(), shortlists, EngineGuard(LeakGuard(), None)
+    )
 
-    assert verdicts == {0: {}, 1: {"Q1": verdicts[1]["Q1"]}}
+    # The leaking intent is reported as unjudged (None), not left out.
+    assert verdicts == {0: None, 1: verdicts[1]}
+    assert verdicts[1] is not None
     assert len(client.calls) == 3
 
 
-def test_pick_prefers_an_unseen_text_of_the_strongest_tier_and_reviews_otherwise():
-    strong = verdict("Q1")
-    weak = verdict("Q2", strength="weak")
-    texts = [(found(1), _verdict(strong)), (found(2), _verdict(strong)), (found(3), _verdict(weak))]
+async def test_each_intent_is_verified_in_its_own_call_and_a_failure_is_raised():
+    shortlists = [
+        Shortlist(an_intent(), [found(1)], []),
+        Shortlist(an_intent(candidate_concept="الرحمة"), [found(2)], []),
+    ]
+    client = FakeModelClient(
+        answers=[
+            verify_answer([judged("Q1")]),
+            verify_answer([judged("Q1", relation="close_conceptual")]),
+        ]
+    )
 
-    fresh = pick(texts, frozenset({1}))
-    review = pick(texts, frozenset({1, 2}))
+    verdicts = await EvidenceRelevanceVerifier(client).verify(
+        rain_scene(), shortlists, EngineGuard(LeakGuard(), None)
+    )
+    failing = FakeModelClient(answers=[verify_answer([]), AiCallError(AiErrorCode.TIMEOUT, "x")])
 
-    assert (fresh.found.key, fresh.review, fresh.unseen_preferred) == (2, False, True)
-    assert (review.found.key, review.review) == (1, True)
-    assert pick([], frozenset()) is None
+    assert (verdicts[0].judged["Q1"].relation, verdicts[1].judged["Q1"].relation) == (
+        "direct",
+        "close_conceptual",
+    )
+    assert [len(json.loads(call["user"])["texts"]) for call in client.calls] == [1, 1]
+    with pytest.raises(AiCallError):
+        await EvidenceRelevanceVerifier(failing).verify(
+            rain_scene(), shortlists, EngineGuard(LeakGuard(), None)
+        )
 
 
-def _verdict(answer: dict[str, Any]) -> Any:
-    from src.pipeline.insight.evidence import TextVerdict
+def _verdict(texts: list[dict[str, Any]], pair: Any = "auto") -> Verdict:
+    answer = verify_answer(texts, pair)
+    return Verdict(
+        {t["label"]: TextJudgement.model_validate(t) for t in answer["texts"]},
+        None if answer["pair"] is None else PairChoice.model_validate(answer["pair"]),
+    )
 
-    return TextVerdict.model_validate(answer)
+
+async def test_the_gate_keeps_the_verifiers_pair_and_an_unseen_text_of_the_same_tier(store):
+    one, two, three = (
+        await store.scalars(select(QuranVerse.id).order_by(QuranVerse.id).limit(3))
+    ).all()
+    shortlist = Shortlist(an_intent(), [found(one), found(two), found(three)], [])
+    judgements = [judged("Q1"), judged("Q2"), judged("Q3", relation="close_conceptual")]
+
+    pair = await gate(
+        store,
+        shortlist,
+        _verdict(judgements, {"quran": "Q2", "hadith": None, "shared_meaning": "م"}),
+        seen_verses=frozenset(),
+        seen_hadiths=frozenset(),
+    )
+    fresh = await gate(
+        store,
+        shortlist,
+        _verdict(judgements, {"quran": "Q1", "hadith": None, "shared_meaning": "م"}),
+        seen_verses=frozenset({one}),
+        seen_hadiths=frozenset(),
+    )
+    review = await gate(
+        store,
+        shortlist,
+        _verdict(judgements, {"quran": "Q1", "hadith": None, "shared_meaning": "م"}),
+        seen_verses=frozenset({one, two}),
+        seen_hadiths=frozenset(),
+    )
+
+    assert pair.quran.found.key == two
+    assert pair.shared_meaning == "م"
+    assert pair.quran.link and pair.quran.basis_words == (1, 4)
+    assert (fresh.quran.found.key, fresh.quran.unseen_preferred, fresh.quran.review) == (
+        two,
+        True,
+        False,
+    )
+    assert (review.quran.found.key, review.quran.review) == (one, True)
+    assert review.rejections == {}
+    assert pair.hadith is None and pair.hadith_ref is None
+    assert pair.relation is RelationType.DIRECT
+
+
+async def test_a_grade_word_written_by_the_verifier_never_reaches_a_reader(store):
+    verse_id = await store.scalar(select(QuranVerse.id).order_by(QuranVerse.id))
+    shortlist = Shortlist(an_intent(), [found(verse_id)], [])
+    graded = judged(
+        "Q1",
+        link="هذا حديثٌ صَحِـيحٌ يوافق المعنى",
+        needed_context="في رواية ضعّفها بعضهم",
+        assumptions=["يفترض كذا", "وهو حديث حسّنه غيره", "متروك عند قوم"],
+    )
+
+    result = await gate(
+        store,
+        shortlist,
+        _verdict([graded], {"quran": "Q1", "hadith": None, "shared_meaning": "م"}),
+        seen_verses=frozenset(),
+        seen_hadiths=frozenset(),
+    )
+
+    assert result.quran is not None
+    assert (result.quran.link, result.quran.needed_context) == ("", None)
+    assert result.quran.assumptions == ("يفترض كذا",)
+
+
+async def test_the_gate_names_every_rejection_and_the_verdict_it_never_got(store):
+    shortlist = Shortlist(
+        an_intent(),
+        [found(1)],
+        [found(2, EmbeddedCorpus.HADITH)],
+        hadith_note=None,
+    )
+    none = await gate(store, shortlist, None, seen_verses=frozenset(), seen_hadiths=frozenset())
+    rejected = await gate(
+        store,
+        shortlist,
+        _verdict(
+            [
+                judged("Q1", accepted=False, reason="overgeneralisation"),
+                judged("H1", accepted=True, relation="none"),
+            ]
+        ),
+        seen_verses=frozenset(),
+        seen_hadiths=frozenset(),
+    )
+    unsearched = await gate(
+        store,
+        Shortlist(an_intent(), [], [], quran_note="not_searched", hadith_note="nothing_found"),
+        _verdict([]),
+        seen_verses=frozenset(),
+        seen_hadiths=frozenset(),
+    )
+
+    assert none.rejections == {"Q1": "no_verdict", "H1": "no_verdict"}
+    assert not none.passed
+    assert rejected.rejections == {"Q1": "overgeneralisation", "H1": "meaning_not_supported"}
+    assert rejected.reasons() == ("meaning_not_supported", "overgeneralisation")
+    assert unsearched.rejections == {"Q": "not_searched", "H": "nothing_found"}
+    assert unsearched.as_trace()["pair_complete"] is False
 
 
 async def test_seen_texts_are_found_by_reference_unless_personalisation_is_off(store):
@@ -445,16 +693,23 @@ def test_the_writing_prompts_forbid_stating_a_hadiths_grade(name):
     assert "verified store" not in prompt
 
 
+def _composable(result: GateResult) -> Composable:
+    return Composable(result, None, ("مطر",))
+
+
 def test_the_composer_prompt_rules_on_the_backgrounds_the_payload_sends():
     prompt = load_prompt(COMPOSER_PROMPT).text
     rule = next(line for line in prompt.splitlines() if line.startswith("- religious_background"))
+    result = GateResult(an_intent(), quran=chosen(1), quran_ref=QuranRef(surah=1, ayah=1))
     sent = json.loads(
-        composer_message(rain_scene(), [], LearnerContext(religious_background="non_muslim"))
+        composer_message(
+            rain_scene(), _composable(result), LearnerContext(religious_background="non_muslim")
+        )
     )
     off = json.loads(
         composer_message(
             rain_scene(),
-            [],
+            _composable(result),
             LearnerContext(religious_background="muslim", personalization_enabled=False),
         )
     )
@@ -464,25 +719,44 @@ def test_the_composer_prompt_rules_on_the_backgrounds_the_payload_sends():
     assert f'"{BACKGROUND_UNKNOWN}" or absent' in rule
     assert "«يعلّم الإسلام" in rule
     assert "never assume belief" in rule
-    assert "exploring" not in prompt
     assert sent["learner"]["religious_background"] == "non_muslim"
     assert "religious_background" not in off["learner"]
+    assert sent["insight"]["verse"]["link"] == "وجه"
+    assert sent["insight"]["hadith"] is None
+    assert sent["insight"]["limits"] == ["لا تظهر الصورة ما قبلها"]
+
+
+def test_the_limits_gather_the_intents_doubts_and_what_the_links_need():
+    verse = Chosen(
+        found(1), RelationType.DIRECT, "و", ("يفترض أن", "يفترض أن"), "سياق", (), False, False
+    )
+    result = GateResult(
+        an_intent(unsupported_assumptions=("نية",)),
+        quran=verse,
+        quran_ref=QuranRef(surah=1, ayah=1),
+    )
+
+    assert limits_of(result) == ["لا تظهر الصورة ما قبلها", "نية", "يفترض أن", "سياق"]
 
 
 def test_a_personal_matter_ends_with_the_referral_and_steps_keep_their_kind():
     result = GateResult(
-        candidate(content_level="d"), quran=chosen(1), quran_ref=QuranRef(surah=1, ayah=1)
+        an_intent(content_level="d"), quran=chosen(1), quran_ref=QuranRef(surah=1, ayah=1)
     )
     base = composed(sunnah=None)
 
     referred = build_insight(
-        ComposedInsight.model_validate(base), result, rain_scene(), LearnerContext(), None
+        ComposedInsight.model_validate(base),
+        _composable(result),
+        rain_scene(),
+        LearnerContext(),
+        None,
     )
     reflection = build_insight(
         ComposedInsight.model_validate(
             base | {"small_step": {"text": "تأمل", "kind": "reflection", "from_hadith": False}}
         ),
-        result,
+        _composable(result),
         scene([entity("e1", "x", "شيء")]),
         LearnerContext(),
         None,
@@ -491,7 +765,14 @@ def test_a_personal_matter_ends_with_the_referral_and_steps_keep_their_kind():
         ComposedInsight.model_validate(
             base | {"small_step": {"text": " ", "kind": "reflection", "from_hadith": False}}
         ),
-        result,
+        _composable(result),
+        rain_scene(),
+        LearnerContext(),
+        None,
+    )
+    untitled = build_insight(
+        ComposedInsight.model_validate(base | {"title": " ", "glimpse": " ", "why_concept": " "}),
+        _composable(result),
         rain_scene(),
         LearnerContext(),
         None,
@@ -499,25 +780,25 @@ def test_a_personal_matter_ends_with_the_referral_and_steps_keep_their_kind():
 
     assert referred.explanation[-1].text.endswith("المؤهلين.")
     assert referred.small_step.kind == "ethical_application"
+    assert referred.quran.link == "وجه"
     assert reflection.small_step.kind == "reflection"
     assert reflection.anchor is None
     assert stepless.small_step is None
     assert referred.learning_path_version is None
+    assert (untitled.title, untitled.glimpse, untitled.why.concept) == (
+        "إحياء الأرض",
+        "مطر على أرض",
+        "إحياء الأرض",
+    )
 
 
 async def test_the_composer_writes_each_insight_apart_and_drops_one_that_keeps_leaking():
-    leaking = composed(0, value=f"قال تعالى: «{verse_text(30, 50)}»")
+    leaking = composed(value=f"قال تعالى: «{verse_text(30, 50)}»")
     results = [
-        GateResult(candidate(), quran=chosen(1), quran_ref=QuranRef(surah=1, ayah=1)),
-        GateResult(candidate(), quran=chosen(2), quran_ref=QuranRef(surah=1, ayah=2)),
+        _composable(GateResult(an_intent(), quran=chosen(1), quran_ref=QuranRef(surah=1, ayah=1))),
+        _composable(GateResult(an_intent(), quran=chosen(2), quran_ref=QuranRef(surah=1, ayah=2))),
     ]
-    client = FakeModelClient(
-        answers=[
-            compose_answer(composed(9), composed(0, small_step=None)),
-            compose_answer(leaking),
-            compose_answer(leaking),
-        ]
-    )
+    client = FakeModelClient(answers=[composed(small_step=None), leaking, leaking])
 
     composition = await InsightComposer(client).compose(
         rain_scene(), results, LearnerContext(), EngineGuard(LeakGuard(), None), "v1"
@@ -526,11 +807,13 @@ async def test_the_composer_writes_each_insight_apart_and_drops_one_that_keeps_l
     assert len(composition.insights) == 1
     assert composition.leaked == [1]
     assert len(client.calls) == 3
-    assert [json.loads(call["user"])["insights"][0]["insight"] for call in client.calls] == [0] * 3
+    assert all("insight" in json.loads(call["user"]) for call in client.calls)
 
 
 async def test_a_model_failure_in_one_composer_call_is_raised():
-    results = [GateResult(candidate(), quran=chosen(1), quran_ref=QuranRef(surah=1, ayah=1))]
+    results = [
+        _composable(GateResult(an_intent(), quran=chosen(1), quran_ref=QuranRef(surah=1, ayah=1)))
+    ]
     client = FakeModelClient(answers=[AiCallError(AiErrorCode.TIMEOUT, "slow")])
 
     with pytest.raises(AiCallError):
@@ -539,42 +822,23 @@ async def test_a_model_failure_in_one_composer_call_is_raised():
         )
 
 
-async def test_each_candidate_is_verified_in_its_own_call_and_a_failure_is_raised():
-    shortlists = [
-        Shortlist(candidate(), [found(1)], []),
-        Shortlist(candidate(concept="الرحمة"), [found(2)], []),
-    ]
-    client = FakeModelClient(
-        answers=[
-            {"candidates": [{"candidate": 0, "texts": [verdict("Q1")]}]},
-            {"candidates": [{"candidate": 0, "texts": [verdict("Q1", strength="weak")]}]},
-        ]
+def test_the_insights_relation_is_the_weakest_of_the_intent_and_its_texts():
+    opposite = chosen(1, relation=RelationType.OPPOSITE)
+    result = GateResult(an_intent(), quran=opposite, quran_ref=QuranRef(surah=1, ayah=1))
+
+    assert result.relation is RelationType.OPPOSITE
+    assert GateResult(an_intent(relation=RelationType.CLOSE_CONCEPTUAL)).relation is (
+        RelationType.CLOSE_CONCEPTUAL
     )
-
-    verdicts = await verify(client, rain_scene(), shortlists, EngineGuard(LeakGuard(), None))
-    failing = FakeModelClient(answers=[{"candidates": []}, AiCallError(AiErrorCode.TIMEOUT, "x")])
-
-    assert (verdicts[0]["Q1"].strength, verdicts[1]["Q1"].strength) == ("strong", "weak")
-    assert [len(json.loads(call["user"])["candidates"]) for call in client.calls] == [1, 1]
-    with pytest.raises(AiCallError):
-        await verify(failing, rain_scene(), shortlists, EngineGuard(LeakGuard(), None))
-
-
-def test_a_weak_main_text_makes_a_general_reminder():
-    weak = Chosen(found(1), RelationType.DIRECT, "", review=False, unseen_preferred=False,
-                  strength="weak")  # fmt: skip
-    result = GateResult(candidate(), quran=weak, quran_ref=QuranRef(surah=1, ayah=1))
-
-    assert result.relation is RelationType.THEMATIC_REMINDER
-    assert GateResult(candidate()).relation is RelationType.THEMATIC_REMINDER
     built = build_insight(
         ComposedInsight.model_validate(composed(sunnah=None)),
-        result,
+        _composable(result),
         rain_scene(),
         LearnerContext(),
         None,
     )
-    assert built.quran.relation is RelationType.THEMATIC_REMINDER
+    assert built.quran.relation is RelationType.OPPOSITE
+    assert built.relation is RelationType.OPPOSITE
 
 
 async def test_the_guard_compares_with_the_hadiths_shown_without_the_honorific():
@@ -605,17 +869,21 @@ def test_a_hadith_alone_makes_an_insight_without_a_verse_part():
         found(5, EmbeddedCorpus.HADITH),
         RelationType.ACTION_BASED,
         "",
+        (),
+        None,
+        (),
         review=False,
         unseen_preferred=False,
     )
     result = GateResult(
-        candidate(), hadith=hadith, hadith_ref=HadithRef(collection="bukhari", number="1")
+        an_intent(), hadith=hadith, hadith_ref=HadithRef(collection="bukhari", number="1")
     )
     item = ComposedInsight.model_validate(composed(small_step=None))
 
-    insight = build_insight(item, result, rain_scene(), LearnerContext(), None)
+    insight = build_insight(item, _composable(result), rain_scene(), LearnerContext(), None)
 
     assert insight.quran is None
+    assert insight.hadith.link is None
     assert [part.section for part in insight.explanation] == ["seen", "value", "sunnah", "life"]
     assert insight.explanation[2].sources == ["hadith:bukhari:1"]
     assert insight.small_step is None
@@ -624,9 +892,13 @@ def test_a_hadith_alone_makes_an_insight_without_a_verse_part():
 
 
 def test_an_insight_citing_anything_but_its_own_texts_and_unit_is_refused():
-    result = GateResult(candidate(), quran=chosen(1), quran_ref=QuranRef(surah=30, ayah=50))
+    result = GateResult(an_intent(), quran=chosen(1), quran_ref=QuranRef(surah=30, ayah=50))
     built = build_insight(
-        ComposedInsight.model_validate(composed()), result, rain_scene(), LearnerContext(), None
+        ComposedInsight.model_validate(composed()),
+        _composable(result),
+        rain_scene(),
+        LearnerContext(),
+        None,
     )
     other_text = built.model_copy(
         update={"explanation": [ExplanationPart(section="value", text="ش", sources=["quran:2:1"])]}
@@ -651,22 +923,22 @@ def test_an_insight_citing_anything_but_its_own_texts_and_unit_is_refused():
     assert citation(HadithRef(collection="muslim", number="93")) == "hadith:muslim:93"
 
 
-def test_a_general_reminder_is_kept_only_when_nothing_stronger_holds():
-    def result(ayah: int, relation: RelationType) -> GateResult:
+def test_a_lone_text_is_kept_only_when_no_intent_reached_a_complete_pair():
+    def result(ayah: int, *, hadith: bool) -> GateResult:
         return GateResult(
-            candidate(relation=relation), quran=chosen(ayah), quran_ref=QuranRef(surah=2, ayah=ayah)
+            an_intent(intent_id=f"i{ayah}"),
+            quran=chosen(ayah),
+            quran_ref=QuranRef(surah=2, ayah=ayah),
+            hadith=chosen(ayah) if hadith else None,
+            hadith_ref=HadithRef(collection="bukhari", number=str(ayah)) if hadith else None,
         )
 
     request = EngineRequest(scan_id="r", scene=rain_scene())
-    mixed = [
-        result(1, RelationType.THEMATIC_REMINDER),
-        result(2, RelationType.CLOSE_CONCEPTUAL),
-        result(3, RelationType.THEMATIC_REMINDER),
-    ]
-    general = [result(4, RelationType.THEMATIC_REMINDER), result(5, RelationType.THEMATIC_REMINDER)]
+    mixed = [result(1, hadith=False), result(2, hadith=True), result(3, hadith=False)]
+    alone = [result(4, hadith=False), result(5, hadith=False)]
 
     kept = PipelineInsightEngine._ranked(request, mixed, None)
-    alone = PipelineInsightEngine._ranked(request, general, None)
+    lone = PipelineInsightEngine._ranked(request, alone, None)
 
-    assert [r.quran_ref.ayah for r in kept] == [2]
-    assert [r.quran_ref.ayah for r in alone] == [4]
+    assert [item.result.quran_ref.ayah for item in kept] == [2]
+    assert [item.result.quran_ref.ayah for item in lone] == [4]

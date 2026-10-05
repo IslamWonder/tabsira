@@ -434,6 +434,10 @@ async def _conclude(job: Run, scene: SceneAnalysis, result: EngineResult) -> str
         )
     if result.status is EngineStatus.MODEL_UNAVAILABLE:
         raise ScanFailedError(ErrorCode.MODEL_UNAVAILABLE, "the engine could not reach a model")
+    if result.status is EngineStatus.CORPUS_UNAVAILABLE:
+        raise ScanFailedError(ErrorCode.CORPUS_UNAVAILABLE, "the store holds no searchable corpus")
+    if result.status is EngineStatus.RETRIEVAL_ERROR:
+        raise ScanFailedError(ErrorCode.RETRIEVAL_ERROR, "the search could not run")
     started = job.services.timer()
     async with job.services.sessionmaker() as db:
         accepted = await accept(
@@ -444,6 +448,8 @@ async def _conclude(job: Run, scene: SceneAnalysis, result: EngineResult) -> str
             outcome = ScanOutcome.INSIGHTS
         elif result.status is EngineStatus.NEEDS_CLARIFICATION and question:
             outcome = ScanOutcome.NEEDS_CLARIFICATION
+        elif result.status is EngineStatus.INCOMPLETE_EVIDENCE_PAIR:
+            outcome = ScanOutcome.INCOMPLETE_EVIDENCE_PAIR
         else:
             outcome = ScanOutcome.NO_RELEVANT_EVIDENCE
         ids = await _save(db, job, outcome, accepted.insights, question, result)
@@ -499,6 +505,7 @@ async def _save(
     scan.finished_at = clock.utcnow()
     scan.clarification_question = question if outcome is ScanOutcome.NEEDS_CLARIFICATION else None
     scan.awaiting_ruling = [ref.model_dump(exclude={"kind"}) for ref in result.awaiting_ruling]
+    scan.engine_trace = result.trace or None
     await db.flush()
     return [row.id for row in rows]
 

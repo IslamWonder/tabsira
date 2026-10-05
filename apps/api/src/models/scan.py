@@ -67,6 +67,9 @@ class ScanOutcome(StrEnum):
     INSIGHTS = "insights"
     NEEDS_CLARIFICATION = "needs_clarification"
     NO_RELEVANT_EVIDENCE = "no_relevant_evidence"
+    # Evidence was accepted but cannot be shown yet: the only fitting hadith waits for an
+    # editor's ruling and no verse stands beside it (v2 §26 PAIR_INCOMPLETE).
+    INCOMPLETE_EVIDENCE_PAIR = "incomplete_evidence_pair"
 
 
 class InsightOrigin(StrEnum):
@@ -152,6 +155,10 @@ class Scan(Base):
     focus: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     clarification_question: Mapped[str | None] = mapped_column(Text)
     clarification_answer: Mapped[str | None] = mapped_column(Text)
+    # The engine's reviewable record of the last run: the intents (guarded model words about
+    # the scene and the queries), candidate ids with their channels, verdicts, reasons and the
+    # choice. Never a stored text, never the learner.
+    engine_trace: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     # Hadith the engine wanted and that wait for an editor's ruling: [{collection, number}].
     awaiting_ruling: Mapped[list[dict[str, str]]] = mapped_column(
         JSONB, server_default=text("'[]'::jsonb")

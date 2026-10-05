@@ -3,12 +3,14 @@ Scenes, model answers and stores for the insight engine tests.
 
 The scenes are written here: descriptions of what a photo shows, in Arabic, the
 way the scene analyzer writes them. They carry no scripture. Model answers are
-the structured outputs the planner, the verifier and the composer return,
-built as dictionaries; texts are referred to by label (Q1, H1) only.
+the structured outputs the intent planner, the relevance verifier and the
+composer return, built as dictionaries; texts are referred to by label (Q1, H1)
+only. These are test cases: nothing here reaches a production prompt.
 """
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -89,58 +91,96 @@ def rain_scene(**options: Any) -> SceneAnalysis:
     )
 
 
-def planned(**fields: Any) -> dict[str, Any]:
-    """One planned insight as the planner answers it, about the rain."""
+def queries(lexical: list[str] | None, semantic: list[str] | None) -> dict[str, list[str]]:
+    return {"lexical": lexical or [], "semantic": semantic or []}
+
+
+def intent(**fields: Any) -> dict[str, Any]:
+    """One search intent as the planner answers it, about the rain."""
     return {
-        "title": "الحياة في قطرة",
-        "glimpse": "كيف يعود الماء بالحياة إلى الأرض",
-        "entity_ids": ["e1"],
-        "action_ids": [],
-        "concept": "إحياء الأرض",
-        "value": "رحمة الله",
+        "scene_anchor_ids": ["e1"],
+        "observable_meaning": "مطر يسقط على أرض متشققة",
+        "relation_description": None,
+        "candidate_concept": "إحياء الأرض",
+        "concept_basis": "الماء يصل أرضًا يابسة",
         "relation": "direct",
-        "quran_queries": ["إحياء الأرض بالمطر"],
-        "hadith_queries": ["الدعاء عند نزول المطر"],
-        "ontology_entity_ids": ["E006"],
-        "learning_unit_id": "T01_06",
         "content_level": "a",
-        "visible_clues": ["قطرات على الأرض"],
-        "limits": ["لا تثبت الصورة حال الأرض قبلها"],
+        "uncertainties": ["لا تظهر الصورة حال الأرض قبل المطر"],
+        "unsupported_assumptions": [],
+        "quran": queries(["إحياء الأرض بالمطر"], ["ينزل المطر فتحيا الأرض بعد يبسها"]),
+        "hadith": queries(["الدعاء عند نزول المطر"], ["ما يقال عند نزول المطر"]),
+        "ontology_entity_ids": ["E006"],
     } | fields
 
 
-def plan_answer(*insights: dict[str, Any], **fields: Any) -> dict[str, Any]:
+def plan_answer(*intents: dict[str, Any], **fields: Any) -> dict[str, Any]:
     return {
-        "insights": list(insights),
+        "intents": list(intents),
         "needs_clarification": False,
         "clarification_question": None,
         "unknown_concepts": [],
     } | fields
 
 
-def verdict(
-    label: str, *, relevant: bool = True, strength: str = "strong", relation: str = "direct"
+def judged(
+    label: str,
+    *,
+    accepted: bool = True,
+    relation: str = "direct",
+    reason: str | None = None,
+    **fields: Any,
 ) -> dict[str, Any]:
+    """One text's judgement as the verifier answers it."""
     return {
         "label": label,
-        "relevant": relevant,
-        "strength": strength,
-        "relation": relation,
-        "limit": "لا يثبت النص ما قبل الصورة",
-    }
+        "accepted": accepted,
+        "relation": relation if accepted else "none",
+        "basis_words": [1, 4] if accepted else [],
+        "link": "يذكر النص إحياء الأرض بالماء" if accepted else "",
+        "needed_context": None,
+        "assumptions": [],
+        "reject_reason": None if accepted else (reason or "meaning_not_supported"),
+    } | fields
 
 
-def verify_answer(*candidates: list[dict[str, Any]]) -> dict[str, Any]:
+def verify_answer(
+    texts: list[dict[str, Any]], pair: dict[str, Any] | str | None = "auto"
+) -> dict[str, Any]:
+    """A verifier answer; `pair` "auto" names the first accepted verse and hadith."""
+    if pair == "auto":
+        accepted = [t["label"] for t in texts if t["accepted"]]
+        quran = next((label for label in accepted if label.startswith("Q")), None)
+        hadith = next((label for label in accepted if label.startswith("H")), None)
+        pair = (
+            {"quran": quran, "hadith": hadith, "shared_meaning": "إحياء الأرض بالماء"}
+            if quran or hadith
+            else None
+        )
+    return {"texts": texts, "pair": pair}
+
+
+def shown_labels(call: dict[str, Any]) -> list[str]:
+    """The labels a verifier call was given."""
+    return [text["label"] for text in json.loads(call["user"])["texts"]]
+
+
+def accept_all(relation: str = "direct") -> Any:
+    """A verifier that accepts every shortlisted text and pairs the first of each corpus."""
+
+    def answer(call: dict[str, Any]) -> dict[str, Any]:
+        return verify_answer([judged(label, relation=relation) for label in shown_labels(call)])
+
+    return answer
+
+
+def reject_all(call: dict[str, Any]) -> dict[str, Any]:
+    return verify_answer(
+        [judged(label, accepted=False, reason="lexical_overlap") for label in shown_labels(call)]
+    )
+
+
+def composed(**fields: Any) -> dict[str, Any]:
     return {
-        "candidates": [
-            {"candidate": index, "texts": texts} for index, texts in enumerate(candidates)
-        ]
-    }
-
-
-def composed(index: int = 0, **fields: Any) -> dict[str, Any]:
-    return {
-        "insight": index,
         "title": "الحياة في قطرة",
         "glimpse": "قطرة تعيد الحياة",
         "seen": "مطر خفيف على أرض متشققة",
@@ -155,7 +195,3 @@ def composed(index: int = 0, **fields: Any) -> dict[str, Any]:
             "from_hadith": True,
         },
     } | fields
-
-
-def compose_answer(*insights: dict[str, Any]) -> dict[str, Any]:
-    return {"insights": list(insights)}

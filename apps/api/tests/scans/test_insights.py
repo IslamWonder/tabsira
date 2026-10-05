@@ -49,6 +49,7 @@ async def test_an_insight_shows_its_verse_exactly_as_stored_and_waits_for_its_ha
         "relation": "direct",
         "relation_label": "صلة مباشرة",
         "matched_on": "إحياء الأرض",
+        "link": None,
     }
     assert body["hadith"] is None
     assert body["hadith_status"] == "awaiting_verification"

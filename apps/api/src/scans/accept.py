@@ -60,6 +60,8 @@ def insight_texts(insight: ProposedInsight) -> dict[str, str]:
     for name, evidence in (("quran", insight.quran), ("hadith", insight.hadith)):
         if evidence is not None:
             texts[f"{name}.matched_on"] = evidence.matched_on
+            if evidence.link:
+                texts[f"{name}.link"] = evidence.link
     return texts
 
 
