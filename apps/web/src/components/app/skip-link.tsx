@@ -5,7 +5,7 @@ export function SkipLink() {
   return (
     <a
       href="#main"
-      className="glass sr-only z-50 rounded-full px-5 py-3 font-medium text-glass-fg focus:not-sr-only focus:fixed focus:top-[max(12px,env(safe-area-inset-top))] focus:start-3"
+      className="glass sr-only z-50 rounded-full font-medium text-glass-fg focus:not-sr-only focus:px-5 focus:py-3 focus:fixed focus:top-[max(12px,env(safe-area-inset-top))] focus:start-3"
     >
       {messages.a11y.skipToContent}
     </a>
