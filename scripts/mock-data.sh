@@ -7,6 +7,7 @@
 #                     other members' rows depend on them, unless --also-dependent-rows is given
 #   reset <source>    clean, then import: the way to replace one file by another
 #   backup            dump the app schema (members and everything they own) to ../tabsira-data/backups
+#                     (MOCK_BACKUP_DIR to choose; ~/tabsira-backups when that is not writable)
 #   status            how many mock members, insights and posts the database holds
 #
 # Without a source, MOCK_FILE is read, then ../tabsira-data/mock/tabsira-mock-v1.json when it
@@ -26,7 +27,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$SCRIPT_DIR/lib.sh"
 
 usage() {
-	sed -n '4,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+	sed -n '4,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 	exit 2
 }
 
@@ -37,7 +38,9 @@ shift
 # The version 1 file the owners published (plan 23); public like the corpus archives.
 MOCK_DEFAULT_URL="https://s3-v2.riastorage.com/tabsira/mock/tabsira-mock-v1.json"
 LOCAL_FILE="$REPO_ROOT/../tabsira-data/mock/tabsira-mock-v1.json"
-BACKUP_DIR="$REPO_ROOT/../tabsira-data/backups"
+# MOCK_BACKUP_DIR chooses where the dumps go; a host whose checkout's parent is not writable
+# (/opt) falls back to the home folder.
+BACKUP_DIR="${MOCK_BACKUP_DIR:-$REPO_ROOT/../tabsira-data/backups}"
 downloaded=""
 
 source_file=""
@@ -149,7 +152,11 @@ check_source() {
 # pg_dump of the app schema only, with the API's own database address.
 dump_app_schema() {
 	require_cmd pg_dump
-	mkdir -p "$BACKUP_DIR"
+	if ! mkdir -p "$BACKUP_DIR" 2>/dev/null; then
+		warn "Cannot write $BACKUP_DIR; using $HOME/tabsira-backups instead"
+		BACKUP_DIR="$HOME/tabsira-backups"
+		mkdir -p "$BACKUP_DIR" || die "Cannot write $BACKUP_DIR either: set MOCK_BACKUP_DIR, or pass --no-backup."
+	fi
 	local url target
 	url="$(
 		api - <<'PY'
