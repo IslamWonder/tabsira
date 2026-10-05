@@ -20,7 +20,7 @@ dependencies = [
   # Image decoding and validation
   "pillow>=12.3.0",
   # Detector. AGPL-3.0, which is why this service (and the repository) is AGPL-3.0.
-  "ultralytics>=8.4.172",
+  "ultralytics>=8.4.173",
   # Text encoder front-end that YOLOE and YOLO-World import. Ultralytics only
   # publishes it on GitHub; uv.lock pins the commit.
   "clip",
