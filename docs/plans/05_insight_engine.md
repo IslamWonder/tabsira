@@ -1,6 +1,6 @@
 # 05 · Insight engine
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 19:22 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-05 10:55 (Tunis)
 
 Finds the verse and hadith that truly fit the scene, checks them, and writes the explanation. It cites texts by reference only.
 
@@ -13,6 +13,7 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 | Evaluation on gold scenes (make eval)            | ✅     | 13/15 as expected, 0 leaks.  |
 | Plug into the scan workflow and merge            | ✅     | 2026-10-04 17:51             |
 | The twelve official cases                        | ✅     | 4 official, 8 derived.       |
+| Intents, hybrid search, verifier, pair (05.8)    | 🔄     | Code and tests; eval pending |
 
 **How we check it**
 
@@ -84,3 +85,15 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 - **Depends on:** 05.3
 - **Touches:** apps/api/src/pipeline/insight (evidence, composer, a new prompt), tests/insight, docs/EVALUATION.md.
 - **Done when:** `make eval` shows p50 near 12 s with no leak and no loss on the measures of 05.3; scripture review passes.
+
+### 05.8 Rebuild the search path on the owners' brief of 2026-10-05
+
+- **Status:** 🔄 2026-10-05 10:55: code, tests and docs done on `main` (local commits); `make eval` not run, this machine has no provider key. Pre-existing failures left alone: `tests/scans/test_account_flow.py::test_the_export_holds_everything_the_learner_saved_and_never_a_photo` and `tests/scans/test_insights.py::test_an_insight_shows_its_verse_exactly_as_stored_and_waits_for_its_hadith_ruling` fail on the untouched main too (the world reveals and the chat `closed` field).
+- **Goal:** Meanings are hypotheses before the search and insights are written after the evidence: a `SemanticIntentPlanner` (no learner, no learning units, keyword and sentence queries per corpus), hybrid search with one RRF weight per channel (50 per list, 120 fused, 30 reranked, 12 verified), an `EvidenceRelevanceVerifier` that accepts or rejects every text with its relation, word positions, link, needed context, assumptions and reject reason and names the pair, a gate that completes a pair only within the same relation tier, a composer that writes from the confirmed intent, honest statuses (`incomplete_evidence_pair`, `corpus_unavailable`, `retrieval_error`), a per-scan trace in `scans.engine_trace`, and no example scene, query, insight or scripture in any production prompt.
+- **What was proven broken before (read from the code, 2026-10-05):** the planner decided the title, value and concept before any search and received the learner's profile; its short concept phrases fed every channel, so the vector channel embedded keyword lists; the reranker read every query of a candidate glued with «،» and only the first 8 fused texts, and the verifier only 4 per corpus of 30 fused; the learning unit's anchor texts joined the fusion as a list, a fixed map from scene to text; a verse and a hadith were picked independently from the top tier; a verifier «weak» became a `thematic_reminder` shown as an insight; a failed query embedding silently became a lexical-only answer; nothing recorded why a text was kept or dropped.
+- **Measured offline on the real corpus (no key needed):** lexical and concept channels alone, rain intent: hadith list #1 Bukhari 1032 (the rain example), Quran list holds 2:164 at #5; book intent: Tirmidhi 2654 and Abu Dawud 3641 in the first three hadiths; the channel of every candidate is visible in the trace.
+- **Scripture review (2026-10-05):** the first pass failed on two high findings, both fixed before commit: the server completed a pair with a text from another relation tier, and an unruled hadith was replaced by a same-tier one against decisions 18 and 58 (now: the verse alone and the hadith queued; a hadith an editor ruled out may be replaced in its tier only). Also fixed: the displayed «وجه الصلة» link now meets the acceptance re-check, intents are named by the server (the model writes no id into the trace), a verifier that keeps leaking ends the scan as `model_unavailable`, grade words in a verifier field are dropped by the server, and the privacy text names the search record. Left for the owners: the limits of a hadith ruled out after the scan stay in «لماذا ظهر هذا؟» (low).
+- **Not done, for the owners:** `make eval` before and after on a machine with the key (the comparison the brief asks for); the reranker setting (`RERANKER=llm` now reads the right input, decision 50 keeps it off until measured); fetching dorar.net tafseer, dawa.center or islamic-content.com for the explanation (master prompt v2 §28 defers it and AGENTS forbids a new third-party call without asking); chunking long hadiths; a cache for retrieval (none exists: every scan searches the store).
+- **Depends on:** 05.3.
+- **Touches:** apps/api pipeline/insight (intents, search, evidence, composer, engine, learning), retrieval (fusion weights, reranker wording, vector check), prompts (four new versions), scans/workflow, models/scan + migration `20261005_110000`, services/chat_retrieval, schemas/insight (`link`), errors; apps/web scan messages, scan screen, why-sheet, generated API types; docs/plans/20_prompts.md.
+- **Done when:** `make eval` on the rebuilt path shows no leak, every reference resolved, and the per-scene choices read as fitting by a human; the scripture review passes.
