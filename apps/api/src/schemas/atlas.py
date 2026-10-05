@@ -14,17 +14,19 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.models.atlas import (
+    SPONSOR_REFLECTION_MAX,
     LocationMeaning,
     LocationSource,
     MapEntryStatus,
     WidenLevel,
 )
+from src.models.social import CommentStatus
 from src.schemas.geo import GeoJsonPoint
 from src.schemas.public_id import PublicId
-from src.schemas.social import HadithEvidenceOut, MemberOut, QuranEvidenceOut
+from src.schemas.social import HadithEvidenceOut, MemberOut, QuranEvidenceOut, clean_text
 
 Latitude = Annotated[float, Field(ge=-90, le=90, description="Degrees; zero is a value")]
 Longitude = Annotated[float, Field(ge=-180, le=180, description="Degrees; zero is a value")]
@@ -222,3 +224,51 @@ class AtlasPlaceOut(BaseModel):
     point: GeoJsonPoint
     entries: list[AtlasFeature]
     next_cursor: str | None
+
+
+class AtlasOrphansOut(BaseModel):
+    """Orphaned entries near a point, each at its widened place, newest first."""
+
+    type: Literal["FeatureCollection"] = "FeatureCollection"
+    features: list[AtlasFeature]
+    next_cursor: str | None
+
+
+# ─── Sponsoring («كفالة بصيرة») ───
+
+
+class SponsorshipReflectionIn(BaseModel):
+    """The sponsor's own words under the entry: one, replaced by the next."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reflection: Annotated[str, Field(max_length=SPONSOR_REFLECTION_MAX * 2)]
+
+    @field_validator("reflection")
+    @classmethod
+    def _reflection(cls, value: str) -> str:
+        cleaned = clean_text(value, SPONSOR_REFLECTION_MAX)
+        if cleaned is None:
+            message = "must not be empty"
+            raise ValueError(message)
+        return cleaned
+
+
+class SponsorshipOut(BaseModel):
+    """One of the caller's sponsorships, with the state of their own reflection."""
+
+    entry_id: PublicId
+    title: str
+    place: PlaceRef | None
+    widened_level: WidenLevel | None
+    id: PublicId = Field(description="The sponsorship's id: what a report of its reflection names")
+    active: bool = Field(
+        description="Always true: a sponsorship that ends is deleted. Kept for the client."
+    )
+    started_at: datetime
+    ended_at: datetime | None = Field(description="Always null, for the same reason")
+    reflection: str | None
+    reflection_status: CommentStatus | None
+    reflection_message: str | None = Field(
+        description="What happened to the reflection, in Arabic, for its sponsor"
+    )

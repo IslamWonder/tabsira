@@ -46,7 +46,7 @@ from src.services import photo_service
 from src.services.moderation_guard import GuardVerdict, Outcome
 from src.storage.photos import PhotoStore
 
-type Item = Post | Comment | MapEntry
+type Item = Post | Comment | MapEntry | MapEntrySponsorship
 
 HELD_BY_REPORTS = "reported"
 
@@ -54,7 +54,11 @@ HELD_BY_REPORTS = "reported"
 def _target(item: Item) -> ModerationTarget:
     if isinstance(item, Post):
         return ModerationTarget.POST
-    return ModerationTarget.MAP_ENTRY if isinstance(item, MapEntry) else ModerationTarget.COMMENT
+    if isinstance(item, MapEntry):
+        return ModerationTarget.MAP_ENTRY
+    if isinstance(item, MapEntrySponsorship):
+        return ModerationTarget.SPONSORSHIP
+    return ModerationTarget.COMMENT
 
 
 type ItemStatus = PostStatus | CommentStatus | MapEntryStatus
@@ -214,7 +218,7 @@ async def _drop_sponsorship(db: AsyncSession, entry: MapEntry) -> None:
 
 async def _sync_photo(db: AsyncSession, item: Item, photos: PhotoStore | None) -> None:
     """After a post or an entry changes state, make or delete the public copy of its photo."""
-    if photos is None or isinstance(item, Comment):
+    if photos is None or isinstance(item, Comment | MapEntrySponsorship):
         return
     if isinstance(item, MapEntry):
         insight_id: int | None = item.insight_id if item.with_photo else None

@@ -31,6 +31,7 @@ from src.services import (
     photo_service,
     profile_service,
     social_export,
+    sponsorship_service,
 )
 from src.services.insight_view import answer_is_shown, shown_evidence, shown_ids
 from src.storage.base import StorageError
@@ -173,6 +174,7 @@ async def export_account(db: AsyncSession, user: User) -> AccountExport:
             ],
             "social": await social_export.collect(db, user),
             "map_entries": await atlas_service.list_mine(db, user),
+            "sponsorships": await sponsorship_service.list_mine(db, user, everything=True),
             "learning": await export_learning(db, user.id),
         },
         from_attributes=True,

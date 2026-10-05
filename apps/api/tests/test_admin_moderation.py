@@ -180,6 +180,7 @@ async def test_an_empty_queue_says_so(admin):
     assert "No post is waiting." in page.text
     assert "No comment is waiting." in page.text
     assert "No map entry is waiting." in page.text
+    assert "No sponsor reflection is waiting." in page.text
 
 
 # ─── An item's page ────────────────────────────────────────────────

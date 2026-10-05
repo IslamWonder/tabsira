@@ -571,6 +571,7 @@ def test_public_schemas_have_no_field_for_a_private_location():
         atlas.AtlasFeatureCollection,
         atlas.AtlasEntryOut,
         atlas.AtlasPlaceOut,
+        atlas.AtlasOrphansOut,
         atlas.PublicLocationOut,
         atlas.PlaceRef,
     )

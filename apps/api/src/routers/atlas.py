@@ -3,7 +3,8 @@
 
 The owner's routes carry the exact point, to the owner alone. The public routes return the
 published point only, computed on the server, and never a capture point, an accuracy or a
-time of capture (extension §10). Everything sits behind the atlas feature.
+time of capture (extension §10). Everything sits behind the atlas feature; the sponsoring of
+orphaned entries («كفالة بصيرة», decision 60) sits behind its own, which needs the atlas.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from src.deps import (
     PhotoStoreDep,
     PublicMember,
     SettingsDep,
+    TextGuardDep,
     limited,
     requires,
 )
@@ -29,11 +31,14 @@ from src.scans.deps import PublicIdPath
 from src.schemas.atlas import (
     AtlasEntryOut,
     AtlasFeatureCollection,
+    AtlasOrphansOut,
     AtlasPlaceOut,
     CapturePointIn,
     MapEntryOwnerOut,
+    SponsorshipOut,
+    SponsorshipReflectionIn,
 )
-from src.services import atlas_service
+from src.services import atlas_service, sponsorship_service
 from src.services import cursor as cursors
 from src.services.atlas_service import Filters, Window
 from src.services.social_limits import WriteKind
@@ -43,12 +48,22 @@ router = APIRouter(
     dependencies=[Depends(requires(FeatureFlag.ATLAS, code=ErrorCode.FEATURE_DISABLED))],
 )
 
+sponsoring = Depends(requires(FeatureFlag.ATLAS_SPONSORSHIP))
+
 Degrees = Annotated[float, Query(ge=-180, le=180)]
 Latitude = Annotated[float, Query(ge=-90, le=90)]
 Country = Annotated[str | None, Query(min_length=2, max_length=2, pattern=r"^[A-Za-z]{2}$")]
 Concept = Annotated[str | None, Query(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_.:-]+$")]
 WindowLimit = Annotated[int, Query(ge=1, le=atlas_service.WINDOW_MAX)]
 PageLimit = Annotated[int, Query(ge=1, le=atlas_service.PLACE_PAGE_MAX)]
+Radius = Annotated[
+    float,
+    Query(
+        ge=atlas_service.ORPHAN_RADIUS_MIN_M,
+        le=atlas_service.ORPHAN_RADIUS_MAX_M,
+        description="Metres",
+    ),
+]
 
 
 @router.put(
@@ -191,3 +206,101 @@ async def place_entries(
         viewer,
         sponsoring=settings.is_enabled(FeatureFlag.ATLAS_SPONSORSHIP),
     )
+
+
+# ─── «كفالة بصيرة»: orphaned entries and their sponsors (decision 60) ───
+
+
+@router.get(
+    "/atlas/orphans",
+    summary="Orphaned entries near a point, at their widened place",
+    dependencies=[sponsoring],
+)
+async def orphans_near(
+    db: DbDep,
+    lat: Latitude,
+    lng: Degrees,
+    radius: Radius = atlas_service.ORPHAN_RADIUS_DEFAULT_M,
+    cursor: str | None = None,
+    limit: PageLimit = atlas_service.PLACE_PAGE_DEFAULT,
+) -> AtlasOrphansOut:
+    """
+    Entries nobody looks after near the position, newest first.
+
+    Near means the entry's public point is within `radius` metres, or the position lies inside the
+    city, region or country the place was widened to. Each is shown at the place it was widened
+    to, with no author's name. The position is snapped to a grid of about 0.05 degrees before
+    anything is asked, used for this request and kept nowhere; the answer is never cached. A block
+    changes nothing here: the author is anonymous.
+    """
+    return await atlas_service.orphans_near(db, lat, lng, radius, cursors.decode(cursor), limit)
+
+
+@router.put(
+    "/atlas/entries/{entry_id}/sponsorship",
+    summary="Sponsor an orphaned entry",
+    dependencies=[sponsoring, limited(WriteKind.POST)],
+)
+async def sponsor_entry(entry_id: PublicIdPath, user: PublicMember, db: DbDep) -> SponsorshipOut:
+    """
+    Look after an orphaned entry: it returns to the atlas at its widened place, under the caller's handle.
+
+    404 for an entry the caller cannot see (a block against its sponsor; a block against its
+    anonymous author changes nothing), 409 for their own entry, one that has a sponsor or one that
+    is not orphaned, and
+    `UNDER_13_CANNOT_PUBLISH` for an account that declared it is under 13. One sponsor at a time.
+    """
+    await sponsorship_service.start(db, user, entry_id)
+    await db.commit()
+    return _mine(await sponsorship_service.list_mine(db, user), entry_id)
+
+
+@router.delete(
+    "/atlas/entries/{entry_id}/sponsorship",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="End the caller's sponsorship",
+    dependencies=[sponsoring, limited(WriteKind.POST)],
+)
+async def end_sponsorship(entry_id: PublicIdPath, user: CurrentUser, db: DbDep) -> Response:
+    """Stop looking after the entry; the reflection goes with it and the entry stays on the atlas for now."""
+    await sponsorship_service.end(db, user, entry_id)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/atlas/entries/{entry_id}/sponsorship/reflection",
+    summary="Write or replace the sponsor's reflection",
+    dependencies=[sponsoring, limited(WriteKind.COMMENT)],
+)
+async def write_reflection(
+    entry_id: PublicIdPath,
+    body: SponsorshipReflectionIn,
+    user: PublicMember,
+    db: DbDep,
+    guard: TextGuardDep,
+) -> SponsorshipOut:
+    """
+    Put the sponsor's own words under the entry; the guard judges them as it judges a comment.
+
+    The answer says what it decided: `published`, `rejected` with its reason, or `pending_review`
+    while a person looks, and until it is published only its sponsor sees it. 422 for words that
+    read like Quran or hadith, 404 without an open sponsorship of the caller's.
+    """
+    await sponsorship_service.write_reflection(db, user, entry_id, body.reflection, guard)
+    await db.commit()
+    return _mine(await sponsorship_service.list_mine(db, user), entry_id)
+
+
+@router.get(
+    "/me/sponsorships",
+    summary="The caller's sponsorships, with the state of their reflections",
+    dependencies=[sponsoring],
+)
+async def my_sponsorships(user: CurrentUser, db: DbDep) -> list[SponsorshipOut]:
+    return await sponsorship_service.list_mine(db, user)
+
+
+def _mine(sponsorships: list[SponsorshipOut], entry_id: int) -> SponsorshipOut:
+    """Pick the open sponsorship of the entry out of the caller's own."""
+    return next(item for item in sponsorships if item.entry_id == entry_id and item.active)

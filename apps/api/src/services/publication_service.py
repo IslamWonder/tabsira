@@ -11,6 +11,7 @@ itself is never copied: only references are.
 
 from __future__ import annotations
 
+import uuid
 from typing import NoReturn
 
 from sqlalchemy import select
@@ -113,15 +114,19 @@ async def _photo_ref(
     return None if facts.refusal(settings) else reference
 
 
-async def _refuse_under_13(db: AsyncSession, snapshot: InsightSnapshot) -> None:
+async def refuse_under_13(
+    db: AsyncSession,
+    owner_id: uuid.UUID,
+    message: str = "This insight cannot be published: the account declared it is under 13.",
+) -> None:
     """Refuse everything for an account that said it is under 13 (v2 §5): a declared fact."""
-    profile = await db.get(Profile, snapshot.owner_id)
+    profile = await db.get(Profile, owner_id)
     if profile is not None and profile.age_range is AgeRange.UNDER_13:
-        raise AppError(
-            ErrorCode.UNDER_13_CANNOT_PUBLISH,
-            "This insight cannot be published: the account declared it is under 13.",
-            status_code=409,
-        )
+        raise AppError(ErrorCode.UNDER_13_CANNOT_PUBLISH, message, status_code=409)
+
+
+async def _refuse_under_13(db: AsyncSession, snapshot: InsightSnapshot) -> None:
+    await refuse_under_13(db, snapshot.owner_id)
 
 
 async def check_publishable(db: AsyncSession, snapshot: InsightSnapshot) -> None:

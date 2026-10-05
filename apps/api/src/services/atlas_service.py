@@ -18,18 +18,20 @@ does afterwards. Only the sponsor, when there is one, is named beside it.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 
+from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import delete, exists, func, or_, select
+from sqlalchemy import cast, delete, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
 from src import clock
 from src.config import Settings
 from src.errors import AppError, ErrorCode
-from src.geo.privacy import approximate, cell_polygon
+from src.geo.privacy import METERS_PER_DEGREE, approximate, cell_polygon
 from src.messages import messages_for
 from src.models.atlas import (
     LocationMeaning,
@@ -55,6 +57,7 @@ from src.schemas.atlas import (
     AtlasEntryOut,
     AtlasFeature,
     AtlasFeatureProperties,
+    AtlasOrphansOut,
     AtlasPlaceOut,
     CapturePointIn,
     CapturePointOut,
@@ -81,6 +84,15 @@ WINDOW_DEFAULT = 300
 WINDOW_MAX = 1000
 PLACE_PAGE_DEFAULT = 20
 PLACE_PAGE_MAX = 50
+ORPHAN_RADIUS_DEFAULT_M = 150_000
+# A widened place is tens of kilometres wide at least: a smaller radius would find nothing.
+ORPHAN_RADIUS_MIN_M = 10_000
+ORPHAN_RADIUS_MAX_M = 500_000
+# The position a viewer sends is snapped to this grid (about 0.05 degrees, like the camera's window)
+# before it is used, so that the queries never hold the point itself.
+ORPHAN_QUERY_CELL_M = 5_550
+# Never nearer than this to the pole or the antimeridian when a box is used to prefilter.
+_MIN_COSINE = 0.05
 
 
 @dataclass(frozen=True)
@@ -834,4 +846,92 @@ async def place_page(
             if last is None or last.published_at is None
             else cursors.encode(cursors.Cursor(at=_day_start(last), id=last.id))
         ),
+    )
+
+
+def _near(lat: float, lng: float, radius_m: float) -> ColumnElement[bool]:
+    """Match the public points within `radius_m` metres of a position, by their widened place."""
+    here = func.ST_SetSRID(func.ST_MakePoint(lng, lat), 4326)
+    within = func.ST_DWithin(cast(MapEntry.public_geom, Geography), cast(here, Geography), radius_m)
+    # The box lets the spatial index prune first; one that would pass a pole or the antimeridian
+    # is skipped, since a plain expansion would miss what lies across it.
+    margin = radius_m / (METERS_PER_DEGREE * max(math.cos(math.radians(lat)), _MIN_COSINE))
+    if abs(lng) + margin > 180 or abs(lat) + margin > 90:
+        return within
+    return within & MapEntry.public_geom.op("&&")(func.ST_Expand(here, margin))
+
+
+async def _area_of(db: AsyncSession, lat: float, lng: float) -> list[ColumnElement[bool]]:
+    """
+    Match the widened places the position lies in.
+
+    A place widened to a region or a country is far from its own centre for most of the people
+    who live there, so distance alone would not find it for them. The position's own city, region
+    and country, from GeoNames, say which widened places it is inside of.
+    """
+    found = await geo_service.nearest_place(db, lat, lng)
+    areas: list[ColumnElement[bool]] = []
+    if found.place is not None:
+        areas.append(
+            (MapEntry.widened_level == WidenLevel.CITY)
+            & (MapEntry.place_geoname_id == found.place.geoname_id)
+        )
+    if found.admin_area is not None:
+        areas.append(
+            (MapEntry.widened_level == WidenLevel.REGION)
+            & (MapEntry.place_geoname_id == found.admin_area.geoname_id)
+        )
+    if found.country is not None:
+        areas.append(
+            (MapEntry.widened_level == WidenLevel.COUNTRY)
+            & (MapEntry.country_iso2 == found.country.iso2)
+        )
+    return areas
+
+
+async def orphans_near(
+    db: AsyncSession,
+    lat: float,
+    lng: float,
+    radius_m: float,
+    cursor: cursors.Cursor | None,
+    limit: int,
+) -> AtlasOrphansOut:
+    """
+    Return the orphaned entries around a position, at their widened place only, newest first.
+
+    The position is snapped to a grid of about 0.05 degrees before anything is asked, is used for
+    this one query and is kept nowhere. An entry is near when its public point is within the
+    radius or the position lies inside the area it was widened to. A block changes nothing here:
+    an orphaned entry has no author to name, and hiding it from a blocker would name him.
+    """
+    snapped = approximate(lat, lng, ORPHAN_QUERY_CELL_M)
+    near = or_(
+        _near(snapped.lat, snapped.lng, radius_m), *await _area_of(db, snapped.lat, snapped.lng)
+    )
+    day = _published_day()
+    statement = (
+        select(MapEntry, Insight, User)
+        .join(Insight, Insight.id == MapEntry.insight_id)
+        .join(User, User.id == MapEntry.user_id)
+        .where(
+            MapEntry.status == MapEntryStatus.ORPHANED,
+            User.is_active.is_(True),
+            User.deleted_at.is_(None),
+            near,
+        )
+        .order_by(day.desc(), MapEntry.id.desc())
+    )
+    if cursor is not None:
+        statement = statement.where(
+            (day < cursor.at) | ((day == cursor.at) & (MapEntry.id < cursor.id))
+        )
+    rows = (await db.execute(statement.limit(limit + 1))).all()
+    page = rows[:limit]
+    last = page[-1][0] if len(rows) > limit else None
+    return AtlasOrphansOut(
+        features=[_feature(entry, insight, author) for entry, insight, author in page],
+        next_cursor=None
+        if last is None
+        else cursors.encode(cursors.Cursor(at=_day_start(last), id=last.id)),
     )

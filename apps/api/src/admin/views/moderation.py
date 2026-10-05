@@ -35,7 +35,7 @@ from src.admin.base import ReadOnlyView, current_admin, labelled
 from src.errors import AppError
 from src.messages import messages_for
 from src.models.admin_audit import AuditAction
-from src.models.atlas import MapEntry, MapEntryStatus
+from src.models.atlas import MapEntry, MapEntrySponsorship, MapEntryStatus
 from src.models.moderation import (
     ModerationAction,
     ModerationActionKind,
@@ -68,34 +68,37 @@ QUEUE_TEMPLATE = "admin/moderation_queue.html"
 ITEM_TEMPLATE = "admin/moderation_item.html"
 # How many held or reported items of each kind one page shows, oldest first.
 QUEUE_LIMIT = 200
-KINDS: dict[str, type[Post] | type[Comment] | type[MapEntry]] = {
+KINDS: dict[str, type[Post] | type[Comment] | type[MapEntry] | type[MapEntrySponsorship]] = {
     ReportTarget.POST.value: Post,
     ReportTarget.COMMENT.value: Comment,
     ReportTarget.MAP_ENTRY.value: MapEntry,
+    ReportTarget.SPONSORSHIP.value: MapEntrySponsorship,
 }
 # How the pages name each kind, one and many; the address keeps the report target's value.
 LABELS = {
     ReportTarget.POST.value: "post",
     ReportTarget.COMMENT.value: "comment",
     ReportTarget.MAP_ENTRY.value: "map entry",
+    ReportTarget.SPONSORSHIP.value: "sponsor reflection",
 }
 PLURALS = {
     ReportTarget.POST.value: "posts",
     ReportTarget.COMMENT.value: "comments",
     ReportTarget.MAP_ENTRY.value: "map entries",
+    ReportTarget.SPONSORSHIP.value: "sponsor reflections",
 }
 DECISIONS = ("approve", "reject", "remove")
-NO_ITEM = "No post, comment or map entry has this id."
+NO_ITEM = "No post, comment, map entry or sponsor reflection has this id."
 # The audit reason of a decision that was refused (a bad reason, a stale state).
 REFUSED_REASON = "refused"
 # An id the database could hold; anything else names no row and is not even looked up.
 MAX_ID = 2**63 - 1
 # What the queue's success banner may name: a record this view itself wrote into the address.
-DECIDED = re.compile(r"(post|comment|map_entry):\d{1,19}")
+DECIDED = re.compile(r"(post|comment|map_entry|sponsorship):\d{1,19}")
 UNKNOWN_REASON = "Choose a reason from the list: the author is shown its text, never yours."
 STALE = "This decision does not apply to the item as it is now; it was reloaded."
 
-type Item = Post | Comment | MapEntry
+type Item = Post | Comment | MapEntry | MapEntrySponsorship
 
 
 @dataclass(frozen=True)
@@ -122,7 +125,7 @@ class PublicLocation:
 
 def _author_of(item: Item) -> uuid.UUID:
     """Return the account that wrote the item or placed the entry."""
-    return item.user_id if isinstance(item, MapEntry) else item.author_id
+    return item.user_id if isinstance(item, MapEntry | MapEntrySponsorship) else item.author_id
 
 
 def _location_of(entry: MapEntry) -> PublicLocation:
@@ -175,6 +178,9 @@ def _under_review(item: Item) -> bool:
     item once went through the queue and was then edited back into a draft. A map entry
     that was placed and never published is the owner's private place in the same way.
     """
+    if isinstance(item, MapEntrySponsorship):
+        # A sponsorship with no reflection has nothing to moderate.
+        return item.status is not None
     return isinstance(item, Comment) or item.status not in (
         PostStatus.DRAFT.value,
         MapEntryStatus.DRAFT.value,
@@ -311,6 +317,8 @@ class ModerationQueueView(BaseView):
             text = item.reflection
         elif isinstance(item, Comment):
             text = item.body
+        elif isinstance(item, MapEntrySponsorship):
+            text = item.reflection
         context: dict[str, Any] = {
             "title": f"{LABELS[kind].capitalize()} {item.id}",
             "subtitle": self.name,

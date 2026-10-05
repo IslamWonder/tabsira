@@ -42,6 +42,7 @@ from tests.support_orphans import (
     BIGTOWN,
     HAMLET,
     HANDLE,
+    NEAR_TUNIS,
     OLD,
     WHOLE,
     current_id,
@@ -523,10 +524,11 @@ async def test_no_public_answer_carries_the_earlier_cell_or_the_author(
         await guest.http.get("/atlas/entries", params=WHOLE),
         await guest.http.get(f"/atlas/entries/{entry_id}"),
         await guest.http.get(f"/atlas/places/{world_data.TUNIS_GOVERNORATE}"),
+        await guest.http.get("/atlas/orphans", params=NEAR_TUNIS),
     ]
     # The listing and the place no longer show it (an orphan appears only where orphans are asked
-    # for); the entry's page does.
-    assert [response.status_code for response in responses] == [200, 200, 404]
+    # for); the entry's page and the orphans list do.
+    assert [response.status_code for response in responses[:4]] == [200, 200, 404, 200]
     assert responses[0].json()["features"] == []
     for response in responses:
         text = response.text
@@ -542,6 +544,10 @@ async def test_no_public_answer_carries_the_earlier_cell_or_the_author(
     assert page["location"]["point"]["coordinates"] == [10.2, 36.8]
     assert page["location"]["widened_level"] == "region"
     assert page["location"]["precision_label"] == "على مستوى المنطقة"
+    listed = responses[3].json()["features"]
+    assert [feature["id"] for feature in listed] == [entry_id]
+    assert listed[0]["properties"]["author"] is None
+    assert listed[0]["properties"]["orphaned"] is True
     # The sitemap lists no place for it: only published entries make a place page.
     provider = sitemap_service.PROVIDERS[Section.PLACES]
     assert await provider.pages(db_session, 10) == []
