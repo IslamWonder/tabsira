@@ -3,16 +3,20 @@
 #
 #   JENKINS_USER=<user> JENKINS_TOKEN=<token> ./jenkins/apply-jobs.sh [--dry-run]
 #
-# Each job reads its Jenkinsfile from the main branch of the Gitea repository
-# (jenkins/standalone-job.xml.tmpl). Idempotent: an existing job has its
-# configuration replaced, so this is also how a template change is rolled out.
+# Each job is jenkins/<name>.xml.tmpl with the text of its Jenkinsfile written
+# inline (@SCRIPT@), like the other deploy jobs on the controller: the job clones
+# nothing, so it needs no access to the repository. The job on the controller is
+# a copy: run this again after every change to a Jenkinsfile.* or a template.
+# Idempotent: an existing job has its configuration replaced.
 set -Eeuo pipefail
+# The replacement of a pattern substitution must stay literal (bash 5.2 expands
+# `&` in it by default), and the escaped script is full of `&amp;`.
+shopt -u patsub_replacement 2>/dev/null || true
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-TEMPLATE="$SCRIPT_DIR/standalone-job.xml.tmpl"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." &>/dev/null && pwd)"
 JENKINS_URL="${JENKINS_URL:-https://jenkins.riadvice.net}"
 JENKINS_URL="${JENKINS_URL%/}"
-REPO_URL="${JENKINS_REPO_URL:-ssh://git@gitea.riadvice.net:32122/RIADVICE/tabsira.git}"
 
 DRY_RUN=false
 [[ "${1:-}" == "--dry-run" ]] && DRY_RUN=true
@@ -35,14 +39,27 @@ jk() {
 	curl -sS -m 60 -X "$method" -u "$JENKINS_USER:$JENKINS_TOKEN" "$JENKINS_URL$path" "$@"
 }
 
+render() {
+	local template="$1" display="$2" script="$3" description="$4"
+	local text
+	text="$(<"$template")"
+	text="${text//@DISPLAY@/$(xml_escape "$display")}"
+	text="${text//@DESCRIPTION@/$(xml_escape "$description")}"
+	text="${text//@SCRIPT@/$(xml_escape "$(<"$REPO_ROOT/$script")")}"
+	printf '%s\n' "$text"
+}
+
 for entry in "${JOBS[@]}"; do
 	IFS='|' read -r name display script description <<<"$entry"
+	template="$SCRIPT_DIR/$name.xml.tmpl"
+	[[ -f "$template" && -f "$REPO_ROOT/$script" ]] || {
+		echo "Missing $template or $script" >&2
+		exit 1
+	}
 	config="$(mktemp)"
-	sed -e "s|@NAME@|${name}|g" -e "s|@DISPLAY@|$(xml_escape "$display")|g" -e "s|@SCRIPT@|${script}|g" \
-		-e "s|@REPO_URL@|${REPO_URL}|g" -e "s|@DESCRIPTION@|$(xml_escape "$description")|g" \
-		"$TEMPLATE" >"$config"
+	render "$template" "$display" "$script" "$description" >"$config"
 	if $DRY_RUN; then
-		echo "would apply $name ($script from $REPO_URL)"
+		echo "would apply $name ($script inline, $(wc -l <"$config") lines of configuration)"
 		rm -f "$config"
 		continue
 	fi

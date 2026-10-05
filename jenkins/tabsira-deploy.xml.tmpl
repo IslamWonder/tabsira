@@ -1,0 +1,78 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<!--
+  Configuration of the `tabsira-deploy` job. jenkins/apply-jobs.sh fills in the
+  display name, the description and the script (the text of
+  jenkins/Jenkinsfile.deploy; the placeholders must not appear in this comment,
+  where the script's double dashes would be illegal) and creates or updates the
+  job. Run it rather than editing the job by hand, so a rebuilt controller can be
+  brought back and the repository stays the source.
+
+  The pipeline is held inline, like the other deploy jobs on the controller:
+  the job clones nothing, so it needs no access to the repository and runs even
+  when the git server is down. The parameters below seed the job so its first
+  build already has them; they must match the `parameters` block of the
+  Jenkinsfile, which rewrites them on every run.
+-->
+<flow-definition plugin="workflow-job">
+  <description>@DESCRIPTION@</description>
+  <displayName>@DISPLAY@</displayName>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>20</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty>
+      <abortPrevious>false</abortPrevious>
+    </org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>PARTS</name>
+          <description>What to deploy, space separated: api worker vision web. Blank = all of them. `api` brings the migrations and the scan worker.</description>
+          <defaultValue></defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>DRY_RUN</name>
+          <description>Print the steps on the host (deploy.sh --dry-run) and change nothing.</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>REMOTE_HOST</name>
+          <description>Netbird address of the application host (tabsira.me).</description>
+          <defaultValue>100.73.99.6</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>REMOTE_USER</name>
+          <description>Override only. Empty = global SITES_SSH_USER, else devops.</description>
+          <defaultValue></defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SSH_PORT</name>
+          <description>Override only. Empty = global SITES_SSH_PORT, else 22.</description>
+          <defaultValue></defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>HEALTHCHECK_URLS</name>
+          <description>Each must return HTTP 200 after the deploy. Blank skips the check.</description>
+          <defaultValue>https://api.tabsira.me/health/ready https://tabsira.me/</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps">
+    <script>@SCRIPT@</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>
