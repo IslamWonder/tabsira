@@ -577,7 +577,8 @@ async def test_the_texts_stage_writes_again_the_posts_of_a_new_insight(folder: P
     await photos.save()
     fakes.briefs.clear()
     await process.texts_stage(TextOptions(path), settings(), fakes.services())
-    assert [brief.post for brief in fakes.briefs] == ["p1"]
+    # The post and the sponsor's note of the photo's insight, nothing else.
+    assert sorted(brief.post for brief in fakes.briefs) == ["p1", "sponsor:i1"]
 
 
 async def test_a_post_whose_call_fails_is_retried_then_left_for_the_next_run() -> None:
