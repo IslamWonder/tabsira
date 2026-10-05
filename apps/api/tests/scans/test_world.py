@@ -39,11 +39,15 @@ async def test_the_world_reads_the_hidden_treasures_evidence_in_bulk(
     for unit in ("T01_01", "T01_03", "T01_06"):
         insight_id = await kept(store, owner, learning_unit_id=unit)
         await browser.post(f"/insights/{insight_id}/complete")
+    # Each hidden treasure keeps a different verse: one query must still read them all,
+    # not one per distinct reference.
+    verses = [(30, 50), (2, 49), (112, 1)]
     async with store() as db:
-        hidden = len(
-            (await db.scalars(select(Treasure.id).where(Treasure.revealed_at.is_(None)))).all()
-        )
-    assert hidden >= 2
+        hidden = (await db.scalars(select(Treasure).where(Treasure.revealed_at.is_(None)))).all()
+        for treasure, (surah, ayah) in zip(hidden, verses, strict=False):
+            treasure.quran_surah, treasure.quran_ayah = surah, ayah
+        await db.commit()
+    assert len(hidden) >= 2
 
     seen: list[str] = []
 
