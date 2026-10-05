@@ -79,7 +79,7 @@ TURNSTILE_TEST_KEY_PREFIXES = ("1x", "2x", "3x")
 TURNSTILE_SITE_KEY_PATTERN = re.compile(r"[0-9A-Za-z_-]{8,64}")
 DEFAULT_LEGAL_VERSION = "2026-10-04T20:00Z"
 # The privacy policy moved on when Cloudflare Turnstile joined the browser's third-party contacts.
-DEFAULT_PRIVACY_VERSION = "2026-10-04T23:00Z"
+DEFAULT_PRIVACY_VERSION = "2026-10-05T15:00Z"
 DEFAULT_LANGUAGE = "ar"
 
 # A cookie name: RFC 6265 token characters we actually use. `__Host-` is refused

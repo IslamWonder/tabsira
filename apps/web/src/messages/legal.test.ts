@@ -27,13 +27,13 @@ function everyText(document: typeof terms): string[] {
 }
 
 describe('legal versions', () => {
-  it('are a time on 2026-10-04 (the second version of that day for the terms, the third for the privacy policy), the day the printed date names', () => {
+  it('are a time on the day the printed date names (terms on 2026-10-04, the privacy policy on 2026-10-05)', () => {
     expect(TERMS_VERSION).toBe('2026-10-04T20:00Z');
-    expect(PRIVACY_VERSION).toBe('2026-10-04T23:00Z');
+    expect(PRIVACY_VERSION).toBe('2026-10-05T15:00Z');
     // A valid global date-and-time string: it is the <time> element's dateTime and the page's dateModified.
     expect(TERMS_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z$/);
     expect(terms.updated).toBe('4 أكتوبر 2026');
-    expect(privacy.updated).toBe('4 أكتوبر 2026');
+    expect(privacy.updated).toBe('5 أكتوبر 2026');
   });
 
   // The keys land in .env.example with the API branch; until then the defaults held here are the reference.
