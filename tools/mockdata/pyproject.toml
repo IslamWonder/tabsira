@@ -11,12 +11,20 @@ dependencies = [
 ]
 
 [dependency-groups]
+# The process step (task 22.4) runs the real pipeline: apps/api's dependencies, with apps/api
+# itself put on the path (it is not a package).
+process = ["tabsira-api"]
 dev = [
+  { include-group = "process" },
   "pytest>=9.1.1",
+  "pytest-asyncio>=1.4.0",
   "pytest-cov>=7.1.0",
   "ruff>=0.16.10",
   "mypy>=2.4.0",
 ]
+
+[tool.uv.sources]
+tabsira-api = { path = "../../apps/api", package = false }
 
 [build-system]
 requires = ["hatchling"]
@@ -63,7 +71,10 @@ quote-style = "double"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# The process step imports apps/api as a library (`src`); it is not a package.
+pythonpath = ["../../apps/api"]
 addopts = "-q"
+asyncio_mode = "auto"
 filterwarnings = ["error"]
 
 [tool.coverage.run]
@@ -89,3 +100,9 @@ warn_return_any = true
 warn_unused_ignores = true
 show_error_codes = true
 plugins = ["pydantic.mypy"]
+# apps/api is checked by its own configuration; here it is only read for its types.
+mypy_path = "../../apps/api"
+
+[[tool.mypy.overrides]]
+module = ["src", "src.*"]
+follow_imports = "silent"
