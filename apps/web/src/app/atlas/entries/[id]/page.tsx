@@ -54,7 +54,9 @@ export default async function AtlasEntryPage({ params }: Params) {
             path: path(id),
             headline: result.data.title,
             datePublished: result.data.published_on,
-            ...(result.data.author === null ? {} : { authorName: result.data.author.public_name }),
+            ...(result.data.author === null
+              ? {}
+              : { authorName: result.data.author.public_name ?? undefined }),
           })}
         />
       ) : null}

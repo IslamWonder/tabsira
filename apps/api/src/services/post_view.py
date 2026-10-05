@@ -34,7 +34,7 @@ from src.schemas.social import (
     ViewerPostOut,
     WhyOut,
 )
-from src.services import photo_service, reaction_service
+from src.services import photo_service, public_identity, reaction_service
 from src.services.evidence_view import Evidence, load_evidence
 from src.services.moderation_service import known_reason
 from src.services.post_service import PostRow
@@ -124,7 +124,9 @@ def _post_out(
     given, saved = flags
     return PostOut(
         id=post.id,
-        author=MemberOut(handle=row.author.handle or "", public_name=row.author.public_name or ""),
+        author=MemberOut(
+            handle=row.author.handle or "", public_name=public_identity.shown_name(row.author)
+        ),
         insight=insight_of(publication, evidence, photo_url=photo_url),
         reflection=(
             ReflectionOut(

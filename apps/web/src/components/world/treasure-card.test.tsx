@@ -40,7 +40,7 @@ describe('TreasureCard', () => {
     expect(sha256(hadith?.textContent ?? '')).toBe(HADITH_SHA256);
     expect(screen.getByText('[اسم السورة] · 50')).toBeInTheDocument();
     expect(screen.getByText('[اسم الكتاب] · [١٠٣٢]')).toBeInTheDocument();
-    expect(screen.getByText('حكم الدرر: [نص الحكم]')).toBeInTheDocument();
+    expect(screen.queryByText(/الدرر/)).toBeNull();
     expect(screen.getByText('وحدة من المسار: [وحدة من المسار]')).toBeInTheDocument();
     expect(screen.getByText('[نوع الكنز]')).toBeInTheDocument();
     expect(screen.getByText('[إفصاح الكنز]')).toBeInTheDocument();
@@ -53,18 +53,14 @@ describe('TreasureCard', () => {
       learning_unit: null,
       hadith: TREASURE.hadith && {
         ...TREASURE.hadith,
-        hadith: { ...TREASURE.hadith.hadith, arabic_number: null, ruling: null },
+        hadith: { ...TREASURE.hadith.hadith, arabic_number: null },
       },
     };
     await reveal(hadithOnly);
     expect(document.querySelector('[data-scripture="quran"]')).toBeNull();
     expect(screen.getByText('[اسم الكتاب] · 1032')).toBeInTheDocument();
-    expect(screen.queryByText(/^حكم الدرر:/)).toBeNull();
-    // DECISIONS.md 58: no «نص موثّق» chip beside a hadith shown before its ruling.
+    // Decision 64: a hadith never carries the «نص موثّق» chip.
     expect(screen.queryByText('نص موثّق من مصدره')).toBeNull();
-    expect(
-      screen.getByText('لم نسجّل حكم الدرر لهذا الحديث بعد؛ تحقّق منه في الدرر.')
-    ).toBeInTheDocument();
     expect(screen.queryByText(/وحدة من المسار/)).toBeNull();
   });
 

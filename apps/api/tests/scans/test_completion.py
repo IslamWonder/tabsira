@@ -87,8 +87,8 @@ async def test_the_first_tamm_saves_once_lifts_the_fog_and_suggests_an_account(
         places = (await db.scalars(select(WorldPlace))).all()
     assert states == {"T01_06": 1, "T12_02": 1}
     assert [(e.quran_surah, e.quran_ayah, e.hadith_number, e.concept) for e in exposures] == [
-        (30, 50, None, "الإحياء"),
-        (6, 99, None, "الإحياء"),
+        (30, 50, "1032", "الإحياء"),
+        (6, 99, "2320", "الإحياء"),
     ]
     assert [relation.reason for relation in relations] == [RelationReason.SAME_SCENE]
     assert {place.region_id for place in places} == {"T01", "T12"}

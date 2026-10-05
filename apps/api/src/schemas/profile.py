@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -35,6 +35,10 @@ from src.models.profile import (
 
 _LANGUAGE = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$")
 LANGUAGE_MAX = 35
+# The five questions a completed profile has answered, `unknown` and `[]` included.
+COMPLETION_FIELDS = frozenset(
+    {"goals", "knowledge_level", "age_range", "religious_background", "gender"}
+)
 Version = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9._-]{1,32}$")]
 
 
@@ -54,6 +58,8 @@ class ProfileOut(BaseModel):
     reduced_motion: ReducedMotion
     sound_enabled: bool
     questions_asked: bool
+    # Set once every question was answered, `unknown` included (decision 64); null until then.
+    profile_completed_at: datetime | None
     consent_version: str | None
     updated_at: datetime
 
@@ -69,6 +75,11 @@ class ProfilePatch(BaseModel):
     Skipping the optional questions is `questions_asked: true` alone: every
     field stays `unknown` and the questions are never offered again. Answering
     any of the three question fields records the same.
+
+    `complete_profile: true` completes the profile (decision 64) and needs an explicit answer
+    to every question in the same body: `goals` (`[]` is «أفضّل عدم الإجابة»),
+    `knowledge_level`, `age_range`, `religious_background` and `gender` (`unknown` is that
+    answer). A body that leaves one out is a 422.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -83,6 +94,7 @@ class ProfilePatch(BaseModel):
     reduced_motion: ReducedMotion | None = None
     sound_enabled: bool | None = None
     questions_asked: bool | None = None
+    complete_profile: Literal[True] | None = None
 
     @field_validator("goals")
     @classmethod
@@ -97,6 +109,15 @@ class ProfilePatch(BaseModel):
             message = "must be a language tag such as ar or en-GB"
             raise ValueError(message)
         return value
+
+    @model_validator(mode="after")
+    def _complete_means_all_answered(self) -> Self:
+        if self.complete_profile:
+            missing = sorted(COMPLETION_FIELDS - self.model_fields_set)
+            if missing:
+                message = f"complete_profile needs an explicit answer for {', '.join(missing)}"
+                raise ValueError(message)
+        return self
 
     @model_validator(mode="after")
     def _no_nulls(self) -> Self:

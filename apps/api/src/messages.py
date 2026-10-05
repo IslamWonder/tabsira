@@ -89,11 +89,9 @@ class Messages:
     # Insights: labels, disclosure and statuses shown with every result. The AI
     # disclosure (v2 §12) is on every result and in the chat; the prepared label (v2 §4,
     # tajriba §2) on every reviewed example; the demo label on the development simulation;
-    # the notice (decision 18) when a hadith has no editor's ruling yet.
     ai_disclosure: str
     prepared_example: str
     demo_engine: str
-    hadith_awaits_verification: str
     relation_labels: dict[str, str]
     explanation_labels: dict[str, str]
     # The fixed tags that keep quotation apart from the platform's words (v2 §12).
@@ -246,9 +244,6 @@ ARABIC = Messages(
     ai_disclosure="تبصرة أداة مدعومة بالذكاء الاصطناعي، وليست مفتيًا ولا عالمًا",
     prepared_example="مثال موثّق مُعدّ",
     demo_engine="محاكاة معلنة للتطوير: ليست تحليلًا حيًا لصورتك",
-    hadith_awaits_verification=(
-        "الحديث المرتبط بهذه البصيرة بانتظار التحقق من حكمه في الدرر؛ تُعرض الآية وحدها حتى يُسجَّل الحكم."
-    ),
     relation_labels={
         "direct": "صلة مباشرة",
         "action_based": "صلة بالفعل",

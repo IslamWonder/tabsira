@@ -3,7 +3,8 @@ What the engine may know of a learner, and what a completion records.
 
 The profile reaches the engine only when its owner keeps personalization on,
 and the history (the texts already shown, the units completed) only when
-memory is on (v2 §5). A guest has no profile: the engine gets the neutral
+memory is on (v2 §5); the insight chat reads the profile alone, under the
+same switch (decision 64). A guest has no profile: the engine gets the neutral
 defaults, `unknown` everywhere, and nothing is assumed. A completion counts in
 `learner_unit_states` as a completion, never as mastery, and records what was
 shown in `evidence_exposures`; with memory off, neither is written.
@@ -17,6 +18,7 @@ every kind alike.
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 
 from sqlalchemy import select
@@ -47,22 +49,35 @@ async def memory_enabled(db: AsyncSession, owner: Owner) -> bool:
     return profile is None or profile.memory_enabled
 
 
+def _shared(profile: Profile | None) -> dict[str, object]:
+    """Return the profile fields the owner lets the engine read: none with personalization off."""
+    if profile is None:
+        return {}
+    values: dict[str, object] = {"personalization_enabled": profile.personalization_enabled}
+    if profile.personalization_enabled:
+        values |= {
+            "goals": list(profile.goals),
+            "knowledge_level": str(profile.knowledge_level),
+            "age_range": str(profile.age_range),
+            "religious_background": str(profile.religious_background),
+            "gender": str(profile.gender),
+        }
+    return values
+
+
 async def learner_context(db: AsyncSession, owner: Owner) -> LearnerContext:
     """Return the context the engine receives for this owner."""
     profile = await _profile(db, owner)
-    values: dict[str, object] = {}
-    if profile is not None:
-        values["personalization_enabled"] = profile.personalization_enabled
-        if profile.personalization_enabled:
-            values |= {
-                "goals": list(profile.goals),
-                "knowledge_level": str(profile.knowledge_level),
-                "age_range": str(profile.age_range),
-                "religious_background": str(profile.religious_background),
-            }
+    values = _shared(profile)
     if profile is None or profile.memory_enabled:
         values |= await _history(db, owner)
     return LearnerContext.model_validate(values)
+
+
+async def profile_context(db: AsyncSession, user_id: uuid.UUID | None) -> LearnerContext:
+    """Return what an account shared of its profile, without the history (the chat's view)."""
+    profile = await db.get(Profile, user_id) if user_id is not None else None
+    return LearnerContext.model_validate(_shared(profile))
 
 
 async def _history(db: AsyncSession, owner: Owner) -> dict[str, object]:

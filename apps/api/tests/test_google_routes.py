@@ -156,7 +156,7 @@ async def test_a_new_person_gets_an_account_a_session_and_lands_on_the_web_app(
     assert (await web.get("/profile")).status_code == 403
     await web.post(
         "/auth/legal/accept",
-        json={"terms_version": "2026-10-05T16:00Z", "privacy_version": "2026-10-05T16:00Z"},
+        json={"terms_version": "2026-10-05T18:00Z", "privacy_version": "2026-10-05T18:00Z"},
     )
     assert (await web.get("/profile")).json()["age_range"] == "unknown"
     assert response.headers["cache-control"] == "no-store"
@@ -178,7 +178,7 @@ async def test_the_same_person_signing_in_again_reuses_the_account(web, db_sessi
     assert await db_session.scalar(select(func.count()).select_from(Session)) == 1
 
 
-async def test_a_google_name_is_cut_to_60_characters_and_a_missing_one_falls_back_to_the_address(
+async def test_a_google_name_is_cut_to_60_characters_and_a_missing_one_stays_empty(
     web, db_session, google
 ):
     state, nonce, _ = await begin(web)
@@ -189,7 +189,7 @@ async def test_a_google_name_is_cut_to_60_characters_and_a_missing_one_falls_bac
     )
 
     names = {u.email: u.display_name for u in (await db_session.scalars(select(User))).all()}
-    assert names == {"reader@example.com": "ن" * 60, "second.person@example.com": "second.person"}
+    assert names == {"reader@example.com": "ن" * 60, "second.person@example.com": ""}
 
 
 async def test_linking_a_verified_password_account_keeps_its_password_and_sessions(

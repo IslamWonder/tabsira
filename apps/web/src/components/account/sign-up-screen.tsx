@@ -28,6 +28,7 @@ import { failureMessage } from '@/lib/api/failure-message';
 import { attempt, type Failure, fieldRefused } from '@/lib/api/result';
 import type { components } from '@/lib/api/schema';
 import { messages } from '@/messages';
+import { FullNameConsent } from './full-name-consent';
 import { Gate } from './gate';
 import { GoogleSignIn } from './google-sign-in';
 import { LegalConsent } from './legal-consent';
@@ -54,16 +55,19 @@ function refusedField(failure: Failure): [Field, string] | null {
 }
 
 /**
- * Create an account: a name, an address and a password, nothing more (no age,
- * no religion: those are optional and come later, in the profile page). The new account
- * is signed in at once; the address is confirmed by the mailed link, needed
+ * Create an account: the full name, an address and a password, and the separate, unticked
+ * box for showing the name (decision 64). The profile questions come right after, in the
+ * mandatory profile step. The new account is signed in at once; the address is confirmed by the mailed link, needed
  * only before publishing (owner decision 25).
  */
 export function SignUpScreen({
   next,
+  reason,
   turnstileSiteKey = '',
 }: {
   next: Route;
+  /** Why a guest was sent here (a second scan, the chat of their scan), said above the form. */
+  reason?: 'scan' | 'chat';
   /** Cloudflare Turnstile's site key from the web server; empty means no check (decision 56). */
   turnstileSiteKey?: string;
 }) {
@@ -79,6 +83,7 @@ export function SignUpScreen({
   const [sending, setSending] = useState(false);
   const [created, setCreated] = useState<User | null>(null);
   const [accepted, setAccepted] = useState(false);
+  const [fullName, setFullName] = useState(false);
   const legal = useLegal();
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -105,6 +110,7 @@ export function SignUpScreen({
       email,
       password,
       display_name: displayName,
+      public_full_name: fullName,
       ...acceptanceOf(versions),
     };
     setSending(true);
@@ -177,11 +183,16 @@ export function SignUpScreen({
         <SignedInNote user={session.user} />
       ) : (
         <>
+          {reason === undefined ? null : (
+            <div role="status">
+              <Notice tone="info">{T.reason[reason]}</Notice>
+            </div>
+          )}
           <form noValidate onSubmit={submit} className="flex flex-col gap-4" aria-busy={sending}>
             <TextField
               ref={refs.displayName}
               name="displayName"
-              autoComplete="nickname"
+              autoComplete="name"
               maxLength={120}
               label={F.displayName}
               hint={F.displayNameHint}
@@ -208,6 +219,7 @@ export function SignUpScreen({
               hint={F.passwordHint}
               error={errors.password}
             />
+            <FullNameConsent checked={fullName} onChange={setFullName} />
             <LegalConsent
               checked={accepted}
               onChange={setAccepted}
@@ -240,6 +252,7 @@ export function SignUpScreen({
             next={next}
             divider="before"
             accepted={accepted && legal.state.status === 'ready' ? legal.state.legal : null}
+            publicFullName={fullName}
           />
         </>
       )}

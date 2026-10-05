@@ -8,11 +8,9 @@ import pytest
 
 from src.models import HadithClassification, TreasureKind
 from src.pipeline.engine import HadithRef, QuranRef
-from src.scripture.rulings import find_hadith
 from src.services import treasure
 from src.services.treasure import Candidate, UnitInfo, candidates, parse_anchor, treasure_ready
 from tests.scans.conftest import rule
-from tests.scripture.fixtures import enrich_hadith
 
 PATH = "tabsira-masar-1.0"
 T0 = datetime(2026, 10, 4, 12, tzinfo=UTC)
@@ -97,7 +95,8 @@ async def test_the_first_verified_candidate_not_already_met_is_chosen(store):
 
         assert await treasure.verified(db, HadithRef(collection="bukhari", number="2320"))
         assert not await treasure.verified(db, HadithRef(collection="bukhari", number="1032"))
-        assert not await treasure.verified(db, HadithRef(collection="bukhari", number="8"))
+        # Decision 64: a hadith with no ruling is shown, so it is verified.
+        assert await treasure.verified(db, HadithRef(collection="bukhari", number="8"))
         assert not await treasure.verified(db, HadithRef(collection="bukhari", number="999999"))
         assert not await treasure.verified(db, QuranRef(surah=114, ayah=1))
 
@@ -111,13 +110,10 @@ async def test_the_first_verified_candidate_not_already_met_is_chosen(store):
     assert unknown is None
 
 
-async def test_a_hadith_of_the_enriched_file_is_a_verified_candidate_until_ruled_out(store):
+async def test_a_hadith_with_no_ruling_is_a_verified_candidate_until_ruled_out(store):
     async with store() as db:
-        for number in ("8", "2320"):
-            stored = await find_hadith(db, "bukhari", number)
-            await enrich_hadith(db, stored.id, f"b{number}")
         await rule(db, "bukhari", "8", HadithClassification.DAIF)
 
-        # Decision 58: no ruling and enriched is enough; a ruling of ضعيف keeps it out.
+        # Decision 64: no ruling is enough; a ruling of ضعيف keeps it out.
         assert await treasure.verified(db, HadithRef(collection="bukhari", number="2320"))
         assert not await treasure.verified(db, HadithRef(collection="bukhari", number="8"))

@@ -16,8 +16,10 @@ The server, not the model, decides what is shown: a part about a verse or a
 hadith exists only when that text was chosen; a step is «من السنة» only when
 the chosen hadith grounds it, otherwise it is a practical suggestion; a
 personal matter (content level «د») ends with the referral to a qualified
-scholar (v2 §12, rule 7). The learner's profile reaches this stage only, for
-the level and the wording (the brief of 2026-10-05, §14).
+scholar (v2 §12, rule 7). Of the engine's stages the learner's profile reaches
+this one only, for the depth, the words and the examples (the brief of
+2026-10-05, §14). The explanation may be published, so it never reveals the
+declared gender, religion or age; the gender is not even sent (decision 64).
 """
 
 from __future__ import annotations
@@ -49,7 +51,7 @@ from src.pipeline.insight.learning import UnitOption, personalised_reason
 from src.pipeline.prompt import load_prompt
 from src.pipeline.schemas import BBox, SceneAnalysis
 
-SYSTEM_PROMPT = "insight_composer_system.v4"
+SYSTEM_PROMPT = "insight_composer_system.v6"
 # A part's sources name the insight's own texts (quran:S:A, hadith:C:N) or its unit.
 UNIT_PREFIX = "masar:"
 MAX_OUTPUT_TOKENS = 2000
@@ -103,7 +105,9 @@ def learner_payload(learner: LearnerContext) -> dict[str, Any]:
 
     The religious background stays as the profile enum writes it (`muslim`, `non_muslim`)
     and is left out when unknown, so the composer prompt's rule, which is keyed on these very
-    values, fires for a non-Muslim and for a background that was never shared alike.
+    values, fires for a non-Muslim and for a background that was never shared alike. The
+    gender is never sent: the explanation may be published, so it is written in one
+    neutral voice whatever the gender (decision 64, 5).
     """
     shared = {
         "knowledge_level": learner.knowledge_level,
@@ -116,6 +120,11 @@ def learner_payload(learner: LearnerContext) -> dict[str, Any]:
     if learner.goals:
         payload["goals"] = list(learner.goals)
     return payload
+
+
+def learner_view(learner: LearnerContext) -> dict[str, Any]:
+    """Return what the composer may read of the learner: nothing with personalization off."""
+    return learner_payload(learner) if learner.personalization_enabled else {}
 
 
 def composer_texts(item: ComposedInsight) -> dict[str, str]:
@@ -159,12 +168,12 @@ def _text_view(chosen: Chosen | None) -> dict[str, Any] | None:
 
 
 def composer_message(scene: SceneAnalysis, item: Composable, learner: LearnerContext) -> str:
-    learner_view = learner_payload(learner) if learner.personalization_enabled else {}
+    shared = learner_view(learner)
     result = item.result
     intent = result.intent
     payload: dict[str, Any] = {
         "scene": scene.description,
-        "learner": {"level": learner_view.get("knowledge_level", "beginner"), **learner_view},
+        "learner": {"level": shared.get("knowledge_level", "beginner"), **shared},
         "insight": {
             "intent": {
                 "observable_meaning": intent.observable_meaning,

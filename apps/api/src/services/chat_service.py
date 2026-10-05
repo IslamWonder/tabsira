@@ -24,6 +24,7 @@ guard, with the insight's own texts as a corpus, and carries the disclosure.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from datetime import timedelta
 from typing import Annotated, Literal
@@ -41,6 +42,8 @@ from src.config import AiStage, Settings
 from src.errors import AppError, ErrorCode
 from src.messages import messages_for
 from src.models import ChatMessage, ChatStatus, Hadith, Insight, QuranVerse
+from src.pipeline.engine import LearnerContext
+from src.pipeline.insight.composer import BACKGROUND_UNKNOWN, learner_view
 from src.pipeline.insight.engine import SHARED_RESOURCES, ResourceCache
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
 from src.pipeline.prompt import load_prompt
@@ -48,7 +51,7 @@ from src.routers.scripture import HadithOut, QuranVerseOut
 from src.scans.workflow import call_rows
 from src.schemas.insight import ChatReply
 from src.scripture.overlap import repeats_store
-from src.services import chat_retrieval
+from src.services import chat_retrieval, learner_service
 from src.services.chat_retrieval import NewText, TextKind
 from src.services.insight_view import (
     answer_is_shown,
@@ -59,9 +62,11 @@ from src.services.insight_view import (
     step_out,
 )
 
-SYSTEM_PROMPT = "insight_chat_system.v5"
+SYSTEM_PROMPT = "insight_chat_system.v7"
 USER_PROMPT = "insight_chat_user.v2"
 MAX_OUTPUT_TOKENS = 1200
+# What the system prompt says of a learner who declared nothing, or keeps personalization off.
+NOTHING_DECLARED = "none"
 # A pending answer older than this was left by a crash; its slot is given back.
 CHAT_RESERVATION = timedelta(minutes=5)
 
@@ -163,8 +168,8 @@ async def _cited_texts(db: AsyncSession, insight: Insight) -> list[str]:
     """
     Return the stored texts the insight cites, shown or not, as the leak guard's corpus.
 
-    A hadith that is not shown (no ruling and not counted under decision 58, or a ruling
-    other than صحيح or حسن) is guarded against all the same: the model must not quote it either.
+    A hadith that is not shown (an editor ruled it out, decision 64) is guarded against all
+    the same: the model must not quote it either.
     """
     texts: list[str | None] = []
     if insight.quran_surah is not None and insight.quran_ayah is not None:
@@ -209,6 +214,18 @@ def _step(verse: QuranVerseOut | None, hadith: HadithOut | None, insight: Insigh
     return f"- {step.label}: {step.text}" if step is not None else "(none)"
 
 
+def _learner(learner: LearnerContext) -> str:
+    """
+    Return the profile fields the learner declared: the composer's, and the declared gender.
+
+    The chat is private to its owner, so it alone may address a declared gender (decision 64).
+    """
+    shared = learner_view(learner)
+    if learner.personalization_enabled and learner.gender != BACKGROUND_UNKNOWN:
+        shared["gender"] = learner.gender
+    return json.dumps(shared, ensure_ascii=False) if shared else NOTHING_DECLARED
+
+
 def _why(insight: Insight) -> str:
     why = insight.why
     clues = "، ".join(why.get("visible_clues", [])) or "-"
@@ -247,7 +264,7 @@ async def answer(
         )
     used = await _used(db, insight)
     limit = settings.max_chat_user_messages
-    verse, hadith, _awaiting = await shown_evidence(db, insight)
+    verse, hadith = await shown_evidence(db, insight)
     return ChatReply(
         message=await message_out(db, row, shown_ids(verse, hadith)),
         used=used,
@@ -276,7 +293,7 @@ async def _answer(
     http: httpx.AsyncClient | None,
     resources: ResourceCache,
 ) -> None:
-    verse, hadith, _awaiting = await shown_evidence(db, insight)
+    verse, hadith = await shown_evidence(db, insight)
     references: list[str] = []
     corpus = await _cited_texts(db, insight)
     if verse is not None:
@@ -294,13 +311,16 @@ async def _answer(
         history=await _history(db, insight, shown_ids(verse, hadith)),
         question=row.question,
     )
+    learner = await learner_service.profile_context(db, insight.user_id)
     log = CallLog()
     client = client_factory(log)
     try:
         result = await client.chat_json(
             ChatModelOutput,
             stage=AiStage.CHAT,
-            system=load_prompt(SYSTEM_PROMPT).render(shown_texts=_shown_texts(verse, hadith)),
+            system=load_prompt(SYSTEM_PROMPT).render(
+                shown_texts=_shown_texts(verse, hadith), learner=_learner(learner)
+            ),
             user=user,
             max_output_tokens=MAX_OUTPUT_TOKENS,
         )
@@ -336,7 +356,7 @@ async def _answer(
         raise _refused(ErrorCode.CHAT_ANSWER_REJECTED, "The answer was refused.", 502)
     # An editor may have ruled while the model wrote: an answer about texts that
     # are no longer the ones shown is refused before anyone reads it.
-    verse_now, hadith_now, _awaiting = await shown_evidence(db, insight)
+    verse_now, hadith_now = await shown_evidence(db, insight)
     shown = shown_ids(verse, hadith)
     if shown_ids(verse_now, hadith_now) != shown:
         await _give_back(db, row, log, insight.id)

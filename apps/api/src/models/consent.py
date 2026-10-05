@@ -18,6 +18,7 @@ class ConsentKind(StrEnum):
     PHOTO_STORAGE = "photo_storage"  # keep my photos on the server
     PERSONALIZATION = "personalization"  # tailor the explanations to my choices
     MEMORY = "memory"  # remember my earlier insights
+    PUBLIC_FULL_NAME = "public_full_name"  # show my real full name beside my handle (decision 64)
 
 
 class Consent(Base):

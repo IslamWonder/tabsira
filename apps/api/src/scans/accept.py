@@ -2,13 +2,12 @@
 What the workflow accepts from the engine, checked again on the server before anything is saved.
 
 The engine is trusted for nothing it can get wrong silently:
-- a verse or a hadith it cites must be in the store; a hadith whose editor
-  ruling is not صحيح or حسن is never kept as evidence; one without a ruling
-  shows at once when it counts as one of the enriched Sunnah file's (decision
-  58), and otherwise is kept (shown once ruled). The demand for a ruling is
-  counted by the evidence gate that chose the texts, never again here;
-- an insight left with nothing it can show now (no verse, and no hadith that
-  is eligible) is dropped: no source, no scripture (v2 rule 1);
+- a verse or a hadith it cites must be in the store; a hadith an editor ruled
+  out is never kept as evidence; any other hadith is shown as it is (decision
+  64). The showing of an unruled hadith is counted by the evidence gate that
+  chose the texts, never again here;
+- an insight left with nothing to show (no verse, no hadith) is dropped: no
+  source, no scripture (v2 rule 1);
 - every text it wrote goes through the leak guard, with the cited texts
   (refused ones included) as a corpus, and is compared with every verse and
   hadith of the store, so a quotation hidden in an explanation refuses the insight;
@@ -33,7 +32,7 @@ from src.pipeline.engine import EvidenceRef, HadithRef, ProposedInsight, QuranRe
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
 from src.pipeline.schemas import SceneAnalysis
 from src.scripture.overlap import repeats_store
-from src.scripture.rulings import eligible_given, is_enriched, latest_ruling
+from src.scripture.rulings import eligible_given, latest_ruling
 
 MAX_INSIGHTS = 3
 UNIT_PREFIX = "masar:"
@@ -158,26 +157,23 @@ async def _checked_quran(
 
 async def _checked_hadith(
     db: AsyncSession, evidence: EvidenceRef | None, corpus: list[str], refusals: list[str]
-) -> tuple[EvidenceRef | None, bool]:
-    """Return the hadith kept, and whether it may show now."""
+) -> EvidenceRef | None:
+    """Return the hadith kept: in the store, and not ruled out by an editor (decision 64)."""
     if evidence is None:
-        return None, False
+        return None
     if not isinstance(evidence.ref, HadithRef):
         refusals.append("hadith_kind")
-        return None, False
+        return None
     stored = await _hadith(db, evidence.ref)
     if stored is None:
         refusals.append("hadith_missing")
-        return None, False
+        return None
     # Guarded against even when it is refused: the engine's words may still quote it.
     corpus.append(stored.text)
-    ruling = await latest_ruling(db, stored.id)
-    if ruling is not None and not eligible_given(ruling, enriched=False):
+    if not eligible_given(await latest_ruling(db, stored.id)):
         refusals.append("hadith_ineligible")
-        return None, False
-    return evidence, eligible_given(
-        ruling, enriched=ruling is None and await is_enriched(db, stored.id)
-    )
+        return None
+    return evidence
 
 
 async def _check(
@@ -185,13 +181,9 @@ async def _check(
 ) -> ProposedInsight | None:
     corpus: list[str] = []
     quran = await _checked_quran(db, insight.quran, corpus, refusals)
-    hadith, hadith_shows = await _checked_hadith(db, insight.hadith, corpus, refusals)
+    hadith = await _checked_hadith(db, insight.hadith, corpus, refusals)
     if quran is None and hadith is None:
         refusals.append("no_evidence")
-        return None
-    if quran is None and not hadith_shows:
-        # A hadith waiting for its ruling is not shown, and there is no verse to show.
-        refusals.append("nothing_to_show")
         return None
     if await leaks(db, list(insight_texts(insight).values()), corpus):
         refusals.append("leak")

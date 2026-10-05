@@ -63,7 +63,8 @@ function SponsorLine({
 }) {
   const name = (
     <>
-      {sponsor.public_name} <bdi dir="ltr">@{sponsor.handle}</bdi>
+      {sponsor.public_name === null ? null : <>{sponsor.public_name} </>}
+      <bdi dir="ltr">@{sponsor.handle}</bdi>
     </>
   );
   return (

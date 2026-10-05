@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckIcon, ExternalIcon } from '@/components/icons';
+import { CheckIcon } from '@/components/icons';
 import { EngineLabel } from '@/components/insight/engine-label';
 import { Button, LinkButton } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
@@ -16,8 +16,7 @@ type Load = { status: 'loading' } | { status: 'failed' } | { status: 'ready'; in
 
 /**
  * The verse and the hadith by reference, numbered as the insight's own screen numbers
- * them; their text is there. A hadith shown before its ruling says so, with the way to
- * check it on dorar.net beside the line (decision 58).
+ * them; their text is there.
  */
 function Sources({ insight }: { insight: Insight }) {
   const { quran, hadith } = insight;
@@ -35,28 +34,9 @@ function Sources({ insight }: { insight: Insight }) {
           </li>
         )}
         {hadith === null ? null : (
-          <li className="flex flex-col gap-1">
-            <span className="flex flex-wrap items-center gap-2">
-              <Chip tone="sunnah">{hadith.tag}</Chip>
-              <span>
-                {M.hadithReference(hadith.hadith.collection.name_ar, hadith.hadith.number)}
-              </span>
-            </span>
-            {hadith.hadith.ruling === null ? (
-              <span className="flex flex-wrap items-center gap-x-3 text-[0.8125rem] text-fg-muted">
-                <span>{messages.evidence.unruled}</span>
-                <a
-                  href={hadith.hadith.links.dorar_verification}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-12 items-center gap-1.5 font-medium text-link underline-offset-4 hover:underline"
-                >
-                  {messages.evidence.verifyDorar}
-                  <span className="sr-only"> {messages.a11y.opensInNewTab}</span>
-                  <ExternalIcon width="16" height="16" />
-                </a>
-              </span>
-            ) : null}
+          <li className="flex flex-wrap items-center gap-2">
+            <Chip tone="sunnah">{hadith.tag}</Chip>
+            <span>{M.hadithReference(hadith.hadith.collection.name_ar, hadith.hadith.number)}</span>
           </li>
         )}
       </ul>

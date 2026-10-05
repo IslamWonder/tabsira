@@ -16,7 +16,7 @@ import type { Failure } from '@/lib/api/result';
 import { messages, siteLanguage } from '@/messages';
 import { useAccess } from '@/social/access';
 import { getProfile, memberPosts, setFollow } from '@/social/api';
-import { profilePath } from '@/social/identity';
+import { memberLabel, profilePath } from '@/social/identity';
 import type { MemberProfile, Post } from '@/social/types';
 import { usePages } from '@/social/use-pages';
 import { FeedList } from './feed-list';
@@ -194,9 +194,11 @@ export function ProfileScreen({
                   id={headingId}
                   className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg"
                 >
-                  {load.profile.public_name}
+                  {load.profile.public_name ?? <bdi>@{load.profile.handle}</bdi>}
                 </h1>
-                <bdi className="text-fg-muted">@{load.profile.handle}</bdi>
+                {load.profile.public_name === null ? null : (
+                  <bdi className="text-fg-muted">@{load.profile.handle}</bdi>
+                )}
                 <p className="m-0 text-[0.875rem] text-fg-muted">
                   {P.joined(formatMonth(load.profile.joined_month))}
                 </p>
@@ -246,7 +248,7 @@ export function ProfileScreen({
                   onClick={() => setOpen('block')}
                   className="w-full justify-start"
                 >
-                  {C.block.action} {load.profile.public_name}
+                  {C.block.action} {memberLabel(load.profile)}
                 </Button>
               </li>
             </ul>
@@ -255,7 +257,7 @@ export function ProfileScreen({
             open={open === 'block'}
             onClose={() => setOpen('none')}
             handle={load.profile.handle}
-            publicName={load.profile.public_name}
+            publicName={memberLabel(load.profile)}
             onBlocked={() => setLoad({ kind: 'blocked' })}
           />
         </>

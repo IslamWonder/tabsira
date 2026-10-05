@@ -35,7 +35,7 @@ from src.schemas.insight import (
     PublicAuthorOut,
     PublicInsightOut,
 )
-from src.services import insight_view
+from src.services import insight_view, public_identity
 from src.services.insight_table_source import PUBLISHABLE_ENGINE
 
 
@@ -84,7 +84,7 @@ async def _check(db: AsyncSession, insight: Insight) -> None:
         scan = await db.get(Scan, insight.scan_id)
         if scan is not None and scan.sensitive:
             _refuse("its scene is sensitive")
-    verse, hadith, _awaiting = await insight_view.shown_evidence(db, insight)
+    verse, hadith = await insight_view.shown_evidence(db, insight)
     if verse is None and hadith is None:
         _refuse("it has no text to show from the store")
     texts = {"title": insight.title, "glimpse": insight.glimpse}
@@ -142,7 +142,7 @@ async def read_public(db: AsyncSession, insight_id: int) -> PublicInsightOut:
     if row is None:
         raise not_found(INSIGHT)
     insight, owner = row[0], row[1]
-    verse, hadith, awaiting = await insight_view.shown_evidence(db, insight)
+    verse, hadith = await insight_view.shown_evidence(db, insight)
     if verse is None and hadith is None:
         # What made it public may have gone since (a ruling changed): nothing to show, no page.
         raise not_found(INSIGHT)
@@ -155,9 +155,9 @@ async def read_public(db: AsyncSession, insight_id: int) -> PublicInsightOut:
         glimpse=insight.glimpse,
         relation=RelationType(insight.relation),
         relation_label=texts.relation_labels[insight.relation],
-        **insight_view.shown_fields(insight, verse, hadith, awaiting, public=True),
-        author=PublicAuthorOut(handle=owner.handle, public_name=owner.public_name)
-        if owner.handle is not None and owner.public_name is not None
+        **insight_view.shown_fields(insight, verse, hadith, public=True),
+        author=PublicAuthorOut(handle=owner.handle, public_name=public_identity.shown_name(owner))
+        if owner.handle is not None
         else None,
         published_at=insight.published_at,
         disclosure=texts.ai_disclosure,

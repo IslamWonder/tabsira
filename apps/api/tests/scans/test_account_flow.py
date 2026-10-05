@@ -6,9 +6,18 @@ from redis.exceptions import RedisError
 from sqlalchemy import select
 
 from src import clock
-from src.models import ChatMessage, ChatStatus, EvidenceExposure, Guest, Insight, Scan, User
+from src.models import (
+    ChatMessage,
+    ChatStatus,
+    EvidenceExposure,
+    Guest,
+    HadithClassification,
+    Insight,
+    Scan,
+    User,
+)
 from src.scans import buffer
-from tests.scans.conftest import make_account, photo, sign_in
+from tests.scans.conftest import make_account, photo, rule, sign_in
 
 
 async def test_signing_in_merges_what_the_browser_saved_as_a_guest(browser, store, flow_settings):
@@ -68,7 +77,7 @@ async def test_the_export_holds_everything_the_learner_saved_and_never_a_photo(
     assert [insight["tutorial_slug"] for insight in learning["insights"]] == ["drop"]
     assert [message["answer"] for message in learning["chat_messages"]] == ["جواب قصير."]
     assert [(m["evidence_ids"], m["withdrawn"]) for m in learning["chat_messages"]] == [
-        (["quran:30:50"], False)
+        (["hadith:bukhari:1032", "quran:30:50"], False)
     ]
     assert [place["region_id"] for place in learning["places"]] == ["T01"]
     assert [unit["unit_id"] for unit in learning["learner_units"]] == ["T01_06"]
@@ -118,14 +127,18 @@ async def test_a_redis_that_is_down_does_not_stop_a_deletion(browser, store, red
         assert (await db.scalars(select(Scan))).all() == []
 
 
-async def test_the_export_keeps_a_withdrawn_answer_and_says_it_is_withdrawn(browser, store):
+async def test_the_export_withdraws_an_answer_only_for_a_ruled_out_hadith_or_a_missing_reference(
+    browser, store
+):
     await make_account(store)
     await sign_in(browser)
     kept = (await browser.post("/tutorial/rain/insights/drop")).json()
     async with store() as db:
+        await rule(db, "bukhari", "1", HadithClassification.DAIF)
         for key, ids, status in (
             ("old", None, ChatStatus.ANSWERED),
-            ("ruled", ["hadith:bukhari:1032", "quran:30:50"], ChatStatus.ANSWERED),
+            ("shown", ["hadith:bukhari:1032", "quran:30:50"], ChatStatus.ANSWERED),
+            ("weak", ["hadith:bukhari:1", "quran:30:50"], ChatStatus.ANSWERED),
             ("wait", None, ChatStatus.PENDING),
         ):
             db.add(
@@ -145,6 +158,7 @@ async def test_the_export_keeps_a_withdrawn_answer_and_says_it_is_withdrawn(brow
 
     assert [(m["answer"], m["withdrawn"]) for m in learning["chat_messages"]] == [
         ("جواب old", True),
-        ("جواب ruled", True),
+        ("جواب shown", False),
+        ("جواب weak", True),
         (None, False),
     ]

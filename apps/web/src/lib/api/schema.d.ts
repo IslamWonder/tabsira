@@ -171,7 +171,10 @@ export interface paths {
      * @description Record that the signed-in account accepts both texts, for a version that changed.
      *
      *     The versions must be the current ones (`GET /legal`); anything else is a 422
-     *     `legal_acceptance_required`. Two consent rows are appended; none is ever edited.
+     *     `legal_acceptance_required`. Two consent rows are appended; none is ever edited. It also
+     *     takes, for a Google account, the real full name (`display_name`, only while the acceptance
+     *     is pending or the name is empty; an account with no name must give one: 422) and the answer
+     *     to the `public_full_name` consent (decision 64).
      */
     post: operations['accept_legal_auth_legal_accept_post'];
     delete?: never;
@@ -382,6 +385,9 @@ export interface paths {
      *     A consent is withdrawn by recording the same kind with `granted` false. The
      *     history is never edited. Withdrawing the photo consent deletes the kept photos
      *     first; 503 STORAGE_UNAVAILABLE, with nothing recorded, when the store is down.
+     *
+     *     Withdrawing needs no acceptance of the current texts, as taking an insight off public view
+     *     does not; giving a consent does (403 `legal_acceptance_required`).
      */
     post: operations['post_consent_consents_post'];
     delete?: never;
@@ -689,16 +695,17 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * The caller's handle and public name
-     * @description Return the identity the caller appears under, or nulls until they choose one.
+     * The caller's handle and the name shown beside it
+     * @description Return the handle the caller appears under (null until they choose one) and the name shown.
      */
     get: operations['get_public_identity_me_public_identity_get'];
     /**
-     * Choose or change the handle and public name
-     * @description Set the handle (`/u/<handle>`) and the name every public page shows for the caller.
+     * Choose or change the handle
+     * @description Set the handle (`/u/<handle>`) every public page shows for the caller.
      *
      *     Needs a verified e-mail address. The handle is unique whatever its case: 409
-     *     `HANDLE_TAKEN` when somebody else holds it. The account's own name is never used.
+     *     `HANDLE_TAKEN` when somebody else holds it. The full name shows beside it only while the
+     *     `public_full_name` consent is given (`POST /consents`); `public_name` in the body is ignored.
      */
     put: operations['put_public_identity_me_public_identity_put'];
     post?: never;
@@ -717,7 +724,7 @@ export interface paths {
     };
     /**
      * A public profile
-     * @description Return a member's public profile: handle, public name, month joined and three counts.
+     * @description Return a member's public profile: handle, name (with consent), month joined and three counts.
      *
      *     404 for a handle nobody holds, and for one that a block stands in front of, in either
      *     direction. Nothing from the member's private profile, and no e-mail address, ever.
@@ -764,7 +771,7 @@ export interface paths {
     };
     /**
      * The members the caller has blocked
-     * @description List the members the caller blocked, newest first, by handle and public name only.
+     * @description List the members the caller blocked, newest first, by handle, and name only with consent.
      */
     get: operations['list_blocks_blocks_get'];
     put?: never;
@@ -1095,7 +1102,7 @@ export interface paths {
      * @description Return the newest readable posts, ranked, each with `why` («لماذا أرى هذا؟»).
      *
      *     The ranking uses freshness, the members the caller follows, variety of topics and what the
-     *     caller has already liked, saved or commented on. It never uses religion or any personal
+     *     caller has already reacted to, saved or commented on. It never uses religion or any personal
      *     detail, and the caller can switch personalisation off, which leaves freshness and variety.
      *     The first request pins the moment of ranking in `next_cursor`, so the next pages continue the
      *     same list.
@@ -1208,6 +1215,9 @@ export interface paths {
     /**
      * Start a scan of a photo or of a photo's address
      * @description Check the photo, keep it for an hour, queue the scan and answer at once.
+     *
+     *     403 `account_required` for a guest that holds its one scan, 403 `profile_required` for an
+     *     account that has not completed its profile (decision 64), both before the photo is read.
      */
     post: operations['create_scan_scans_post'];
     delete?: never;
@@ -1353,7 +1363,8 @@ export interface paths {
      *
      *     The same `idempotencyKey` returns the same answer and counts once; the
      *     fourth successful message answers 409 CHAT_LIMIT_REACHED. A request for
-     *     another text runs the retrieval and the verification again (v2 §14).
+     *     another text runs the retrieval and the verification again (v2 §14). 403
+     *     `profile_required` for an account that has not completed its profile (decision 64).
      */
     post: operations['chat_insights__insight_id__chat_post'];
     delete?: never;
@@ -2545,7 +2556,13 @@ export interface components {
      * ConsentKind
      * @enum {string}
      */
-    ConsentKind: 'terms' | 'privacy' | 'photo_storage' | 'personalization' | 'memory';
+    ConsentKind:
+      | 'terms'
+      | 'privacy'
+      | 'photo_storage'
+      | 'personalization'
+      | 'memory'
+      | 'public_full_name';
     /** ConsentOut */
     ConsentOut: {
       kind: components['schemas']['ConsentKind'];
@@ -2766,6 +2783,8 @@ export interface components {
       | 'GONE'
       | 'legal_acceptance_required'
       | 'mail_unavailable'
+      | 'account_required'
+      | 'profile_required'
       | 'turnstile_failed'
       | 'UNSUPPORTED_MEDIA_TYPE'
       | 'FEATURE_DISABLED'
@@ -2991,17 +3010,8 @@ export interface components {
       grade: string;
     };
     /**
-     * HadithClassification
-     * @description An editor's reading of a dorar.net ruling; only the first two make a hadith evidence.
-     * @enum {string}
-     */
-    HadithClassification: 'صحيح' | 'حسن' | 'ضعيف' | 'موضوع' | 'مختلف_فيه';
-    /**
      * HadithEvidenceOut
-     * @description A hadith read from the scripture store, shown only while it is eligible.
-     *
-     *     Its ruling is صحيح or حسن, or it has no ruling and belongs to the enriched Sunnah file
-     *     (decision 58).
+     * @description A hadith read from the scripture store, as it is; one an editor ruled out is absent (decision 64).
      */
     HadithEvidenceOut: {
       /** Collection */
@@ -3020,27 +3030,12 @@ export interface components {
        * @description SHA-256 of the UTF-8 bytes of `text`
        */
       sha256: string;
-      /** @description The editor's reading of the ruling in force; null when none is recorded yet */
-      classification: components['schemas']['HadithClassification'] | null;
-      /**
-       * Verification Url
-       * @description A dorar.net search the reader opens («تحقق في الدرر»)
-       */
-      verification_url: string;
       /**
        * Verified
        * @default true
        * @constant
        */
       verified: true;
-    };
-    /** HadithLinks */
-    HadithLinks: {
-      /**
-       * Dorar Verification
-       * @description A dorar.net search for this hadith («تحقق في الدرر»)
-       */
-      dorar_verification: string;
     };
     /** HadithOut */
     HadithOut: {
@@ -3073,14 +3068,6 @@ export interface components {
        * @description The dataset's grades as given; informational only, never decide eligibility
        */
       informational_grades: components['schemas']['GradeOut'][] | null;
-      /** @description The editor-recorded dorar.net ruling in force */
-      ruling: components['schemas']['RulingOut'] | null;
-      /**
-       * Eligible
-       * @description Whether it may be shown as evidence: the ruling in force is صحيح or حسن, or there is no ruling and the hadith belongs to the enriched Sunnah file (decision 58)
-       */
-      eligible: boolean;
-      links: components['schemas']['HadithLinks'];
       /**
        * Status
        * @default local_corpus
@@ -3137,12 +3124,7 @@ export interface components {
        * Hadith Status
        * @enum {string}
        */
-      hadith_status: 'shown' | 'awaiting_verification' | 'none';
-      /**
-       * Notice
-       * @description Set when the hadith waits for its dorar.net ruling
-       */
-      notice: string | null;
+      hadith_status: 'shown' | 'none';
       /** Pair Complete */
       pair_complete: boolean;
       /** Explanation Tag */
@@ -3240,7 +3222,7 @@ export interface components {
        * @description «السنة»: the fixed tag of quoted Sunnah
        */
       tag: string;
-      /** @description The hadith exactly as stored, its spans, its dorar.net ruling and links */
+      /** @description The hadith exactly as stored, with its spans; no ruling is shown (decision 64) */
       hadith: components['schemas']['HadithOut'];
       why: components['schemas']['EvidenceWhy'] | null;
     };
@@ -3416,6 +3398,10 @@ export interface components {
       terms_version: string;
       /** Privacy Version */
       privacy_version: string;
+      /** Display Name */
+      display_name?: string | null;
+      /** Public Full Name */
+      public_full_name?: boolean | null;
     };
     /**
      * LegalOut
@@ -3514,13 +3500,13 @@ export interface components {
     MapEntryStatus: 'draft' | 'published' | 'pending_review' | 'removed' | 'withdrawn' | 'orphaned';
     /**
      * MemberOut
-     * @description A person as the network shows them: the two things they chose, and nothing else.
+     * @description A person as the network shows them: the handle, and the full name only with consent.
      */
     MemberOut: {
       /** Handle */
       handle: string;
       /** Public Name */
-      public_name: string;
+      public_name: string | null;
     };
     /**
      * MemberProfileOut
@@ -3530,7 +3516,7 @@ export interface components {
       /** Handle */
       handle: string;
       /** Public Name */
-      public_name: string;
+      public_name: string | null;
       /**
        * Joined Month
        * @description `YYYY-MM`, in UTC
@@ -3845,6 +3831,8 @@ export interface components {
       sound_enabled: boolean;
       /** Questions Asked */
       questions_asked: boolean;
+      /** Profile Completed At */
+      profile_completed_at: string | null;
       /** Consent Version */
       consent_version: string | null;
       /**
@@ -3864,6 +3852,11 @@ export interface components {
      *     Skipping the optional questions is `questions_asked: true` alone: every
      *     field stays `unknown` and the questions are never offered again. Answering
      *     any of the three question fields records the same.
+     *
+     *     `complete_profile: true` completes the profile (decision 64) and needs an explicit answer
+     *     to every question in the same body: `goals` (`[]` is «أفضّل عدم الإجابة»),
+     *     `knowledge_level`, `age_range`, `religious_background` and `gender` (`unknown` is that
+     *     answer). A body that leaves one out is a 422.
      */
     ProfilePatch: {
       /** Goals */
@@ -3880,6 +3873,8 @@ export interface components {
       sound_enabled?: boolean | null;
       /** Questions Asked */
       questions_asked?: boolean | null;
+      /** Complete Profile */
+      complete_profile?: true | null;
     };
     /** ProgressOut */
     ProgressOut: {
@@ -3912,13 +3907,13 @@ export interface components {
     };
     /**
      * PublicAuthorOut
-     * @description The only things a public insight says about its owner: the handle and name they chose.
+     * @description The only things a public insight says about its owner: the handle, and the name if consented.
      */
     PublicAuthorOut: {
       /** Handle */
       handle: string;
       /** Public Name */
-      public_name: string;
+      public_name: string | null;
     };
     /**
      * PublicHadith
@@ -3930,28 +3925,33 @@ export interface components {
        * @description «السنة»: the fixed tag of quoted Sunnah
        */
       tag: string;
-      /** @description The hadith exactly as stored, its spans, its dorar.net ruling and links */
+      /** @description The hadith exactly as stored, with its spans; no ruling is shown (decision 64) */
       hadith: components['schemas']['HadithOut'];
     };
     /**
      * PublicIdentityIn
-     * @description The handle and public name an account chooses to appear under.
+     * @description The handle an account chooses to appear under.
      */
     PublicIdentityIn: {
       /** Handle */
       handle: string;
-      /** Public Name */
-      public_name: string;
+      /**
+       * Public Name
+       * @deprecated
+       */
+      public_name?: string | null;
     };
     /**
      * PublicIdentityOut
-     * @description The caller's own handle and public name; both null until they have chosen.
+     * @description The caller's own handle, and the name public pages show beside it.
      */
     PublicIdentityOut: {
       /** Handle */
       handle: string | null;
       /** Public Name */
       public_name: string | null;
+      /** Public Full Name */
+      public_full_name: boolean;
     };
     /**
      * PublicInsightOut
@@ -3985,9 +3985,7 @@ export interface components {
        * Hadith Status
        * @enum {string}
        */
-      hadith_status: 'shown' | 'awaiting_verification' | 'none';
-      /** Notice */
-      notice: string | null;
+      hadith_status: 'shown' | 'none';
       /** Pair Complete */
       pair_complete: boolean;
       /** Explanation Tag */
@@ -4265,6 +4263,36 @@ export interface components {
       progress: number;
     };
     /**
+     * ReactionCountsOut
+     * @description How many members said each thing; public, since encouraging good is no harm (61).
+     */
+    ReactionCountsOut: {
+      /** Benefited */
+      benefited: number;
+      /** Jazak */
+      jazak: number;
+    };
+    /**
+     * ReactionExport
+     * @description A reaction the account gave to a post.
+     */
+    ReactionExport: {
+      /** Post Id */
+      post_id: string;
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      kind: components['schemas']['ReactionKind'];
+    };
+    /**
+     * ReactionKind
+     * @description What a reader says to a post: it benefited them, or thanks to its author.
+     * @enum {string}
+     */
+    ReactionKind: 'benefited' | 'jazak';
+    /**
      * ReactionOut
      * @description A post's reaction counts and the kinds the caller gave.
      */
@@ -4541,28 +4569,6 @@ export interface components {
       admin_area: components['schemas']['AdminArea'] | null;
       country: components['schemas']['CountryRef'] | null;
     };
-    /** RulingOut */
-    RulingOut: {
-      /**
-       * Ruling Text
-       * @description As dorar.net gives it, copied by an editor
-       */
-      ruling_text: string;
-      /** Scholar */
-      scholar: string;
-      /** Source Book */
-      source_book: string;
-      /** Page */
-      page: string;
-      /** Dorar Url */
-      dorar_url: string;
-      classification: components['schemas']['HadithClassification'];
-      /**
-       * Recorded At
-       * Format: date-time
-       */
-      recorded_at: string;
-    };
     /** ScanEntityOut */
     ScanEntityOut: {
       /** Id */
@@ -4659,11 +4665,6 @@ export interface components {
       clarification_question: string | null;
       /** Insights */
       insights: components['schemas']['InsightSummary'][];
-      /**
-       * Awaiting Verification
-       * @description Hadith wanted by this scan that wait for a ruling
-       */
-      awaiting_verification: number;
       /** Events Url */
       events_url: string;
       /**
@@ -4742,6 +4743,11 @@ export interface components {
       accepted_terms_version: string;
       /** Accepted Privacy Version */
       accepted_privacy_version: string;
+      /**
+       * Public Full Name
+       * @default false
+       */
+      public_full_name: boolean;
     };
     /**
      * SitemapEntry
@@ -5040,12 +5046,7 @@ export interface components {
        * Hadith Status
        * @enum {string}
        */
-      hadith_status: 'shown' | 'awaiting_verification' | 'none';
-      /**
-       * Notice
-       * @description Set while the hadith waits for its dorar.net ruling
-       */
-      notice: string | null;
+      hadith_status: 'shown' | 'none';
       /** Pair Complete */
       pair_complete: boolean;
       /** Explanation Tag */
@@ -5097,6 +5098,8 @@ export interface components {
       handle: string | null;
       /** Public Name */
       public_name: string | null;
+      /** Public Full Name */
+      public_full_name: boolean;
       /** Is Admin */
       is_admin: boolean;
       /** Is Active */
@@ -5143,6 +5146,10 @@ export interface components {
       created_at: string;
       /** Legal Acceptance Required */
       legal_acceptance_required: boolean;
+      /** Profile Completed */
+      profile_completed: boolean;
+      /** Public Full Name */
+      public_full_name: boolean;
     };
     /** VerifyEmailIn */
     VerifyEmailIn: {
@@ -5259,36 +5266,6 @@ export interface components {
     ScanFromUrl: {
       /** Url */
       url: string;
-    };
-    /**
-     * ReactionKind
-     * @description What a reader says to a post: it benefited them, or thanks to its author.
-     * @enum {string}
-     */
-    ReactionKind: 'benefited' | 'jazak';
-    /**
-     * ReactionCountsOut
-     * @description How many members said each thing; public, since encouraging good is no harm (61).
-     */
-    ReactionCountsOut: {
-      /** Benefited */
-      benefited: number;
-      /** Jazak */
-      jazak: number;
-    };
-    /**
-     * ReactionExport
-     * @description A reaction the account gave to a post.
-     */
-    ReactionExport: {
-      /** Post Id */
-      post_id: string;
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      kind: components['schemas']['ReactionKind'];
     };
   };
   responses: never;
@@ -8033,66 +8010,6 @@ export interface operations {
       };
     };
   };
-  public_photo_media_public__name__get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        name: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'image/jpeg': unknown;
-        };
-      };
-      /** @description An error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-    };
-  };
-  rain_tutorial_rain_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['TutorialOut'];
-        };
-      };
-      /** @description An error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-    };
-  };
   orphans_near_atlas_orphans_get: {
     parameters: {
       query: {
@@ -8240,6 +8157,66 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['SponsorshipOut'][];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  public_photo_media_public__name__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'image/jpeg': unknown;
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  rain_tutorial_rain_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TutorialOut'];
         };
       };
       /** @description An error */

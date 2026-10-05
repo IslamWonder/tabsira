@@ -104,14 +104,10 @@ describe('the public page of an insight', () => {
     expect(screen.queryByText('من السنة')).not.toBeInTheDocument();
   });
 
-  it('shows the API notice when there is a hadith status to explain', async () => {
-    await open({ hadith: null, hadith_status: 'none', notice: 'ملاحظة من الخادم' });
-    expect(screen.getByText('ملاحظة من الخادم')).toBeInTheDocument();
-  });
-
-  it('shows the notice of a hadith awaiting its ruling once', async () => {
-    await open({ hadith: null, hadith_status: 'awaiting_verification', notice: 'بانتظار الحكم' });
-    expect(screen.getAllByText('بانتظار الحكم')).toHaveLength(1);
+  it('shows no notice and no hadith card when no hadith was kept', async () => {
+    await open({ hadith: null, hadith_status: 'none' });
+    expect(screen.queryByRole('article', { name: 'السنة' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
   });
 });
 

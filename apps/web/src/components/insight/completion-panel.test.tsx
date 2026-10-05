@@ -10,20 +10,17 @@ beforeEach(() => {
 });
 
 function renderPanel(overrides: Partial<CompletionPanelProps> = {}) {
-  const onContinueAsGuest = vi.fn();
   render(
     <CompletionPanel
       completion={completionOut()}
       progress={progressOut()}
       progressFailed={false}
       returnTo={'/insight/1' as Route}
-      onContinueAsGuest={onContinueAsGuest}
-      invitationClosed={false}
       share={{ kind: 'open', onOpen: vi.fn() }}
       {...overrides}
     />
   );
-  return { onContinueAsGuest, region: screen.getByRole('region', { name: 'اكتملت بصيرتك' }) };
+  return { region: screen.getByRole('region', { name: 'اكتملت بصيرتك' }) };
 }
 
 describe('CompletionPanel', () => {
@@ -134,23 +131,19 @@ describe('CompletionPanel', () => {
     expect(within(region).queryByText('علامات على التمرين لا على الإيمان.')).toBeNull();
   });
 
-  it('invites a guest to save, softly, and lets them go on as one', async () => {
-    const { onContinueAsGuest } = renderPanel({
+  it('invites a guest to save, with no way to go on as a guest', () => {
+    renderPanel({
       completion: completionOut({ suggest_account: 'هل تحفظ ما تعلّمته لنواصل من هنا؟' }),
     });
-    await userEvent.click(screen.getByRole('button', { name: 'أتابع كضيف' }));
-    expect(onContinueAsGuest).toHaveBeenCalledOnce();
-    expect(screen.getByRole('link', { name: 'احفظ مساري' })).toHaveAttribute(
+    expect(screen.queryByRole('button', { name: 'أتابع كضيف' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'أنشئ حسابي واحفظ بصيرتي' })).toHaveAttribute(
       'href',
       '/signup?next=%2Finsight%2F1'
     );
   });
 
-  it('does not ask a guest again once they chose to go on, nor an account holder at all', () => {
-    renderPanel({
-      completion: completionOut({ suggest_account: 'هل تحفظ ما تعلّمته لنواصل من هنا؟' }),
-      invitationClosed: true,
-    });
-    expect(screen.queryByRole('button', { name: 'أتابع كضيف' })).toBeNull();
+  it('does not invite an account holder at all', () => {
+    renderPanel({ completion: completionOut({ suggest_account: null }) });
+    expect(screen.queryByRole('link', { name: 'أنشئ حسابي واحفظ بصيرتي' })).toBeNull();
   });
 });

@@ -5,7 +5,7 @@ import { insightOut } from '@/test/scan';
 import { LearnedInsight } from './learned-insight';
 
 describe('LearnedInsight', () => {
-  it('names a ruled hadith alone, without the line a hadith before its ruling carries', async () => {
+  it('names a hadith alone, by its reference, with no ruling line', async () => {
     mockApi({
       'GET /insights/9001': {
         body: insightOut({
@@ -19,7 +19,8 @@ describe('LearnedInsight', () => {
 
     expect(await screen.findByText('صحيح اختبار · 1032')).toBeInTheDocument();
     expect(screen.queryByText(/القرآن/)).toBeNull();
-    expect(screen.queryByText(/لم نسجّل حكم الدرر/)).toBeNull();
+    expect(screen.queryByText(/الدرر/)).toBeNull();
+    expect(screen.queryByRole('link', { name: /تحقق/ })).toBeNull();
     expect(screen.queryByRole('link', { name: 'حاور بصيرتك' })).toBeNull();
   });
 
@@ -47,14 +48,14 @@ describe('LearnedInsight', () => {
 });
 
 describe('LearnedInsight, what kind of insight it is', () => {
-  it('says a prepared example is one, and names an unruled hadith with the way to check it', async () => {
+  it('says a prepared example is one', async () => {
     const prepared = insightOut({ id: '9001', engine: 'prepared', label: 'مثال موثّق مُعدّ' });
     const hadith = prepared.hadith as NonNullable<typeof prepared.hadith>;
     mockApi({
       'GET /insights/9001': {
         body: {
           ...prepared,
-          hadith: { ...hadith, hadith: { ...hadith.hadith, arabic_number: '١٠٣٢', ruling: null } },
+          hadith: { ...hadith, hadith: { ...hadith.hadith, arabic_number: '١٠٣٢' } },
         },
       },
     });
@@ -63,10 +64,7 @@ describe('LearnedInsight, what kind of insight it is', () => {
     expect(await screen.findByText('مثال موثّق مُعدّ')).toBeInTheDocument();
     // Numbered as the insight's own screen numbers it.
     expect(screen.getByText('صحيح اختبار · 1032')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /تحقق في الدرر/ })).toHaveAttribute(
-      'href',
-      hadith.hadith.links.dorar_verification
-    );
+    expect(screen.queryByRole('link', { name: /تحقق في الدرر/ })).toBeNull();
   });
 });
 

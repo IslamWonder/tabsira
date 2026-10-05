@@ -40,14 +40,10 @@ describe('PostCard and the scripture it shows', () => {
     expect(QURAN_TEXT.normalize('NFC')).not.toBe(QURAN_TEXT);
     expect(HADITH_TEXT.replace(/\s+/g, ' ')).not.toBe(HADITH_TEXT);
     expect(HADITH_TEXT.length).toBeGreaterThan(280);
-    expect(screen.getAllByText('نص موثّق من مصدره')).toHaveLength(2);
-    // The editor's classification is labelled as the editor's, never as dorar's wording.
-    expect(screen.getByText('تصنيف المحرّر لحكم الدرر: صحيح')).toBeInTheDocument();
-    expect(screen.queryByText(/^حكم الدرر:/)).toBeNull();
-    expect(screen.getByRole('link', { name: /تحقق في الدرر/ })).toHaveAttribute(
-      'href',
-      'https://dorar.net/'
-    );
+    // Only the verse carries the verified chip; a hadith never does.
+    expect(screen.getAllByText('نص موثّق من مصدره')).toHaveLength(1);
+    expect(screen.queryByText(/الدرر/)).toBeNull();
+    expect(screen.queryByRole('link', { name: /تحقق/ })).toBeNull();
   });
 
   it('shows the evidence at once on its own page, and says when the verse stands alone', () => {
@@ -98,6 +94,19 @@ describe('PostCard and the scripture it shows', () => {
 });
 
 describe('PostCard reactions', () => {
+  it('shows only the handle when the author did not agree to show a full name (decision 64)', () => {
+    guest();
+    render(
+      <PostCard
+        post={{ ...POST, author: { handle: 'rain_reader', public_name: null } }}
+        onChange={vi.fn()}
+      />
+    );
+    const link = screen.getByRole('link', { name: 'صفحة @rain_reader' });
+    expect(link).toHaveTextContent(/^@rain_reader$/);
+    expect(screen.queryByText('[اسم عام]')).toBeNull();
+  });
+
   it('asks a guest to sign in instead of reacting', async () => {
     guest();
     render(<PostCard post={POST} onChange={vi.fn()} />);

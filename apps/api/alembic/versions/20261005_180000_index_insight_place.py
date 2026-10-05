@@ -1,7 +1,7 @@
 """index_insight_place
 
 Revision ID: 20261005_180000
-Revises: 20261005_170000
+Revises: 20261005_120000
 Create Date: 2026-10-05 16:30:00.000000
 
 The insights table had no index on `place_id`, unlike its sibling
@@ -18,7 +18,7 @@ from collections.abc import Sequence
 from alembic import op
 
 revision: str = "20261005_180000"
-down_revision: str | Sequence[str] | None = "20261005_170000"
+down_revision: str | Sequence[str] | None = "20261005_120000"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

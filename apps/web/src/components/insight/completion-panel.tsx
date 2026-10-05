@@ -23,9 +23,6 @@ export interface CompletionPanelProps {
   progressFailed: boolean;
   /** Where the reader comes back to after creating an account: this insight. */
   returnTo: Route;
-  onContinueAsGuest: () => void;
-  /** The guest chose to continue as one: the invitation is not asked again in this visit. */
-  invitationClosed: boolean;
   /** The third option: open the share sheet, or the one-line reason it cannot be opened. */
   share: ShareOption;
 }
@@ -49,8 +46,6 @@ export function CompletionPanel({
   progress,
   progressFailed,
   returnTo,
-  onContinueAsGuest,
-  invitationClosed,
   share,
 }: CompletionPanelProps) {
   const titleId = useId();
@@ -158,9 +153,7 @@ export function CompletionPanel({
         </GlassPanel>
       </section>
 
-      {completion.suggest_account === null || invitationClosed ? null : (
-        <SaveInvitation returnTo={returnTo} onContinueAsGuest={onContinueAsGuest} />
-      )}
+      {completion.suggest_account === null ? null : <SaveInvitation returnTo={returnTo} />}
     </div>
   );
 }

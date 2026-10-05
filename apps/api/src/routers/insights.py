@@ -44,7 +44,13 @@ from src.schemas.insight import (
     InsightDetailOut,
     PublicationOut,
 )
-from src.services import chat_service, completion_service, insight_view, public_insight_service
+from src.services import (
+    account_gate,
+    chat_service,
+    completion_service,
+    insight_view,
+    public_insight_service,
+)
 from src.services.social_limits import WriteKind
 
 router = APIRouter(prefix="/insights", tags=["insights"])
@@ -131,9 +137,11 @@ async def chat(
 
     The same `idempotencyKey` returns the same answer and counts once; the
     fourth successful message answers 409 CHAT_LIMIT_REACHED. A request for
-    another text runs the retrieval and the verification again (v2 §14).
+    another text runs the retrieval and the verification again (v2 §14). 403
+    `profile_required` for an account that has not completed its profile (decision 64).
     """
-    _owner, insight = await owned_insight(db, owner, insight_id)
+    held_by, insight = await owned_insight(db, owner, insight_id)
+    await account_gate.require_profile(db, held_by)
     return await chat_service.answer(
         db,
         settings,

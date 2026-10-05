@@ -105,7 +105,6 @@ export function ChatSheet({ open, onClose, insightTitle, chat, onAsk }: ChatShee
                       quran: message.quran ?? null,
                       hadith: message.hadith ?? null,
                       hadith_status: message.hadith ? 'shown' : 'none',
-                      notice: null,
                     }}
                   />
                 ) : null}

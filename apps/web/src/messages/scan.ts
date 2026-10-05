@@ -6,8 +6,7 @@
  * has happened, a fault of ours never put on the reader.
  *
  * What the API itself says (the labels of a relation, of the small step, of a
- * prepared example or a simulation, the notice of a hadith awaiting its ruling,
- * the explanation texts) is shown as the API sends it and is not written here.
+ * prepared example or a simulation, the explanation texts) is shown as the API sends it and is not written here.
  * No Quran or hadith text belongs in this file, ever.
  */
 
@@ -46,13 +45,6 @@ export const scanMessages = {
       title: 'لم أجد صلة موثوقة بهذا المشهد بعد',
       /** The two ways on that v2 §8 names: «وضّح ما تقصد» and «جرّب مشهدًا آخر». */
       body: 'لا نكمل بنص بعيد لنملأ الفراغ. وضّح ما تقصد لننظر إليه وحده، أو جرّب مشهدًا آخر.',
-      awaiting:
-        'ثمة حديث مرتبط بهذا المشهد بانتظار التحقق من حكمه في الدرر، ولذلك لم تكتمل البصيرة بعد.',
-    },
-    /** Evidence was accepted, but its only fitting hadith waits for its ruling (v2 §26). */
-    incompletePair: {
-      title: 'وجدنا دليلًا، ولم تكتمل البصيرة بعد',
-      body: 'الحديث الذي يخدم معنى هذا المشهد بانتظار التحقق من حكمه في الدرر، ولا نكمل مكانه بنص بعيد. وضّح ما تقصد، أو جرّب مشهدًا آخر.',
     },
     failed: {
       title: 'لم تكتمل قراءة المشهد',
@@ -104,6 +96,8 @@ export const scanMessages = {
       RETRIEVAL_ERROR:
         'تعطّل البحث قبل أن يبدأ، فلم ننظر في النصوص. هذا عطل تقني لا غياب للدليل؛ أعد المحاولة.',
       SCAN_TIMEOUT: 'استغرق التحليل أطول مما ينبغي ولم يكتمل. أعد المحاولة بصورة أخرى.',
+      ACCOUNT_REQUIRED: 'لبدء مشهد آخر يلزم حساب. أنشئ حسابًا وتجد بصيرتك محفوظة فيه.',
+      PROFILE_REQUIRED: 'أكمل ملفك أولًا ثم أعد المحاولة.',
       CHAT_LIMIT_REACHED: 'اكتمل النقاش حول هذه البصيرة',
       CHAT_IN_PROGRESS: 'ما زلنا نجيب عن سؤالك السابق. انتظر قليلًا ثم أعد المحاولة.',
       CHAT_ANSWER_REJECTED: 'تعذّر تقديم جواب موثوق عن هذا السؤال. أعد صياغته بكلمات أخرى.',
@@ -122,8 +116,6 @@ export const scanMessages = {
     photoNone: 'الصورة غير معروضة الآن.',
     verseReference: (surah: string, ayah: number) => `${surah}، الآية ${ayah}`,
     hadithReference: (book: string, number: string) => `${book}، رقم ${number}`,
-    rulingSource: (scholar: string, book: string, page: string) => `${scholar}، ${book}، ${page}`,
-    awaitingTitle: 'الحديث بانتظار الحكم',
     explanation: 'شرح تبصرة',
     simulation: 'محاكاة',
     why: {

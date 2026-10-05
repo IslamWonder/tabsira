@@ -11,19 +11,14 @@ describe('PostEvidence', () => {
     expect(screen.getByText('تستند هذه البصيرة إلى الحديث وحده.')).toBeInTheDocument();
   });
 
-  it("gives the editor's classification, or says no ruling is recorded yet", () => {
+  it('shows a hadith with no ruling, no link and no verified chip', () => {
     const [hadith] = POST.insight.hadith;
     if (hadith === undefined) {
       throw new Error('the fixture post cites a hadith');
     }
-    const { unmount } = render(<PostEvidence insight={{ quran: [], hadith: [hadith] }} />);
-    expect(screen.queryByText('لم نسجّل حكم الدرر لهذا الحديث بعد؛ تحقّق منه في الدرر.')).toBeNull();
-    unmount();
-    // DECISIONS.md 58: a hadith of the enriched file may show before any ruling.
-    render(<PostEvidence insight={{ quran: [], hadith: [{ ...hadith, classification: null }] }} />);
-    expect(
-      screen.getByText('لم نسجّل حكم الدرر لهذا الحديث بعد؛ تحقّق منه في الدرر.')
-    ).toBeInTheDocument();
+    render(<PostEvidence insight={{ quran: [], hadith: [hadith] }} />);
+    expect(screen.queryByText(/الدرر|تصنيف/)).toBeNull();
+    expect(screen.queryByRole('link')).toBeNull();
     expect(screen.queryByText('نص موثّق من مصدره')).toBeNull();
     expect(document.querySelector('[data-scripture="hadith"]')?.textContent).toBe(HADITH_TEXT);
   });

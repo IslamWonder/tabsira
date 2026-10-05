@@ -6,8 +6,7 @@ occasion: first the other source anchors of the completed insight's own unit
 (another text of the same weight), then the anchors of the units of the same
 domain that name this unit as their prerequisite (a deeper meaning on the same
 road). A candidate is kept only when the store holds its text, a hadith only
-when it is eligible (its editor's ruling is صحيح or حسن, or it has no ruling and
-belongs to the enriched Sunnah file, decision 58), and never a text the insight showed or
+when no editor ruled it out (decision 64), and never a text the insight showed or
 the learner has already met. A range of verses is skipped: a treasure is one
 whole text. An insight with no valid candidate gets no treasure.
 

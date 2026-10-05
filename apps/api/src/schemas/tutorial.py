@@ -27,8 +27,7 @@ class TutorialInsightOut(BaseModel):
     relation_label: str
     quran: InsightQuran
     hadith: InsightHadith | None
-    hadith_status: Literal["shown", "awaiting_verification", "none"]
-    notice: str | None = Field(description="Set while the hadith waits for its dorar.net ruling")
+    hadith_status: Literal["shown", "none"]
     pair_complete: bool
     explanation_tag: str
     explanation: list[ExplanationOut]

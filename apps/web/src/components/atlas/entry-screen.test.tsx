@@ -29,11 +29,8 @@ describe('EntryScreen', () => {
     expect(hadith?.textContent).toBe(HADITH_TEXT);
     expect(sha256(quran?.textContent ?? '')).toBe(ENTRY.quran[0]?.sha256);
     expect(sha256(hadith?.textContent ?? '')).toBe(ENTRY.hadith[0]?.sha256);
-    expect(screen.getByRole('link', { name: /تحقق في الدرر/ })).toHaveAttribute(
-      'href',
-      'https://dorar.net/'
-    );
-    expect(screen.getByText('تصنيف المحرّر لحكم الدرر: صحيح')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /تحقق في الدرر/ })).toBeNull();
+    expect(screen.queryByText(/الدرر/)).toBeNull();
     expect(screen.getByText('[موقع تقريبي ضمن نحو 1000 م]')).toBeInTheDocument();
     expect(screen.getByText(/النقطة مركز منطقة تقريبية/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '[تونس]، [تونس البلد]' })).toHaveAttribute(

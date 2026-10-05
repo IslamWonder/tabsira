@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, status
 
-from src.deps import CurrentUser, DbDep, PhotoStoreDep
+from src.deps import CurrentUser, DbDep, PhotoStoreDep, SettingsDep, UngatedCurrentUser
 from src.schemas.profile import ConsentIn, ConsentOut, ProfileOut, ProfilePatch
-from src.services import profile_service
+from src.services import legal_service, profile_service
 
 router = APIRouter(tags=["profile"])
 
@@ -46,7 +46,11 @@ async def patch_profile(
     summary="Record an answer to a consent question",
 )
 async def post_consent(
-    body: ConsentIn, user: CurrentUser, db: DbDep, photos: PhotoStoreDep
+    body: ConsentIn,
+    user: UngatedCurrentUser,
+    db: DbDep,
+    settings: SettingsDep,
+    photos: PhotoStoreDep,
 ) -> ConsentOut:
     """
     Append the answer to the user's consent history, and update the matching switch.
@@ -54,7 +58,12 @@ async def post_consent(
     A consent is withdrawn by recording the same kind with `granted` false. The
     history is never edited. Withdrawing the photo consent deletes the kept photos
     first; 503 STORAGE_UNAVAILABLE, with nothing recorded, when the store is down.
+
+    Withdrawing needs no acceptance of the current texts, as taking an insight off public view
+    does not; giving a consent does (403 `legal_acceptance_required`).
     """
+    if body.granted and await legal_service.acceptance_required(db, settings, user.id):
+        raise legal_service.acceptance_error(settings, 403)
     consent = await profile_service.record_consent(
         db, user.id, body.kind, body.version, granted=body.granted, photos=photos
     )

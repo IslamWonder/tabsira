@@ -85,10 +85,11 @@ DEFAULT_PRIVACY_EMAIL = "privacy@tabsira.me"
 # challenge). The site key shape is the one the web app accepts (apps/web/src/config/server-env.ts).
 TURNSTILE_TEST_KEY_PREFIXES = ("1x", "2x", "3x")
 TURNSTILE_SITE_KEY_PATTERN = re.compile(r"[0-9A-Za-z_-]{8,64}")
-DEFAULT_LEGAL_VERSION = "2026-10-05T16:00Z"
+DEFAULT_LEGAL_VERSION = "2026-10-05T18:00Z"
 # The privacy policy moved on with the per-account photo folder (15:00Z), then both texts with
-# «كفالة بصيرة» (decision 60): an entry's place widens, and a sponsor is named.
-DEFAULT_PRIVACY_VERSION = "2026-10-05T16:00Z"
+# «كفالة بصيرة» (decision 60): an entry's place widens, and a sponsor is named; and with
+# decision 64 (one guest scan, the full profile, the consented full name, shown by name).
+DEFAULT_PRIVACY_VERSION = "2026-10-05T18:00Z"
 DEFAULT_LANGUAGE = "ar"
 
 # A cookie name: RFC 6265 token characters we actually use. `__Host-` is refused

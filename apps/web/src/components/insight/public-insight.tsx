@@ -1,7 +1,6 @@
 import { SparkIcon } from '@/components/icons';
 import { LinkButton } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
-import { Notice } from '@/components/ui/notice';
 import { DISPLAY_TIME_ZONE, formatDay } from '@/lib/dates';
 import type { PublicInsight } from '@/lib/public-insight';
 import { messages } from '@/messages';
@@ -16,7 +15,9 @@ function Author({ author }: { author: NonNullable<PublicInsight['author']> }) {
   return (
     <p className="m-0 flex flex-wrap items-center gap-x-2 text-[0.9375rem] text-fg-soft">
       <span className="sr-only">{T.authorLabel}:</span>
-      <span className="font-medium text-fg">{author.public_name}</span>
+      {author.public_name === null ? null : (
+        <span className="font-medium text-fg">{author.public_name}</span>
+      )}
       <span dir="ltr" className="text-fg-muted">
         @{author.handle}
       </span>
@@ -89,11 +90,6 @@ export function PublicInsightPage({ insight }: { insight: PublicInsight }) {
           </p>
         </header>
         <InsightEvidence insight={insight} />
-        {insight.notice !== null && insight.hadith_status !== 'awaiting_verification' ? (
-          <div role="note">
-            <Notice tone="info">{insight.notice}</Notice>
-          </div>
-        ) : null}
         <ExplanationSections tag={insight.explanation_tag} parts={insight.explanation} />
         {insight.small_step === null ? null : <SmallStep step={insight.small_step} />}
         {/* The share action and the share image of task 09.3 go here, after the content and before the invitation. */}

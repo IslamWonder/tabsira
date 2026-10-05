@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LANDING, fragmentToken, googleStartUrl, safeNextPath } from './links';
+import {
+  DEFAULT_LANDING,
+  fragmentToken,
+  googleStartUrl,
+  safeNextPath,
+  signUpReason,
+} from './links';
 
 describe('safeNextPath', () => {
   it('keeps a path inside the app', () => {
@@ -37,5 +43,14 @@ describe('fragmentToken', () => {
 describe('googleStartUrl', () => {
   it('starts the sign-in at the API with where to land', () => {
     expect(googleStartUrl('/me')).toBe('https://api.tabsira.test/auth/google/start?next=%2Fme');
+  });
+});
+
+describe('signUpReason', () => {
+  it('keeps the two reasons a guest is sent to sign up and drops the rest', () => {
+    expect(signUpReason('scan')).toBe('scan');
+    expect(signUpReason(['chat', 'scan'])).toBe('chat');
+    expect(signUpReason('<b>')).toBeUndefined();
+    expect(signUpReason(undefined)).toBeUndefined();
   });
 });

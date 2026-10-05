@@ -23,9 +23,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import clock, security
 from src.config import Settings
 from src.errors import AppError, ErrorCode
+from src.models.consent import ConsentKind
 from src.models.login_attempt import AttemptKind
+from src.models.profile import Profile
 from src.models.user import GOOGLE, OAuthAccount, User
-from src.schemas.auth import DISPLAY_NAME_MAX, UserOut
+from src.schemas.auth import DISPLAY_NAME_MAX, UserOut, checked_display_name
 from src.services import legal_service, profile_service, rate_limit, session_service
 from src.services.google_oidc import GoogleIdentity
 
@@ -65,6 +67,9 @@ async def describe(db: AsyncSession, settings: Settings, user: User) -> UserOut:
     providers = (
         await db.scalars(select(OAuthAccount.provider).where(OAuthAccount.user_id == user.id))
     ).all()
+    completed_at = await db.scalar(
+        select(Profile.profile_completed_at).where(Profile.user_id == user.id)
+    )
     return UserOut(
         id=user.id,
         email=user.email,
@@ -75,6 +80,8 @@ async def describe(db: AsyncSession, settings: Settings, user: User) -> UserOut:
         providers=sorted(providers),
         created_at=user.created_at,
         legal_acceptance_required=await legal_service.acceptance_required(db, settings, user.id),
+        profile_completed=completed_at is not None,
+        public_full_name=user.public_full_name,
     )
 
 
@@ -93,13 +100,15 @@ async def signup(
     ip_hash: str,
     accepted_terms_version: str,
     accepted_privacy_version: str,
+    public_full_name: bool = False,
 ) -> User:
     """
     Create an account with an e-mail address and a password, and its empty profile.
 
     The versions of the terms and the privacy policy the person accepted must be the
     current ones; that is checked first, so a sign-up that did not accept creates and
-    counts nothing. The acceptance is recorded in the same transaction as the account.
+    counts nothing. The acceptance is recorded in the same transaction as the account, and so
+    is the consent to show the full name when the box was ticked (decision 64).
     """
     legal_service.require_current(settings, accepted_terms_version, accepted_privacy_version)
     normalized = normalize_email(email)
@@ -127,7 +136,74 @@ async def signup(
         raise taken from None
     await profile_service.ensure_profile(db, user.id)
     legal_service.record_acceptance(db, settings, user.id)
+    # The choice is recorded either way: an unticked box is a recorded refusal (decision 64).
+    await profile_service.record_consent(
+        db,
+        user.id,
+        ConsentKind.PUBLIC_FULL_NAME,
+        settings.privacy_version,
+        granted=public_full_name,
+    )
     return user
+
+
+def _name_required() -> AppError:
+    return AppError(
+        ErrorCode.VALIDATION_ERROR,
+        "Give your real full name to accept.",
+        status_code=422,
+    )
+
+
+async def record_name_choices(
+    db: AsyncSession,
+    settings: Settings,
+    user: User,
+    *,
+    display_name: str | None,
+    public_full_name: bool | None,
+    acceptance_pending: bool,
+) -> None:
+    """
+    Take the real full name and the answer to the full-name consent, after sign-up (Google).
+
+    Each is optional, with one rule: an account with no name (Google gave none, or its name was
+    reset after a takeover) must give one. A name is taken only while the acceptance is pending
+    or the name is empty, so a signed-in session cannot rename the account at will. An answer,
+    true or false, is appended to the consent history and mirrored on the account.
+    """
+    if display_name is None and not user.display_name:
+        raise _name_required()
+    if display_name is not None:
+        if not (acceptance_pending or not user.display_name):
+            raise AppError(
+                ErrorCode.CONFLICT,
+                "The name can be given only while the acceptance is pending.",
+                status_code=409,
+            )
+        user.display_name = display_name
+    if public_full_name is not None:
+        await profile_service.record_consent(
+            db,
+            user.id,
+            ConsentKind.PUBLIC_FULL_NAME,
+            settings.privacy_version,
+            granted=public_full_name,
+        )
+
+
+async def forget_name(db: AsyncSession, user: User, *, display_name: str) -> None:
+    """
+    Take back the name and the consent of an account whose holder may not be its owner.
+
+    When an address nobody proved is taken over (Google, a password reset), whoever registered
+    it first chose the name and the consent to show it: the real owner is asked again.
+    """
+    if user.public_full_name:
+        await profile_service.record_consent(
+            db, user.id, ConsentKind.PUBLIC_FULL_NAME, "withdrawn", granted=False
+        )
+    user.display_name = display_name
 
 
 async def login(
@@ -175,9 +251,17 @@ class SignInRefusedError(Exception):
         self.code = code
 
 
-def _google_display_name(identity: GoogleIdentity, email: str) -> str:
-    name = " ".join((identity.name or "").split())[:DISPLAY_NAME_MAX]
-    return name or email.split("@", maxsplit=1)[0][:DISPLAY_NAME_MAX]
+def google_display_name(identity: GoogleIdentity) -> str:
+    """
+    Return Google's name, cleaned as a typed one is, or "" when it fails the checks or is absent.
+
+    Never the e-mail address or a part of it: the name may be shown publicly, so an account with
+    none is asked for one at the acceptance (`record_name_choices`).
+    """
+    try:
+        return checked_display_name(" ".join((identity.name or "").split())[:DISPLAY_NAME_MAX])
+    except ValueError:
+        return ""
 
 
 async def sign_in_with_google(db: AsyncSession, identity: GoogleIdentity) -> User:
@@ -217,7 +301,7 @@ async def _link_or_create(db: AsyncSession, identity: GoogleIdentity) -> User:
         user = User(
             email=email,
             password_hash=None,
-            display_name=_google_display_name(identity, email),
+            display_name=google_display_name(identity),
             email_verified_at=now,
         )
     elif not can_sign_in(user):
@@ -229,6 +313,7 @@ async def _link_or_create(db: AsyncSession, identity: GoogleIdentity) -> User:
             await session_service.revoke_every_session(db, user.id)
             # What the stranger accepted is not the owner's acceptance.
             legal_service.record_withdrawal(db, user.id)
+            await forget_name(db, user, display_name=google_display_name(identity))
         user.email_verified_at = now
     try:
         async with db.begin_nested():

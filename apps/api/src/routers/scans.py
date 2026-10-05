@@ -58,6 +58,7 @@ from src.schemas.scan import (
     ScanImageOut,
     ScanOut,
 )
+from src.services import account_gate
 
 router = APIRouter(prefix="/scans", tags=["scans"])
 
@@ -272,7 +273,6 @@ async def describe(db: AsyncSession, scan: Scan, redis: RedisDep) -> ScanOut:
             )
             for insight in insights
         ],
-        awaiting_verification=len(scan.awaiting_ruling),
         events_url=f"/scans/{scan.id}/events",
         created_at=scan.created_at,
         finished_at=scan.finished_at,
@@ -313,7 +313,13 @@ async def create_scan(
     queue: QueueDep,
     fetch: FetcherDep,
 ) -> ScanOut:
-    """Check the photo, keep it for an hour, queue the scan and answer at once."""
+    """
+    Check the photo, keep it for an hour, queue the scan and answer at once.
+
+    403 `account_required` for a guest that holds its one scan, 403 `profile_required` for an
+    account that has not completed its profile (decision 64), both before the photo is read.
+    """
+    await account_gate.require_may_scan(db, owner)
     data, source = await _photo_bytes(request, settings, fetch)
     image = await _validated(data, settings)
     scan = Scan(
@@ -479,6 +485,7 @@ async def focus_scan(
 ) -> ScanOut:
     """Run the engine again on the thing the learner chose or the box they drew."""
     scan = await _owned_scan(db, owner, scan_id)
+    await account_gate.require_profile(db, owner)
     _ensure_rerunnable(scan)
     if body.entity_id is not None:
         scene = SceneAnalysis.model_validate(scan.scene)
@@ -509,6 +516,7 @@ async def clarify_scan(
 ) -> ScanOut:
     """Run the engine again with the learner's answer."""
     scan = await _owned_scan(db, owner, scan_id)
+    await account_gate.require_profile(db, owner)
     _ensure_rerunnable(scan)
     if scan.outcome is not ScanOutcome.NEEDS_CLARIFICATION:
         raise AppError(ErrorCode.CONFLICT, "The scan asked no question.", status_code=409)

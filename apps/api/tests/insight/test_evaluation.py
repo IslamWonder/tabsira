@@ -184,7 +184,6 @@ async def test_scenes_are_run_checked_and_stopped_at_the_spend_cap(store, monkey
     ok = EngineResult(
         status=EngineStatus.OK,
         insights=[insight(), leaking],
-        awaiting_ruling=[HadithRef(collection="bukhari", number="1032")],
         stage_ms={EngineStage.SEARCHING: 120},
     )
 
@@ -256,7 +255,6 @@ def _evaluation() -> EvaluationResult:
                     "leaks": [],
                     "hoped": ["Q:30:50"],
                     "hoped_found": ["Q:30:50"],
-                    "awaiting_ruling": 1,
                     "clarification_question": None,
                     "vision_ms": 4000,
                     "stage_ms": {"understanding": 3000},

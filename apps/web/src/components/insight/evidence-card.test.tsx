@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { EvidenceCard } from './evidence-card';
 import type { HadithSpan } from './hadith-segments';
@@ -77,8 +77,6 @@ describe('EvidenceCard, Sunnah', () => {
         text={text}
         spans={spans}
         reference="[الكتاب · الرقم]"
-        sourceHref="https://example.org/source"
-        verifyHref="https://dorar.net/"
         className="extra"
       />
     );
@@ -129,76 +127,12 @@ describe('EvidenceCard, Sunnah', () => {
     }
   });
 
-  it('links to its source and to its ruling on dorar.net', () => {
+  it('shows its heading and class, and no link, ruling or verified chip', () => {
     const card = renderSunnah(SPANS);
     expect(card).toHaveClass('extra');
     expect(within(card).getByRole('heading', { level: 3 })).toHaveTextContent('السنة');
-    expect(within(card).getByRole('link', { name: /افتح المصدر/ })).toHaveAttribute(
-      'href',
-      'https://example.org/source'
-    );
-    const verify = within(card).getByRole('link', { name: /تحقق في الدرر/ });
-    expect(verify).toHaveAttribute('href', 'https://dorar.net/');
-    expect(verify).toHaveAccessibleName(/يفتح في نافذة جديدة/);
-  });
-});
-
-describe('EvidenceCard, the ruling', () => {
-  function renderRuled(extra: { ruling?: string; rulingSource?: string }) {
-    render(
-      <EvidenceCard
-        variant="sunnah"
-        text={HADITH}
-        reference="[الكتاب · الرقم]"
-        sourceHref="https://example.org/source"
-        verifyHref="https://dorar.net/"
-        {...extra}
-      />
-    );
-    return screen.getByRole('article', { name: 'السنة' });
-  }
-
-  it('gives the ruling as recorded, and under it who gave it and where', () => {
-    const card = renderRuled({ ruling: '[الحكم]', rulingSource: '[المحدّث، الكتاب، الصفحة]' });
-    expect(within(card).getByText('حكم الدرر: [الحكم]')).toBeInTheDocument();
-    expect(within(card).getByText('[المحدّث، الكتاب، الصفحة]')).toBeInTheDocument();
-  });
-
-  it('gives the ruling alone when its source is not known, and says so when there is none', () => {
-    const alone = renderRuled({ ruling: '[الحكم]' });
-    expect(within(alone).queryByText(/المحدّث/)).toBeNull();
-    expect(
-      within(alone).queryByText('لم نسجّل حكم الدرر لهذا الحديث بعد؛ تحقّق منه في الدرر.')
-    ).toBeNull();
-    cleanup();
-    // DECISIONS.md 58: a hadith may show before any ruling; the card never invents one.
-    const none = renderRuled({});
-    expect(within(none).queryByText(/^حكم الدرر:/)).toBeNull();
-    expect(
-      within(none).getByText('لم نسجّل حكم الدرر لهذا الحديث بعد؛ تحقّق منه في الدرر.')
-    ).toBeInTheDocument();
-  });
-});
-
-describe("EvidenceCard, Sunnah with the editor's classification only", () => {
-  it("labels the classification as the editor's, keeps the dorar link, and omits the missing source link", () => {
-    render(
-      <EvidenceCard
-        variant="sunnah"
-        headingLevel={3}
-        text="[نص الحديث]"
-        reference="[الكتاب · الرقم]"
-        verifyHref="https://dorar.net/"
-        classification="[تصنيف]"
-      />
-    );
-    const card = screen.getByRole('article', { name: 'السنة' });
-    expect(within(card).getByText('تصنيف المحرّر لحكم الدرر: [تصنيف]')).toBeInTheDocument();
-    expect(within(card).queryByText(/^حكم الدرر:/)).toBeNull();
-    expect(within(card).getByRole('link', { name: /تحقق في الدرر/ })).toHaveAttribute(
-      'href',
-      'https://dorar.net/'
-    );
-    expect(within(card).queryByRole('link', { name: /افتح المصدر/ })).toBeNull();
+    expect(within(card).queryByRole('link')).toBeNull();
+    expect(within(card).queryByText(/الدرر|حكم|تصنيف/)).toBeNull();
+    expect(within(card).queryByText('نص موثّق من مصدره')).toBeNull();
   });
 });

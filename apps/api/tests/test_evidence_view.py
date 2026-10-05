@@ -53,31 +53,30 @@ async def test_a_reference_the_store_does_not_hold_is_left_out_and_never_replace
     assert set(found.hadith) == {("bukhari", "1")}
 
 
-async def test_a_hadith_is_read_as_stored_and_carries_its_ruling_and_a_verification_link(
-    db_session, scripture
-):
+async def test_a_hadith_is_read_as_stored_with_no_ruling_or_link_attached(db_session, scripture):
     found = await load_evidence(db_session, [], [("bukhari", "1")])
 
     hadith = found.hadith[("bukhari", "1")]
     assert hadith.text == hadith_text("bukhari", 1)
     assert hadith.sha256 == sha256_hex(hadith.text)
-    assert hadith.classification is HadithClassification.SAHIH
     assert hadith.collection_name
-    assert hadith.verification_url.startswith("https://dorar.net/hadith/search?")
+    assert not hasattr(hadith, "classification")
+    assert not hasattr(hadith, "verification_url")
 
 
-async def test_a_hadith_without_a_ruling_or_with_a_weak_one_is_not_shown(db_session, scripture):
-    # bukhari 8 is ضعيف, muslim 113 has no ruling and is not one of the enriched file's hadiths.
+async def test_an_unruled_hadith_is_shown_and_a_weak_one_is_not(db_session, scripture):
+    # bukhari 8 is ضعيف; muslim 113 has no ruling, so it is shown as it is (decision 64).
     found = await load_evidence(db_session, [], [("bukhari", "8"), ("muslim", "113")])
 
-    assert found.hadith == {}
+    assert set(found.hadith) == {("muslim", "113")}
+    hadith = found.hadith[("muslim", "113")]
+    assert hadith.text == hadith_text("muslim", 113)
+    assert hadith.sha256 == sha256_hex(hadith.text)
 
 
-async def test_a_hadith_of_the_enriched_file_shows_without_a_ruling_and_says_so(
+async def test_the_enriched_file_neither_shows_a_hadith_nor_rescues_a_ruled_out_one(
     db_session, scripture
 ):
-    # muslim 113 has no ruling; once it is one of the enriched file's hadiths it shows (decision 58),
-    # with no classification, while bukhari 8, ruled ضعيف, stays out even when enriched.
     for collection, number in (("muslim", "113"), ("bukhari", "8")):
         stored = await find_hadith(db_session, collection, number)
         await enrich_hadith(db_session, stored.id, f"{collection}{number}")
@@ -85,10 +84,6 @@ async def test_a_hadith_of_the_enriched_file_shows_without_a_ruling_and_says_so(
     found = await load_evidence(db_session, [], [("bukhari", "8"), ("muslim", "113")])
 
     assert set(found.hadith) == {("muslim", "113")}
-    hadith = found.hadith[("muslim", "113")]
-    assert hadith.classification is None
-    assert hadith.text == hadith_text("muslim", 113)
-    assert hadith.sha256 == sha256_hex(hadith.text)
 
 
 async def test_the_latest_ruling_decides_in_both_directions(db_session, scripture):
@@ -98,4 +93,9 @@ async def test_the_latest_ruling_decides_in_both_directions(db_session, scriptur
     found = await load_evidence(db_session, [], [("bukhari", "1"), ("bukhari", "8")])
 
     assert set(found.hadith) == {("bukhari", "8")}
-    assert found.hadith[("bukhari", "8")].classification is HadithClassification.HASAN
+
+
+async def test_hadith_references_the_store_does_not_hold_find_nothing(db_session, scripture):
+    found = await load_evidence(db_session, [], [("tirmidhi", "5"), ("bukhari", "999999")])
+
+    assert found.hadith == {}

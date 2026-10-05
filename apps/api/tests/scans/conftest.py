@@ -258,9 +258,12 @@ async def other(flow_app: FastAPI) -> AsyncIterator[AsyncClient]:
 
 
 async def make_account(
-    maker: async_sessionmaker[AsyncSession], email: str = "reader@example.com"
+    maker: async_sessionmaker[AsyncSession],
+    email: str = "reader@example.com",
+    *,
+    profile_done: bool = True,
 ) -> User:
-    from src import security
+    from src import clock, security
     from src.services import legal_service, profile_service
 
     async with maker() as session:
@@ -271,7 +274,10 @@ async def make_account(
         )
         session.add(user)
         await session.flush()
-        await profile_service.ensure_profile(session, user.id)
+        profile = await profile_service.ensure_profile(session, user.id)
+        if profile_done:
+            # The scan and the chat need a completed profile (decision 64).
+            profile.profile_completed_at = clock.utcnow()
         # The account has accepted the texts in force: these tests are about the scans.
         legal_service.record_acceptance(session, Settings(_env_file=None), user.id)
         await session.commit()

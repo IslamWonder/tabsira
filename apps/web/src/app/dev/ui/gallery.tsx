@@ -2,7 +2,6 @@
 
 import { type ReactNode, useId, useState } from 'react';
 import { LegalConsent } from '@/components/account/legal-consent';
-import { ProfileQuestions } from '@/components/account/profile-questions';
 import { SaveInvitation } from '@/components/account/save-invitation';
 import { AppNav } from '@/components/app/app-nav';
 import { Brand } from '@/components/app/brand';
@@ -126,9 +125,6 @@ function SunnahSample() {
       text={HADITH_TEXT}
       spans={HADITH_SPANS}
       reference={P.hadithReference}
-      sourceHref="https://dorar.net/"
-      verifyHref="https://dorar.net/"
-      ruling={P.ruling}
     />
   );
 }
@@ -367,11 +363,7 @@ function Showcase({ theme }: { theme: Theme }) {
       </Section>
 
       <Section title={messages.dev.sections.invitation}>
-        <SaveInvitation returnTo="/" onContinueAsGuest={() => setReceived(S.guest)} />
-      </Section>
-
-      <Section title={messages.dev.sections.questions}>
-        <ProfileQuestions onAnswer={async () => true} onFinish={() => undefined} />
+        <SaveInvitation returnTo="/" />
       </Section>
 
       <Section title={messages.dev.sections.buttons}>

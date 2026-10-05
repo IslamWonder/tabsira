@@ -6,12 +6,15 @@ export type FieldError = components['schemas']['FieldError'];
 /**
  * Every way a call can fail: an error code the API answered, or no answer at
  * all. LEGAL_ACCEPTANCE_REQUIRED is decision 35's refusal, named here until
- * the API that sends it is in the generated schema. TURNSTILE_FAILED is the
+ * the API that sends it is in the generated schema. ACCOUNT_REQUIRED and PROFILE_REQUIRED are
+ * decision 64's two 403s (the codes are compared in capitals, see `attempt`). TURNSTILE_FAILED is the
  * 403 of a missing or bad Turnstile token (decision 56), named the same way.
  */
 export type FailureCode =
   | ApiErrorCode
   | 'LEGAL_ACCEPTANCE_REQUIRED'
+  | 'ACCOUNT_REQUIRED'
+  | 'PROFILE_REQUIRED'
   | 'TURNSTILE_FAILED'
   | 'NETWORK';
 

@@ -2,36 +2,28 @@
 
 import Link from 'next/link';
 import { type FormEvent, useEffect, useState } from 'react';
-import { useSession } from '@/account/session';
+import { recordFullNameConsent } from '@/account/profile';
+import { setSignedIn, useSession } from '@/account/session';
 import { MeSection, SubHeading } from '@/components/me/me-section';
 import { SaveStatus, useSaveState } from '@/components/me/save-status';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
+import { SwitchRow } from '@/components/ui/switch-row';
 import { TextField } from '@/components/ui/text-field';
 import { failureMessage } from '@/lib/api/failure-message';
-import { fieldRefused } from '@/lib/api/result';
 import { messages } from '@/messages';
 import { listBlocks, putIdentity, setBlock } from '@/social/api';
-import {
-  cleanHandle,
-  cleanPublicName,
-  HANDLE_MAX,
-  handleProblem,
-  PUBLIC_NAME_MAX,
-  profilePath,
-  publicNameProblem,
-} from '@/social/identity';
+import { cleanHandle, HANDLE_MAX, handleProblem, profilePath } from '@/social/identity';
 import { hasIdentity, setIdentity, useIdentity } from '@/social/identity-store';
 import type { Member } from '@/social/types';
 
 const I = messages.community.identity;
 const B = messages.community.block;
 
-/** Choose or change the handle and public name; the account's own name is never offered. */
+/** Choose or change the handle; the full name is shown only by the consent switch below (decision 64). */
 export function IdentityForm() {
   const identity = useIdentity();
   const [handle, setHandle] = useState('');
-  const [name, setName] = useState('');
   const [touched, setTouched] = useState(false);
   const [taken, setTaken] = useState(false);
   const save = useSaveState();
@@ -40,22 +32,20 @@ export function IdentityForm() {
   useEffect(() => {
     if (current !== null) {
       setHandle(current.handle);
-      setName(current.public_name);
     }
   }, [current]);
 
   const handleError = touched ? handleProblem(handle) : null;
-  const nameError = touched ? publicNameProblem(name) : null;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setTouched(true);
     setTaken(false);
-    if (handleProblem(handle) !== null || publicNameProblem(name) !== null) {
+    if (handleProblem(handle) !== null) {
       return;
     }
     await save.run(async () => {
-      const result = await putIdentity(cleanHandle(handle), cleanPublicName(name));
+      const result = await putIdentity(cleanHandle(handle));
       if (result.ok) {
         setIdentity(result.data);
         return null;
@@ -65,7 +55,7 @@ export function IdentityForm() {
         return I.taken;
       }
       if (result.code === 'VALIDATION_ERROR') {
-        return fieldRefused(result, 'handle') ? I.problems.handleShape : I.problems.nameInvalid;
+        return I.problems.handleShape;
       }
       return failureMessage(result);
     });
@@ -83,15 +73,6 @@ export function IdentityForm() {
         maxLength={HANDLE_MAX + 2}
         autoComplete="off"
         spellCheck={false}
-      />
-      <TextField
-        label={I.name}
-        hint={I.nameHint}
-        value={name}
-        onChange={(event) => setName(event.target.value)}
-        error={nameError}
-        maxLength={PUBLIC_NAME_MAX + 10}
-        autoComplete="off"
       />
       <div className="flex flex-wrap items-center gap-4">
         <Button type="submit" disabled={save.busy}>
@@ -168,7 +149,9 @@ export function BlocksList() {
           {load.members.map((member) => (
             <li key={member.handle} className="flex flex-wrap items-center justify-between gap-2">
               <span className="flex flex-wrap items-baseline gap-x-2">
-                <span className="font-medium text-fg">{member.public_name}</span>
+                {member.public_name === null ? null : (
+                  <span className="font-medium text-fg">{member.public_name}</span>
+                )}
                 <bdi className="text-[0.875rem] text-fg-muted">@{member.handle}</bdi>
               </span>
               <Button variant="ghost" onClick={() => void unblock(member)}>
@@ -190,6 +173,37 @@ export function BlocksList() {
   );
 }
 
+/** The separate, unticked-until-given consent to show the real full name (decision 64). */
+function FullNameSwitch() {
+  const session = useSession();
+  const save = useSaveState();
+  if (session.status !== 'signed-in') {
+    return null;
+  }
+  const { user } = session;
+  const change = (granted: boolean) =>
+    save.run(async () => {
+      const result = await recordFullNameConsent(granted);
+      if (!result.ok) {
+        return I.fullName.failed;
+      }
+      setSignedIn({ ...user, public_full_name: granted });
+      return null;
+    });
+  return (
+    <div className="flex flex-col gap-2">
+      <SwitchRow
+        label={I.fullName.label}
+        hint={I.fullName.hint}
+        checked={user.public_full_name}
+        onChange={change}
+        busy={save.busy}
+      />
+      <SaveStatus state={save.state} />
+    </div>
+  );
+}
+
 /** The public-identity part of the profile page: the identity form, and the blocks the person holds. */
 export function IdentitySection() {
   const session = useSession();
@@ -203,6 +217,7 @@ export function IdentitySection() {
       ) : (
         <p className="m-0 text-fg-soft leading-[1.85]">{I.verify}</p>
       )}
+      <FullNameSwitch />
       <BlocksList />
     </MeSection>
   );

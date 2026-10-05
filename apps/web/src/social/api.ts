@@ -179,7 +179,7 @@ export function setBlock(handle: string, blocked: boolean): Promise<Result<unkno
   );
 }
 
-export function listBlocks(): Promise<Result<{ handle: string; public_name: string }[]>> {
+export function listBlocks(): Promise<Result<{ handle: string; public_name: string | null }[]>> {
   return attempt(api.GET('/blocks'));
 }
 
@@ -187,6 +187,6 @@ export function getIdentity(): Promise<Result<PublicIdentity>> {
   return attempt(api.GET('/me/public-identity'));
 }
 
-export function putIdentity(handle: string, publicName: string): Promise<Result<PublicIdentity>> {
-  return attempt(api.PUT('/me/public-identity', { body: { handle, public_name: publicName } }));
+export function putIdentity(handle: string): Promise<Result<PublicIdentity>> {
+  return attempt(api.PUT('/me/public-identity', { body: { handle } }));
 }

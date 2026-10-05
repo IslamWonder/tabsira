@@ -48,8 +48,6 @@ class EngineStatus(StrEnum):
     - OK: at least one insight, each traceable to a scene clue, an intent and verified texts;
     - NO_RELEVANT_EVIDENCE: the searches ran and no text carried a scene-supported meaning;
     - NEEDS_CLARIFICATION: the meaning depends on something the photo cannot show;
-    - INCOMPLETE_EVIDENCE_PAIR: evidence was found but cannot be shown yet (the only fitting
-      hadith waits for an editor's ruling, and no verse stands beside it);
     - SOURCE_UNAVAILABLE: the store did not answer;
     - CORPUS_UNAVAILABLE: the store answered but holds no searchable corpus (no vectors of
       the configured embedding model, no concepts): searching would be a lie;
@@ -60,7 +58,6 @@ class EngineStatus(StrEnum):
     OK = "ok"
     NO_RELEVANT_EVIDENCE = "no_relevant_evidence"
     NEEDS_CLARIFICATION = "needs_clarification"
-    INCOMPLETE_EVIDENCE_PAIR = "incomplete_evidence_pair"
     SOURCE_UNAVAILABLE = "source_unavailable"
     CORPUS_UNAVAILABLE = "corpus_unavailable"
     RETRIEVAL_ERROR = "retrieval_error"
@@ -141,6 +138,7 @@ class LearnerContext(FrozenModel):
     knowledge_level: str = "unknown"
     age_range: str = "unknown"
     religious_background: str = "unknown"
+    gender: str = "unknown"
     personalization_enabled: bool = True
     seen_quran: list[QuranRef] = Field(default_factory=list)
     seen_hadith: list[HadithRef] = Field(default_factory=list)
@@ -160,8 +158,6 @@ class EngineResult(FrozenModel):
     status: EngineStatus
     insights: list[ProposedInsight] = Field(default_factory=list)
     clarification_question: str | None = None
-    # Hadith the engine wanted but that have no editor ruling yet (decision 18).
-    awaiting_ruling: list[HadithRef] = Field(default_factory=list)
     stage_ms: dict[EngineStage, int] = Field(default_factory=dict)
     # The reviewable record of the run: intents (the planner's guarded words about the scene
     # and its queries), candidate ids with their channels, verdicts, reasons and the final

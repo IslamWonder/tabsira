@@ -3,7 +3,7 @@ import { ProfileScreen } from '@/components/community/profile-screen';
 import { featureEnabled } from '@/config/server-env';
 import { pageMetadata } from '@/lib/seo';
 import { messages } from '@/messages';
-import { handleProblem, profilePath } from '@/social/identity';
+import { handleProblem, memberLabel, profilePath } from '@/social/identity';
 import { profileOnServer } from '@/social/server';
 
 export const dynamic = 'force-dynamic';
@@ -31,10 +31,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       noindex: true,
     });
   }
+  const label = memberLabel(result.data);
   return pageMetadata({
     path: profilePath(result.data.handle),
-    title: result.data.public_name,
-    description: messages.community.profileDescription(result.data.public_name),
+    title: label,
+    description: messages.community.profileDescription(label),
     type: 'website',
     // The sitemap lists a profile only once it has a public post; results follow the same rule.
     noindex: result.data.posts_count === 0,

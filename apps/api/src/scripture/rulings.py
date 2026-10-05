@@ -7,15 +7,12 @@ page, the dorar page address, and the editor's reading of it as one of five
 classifications. Rulings are only ever added (the database refuses to change
 or remove one); the latest is the one in force.
 
-Eligibility as evidence: a hadith with a ruling is eligible when that ruling
-reads صحيح or حسن, and never otherwise. A hadith with no ruling yet is eligible
-when it is one of the hadiths of the enriched Sunnah file (decision 58): a record
-of the owners' 3920 (`hadith_signals`) links to it as its best match, at a
-coverage of at least ENRICHED_MIN_COVERAGE and in a book the record itself cites,
-and no grader of the dataset calls it weak. Any other hadith the pipeline wanted
-waits in a queue ordered by demand, and the insight shows its verse alone
-meanwhile. A dataset grade never makes a hadith eligible; a weak one only keeps
-an unruled hadith waiting (decision 58 amends decision 17).
+Eligibility as evidence (decision 64, which abrogates decisions 18 and 58): a
+hadith with no ruling is shown as it is; a hadith an editor explicitly ruled out
+(ضعيف, موضوع, مختلف فيه) is not, so a recorded judgement is never contradicted. No
+ruling is displayed anywhere for now. The queue still counts which unruled hadiths
+the engine shows, for the better way of showing a ruling the owners will choose
+later; nothing waits for it. The enriched-file helpers stay for the admin area.
 """
 
 from __future__ import annotations
@@ -108,16 +105,16 @@ def classification_is_eligible(classification: HadithClassification | None) -> b
     return classification in ELIGIBLE
 
 
-def eligible_given(ruling: HadithRuling | None, *, enriched: bool) -> bool:
+def eligible_given(ruling: HadithRuling | None) -> bool:
     """
     Decide eligibility from what is already read.
 
-    The ruling in force, when there is one, decides alone; without one, a hadith of the
-    enriched Sunnah file is eligible (decision 58).
+    The ruling in force, when there is one, decides alone; without one the hadith is shown
+    as it is (decision 64).
     """
     if ruling is not None:
         return classification_is_eligible(ruling.classification)
-    return enriched
+    return True
 
 
 def weak_by_dataset(grades: Iterable[Mapping[str, str]] | None) -> bool:
@@ -164,25 +161,17 @@ async def latest_ruling(session: AsyncSession, hadith_id: int) -> HadithRuling |
 
 
 async def is_eligible(session: AsyncSession, hadith_id: int) -> bool:
-    """
-    Return whether the hadith may be shown as evidence.
-
-    Its latest ruling is صحيح or حسن, or it has no ruling and belongs to the enriched Sunnah
-    file (decision 58).
-    """
-    ruling = await latest_ruling(session, hadith_id)
-    if ruling is not None:
-        return eligible_given(ruling, enriched=False)
-    return await is_enriched(session, hadith_id)
+    """Return whether the hadith may be shown: no ruling, or a ruling of صحيح or حسن (decision 64)."""
+    return eligible_given(await latest_ruling(session, hadith_id))
 
 
 async def enqueue_demand(session: AsyncSession, hadith_id: int) -> bool:
     """
-    Count one more request for a hadith that has no ruling yet.
+    Count one more showing of a hadith that has no ruling yet.
 
-    A hadith that shows before its ruling (decision 58) is counted too, so editors rule the
-    most shown first; whether the insight waits is the caller's to decide. Return False, and
-    queue nothing, when the hadith already has a ruling.
+    Nothing waits for the ruling (decision 64): the count only tells the editors which
+    hadiths are shown most. Return False, and queue nothing, when the hadith already has
+    a ruling.
     """
     if await latest_ruling(session, hadith_id) is not None:
         return False

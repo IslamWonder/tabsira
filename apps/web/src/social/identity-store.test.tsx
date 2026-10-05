@@ -84,7 +84,7 @@ describe('the identity store', () => {
     expect(renderToString(<Probe />)).toContain('unknown');
   });
 
-  it('knows when both the handle and the public name are chosen', () => {
+  it('knows when a handle is chosen', () => {
     expect(hasIdentity({ status: 'unknown' })).toBe(false);
     expect(hasIdentity({ status: 'ready', identity: NO_IDENTITY })).toBe(false);
     setIdentity(IDENTITY);

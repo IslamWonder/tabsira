@@ -10,7 +10,6 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
 from src import clock
-from src.messages import messages_for
 from src.models import Hadith, HadithClassification, Insight, InsightOrigin, QuranVerse
 from src.models.user import User
 from src.owner import Owner
@@ -96,19 +95,19 @@ async def test_the_owner_publishes_and_a_stranger_reads_scripture_as_stored(brow
     assert str(user.id) not in response.text
 
 
-async def test_the_author_is_the_handle_and_name_the_owner_chose_and_nothing_else(
-    browser, other, store
-):
-    user = await verified_account(store, browser, handle="basira_fan", public_name="قارئ")
+async def test_the_author_is_the_handle_and_the_full_name_only_with_consent(browser, other, store):
+    user = await verified_account(
+        store, browser, handle="basira_fan", display_name="قارئ", public_full_name=True
+    )
     insight_id = await keep(store, user.id)
     await browser.put(f"/insights/{insight_id}/publication")
 
     body = (await other.get(f"/public/insights/{insight_id}")).json()
 
     assert body["author"] == {"handle": "basira_fan", "public_name": "قارئ"}
-    assert body["hadith_status"] == "awaiting_verification"
-    assert body["hadith"] is None
-    assert body["small_step"] is None
+    assert body["hadith_status"] == "shown"
+    assert body["hadith"]["hadith"]["text"] == HADITH
+    assert body["small_step"]["label"] == "من السنة"
 
 
 async def test_asking_twice_changes_nothing_and_the_owner_sees_the_state(browser, store):
@@ -186,7 +185,10 @@ async def test_another_owners_insight_cannot_be_published_or_withdrawn(browser, 
     ("values", "scan_values"),
     [
         ({}, {"sensitive": True}),
-        ({"quran_surah": None, "quran_ayah": None, "quran_evidence": None}, {}),
+        (
+            NO_VERSE | {"hadith_collection": None, "hadith_number": None, "hadith_evidence": None},
+            {},
+        ),
         ({"title": verse_text(30, 50)}, {}),
         ({"title": WITHOUT_MARKS}, {}),
         ({"glimpse": VERSE}, {}),
@@ -424,7 +426,7 @@ async def test_a_hadith_ruled_weak_after_publication_leaves_with_its_step_and_th
     assert (await other.get(f"/public/insights/{only_hadith}")).status_code == 404
 
 
-async def test_an_unruled_hadith_is_announced_and_what_rests_on_it_is_dropped_publicly(
+async def test_an_unruled_hadith_is_shown_publicly_with_what_rests_on_it_and_no_notice(
     browser, other, store
 ):
     user = await verified_account(store, browser)
@@ -444,8 +446,8 @@ async def test_an_unruled_hadith_is_announced_and_what_rests_on_it_is_dropped_pu
 
     body = (await other.get(f"/public/insights/{insight_id}")).json()
 
-    assert body["notice"] == messages_for().hadith_awaits_verification
-    assert [part["section"] for part in body["explanation"]] == ["value"]
+    assert (body["hadith_status"], "notice" in body) == ("shown", False)
+    assert [part["section"] for part in body["explanation"]] == ["value", "sunnah"]
 
 
 def keys_of(value) -> set[str]:

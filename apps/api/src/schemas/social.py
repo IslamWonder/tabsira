@@ -16,7 +16,6 @@ from typing import Annotated, Literal
 from fastapi import Path
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from src.models.scripture import HadithClassification
 from src.models.social import (
     COMMENT_MAX,
     REFLECTION_MAX,
@@ -39,12 +38,14 @@ CommentIdPath = Annotated[PublicId, Path(description="The comment's public id")]
 
 
 class PublicIdentityIn(BaseModel):
-    """The handle and public name an account chooses to appear under."""
+    """The handle an account chooses to appear under."""
 
     model_config = ConfigDict(extra="forbid")
 
     handle: Annotated[str, Field(min_length=1, max_length=64)]
-    public_name: Annotated[str, Field(min_length=1, max_length=160)]
+    # Kept so a client written before decision 64 still validates; ignored. The name a public
+    # page shows is the account's full name, and only with the `public_full_name` consent.
+    public_name: Annotated[str | None, Field(max_length=160, deprecated=True)] = None
 
     @field_validator("handle")
     @classmethod
@@ -57,28 +58,28 @@ class PublicIdentityIn(BaseModel):
 
     @field_validator("public_name")
     @classmethod
-    def _public_name(cls, value: str) -> str:
-        name = public_identity.clean_public_name(value)
-        problem = public_identity.public_name_problem(name)
-        if problem is not None:
-            raise ValueError(problem)
-        return name
+    def _public_name(cls, value: str | None) -> None:
+        # Never stored and never shown: nothing to clean, nothing to keep.
+        return None
 
 
 class PublicIdentityOut(BaseModel):
-    """The caller's own handle and public name; both null until they have chosen."""
+    """The caller's own handle, and the name public pages show beside it."""
 
     handle: str | None
+    # The full name while `public_full_name` is true; null otherwise (the handle alone shows).
     public_name: str | None
+    public_full_name: bool
 
 
 class MemberOut(BaseModel):
-    """A person as the network shows them: the two things they chose, and nothing else."""
+    """A person as the network shows them: the handle, and the full name only with consent."""
 
     model_config = ConfigDict(from_attributes=True)
 
     handle: str
-    public_name: str
+    # The real full name while the person's `public_full_name` consent is given, else null.
+    public_name: str | None
 
 
 class ViewerRelationOut(BaseModel):
@@ -114,24 +115,13 @@ class QuranEvidenceOut(BaseModel):
 
 
 class HadithEvidenceOut(BaseModel):
-    """
-    A hadith read from the scripture store, shown only while it is eligible.
-
-    Its ruling is صحيح or حسن, or it has no ruling and belongs to the enriched Sunnah file
-    (decision 58).
-    """
+    """A hadith read from the scripture store, as it is; one an editor ruled out is absent (decision 64)."""
 
     collection: str
     collection_name: str
     number: str
     text: str = Field(description="Exactly as stored; never normalised")
     sha256: str = Field(description="SHA-256 of the UTF-8 bytes of `text`")
-    classification: HadithClassification | None = Field(
-        description="The editor's reading of the ruling in force; null when none is recorded yet"
-    )
-    verification_url: str = Field(
-        description="A dorar.net search the reader opens («تحقق في الدرر»)"
-    )
     verified: Literal[True] = True
 
 

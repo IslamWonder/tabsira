@@ -20,7 +20,6 @@ export function publicInsightOut(overrides: Partial<PublicInsight> = {}): Public
     hadith:
       insight.hadith === null ? null : { tag: insight.hadith.tag, hadith: insight.hadith.hadith },
     hadith_status: insight.hadith_status,
-    notice: insight.notice,
     pair_complete: insight.pair_complete,
     explanation_tag: insight.explanation_tag,
     explanation: insight.explanation.filter((part) => part.section !== 'seen'),

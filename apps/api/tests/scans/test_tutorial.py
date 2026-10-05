@@ -9,7 +9,6 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy import select
 
-from src.messages import messages_for
 from src.models import HadithClassification, WorldRelation
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
 from src.scripture.overlap import repeats_store
@@ -17,7 +16,7 @@ from src.scripture.rulings import find_hadith
 from src.services import tutorial_service
 from src.services.content import REGIONS_PATH, Regions, load_regions, load_tutorial
 from tests.scans.conftest import DATA, rule
-from tests.scripture.fixtures import enrich_hadith, hadith_text, verse_text
+from tests.scripture.fixtures import hadith_text, verse_text
 
 EXTRA = json.loads((DATA / "extra-scripture.json").read_text(encoding="utf-8"))
 
@@ -44,23 +43,30 @@ async def test_the_rain_scene_is_a_prepared_example_with_its_verses_from_the_sto
         "alt": "نبتة زيتون صغيرة تتلقى قطرات المطر",
     }
     drop, planting = body["insights"]
+    async with store() as db:
+        stored = {
+            number: (await find_hadith(db, "bukhari", str(number))).text for number in (1032, 2320)
+        }
     assert (drop["title"], planting["title"]) == ("الحياة في قطرة", "الغرس الذي يتعدّاك")
-    for insight, (surah, ayah) in ((drop, (30, 50)), (planting, (6, 99))):
+    for insight, (surah, ayah), number in ((drop, (30, 50), 1032), (planting, (6, 99), 2320)):
         verse = insight["quran"]["verse"]
         assert (verse["surah"], verse["ayah"]) == (surah, ayah)
         assert verse["text"] == stored_verse(surah, ayah)
         assert hashlib.sha256(verse["text"].encode()).hexdigest() == verse["sha256"]
-        assert insight["hadith"] is None
-        assert insight["hadith_status"] == "awaiting_verification"
-        assert insight["notice"] == messages_for().hadith_awaits_verification
-    # The rain step rests on its hadith, which waits for its ruling; planting is a suggestion.
-    assert drop["small_step"] is None
+        # Decision 64: no ruling yet, and the hadith is shown byte for byte as stored.
+        hadith = insight["hadith"]["hadith"]
+        assert hadith["text"] == stored[number]
+        assert hashlib.sha256(hadith["text"].encode()).hexdigest() == hadith["sha256"]
+        assert insight["hadith_status"] == "shown"
+        assert "notice" not in insight
+    # The rain step rests on its hadith; planting is a suggestion.
+    assert drop["small_step"]["label"] == "من السنة"
     assert planting["small_step"]["label"] == "اقتراح عملي"
     assert drop["anchor"] == {"x": 0.06, "y": 0.525, "width": 0.36, "height": 0.06}
     assert model.calls == []
 
 
-async def test_a_hadith_shows_once_an_editor_records_its_ruling(browser, store):
+async def test_a_hadith_an_editor_ruled_out_is_left_out_and_a_sound_one_stays(browser, store):
     async with store() as db:
         await rule(db, "bukhari", "1032")
         await rule(db, "bukhari", "2320", HadithClassification.MAWDU)
@@ -72,30 +78,9 @@ async def test_a_hadith_shows_once_an_editor_records_its_ruling(browser, store):
     assert hadith["text"] == hadith_text("bukhari", 1032)
     assert hashlib.sha256(hadith["text"].encode()).hexdigest() == hadith["sha256"]
     assert drop["hadith"]["why"]["relation_label"] == "صلة بالفعل"
-    assert (drop["pair_complete"], drop["notice"]) == (True, None)
+    assert (drop["pair_complete"], drop["hadith_status"]) == (True, "shown")
     assert drop["small_step"]["label"] == "من السنة"
     assert (planting["hadith"], planting["hadith_status"]) == (None, "none")
-
-
-async def test_the_rain_hadiths_of_the_enriched_file_show_before_any_ruling(browser, store):
-    texts = {}
-    async with store() as db:
-        for number in ("1032", "2320"):
-            stored = await find_hadith(db, "bukhari", number)
-            await enrich_hadith(db, stored.id, f"rain{number}")
-            texts[number] = stored.text
-        await db.commit()
-
-    drop, planting = (await browser.get("/tutorial/rain")).json()["insights"]
-
-    # Decision 58: shown with no ruling, byte for byte as stored, and nothing waits.
-    for insight, number in ((drop, "1032"), (planting, "2320")):
-        hadith = insight["hadith"]["hadith"]
-        assert hadith["text"] == texts[number]
-        assert hashlib.sha256(hadith["text"].encode()).hexdigest() == hadith["sha256"]
-        assert (hadith["ruling"], hadith["eligible"]) == (None, True)
-        assert (insight["hadith_status"], insight["notice"]) == ("shown", None)
-        assert insight["pair_complete"] is True
 
 
 async def test_a_store_without_the_verses_says_the_asset_is_missing(browser, maker):

@@ -1,9 +1,9 @@
 'use client';
 
 import type { Route } from 'next';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useSession } from '@/account/session';
-import { FirstInsightQuestions } from '@/components/account/first-insight-questions';
 import { StatusScreen } from '@/components/app/status-screen';
 import { ReadingLayout } from '@/components/layout/layouts';
 import { Button, LinkButton } from '@/components/ui/button';
@@ -11,8 +11,8 @@ import { Chip } from '@/components/ui/chip';
 import { Notice } from '@/components/ui/notice';
 import type { Insight } from '@/lib/scan/api';
 import { journeyFailureMessage } from '@/lib/scan/failure';
+import { signUpHref } from '@/lib/scan/gate';
 import { centre } from '@/lib/scan/spans';
-import { profileQuestionsMax } from '@/lib/site';
 import { messages } from '@/messages';
 import { ChatSheet } from './chat-sheet';
 import { CompletionPanel, type ShareOption } from './completion-panel';
@@ -92,7 +92,7 @@ export function InsightScreen({
   const [chatOpen, setChatOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const session = useSession();
-  const [invitationClosed, setInvitationClosed] = useState(false);
+  const router = useRouter();
 
   if (load.phase === 'loading') {
     return (
@@ -125,6 +125,14 @@ export function InsightScreen({
   const backHref = backTo(insight);
   const seen = insight.explanation.find((part) => part.section === 'seen');
   const { chat } = insight;
+  // A guest's own scan has no chat: it asks for an account, and the insight moves into it (decision 64).
+  const discuss = () => {
+    if (session.status === 'guest' && insight.engine === 'pipeline') {
+      router.push(signUpHref(`/insight/${insight.id}` as Route, 'chat'));
+    } else {
+      setChatOpen(true);
+    }
+  };
   // The API publishes only a signed-in owner's insight from the real analysis; offer sharing only then.
   const canShare = session.status === 'signed-in' && insight.engine === 'pipeline';
   const share: ShareOption = canShare
@@ -170,7 +178,7 @@ export function InsightScreen({
         <ExplanationSections tag={insight.explanation_tag} parts={insight.explanation} />
         <InsightTools
           onWhy={() => setWhyOpen(true)}
-          onDiscuss={() => setChatOpen(true)}
+          onDiscuss={discuss}
           discussNote={messages.insightPage.chat.used(chat.used, chat.limit)}
         />
         {insight.small_step === null ? null : (
@@ -196,17 +204,9 @@ export function InsightScreen({
             progress={finish.progress}
             progressFailed={finish.progressFailed}
             returnTo={`/insight/${insight.id}` as Route}
-            onContinueAsGuest={() => setInvitationClosed(true)}
-            invitationClosed={invitationClosed}
             share={share}
           />
         )}
-        {finish.completion ? (
-          <FirstInsightQuestions
-            max={profileQuestionsMax()}
-            firstTime={finish.completion.first_time}
-          />
-        ) : null}
         {finish.status === 'done' && finish.completion === null ? (
           <div className="flex flex-col items-start gap-2">
             <p className="m-0 font-semibold text-fg">{T.done.alreadyTitle}</p>

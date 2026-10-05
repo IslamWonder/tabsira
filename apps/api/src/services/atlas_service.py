@@ -71,7 +71,7 @@ from src.schemas.atlas import (
 from src.schemas.geo import GeoJsonPoint
 from src.schemas.social import MemberOut
 from src.services import cursor as cursors
-from src.services import geo_service, photo_service, publication_service
+from src.services import geo_service, photo_service, public_identity, publication_service
 from src.services.block_service import blocked_with
 from src.services.evidence_view import load_evidence
 from src.services.insight_table_source import explanation_excerpt, snapshot_of
@@ -165,7 +165,7 @@ def public_location(entry: MapEntry) -> PublicLocationOut | None:
 
 
 def _author(user: User) -> MemberOut:
-    return MemberOut(handle=user.handle or "", public_name=user.public_name or "")
+    return MemberOut(handle=user.handle or "", public_name=public_identity.shown_name(user))
 
 
 def _shown_author(entry: MapEntry, user: User) -> MemberOut | None:

@@ -116,6 +116,7 @@ async def test_an_account_shares_its_profile_only_while_personalization_is_on(st
         profile.knowledge_level = "general"
         profile.age_range = "25_39"
         profile.religious_background = "non_muslim"
+        profile.gender = "woman"
         await db.flush()
         db.add(
             learner_service.exposure(
@@ -133,11 +134,14 @@ async def test_an_account_shares_its_profile_only_while_personalization_is_on(st
             db, owner, unit_id="T12_02", path_version=PATH, at=clock.utcnow()
         )
         shared = await learner_service.learner_context(db, owner)
+        chat = await learner_service.profile_context(db, user.id)
 
         profile.personalization_enabled = False
         profile.memory_enabled = False
         await db.flush()
         private = await learner_service.learner_context(db, owner)
+        chat_private = await learner_service.profile_context(db, user.id)
+        guest = await learner_service.profile_context(db, None)
         assert not await learner_service.memory_enabled(db, owner)
         concept = (await db.scalars(select(EvidenceExposure.concept))).one()
 
@@ -146,7 +150,11 @@ async def test_an_account_shares_its_profile_only_while_personalization_is_on(st
         "general",
         "25_39",
     )
-    assert shared.religious_background == "non_muslim"
+    assert (shared.religious_background, shared.gender) == ("non_muslim", "woman")
+    # The chat reads the same declared fields, never the history.
+    assert chat == shared.model_copy(update={"completed_units": [], "seen_quran": []})
+    assert chat_private == private == LearnerContext(personalization_enabled=False)
+    assert guest == LearnerContext()
     assert shared.completed_units == ["T12_02"]
     assert private == LearnerContext(personalization_enabled=False)
     assert concept == "x" * 80

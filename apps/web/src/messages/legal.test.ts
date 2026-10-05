@@ -27,9 +27,9 @@ function everyText(document: typeof terms): string[] {
 }
 
 describe('legal versions', () => {
-  it('are a time on 2026-10-05 for both texts, the day the printed date names', () => {
-    expect(TERMS_VERSION).toBe('2026-10-05T16:00Z');
-    expect(PRIVACY_VERSION).toBe('2026-10-05T16:00Z');
+  it('are a time on 2026-10-05 (decision 64: the profile, the full name and the guest limit), the day the printed date names', () => {
+    expect(TERMS_VERSION).toBe('2026-10-05T18:00Z');
+    expect(PRIVACY_VERSION).toBe('2026-10-05T18:00Z');
     // A valid global date-and-time string: it is the <time> element's dateTime and the page's dateModified.
     expect(TERMS_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z$/);
     expect(terms.updated).toBe('5 أكتوبر 2026');

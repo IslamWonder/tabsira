@@ -24,7 +24,7 @@ A private area for the team at admin.tabsira.me, reachable only over the VPN.
 
 ### 12.1 Rulings queue for editors
 
-- **Status:** ✅ 2026-10-04 (main machine). Ready now, high priority: outside the enriched Sunnah file's hadiths (decision 58), no hadith can show in an insight until an editor records its ruling.
+- **Status:** ✅ 2026-10-04 (main machine). Since decision 64 (2026-10-05) a ruling decides nothing about display and nothing waits in the queue; the queue only counts which unruled hadiths are shown, and a recorded ضعيف/موضوع/مختلف فيه ruling still keeps a hadith out.
 - **Goal:** An admin screen that lists the hadith waiting for a ruling (the queue the engine and `python -m src.cli.record_ruling` already use), shows each hadith's stored text read-only with its source, gives the editor the dorar.net search link to open in their own browser, and records the editor's ruling (grade, grader, dorar page link, note) through the same service the command line uses. Rulings are append-only and every action is in the audit log.
 - **Depends on:** — (the queue and the ruling service are on main: `apps/api/src/cli/record_ruling.py` and the scripture rulings service it calls).
 - **Touches:** `apps/api/src/admin/views/` (one new view), `apps/api/src/admin/registry.py`, `apps/api/src/admin/templates/` if needed, `docs/ADMIN.md`.

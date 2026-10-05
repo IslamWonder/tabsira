@@ -79,6 +79,16 @@ export function setSignedIn(user: User): void {
   publish({ status: 'signed-in', user });
 }
 
+/**
+ * The API said 403 `profile_required`: the profile form opens before anything else
+ * (decision 64), whatever screen met the refusal.
+ */
+export function markProfileRequired(): void {
+  if (state.status === 'signed-in' && state.user.profile_completed) {
+    publish({ status: 'signed-in', user: { ...state.user, profile_completed: false } });
+  }
+}
+
 /** After signing out or deleting the account. */
 export function setGuest(): void {
   publish({ status: 'guest' });

@@ -28,7 +28,7 @@ import { failureMessage } from '@/lib/api/failure-message';
 import { cx } from '@/lib/cx';
 import { formatDay } from '@/lib/dates';
 import { messages } from '@/messages';
-import { profilePath } from '@/social/identity';
+import { memberLabel, profilePath } from '@/social/identity';
 import { MapView } from './map-view';
 import { MySponsorships } from './my-sponsorships';
 import { OrphansSection } from './orphans-section';
@@ -91,7 +91,7 @@ export function EntryCard({ feature, onClose }: { feature: AtlasFeature; onClose
                 href={profilePath(properties.author.handle)}
                 className="text-link underline-offset-4 hover:underline"
               >
-                {properties.author.public_name}
+                {memberLabel(properties.author)}
               </Link>
             </dd>
           </div>
@@ -347,7 +347,11 @@ function MyEntries({ onShow }: { onShow: (point: [number, number]) => void }) {
                   </span>
                   {entry.sponsor == null ? null : (
                     <span className="text-[0.8125rem] text-fg-soft">
-                      {S.mine.by(`${entry.sponsor.public_name} @${entry.sponsor.handle}`)}
+                      {S.mine.by(
+                        entry.sponsor.public_name === null
+                          ? `@${entry.sponsor.handle}`
+                          : `${entry.sponsor.public_name} @${entry.sponsor.handle}`
+                      )}
                     </span>
                   )}
                   {entry.widened == null ? null : (

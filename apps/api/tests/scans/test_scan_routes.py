@@ -60,12 +60,6 @@ async def test_an_upload_starts_a_scan_for_a_new_guest_and_answers_at_once(
         assert scan.guest_key is not None
         assert scan.user_id is None
 
-    again = await upload(browser)
-    # The same guest, its cookie renewed for another GUEST_TTL_DAYS.
-    assert again.headers["set-cookie"].split(";")[0] == response.headers["set-cookie"].split(";")[0]
-    async with store() as db:
-        assert (await db.get(Scan, int(again.json()["id"]))).guest_key == scan.guest_key
-
 
 async def test_an_address_is_fetched_by_the_server(browser, fetcher, store):
     fetcher.answers[URL] = photo()

@@ -51,7 +51,7 @@ export default async function PostPage({ params }: Params) {
             path: postPath(id),
             headline: result.data.insight.title,
             datePublished: result.data.published_at,
-            authorName: result.data.author.public_name,
+            authorName: result.data.author.public_name ?? undefined,
           })}
         />
       ) : null}

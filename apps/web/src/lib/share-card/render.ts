@@ -71,7 +71,14 @@ async function fixedParts(insight: PublicInsight, host: string, faces: Ctx) {
     draw({ text: insight.disclosure, ...small, width: 640 }),
     author === null
       ? null
-      : draw({ text: T.author(author.public_name, author.handle), ...small, width: 380 }),
+      : draw({
+          text:
+            author.public_name === null
+              ? T.authorHandle(author.handle)
+              : T.author(author.public_name, author.handle),
+          ...small,
+          width: 380,
+        }),
   ]);
   return { brand, host: hostImage, label, disclosure, author: authorImage };
 }
@@ -96,19 +103,11 @@ async function labels(insight: PublicInsight, faces: Ctx) {
 }
 
 function hadithLabels(hadith: NonNullable<PublicInsight['hadith']>, draw: Draw) {
-  const { collection, number, ruling } = hadith.hadith;
-  const reference = messages.insightPage.hadithReference(collection.name_ar, number);
+  const { collection, number } = hadith.hadith;
   return Promise.all([
     draw({ text: hadith.tag, weight: 600, colour: COLOUR.sunnah }),
     draw({
-      text:
-        ruling === null
-          ? T.hadithUnruled(reference, messages.evidence.unruled)
-          : T.hadithWithRuling(
-              reference,
-              messages.evidence.ruling(ruling.ruling_text),
-              messages.insightPage.rulingSource(ruling.scholar, ruling.source_book, ruling.page)
-            ),
+      text: messages.insightPage.hadithReference(collection.name_ar, number),
       colour: COLOUR.muted,
     }),
   ]);
@@ -237,7 +236,6 @@ async function partsFor(
   return {
     ...shared.fixed,
     title: shared.title,
-    notice: insight.notice === null ? null : await draw({ text: insight.notice }),
     pointer: omitted ? await draw({ text: T.hadithOnPage }) : null,
     ...(await sources(candidate, insight, faces, shared.pairs)),
   };

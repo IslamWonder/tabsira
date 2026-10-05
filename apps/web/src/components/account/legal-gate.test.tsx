@@ -53,6 +53,23 @@ describe('LegalGate', () => {
     expect(readSession()).toMatchObject({ user: { legal_acceptance_required: false } });
   });
 
+  it('offers the unticked full-name box and sends the answer only when it changes it', async () => {
+    const api = mockApi(routes({ 'POST /auth/legal/accept': { status: 200, body: {} } }));
+    setSignedIn(PENDING);
+    render(<LegalGate />);
+    const name = await screen.findByRole('checkbox', { name: /أوافق على ظهور اسمي الكامل/ });
+    expect(name).not.toBeChecked();
+    await waitFor(() => expect(box()).toBeEnabled());
+    await userEvent.click(name);
+    await userEvent.click(box());
+    await userEvent.click(screen.getByRole('button', { name: 'أوافق وأتابع' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await api.bodies('POST', '/auth/legal/accept')).toEqual([
+      { terms_version: '2026-10-04', privacy_version: '2026-10-04', public_full_name: true },
+    ]);
+    expect(readSession()).toMatchObject({ user: { public_full_name: true } });
+  });
+
   it('reads the texts again when they changed meanwhile', async () => {
     const api = mockApi(
       routes({ 'POST /auth/legal/accept': apiError(422, 'LEGAL_ACCEPTANCE_REQUIRED') })
@@ -141,7 +158,7 @@ describe('LegalGate', () => {
 describe('LegalGate after Google', () => {
   it('records a fresh tick for the texts in force at once, and never shows', async () => {
     const api = mockApi(routes({ 'POST /auth/legal/accept': { status: 200, body: {} } }));
-    rememberTick(LEGAL);
+    rememberTick(LEGAL, Date.now(), true);
     setSignedIn(PENDING);
     render(<LegalGate />);
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -149,7 +166,9 @@ describe('LegalGate after Google', () => {
       expect(readSession()).toMatchObject({ user: { legal_acceptance_required: false } })
     );
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(await api.bodies('POST', '/auth/legal/accept')).toHaveLength(1);
+    expect(await api.bodies('POST', '/auth/legal/accept')).toEqual([
+      { terms_version: '2026-10-04', privacy_version: '2026-10-04', public_full_name: true },
+    ]);
     expect(window.sessionStorage.getItem('tabsira.legal.tick')).toBeNull();
   });
 

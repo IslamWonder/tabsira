@@ -1,13 +1,18 @@
 import { act, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mockApi } from '@/test/api';
+import { readSession, setSignedIn } from '@/account/session';
+import { apiError, mockApi } from '@/test/api';
 import { forgetDevice, stubCamera } from '@/test/camera';
+import { USER } from '@/test/fixtures';
 import { scanOut } from '@/test/scan';
 import { CaptureProvider, useCapture } from './capture-provider';
 
 const push = vi.fn();
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push }),
+  usePathname: () => '/world',
+}));
 
 /** A page with one «صوّر مشهدًا» of its own, as the bars and the scene have. */
 function Opener() {
@@ -77,6 +82,29 @@ describe('CaptureProvider', () => {
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/scan/110000000000000055'));
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('sends a guest who used their one scan to sign-up, back to this page, with the reason', async () => {
+    mockApi({ 'POST /scans': apiError(403, 'account_required') });
+    const { result } = renderHook(() => useCapture(), { wrapper: CaptureProvider });
+
+    await act(async () => result.current.send(new File(['x'], 'x.jpg', { type: 'image/jpeg' })));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/signup?next=%2Fworld&reason=scan'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('opens the profile form when the API says the profile is not complete', async () => {
+    setSignedIn(USER);
+    mockApi({ 'POST /scans': apiError(403, 'profile_required') });
+    const { result } = renderHook(() => useCapture(), { wrapper: CaptureProvider });
+
+    await act(async () => result.current.send(new File(['x'], 'x.jpg', { type: 'image/jpeg' })));
+
+    await waitFor(() =>
+      expect(readSession()).toMatchObject({ user: { profile_completed: false } })
+    );
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('offers the prepared example as the third way in, and closes on the way', async () => {

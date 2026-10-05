@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { OrnateCorners } from '@/components/fx/ornate-corners';
-import { CheckIcon, ExternalIcon } from '@/components/icons';
+import { CheckIcon } from '@/components/icons';
 import { Chip } from '@/components/ui/chip';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
@@ -13,7 +13,7 @@ interface EvidenceBase {
   reference: string;
   /** Level of the card's heading in the page outline. */
   headingLevel?: 2 | 3;
-  /** The API matched the displayed text to its stored hash: say so beside the label. */
+  /** The API matched the displayed text to its stored hash: say so beside the label. For a verse only: a hadith never carries it (decision 64). */
   verified?: boolean;
   className?: string;
 }
@@ -24,23 +24,8 @@ export interface QuranEvidenceProps extends EvidenceBase {
 
 export interface SunnahEvidenceProps extends EvidenceBase {
   variant: 'sunnah';
-  /** The hadith on its source site; left out when the API gives the dorar link alone. */
-  sourceHref?: string;
   /** Presentation spans over `text`; see hadith-segments.ts. */
   spans?: readonly HadithSpan[];
-  /** The hadith's ruling on dorar.net, opened by the reader (DECISIONS.md 18). */
-  verifyHref: string;
-  /** The ruling as an editor recorded it from dorar.net, word for word. */
-  ruling?: string;
-  /** Who gave the ruling and where (scholar, book, page), as recorded; shown under it, quieter. */
-  rulingSource?: string;
-  /**
-   * The editor's classification of the ruling (sahih or hasan), when the answer carries it
-   * without dorar's own words; shown under its own label, never as the ruling. With neither
-   * this nor `ruling`, the hadith shows with no recorded ruling (DECISIONS.md 58), and the
-   * card says so beside the dorar link.
-   */
-  classification?: string;
 }
 
 export type EvidenceCardProps = QuranEvidenceProps | SunnahEvidenceProps;
@@ -56,24 +41,9 @@ const ROLE_CLASSES: Record<HadithRole, string> = {
   tail: 'text-[0.9375rem] text-fg-muted',
 };
 
-function ExternalLink({ href, children }: { href: string; children: string }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex min-h-12 shrink-0 items-center gap-1.5 font-medium text-[0.875rem] text-link underline-offset-4 hover:underline"
-    >
-      {children}
-      <span className="sr-only"> {messages.a11y.opensInNewTab}</span>
-      <ExternalIcon />
-    </a>
-  );
-}
-
 /**
  * One piece of evidence: the Quran (ivory script on a gold wash at night, mint
- * card by day) or the Sunnah. The label, the reference and the source link are
+ * card by day) or the Sunnah. The label and the reference are
  * shown with the text, never a tap away (tajriba §3.3), and the two cards keep
  * the same anatomy (Law of Similarity) so the second one reads at a glance.
  */
@@ -108,9 +78,6 @@ export function EvidenceCard(props: EvidenceCardProps) {
             </Chip>
           ) : null}
         </div>
-        {props.variant === 'sunnah' ? (
-          <ExternalLink href={props.verifyHref}>{messages.evidence.verifyDorar}</ExternalLink>
-        ) : null}
       </header>
 
       {props.variant === 'quran' ? (
@@ -131,32 +98,6 @@ export function EvidenceCard(props: EvidenceCardProps) {
       ) : (
         <HadithText text={props.text} spans={props.spans} />
       )}
-
-      {props.variant === 'sunnah' ? (
-        <footer className="flex flex-wrap items-center justify-between gap-x-4 border-[var(--sunnah-border)] border-t pt-1">
-          {props.ruling === undefined ? (
-            props.classification === undefined ? (
-              <p className="m-0 text-[0.8125rem] text-fg-muted">{messages.evidence.unruled}</p>
-            ) : (
-              <p className="m-0 text-[0.8125rem] text-fg-muted">
-                {messages.evidence.classification(props.classification)}
-              </p>
-            )
-          ) : (
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <p className="m-0 text-[0.8125rem] text-fg-muted">
-                {messages.evidence.ruling(props.ruling)}
-              </p>
-              {props.rulingSource === undefined ? null : (
-                <p className="m-0 text-[0.75rem] text-fg-muted">{props.rulingSource}</p>
-              )}
-            </div>
-          )}
-          {props.sourceHref === undefined ? null : (
-            <ExternalLink href={props.sourceHref}>{messages.evidence.openSource}</ExternalLink>
-          )}
-        </footer>
-      ) : null}
     </article>
   );
 }

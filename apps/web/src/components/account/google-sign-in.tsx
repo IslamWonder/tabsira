@@ -19,6 +19,8 @@ export interface GoogleSignInProps {
    * into the link. From the sign-in view: left out (the gate asks afterwards).
    */
   accepted?: LegalVersions | null;
+  /** The full-name box of the sign-up view, carried with the tick (decision 64). */
+  publicFullName?: boolean;
   /** The ornament that separates it from the e-mail form: under it (sign-in) or above it (sign-up). */
   divider: 'after' | 'before';
 }
@@ -40,7 +42,12 @@ function Label() {
  * (docs/AUTH.md). Until the terms are accepted on the sign-up view it is a
  * disabled button that says the same.
  */
-export function GoogleSignIn({ next, accepted, divider }: GoogleSignInProps) {
+export function GoogleSignIn({
+  next,
+  accepted,
+  publicFullName = false,
+  divider,
+}: GoogleSignInProps) {
   const available = useGoogleAvailable();
   if (available !== true) {
     return null;
@@ -54,7 +61,11 @@ export function GoogleSignIn({ next, accepted, divider }: GoogleSignInProps) {
     ) : (
       <a
         href={googleStartUrl(next)}
-        onClick={accepted === undefined ? undefined : () => rememberTick(accepted)}
+        onClick={
+          accepted === undefined
+            ? undefined
+            : () => rememberTick(accepted, Date.now(), publicFullName)
+        }
         className={classes}
       >
         <Label />

@@ -18,7 +18,6 @@ Measured on $date by `make eval` (`apps/api/src/cli/evaluate.py`, `apps/api/src/
 | Abstention where expected | $abstain |
 | Insight where expected | $insight |
 | Hoped-for texts found | $hoped |
-| Hadiths queued for an editor's ruling | $awaiting |
 | Cost per scan | $$$cost_per_scan (total $$$cost) |
 
 Statuses: $statuses.

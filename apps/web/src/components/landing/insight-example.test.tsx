@@ -50,7 +50,6 @@ describe('InsightExample', () => {
     expect(planting).toHaveAttribute('aria-selected', 'true');
     const panel = screen.getByRole('tabpanel', { name: 'الغرس الذي يتعدّاك' });
     expect(within(panel).getByRole('heading', { name: 'الغرس الذي يتعدّاك' })).toBeInTheDocument();
-    expect(within(panel).getByText('الحديث بانتظار الحكم')).toBeInTheDocument();
     expect(panel.querySelector('[data-scripture="hadith"]')).toBeNull();
     await userEvent.keyboard('{ArrowRight}');
     expect(drop).toHaveFocus();
@@ -70,7 +69,6 @@ describe('InsightExample', () => {
       ...planting,
       hadith: drop.hadith,
       hadith_status: 'shown',
-      notice: null,
     };
     mockApi({ 'GET /tutorial/rain': { body: tutorial } });
     render(<InsightExample />);

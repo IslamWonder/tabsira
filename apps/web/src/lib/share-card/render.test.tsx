@@ -70,22 +70,18 @@ describe('the share card image', () => {
     expect(others.some((text) => text.includes(VERSE_TEXT.trim()))).toBe(false);
   });
 
-  it("draws the source's own words on the ruling, never the editor's bucket alone", async () => {
+  it('draws the hadith by its reference alone, with no ruling line', async () => {
     const insight = publicInsightOut();
-    const ruling = insight.hadith?.hadith.ruling;
-    if (ruling === null || ruling === undefined) {
-      throw new Error('the fixture has a ruling');
+    const hadith = insight.hadith;
+    if (hadith === null) {
+      throw new Error('the fixture has a hadith');
     }
-    expect(ruling.ruling_text).not.toBe(ruling.classification);
     const { specs } = await render(insight);
     const texts = specs.map((spec) => spec.text);
-    const label = texts.find((text) => text.includes(ruling.ruling_text)) ?? '';
-    expect(label).toContain(messages.evidence.ruling(ruling.ruling_text));
-    expect(label).toContain(
-      messages.insightPage.rulingSource(ruling.scholar, ruling.source_book, ruling.page)
+    expect(texts).toContain(
+      messages.insightPage.hadithReference(hadith.hadith.collection.name_ar, hadith.hadith.number)
     );
-    expect(texts).not.toContain(ruling.classification);
-    expect(label.split('\n')).not.toContain(ruling.classification);
+    expect(texts.some((text) => text.includes('الدرر'))).toBe(false);
   });
 
   it('keeps the stored hashes of a lengthened verse and hadith', () => {
@@ -139,17 +135,15 @@ describe('the share card image', () => {
     expect(specs.map((spec) => spec.text)).toContain(insight.quran?.verse.text);
   });
 
-  it('shows the title, the label, the notice and the author as the API gives them, and no photo or place', async () => {
+  it('shows the title, the label and the author as the API gives them, and no photo or place', async () => {
     const insight = publicInsightOut({
       label: 'وسم للاختبار',
-      notice: 'ملاحظة للاختبار',
       author: { handle: 'tester', public_name: 'اسم للاختبار' },
     });
     const { specs } = await render(insight);
     const texts = specs.map((spec) => spec.text);
     expect(texts).toContain(insight.title);
     expect(texts).toContain('وسم للاختبار');
-    expect(texts).toContain('ملاحظة للاختبار');
     // The handle is isolated, so it keeps its own direction inside the right-to-left line.
     expect(texts).toContain(messages.shareCard.author('اسم للاختبار', 'tester'));
     expect(messages.shareCard.author('اسم للاختبار', 'tester')).toContain('\u2066@tester\u2069');
@@ -159,7 +153,7 @@ describe('the share card image', () => {
   });
 
   it('draws a card for an insight with a verse only', async () => {
-    const insight = publicInsightOut({ hadith: null, hadith_status: 'awaiting_verification' });
+    const insight = publicInsightOut({ hadith: null, hadith_status: 'none' });
     const { specs, info } = await render(insight);
     expect([info.width, info.height]).toEqual([1200, 630]);
     expect(specs.map((spec) => spec.text)).not.toContain(messages.shareCard.hadithOnPage);
@@ -170,26 +164,6 @@ describe('the share card image', () => {
     const { specs } = await render(insight);
     expect(verseSpec(specs)).toHaveLength(0);
     expect(specs.map((spec) => spec.text)).toContain(HADITH_TEXT);
-  });
-
-  it('draws a hadith without a ruling by its reference, saying no ruling is recorded yet', async () => {
-    const base = publicInsightOut();
-    const hadith = base.hadith;
-    if (hadith === null) {
-      throw new Error('the fixture has a hadith');
-    }
-    const insight = publicInsightOut({
-      hadith: { ...hadith, hadith: { ...hadith.hadith, ruling: null } },
-    });
-    const { specs } = await render(insight);
-    const reference = messages.insightPage.hadithReference(
-      hadith.hadith.collection.name_ar,
-      hadith.hadith.number
-    );
-    // DECISIONS.md 58: the card leaves the app, so it carries the same line as the page.
-    expect(specs.map((spec) => spec.text)).toContain(
-      messages.shareCard.hadithUnruled(reference, messages.evidence.unruled)
-    );
   });
 
   it('sets a long title smaller before it takes a third line', async () => {

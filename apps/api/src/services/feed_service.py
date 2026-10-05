@@ -34,7 +34,7 @@ from src.models.social import (
 from src.models.user import User
 from src.schemas.social import WhyOut
 from src.services import cursor as cursors
-from src.services import ranking
+from src.services import public_identity, ranking
 from src.services.block_service import blocked_with
 from src.services.post_service import PostRow
 
@@ -225,7 +225,7 @@ async def for_you(
         ranking.Candidate(
             post_id=row.post.id,
             author_id=row.post.author_id,
-            author_name=row.author.public_name or "",
+            author_name=public_identity.shown_name(row.author) or row.author.handle or "",
             published_at=_published_at(row.post),
             concepts=tuple(row.publication.concepts) if row.publication else (),
         )
