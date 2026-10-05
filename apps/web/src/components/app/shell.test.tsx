@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { messages } from '@/messages';
 import { THEME_STORAGE_KEY } from '@/theme/theme';
 import { ComingSoon } from './coming-soon';
 import { ReloadButton } from './reload-button';
@@ -68,8 +69,10 @@ describe('ReloadButton', () => {
 });
 
 describe('ServiceWorkerRegister', () => {
-  function stubServiceWorker(register: ReturnType<typeof vi.fn>) {
-    Object.defineProperty(navigator, 'serviceWorker', { value: { register }, configurable: true });
+  function stubServiceWorker(register: ReturnType<typeof vi.fn>, controller: object | null = null) {
+    const container = Object.assign(new EventTarget(), { register, controller });
+    Object.defineProperty(navigator, 'serviceWorker', { value: container, configurable: true });
+    return container;
   }
 
   afterEach(() => {
@@ -81,6 +84,28 @@ describe('ServiceWorkerRegister', () => {
     stubServiceWorker(register);
     render(<ServiceWorkerRegister enabled />);
     expect(register).toHaveBeenCalledWith('/sw.js', { scope: '/', updateViaCache: 'none' });
+  });
+
+  it('offers a reload when a new release takes over an open page, not on a first visit', async () => {
+    const first = stubServiceWorker(vi.fn().mockResolvedValue({}));
+    const { unmount } = render(<ServiceWorkerRegister enabled />);
+    act(() => {
+      first.dispatchEvent(new Event('controllerchange'));
+    });
+    expect(screen.queryByText(messages.install.updateReady)).toBeNull();
+    unmount();
+
+    const reload = vi.fn();
+    vi.stubGlobal('location', { ...window.location, reload });
+    const later = stubServiceWorker(vi.fn().mockResolvedValue({}), {});
+    render(<ServiceWorkerRegister enabled />);
+    act(() => {
+      later.dispatchEvent(new Event('controllerchange'));
+    });
+    expect(screen.getByRole('status')).toHaveTextContent(messages.install.updateReady);
+    await userEvent.click(screen.getByRole('button', { name: messages.install.updateNow }));
+    expect(reload).toHaveBeenCalledOnce();
+    vi.unstubAllGlobals();
   });
 
   it('shrugs off a failed registration', async () => {

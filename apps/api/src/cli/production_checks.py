@@ -22,6 +22,7 @@ import socket
 import ssl
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -30,7 +31,7 @@ import psycopg
 import redis
 from sqlalchemy.engine import make_url
 
-from src.config import AiStage, RerankerKind, Settings
+from src.config import AiStage, RerankerKind, Settings, checkout_root
 from src.services import turnstile_service
 
 REQUIRED, RECOMMENDED, OPTIONAL = "required", "recommended", "optional"
@@ -42,6 +43,10 @@ MIN_PASSWORD_LENGTH = 16
 # PostgreSQL's default max_connections; the pools of every process must fit well under it.
 CONNECTION_BUDGET = 100
 GA_ID = re.compile(r"^G-[A-Z0-9]{6,}$")
+# The production file mirrors this example key for key: a key the example has and
+# the file lacks is one the owners never saw (AGENTS.md, «Add every new configuration key»).
+EXAMPLE_FILE = checkout_root() / "deploy" / "env.production.example"
+KEY_LINE = re.compile(r"^([A-Z][A-Z0-9_]*)=", re.MULTILINE)
 
 
 @dataclass(frozen=True)
@@ -73,6 +78,45 @@ def _positive_int(raw: str | None, default: int) -> int | None:
     if not text:
         return default
     return int(text) if text.isdigit() and int(text) > 0 else None
+
+
+def example_keys(path: Path | None = None) -> set[str] | None:
+    """Return the keys of the production example, or None when the file is not beside the code."""
+    path = EXAMPLE_FILE if path is None else path
+    if not path.is_file():
+        return None
+    return set(KEY_LINE.findall(path.read_text(encoding="utf-8")))
+
+
+def _file_checks(_settings: Settings, env: Mapping[str, str], add: Add) -> None:
+    """Check the file against the example it was copied from: nothing new missing, nothing stale."""
+    keys = example_keys()
+    if keys is None:
+        add(
+            "File",
+            "deploy/env.production.example is beside the code",
+            RECOMMENDED,
+            False,
+            "the keys of the file cannot be compared with the example",
+        )
+        return
+    missing = sorted(keys - env.keys())
+    add(
+        "File",
+        "every key of deploy/env.production.example is in the file",
+        REQUIRED,
+        not missing,
+        ", ".join(missing)
+        or "a key added to the code is set here before it is deployed, empty when optional",
+    )
+    unknown = sorted(env.keys() - keys)
+    add(
+        "File",
+        "no key the example does not know",
+        RECOMMENDED,
+        not unknown,
+        ", ".join(unknown) or "a misspelt or removed key would be read by nothing",
+    )
 
 
 def _api_checks(settings: Settings, env: Mapping[str, str], add: Add) -> None:
@@ -346,6 +390,7 @@ def run_checks(settings: Settings, env: Mapping[str, str]) -> list[Check]:
         out.append(Check(area, name, level, ok, detail))
 
     for section in (
+        _file_checks,
         _api_checks,
         _data_checks,
         _storage_checks,

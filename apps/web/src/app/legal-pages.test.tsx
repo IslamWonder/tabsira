@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { legalMessages } from '@/messages/legal';
 import PrivacyPage, { metadata as privacyMetadata } from './privacy/page';
+import SourcesPage, { metadata as sourcesMetadata } from './sources/page';
 import SupportPage, { metadata as supportMetadata } from './support/page';
 import TermsPage, { metadata as termsMetadata } from './terms/page';
 
@@ -11,6 +13,7 @@ describe('the three public legal pages', () => {
     ['/terms', 'شروط الاستخدام', TermsPage, termsMetadata],
     ['/privacy', 'سياسة الخصوصية', PrivacyPage, privacyMetadata],
     ['/support', 'الدعم', SupportPage, supportMetadata],
+    ['/sources', legalMessages().sources.title, SourcesPage, sourcesMetadata],
   ] as const)(
     '%s has its h1, canonical, indexing and structured data',
     (path, title, Page, metadata) => {

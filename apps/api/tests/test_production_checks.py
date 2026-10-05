@@ -9,6 +9,7 @@ import httpx
 import psycopg
 import pytest
 import redis
+from dotenv import dotenv_values
 
 from src.cli import check_config, production_checks
 from src.cli.production_checks import Check
@@ -46,7 +47,15 @@ PRODUCTION = {
     "admin_require_two_factor": True,
     "geo_approx_cell_meters": 1000,
 }
+# A complete file: every key of the production example with its example value, the
+# placeholders filled, as the owners' file is; the checklist requires every key present.
+EXAMPLE_KEYS = production_checks.example_keys() or set()
 ENV = {
+    **{
+        key: value.replace("CHANGE_ME", "filled").replace("_VPN_IP", "")
+        for key, value in dotenv_values(production_checks.EXAMPLE_FILE).items()
+        for value in [value or ""]
+    },
     "API_WORKERS": "3",
     "WEB_INSTANCES": "2",
     "WEB_PORT": "3000",
@@ -71,6 +80,36 @@ def test_a_complete_production_file_has_no_required_line_to_fix():
 
     assert failing(checks, production_checks.REQUIRED) == []
     assert not production_checks.has_failures(checks)
+
+
+def test_the_file_mirrors_the_example_key_for_key():
+    assert len(EXAMPLE_KEYS) > 100
+    missing_two = {k: v for k, v in ENV.items() if k not in {"API_WORKERS", "GLITCHTIP_DSN"}}
+    checks = by_name(production_checks.run_checks(settings_of(), missing_two))
+    line = checks["every key of deploy/env.production.example is in the file"]
+    assert (line.level, line.ok, line.detail) == (
+        production_checks.REQUIRED,
+        False,
+        "API_WORKERS, GLITCHTIP_DSN",
+    )
+
+    checks = by_name(production_checks.run_checks(settings_of(), {**ENV, "AI_PROVDER": "openai"}))
+    line = checks["no key the example does not know"]
+    assert (line.level, line.ok, line.detail) == (
+        production_checks.RECOMMENDED,
+        False,
+        "AI_PROVDER",
+    )
+    assert checks["every key of deploy/env.production.example is in the file"].ok
+
+
+def test_a_file_cannot_be_compared_when_the_example_is_not_beside_the_code(monkeypatch, tmp_path):
+    monkeypatch.setattr(production_checks, "EXAMPLE_FILE", tmp_path / "missing.example")
+    checks = by_name(production_checks.run_checks(settings_of(), {}))
+
+    line = checks["deploy/env.production.example is beside the code"]
+    assert (line.level, line.ok) == (production_checks.RECOMMENDED, False)
+    assert "every key of deploy/env.production.example is in the file" not in checks
 
 
 def test_a_placeholder_left_in_the_file_is_named_without_its_value():
@@ -538,8 +577,11 @@ def production_env(monkeypatch, tmp_path):
         "GOOGLE_REDIRECT_URI": "https://api.tabsira.me/auth/google/callback",
         "API_WORKERS": "3",
     }
+    # On top of the complete example, as the owners' file is; the checklist wants every key.
+    lines = {**ENV, **lines}
+    assert all("'" not in v for v in lines.values())
     path = tmp_path / "production.env"
-    path.write_text("\n".join(f"{k}={v}" for k, v in lines.items()) + "\n", encoding="utf-8")
+    path.write_text("\n".join(f"{k}='{v}'" for k, v in lines.items()) + "\n", encoding="utf-8")
     monkeypatch.setattr(sys, "argv", ["check_config"])
     # The suite's own environment (ENVIRONMENT=test, development URLs) outranks the
     # file; a deploy has no such variables, so the file's values are set over them.
@@ -564,7 +606,7 @@ def test_check_config_prints_the_production_checklist_and_exits_zero(production_
 
 def test_check_config_exits_one_when_a_required_line_fails(production_env, capsys):
     production_env.write_text(
-        production_env.read_text(encoding="utf-8").replace("API_WORKERS=3", "API_WORKERS=zero"),
+        production_env.read_text(encoding="utf-8").replace("API_WORKERS='3'", "API_WORKERS='zero'"),
         encoding="utf-8",
     )
 
@@ -595,13 +637,16 @@ def test_check_config_reports_a_bad_env_file_by_key(tmp_path, capsys):
     assert "API_PORT" in capsys.readouterr().err
 
 
-def test_production_report_copes_with_a_missing_file(monkeypatch, tmp_path, capsys):
+def test_production_report_treats_a_missing_file_as_every_key_missing(
+    monkeypatch, tmp_path, capsys
+):
     monkeypatch.setattr(check_config, "checkout_root", lambda: Path(tmp_path))
 
     ok = check_config.production_report(settings_of(), None, live=False)
 
-    assert ok
-    assert "All required settings are in place." in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert not ok
+    assert "  fix     every key of deploy/env.production.example is in the file" in out
 
 
 # ─── Turnstile ──────────────────────────────────────────────────────

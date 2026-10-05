@@ -243,7 +243,10 @@ export function PublishScreen() {
       {post !== null && !withdrawn ? (
         <div className="flex flex-col gap-5">
           <div role="status" className="empty:hidden">
-            {notice === null ? null : <Notice tone="success">{notice}</Notice>}
+            {notice ===
+            null ? /* v8 ignore next: a post exists only after a call that set its notice; null only satisfies the type */ null : (
+              <Notice tone="success">{notice}</Notice>
+            )}
           </div>
           {editing ? (
             <GlassPanel ornate className="tablet:p-7">

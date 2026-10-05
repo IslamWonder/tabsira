@@ -67,10 +67,18 @@ DEFAULT_BASE_TEMPLATE = "tabsira_template"
 TEMPLATE_LOCK_KEY = 7_424_011
 
 
+# The controller hands the resolved test database to its xdist workers under names
+# no setting reads: the scrub below empties every setting's name, a worker starts
+# after it, and a CI runner has no root .env to fall back on.
+CARRIED_TEST_URL = "TABSIRA_PYTEST_TEST_DATABASE_URL"
+CARRIED_BASE_TEMPLATE = "TABSIRA_PYTEST_TEMPLATE_DATABASE"
+
+
 def _configured_test_url() -> str | None:
-    """Return TEST_DATABASE_URL from the environment or from the root .env, if set."""
+    """Return TEST_DATABASE_URL as the controller resolved it, from the environment or the root .env."""
     return (
-        os.environ.get("TEST_DATABASE_URL")
+        os.environ.get(CARRIED_TEST_URL)
+        or os.environ.get("TEST_DATABASE_URL")
         or dotenv_values(REPO_ROOT / ".env").get("TEST_DATABASE_URL")
         or None
     )
@@ -79,7 +87,8 @@ def _configured_test_url() -> str | None:
 def _configured_base_template() -> str:
     """Return the database the test template is copied from: TEST_TEMPLATE_DATABASE or the default."""
     return (
-        os.environ.get("TEST_TEMPLATE_DATABASE")
+        os.environ.get(CARRIED_BASE_TEMPLATE)
+        or os.environ.get("TEST_TEMPLATE_DATABASE")
         or dotenv_values(REPO_ROOT / ".env").get("TEST_TEMPLATE_DATABASE")
         or DEFAULT_BASE_TEMPLATE
     )
@@ -112,6 +121,9 @@ _WORKER_URL: URL = (
 )
 
 _scrub_environment()
+if _BASE_URL:
+    os.environ[CARRIED_TEST_URL] = _BASE_URL
+os.environ[CARRIED_BASE_TEMPLATE] = _BASE_TEMPLATE
 os.environ["ENVIRONMENT"] = "test"
 # Photos a test keeps go to a directory of this run, never to data/media of the checkout.
 os.environ["LOCAL_MEDIA_DIR"] = tempfile.mkdtemp(prefix="tabsira-test-media-")

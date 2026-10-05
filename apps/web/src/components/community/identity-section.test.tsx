@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { messages } from '@/messages';
 import { apiError, mockApi, type Route } from '@/test/api';
 import { USER } from '@/test/fixtures';
 import { IDENTITY, NO_IDENTITY, OTHER } from '@/test/social';
@@ -77,5 +78,61 @@ describe('IdentitySection', () => {
     await waitFor(() => expect(screen.queryByText('[عضو آخر]')).toBeNull());
     expect(screen.getByText('ألغيت الحجب.')).toBeInTheDocument();
     expect(screen.getByText('لم تحجب أحدًا.')).toBeInTheDocument();
+  });
+
+  async function submitIdentity() {
+    render(<IdentitySection />);
+    await userEvent.type(await screen.findByLabelText('المعرّف'), 'reader');
+    await userEvent.type(screen.getByLabelText('الاسم العام'), 'قارئ');
+    await userEvent.click(screen.getByRole('button', { name: 'احفظ هويتي' }));
+  }
+
+  it('names the refused field when the server rejects the identity', async () => {
+    member(
+      {
+        'PUT /me/public-identity': apiError(422, 'VALIDATION_ERROR', {
+          fields: [{ loc: ['body', 'handle'], msg: 'bad' }],
+        }),
+      },
+      NO_IDENTITY
+    );
+    await submitIdentity();
+    expect(await screen.findByText(/المعرّف/, { selector: '[role="alert"] *' })).toBeInTheDocument();
+  });
+
+  it('falls back to the name message when another field is refused', async () => {
+    member(
+      {
+        'PUT /me/public-identity': apiError(422, 'VALIDATION_ERROR', {
+          fields: [{ loc: ['body', 'public_name'], msg: 'bad' }],
+        }),
+      },
+      NO_IDENTITY
+    );
+    await submitIdentity();
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+  });
+
+  it('shows the generic failure for any other refusal', async () => {
+    member({ 'PUT /me/public-identity': apiError(500, 'INTERNAL') }, NO_IDENTITY);
+    await submitIdentity();
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+  });
+
+  it('says when the blocked members cannot be loaded', async () => {
+    member({ 'GET /blocks': apiError(500, 'INTERNAL') });
+    render(<IdentitySection />);
+    expect(await screen.findByText(messages.community.block.listFailed)).toBeInTheDocument();
+  });
+
+  it('keeps the member listed and says so when lifting a block fails', async () => {
+    member({
+      'GET /blocks': { body: [OTHER] },
+      'DELETE /blocks/other_one': apiError(500, 'INTERNAL'),
+    });
+    render(<IdentitySection />);
+    await userEvent.click(await screen.findByRole('button', { name: 'ألغِ الحجب' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByText('[عضو آخر]')).toBeInTheDocument();
   });
 });

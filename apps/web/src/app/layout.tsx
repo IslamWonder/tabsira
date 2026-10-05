@@ -4,6 +4,8 @@ import { CLARITY_MASK } from '@/analytics/clarity';
 import { LegalGate } from '@/components/account/legal-gate';
 import { AccountPreferencesSync } from '@/components/app/account-preferences-sync';
 import { AppNav } from '@/components/app/app-nav';
+import { AudioUnlock } from '@/components/app/audio-unlock';
+import { InstallOffer } from '@/components/app/install-offer';
 import { PageShell } from '@/components/app/page-shell';
 import { ServiceWorkerRegister } from '@/components/app/service-worker-register';
 import { SiteFooter } from '@/components/app/site-footer';
@@ -25,6 +27,7 @@ import { SHARE_IMAGE } from '@/lib/seo';
 import { siteOrigin } from '@/lib/site';
 import { messages, siteLanguage } from '@/messages';
 import { PREFERENCES_INIT_SCRIPT } from '@/preferences/init-script';
+import { INSTALL_CAPTURE_SCRIPT } from '@/pwa/install';
 import { THEME_BACKGROUND } from '@/theme/colors';
 
 import './globals.css';
@@ -101,6 +104,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         {consentDefaults}
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: a constant written in src/preferences/init-script.ts, with no input from the request or the user; it must run before the first paint. */}
         <script dangerouslySetInnerHTML={{ __html: PREFERENCES_INIT_SCRIPT }} />
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: a constant written in src/pwa/install.ts, with no input from the request or the user; it must listen before hydration. */}
+        <script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE_SCRIPT }} />
       </head>
       {/* Clarity masks everything under this attribute: no typed text, scripture or user text is recorded. */}
       <body className="antialiased" {...CLARITY_MASK}>
@@ -127,6 +132,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <ThemeSync />
         <AccountPreferencesSync />
         <ServiceWorkerRegister />
+        <InstallOffer />
+        <AudioUnlock />
       </body>
     </html>
   );

@@ -29,7 +29,7 @@ Checkout -> Prepare -> Services -> Install -> Migrations
   -> SonarQube (main, or RUN_SONAR) -> archive -> notify -> remove the services
 ```
 
-- **Services.** Each build starts its own PostgreSQL 18 with PostGIS, pgvector and TimescaleDB (image `CI_PG_IMAGE`) and its own Redis (image `CI_REDIS_IMAGE`, with a password), on loopback ports the kernel picks and with passwords generated for that build. Nothing is shared, so builds cannot collide and there is no secret to store. `ci-services.sh up` writes the addresses to `.env.ci` (`DATABASE_URL`, `SYNC_DATABASE_URL`, `TEST_DATABASE_URL`, `REDIS_URL`, `TEST_REDIS_URL`), which the pipeline reads back into the environment of every later stage.
+- **Services.** Each build starts its own PostgreSQL 18 with PostGIS, pgvector and TimescaleDB (image `CI_PG_IMAGE`) and its own Redis (image `CI_REDIS_IMAGE`, with a password), on loopback ports the kernel picks and with passwords generated for that build. Nothing is shared, so builds cannot collide and there is no secret to store. `ci-services.sh up` writes the addresses to `.env.ci` (`DATABASE_URL`, `SYNC_DATABASE_URL`, `TEST_DATABASE_URL`, `REDIS_URL`, `TEST_REDIS_URL`, and the password apart in `REDIS_PASSWORD`, as the API wants it), which the pipeline reads back into the environment of every later stage.
 - **Migrations.** `scripts/migrate.sh`: the `geodata` chain, then the `app` chain.
 - **API tests.** `scripts/test-coverage.sh`: 100 % of the suite and of the changed lines.
 - **Vision tests.** `jenkins/vision-coverage.sh`: the 100 % gate of `services/vision/pyproject.toml`.
@@ -64,7 +64,7 @@ On a machine with Docker, exactly as a build does:
 ```bash
 bash jenkins/prepare-jenkins-deps.sh --check
 bash jenkins/ci-services.sh up                  # PostgreSQL and Redis in containers, writes .env.ci
-set -a; . ./.env.ci; set +a                     # DATABASE_URL, SYNC_DATABASE_URL, TEST_DATABASE_URL, REDIS_URL, TEST_REDIS_URL
+set -a; . ./.env.ci; set +a                     # DATABASE_URL, SYNC_DATABASE_URL, TEST_DATABASE_URL, REDIS_URL, TEST_REDIS_URL, REDIS_PASSWORD
 export ENVIRONMENT=development CI=true
 bash scripts/migrate.sh
 bash scripts/test-coverage.sh                   # API
