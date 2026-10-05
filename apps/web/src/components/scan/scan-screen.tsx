@@ -16,11 +16,12 @@ import type { Scan } from '@/lib/scan/api';
 import type { ApiStage } from '@/lib/scan/events';
 import { failedRunMessage, journeyFailureMessage } from '@/lib/scan/failure';
 import { centre } from '@/lib/scan/spans';
-import { useScan } from '@/lib/scan/use-scan';
+import { type ScanView, useScan } from '@/lib/scan/use-scan';
 import { messages } from '@/messages';
 import { ClarifyForm } from './clarify-form';
 import { FocusPanel } from './focus-picker';
 import { ScanStage } from './scan-stage';
+import { type SoundMoment, useSceneSound } from './use-scene-sound';
 
 const T = messages.scan;
 
@@ -48,6 +49,13 @@ function pointsOf(scan: Scan): { onPhoto: ScenePoint[]; inList: ScenePoint[] } {
   return { onPhoto, inList };
 }
 
+function soundMoment(phase: ScanView['phase']): SoundMoment {
+  if (phase === 'ready') {
+    return 'ended';
+  }
+  return phase === 'failed' || phase === 'lost' ? 'failed' : 'running';
+}
+
 function Announce({ children }: { children: ReactNode }) {
   return (
     <div role="status" aria-live="polite" className="sr-only">
@@ -66,7 +74,8 @@ function Announce({ children }: { children: ReactNode }) {
  */
 export function ScanScreen({ scanId }: { scanId: string }) {
   const router = useRouter();
-  const { view, stage, slow, acting, reload, focus, clarify } = useScan(scanId);
+  const { view, stage, sound, slow, acting, reload, focus, clarify } = useScan(scanId);
+  useSceneSound(sound, soundMoment(view.phase));
   const [focusing, setFocusing] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<string | undefined>(undefined);
   const [focusError, setFocusError] = useState<string | null>(null);
@@ -236,6 +245,7 @@ export function ScanScreen({ scanId }: { scanId: string }) {
           <ScanStage
             scan={scan}
             running={running}
+            sound={sound !== null}
             focusing={focusing && scan !== null}
             selectedEntity={selectedEntity}
             onSelectEntity={setSelectedEntity}

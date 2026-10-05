@@ -35,6 +35,8 @@ export interface ScanControls {
   view: ScanView;
   /** The stage the server reports as running now; `queued` until the first one starts. */
   stage: RunStage;
+  /** The API path of the scene's sound, once the scene is matched to the ontology; else null. */
+  sound: string | null;
   /** The run is taking longer than usual: say so calmly. */
   slow: boolean;
   /** A focus or an answer is on its way to the API. */
@@ -61,6 +63,7 @@ export function useScan(scanId: string): ScanControls {
   const [attempt, setAttempt] = useState(0);
   const [stage, setStage] = useState<RunStage>('queued');
   const [slow, setSlow] = useState(false);
+  const [sound, setSound] = useState<string | null>(null);
   const run = useRef(0);
   const lastEventId = useRef<string | null>(null);
 
@@ -105,6 +108,7 @@ export function useScan(scanId: string): ScanControls {
     const thisRun = run.current;
     setStage('queued');
     setSlow(false);
+    setSound(null);
 
     // Reads the scan again; returns it when it was read and is still ours to show.
     const reread = async (): Promise<Scan | null> => {
@@ -124,7 +128,9 @@ export function useScan(scanId: string): ScanControls {
       if (event.run < thisRun) {
         return false;
       }
-      if (event.kind === 'stage') {
+      if (event.kind === 'sound') {
+        setSound(event.url);
+      } else if (event.kind === 'stage') {
         if (event.state === 'started') {
           setStage(event.stage);
         } else if (event.state === 'done' && event.stage === 'understanding') {
@@ -209,6 +215,7 @@ export function useScan(scanId: string): ScanControls {
   return {
     view,
     stage,
+    sound,
     slow,
     acting,
     reload: () => setAttempt((count) => count + 1),
