@@ -217,6 +217,16 @@ def retry_requests() -> Iterator[RecordedRetries]:
     photo_reconcile.use_retry_queue(None)
 
 
+@pytest.fixture(autouse=True)
+def fresh_country_labels() -> Iterator[None]:
+    """Each test reads the countries its own geodata holds, not a copy kept by an earlier test."""
+    from src.services import geo_service
+
+    geo_service.forget_country_labels()
+    yield
+    geo_service.forget_country_labels()
+
+
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def _close_app_engine() -> AsyncIterator[None]:
     """Close the connections of the application's own engine when the session ends."""

@@ -178,6 +178,7 @@ async def test_a_profile_is_public_and_says_only_what_the_member_chose(make_memb
     assert set(body) == {
         "handle",
         "public_name",
+        "country",
         "joined_month",
         "posts_count",
         "followers_count",

@@ -303,3 +303,24 @@ async def list_countries(db: AsyncSession) -> list[Country]:
         )
         for row in rows
     ]
+
+
+# The Arabic label of every country, by ISO2 code, read once per process: GeoNames changes a few
+# times a year, with a reinstall that restarts the API. Empty until the first read, and an empty
+# answer is not kept, so a database that had no geodata yet is asked again.
+_country_labels: dict[str, str] = {}
+
+
+async def country_labels(db: AsyncSession) -> dict[str, str]:
+    """Return the label of every GeoNames country by ISO2 code, the way `/geo/countries` shows it."""
+    if not _country_labels:
+        rows = (await db.execute(text(_COUNTRIES))).mappings().all()
+        _country_labels.update(
+            {row["iso2"]: _label(row["country_name"], row["ar_name"]) for row in rows}
+        )
+    return _country_labels
+
+
+def forget_country_labels() -> None:
+    """Empty the in-process copy, so the next read asks the database again (tests, a reinstall)."""
+    _country_labels.clear()

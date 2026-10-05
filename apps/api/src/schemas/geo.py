@@ -90,3 +90,10 @@ class Country(BaseModel):
     continent: str | None
     flag_emoji: str | None
     population: int | None
+
+
+class PublicCountryOut(BaseModel):
+    """A declared country shown by consent (decision 67): public profile and post author only."""
+
+    code: str = Field(description="ISO 3166-1 alpha-2")
+    name: str = Field(description="Its Arabic name from GeoNames, the label of /geo/countries")

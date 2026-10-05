@@ -39,6 +39,12 @@ LANGUAGE_MAX = 35
 COMPLETION_FIELDS = frozenset(
     {"goals", "knowledge_level", "age_range", "religious_background", "gender"}
 )
+# An ISO 3166-1 alpha-2 code, in either case; which codes exist is checked against GeoNames.
+CountryCode = Annotated[
+    str, StringConstraints(pattern=r"^[A-Za-z]{2}$", to_upper=True, strip_whitespace=True)
+]
+# The fields a null may clear: a country is declared or not, with no `unknown` value.
+NULLABLE_FIELDS = frozenset({"country"})
 Version = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9._-]{1,32}$")]
 
 
@@ -51,6 +57,9 @@ class ProfileOut(BaseModel):
     religious_background: ReligiousBackground
     gender: Gender
     language: str
+    # The declared country's ISO2 code, or null (decision 67), and whether public pages show it.
+    country: str | None
+    show_country: bool
     personalization_enabled: bool
     memory_enabled: bool
     photo_storage_consent: bool
@@ -76,6 +85,10 @@ class ProfilePatch(BaseModel):
     field stays `unknown` and the questions are never offered again. Answering
     any of the three question fields records the same.
 
+    `country` is the ISO2 code of a country `GET /geo/countries` lists, or null to declare none
+    (decision 67): the one field that takes a null. Whether it is shown publicly is the
+    `public_country` consent of `POST /consents`.
+
     `complete_profile: true` completes the profile (decision 64) and needs an explicit answer
     to every question in the same body: `goals` (`[]` is «أفضّل عدم الإجابة»),
     `knowledge_level`, `age_range`, `religious_background` and `gender` (`unknown` is that
@@ -90,6 +103,7 @@ class ProfilePatch(BaseModel):
     religious_background: ReligiousBackground | None = None
     gender: Gender | None = None
     language: Annotated[str, Field(max_length=LANGUAGE_MAX)] | None = None
+    country: CountryCode | None = None
     theme: Theme | None = None
     reduced_motion: ReducedMotion | None = None
     sound_enabled: bool | None = None
@@ -121,7 +135,9 @@ class ProfilePatch(BaseModel):
 
     @model_validator(mode="after")
     def _no_nulls(self) -> Self:
-        nulled = sorted(name for name in self.model_fields_set if getattr(self, name) is None)
+        nulled = sorted(
+            name for name in self.model_fields_set - NULLABLE_FIELDS if getattr(self, name) is None
+        )
         if nulled:
             message = (
                 f"null is not allowed for {', '.join(nulled)}; send unknown to clear an answer"

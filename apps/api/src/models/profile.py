@@ -96,7 +96,12 @@ class Profile(Base):
     # Read the database-set `updated_at` back with the UPDATE: no lazy load in async code.
     __mapper_args__ = {"eager_defaults": True}  # noqa: RUF012
     __tablename__ = "profiles"
-    __table_args__ = (CheckConstraint(_GOALS_SQL, name="goals_known"),)
+    __table_args__ = (
+        CheckConstraint(_GOALS_SQL, name="goals_known"),
+        # The ISO2 shape only: which codes exist is GeoNames', checked by the API on the way in,
+        # since the `geodata` schema is reinstalled from its dump and cannot be referenced.
+        CheckConstraint("country ~ '^[A-Z]{2}$'", name="country_format"),
+    )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
@@ -125,6 +130,12 @@ class Profile(Base):
         server_default=Gender.UNKNOWN.value,
     )
     language: Mapped[str] = mapped_column(String(35), default="ar", server_default="ar")
+    # The country the person chose to declare (decision 67), an ISO 3166-1 alpha-2 code; empty
+    # when they did not. Never inferred from a location, an address or anything else.
+    country: Mapped[str | None] = mapped_column(String(2))
+    # Mirror of the latest `public_country` consent row: while true and a country is declared, the
+    # public profile and the author line of a post show it; off until the person turns it on.
+    show_country: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     # The two switches the user can turn off at any time (master prompt v2, section 5).
     personalization_enabled: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("true")

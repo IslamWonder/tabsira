@@ -19,6 +19,9 @@ class ConsentKind(StrEnum):
     PERSONALIZATION = "personalization"  # tailor the explanations to my choices
     MEMORY = "memory"  # remember my earlier insights
     PUBLIC_FULL_NAME = "public_full_name"  # show my real full name beside my handle (decision 64)
+    PUBLIC_COUNTRY = (
+        "public_country"  # show the country I declared on my public profile (decision 67)
+    )
 
 
 class Consent(Base):

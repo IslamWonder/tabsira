@@ -55,7 +55,7 @@ async def test_a_draft_is_made_from_a_verified_insight_and_cites_the_store_by_re
     assert response.status_code == 201
     assert body["status"] == "draft"
     assert body["visibility"] == "public"
-    assert body["author"] == {"handle": "author", "public_name": "author name"}
+    assert body["author"] == {"handle": "author", "public_name": "author name", "country": None}
     assert body["published_at"] is None
     assert body["reflection"] == {
         "text": "تأمّلي الشخصي",

@@ -126,7 +126,7 @@ async def test_a_member_without_the_consent_is_the_handle_alone_everywhere(
     thread = await guest.http.get(f"/posts/{post_id}/comments")
     blocks = await reader.http.get("/blocks")
 
-    assert post.json()["author"] == {"handle": "author", "public_name": None}
+    assert post.json()["author"] == {"handle": "author", "public_name": None, "country": None}
     assert commented.json()["author"] == {"handle": "author", "public_name": None}
     assert thread.json()["items"][0]["author"] == {"handle": "author", "public_name": None}
     assert blocks.json() == [{"handle": "author", "public_name": None}]

@@ -24,7 +24,7 @@ from src.models.consent import Consent, ConsentKind
 from src.models.profile import AgeRange, Profile
 from src.models.user import User
 from src.schemas.profile import ProfilePatch
-from src.services import legal_service, photo_service
+from src.services import geo_service, legal_service, photo_service
 from src.storage.base import StorageError
 from src.storage.photos import PhotoStore
 
@@ -80,6 +80,12 @@ async def record_consent(
             "The full name of an account under 13 is never shown.",
             status_code=403,
         )
+    if kind == ConsentKind.PUBLIC_COUNTRY and granted and profile.age_range == AgeRange.UNDER_13:
+        raise AppError(
+            ErrorCode.CONSENT_NOT_ALLOWED,
+            "The country of an account under 13 is never shown.",
+            status_code=403,
+        )
     if kind == ConsentKind.PHOTO_STORAGE and not granted and photos is not None:
         await _forget_photos(db, user_id, photos)
     consent = Consent(user_id=user_id, kind=kind, version=version, granted=granted)
@@ -92,6 +98,8 @@ async def record_consent(
         # The mirror public answers read lives on the account, next to the handle.
         user = await db.get_one(User, user_id)
         user.public_full_name = granted
+    elif kind == ConsentKind.PUBLIC_COUNTRY:
+        profile.show_country = granted
     else:  # memory: the legal kinds were refused above
         profile.memory_enabled = granted
     profile.consent_version = version
@@ -117,6 +125,8 @@ async def update_profile(
     profile = await ensure_profile(db, user_id)
     changes = patch.model_dump(exclude_unset=True)
     complete = changes.pop("complete_profile", None)
+    if changes.get("country") is not None:
+        await _require_known_country(db, changes["country"])
     if "goals" in changes:
         profile.goals = [goal.value for goal in changes.pop("goals")]
     for field, value in changes.items():
@@ -148,8 +158,27 @@ async def update_profile(
             profile.consent_version or UNVERSIONED,
             granted=False,
         )
+    if profile.age_range == AgeRange.UNDER_13 and profile.show_country:
+        # Declaring under 13 withdraws the consent to show the country, on the record.
+        await record_consent(
+            db,
+            user_id,
+            ConsentKind.PUBLIC_COUNTRY,
+            profile.consent_version or UNVERSIONED,
+            granted=False,
+        )
     await db.flush()
     return profile
+
+
+async def _require_known_country(db: AsyncSession, code: str) -> None:
+    """Refuse with 422 a code GeoNames does not list as a country (decision 67)."""
+    if code not in await geo_service.country_labels(db):
+        raise AppError(
+            ErrorCode.VALIDATION_ERROR,
+            "The country must be the ISO2 code of a country GET /geo/countries lists.",
+            status_code=422,
+        )
 
 
 async def _shows_full_name(db: AsyncSession, user_id: uuid.UUID) -> bool:

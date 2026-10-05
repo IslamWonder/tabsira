@@ -67,9 +67,11 @@ async def profile_of(db: AsyncSession, member: User, viewer: User | None) -> Mem
         viewer_relation = ViewerRelationOut(
             follows=follows is not None, is_self=viewer.id == member.id
         )
+    countries = await public_identity.shown_countries(db, [member.id])
     return MemberProfileOut(
         handle=member.handle or "",
         public_name=public_identity.shown_name(member),
+        country=countries.get(member.id),
         joined_month=member.created_at.strftime("%Y-%m"),
         posts_count=posts or 0,
         followers_count=followers or 0,

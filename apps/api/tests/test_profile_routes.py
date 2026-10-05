@@ -45,6 +45,8 @@ async def test_a_new_profile_has_every_answer_unknown_and_nothing_assumed(web, n
         "religious_background": "unknown",
         "gender": "unknown",
         "language": "ar",
+        "country": None,
+        "show_country": False,
         "personalization_enabled": True,
         "memory_enabled": True,
         "photo_storage_consent": False,

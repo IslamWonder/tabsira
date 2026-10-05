@@ -4,20 +4,27 @@ The public identity of an account: a handle and a name chosen on purpose.
 A person who wants to publish picks a handle (their address, `/u/<handle>`). Beside it a public
 page shows the person's real full name (`display_name`) only while the `public_full_name`
 consent is given (decision 64); withdrawn or never given, the handle is all it says. A handle
-is unique whatever its case. Nothing here reads, guesses or copies anything from the profile.
+is unique whatever its case. The one thing read from the profile is the country the person
+declared, and only while its own `public_country` consent is given (decision 67); nothing is
+guessed or copied from anything else.
 """
 
 from __future__ import annotations
 
 import re
 import unicodedata
+import uuid
+from collections.abc import Collection
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.errors import AppError, ErrorCode
+from src.models.profile import Profile
 from src.models.user import HANDLE_PATTERN, User
+from src.schemas.geo import PublicCountryOut
+from src.services import geo_service
 
 _HANDLE = re.compile(HANDLE_PATTERN)
 # Names that say "this is the platform" or "this is staff"; nobody may take them.
@@ -88,6 +95,36 @@ def shown_name(user: User) -> str | None:
     answer that names an account goes through here, so withdrawing the consent is enough.
     """
     return user.display_name if user.public_full_name else None
+
+
+async def shown_countries(
+    db: AsyncSession, user_ids: Collection[uuid.UUID]
+) -> dict[uuid.UUID, PublicCountryOut]:
+    """
+    Return the country each of these accounts shows publicly, in one query; absent means none.
+
+    Only a declared country whose `public_country` consent is given, and only one GeoNames still
+    names. The public profile and the author line of a post read it; no other answer does.
+    """
+    if not user_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(Profile.user_id, Profile.country).where(
+                Profile.user_id.in_(set(user_ids)),
+                Profile.show_country.is_(True),
+                Profile.country.is_not(None),
+            )
+        )
+    ).all()
+    if not rows:
+        return {}
+    labels = await geo_service.country_labels(db)
+    return {
+        user_id: PublicCountryOut(code=code, name=labels[code])
+        for user_id, code in rows
+        if code in labels
+    }
 
 
 def _taken() -> AppError:

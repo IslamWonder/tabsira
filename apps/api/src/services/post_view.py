@@ -27,9 +27,10 @@ from src.models.social import (
     ReactionKind,
 )
 from src.models.user import User
+from src.schemas.geo import PublicCountryOut
 from src.schemas.social import (
     InsightOut,
-    MemberOut,
+    PostAuthorOut,
     PostOut,
     ReactionCountsOut,
     ReflectionOut,
@@ -115,6 +116,7 @@ def _post_out(
     viewer: User | None,
     counts: tuple[dict[int, ReactionCountsOut], dict[int, int]],
     flags: tuple[dict[int, list[ReactionKind]], set[int], set[uuid.UUID]],
+    countries: dict[uuid.UUID, PublicCountryOut],
     why: WhyOut | None,
 ) -> PostOut:
     post = row.post
@@ -126,8 +128,10 @@ def _post_out(
     given, saved, followed = flags
     return PostOut(
         id=post.id,
-        author=MemberOut(
-            handle=row.author.handle or "", public_name=public_identity.shown_name(row.author)
+        author=PostAuthorOut(
+            handle=row.author.handle or "",
+            public_name=public_identity.shown_name(row.author),
+            country=countries.get(post.author_id),
         ),
         insight=insight_of(publication, evidence, photo_url=photo_url),
         reflection=(
@@ -205,6 +209,7 @@ async def build_posts(
         [(r["collection"], r["number"]) for p in publications for r in p.hadith_refs],
     )
     counts = (await reaction_service.counts(db, post_ids), await _comment_counts(db, post_ids))
+    countries = await public_identity.shown_countries(db, {row.post.author_id for row in shown})
     photo_urls = await photo_service.public_urls(
         db,
         photos,
@@ -224,6 +229,7 @@ async def build_posts(
             viewer=viewer,
             counts=counts,
             flags=(given, saved, followed),
+            countries=countries,
             why=None if why is None else why.get(row.post.id),
         )
         for row in shown

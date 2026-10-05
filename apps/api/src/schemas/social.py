@@ -27,6 +27,7 @@ from src.models.social import (
     ReportReason,
     ReportTarget,
 )
+from src.schemas.geo import PublicCountryOut
 from src.schemas.public_id import PublicId
 from src.services import public_identity
 
@@ -82,6 +83,14 @@ class MemberOut(BaseModel):
     public_name: str | None
 
 
+class PostAuthorOut(MemberOut):
+    """The author line of a post: the handle, the full name and the country, each by consent."""
+
+    country: PublicCountryOut | None = Field(
+        default=None, description="Only while the author's `public_country` consent is given"
+    )
+
+
 class ViewerRelationOut(BaseModel):
     """How the signed-in viewer stands to a profile."""
 
@@ -92,6 +101,9 @@ class ViewerRelationOut(BaseModel):
 class MemberProfileOut(MemberOut):
     """A public profile: who, since when, and three counts read from the rows they count."""
 
+    country: PublicCountryOut | None = Field(
+        default=None, description="Only while the person's `public_country` consent is given"
+    )
     joined_month: str = Field(description="`YYYY-MM`, in UTC")
     posts_count: int = Field(description="Published public posts")
     followers_count: int
@@ -184,7 +196,7 @@ class WhyOut(BaseModel):
 
 class PostOut(BaseModel):
     id: PublicId
-    author: MemberOut
+    author: PostAuthorOut
     insight: InsightOut
     reflection: ReflectionOut | None
     visibility: PostVisibility
