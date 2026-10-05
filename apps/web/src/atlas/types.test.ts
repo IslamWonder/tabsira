@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { coarsen, lngLatOf } from './types';
+import { coarsen, coarsePoint, lngLatOf } from './types';
 
 describe('lngLatOf', () => {
   it('reads a GeoJSON point in [longitude, latitude] order and treats zero as a value', () => {
@@ -22,5 +22,13 @@ describe('coarsen', () => {
       east: 180,
       north: 90,
     });
+  });
+});
+
+describe('coarsePoint', () => {
+  it('snaps a position to the 0.05 degree grid, as [longitude, latitude], and clamps it to the globe', () => {
+    expect(coarsePoint([10.18153, 36.80651])).toEqual([10.2, 36.8]);
+    expect(coarsePoint([-0.0049, 0.0251])).toEqual([0, 0.05]);
+    expect(coarsePoint([180.2, -90.4])).toEqual([180, -90]);
   });
 });

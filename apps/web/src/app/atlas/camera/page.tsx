@@ -19,5 +19,5 @@ export default function AtlasCameraPage() {
   if (!featureEnabled('camera_discovery')) {
     notFound();
   }
-  return <CameraScreen />;
+  return <CameraScreen sponsorship={featureEnabled('atlas_sponsorship')} />;
 }

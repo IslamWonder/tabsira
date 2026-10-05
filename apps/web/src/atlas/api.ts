@@ -4,10 +4,14 @@ import {
   type AtlasEntry,
   type AtlasFeatureCollection,
   type AtlasFilters,
+  type AtlasOrphans,
   type AtlasPlace,
   type CapturePointIn,
   coarsen,
+  coarsePoint,
   type MapEntryOwner,
+  ORPHAN_PAGE,
+  ORPHAN_RADIUS_M,
   type PlaceHit,
   type Window,
 } from './types';
@@ -96,4 +100,25 @@ export function withdrawEntry(insightId: string): Promise<Result<unknown>> {
 
 export function myEntries(): Promise<Result<MapEntryOwner[]>> {
   return attempt(api.GET('/me/map-entries'));
+}
+
+/** Orphaned entries near a position; the position is snapped to the grid here, so no caller can send a finer one. */
+export function orphansNear(
+  point: readonly [number, number],
+  cursor: string | null
+): Promise<Result<AtlasOrphans>> {
+  const [lng, lat] = coarsePoint(point);
+  return attempt(
+    api.GET('/atlas/orphans', {
+      params: {
+        query: {
+          lat,
+          lng,
+          radius: ORPHAN_RADIUS_M,
+          limit: ORPHAN_PAGE,
+          ...(cursor === null ? {} : { cursor }),
+        },
+      },
+    })
+  );
 }

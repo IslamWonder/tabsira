@@ -28,8 +28,10 @@ import { Notice } from '@/components/ui/notice';
 import { failureMessage } from '@/lib/api/failure-message';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
-import { entryPath, PlaceSearch } from './atlas-screen';
+import { PlaceSearch } from './atlas-screen';
 import { useCameraStream, useDeviceHeading, useDevicePosition } from './camera-sensors';
+import { OrphansSection } from './orphans-section';
+import { entryPath } from './paths';
 
 const A = messages.atlas;
 const C = messages.atlas.camera;
@@ -144,9 +146,11 @@ function Label({ shown, mode }: { shown: Shown; mode: Mode }) {
  * entries are then measured and sorted here. A heading, when the sensors give
  * one anchored to north, adds a turn toward each entry's area, never toward a
  * thing. The list in the panel is the same knowledge for keyboards and screen
- * readers; nothing on the view is the only way to reach an entry.
+ * readers; nothing on the view is the only way to reach an entry. With the
+ * sponsoring feature on, the orphaned entries around the same centre are offered
+ * below, asked of the API with the centre snapped to the atlas grid.
  */
-export function CameraScreen() {
+export function CameraScreen({ sponsorship = false }: { sponsorship?: boolean }) {
   const camera = useCameraStream();
   const position = useDevicePosition();
   const heading = useDeviceHeading();
@@ -476,6 +480,7 @@ export function CameraScreen() {
               </Button>
             ) : null}
           </section>
+          {sponsorship ? <OrphansSection point={centre?.point ?? null} /> : null}
           <p className="m-0 text-[0.8125rem] text-fg-muted">{C.notLive}</p>
         </>
       )}

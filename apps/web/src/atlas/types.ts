@@ -19,6 +19,7 @@ export type CapturePointIn = Schemas['CapturePointIn'];
 export type LocationSource = Schemas['LocationSource'];
 export type LocationMeaning = Schemas['LocationMeaning'];
 export type PlaceHit = Schemas['PlaceHit'];
+export type AtlasOrphans = Schemas['AtlasOrphansOut'];
 
 /** The two numbers of a GeoJSON point as a pair: [longitude, latitude]. */
 export function lngLatOf(point: { coordinates: number[] }): [number, number] {
@@ -48,6 +49,23 @@ export function coarsen(window: Window): Window {
     north: clamp(Number(up(window.north).toFixed(2)), 90),
   };
 }
+
+/**
+ * A position snapped to the same grid as a window, [longitude, latitude]: the
+ * orphans request carries this and never the exact point. The API does not round it.
+ */
+export function coarsePoint(point: readonly [number, number]): [number, number] {
+  const snap = (value: number, limit: number) =>
+    Math.max(
+      -limit,
+      Math.min(limit, Number((Math.round(value / WINDOW_STEP) * WINDOW_STEP).toFixed(2)))
+    );
+  return [snap(point[0], 180), snap(point[1], 90)];
+}
+
+/** Orphaned entries sit at widened places (a city, a region, a country), so the search is wide. */
+export const ORPHAN_RADIUS_M = 150_000;
+export const ORPHAN_PAGE = 10;
 
 export type Period = 'all' | 'week' | 'month' | 'year';
 

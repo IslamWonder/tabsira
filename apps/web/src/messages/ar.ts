@@ -1106,6 +1106,22 @@ export const ar = {
       withPhoto: 'تُعرض الصورة مع النقطة',
     },
     /**
+     * «كفالة بصيرة» (decision 60): an entry nobody looks after is offered, at its
+     * widened place and without its author's name, to a verified member who may
+     * look after it. Nothing here counts, ranks or promises a reward.
+     */
+    sponsor: {
+      orphans: {
+        heading: 'بصائر تنتظر من يكفلها',
+        lead: 'بصائر طال عليها الصمت، فاتسع موضعها وغاب اسم صاحبها. يستطيع عضو موثَّق أن يكفل واحدة منها.',
+        privacy: 'يُرسل إلى تبصرة مركز الخريطة المعروض مقرَّبًا إلى شبكة واسعة، لا موضعك.',
+        list: 'قائمة البصائر التي تنتظر من يكفلها قرب هذه المنطقة',
+        failed: 'تعذّر عرض البصائر التي تنتظر من يكفلها الآن.',
+        more: 'اعرض المزيد',
+        loadingMore: 'نحمّل المزيد…',
+      },
+    },
+    /**
      * «اكتشف البصائر حولك» (extension §5–7): published entries near the device,
      * listed by distance over the camera's live view, with the direction of each
      * when the sensors give a heading. The view is never read or sent; what is

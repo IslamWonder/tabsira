@@ -5,7 +5,7 @@ import type { AtlasFeature } from '@/atlas/types';
 import { zoomForRadius } from '@/atlas/view-state';
 import { messages } from '@/messages';
 import { apiError, mockApi, type Reply, type Route } from '@/test/api';
-import { FEATURE, SECOND_FEATURE } from '@/test/atlas';
+import { FEATURE, ORPHAN_FEATURE, SECOND_FEATURE } from '@/test/atlas';
 import {
   forgetDevice,
   hidePage,
@@ -368,5 +368,41 @@ describe('CameraScreen', () => {
     const far = await within(list).findByRole('link', { name: /\[بصيرة بعيدة\]/ });
     expect(within(far).getByText('الاتجاه التقريبي: أمامك')).toBeInTheDocument();
     expect(within(far).getByText('في اتجاه الكاميرا')).toBeInTheDocument();
+  });
+
+  describe('with sponsoring', () => {
+    const O = messages.atlas.sponsor.orphans;
+    const orphans = {
+      body: { type: 'FeatureCollection', features: [ORPHAN_FEATURE], next_cursor: null },
+    };
+
+    it('offers the orphaned entries around the device, asked with the position snapped to the grid', async () => {
+      const device = stubCamera('granted');
+      const geolocation = stubGeolocation();
+      const api = guest({ 'GET /atlas/orphans': orphans });
+      render(<CameraScreen sponsorship />);
+      await userEvent.click(screen.getByRole('button', { name: 'ابدأ الاستكشاف' }));
+      await waitFor(() => expect(geolocation.watchPosition).toHaveBeenCalled());
+      expect(device.getUserMedia).toHaveBeenCalled();
+      expect(screen.queryByRole('region', { name: O.heading })).toBeNull();
+      geolocation.fix(DEVICE);
+      const section = await screen.findByRole('region', { name: O.heading });
+      expect(within(section).getByRole('link', { name: /\[بصيرة تنتظر\]/ })).toHaveTextContent(
+        '[على مستوى المنطقة]'
+      );
+      const request = api.requests.find((r) => r.url.includes('/atlas/orphans'));
+      const query = new URL(request?.url ?? '').searchParams;
+      expect([query.get('lng'), query.get('lat')]).toEqual(['10.2', '36.8']);
+      expect(request?.url).not.toContain('10.19');
+      expect(request?.url).not.toContain('36.81');
+    });
+
+    it('asks nothing about orphans while the feature is off', async () => {
+      const { api, geolocation } = await startExploring();
+      geolocation.fix(DEVICE);
+      await screen.findByRole('region', { name: 'قائمة البصائر القريبة' });
+      expect(api.requests.some((r) => r.url.includes('/atlas/orphans'))).toBe(false);
+      expect(screen.queryByRole('region', { name: O.heading })).toBeNull();
+    });
   });
 });

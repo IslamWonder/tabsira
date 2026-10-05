@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setSignedIn } from '@/account/session';
 import { messages } from '@/messages';
 import { apiError, mockApi, type Reply, type Route } from '@/test/api';
-import { FEATURE, OWNER_ENTRY, PLACE, SECOND_FEATURE } from '@/test/atlas';
+import { FEATURE, ORPHAN_FEATURE, OWNER_ENTRY, PLACE, SECOND_FEATURE } from '@/test/atlas';
 import { USER } from '@/test/fixtures';
 import { forgetMaps, loadedMap } from '@/test/maplibre';
 
@@ -459,5 +459,55 @@ describe('AtlasScreen', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByRole('region', { name: 'بصائري على الأطلس' })).toBeNull();
     expect(screen.queryByText('[عنوان البصيرة]', { selector: 'h3' })).toBeNull();
+  });
+});
+
+describe('AtlasScreen with sponsoring', () => {
+  const S = messages.atlas.sponsor;
+  const orphans = (features = [ORPHAN_FEATURE]) => ({
+    body: { type: 'FeatureCollection', features, next_cursor: null },
+  });
+
+  it('offers nothing of it while the feature is off', async () => {
+    setSignedIn(USER);
+    const api = guest();
+    render(<AtlasScreen />);
+    await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    expect(api.requests.some((r) => r.url.includes('/atlas/orphans'))).toBe(false);
+    expect(screen.queryByRole('region', { name: S.orphans.heading })).toBeNull();
+  });
+
+  it('suggests the orphaned entries around the map centre, snapped to the grid, without asking the device', async () => {
+    const geolocation = { getCurrentPosition: vi.fn(), watchPosition: vi.fn() };
+    vi.stubGlobal('navigator', { ...navigator, geolocation });
+    const api = guest({ 'GET /atlas/orphans': orphans() });
+    render(<AtlasScreen sponsorship />);
+    await loadedMap();
+    const section = await screen.findByRole('region', { name: S.orphans.heading });
+    const link = within(section).getByRole('link', { name: /\[بصيرة تنتظر\]/ });
+    expect(link).toHaveTextContent('[على مستوى المنطقة]');
+    expect(link.textContent).not.toContain('@');
+    const request = api.requests.find((r) => r.url.includes('/atlas/orphans'));
+    const query = new URL(request?.url ?? '').searchParams;
+    expect([query.get('lng'), query.get('lat')]).toEqual(['10', '36']);
+    expect(geolocation.getCurrentPosition).not.toHaveBeenCalled();
+    expect(geolocation.watchPosition).not.toHaveBeenCalled();
+  });
+
+  it('asks again around the new centre only when the window is searched again', async () => {
+    const api = guest({ 'GET /atlas/orphans': orphans() });
+    render(<AtlasScreen sponsorship />);
+    const map = await loadedMap();
+    await screen.findByRole('region', { name: S.orphans.heading });
+    map.bounds = { west: 39, south: 21, east: 40, north: 22 };
+    map.center = { lng: 39.52, lat: 21.48 };
+    map.emit('moveend', { originalEvent: {} });
+    const asked = () => api.requests.filter((r) => r.url.includes('/atlas/orphans'));
+    expect(asked()).toHaveLength(1);
+    await userEvent.click(screen.getByRole('button', { name: 'ابحث في هذه المنطقة' }));
+    await waitFor(() => expect(asked()).toHaveLength(2));
+    const query = new URL(asked()[1]?.url ?? '').searchParams;
+    expect([query.get('lng'), query.get('lat')]).toEqual(['39.5', '21.5']);
   });
 });

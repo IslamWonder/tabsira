@@ -30,6 +30,8 @@ import { formatDay } from '@/lib/dates';
 import { messages } from '@/messages';
 import { profilePath } from '@/social/identity';
 import { MapView } from './map-view';
+import { OrphansSection } from './orphans-section';
+import { entryPath, placePath } from './paths';
 
 const A = messages.atlas;
 const PERIODS: readonly Period[] = ['all', 'week', 'month', 'year'];
@@ -44,13 +46,7 @@ type Load =
   | { kind: 'ready'; truncated: boolean }
   | { kind: 'failed'; message: string };
 
-export function entryPath(id: string): Route {
-  return `/atlas/entries/${id}` as Route;
-}
-
-export function placePath(geonameId: number): Route {
-  return `/atlas/places/${geonameId}` as Route;
-}
+export { entryPath, placePath };
 
 /** The card of one entry: title, glimpse, place, who published it, and the way to the insight. */
 export function EntryCard({ feature, onClose }: { feature: AtlasFeature; onClose?: () => void }) {
@@ -395,10 +391,13 @@ function viewFromAddress(): View | null {
 export function AtlasScreen({
   initialView = null,
   cameraDiscovery = false,
+  sponsorship = false,
 }: {
   initialView?: View | null;
   /** The camera_discovery feature, read by the server: shows the way to the camera discovery. */
   cameraDiscovery?: boolean;
+  /** The atlas_sponsorship feature, read by the server: shows the orphaned entries. */
+  sponsorship?: boolean;
 }) {
   const session = useSession();
   const [features, setFeatures] = useState<AtlasFeature[]>([]);
@@ -413,6 +412,10 @@ export function AtlasScreen({
   // What the map shows after its last move; what the address carries.
   const [shownView, setShownView] = useState<View | null>(view);
   const latest = useRef(0);
+  // The map's centre when it last moved, and the one the orphans were last asked around:
+  // a public map view, never the device's position.
+  const centre = useRef<View['center'] | null>(null);
+  const [orphanPoint, setOrphanPoint] = useState<View['center'] | null>(null);
 
   // The selection and filters of the address, once in the browser; the map's view was read above.
   useEffect(() => {
@@ -438,6 +441,7 @@ export function AtlasScreen({
   const fetchWindow = useCallback(async (window: Window, applied: AtlasFilters) => {
     const mine = ++latest.current;
     setLoad({ kind: 'loading' });
+    setOrphanPoint(centre.current);
     const result = await entriesIn(window, applied);
     if (mine !== latest.current) {
       return;
@@ -456,6 +460,7 @@ export function AtlasScreen({
       const first = window_.current === null;
       window_.current = window;
       setShownView(current);
+      centre.current = current.center;
       if (first) {
         void fetchWindow(window, filters);
       } else {
@@ -629,6 +634,9 @@ export function AtlasScreen({
           ))}
         </ul>
       </section>
+      {sponsorship && (session.status !== 'signed-in' || scope === 'public') ? (
+        <OrphansSection point={orphanPoint} />
+      ) : null}
     </div>
   );
 

@@ -138,3 +138,20 @@ export const OWNER_ENTRY: MapEntryOwner = {
   withdrawn_at: null,
   created_at: '2026-10-04T08:00:00Z',
 };
+
+/** An orphaned entry as the orphans route gives it: widened place, no author, no handle. */
+export const ORPHAN_FEATURE: AtlasFeature = {
+  ...FEATURE,
+  id: '7400000000000000009',
+  geometry: { type: 'Point', coordinates: [10.1, 36.8] },
+  properties: {
+    ...FEATURE.properties,
+    id: '7400000000000000009',
+    title: '[بصيرة تنتظر]',
+    author: null,
+    cell_m: 50000,
+    precision_label: '[على مستوى المنطقة]',
+    orphaned: true,
+    widened_level: 'region',
+  },
+};

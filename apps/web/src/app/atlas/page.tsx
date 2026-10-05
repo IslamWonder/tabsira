@@ -20,5 +20,10 @@ export default function AtlasPage() {
   if (!featureEnabled('atlas')) {
     notFound();
   }
-  return <AtlasScreen cameraDiscovery={featureEnabled('camera_discovery')} />;
+  return (
+    <AtlasScreen
+      cameraDiscovery={featureEnabled('camera_discovery')}
+      sponsorship={featureEnabled('atlas_sponsorship')}
+    />
+  );
 }
