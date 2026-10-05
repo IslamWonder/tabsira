@@ -76,7 +76,7 @@ export const POST: Post = {
 /** The same post as its signed-in author sees it, with the feed's reason. */
 export const MY_POST: Post = {
   ...POST,
-  viewer: { reactions: [], bookmarked: false, is_author: true },
+  viewer: { reactions: [], bookmarked: false, is_author: true, follows_author: false },
 };
 
 export const COMMENT: Comment = {

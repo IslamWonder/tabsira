@@ -9,6 +9,7 @@ by reference from the store (`evidence_view`); the author's reflection is labell
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Sequence
 
 from sqlalchemy import func, select
@@ -19,6 +20,7 @@ from src.models.social import (
     Bookmark,
     Comment,
     CommentStatus,
+    Follow,
     InsightPublication,
     PostStatus,
     PostVisibility,
@@ -112,7 +114,7 @@ def _post_out(
     photo_urls: dict[int, str],
     viewer: User | None,
     counts: tuple[dict[int, ReactionCountsOut], dict[int, int]],
-    flags: tuple[dict[int, list[ReactionKind]], set[int]],
+    flags: tuple[dict[int, list[ReactionKind]], set[int], set[uuid.UUID]],
     why: WhyOut | None,
 ) -> PostOut:
     post = row.post
@@ -121,7 +123,7 @@ def _post_out(
     )
     is_author = viewer is not None and viewer.id == post.author_id
     reactions, comments = counts
-    given, saved = flags
+    given, saved, followed = flags
     return PostOut(
         id=post.id,
         author=MemberOut(
@@ -150,6 +152,7 @@ def _post_out(
                 reactions=given.get(post.id, []),
                 bookmarked=post.id in saved,
                 is_author=is_author,
+                follows_author=post.author_id in followed,
             )
         ),
         why=why,
@@ -176,12 +179,22 @@ async def build_posts(
     post_ids = [row.post.id for row in shown]
     given: dict[int, list[ReactionKind]] = {}
     saved: set[int] = set()
+    followed: set[uuid.UUID] = set()
     if viewer is not None:
         given = await reaction_service.mine(db, post_ids, viewer)
         saved = set(
             await db.scalars(
                 select(Bookmark.post_id).where(
                     Bookmark.user_id == viewer.id, Bookmark.post_id.in_(post_ids)
+                )
+            )
+        )
+        # Which authors of the page the reader follows, in one query, so each card can offer it.
+        followed = set(
+            await db.scalars(
+                select(Follow.followee_id).where(
+                    Follow.follower_id == viewer.id,
+                    Follow.followee_id.in_({row.post.author_id for row in shown}),
                 )
             )
         )
@@ -210,7 +223,7 @@ async def build_posts(
             photo_urls=photo_urls,
             viewer=viewer,
             counts=counts,
-            flags=(given, saved),
+            flags=(given, saved, followed),
             why=None if why is None else why.get(row.post.id),
         )
         for row in shown

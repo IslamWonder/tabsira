@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { apiError, mockApi } from '@/test/api';
 import { HADITH_TEXT, publicInsightOut, sha256, VERSE_TEXT } from '@/test/scan';
@@ -38,7 +38,12 @@ describe('the public page of an insight', () => {
   it('reads the public route without a cookie and asks for nothing else', async () => {
     const api = mockApi({ [`GET ${API_PATH}`]: { body: publicInsightOut() } });
     render(await PublicInsightRoute(params(ID)));
-    expect(api.requests.map((request) => new URL(request.url).pathname)).toEqual([API_PATH]);
+    // Besides the session every page reads (the top bar's, shared), nothing but the public route.
+    await waitFor(() => expect(api.requests.length).toBe(2));
+    expect(api.requests.map((request) => new URL(request.url).pathname)).toEqual([
+      API_PATH,
+      '/auth/me',
+    ]);
   });
 
   it('gives the title, the author as given, the disclosure and the way into the app', async () => {

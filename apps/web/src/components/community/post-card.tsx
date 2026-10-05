@@ -19,6 +19,7 @@ import { setBookmark, setReaction } from '@/social/api';
 import { memberLabel, postPath, profilePath } from '@/social/identity';
 import type { Post, ReactionKind } from '@/social/types';
 import { PostEvidence } from './evidence';
+import { FollowToggle } from './follow-toggle';
 import { PublicPhoto } from './public-photo';
 import { BlockSheet, ReportSheet, WithdrawSheet } from './sheets';
 import { WhySheet } from './why-sheet';
@@ -126,6 +127,7 @@ export function PostCard({
   const [failure, setFailure] = useState<string | null>(null);
   const Heading = `h${headingLevel}` as const;
   const isAuthor = post.viewer?.is_author === true;
+  const [followsAuthor, setFollowsAuthor] = useState(post.viewer?.follows_author === true);
   const when = post.published_at ?? post.created_at;
   const closeSheets = () => setOpen('none');
 
@@ -148,6 +150,7 @@ export function PostCard({
             reactions: result.data.mine,
             bookmarked: post.viewer?.bookmarked === true,
             is_author: isAuthor,
+            follows_author: followsAuthor,
           },
         });
       } else {
@@ -160,7 +163,12 @@ export function PostCard({
     if (result.ok) {
       onChange({
         ...post,
-        viewer: { reactions: given, bookmarked: saved, is_author: isAuthor },
+        viewer: {
+          reactions: given,
+          bookmarked: saved,
+          is_author: isAuthor,
+          follows_author: followsAuthor,
+        },
       });
     } else {
       setFailure(failureMessage(result));
@@ -187,6 +195,14 @@ export function PostCard({
             )}
             <bdi className="text-[0.875rem] text-fg-muted">@{post.author.handle}</bdi>
           </Link>
+          {post.viewer === null || isAuthor ? null : (
+            <FollowToggle
+              handle={post.author.handle}
+              follows={followsAuthor}
+              onChange={setFollowsAuthor}
+              compact
+            />
+          )}
           <div className="flex flex-wrap items-center gap-2 text-[0.8125rem] text-fg-muted">
             {post.visibility === 'followers' ? <Chip>{M.visibility.followers}</Chip> : null}
             <time dateTime={when}>{formatWhen(when)}</time>

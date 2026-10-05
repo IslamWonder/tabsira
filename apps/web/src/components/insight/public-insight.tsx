@@ -1,3 +1,4 @@
+import { FollowAuthor } from '@/components/community/follow-author';
 import { SparkIcon } from '@/components/icons';
 import { LinkButton } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
@@ -13,7 +14,7 @@ const T = messages.publicInsight;
 /** The owner's chosen public handle and name, exactly as given; nothing else identifies them. */
 function Author({ author }: { author: NonNullable<PublicInsight['author']> }) {
   return (
-    <p className="m-0 flex flex-wrap items-center gap-x-2 text-[0.9375rem] text-fg-soft">
+    <div className="flex flex-wrap items-center gap-x-2 text-[0.9375rem] text-fg-soft">
       <span className="sr-only">{T.authorLabel}:</span>
       {author.public_name === null ? null : (
         <span className="font-medium text-fg">{author.public_name}</span>
@@ -21,7 +22,8 @@ function Author({ author }: { author: NonNullable<PublicInsight['author']> }) {
       <span dir="ltr" className="text-fg-muted">
         @{author.handle}
       </span>
-    </p>
+      <FollowAuthor handle={author.handle} />
+    </div>
   );
 }
 

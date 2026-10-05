@@ -12721,6 +12721,12 @@
           "is_author": {
             "type": "boolean",
             "title": "Is Author"
+          },
+          "follows_author": {
+            "type": "boolean",
+            "title": "Follows Author",
+            "description": "The reader follows the post's author, so a card can offer it",
+            "default": false
           }
         },
         "type": "object",

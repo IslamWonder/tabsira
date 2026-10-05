@@ -11,6 +11,7 @@ from src.models import (
     Bookmark,
     Comment,
     CommentStatus,
+    Follow,
     InsightPublication,
     ModerationAction,
     Post,
@@ -699,6 +700,7 @@ async def test_the_counts_and_the_viewers_own_flags_are_read_from_the_rows(
             PostReaction(post_id=int(post_id), user_id=reader.user.id, kind=ReactionKind.JAZAK),
             PostReaction(post_id=int(post_id), user_id=author.user.id, kind=ReactionKind.JAZAK),
             Bookmark(user_id=reader.user.id, post_id=int(post_id)),
+            Follow(follower_id=reader.user.id, followee_id=author.user.id),
             Comment(
                 post_id=int(post_id),
                 author_id=reader.user.id,
@@ -726,11 +728,13 @@ async def test_the_counts_and_the_viewers_own_flags_are_read_from_the_rows(
         "reactions": ["benefited", "jazak"],
         "bookmarked": True,
         "is_author": False,
+        "follows_author": True,
     }
     assert seen_by_author["viewer"] == {
         "reactions": ["jazak"],
         "bookmarked": False,
         "is_author": True,
+        "follows_author": False,
     }
 
 
