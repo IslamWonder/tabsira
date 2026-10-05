@@ -14,6 +14,13 @@ the importer's shape; a photo that failed in a way another run may fix is left o
 the provider answers 429 or 5xx, fewer photos run at once from then on; when it fails several
 photos in a row, the rest goes to the fallback provider. The run is recorded in the library.
 
+`photos --add-hadith` runs the kept photos whose insight has no hadith through the same scan
+again, as a member's scan does now that a hadith shows without a ruling (decision 65). A photo
+takes the new insight whole when it is kept and carries a hadith, so the verse, the hadith and
+the words written about them come from one run; otherwise it keeps its insight. Its outcome
+stays, its cost grows by the new calls, and the posts' texts written before the new insight
+are written again by the next texts stage.
+
 The texts stage reads the generated file, writes one post at a time through the composer model
 (`mockdata.voices`), keeps what passes the guards in the texts library, and fills the file
 from it. Before the file is replaced, the importer's own checks run over it against the
@@ -295,6 +302,7 @@ class PhotoOptions:
     limit: int | None = None
     reprocess: bool = False
     fallback: AiProvider | None = AiProvider.OPENAI
+    add_hadith: bool = False
 
 
 def is_retry(result: ScanResult) -> bool:
@@ -357,6 +365,7 @@ def photo_entry(
         "cost_usd": cost_of(usage),
         "processed_at": processed_at,
         "insight": result.body if result.outcome == KEPT else None,
+        "insight_at": processed_at,
     }
 
 
@@ -464,6 +473,75 @@ async def photo_stage(options: PhotoOptions, settings: Settings, services: Servi
     return 0
 
 
+def without_hadith(photos: Library) -> list[int]:
+    """The kept photos whose insight carries no hadith, in id order."""
+    return [pid for pid, entry in kept_photos(photos).items() if not entry["insight"]["hadith"]]
+
+
+def with_new_insight(
+    entry: dict[str, Any], result: ScanResult, calls: Sequence[CallRecord], at: str
+) -> tuple[dict[str, Any], str]:
+    """
+    Merge a new run of a kept photo into its entry and say what became of it.
+
+    The new insight is taken whole, never its hadith alone: the composer wrote the insight's
+    words for the verse and the hadith the gate paired.
+    """
+    usage = merge_usage([entry["usage"], usage_of(calls)])
+    merged = entry | {"usage": usage, "cost_usd": cost_of(usage)}
+    if result.outcome != KEPT or result.body is None:
+        return merged, f"kept_old:{result.outcome}"
+    if not result.body["hadith"]:
+        return merged, "kept_old:no_hadith"
+    return merged | {"insight": result.body, "insight_at": at}, "hadith_added"
+
+
+async def hadith_stage(options: PhotoOptions, settings: Settings, services: Services) -> int:
+    """Run the kept photos without a hadith again and take a new insight that carries one."""
+    started, wall = now_text(), time.monotonic()
+    photos = library.photos(options.folder / library.PHOTOS_NAME)
+    by_id = {p.id: p for p in candidates(options.folder)}
+    pending = [pid for pid in without_hadith(photos) if pid in by_id]
+    if options.limit is not None:
+        pending = pending[: options.limit]
+    switch = Switch(settings.ai_provider, None)
+    gate = AdaptiveGate(options.parallel)
+    counts: Counter[str] = Counter()
+
+    async def one(pid: int) -> None:
+        async with gate.slot():
+            result, _, _, calls = await scan_photo(
+                by_id[pid], services, switch, lambda: len(photos.entries)
+            )
+        gate.observe(calls)
+        entry, what = with_new_insight(photos.entries[str(pid)], result, calls, now_text())
+        counts["retry" if is_retry(result) else what] += 1
+        await photos.put(str(pid), entry)
+        _say(f"photo {pid}: {what}")
+
+    try:
+        await asyncio.gather(*(one(pid) for pid in pending), return_exceptions=True)
+    finally:
+        photos.runs.append(
+            {
+                "stage": "hadith",
+                "started_at": started,
+                "seconds": round(time.monotonic() - wall, 1),
+                "provider": settings.ai_provider.value,
+                "parallel": options.parallel,
+                "throttled": gate.events,
+                "photos": len(pending),
+                "outcomes": dict(sorted(counts.items())),
+            }
+        )
+        await photos.save()
+    left = len(without_hadith(photos))
+    _say(
+        f"{photos.path}: {len(kept_photos(photos)) - left} kept photos with a hadith, {left} without"
+    )
+    return 0
+
+
 # ─── The texts stage ───
 
 
@@ -515,13 +593,22 @@ def post_briefs(document: dict[str, Any]) -> list[tuple[Brief, int]]:
     return found
 
 
-def reusable(entry: dict[str, Any] | None, brief: Brief) -> bool:
-    """A library entry still fits the post: written, and for the same comment slots."""
+def reusable(entry: dict[str, Any] | None, brief: Brief, insight_at: str = "") -> bool:
+    """A library entry still fits the post: written after its insight, for the same slots."""
     return (
         entry is not None
         and not entry.get("retry", False)
         and entry["slots"] == signature(brief.slots)
+        and entry.get("written_at", "") >= insight_at
     )
+
+
+def insight_times(photos: Library) -> dict[int, str]:
+    """When each kept photo's insight was made; the texts written before it are rewritten."""
+    return {
+        pid: entry.get("insight_at") or entry.get("processed_at", "")
+        for pid, entry in kept_photos(photos).items()
+    }
 
 
 async def write_post(brief: Brief, services: Services) -> tuple[dict[str, Any], list[CallRecord]]:
@@ -575,10 +662,11 @@ async def texts_stage(options: TextOptions, settings: Settings, services: Servic
     texts = library.texts(folder / library.TEXTS_NAME)
     document = json.loads(options.file.read_text(encoding="utf-8"))
     briefs = post_briefs(document)
+    made = insight_times(library.photos(folder / library.PHOTOS_NAME))
     pending = [
         (brief, pid)
         for brief, pid in briefs
-        if not reusable(texts.entries.get(text_key(brief.post, pid)), brief)
+        if not reusable(texts.entries.get(text_key(brief.post, pid)), brief, made.get(pid, ""))
     ]
     if options.limit is not None:
         pending = pending[: options.limit]
@@ -852,6 +940,11 @@ def parser() -> argparse.ArgumentParser:
     photos.add_argument("--limit", type=int, help="at most this many photos in this run")
     photos.add_argument("--reprocess", action="store_true", help="run the photos it holds again")
     photos.add_argument(
+        "--add-hadith",
+        action="store_true",
+        help="run the kept photos without a hadith again; take a new insight that has one",
+    )
+    photos.add_argument(
         "--fallback",
         choices=[*(provider.value for provider in AiProvider), "none"],
         default=AiProvider.OPENAI.value,
@@ -873,6 +966,7 @@ def options_of(args: argparse.Namespace) -> PhotoOptions | TextOptions:
         parallel=args.parallel,
         limit=args.limit,
         reprocess=args.reprocess,
+        add_hadith=args.add_hadith,
         fallback=None if args.fallback == "none" else AiProvider(args.fallback),
     )
 
@@ -887,6 +981,8 @@ async def run(
     async with services(settings, options.parallel) as built:
         if isinstance(options, TextOptions):
             return await texts_stage(options, settings, built)
+        if options.add_hadith:
+            return await hadith_stage(options, settings, built)
         return await photo_stage(options, settings, built)
 
 

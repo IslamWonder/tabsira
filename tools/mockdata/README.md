@@ -71,6 +71,12 @@ pipeline of `apps/api` and the members' words:
   in the importer's shape (`InsightBodyIn`). A photo that failed in a way another run may fix
   (a provider or the database did not answer, the download failed) is left out and tried again
   next time. A photo the library holds is never run again unless `--reprocess`.
+- `MOCK_ARGS="--add-hadith" make mock-photos` runs the kept photos whose insight has no hadith
+  through the same scan again (a hadith shows without a ruling since decision 65). A photo
+  takes the new insight whole when it is kept and carries a hadith, never the hadith alone,
+  since the insight's words are written for the pair the gate chose; otherwise it keeps its
+  insight. The cost of the new calls is added to the photo's, and the next `make mock-texts`
+  writes again the posts' texts written before the new insight.
 - It stops as soon as the library holds `--stop-at` photos with an insight (150; `0` for all);
   the photos not reached stay unprocessed. `--parallel` photos run at once (20) and as many
   model calls; a 429 or a 5xx halves that for the rest of the run, and eight photos failed in a

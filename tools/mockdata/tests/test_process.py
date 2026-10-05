@@ -261,11 +261,12 @@ def test_a_photo_entry_holds_what_the_owners_asked_for() -> None:
     assert set(entry) == {
         "url", "filename", "category", "width", "height", "scene", "outcome",
         "pipeline_outcome", "detail", "provider", "model", "detector", "attempts", "usage",
-        "cost_usd", "processed_at", "insight",
+        "cost_usd", "processed_at", "insight", "insight_at",
     }  # fmt: skip
     assert entry["model"] == "Qwen3.8-27B"
     assert entry["insight"]["title"] == "سكينة القطة"
     assert entry["cost_usd"] == 0.001
+    assert entry["insight_at"] == entry["processed_at"]
     failed = process.photo_entry(
         PHOTOS[0], ScanResult("vision_failed"), AiProvider.OPENAI, 1, [], settings(), "t"
     )
@@ -412,6 +413,82 @@ async def test_an_earlier_runs_state_is_adopted_once(folder: Path) -> None:
     assert read(folder / library.PHOTOS_NAME)["runs"][1]["adopted_from_state"] == 0
 
 
+# ─── The hadith pass ───
+
+
+def kept_entry(*, hadith: bool, cost: float = 0.5) -> dict[str, Any]:
+    return {
+        "outcome": "insights",
+        "processed_at": "2026-10-05T18:00:00Z",
+        "insight": body_of(insight(hadith=hadith)),
+        "usage": {"ovh/fake-model": {"calls": 2, "failed": 0, "input_tokens": 1,
+                                     "output_tokens": 1, "cost_usd": cost}},
+        "cost_usd": cost,
+    }  # fmt: skip
+
+
+def new_result(*, hadith: bool, outcome: str = "insights") -> ScanResult:
+    body = body_of(insight(hadith=hadith)) | {"title": "عنوان جديد"}
+    return ScanResult(outcome, body=body if outcome == "insights" else None, calls=[record()])
+
+
+def test_a_new_insight_is_taken_whole_only_when_it_carries_a_hadith() -> None:
+    old = kept_entry(hadith=False)
+    taken, what = process.with_new_insight(old, new_result(hadith=True), [record()], "T")
+    assert what == "hadith_added"
+    assert (taken["insight"]["title"], taken["insight_at"]) == ("عنوان جديد", "T")
+    assert taken["insight"]["hadith"]["number"] == "1"
+    assert taken["cost_usd"] == 0.501
+    assert taken["usage"]["ovh/fake-model"]["calls"] == 3
+    assert (taken["outcome"], taken["processed_at"]) == ("insights", "2026-10-05T18:00:00Z")
+    kept, what = process.with_new_insight(old, new_result(hadith=False), [record()], "T")
+    assert what == "kept_old:no_hadith"
+    assert kept["insight"] == old["insight"]
+    assert "insight_at" not in kept
+    lost, what = process.with_new_insight(old, new_result(hadith=True, outcome="people"), [], "T")
+    assert what == "kept_old:people"
+    assert lost["insight"] == old["insight"]
+    assert lost["cost_usd"] == 0.5
+
+
+async def test_the_hadith_pass_runs_only_the_kept_photos_without_a_hadith(folder: Path) -> None:
+    photos = library.photos(folder / library.PHOTOS_NAME)
+    photos.entries.update(
+        {
+            "1": kept_entry(hadith=False),
+            "2": kept_entry(hadith=True),
+            "3": kept_entry(hadith=False),
+            "4": {"outcome": "people", "insight": None},
+        }
+    )
+    await photos.save()
+    fakes = Fakes()
+    fakes.outcomes["mock-1"] = [new_result(hadith=True)]
+    fakes.outcomes["mock-3"] = [ScanResult("source_unavailable", calls=[record()])]
+    options = PhotoOptions(folder=folder, parallel=2, add_hadith=True)
+    assert await process.hadith_stage(options, settings(ai_provider="ovh"), fakes.services()) == 0
+    assert sorted(scan_id for scan_id, _ in fakes.scanned) == [
+        "mock-1",
+        "mock-3",
+        "mock-3",
+        "mock-3",
+    ]
+    data = read(folder / library.PHOTOS_NAME)
+    assert data["photos"]["1"]["insight"]["title"] == "عنوان جديد"
+    assert data["photos"]["2"] == kept_entry(hadith=True)
+    assert data["photos"]["3"]["insight"]["hadith"] is None
+    assert data["photos"]["3"]["cost_usd"] == 0.503
+    run = data["runs"][-1]
+    assert (run["stage"], run["photos"], run["outcomes"]) == (
+        "hadith",
+        2,
+        {"hadith_added": 1, "retry": 1},
+    )
+    fakes.scanned.clear()
+    await process.hadith_stage(replace(options, limit=0), settings(), fakes.services())
+    assert fakes.scanned == []
+
+
 # ─── The texts stage ───
 
 
@@ -480,6 +557,27 @@ def test_a_library_entry_is_reused_only_for_the_same_slots() -> None:
     assert not reusable({"slots": [["c2", None]]}, brief)
     assert not reusable({"slots": [["c1", None]], "retry": True}, brief)
     assert not reusable(None, brief)
+
+
+def test_a_library_entry_written_before_its_photos_insight_is_written_again() -> None:
+    brief = Brief("p1", "t", "g", None, "TN", (Slot("c1", None, "EG"),))
+    entry = {"slots": [["c1", None]], "written_at": "2026-10-05T18:30:00Z"}
+    assert reusable(entry, brief, "2026-10-05T18:20:00Z")
+    assert reusable(entry, brief, "2026-10-05T18:30:00Z")
+    assert not reusable(entry, brief, "2026-10-05T20:00:00Z")
+    assert not reusable({"slots": [["c1", None]]}, brief, "2026-10-05T18:20:00Z")
+
+
+async def test_the_texts_stage_writes_again_the_posts_of_a_new_insight(folder: Path) -> None:
+    fakes = Fakes()
+    path = write_file(folder)
+    await process.texts_stage(TextOptions(path), settings(), fakes.services())
+    photos = library.photos(folder / library.PHOTOS_NAME)
+    photos.entries["1"] = _photo("insights", "insights") | {"insight_at": "2999-01-01T00:00:00Z"}
+    await photos.save()
+    fakes.briefs.clear()
+    await process.texts_stage(TextOptions(path), settings(), fakes.services())
+    assert [brief.post for brief in fakes.briefs] == ["p1"]
 
 
 async def test_a_post_whose_call_fails_is_retried_then_left_for_the_next_run() -> None:
@@ -767,11 +865,17 @@ def test_options_from_the_command_line(tmp_path: Path) -> None:
     photos = process.options_of(
         process.parser().parse_args(
             ["photos", "--folder", str(tmp_path), "--stop-at", "0", "--parallel", "5",
-             "--limit", "3", "--reprocess", "--fallback", "none"]
+             "--limit", "3", "--reprocess", "--fallback", "none", "--add-hadith"]
         )
     )  # fmt: skip
     assert photos == PhotoOptions(
-        folder=tmp_path, stop_at=None, parallel=5, limit=3, reprocess=True, fallback=None
+        folder=tmp_path,
+        stop_at=None,
+        parallel=5,
+        limit=3,
+        reprocess=True,
+        fallback=None,
+        add_hadith=True,
     )
     default = process.options_of(process.parser().parse_args(["photos"]))
     assert default == PhotoOptions()
@@ -794,7 +898,9 @@ async def test_run_builds_the_services_for_each_stage(folder: Path) -> None:
     assert await process.run(photos, settings(), services) == 0
     texts = TextOptions(write_file(folder), parallel=4)
     assert await process.run(texts, settings(), services) == 0
-    assert given == [3, 4]
+    hadith = PhotoOptions(folder=folder, parallel=5, add_hadith=True)
+    assert await process.run(hadith, settings(), services) == 0
+    assert given == [3, 4, 5]
 
 
 def test_main_needs_the_file_for_the_texts(
