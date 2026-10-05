@@ -177,6 +177,10 @@ class S3Storage:
             if not listing.get("IsTruncated"):
                 return removed
             token = listing.get("NextContinuationToken")
+            if not token:
+                # More to list but no way to ask for it: never report the folder empty.
+                message = "the listing of the folder could not be continued"
+                raise StorageUnavailableError(message)
 
     async def copy(self, source: str, destination: str) -> None:
         check_key(source)

@@ -27,9 +27,9 @@ from src import clock
 from src.config import checkout_root
 from src.storage.base import (
     CONTENT_TYPE,
-    KEY,
     InvalidKeyError,
     ObjectNotFoundError,
+    StorageUnavailableError,
     check_key,
     check_object,
     check_owner_prefix,
@@ -106,7 +106,12 @@ class LocalStorage:
 
     async def delete_prefix(self, prefix: str) -> int:
         folder = self.root / check_owner_prefix(prefix)
-        return await asyncio.to_thread(self._remove_folder, folder)
+        try:
+            return await asyncio.to_thread(self._remove_folder, folder)
+        except OSError:
+            # A file written into the folder meanwhile, or a disk that refuses: say it plainly.
+            message = "the folder could not be deleted"
+            raise StorageUnavailableError(message) from None
 
     @staticmethod
     def _remove_folder(folder: Path) -> int:
@@ -143,7 +148,11 @@ class LocalStorage:
 
     def verify_signature(self, key: str, expires: int, signature: str) -> bool:
         """Whether a link's `expires` and `signature` are genuine for `key` and still in time."""
-        if KEY.fullmatch(key) is None or expires < int(clock.utcnow().timestamp()):
+        try:
+            split_key(key)
+        except InvalidKeyError:
+            return False
+        if expires < int(clock.utcnow().timestamp()):
             return False
         return hmac.compare_digest(self._signature(key, expires), signature)
 

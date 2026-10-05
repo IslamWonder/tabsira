@@ -379,3 +379,14 @@ async def test_only_an_account_folder_can_be_deleted_whole(bucket):
     for prefix in ("private/", "public/", "private/users/"):
         with pytest.raises(InvalidKeyError):
             await bucket.delete_prefix(prefix)
+
+
+async def test_a_listing_that_says_there_is_more_but_not_where_is_storage_unavailable(
+    bucket, monkeypatch
+):
+    def endless(**_arguments):
+        return {"Contents": [], "IsTruncated": True}
+
+    monkeypatch.setattr(bucket.client, "list_objects_v2", endless)
+    with pytest.raises(StorageUnavailableError):
+        await bucket.delete_prefix(owner_prefix(ACCOUNT))

@@ -18,6 +18,7 @@ from src.storage.base import (
     InvalidTtlError,
     ObjectNotFoundError,
     StorageError,
+    StorageUnavailableError,
     check_key,
     check_owner_prefix,
     in_owner_folder,
@@ -351,3 +352,19 @@ async def test_an_account_folder_is_stored_as_its_key_and_deleted_whole(store, t
     assert await store.exists(legacy)
     # An empty or missing folder is nothing to delete.
     assert await store.delete_prefix(owner_prefix(ACCOUNT)) == 0
+
+
+async def test_a_folder_the_disk_will_not_delete_is_storage_unavailable(store, monkeypatch):
+    await store.put(new_private_key(ACCOUNT), JPEG)
+
+    def refuse(path, *args, **kwargs):
+        raise OSError("directory not empty")
+
+    monkeypatch.setattr("src.storage.local.shutil.rmtree", refuse)
+    with pytest.raises(StorageUnavailableError):
+        await store.delete_prefix(owner_prefix(ACCOUNT))
+
+
+def test_a_signature_never_vouches_for_a_public_key_that_names_an_account(store):
+    forged = f"public/users/{ACCOUNT}/insights/{'a' * 32}.jpg"
+    assert not store.verify_signature(forged, 4_102_444_800, "0" * 64)
