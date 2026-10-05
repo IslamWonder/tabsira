@@ -236,8 +236,8 @@ async def test_after_deletion_the_address_can_be_used_again_and_the_old_login_is
             json={
                 **LOGIN,
                 "display_name": "again",
-                "accepted_terms_version": "2026-10-04T20:00Z",
-                "accepted_privacy_version": "2026-10-05T15:00Z",
+                "accepted_terms_version": "2026-10-05T16:00Z",
+                "accepted_privacy_version": "2026-10-05T16:00Z",
             },
         )
     ).status_code == 201

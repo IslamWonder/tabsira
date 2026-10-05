@@ -85,9 +85,10 @@ DEFAULT_PRIVACY_EMAIL = "privacy@tabsira.me"
 # challenge). The site key shape is the one the web app accepts (apps/web/src/config/server-env.ts).
 TURNSTILE_TEST_KEY_PREFIXES = ("1x", "2x", "3x")
 TURNSTILE_SITE_KEY_PATTERN = re.compile(r"[0-9A-Za-z_-]{8,64}")
-DEFAULT_LEGAL_VERSION = "2026-10-04T20:00Z"
-# The privacy policy moved on when Cloudflare Turnstile joined the browser's third-party contacts.
-DEFAULT_PRIVACY_VERSION = "2026-10-05T15:00Z"
+DEFAULT_LEGAL_VERSION = "2026-10-05T16:00Z"
+# The privacy policy moved on with the per-account photo folder (15:00Z), then both texts with
+# «كفالة بصيرة» (decision 60): an entry's place widens, and a sponsor is named.
+DEFAULT_PRIVACY_VERSION = "2026-10-05T16:00Z"
 DEFAULT_LANGUAGE = "ar"
 
 # A cookie name: RFC 6265 token characters we actually use. `__Host-` is refused
@@ -637,6 +638,9 @@ class Settings(BaseSettings):
     geo_approx_cell_meters: Annotated[float, Field(ge=MIN_CELL_METERS, le=MAX_CELL_METERS)] = (
         DEFAULT_CELL_METERS
     )
+    # «كفالة بصيرة» (decision 60): days without a sign of life after which a published atlas entry
+    # that nobody sponsors turns orphaned (`python -m src.cli.mark_orphans`, daily, one host).
+    orphan_after_days: Annotated[int, Field(ge=1, le=3650)] = 30
 
     # Error tracking: GlitchTip, which speaks the Sentry protocol. An empty DSN
     # turns it off, and then no code path sends anything. The web DSN is the

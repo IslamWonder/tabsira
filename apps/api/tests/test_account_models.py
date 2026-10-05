@@ -366,6 +366,7 @@ async def test_every_foreign_key_to_users_cascades_so_deleting_an_account_leaves
         "insights",
         "world_places",
         "map_entries",
+        "map_entry_sponsorships",
     }
     assert {row.confdeltype for row in rows} == {"c"}
 
@@ -433,6 +434,9 @@ def test_every_table_lives_in_the_app_schema():
         # The atlas
         "map_entries",
         "map_capture_points",
+        "map_entry_generalisations",
+        "map_entry_retired_ids",
+        "map_entry_sponsorships",
     }
 
     assert {name.removeprefix(f"{APP_SCHEMA}.") for name in Base.metadata.tables} == tables

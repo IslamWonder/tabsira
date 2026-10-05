@@ -12,6 +12,7 @@ import importlib.util
 import os
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from types import ModuleType
 
@@ -67,6 +68,9 @@ APP_TABLES = {
     "evidence_exposures",
     "map_entries",
     "map_capture_points",
+    "map_entry_generalisations",
+    "map_entry_retired_ids",
+    "map_entry_sponsorships",
 }
 # Decision 57: the reference data, filled by the app chain in its own schema.
 CORPUS_TABLES = {
@@ -228,7 +232,7 @@ async def test_the_three_chains_build_the_database_and_match_the_models(migrated
     } == tables
     assert set(EXTENSIONS) <= extensions
     assert versions == {
-        "app": "20261005_160000",
+        "app": "20261005_170000",
         "geodata": "20261004_130000",
         "vectors": "20261004_200000",
     }
@@ -313,6 +317,111 @@ async def test_the_move_to_corpus_keeps_every_row_and_key_and_its_downgrade_puts
             )
         ).one()
     assert tuple(back) == (1, 0, "app")
+
+
+async def test_the_sponsorship_migration_starts_the_quiet_period_now_and_its_downgrade_withdraws_orphans(
+    migrated,
+):
+    assert alembic(APP_CONFIG, "upgrade", "20261005_160000").returncode == 0
+    insights: list[int] = []
+    async with migrated.begin() as connection:
+        for number in range(3):
+            user = (
+                await connection.execute(
+                    text(
+                        "INSERT INTO app.users (email, display_name) "
+                        "VALUES (:email, 'm') RETURNING id"
+                    ),
+                    {"email": f"m{number}@example.com"},
+                )
+            ).scalar_one()
+            insights.append(
+                (
+                    await connection.execute(
+                        text(
+                            "INSERT INTO app.insights (user_id, origin, tutorial_slug, engine, "
+                            "title, glimpse, relation, explanation, why) VALUES (:user, 'tutorial', "
+                            "'rain', 'pipeline', 't', 'g', 'direct', '[]'::jsonb, '{}'::jsonb) "
+                            "RETURNING id"
+                        ),
+                        {"user": user},
+                    )
+                ).scalar_one()
+            )
+        for entry_id, status, published, updated in (
+            (
+                1,
+                "published",
+                datetime(2026, 8, 1, 10, tzinfo=UTC),
+                datetime(2026, 9, 1, 10, tzinfo=UTC),
+            ),
+            (2, "draft", None, datetime(2026, 9, 2, 10, tzinfo=UTC)),
+        ):
+            await connection.execute(
+                text(
+                    "INSERT INTO app.map_entries (id, user_id, insight_id, cell_m, "
+                    "location_meaning, public_lat, public_lng, status, published_at, updated_at) "
+                    "SELECT :id, user_id, id, 1000, 'capture_point', 1, 1, :status, "
+                    ":published, :updated "
+                    "FROM app.insights WHERE id = :insight"
+                ),
+                {
+                    "id": entry_id,
+                    "status": status,
+                    "published": published,
+                    "updated": updated,
+                    "insight": insights[entry_id - 1],
+                },
+            )
+
+    up = alembic(APP_CONFIG, "upgrade", "head")
+    assert up.returncode == 0, up.stderr
+    async with migrated.begin() as connection:
+        # Every entry that existed starts its quiet period now, not at its old dates.
+        recent = (
+            await connection.execute(
+                text(
+                    "SELECT id, last_active_at > now() - interval '1 minute' "
+                    "FROM app.map_entries ORDER BY id"
+                )
+            )
+        ).all()
+        # An anonymous entry (widened), as the job leaves it.
+        await connection.execute(
+            text(
+                "INSERT INTO app.map_entries (id, user_id, insight_id, cell_m, location_meaning, "
+                "public_lat, public_lng, status, widened_level, published_at, place_label) "
+                "SELECT 3, user_id, id, 500000, 'capture_point', 1, 1, 'orphaned', 'country', "
+                "now(), 'x' FROM app.insights WHERE id = :insight"
+            ),
+            {"insight": insights[2]},
+        )
+    assert [tuple(row) for row in recent] == [(1, True), (2, True)]
+
+    down = alembic(APP_CONFIG, "downgrade", "20261005_160000")
+    assert down.returncode == 0, down.stderr
+    async with migrated.connect() as connection:
+        states = (
+            await connection.execute(text("SELECT id, status FROM app.map_entries ORDER BY id"))
+        ).all()
+        left = (
+            await connection.execute(
+                text(
+                    "SELECT count(*) FROM pg_tables WHERE tablename IN "
+                    "('map_entry_sponsorships', 'map_entry_generalisations')"
+                )
+            )
+        ).scalar_one()
+    assert [tuple(row) for row in states] == [(1, "published"), (2, "draft"), (3, "withdrawn")]
+    async with migrated.connect() as connection:
+        gone = (
+            await connection.execute(
+                text("SELECT public_lat, place_label FROM app.map_entries WHERE id = 3")
+            )
+        ).one()
+    # An anonymous entry is withdrawn on the way back, not shown again as its author's.
+    assert tuple(gone) == (None, None)
+    assert left == 0
 
 
 async def test_the_geodata_chain_downgrades_and_upgrades_again(migrated):

@@ -9,7 +9,11 @@ from src.models.atlas import (
     LocationSource,
     MapCapturePoint,
     MapEntry,
+    MapEntryGeneralisation,
+    MapEntryRetiredId,
+    MapEntrySponsorship,
     MapEntryStatus,
+    WidenLevel,
 )
 from src.models.base import Base
 from src.models.consent import Consent, ConsentKind
@@ -172,6 +176,9 @@ __all__ = [
     "LoginAttempt",
     "MapCapturePoint",
     "MapEntry",
+    "MapEntryGeneralisation",
+    "MapEntryRetiredId",
+    "MapEntrySponsorship",
     "MapEntryStatus",
     "ModerationAction",
     "ModerationActionKind",
@@ -215,6 +222,7 @@ __all__ = [
     "TreasureKind",
     "User",
     "VectorsBase",
+    "WidenLevel",
     "WorldPlace",
     "WorldRelation",
     "WorldReveal",

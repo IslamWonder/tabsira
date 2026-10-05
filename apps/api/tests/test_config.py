@@ -1166,6 +1166,15 @@ def test_the_social_guard_defaults_leave_a_band_for_a_person_to_review(make_sett
     assert settings.moderation_log_compress_after_days == 30
 
 
+def test_an_atlas_entry_is_orphaned_after_thirty_quiet_days_unless_the_setting_says_otherwise(
+    make_settings,
+):
+    assert make_settings().orphan_after_days == 30
+    assert make_settings(orphan_after_days=7).orphan_after_days == 7
+    for bad in (0, -1, 3651):
+        assert "ORPHAN_AFTER_DAYS" in errors_of(orphan_after_days=bad)
+
+
 def test_an_allow_score_at_or_over_the_reject_score_is_refused():
     message = errors_of(
         database_url=DATABASE_URL, social_guard_allow_score=0.9, social_guard_reject_score=0.9
@@ -1191,8 +1200,8 @@ def test_contact_addresses_and_legal_versions_default_to_the_published_ones(make
 
     assert settings.support_email == "support@tabsira.me"
     assert settings.privacy_email == "privacy@tabsira.me"
-    assert settings.terms_version == "2026-10-04T20:00Z"
-    assert settings.privacy_version == "2026-10-05T15:00Z"
+    assert settings.terms_version == "2026-10-05T16:00Z"
+    assert settings.privacy_version == "2026-10-05T16:00Z"
     assert (
         settings.support_max_per_ip_per_hour,
         settings.support_max_per_address_per_hour,
