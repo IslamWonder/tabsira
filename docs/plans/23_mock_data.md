@@ -14,7 +14,7 @@ Two programs and one file:
 | ------------------------------------------------ | ------ | -------------------------------------------------------- |
 | Placepix photo addresses shown as is             | ✅     | Task 22.1. Decision 63. Privacy review.                  |
 | Generator: catalogue, members, places, the graph | ⬜     | Task 22.2.                                               |
-| Importer and `--clean`                           | ⬜     | Task 22.3.                                               |
+| Importer and `--clean`                           | ✅     | Task 22.3.                                               |
 | Real processing of every photo                   | ⏸      | Task 22.4, after the owners' retrieval rework is pulled. |
 
 **How we check it**
@@ -116,7 +116,7 @@ Two programs and one file:
 
 ### 22.3 Importer and `--clean`
 
-- **Status:** ⬜ open
+- **Status:** ✅ done (`make mock-import`, `make mock-clean`; the shape of `images[].insight` is the importer's `InsightBodyIn`, see its docstring)
 - **Goal:** `python -m src.cli.import_mock <path-or-s3-url> --i-understand [--clean]` in `apps/api`, run by `make mock-import` and `make mock-clean`. It checks the file (version, the scripture guard over every text, every evidence id in the store), then writes members (verified, consent rows as at sign-up, `photo_storage_consent` on), scans and insights, completions, publications and posts, follows, reactions (on whatever table holds them when it runs: `post_likes` or the reactions of 21.3), comments, and atlas entries through the atlas service (approximate place, labels from GeoNames). Times are the file's. Idempotent by the `@mock.tabsira.invalid` addresses.
 - **Depends on:** 22.1; the file's shape from 22.2.
 - **Touches:** apps/api/src/cli/import_mock.py, tests/test_import_mock.py, Makefile, docs/OPERATIONS.md (how to import and clean on a host).

@@ -4,10 +4,10 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev migrate data test coverage lint format eval smoke benchmark up security audit stats
+.PHONY: help install dev migrate data test coverage lint format eval smoke benchmark up security audit stats mock-import mock-clean
 
 help: ## List the targets
-	@grep -E '^[a-z]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-10s %s\n", $$1, $$2 }'
+	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-12s %s\n", $$1, $$2 }'
 
 install: ## All dependencies: web, api, vision, git hooks
 	@bash scripts/install.sh
@@ -54,3 +54,10 @@ audit: ## Advisory audit: SAST, dependency advisories, hygiene
 
 stats: ## A few lines about the code: size, tests, schema, docs, coverage, today
 	@bash scripts/code-stats.sh
+
+mock-import: ## Import the mock members of MOCK_FILE (a path or s3://bucket/key); MOCK_ARGS=--allow-production on production
+	@test -n "$(MOCK_FILE)" || { echo "usage: make mock-import MOCK_FILE=<path or s3://bucket/key>"; exit 2; }
+	@cd apps/api && uv run python -m src.cli.import_mock "$(MOCK_FILE)" --i-understand $(MOCK_ARGS)
+
+mock-clean: ## Delete every mock member (@mock.tabsira.invalid) and what they own; MOCK_ARGS=--allow-production on production
+	@cd apps/api && uv run python -m src.cli.import_mock --clean --i-understand $(MOCK_ARGS)

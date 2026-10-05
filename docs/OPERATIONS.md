@@ -189,6 +189,23 @@ Decision 44. Production keeps consented photos in a private S3-compatible bucket
 - **Serving.** No route serves stored photos yet, so nginx has no location for them. Published copies are served from `S3_PUBLIC_BASE_URL` with `Cache-Control: public, max-age=300`; private photos only through signed links.
 - **Sound effects.** The 1,000 MP3 files of the ontology (one per entity, `E001.mp3` to `E1000.mp3`) are static files, not photos. Upload them once to the same bucket under `static/ontology/audio/`, for example `aws s3 sync out/ontology/audio/ s3://<bucket>/static/ontology/audio/ --content-type audio/mpeg`. The API reads them with the bucket's own keys and serves them at `GET /sounds/ontology/<id>` with `Cache-Control: public, max-age=86400`, so the bucket stays private and the browser talks to the API only. Nothing under `static/` is ever a photo. With no bucket, the same path under `LOCAL_MEDIA_DIR` is read (`data/media/static/ontology/audio/` by default). A missing file is a 404 and the page plays nothing.
 
+## Mock members
+
+The platform starts with about 1000 mock members (decision 63, plan 22). `tools/mockdata` writes `tabsira-mock-v1.json` to `../tabsira-data/mock/`; the owners upload it to their bucket (never committed). The importer reads it from a path or from `s3://bucket/key` with the same `S3_*` keys as the photos (no new setting).
+
+```bash
+make mock-import MOCK_FILE=../tabsira-data/mock/tabsira-mock-v1.json
+make mock-import MOCK_FILE=s3://<bucket>/mock/tabsira-mock-v1.json MOCK_ARGS=--allow-production   # on production
+make mock-clean MOCK_ARGS=--allow-production                                                      # remove every mock row
+```
+
+- Both commands pass `--i-understand`; the importer refuses without it, refuses a database whose name ends in `_test`, and refuses `ENVIRONMENT=production` unless `--allow-production` is also given.
+- Before anything is written it refuses a file of another version, refuses the whole file if any text fails the scripture guard, and skips (and lists) an insight whose verse or hadith is not in the store. An image whose `insight` is still `null`, a reflection or a comment whose text is `null`, and the `jazak` reaction (no table yet) are skipped and counted in the report.
+- The import is one transaction and is idempotent by the reserved address `<handle>@mock.tabsira.invalid`: a second run creates nothing for a member that exists. A member's insights, posts and atlas entries are written only when that member is created in the run.
+- Rows go through the application's services: the public point of an atlas entry is the approximate cell (`GEO_APPROX_CELL_METERS`), the exact point stays private. Photo keys are `https://placepix.net/id/<n>/1200/800` addresses, shown as is and never passed to the photo storage. The moderation log is append-only, so the import writes no row to it.
+- `--clean` deletes every account on `@mock.tabsira.invalid`, which removes by cascade everything they own (sessions, consents, insights, scans, posts, entries and exact points, follows, likes, comments), plus the evidence exposures and the reports that name their posts, comments and entries. It touches no other account and no storage.
+- Times in the file are used as given, except the publication copy of a post (immutable, stamped at the import) and the moderation log.
+
 ## Day to day
 
 ```bash
