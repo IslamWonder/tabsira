@@ -4,12 +4,12 @@
 
 Decision 63: a visitor gets the rain tutorial and one own scan; then an account, a completed profile, and AI answers fitted to it. The real full name is public only with its own consent.
 
-| Step                                                      | Status | Notes      |
-| --------------------------------------------------------- | ------ | ---------- |
-| Guest gate and profile gate on the server                 | 🔄     | Task 22.1. |
-| Full-name consent and public name                         | 🔄     | Task 22.1. |
-| Profile in the composer and the chat prompts              | 🔄     | Task 22.2. |
-| Screens: sign-up, mandatory profile step, no guest button | ⬜     | Task 22.3. |
+| Step                                                      | Status | Notes                  |
+| --------------------------------------------------------- | ------ | ---------------------- |
+| Guest gate and profile gate on the server                 | ✅     | Task 22.1, 2026-10-05. |
+| Full-name consent and public name                         | ✅     | Task 22.1, 2026-10-05. |
+| Profile in the composer and the chat prompts              | 🔄     | Task 22.2.             |
+| Screens: sign-up, mandatory profile step, no guest button | ⬜     | Task 22.3.             |
 
 **How we check it**
 
@@ -23,7 +23,9 @@ Decision 63: a visitor gets the rain tutorial and one own scan; then an account,
 
 ### 22.1 Gates and the full-name consent, server side
 
-- **Status:** 🔄
+- **Status:** ✅ 2026-10-05
+- **What was done:** `POST /scans` answers 403 `account_required` for a guest key holding one non-failed scan (the tutorial never counts) and 403 `profile_required` for an account with empty `profiles.profile_completed_at`; the insight chat answers `profile_required` after the ownership check. `PATCH /profile` takes `complete_profile: true` with all five answers explicit; `/auth/me` carries `profile_completed` and `public_full_name`. New consent kind `public_full_name` (sign-up body, `POST /auth/legal/accept` for Google, `POST /consents`), mirrored on `users.public_full_name`; every public answer carries `public_name` (the real full name) only while it is true, else null. Not backfilled: existing accounts are asked once. Terms and privacy bumped to `2026-10-05T12:00Z`. The web client types were regenerated; the screens that read `public_name` as a string and the sign-up body no longer type-check until 22.3.
+- **Production `.env`:** no new key. `TERMS_VERSION` and `PRIVACY_VERSION` change to `2026-10-05T12:00Z` in `.env.example` and `deploy/env.production.example`; the owners set the same values in production (the checklist does not check them); every account is asked to accept again.
 - **Touches:** apps/api/src/{models/profile.py,models/user.py,schemas/auth.py,schemas/account.py,schemas/social.py,services/public_identity.py,services/learner_service.py,routers/scans.py,routers/auth*.py,services/chat_service.py (the gate only)}, one app-chain migration, the terms and privacy text, docs/PRIVACY.md, docs/AUTH.md, the generated OpenAPI.
 - **Reviews:** privacy review before merge (authentication, public identity); tests in the same commit (decision 42 exception).
 
