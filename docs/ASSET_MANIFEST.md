@@ -333,20 +333,22 @@ Served by the web app itself (no third-party request from the visitor's browser)
 
 ## 13. Landing page emblems (`apps/web/src/components/landing/emblem-data.ts`)
 
-Thirteen icons of one premium Magnific family, **Good Ware Lineal** (family 546, author Good Ware), chosen by the owners on 5 October 2026 and downloaded as SVG through the owners' Freepik API key the same day. Licence: Magnific (Flaticon) premium licence for the owners' account; no attribution is shown on the page. Each SVG's path data is kept in the module above, rounded to a tenth of a unit and drawn in `currentColor` (the landing's gold), so the visitor's browser fetches nothing from Magnific; the originals are not kept in the repository.
+Fifteen icons of one premium Magnific family, **Good Ware Lineal** (family 546, author Good Ware), chosen by the owners on 5 October 2026 and downloaded as SVG through the owners' Freepik API key the same day. Licence: Magnific (Flaticon) premium licence for the owners' account; no attribution is shown on the page. Each SVG's path data is kept in the module above, rounded to a tenth of a unit and drawn in `currentColor` (the landing's gold), so the visitor's browser fetches nothing from Magnific; the originals are not kept in the repository.
 
-| Name        | Magnific id | Title          | Where                    |
-| ----------- | ----------- | -------------- | ------------------------ |
-| `camera`    | 686497      | Camera         | step 1, «عدسة البصيرة»   |
-| `chat`      | 4803742     | Talk           | «حاور بصيرتك»            |
-| `verify`    | 3633411     | Success        | «تحقّق من المصدر»        |
-| `world`     | 1086914     | Globe          | «عالمي»                  |
-| `atlas`     | 4746152     | Map            | «أطلس بصائر العالم»      |
-| `around`    | 2933564     | Compass        | «اكتشف حولك»             |
-| `treasure`  | 5999315     | Treasure chest | «الكنز الخفي»            |
-| `community` | 3633449     | Team           | «تبصرة تواصل»            |
-| `photos`    | 4618132     | Photos         | «صورك، باختيارك»         |
-| `book`      | 6007509     | Open book      | step 2, «النصّ مع مصدره» |
-| `sprout`    | 2683226     | Sprout         | step 3                   |
-| `lantern`   | 5987673     | Lantern        | «المعنى قريب منك»        |
-| `choice`    | 3718115     | Safety         | «الاختيار بيدك»          |
+| Name        | Magnific id | Title          | Where                         |
+| ----------- | ----------- | -------------- | ----------------------------- |
+| `camera`    | 686497      | Camera         | step 1, «عدسة البصيرة»        |
+| `chat`      | 4803742     | Talk           | «حاور بصيرتك»                 |
+| `verify`    | 3633411     | Success        | «تحقّق من المصدر»             |
+| `world`     | 1086914     | Globe          | «عالمي»                       |
+| `atlas`     | 4746152     | Map            | «أطلس بصائر العالم»           |
+| `around`    | 2933564     | Compass        | «اكتشف حولك»                  |
+| `treasure`  | 5999315     | Treasure chest | «الكنز الخفي»                 |
+| `community` | 3633449     | Team           | «تبصرة تواصل»                 |
+| `photos`    | 4618132     | Photos         | «صورك، باختيارك»              |
+| `book`      | 6007509     | Open book      | step 2, «النصّ مع مصدره»      |
+| `sprout`    | 2683226     | Sprout         | step 3                        |
+| `lantern`   | 5987673     | Lantern        | «المعنى قريب منك»             |
+| `choice`    | 3718115     | Safety         | «الاختيار بيدك»               |
+| `reflect`   | 784338      | Eye            | the example's «التأمّل» panel |
+| `quest`     | 3783897     | Steps          | the small step in that panel  |
