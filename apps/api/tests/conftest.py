@@ -56,6 +56,7 @@ pytest_plugins = [
     "tests.support_glitchtip",
     "tests.support_admin",
     "tests.support_social",
+    "tests.support_orphans",
 ]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
