@@ -18,6 +18,7 @@ spelling is caught as surely as one in the mushaf's:
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterable, Mapping, Sequence
 
 from sqlalchemy import select
@@ -51,8 +52,9 @@ def without_honorific(text: str) -> str:
 
 async def quran_detector(session: AsyncSession) -> ShingleOverlapDetector:
     """Build the detector of runs of words shared with any verse (about 80,000 runs)."""
-    texts = await session.scalars(select(QuranVerseSearch.guard_text))
-    return ShingleOverlapDetector(texts)
+    texts = list(await session.scalars(select(QuranVerseSearch.guard_text)))
+    # Seconds of pure Python: in a thread, so the event loop keeps serving meanwhile.
+    return await asyncio.to_thread(ShingleOverlapDetector, texts)
 
 
 class EngineGuard:

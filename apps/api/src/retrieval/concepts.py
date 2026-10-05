@@ -15,6 +15,7 @@ held in memory, built once per process from the database.
 
 from __future__ import annotations
 
+import asyncio
 import math
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
@@ -85,9 +86,16 @@ class ConceptIndex:
 async def load_concept_index(
     session: AsyncSession, corpus: EmbeddedCorpus, *, collections: Sequence[str] | None = None
 ) -> ConceptIndex:
-    """Build the index of a corpus from the stored annotations or signals."""
+    """
+    Build the index of a corpus from the stored annotations or signals.
+
+    The stemming of every concept takes seconds of pure Python: it runs in a thread so the
+    event loop keeps serving (in the scan worker, a loop held that long made its queue
+    connection time out and the worker stop).
+    """
     if corpus is EmbeddedCorpus.QURAN:
         documents = await quran_documents(session)
-        return ConceptIndex(corpus, {doc.key: doc.concepts for doc in documents if doc.concepts})
-    concepts = await hadith_concepts(session, collections=collections)
-    return ConceptIndex(corpus, concepts)
+        concepts = {doc.key: doc.concepts for doc in documents if doc.concepts}
+    else:
+        concepts = await hadith_concepts(session, collections=collections)
+    return await asyncio.to_thread(ConceptIndex, corpus, concepts)
