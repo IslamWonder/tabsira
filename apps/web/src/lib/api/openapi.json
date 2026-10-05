@@ -3903,7 +3903,7 @@
       "get": {
         "tags": ["atlas"],
         "summary": "The entries of a map window, nearest the centre first",
-        "description": "Return one page of the window's visible entries by distance from the map's centre, and the total.\n\n`total` counts every visible entry of the window, not the page. Ask for the next page with the\nsame window and centre and the `next_cursor`. The centre is used for this request only; no\ndistance is returned. Entries of members a block stands between are left out.",
+        "description": "Return one page of the window's visible entries by distance from the map's centre, and the total.\n\n`total` counts every visible entry of the window, not the page. Ask for the next page with the\nsame window and centre and the `next_cursor`. The centre is snapped to a 0.05 degree cell\nbefore it is used, for this request only; no distance is returned. Entries of members a block stands between are left out.",
         "operationId": "entries_page_atlas_entries_page_get",
         "parameters": [
           {

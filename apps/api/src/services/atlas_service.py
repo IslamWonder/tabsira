@@ -19,13 +19,16 @@ does afterwards. Only the sponsor, when there is one, is named beside it.
 from __future__ import annotations
 
 import math
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 from typing import Any
 
 from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import Integer, Select, cast, delete, exists, func, or_, select
+from sqlalchemy import Float, Integer, Select, cast, delete, exists, func, or_, select, text
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
@@ -101,6 +104,9 @@ _MERCATOR_HALF_M = 20_037_508.342789244
 _MERCATOR_MAX_LAT = 85.0511287798
 # A cursor holds a distance, not a time; `at` is a fixed one so that the shared cursor fits.
 _DISTANCE_CURSOR_AT = datetime(1970, 1, 1, tzinfo=UTC)
+# The cluster and page queries scan a window: one that runs longer than this is cut, not queued.
+QUERY_TIMEOUT_MS = 3_000
+_QUERY_CANCELED = "57014"
 PLACE_PAGE_DEFAULT = 20
 PLACE_PAGE_MAX = 50
 ORPHAN_RADIUS_DEFAULT_M = 150_000
@@ -774,7 +780,7 @@ async def _entries_by_id(
     }
 
 
-async def clusters_in(
+async def _clusters(
     db: AsyncSession,
     window: Window,
     filters: Filters,
@@ -856,7 +862,7 @@ async def clusters_in(
     return AtlasClusterCollection(features=features, truncated=truncated)
 
 
-async def entries_page(
+async def _entries_page(
     db: AsyncSession,
     window: Window,
     centre: tuple[float, float],
@@ -870,12 +876,17 @@ async def entries_page(
     """
     Return a page of the visible entries in a window, nearest the centre first, with their total.
 
-    The distance is on the globe, from the centre `(lat, lng)` to the entry's public point;
-    ties break by id, so a cursor `(distance, id)` never skips or repeats an entry. The centre is
+    The distance, in degrees, is from the centre `(lat, lng)`, snapped to a 0.05 degree cell, to
+    the entry's public point; ties break by id, so a cursor `(distance, id)` never skips or repeats an entry. The centre is
     used for these queries only: no distance is returned and nothing is kept.
     """
-    here = cast(func.ST_SetSRID(func.ST_MakePoint(centre[1], centre[0]), 4326), Geography)
-    distance = func.ST_Distance(cast(MapEntry.public_geom, Geography), here)
+    # The position may be the viewer's own: it is snapped to a coarse cell before any use, so
+    # that neither a log of the statement nor the distances in the cursors can give it away.
+    snapped = approximate(centre[0], centre[1], ORPHAN_QUERY_CELL_M)
+    here = func.ST_SetSRID(func.ST_MakePoint(snapped.lng, snapped.lat), 4326)
+    # The nearest-neighbour operator, on the geometry the spatial index holds: it orders by
+    # distance in degrees, which is near enough for a window and lets the index answer.
+    distance = MapEntry.public_geom.op("<->", return_type=Float)(here)
 
     def inside(*columns: Any) -> Select[Any]:
         statement = _visible(_joined(*columns), filters, viewer, sponsoring=sponsoring)
@@ -909,6 +920,51 @@ async def entries_page(
         ),
         total=int(total or 0),
     )
+
+
+@asynccontextmanager
+async def _bounded(db: AsyncSession) -> AsyncIterator[None]:
+    """Cut the statements of this transaction at `QUERY_TIMEOUT_MS`, and answer 503 when one is."""
+    await db.execute(text(f"SET LOCAL statement_timeout = {int(QUERY_TIMEOUT_MS)}"))
+    try:
+        yield
+    except DBAPIError as error:
+        if getattr(error.orig, "sqlstate", None) != _QUERY_CANCELED:
+            raise
+        message = "The map took too long to answer; ask for a smaller window."
+        raise AppError(ErrorCode.SERVICE_UNAVAILABLE, message, status_code=503) from error
+
+
+async def clusters_in(
+    db: AsyncSession,
+    window: Window,
+    filters: Filters,
+    zoom: int,
+    viewer: User | None = None,
+    *,
+    sponsoring: bool = True,
+) -> AtlasClusterCollection:
+    """Group the visible entries of a window (`_clusters`), within the time one query may take."""
+    async with _bounded(db):
+        return await _clusters(db, window, filters, zoom, viewer, sponsoring=sponsoring)
+
+
+async def entries_page(
+    db: AsyncSession,
+    window: Window,
+    centre: tuple[float, float],
+    filters: Filters,
+    cursor: cursors.Cursor | None,
+    limit: int,
+    viewer: User | None = None,
+    *,
+    sponsoring: bool = True,
+) -> AtlasEntriesPage:
+    """List the visible entries of a window by distance (`_entries_page`), within the time allowed."""
+    async with _bounded(db):
+        return await _entries_page(
+            db, window, centre, filters, cursor, limit, viewer, sponsoring=sponsoring
+        )
 
 
 async def published_entry(db: AsyncSession, entry_id: int, viewer: User | None = None) -> MapEntry:

@@ -11,11 +11,18 @@ inside a group, an author or a time.
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import event, text
+from sqlalchemy.exc import DBAPIError
 
+from src.errors import AppError, ErrorCode
+from src.features import FeatureFlag
 from src.geo.privacy import approximate
+from src.models import MapEntrySponsorship, MapEntryStatus
 from src.services import atlas_service
 from src.services import cursor as cursors
 from tests import geo_dataset as world_data
+from tests.helpers import switched
+from tests.support_orphans import entry_row
 from tests.test_atlas import CELL_M, EXACT, _insight, _place, keys_of
 
 WHOLE = {"west": -180, "south": -90, "east": 180, "north": 90}
@@ -316,11 +323,19 @@ async def test_the_pages_neither_skip_nor_repeat_when_an_entry_appears_between_t
     first = await _page(guest, limit=2)
 
     newcomer = await _at(db_session, author, 36.8, 10.18)
-    second = await _page(guest, limit=2, cursor=first.json()["next_cursor"])
+    rest: list[str] = []
+    cursor = first.json()["next_cursor"]
+    while cursor is not None:
+        page = (await _page(guest, limit=2, cursor=cursor)).json()
+        assert page["total"] == 6
+        rest += [i["id"] for i in page["items"]]
+        cursor = page["next_cursor"]
 
-    assert [i["id"] for i in second.json()["items"]] == expected[2:4]
-    assert second.json()["total"] == 6
-    assert newcomer not in {i["id"] for i in second.json()["items"]}
+    seen = [i["id"] for i in first.json()["items"]] + rest
+    # Nobody the reader was shown is shown again, and nobody that was there is skipped; the
+    # newcomer is listed only if it lies beyond where the reader had got to.
+    assert len(seen) == len(set(seen))
+    assert set(expected) <= set(seen) <= {*expected, newcomer}
 
 
 async def test_the_total_follows_the_window_the_filters_and_the_blocks(
@@ -400,3 +415,118 @@ async def test_the_new_routes_answer_404_while_the_atlas_is_off(make_member, wor
             assert (off.status_code, off.json()["error"]) == (404, "FEATURE_DISABLED")
     finally:
         account_app.state.settings = settings
+
+
+# ─── What a viewer must not be able to learn or reach ───
+
+
+async def test_a_centre_is_snapped_before_use_so_that_two_in_one_cell_give_the_same_pages(
+    db_session, make_member, world
+):
+    author = await make_member("author")
+    guest = await make_member(signed_in=False)
+    await _seed_by_distance(db_session, author)
+    seen: list[str] = []
+
+    def spy(_conn, _cursor, _statement, parameters, *_rest):
+        seen.append(str(parameters))
+
+    engine = db_session.bind.sync_engine
+    event.listen(engine, "before_cursor_execute", spy)
+    try:
+        # Both lie inside the same 0.05 degree cell.
+        one = await guest.http.get(
+            "/atlas/entries/page",
+            params={**WHOLE, "center_lat": 36.8123, "center_lng": 10.1777, "limit": 2},
+        )
+        other = await guest.http.get(
+            "/atlas/entries/page",
+            params={**WHOLE, "center_lat": 36.8201, "center_lng": 10.1801, "limit": 2},
+        )
+        follow = {"cursor": one.json()["next_cursor"], "limit": 2}
+        first = await guest.http.get(
+            "/atlas/entries/page",
+            params={**WHOLE, "center_lat": 36.8123, "center_lng": 10.1777, **follow},
+        )
+        second = await guest.http.get(
+            "/atlas/entries/page",
+            params={**WHOLE, "center_lat": 36.8201, "center_lng": 10.1801, **follow},
+        )
+    finally:
+        event.remove(engine, "before_cursor_execute", spy)
+
+    assert one.status_code == other.status_code == 200
+    assert one.json() == other.json() and one.json()["next_cursor"] is not None
+    assert first.json() == second.json() and first.json()["items"]
+    assert seen
+    # Neither position reached the database as sent.
+    for sent in ("36.8123", "10.1777", "36.8201", "10.1801"):
+        assert not any(sent in statement for statement in seen)
+
+
+async def test_only_what_a_viewer_may_see_is_counted_boxed_and_listed(
+    db_session, make_member, world, account_app
+):
+    """One entry of every hidden kind lies beside two visible ones; none moves a count or the box."""
+    for name in ("visiblea", "visibleb"):
+        await entry_row(db_session, await make_member(name), age_days=1)
+    away = {"lat": 36.9, "lng": 10.4, "age_days": 1}
+    for name, status in (
+        ("held", MapEntryStatus.PENDING_REVIEW),
+        ("removed", MapEntryStatus.REMOVED),
+        ("draft", MapEntryStatus.DRAFT),
+        ("withdrawn", MapEntryStatus.WITHDRAWN),
+        ("orphan", MapEntryStatus.ORPHANED),
+    ):
+        await entry_row(db_session, await make_member(name), status=status, **away)
+    closed = await make_member("closed")
+    closed.user.is_active = False
+    nameless = await make_member("nameless")
+    nameless.user.handle = None
+    await entry_row(db_session, closed, **away)
+    await entry_row(db_session, nameless, **away)
+    sponsored = await entry_row(db_session, await make_member("sponsoredauthor"), **away)
+    sponsor = await make_member("sponsor")
+    db_session.add(MapEntrySponsorship(entry_id=sponsored.id, user_id=sponsor.user.id))
+    await db_session.flush()
+    reader = await make_member("reader")
+    guest = await make_member(signed_in=False)
+    assert (await reader.http.put("/blocks/sponsor")).status_code == 204
+
+    async def seen(client):
+        clusters = await _clusters(client, 2)
+        page = await _page(client, limit=50)
+        return clusters.json()["features"], page.json()
+
+    features, page = await seen(reader)
+
+    assert [f["properties"]["count"] for f in features] == [2]
+    assert features[0]["properties"]["bbox"] == [10.1815, 36.8065, 10.1815, 36.8065]
+    assert page["total"] == 2 and len(page["items"]) == 2
+    # The guest blocks nobody, so the sponsored entry shows for them, and no other hidden one.
+    guest_features, guest_page = await seen(guest)
+    assert guest_features[0]["properties"]["count"] == 3 and guest_page["total"] == 3
+    # With sponsoring off an orphaned entry is served as the plain anonymous one it is.
+    settings = account_app.state.settings
+    account_app.state.settings = switched(settings, off=[FeatureFlag.ATLAS_SPONSORSHIP])
+    try:
+        off_features, off_page = await seen(guest)
+    finally:
+        account_app.state.settings = settings
+    assert off_features[0]["properties"]["count"] == 4 and off_page["total"] == 4
+
+
+async def test_a_statement_running_too_long_is_cut_and_answers_503(db_session, monkeypatch):
+    monkeypatch.setattr(atlas_service, "QUERY_TIMEOUT_MS", 50)
+
+    with pytest.raises(AppError) as caught:
+        async with atlas_service._bounded(db_session):
+            await db_session.execute(text("SELECT pg_sleep(2)"))
+
+    assert (caught.value.code, caught.value.status_code) == (ErrorCode.SERVICE_UNAVAILABLE, 503)
+
+
+async def test_another_database_error_is_not_taken_for_a_timeout(db_session):
+    with pytest.raises(DBAPIError):
+        async with atlas_service._bounded(db_session):
+            await db_session.execute(text("SELECT no_such_column FROM no_such_table"))

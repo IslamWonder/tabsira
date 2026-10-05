@@ -1731,8 +1731,8 @@ export interface paths {
      * @description Return one page of the window's visible entries by distance from the map's centre, and the total.
      *
      *     `total` counts every visible entry of the window, not the page. Ask for the next page with the
-     *     same window and centre and the `next_cursor`. The centre is used for this request only; no
-     *     distance is returned. Entries of members a block stands between are left out.
+     *     same window and centre and the `next_cursor`. The centre is snapped to a 0.05 degree cell
+     *     before it is used, for this request only; no distance is returned. Entries of members a block stands between are left out.
      */
     get: operations['entries_page_atlas_entries_page_get'];
     put?: never;
