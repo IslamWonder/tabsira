@@ -119,6 +119,10 @@ The owners' target: TABSIRA must feel like a AAA game production — gamified, i
 - **Typography and scripture stay sacred.** No effect ever animates, distorts, glows behind or overlaps Quran or hadith text beyond the calm entrance of its panel; the text is always fully legible, still and selectable.
 - **Quality bar.** Every screen is reviewed at 375, 768 and 1440 px in both themes before it is called done; screenshots go to `docs/screenshots/`.
 
+### Landing: the opening scene (added 5 October 2026)
+
+The owners asked for the landing page to feel immersive, in the spirit of the game-feel section above. On first paint it plays one short scene: a khatam turns slowly behind the hero, two glows drift and gold dust rises; the kicker's thread draws, the title's words rise one by one and its gold line catches the light; the phone lands, its two rings open with a bead of light riding each, a band of light scans the rain scene twice, the insight point appears and breathes a ring, its card rises, and the two side cards drift a little, then rest. The capture call sends out a ring of light three times. Further down, each section rises as it comes into view (`useReveal`): eyebrow threads draw, the three steps arrive in turn with a gold thread over each, the story photos settle into their frames, the closing call has its own turning khatam. Nothing is hidden without a script, with motion off (device or «ملفي»), or when already on screen at first paint; hover moves nothing; the example's verses and hadith never move (only the section's heading rises).
+
 ### Logo (added 4 October 2026)
 
 The designer's logo (`brand/`) replaces the temporary eight-point star mark and the typed wordmark everywhere: the round calligraphic «تبصرة» is the mark, and «TABSIRA» joins it in the full logo. On night surfaces it is brand gold `#B28B38` (5.99:1); on day surfaces it is deep gold `#8D6E2C` (4.53:1), because brand gold reaches only 3.00:1 on the day background. Favicon, PWA, Apple touch and tile icons carry their own night background with the brand gold mark, so they read on any browser chrome. See `brand/README.md`.
