@@ -25,6 +25,30 @@ describe('IdentitySection', () => {
     await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
 
+  it('gives and withdraws the full-name consent from its own switch, off until given', async () => {
+    const api = member({ 'POST /consents': { status: 201, body: {} } });
+    render(<IdentitySection />);
+    const toggle = await screen.findByRole('switch', { name: 'إظهار اسمي الكامل مع منشوراتي' });
+    expect(toggle).not.toBeChecked();
+    await userEvent.click(toggle);
+    await waitFor(() => expect(toggle).toBeChecked());
+    await userEvent.click(toggle);
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    expect(await api.bodies('POST', '/consents')).toEqual([
+      { kind: 'public_full_name', version: '2026-10-05', granted: true },
+      { kind: 'public_full_name', version: '2026-10-05', granted: false },
+    ]);
+  });
+
+  it('keeps the switch where it was when the consent is not recorded', async () => {
+    member({ 'POST /consents': apiError(500, 'INTERNAL') });
+    render(<IdentitySection />);
+    const toggle = await screen.findByRole('switch', { name: 'إظهار اسمي الكامل مع منشوراتي' });
+    await userEvent.click(toggle);
+    expect(await screen.findByText(/تعذّر حفظ اختيارك/)).toBeInTheDocument();
+    expect(toggle).not.toBeChecked();
+  });
+
   it('asks an unverified account to verify first', async () => {
     member({}, NO_IDENTITY, { ...USER, email_verified: false });
     render(<IdentitySection />);

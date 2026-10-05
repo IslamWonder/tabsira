@@ -50,9 +50,9 @@ export const GENDERS: readonly Gender[] = ['man', 'woman', 'unknown'];
  * The version of the consent texts the settings show (messages.settings: the
  * personalisation, memory and photo hints). It is recorded with every answer,
  * so the history says which words were agreed to: change it in the same
- * commit as those texts.
+ * commit as those texts. 2026-10-05 added the full-name switch of the public identity.
  */
-export const CONSENT_TEXT_VERSION = '2026-10-04';
+export const CONSENT_TEXT_VERSION = '2026-10-05';
 
 /** The three switches of the profile that change only by recording a consent. */
 export type ConsentSwitch = 'personalization' | 'memory' | 'photo_storage';
@@ -78,6 +78,15 @@ export function recordConsent(
   granted: boolean
 ): Promise<Result<ConsentEntry>> {
   return attempt(api.POST('/consents', { body: { kind, version: CONSENT_TEXT_VERSION, granted } }));
+}
+
+/** The separate consent to show the full name beside posts and on the public page (decision 63). */
+export function recordFullNameConsent(granted: boolean): Promise<Result<ConsentEntry>> {
+  return attempt(
+    api.POST('/consents', {
+      body: { kind: 'public_full_name', version: CONSENT_TEXT_VERSION, granted },
+    })
+  );
 }
 
 export function exportAccount(): Promise<Result<AccountExport>> {

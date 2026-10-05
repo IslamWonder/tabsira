@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { type FormEvent, useEffect, useState } from 'react';
-import { useSession } from '@/account/session';
+import { recordFullNameConsent } from '@/account/profile';
+import { setSignedIn, useSession } from '@/account/session';
 import { MeSection, SubHeading } from '@/components/me/me-section';
 import { SaveStatus, useSaveState } from '@/components/me/save-status';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
+import { SwitchRow } from '@/components/ui/switch-row';
 import { TextField } from '@/components/ui/text-field';
 import { failureMessage } from '@/lib/api/failure-message';
 import { messages } from '@/messages';
@@ -171,6 +173,37 @@ export function BlocksList() {
   );
 }
 
+/** The separate, unticked-until-given consent to show the real full name (decision 63). */
+function FullNameSwitch() {
+  const session = useSession();
+  const save = useSaveState();
+  if (session.status !== 'signed-in') {
+    return null;
+  }
+  const { user } = session;
+  const change = (granted: boolean) =>
+    save.run(async () => {
+      const result = await recordFullNameConsent(granted);
+      if (!result.ok) {
+        return I.fullName.failed;
+      }
+      setSignedIn({ ...user, public_full_name: granted });
+      return null;
+    });
+  return (
+    <div className="flex flex-col gap-2">
+      <SwitchRow
+        label={I.fullName.label}
+        hint={I.fullName.hint}
+        checked={user.public_full_name}
+        onChange={change}
+        busy={save.busy}
+      />
+      <SaveStatus state={save.state} />
+    </div>
+  );
+}
+
 /** The public-identity part of the profile page: the identity form, and the blocks the person holds. */
 export function IdentitySection() {
   const session = useSession();
@@ -184,6 +217,7 @@ export function IdentitySection() {
       ) : (
         <p className="m-0 text-fg-soft leading-[1.85]">{I.verify}</p>
       )}
+      <FullNameSwitch />
       <BlocksList />
     </MeSection>
   );

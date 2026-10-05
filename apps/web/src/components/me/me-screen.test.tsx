@@ -144,7 +144,7 @@ describe('MeScreen signed in', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'أنثى' }));
     await waitFor(() => expect(screen.getByRole('radio', { name: 'أنثى' })).toBeChecked());
     expect(await api.bodies('POST', '/consents')).toEqual([
-      { kind: 'memory', version: '2026-10-04', granted: false },
+      { kind: 'memory', version: '2026-10-05', granted: false },
     ]);
     expect(screen.getByRole('switch', { name: 'التخصيص' })).toBeChecked();
     expect(screen.getByRole('switch', { name: 'المؤثر الصوتي' })).toBeChecked();
