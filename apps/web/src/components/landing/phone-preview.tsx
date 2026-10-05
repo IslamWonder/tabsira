@@ -1,8 +1,9 @@
 import Image from 'next/image';
 import type { CSSProperties } from 'react';
-import { OpenBookIcon, SeedlingIcon, SparkIcon } from '@/components/icons';
+import { SparkIcon } from '@/components/icons';
 import { RAIN_PHOTO } from '@/components/scene/rain-scene';
 import { messages } from '@/messages';
+import { Emblem } from './emblem';
 
 const P = messages.landing.phone;
 const DROP = messages.scene.example.insights[0] as { title: string; glimpse: string };
@@ -99,7 +100,7 @@ export function PhonePreview() {
               style={at(POINT_AT + 450)}
             >
               <span className="flex items-center gap-1 text-[#4a635c] text-[6px] tablet:text-[9px]">
-                <OpenBookIcon width="9" height="9" />
+                <Emblem name="book" width="9" height="9" />
                 {P.insight}
               </span>
               <span className="font-bold text-[9px] tablet:text-[14px]">{DROP.title}</span>
@@ -118,7 +119,7 @@ export function PhonePreview() {
           className="fx-float absolute top-[14%] right-[2%] flex w-[150px] items-center gap-2 rounded-[14px] bg-[#f6faf7] p-2 text-[#16302a] shadow-[0_12px_28px_rgb(0_0_0/0.25)] tablet:top-[20%] tablet:right-auto tablet:left-[54%] tablet:w-[196px] tablet:p-3"
         >
           <span className="flex size-7 shrink-0 items-center justify-center rounded-[10px] bg-[#faf3e2] text-[#8d6e2c] tablet:size-9">
-            <OpenBookIcon width="16" height="16" />
+            <Emblem name="book" width="18" height="18" />
           </span>
           <span className="flex flex-col">
             <span className="font-semibold text-[10px] tablet:text-[12px]">{P.fromScene}</span>
@@ -129,7 +130,7 @@ export function PhonePreview() {
           style={at(POINT_AT + 1300)}
           className="fx-float absolute bottom-[10%] left-[2%] flex items-center gap-2 rounded-[12px] bg-[#f6faf7] px-2.5 py-1.5 text-[#16302a] shadow-[0_12px_28px_rgb(0_0_0/0.25)] tablet:bottom-[14%] tablet:px-3 tablet:py-2"
         >
-          <SeedlingIcon width="16" height="16" className="text-[#0f4c3a]" />
+          <Emblem name="sprout" width="18" height="18" className="text-[#0f4c3a]" />
           <span className="font-semibold text-[10px] tablet:text-[12px]">{P.everyLook}</span>
         </div>
       </div>

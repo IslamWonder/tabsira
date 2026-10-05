@@ -2,31 +2,15 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { useSession } from '@/account/session';
 import { LogoMark } from '@/components/brand/logo';
 import { useCapture } from '@/components/capture/capture-provider';
 import { revealDelay, useReveal } from '@/components/fx/use-reveal';
-import {
-  AtlasIcon,
-  CameraIcon,
-  CommentIcon,
-  CommunityIcon,
-  CompassIcon,
-  GemIcon,
-  MenuIcon,
-  OnwardIcon,
-  OpenBookIcon,
-  PhotosIcon,
-  PlayIcon,
-  SeedlingIcon,
-  ShieldIcon,
-  SparkIcon,
-  VerifyIcon,
-  WorldIcon,
-} from '@/components/icons';
+import { CameraIcon, MenuIcon, OnwardIcon, PlayIcon, ShieldIcon } from '@/components/icons';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
+import { Emblem, type EmblemName, EmblemTile } from './emblem';
 import { HeroAtmosphere, KhatamStar } from './hero-atmosphere';
 import { InsightExample } from './insight-example';
 import {
@@ -40,16 +24,17 @@ import { PhonePreview } from './phone-preview';
 
 const L = messages.landing;
 
-const ICONS: Record<BenefitIcon, (props: { width: string; height: string }) => ReactNode> = {
-  lens: CameraIcon,
-  chat: CommentIcon,
-  verify: VerifyIcon,
-  world: WorldIcon,
-  atlas: AtlasIcon,
-  around: CompassIcon,
-  treasure: GemIcon,
-  community: CommunityIcon,
-  photos: PhotosIcon,
+/** Each benefit's emblem (src/components/landing/emblem-data.ts). */
+const BENEFIT_EMBLEMS: Record<BenefitIcon, EmblemName> = {
+  lens: 'camera',
+  chat: 'chat',
+  verify: 'verify',
+  world: 'world',
+  atlas: 'atlas',
+  around: 'around',
+  treasure: 'treasure',
+  community: 'community',
+  photos: 'photos',
 };
 
 const CONTAINER = 'mx-auto w-full max-w-[1200px] px-4 tablet:px-7 desktop:px-6 wide:max-w-[1240px]';
@@ -273,7 +258,7 @@ function SectionHeading({
   );
 }
 
-const STEP_ICONS = [CameraIcon, OpenBookIcon, SeedlingIcon] as const;
+const STEP_EMBLEMS: readonly EmblemName[] = ['camera', 'book', 'sprout'];
 
 function Journey() {
   const reveal = useReveal<HTMLOListElement>();
@@ -291,7 +276,6 @@ function Journey() {
       />
       <ol {...reveal} className="m-0 grid list-none gap-6 p-0 tablet:grid-cols-3">
         {L.journey.steps.map((step, index) => {
-          const Icon = STEP_ICONS[index] as (typeof STEP_ICONS)[number];
           return (
             <li
               key={step.title}
@@ -304,14 +288,12 @@ function Journey() {
                 style={revealDelay(index, 220, 250)}
               />
               <div className="flex items-center justify-between">
-                <span className="relative flex size-12 items-center justify-center rounded-[14px] bg-surface text-primary">
+                <EmblemTile name={STEP_EMBLEMS[index] as EmblemName} size="lg">
                   <span
-                    aria-hidden="true"
-                    className="fx-halo fx-halo--on-reveal pointer-events-none absolute inset-0 rounded-[14px] border border-[var(--landing-gold)]"
+                    className="fx-halo fx-halo--on-reveal pointer-events-none absolute inset-0 rounded-[16px] border border-[var(--landing-gold)]"
                     style={revealDelay(index, 220, 700)}
                   />
-                  <Icon width="22" height="22" />
-                </span>
+                </EmblemTile>
                 <span aria-hidden="true" className="text-[1.75rem] text-fg-muted">
                   {String(index + 1).padStart(2, '0')}
                 </span>
@@ -328,7 +310,6 @@ function Journey() {
 
 function StoryCard({ story, index }: { story: Story; index: number }) {
   const { action } = story;
-  const ActionIcon = action === null ? null : ICONS[action.icon];
   const actionClass =
     'inline-flex min-h-12 items-center gap-2 self-start font-semibold text-primary underline-offset-4 hover:underline';
   return (
@@ -359,29 +340,24 @@ function StoryCard({ story, index }: { story: Story; index: number }) {
           <p className="m-0 text-[0.9375rem] text-fg-soft">{story.lead}</p>
         </div>
         <ul className="m-0 flex list-none flex-col gap-4 border-line border-t p-0 pt-4">
-          {story.benefits.map((item) => {
-            const Icon = ICONS[item.icon];
-            return (
-              <li key={item.title} className="flex flex-col gap-1">
-                <span className="flex items-center gap-2 font-semibold text-fg">
-                  <span className="text-[var(--landing-gold)]">
-                    <Icon width="18" height="18" />
-                  </span>
-                  {item.title}
-                </span>
+          {story.benefits.map((item) => (
+            <li key={item.title} className="flex items-start gap-3.5">
+              <EmblemTile name={BENEFIT_EMBLEMS[item.icon]} />
+              <span className="flex min-w-0 flex-col gap-1 pt-0.5">
+                <span className="font-semibold text-fg">{item.title}</span>
                 <span className="text-[0.875rem] text-fg-soft leading-[1.8]">{item.text}</span>
-              </li>
-            );
-          })}
+              </span>
+            </li>
+          ))}
         </ul>
-        {action === null || ActionIcon === null ? null : action.kind === 'link' ? (
+        {action === null ? null : action.kind === 'link' ? (
           <Link href={action.href} className={cx(actionClass, 'mt-auto')}>
-            <ActionIcon width="18" height="18" />
+            <Emblem name={BENEFIT_EMBLEMS[action.icon]} width="20" height="20" />
             {action.label}
           </Link>
         ) : (
           <Link href="#example" className={cx(actionClass, 'mt-auto')}>
-            <ActionIcon width="18" height="18" />
+            <Emblem name={BENEFIT_EMBLEMS[action.icon]} width="20" height="20" />
             {action.label}
           </Link>
         )}
@@ -438,7 +414,7 @@ function Example() {
   );
 }
 
-const TRUST_ICONS = [OpenBookIcon, SparkIcon, ShieldIcon] as const;
+const TRUST_EMBLEMS: readonly EmblemName[] = ['book', 'lantern', 'choice'];
 
 function Trust() {
   const reveal = useReveal<HTMLUListElement>();
@@ -447,19 +423,14 @@ function Trust() {
       <SectionHeading id="landing-trust" title={L.trust.title} />
       <ul {...reveal} className="m-0 grid list-none gap-6 p-0 desktop:grid-cols-3">
         {L.trust.items.map((item, index) => {
-          const Icon = TRUST_ICONS[index] as (typeof TRUST_ICONS)[number];
           return (
             <li
               key={item.title}
               className="fx-reveal-item flex flex-col gap-2 rounded-[18px] border border-line bg-surface p-5"
               style={revealDelay(index, 160)}
             >
-              <span className="flex items-center gap-2 font-semibold text-[1.0625rem] text-fg">
-                <span className="text-primary">
-                  <Icon width="20" height="20" />
-                </span>
-                {item.title}
-              </span>
+              <EmblemTile name={TRUST_EMBLEMS[index] as EmblemName} size="lg" className="mb-2" />
+              <span className="font-semibold text-[1.0625rem] text-fg">{item.title}</span>
               <span className="text-[0.9375rem] text-fg-soft leading-[1.8]">{item.text}</span>
             </li>
           );

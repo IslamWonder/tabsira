@@ -95,4 +95,69 @@ describe('usePages', () => {
     act(() => result.current.append('last'));
     expect(result.current.items).toEqual(['first', 'A', 'last']);
   });
+
+  it('replaces from the item the list holds now, not from an earlier render', async () => {
+    const fetchPage = vi.fn(async () => page(['a', 'b']));
+    const { result } = renderHook(() => usePages(fetchPage, 'list'));
+    await waitFor(() => expect(result.current.items).toEqual(['a', 'b']));
+    act(() => result.current.replace((item) => item === 'a', null));
+    expect(result.current.items).toEqual(['b']);
+    // An updater captured before the removal still works on what is in the list.
+    act(() =>
+      result.current.replace(
+        (item) => item === 'b',
+        (current) => `${current}!`
+      )
+    );
+    expect(result.current.items).toEqual(['b!']);
+    act(() =>
+      result.current.replace(
+        (item) => item === 'b!',
+        () => null
+      )
+    );
+    expect(result.current.items).toEqual([]);
+  });
+
+  it('appends a requested page once even when «load more» fires twice', async () => {
+    const answers: ((answer: Answer) => void)[] = [];
+    let calls = 0;
+    const fetchPage = vi.fn(() =>
+      ++calls === 1
+        ? Promise.resolve(page(['a'], 'c1'))
+        : new Promise<Answer>((resolve) => {
+            answers.push(resolve);
+          })
+    );
+    const { result } = renderHook(() => usePages(fetchPage, 'list'));
+    await waitFor(() => expect(result.current.status).toMatchObject({ kind: 'ready' }));
+    act(() => result.current.loadMore());
+    act(() => result.current.loadMore());
+    expect(answers).toHaveLength(1);
+    await act(async () => {
+      answers[0]?.(page(['b']));
+    });
+    expect(result.current.items).toEqual(['a', 'b']);
+    // A later «load more» asks again once the first is done.
+    await waitFor(() => expect(result.current.status).toMatchObject({ kind: 'ready' }));
+    act(() => result.current.loadMore());
+    expect(answers).toHaveLength(2);
+  });
+
+  it('asks for the first page once while it is still loading', async () => {
+    const answers: ((answer: Answer) => void)[] = [];
+    const fetchPage = vi.fn(
+      () =>
+        new Promise<Answer>((resolve) => {
+          answers.push(resolve);
+        })
+    );
+    const { result } = renderHook(() => usePages(fetchPage, 'list'));
+    act(() => result.current.loadMore());
+    expect(answers).toHaveLength(1);
+    await act(async () => {
+      answers[0]?.(page(['a'], 'c1'));
+    });
+    expect(result.current.items).toEqual(['a']);
+  });
 });

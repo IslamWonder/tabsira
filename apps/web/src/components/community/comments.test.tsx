@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { apiError, mockApi, type Route } from '@/test/api';
@@ -212,6 +212,41 @@ describe('Comments', () => {
     expect(screen.queryByText('[تعليق الكاتب]')).toBeNull();
     expect(screen.getByText('[تعليق]')).toBeInTheDocument();
     expect(onAuthorBlocked).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a deleted reply deleted when a reply sent during the deletion arrives', async () => {
+    const first = { ...MINE, id: '7345678901234567894', body: '[رد أول]' };
+    const second = { ...REPLY, id: '7345678901234567895', body: '[رد ثانٍ]' };
+    let release: (reply: object) => void = () => undefined;
+    const created = new Promise<object>((resolve) => {
+      release = resolve;
+    });
+    member({
+      [`GET /posts/${POST_ID}/comments`]: {
+        body: page([{ ...COMMENT, replies: [first, second] }]),
+      },
+      [`DELETE /posts/${POST_ID}/comments/${first.id}`]: { status: 204 },
+      [`POST /posts/${POST_ID}/comments`]: () =>
+        created.then((reply) => ({ status: 201, body: reply })),
+    });
+    render(<Comments postId={POST_ID} />);
+    await screen.findByText('[رد أول]');
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'ردّ' })[0] as HTMLElement);
+    await userEvent.type(screen.getByLabelText('اكتب ردًا على [عضو آخر]'), 'رد جديد');
+    await userEvent.click(screen.getAllByRole('button', { name: 'أرسل' })[1] as HTMLElement);
+
+    const gone = screen.getByText('[رد أول]').closest('[data-comment-id]') as HTMLElement;
+    await userEvent.click(within(gone).getByRole('button', { name: 'احذف' }));
+    await waitFor(() => expect(screen.queryByText('[رد أول]')).toBeNull());
+    expect(screen.getByText('[رد ثانٍ]')).toBeInTheDocument();
+
+    await act(async () => {
+      release({ ...MINE, id: '7345678901234567896', body: '[رد ثالث]' });
+    });
+    expect(screen.queryByText('[رد أول]')).toBeNull();
+    expect(screen.getByText('[رد ثانٍ]')).toBeInTheDocument();
+    expect(screen.getByText('[رد ثالث]')).toBeInTheDocument();
   });
 
   it('loads more comments, and retries from where it stopped when the next page fails', async () => {

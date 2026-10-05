@@ -3,6 +3,7 @@ import path from 'node:path';
 import { parseEnv } from 'node:util';
 import type { NextConfig } from 'next';
 import { PHASE_DEVELOPMENT_SERVER } from 'next/constants';
+import { PICTURE_CACHE_RULES } from './src/config/cache-headers';
 import { mergeEnv, resolvePublicEnv } from './src/config/public-env';
 import { QURAN_SOURCE, TEXT_SOURCES } from './src/lib/share-card/fonts';
 
@@ -36,6 +37,8 @@ export default function nextConfig(phase: string): NextConfig {
     outputFileTracingIncludes: {
       '/insights/[id]/card': [QURAN_SOURCE, ...TEXT_SOURCES].map((file) => `./${file}`),
     },
+    // sharp is already a dependency; AVIF trims the landing cards further.
+    images: { formats: ['image/avif', 'image/webp'] },
     turbopack: { root: REPO_ROOT },
     poweredByHeader: false,
     // Our rules live in the root AGENTS.md; stop `next dev` writing its own copies.
@@ -74,6 +77,8 @@ export default function nextConfig(phase: string): NextConfig {
             { key: 'Service-Worker-Allowed', value: '/' },
           ],
         },
+        // A year for the decorative pictures, by file name only (src/config/cache-headers.ts).
+        ...PICTURE_CACHE_RULES,
       ];
     },
   };

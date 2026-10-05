@@ -209,6 +209,9 @@ class Insight(Base):
         ),
         Index("ix_insights_user_id_completed_at", "user_id", "completed_at"),
         Index("ix_insights_guest_key_completed_at", "guest_key", "completed_at"),
+        # The world reads a place's completed insights, and deleting a world
+        # place must find the insights that point at it (ON DELETE SET NULL).
+        Index("ix_insights_place_id", "place_id"),
         Index(
             "uq_insights_user_tutorial",
             "user_id",
