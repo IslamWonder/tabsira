@@ -38,7 +38,6 @@ export function InsightEvidence({
         headingLevel={headingLevel}
         text={verse.text}
         reference={messages.insightPage.verseReference(verse.surah_name, verse.ayah)}
-        verified={verse.status === 'verified_cached'}
       />
     );
   const sunnahCard =

@@ -102,9 +102,9 @@ describe('InsightEvidence', () => {
     expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(2);
   });
 
-  it('marks the verse as matched to its source, as the API says it was', () => {
+  it('shows the verse without a verified chip: the Quran needs none (owners, 5 October 2026)', () => {
     render(<InsightEvidence insight={insightOut()} />);
-    expect(screen.getByText('نص موثّق من مصدره')).toBeInTheDocument();
+    expect(screen.queryByText('نص موثّق من مصدره')).toBeNull();
   });
 
   it('puts two short texts side by side on wide screens, and two long ones one above the other', () => {

@@ -40,8 +40,8 @@ describe('PostCard and the scripture it shows', () => {
     expect(QURAN_TEXT.normalize('NFC')).not.toBe(QURAN_TEXT);
     expect(HADITH_TEXT.replace(/\s+/g, ' ')).not.toBe(HADITH_TEXT);
     expect(HADITH_TEXT.length).toBeGreaterThan(280);
-    // Only the verse carries the verified chip; a hadith never does.
-    expect(screen.getAllByText('نص موثّق من مصدره')).toHaveLength(1);
+    // Neither text carries the verified chip: the Quran needs none, and a post's hadith none either.
+    expect(screen.queryByText('نص موثّق من مصدره')).toBeNull();
     expect(screen.queryByText(/الدرر/)).toBeNull();
     expect(screen.queryByRole('link', { name: /تحقق/ })).toBeNull();
   });

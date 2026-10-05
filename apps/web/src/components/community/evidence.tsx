@@ -26,7 +26,6 @@ export function PostEvidence({
       headingLevel={headingLevel}
       text={verse.text}
       reference={M.quranReference(verse.surah_name, verse.ayah)}
-      verified={verse.verified}
     />
   ));
   const hadiths = insight.hadith.map((hadith) => (

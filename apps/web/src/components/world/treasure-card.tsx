@@ -34,7 +34,6 @@ function Evidence({ treasure }: { treasure: Treasure }) {
           headingLevel={3}
           text={quran.verse.text}
           reference={M.quranReference(quran.verse.surah_name, quran.verse.ayah)}
-          verified
         />
       )}
       {hadith === null ? null : (
