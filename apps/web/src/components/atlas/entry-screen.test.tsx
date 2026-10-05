@@ -100,7 +100,7 @@ describe('EntryScreen', () => {
     });
     const { unmount } = render(<EntryScreen entryId={ENTRY.id} />);
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'سُحبت هذه البصيرة من الأطلس' })
+      await screen.findByRole('heading', { level: 1, name: 'سُحبت هذه البصيرة أو تغيّر عنوانها' })
     ).toBeInTheDocument();
     unmount();
 

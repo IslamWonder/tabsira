@@ -1,13 +1,13 @@
 # 21 · An Islamic spirit for «تبصرة تواصل»
 
-**Phase:** 2 · **Priority:** Medium · **Status:** ⬜ · **Updated:** 2026-10-05 09:46 (Tunis)
+**Phase:** 2 · **Priority:** Medium · **Status:** ⬜ · **Updated:** 2026-10-05 11:43 (Tunis)
 
 The social network leans on acts with a meaning in Islam: sponsoring an insight nobody looks after (decision 60), giving an insight as a gift, and reactions that say something (decision 61).
 
 | Step                                          | Status | Notes                                                  |
 | --------------------------------------------- | ------ | ------------------------------------------------------ |
 | One feature switchboard, comments off         | ✅     | Task 21.0. Decision 63.                                |
-| «كفالة بصيرة»: orphaned atlas entries         | 🔄     | Task 21.1 (server) ✅, 21.2 (screens) ⬜. Decision 60. |
+| «كفالة بصيرة»: orphaned atlas entries         | ✅     | Task 21.1 (server) ✅, 21.2 (screens) ✅. Decision 60. |
 | Reactions «انتفعتُ بها» and «جزاك الله خيرًا» | ✅     | Task 21.3. Decision 61.                                |
 | «أهدِ بصيرة»: giving an insight               | ⏸      | Task 21.4, a plan only until the owners decide.        |
 
@@ -42,7 +42,7 @@ The social network leans on acts with a meaning in Islam: sponsoring an insight 
 
 ### 21.2 Sponsoring screens
 
-- **Status:** ⬜ open
+- **Status:** ✅ done 2026-10-05 11:43 (Tunis)
 - **Goal:** Orphaned entries suggested on the atlas and the camera discovery («بصيرة تنتظر من يكفلها»), the «اكفل هذه البصيرة» action, «في كفالة فلان» on the entry, the sponsor's reflection, and «كفالاتي» in the member's own entries.
 - **Depends on:** 21.1, a design pass recorded in docs/DESIGN_DECISION.md.
 - **What 21.1 gives it (all under `atlas_sponsorship`, 404 while off; the generated client has the types):**
@@ -56,6 +56,7 @@ The social network leans on acts with a meaning in Islam: sponsoring an insight 
   - The status `orphaned` has a label in `messages/ar.ts` (`publish.status.orphaned`); the screens may reword it.
 - **Touches:** apps/web/src/{app/atlas,components/atlas,components/camera,messages}.
 - **Done when:** The screens follow tajriba.md; nothing scores or ranks sponsors.
+- **What was built:** `OrphansSection` («بصائر تنتظر من يكفلها») on the atlas, under the results, and in the camera discovery; it asks `GET /atlas/orphans` with the map's centre (set when the window is searched, never on every move) or the camera's centre, snapped by `coarsePoint` to the 0.05° grid inside `orphansNear`, so no caller can send a finer one, and never asks the device for its position. `SponsorPanel` on the entry page: «اكفل هذه البصيرة» for a verified member with a public identity (the missing step for a guest, an unverified account, a member with no identity), the sponsor line (a profile link while `social` is on, plain text otherwise), the sponsor's published reflection with «بلّغ عن هذا التأمل» (target `sponsorship`, signed-in members other than the sponsor), and for the sponsor «إنهاء الكفالة» behind a confirmation sheet and the reflection form (500 characters, status and the server's message, `removed` included, 422 scripture refusal). The three 409 `CONFLICT` refusals share one code, so the page reads the entry again and says which it was (own entry, already sponsored, not orphaned). A 410 on the entry page says the entry was withdrawn or its address changed when it was widened; no id is kept across that, every list reads again on display. «كفالاتي» is a third scope beside «بصائري المنشورة» (`MySponsorships`, current sponsorships only); the member's own list shows `orphaned`, the sponsor and the widening (level or label and day). Everything is hidden while `atlas_sponsorship` is off (the server pages pass it as a prop).
 
 ### 21.3 Reactions with a meaning
 
