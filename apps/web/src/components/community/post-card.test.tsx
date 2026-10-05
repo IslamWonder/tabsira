@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { messages } from '@/messages';
 import { apiError, mockApi } from '@/test/api';
 import { USER } from '@/test/fixtures';
 import { HADITH_TEXT, IDENTITY, MY_POST, POST, QURAN_TEXT, sha256 } from '@/test/social';
@@ -128,7 +129,10 @@ describe('PostCard reactions', () => {
     });
     render(
       <PostCard
-        post={{ ...POST, viewer: { reactions: [], bookmarked: false, is_author: false } }}
+        post={{
+          ...POST,
+          viewer: { reactions: [], bookmarked: false, is_author: false, follows_author: false },
+        }}
         onChange={onChange}
       />
     );
@@ -146,6 +150,7 @@ describe('PostCard reactions', () => {
       reactions: ['benefited'],
       bookmarked: false,
       is_author: false,
+      follows_author: false,
     });
     await userEvent.click(screen.getByRole('button', { name: 'احفظ' }));
     await waitFor(() => expect(onChange.mock.lastCall?.[0].viewer.bookmarked).toBe(true));
@@ -158,7 +163,12 @@ describe('PostCard reactions', () => {
         post={{
           ...POST,
           reactions: { benefited: 4, jazak: 0 },
-          viewer: { reactions: ['benefited'], bookmarked: false, is_author: false },
+          viewer: {
+            reactions: ['benefited'],
+            bookmarked: false,
+            is_author: false,
+            follows_author: false,
+          },
         }}
         onChange={vi.fn()}
       />
@@ -180,7 +190,12 @@ describe('PostCard reactions', () => {
       <PostCard
         post={{
           ...POST,
-          viewer: { reactions: ['benefited', 'jazak'], bookmarked: false, is_author: false },
+          viewer: {
+            reactions: ['benefited', 'jazak'],
+            bookmarked: false,
+            is_author: false,
+            follows_author: false,
+          },
         }}
         onChange={onChange}
       />
@@ -225,7 +240,10 @@ describe('PostCard reactions', () => {
     });
     render(
       <PostCard
-        post={{ ...POST, viewer: { reactions: [], bookmarked: false, is_author: false } }}
+        post={{
+          ...POST,
+          viewer: { reactions: [], bookmarked: false, is_author: false, follows_author: false },
+        }}
         onChange={vi.fn()}
         onRemoved={onRemoved}
       />
@@ -297,7 +315,12 @@ describe('PostCard reactions', () => {
           ...POST,
           reactions: { benefited: 0, jazak: 1 },
           visibility: 'followers',
-          viewer: { reactions: ['jazak'], bookmarked: true, is_author: false },
+          viewer: {
+            reactions: ['jazak'],
+            bookmarked: true,
+            is_author: false,
+            follows_author: false,
+          },
         }}
         onChange={onChange}
       />
@@ -377,5 +400,36 @@ describe('what a card leaves out', () => {
       />
     );
     expect(screen.queryByTestId('public-photo')).toBeNull();
+  });
+});
+
+describe('PostCard: following the author', () => {
+  it('offers a quiet follow beside the author, and says once it is done', async () => {
+    const api = member({ [`PUT /u/${POST.author.handle}/follow`]: { status: 204 } });
+    render(
+      <PostCard
+        post={{
+          ...POST,
+          viewer: { reactions: [], bookmarked: false, is_author: false, follows_author: false },
+        }}
+        onChange={vi.fn()}
+      />
+    );
+    const follow = await screen.findByRole('button', { name: messages.community.profile.follow });
+    await waitFor(() => expect(follow).toBeEnabled());
+    await userEvent.click(follow);
+    expect(
+      await screen.findByRole('button', { name: messages.community.profile.following })
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(api.requests.some((r) => r.url.endsWith(`/u/${POST.author.handle}/follow`))).toBe(true);
+  });
+
+  it('offers none on the reader’s own post, nor to a guest', async () => {
+    member();
+    const own = render(<PostCard post={POST} onChange={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: messages.community.profile.follow })).toBeNull();
+    own.unmount();
+    render(<PostCard post={{ ...POST, viewer: null }} onChange={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: messages.community.profile.follow })).toBeNull();
   });
 });
