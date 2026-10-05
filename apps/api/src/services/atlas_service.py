@@ -19,12 +19,16 @@ does afterwards. Only the sponsor, when there is one, is named beside it.
 from __future__ import annotations
 
 import math
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
+from typing import Any
 
 from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import cast, delete, exists, func, or_, select
+from sqlalchemy import Float, Integer, Select, cast, delete, exists, func, or_, select, text
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
@@ -54,7 +58,13 @@ from src.models.social import (
 )
 from src.models.user import User
 from src.schemas.atlas import (
+    AtlasClusterCollection,
+    AtlasClusterFeature,
+    AtlasClusterProperties,
+    AtlasEntriesPage,
+    AtlasEntryFeature,
     AtlasEntryOut,
+    AtlasEntryProperties,
     AtlasFeature,
     AtlasFeatureProperties,
     AtlasOrphansOut,
@@ -82,6 +92,21 @@ from src.storage.photos import PhotoStore
 # Entries returned for one map window at most; the client asks again for a smaller window.
 WINDOW_DEFAULT = 300
 WINDOW_MAX = 1000
+# Groups: a grid cell is about this many CSS pixels wide on screen, whatever the zoom.
+CLUSTER_CELL_PX = 60
+# From this zoom on nothing is grouped: every visible entry is its own point.
+CLUSTER_OFF_ZOOM = 16
+# Features in one cluster answer at most; `truncated` says there were more.
+CLUSTER_FEATURES_MAX = 500
+_MERCATOR_TILE_PX = 256
+_MERCATOR_HALF_M = 20_037_508.342789244
+# Web Mercator stops here; a point nearer the pole is placed in the last row of cells.
+_MERCATOR_MAX_LAT = 85.0511287798
+# A cursor holds a distance, not a time; `at` is a fixed one so that the shared cursor fits.
+_DISTANCE_CURSOR_AT = datetime(1970, 1, 1, tzinfo=UTC)
+# The cluster and page queries scan a window: one that runs longer than this is cut, not queued.
+QUERY_TIMEOUT_MS = 3_000
+_QUERY_CANCELED = "57014"
 PLACE_PAGE_DEFAULT = 20
 PLACE_PAGE_MAX = 50
 ORPHAN_RADIUS_DEFAULT_M = 150_000
@@ -635,20 +660,22 @@ def _not_hidden_by_a_block(viewer: User) -> ColumnElement[bool]:
     return ~(by_author | by_sponsor)
 
 
-def _published_rows(filters: Filters, viewer: User | None, *, sponsoring: bool = True):  # type: ignore[no-untyped-def]
-    # With sponsoring switched off an orphaned entry is served as the plain, anonymous, widened
-    # entry it is, so that it does not vanish; with it on, orphans are asked for by name.
+def _visible(
+    statement: Select[Any], filters: Filters, viewer: User | None, *, sponsoring: bool
+) -> Select[Any]:
+    """
+    Keep what this viewer may see on the map: the one rule every public read applies.
+
+    The statement joins `Insight` and `User` to the entry. With sponsoring switched off an
+    orphaned entry is served as the plain, anonymous, widened entry it is, so that it does not
+    vanish; with it on, orphans are asked for by name.
+    """
     shown = (
         [MapEntryStatus.PUBLISHED]
         if sponsoring
         else [MapEntryStatus.PUBLISHED, MapEntryStatus.ORPHANED]
     )
-    statement = (
-        select(MapEntry, Insight, User)
-        .join(Insight, Insight.id == MapEntry.insight_id)
-        .join(User, User.id == MapEntry.user_id)
-        .where(MapEntry.status.in_(shown), *_visible_author())
-    )
+    statement = statement.where(MapEntry.status.in_(shown), *_visible_author())
     if viewer is not None:
         statement = statement.where(_not_hidden_by_a_block(viewer))
     if filters.since is not None:
@@ -659,6 +686,20 @@ def _published_rows(filters: Filters, viewer: User | None, *, sponsoring: bool =
         statement = statement.where(MapEntry.country_iso2 == filters.country.upper())
     if filters.concept is not None:
         statement = statement.where(Insight.entity_ids.contains([filters.concept]))
+    return statement
+
+
+def _joined(*columns: Any) -> Select[Any]:
+    return (
+        select(*columns)
+        .select_from(MapEntry)
+        .join(Insight, Insight.id == MapEntry.insight_id)
+        .join(User, User.id == MapEntry.user_id)
+    )
+
+
+def _published_rows(filters: Filters, viewer: User | None, *, sponsoring: bool = True):  # type: ignore[no-untyped-def]
+    statement = _visible(_joined(MapEntry, Insight, User), filters, viewer, sponsoring=sponsoring)
     return statement.order_by(_published_day().desc(), MapEntry.id.desc())
 
 
@@ -685,6 +726,245 @@ async def features_in(
         for entry, insight, author in rows[:limit]
     ]
     return features, len(rows) > limit
+
+
+def _cell_index(merc_axis, across: int, cell_m: float):  # type: ignore[no-untyped-def]
+    """Return the column or row of a Mercator coordinate in a grid of `across` cells."""
+    index = func.floor((merc_axis + _MERCATOR_HALF_M) / cell_m)
+    return cast(func.least(index, across - 1), Integer)
+
+
+def _grid(zoom: int) -> tuple[int, float]:
+    """
+    Return how many cells span the world at a zoom, and the cell's side in metres.
+
+    A cell is about `CLUSTER_CELL_PX` screen pixels: 60 x 156543.03392 / 2^zoom metres in Web
+    Mercator. The count is rounded to a whole number so that no cell straddles the antimeridian,
+    where a mean of longitudes would land on the wrong side of the world.
+    """
+    across = max(1, round(_MERCATOR_TILE_PX * 2**zoom / CLUSTER_CELL_PX))
+    return across, 2 * _MERCATOR_HALF_M / across
+
+
+def _as_entry_feature(feature: AtlasFeature) -> AtlasEntryFeature:
+    return AtlasEntryFeature(
+        id=feature.id,
+        geometry=feature.geometry,
+        properties=AtlasEntryProperties(**feature.properties.model_dump()),
+    )
+
+
+async def _entries_by_id(
+    db: AsyncSession,
+    entry_ids: list[int],
+    filters: Filters,
+    viewer: User | None,
+    sponsoring: bool,
+) -> dict[int, AtlasEntryFeature]:
+    """Return the visible entries among `entry_ids` as map features, with their sponsors."""
+    if not entry_ids:
+        return {}
+    rows = (
+        await db.execute(
+            _published_rows(filters, viewer, sponsoring=sponsoring).where(
+                MapEntry.id.in_(entry_ids)
+            )
+        )
+    ).all()
+    sponsors = await _sponsors(db, [entry.id for entry, _, _ in rows], viewer, sponsoring)
+    return {
+        entry.id: _as_entry_feature(
+            _feature(entry, insight, author, sponsors.get(entry.id), sponsoring=sponsoring)
+        )
+        for entry, insight, author in rows
+    }
+
+
+async def _clusters(
+    db: AsyncSession,
+    window: Window,
+    filters: Filters,
+    zoom: int,
+    viewer: User | None = None,
+    *,
+    sponsoring: bool = True,
+) -> AtlasClusterCollection:
+    """
+    Return the visible entries of a window grouped by grid cell, and the lone ones as entries.
+
+    Only public points are read: a group sits at the mean of its members' public points, so no
+    exact point can be found from it, and its properties hold a count and a box, never an id,
+    an author or a time. The same rules as `features_in` decide what is counted, blocks included.
+    From `CLUSTER_OFF_ZOOM` on every entry is returned as itself.
+    """
+    if zoom >= CLUSTER_OFF_ZOOM:
+        entries, more = await features_in(
+            db, window, filters, CLUSTER_FEATURES_MAX, viewer, sponsoring=sponsoring
+        )
+        return AtlasClusterCollection(
+            features=[_as_entry_feature(feature) for feature in entries], truncated=more
+        )
+    across, cell_m = _grid(zoom)
+    lat = func.greatest(func.least(MapEntry.public_lat, _MERCATOR_MAX_LAT), -_MERCATOR_MAX_LAT)
+    merc = func.ST_Transform(
+        func.ST_SetSRID(func.ST_MakePoint(MapEntry.public_lng, lat), 4326), 3857
+    )
+    column = _cell_index(func.ST_X(merc), across, cell_m).label("cell_x")
+    row = _cell_index(func.ST_Y(merc), across, cell_m).label("cell_y")
+    members = func.count().label("members")
+    statement = (
+        _visible(
+            _joined(
+                column,
+                row,
+                members,
+                func.avg(MapEntry.public_lng).label("mean_lng"),
+                func.avg(MapEntry.public_lat).label("mean_lat"),
+                func.min(MapEntry.public_lng).label("west"),
+                func.min(MapEntry.public_lat).label("south"),
+                func.max(MapEntry.public_lng).label("east"),
+                func.max(MapEntry.public_lat).label("north"),
+                # Only read for a cell of one entry, to fetch it; never put in a group.
+                func.min(MapEntry.id).label("only_id"),
+            ),
+            filters,
+            viewer,
+            sponsoring=sponsoring,
+        )
+        .where(_envelopes(window))
+        .group_by(column, row)
+        .order_by(members.desc(), column, row)
+        .limit(CLUSTER_FEATURES_MAX + 1)
+    )
+    found = (await db.execute(statement)).all()
+    truncated = len(found) > CLUSTER_FEATURES_MAX
+    cells = found[:CLUSTER_FEATURES_MAX]
+    singles = await _entries_by_id(
+        db, [cell.only_id for cell in cells if cell.members == 1], filters, viewer, sponsoring
+    )
+    features: list[AtlasClusterFeature | AtlasEntryFeature] = []
+    for cell in cells:
+        if cell.members == 1:
+            # Gone between the two reads (withdrawn, blocked): left out rather than guessed.
+            if cell.only_id in singles:
+                features.append(singles[cell.only_id])
+            continue
+        features.append(
+            AtlasClusterFeature(
+                geometry=_point(float(cell.mean_lat), float(cell.mean_lng)),
+                properties=AtlasClusterProperties(
+                    id=f"{zoom}:{cell.cell_x}:{cell.cell_y}",
+                    count=cell.members,
+                    bbox=[cell.west, cell.south, cell.east, cell.north],
+                ),
+            )
+        )
+    return AtlasClusterCollection(features=features, truncated=truncated)
+
+
+async def _entries_page(
+    db: AsyncSession,
+    window: Window,
+    centre: tuple[float, float],
+    filters: Filters,
+    cursor: cursors.Cursor | None,
+    limit: int,
+    viewer: User | None = None,
+    *,
+    sponsoring: bool = True,
+) -> AtlasEntriesPage:
+    """
+    Return a page of the visible entries in a window, nearest the centre first, with their total.
+
+    The distance, in degrees, is from the centre `(lat, lng)`, snapped to a 0.05 degree cell, to
+    the entry's public point; ties break by id, so a cursor `(distance, id)` never skips or repeats an entry. The centre is
+    used for these queries only: no distance is returned and nothing is kept.
+    """
+    # The position may be the viewer's own: it is snapped to a coarse cell before any use, so
+    # that neither a log of the statement nor the distances in the cursors can give it away.
+    snapped = approximate(centre[0], centre[1], ORPHAN_QUERY_CELL_M)
+    here = func.ST_SetSRID(func.ST_MakePoint(snapped.lng, snapped.lat), 4326)
+    # The nearest-neighbour operator, on the geometry the spatial index holds: it orders by
+    # distance in degrees, which is near enough for a window and lets the index answer.
+    distance = MapEntry.public_geom.op("<->", return_type=Float)(here)
+
+    def inside(*columns: Any) -> Select[Any]:
+        statement = _visible(_joined(*columns), filters, viewer, sponsoring=sponsoring)
+        return statement.where(_envelopes(window))
+
+    total = await db.scalar(inside(func.count(MapEntry.id)))
+    statement = inside(MapEntry, Insight, User, distance.label("distance")).order_by(
+        distance, MapEntry.id
+    )
+    if cursor is not None:
+        if cursor.score is None:
+            raise cursors.invalid()
+        statement = statement.where(
+            (distance > cursor.score) | ((distance == cursor.score) & (MapEntry.id > cursor.id))
+        )
+    rows = (await db.execute(statement.limit(limit + 1))).all()
+    page = rows[:limit]
+    sponsors = await _sponsors(db, [row[0].id for row in page], viewer, sponsoring)
+    last = page[-1] if len(rows) > limit else None
+    return AtlasEntriesPage(
+        items=[
+            _feature(entry, insight, author, sponsors.get(entry.id), sponsoring=sponsoring)
+            for entry, insight, author, _ in page
+        ],
+        next_cursor=(
+            None
+            if last is None
+            else cursors.encode(
+                cursors.Cursor(at=_DISTANCE_CURSOR_AT, id=last[0].id, score=float(last[3]))
+            )
+        ),
+        total=int(total or 0),
+    )
+
+
+@asynccontextmanager
+async def _bounded(db: AsyncSession) -> AsyncIterator[None]:
+    """Cut the statements of this transaction at `QUERY_TIMEOUT_MS`, and answer 503 when one is."""
+    await db.execute(text(f"SET LOCAL statement_timeout = {int(QUERY_TIMEOUT_MS)}"))
+    try:
+        yield
+    except DBAPIError as error:
+        if getattr(error.orig, "sqlstate", None) != _QUERY_CANCELED:
+            raise
+        message = "The map took too long to answer; ask for a smaller window."
+        raise AppError(ErrorCode.SERVICE_UNAVAILABLE, message, status_code=503) from error
+
+
+async def clusters_in(
+    db: AsyncSession,
+    window: Window,
+    filters: Filters,
+    zoom: int,
+    viewer: User | None = None,
+    *,
+    sponsoring: bool = True,
+) -> AtlasClusterCollection:
+    """Group the visible entries of a window (`_clusters`), within the time one query may take."""
+    async with _bounded(db):
+        return await _clusters(db, window, filters, zoom, viewer, sponsoring=sponsoring)
+
+
+async def entries_page(
+    db: AsyncSession,
+    window: Window,
+    centre: tuple[float, float],
+    filters: Filters,
+    cursor: cursors.Cursor | None,
+    limit: int,
+    viewer: User | None = None,
+    *,
+    sponsoring: bool = True,
+) -> AtlasEntriesPage:
+    """List the visible entries of a window by distance (`_entries_page`), within the time allowed."""
+    async with _bounded(db):
+        return await _entries_page(
+            db, window, centre, filters, cursor, limit, viewer, sponsoring=sponsoring
+        )
 
 
 async def published_entry(db: AsyncSession, entry_id: int, viewer: User | None = None) -> MapEntry:

@@ -1,17 +1,24 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { AtlasClusterFeature } from '@/atlas/types';
 import { messages } from '@/messages';
-import { FEATURE, SECOND_FEATURE } from '@/test/atlas';
+import { FEATURE } from '@/test/atlas';
 import { FakeMap, type FakeSource, forgetMaps, loadedMap, setWorkerUrl } from '@/test/maplibre';
 import { MAP_MODE_KEY, MapView } from './map-view';
 
 vi.mock('maplibre-gl', () => import('@/test/maplibre'));
 
+const GROUP: AtlasClusterFeature = {
+  type: 'Feature',
+  geometry: { type: 'Point', coordinates: [10.1, 36.7] },
+  properties: { kind: 'cluster', id: 'c-1', count: 12, bbox: [10, 36.6, 10.2, 36.8] },
+};
+
 afterEach(forgetMaps);
 
 describe('MapView', () => {
-  it('builds the map on the tile source of decision 9 and draws the entries as a clustered source', async () => {
+  it('builds the map on the tile source of decision 9 and draws what the server grouped, without clustering by itself', async () => {
     const onMoved = vi.fn();
     render(<MapView features={[FEATURE]} onMoved={onMoved} />);
     const map = await loadedMap();
@@ -21,8 +28,11 @@ describe('MapView', () => {
     expect(map.layers).toEqual(
       expect.arrayContaining(['clusters', 'points', 'cell-fill', 'marker'])
     );
-    const data = map.getSource('entries')?.data as { features: { properties: { id: string } }[] };
+    const data = (map.getSource('entries') as FakeSource).data as {
+      features: { properties: { id: string } }[];
+    };
     expect(data.features.map((feature) => feature.properties.id)).toEqual([FEATURE.id]);
+    expect(map.sourceOptions.get('entries')).not.toHaveProperty('cluster');
     // The first window is reported once the map is ready, so the page can ask for it.
     expect(onMoved).toHaveBeenCalledWith({ west: 9, south: 35, east: 11, north: 37 }, false, {
       center: [10, 36],
@@ -49,37 +59,79 @@ describe('MapView', () => {
     expect(onPick).toHaveBeenCalledWith([10.5, 36.5]);
   });
 
-  it('opens a cluster by zooming to it, and follows a new view', async () => {
-    const { rerender } = render(<MapView features={[FEATURE, SECOND_FEATURE]} />);
+  it('draws groups sized by their count beside single entries, and follows a new view', async () => {
+    const { rerender } = render(<MapView features={[GROUP, FEATURE]} />);
     const map = await loadedMap();
-    map.emit('click:clusters', {
-      features: [
-        { geometry: { type: 'Point', coordinates: [10, 36] }, properties: { cluster_id: 3 } },
-      ],
-    });
-    await vi.waitFor(() => expect(map.easeTo).toHaveBeenCalledWith({ center: [10, 36], zoom: 9 }));
-    rerender(
-      <MapView features={[FEATURE, SECOND_FEATURE]} view={{ center: [39.8, 21.4], zoom: 10 }} />
-    );
+    const data = (map.getSource('entries') as FakeSource).data as {
+      features: { id?: number; properties: Record<string, unknown> }[];
+    };
+    expect(data.features.map((feature) => feature.properties)).toEqual([
+      { id: 'c-1', kind: 'cluster', count: 12 },
+      { id: FEATURE.id, kind: 'entry', title: FEATURE.properties.title },
+    ]);
+    expect(data.features[0]?.id).toBeUndefined();
+    expect(map.filters.get('clusters')).toEqual(['==', ['get', 'kind'], 'cluster']);
+    expect(map.filters.get('points')).toEqual(['!=', ['get', 'kind'], 'cluster']);
+    // Only an entry carries a selection state; a group has none.
+    expect([...map.featureState.keys()]).toEqual([FEATURE.id]);
+    rerender(<MapView features={[GROUP]} view={{ center: [39.8, 21.4], zoom: 10 }} />);
     expect(map.flyTo).toHaveBeenCalledWith({ center: [39.8, 21.4], zoom: 10, essential: true });
+    expect(
+      ((map.getSource('entries') as FakeSource).data as { features: unknown[] }).features
+    ).toHaveLength(1);
   });
 
-  it('jumps instead of flying under reduced motion, and marks the selected point', async () => {
+  it('zooms to the box of a tapped group, with room around it', async () => {
+    render(<MapView features={[GROUP, FEATURE]} />);
+    const map = await loadedMap();
+    map.emit('click:clusters', { features: [{ properties: { id: 'c-1', kind: 'cluster' } }] });
+    expect(map.fitBounds).toHaveBeenCalledWith(
+      [
+        [10, 36.6],
+        [10.2, 36.8],
+      ],
+      { padding: 48, maxZoom: 17, animate: true }
+    );
+    expect(map.easeTo).not.toHaveBeenCalled();
+  });
+
+  it('never lets a tap on a group land at or below the zoom it started from', async () => {
+    render(<MapView features={[GROUP]} />);
+    const map = await loadedMap();
+    // The box would fit at the current zoom or less: go one zoom closer, on the group.
+    map.cameraForBounds.mockReturnValue({ center: [10.1, 36.7], zoom: 7 });
+    map.emit('click:clusters', { features: [{ properties: { id: 'c-1' } }] });
+    expect(map.fitBounds).not.toHaveBeenCalled();
+    expect(map.easeTo).toHaveBeenCalledWith({ center: [10.1, 36.7], zoom: 9 });
+    map.cameraForBounds.mockReturnValue(undefined);
+    map.emit('click:clusters', { features: [{ properties: { id: 'c-1' } }] });
+    expect(map.easeTo).toHaveBeenCalledTimes(2);
+  });
+
+  it('jumps instead of animating under reduced motion, and marks the selected point', async () => {
     document.documentElement.dataset.motion = 'reduce';
-    const { rerender } = render(<MapView features={[FEATURE]} selectedId={null} />);
+    const { rerender } = render(<MapView features={[GROUP, FEATURE]} selectedId={null} />);
     const map = await loadedMap();
     rerender(
-      <MapView features={[FEATURE]} selectedId={FEATURE.id} view={{ center: [1, 2], zoom: 3 }} />
+      <MapView
+        features={[GROUP, FEATURE]}
+        selectedId={FEATURE.id}
+        view={{ center: [1, 2], zoom: 3 }}
+      />
     );
     expect(map.jumpTo).toHaveBeenCalledWith({ center: [1, 2], zoom: 3 });
     expect(map.flyTo).not.toHaveBeenCalled();
     expect(map.featureState.get(FEATURE.id)).toEqual({ selected: true });
-    map.emit('click:clusters', {
-      features: [
-        { geometry: { type: 'Point', coordinates: [10, 36] }, properties: { cluster_id: 3 } },
-      ],
+    map.emit('click:clusters', { features: [{ properties: { id: 'c-1' } }] });
+    expect(map.fitBounds).toHaveBeenCalledWith(expect.anything(), {
+      padding: 48,
+      maxZoom: 17,
+      animate: false,
     });
-    await vi.waitFor(() => expect(map.jumpTo).toHaveBeenCalledWith({ center: [10, 36], zoom: 9 }));
+    map.cameraForBounds.mockReturnValue(undefined);
+    map.emit('click:clusters', { features: [{ properties: { id: 'c-1' } }] });
+    expect(map.jumpTo).toHaveBeenLastCalledWith({ center: [10.1, 36.7], zoom: 9 });
+    delete document.documentElement.dataset.motion;
   });
 
   it('draws a marker and a cell when asked, and removes the map on unmount', async () => {
@@ -115,15 +167,16 @@ describe('MapView', () => {
     expect(FakeMap.instances).toHaveLength(1);
   });
 
-  it('ignores a cluster tap without a cluster id and a point tap without an id', async () => {
+  it('ignores a tap on a group the map no longer holds and a point tap without an id', async () => {
     const onSelect = vi.fn();
     render(<MapView features={[FEATURE]} onSelect={onSelect} />);
     const map = await loadedMap();
-    map.emit('click:clusters', {
-      features: [{ geometry: { type: 'Point', coordinates: [0, 0] }, properties: {} }],
-    });
+    map.emit('click:clusters', { features: [{ properties: { id: 'gone' } }] });
+    map.emit('click:clusters', { features: [{ properties: { id: FEATURE.id } }] });
+    map.emit('click:clusters', {});
     map.emit('click:points', { features: [{ properties: {} }] });
     expect(map.easeTo).not.toHaveBeenCalled();
+    expect(map.fitBounds).not.toHaveBeenCalled();
     expect(onSelect).not.toHaveBeenCalled();
   });
 

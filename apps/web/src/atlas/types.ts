@@ -11,6 +11,17 @@ type Schemas = components['schemas'];
 export type AtlasFeature = Schemas['AtlasFeature'];
 export type AtlasFeatureProperties = Schemas['AtlasFeatureProperties'];
 export type AtlasFeatureCollection = Schemas['AtlasFeatureCollection'];
+export type AtlasClusterCollection = Schemas['AtlasClusterCollection'];
+export type AtlasClusterFeature = Schemas['AtlasClusterFeature'];
+export type AtlasEntriesPage = Schemas['AtlasEntriesPage'];
+
+/** What the map draws: a group of entries, or one entry. */
+export type MapFeature = AtlasFeature | AtlasClusterFeature;
+
+/** Whether a drawn feature is a group (the server's `kind`); an entry from an older route has none. */
+export function isCluster(feature: MapFeature): feature is AtlasClusterFeature {
+  return 'kind' in feature.properties && feature.properties.kind === 'cluster';
+}
 export type AtlasEntry = Schemas['AtlasEntryOut'];
 export type AtlasPlace = Schemas['AtlasPlaceOut'];
 export type PlaceRef = Schemas['PlaceRef'];
@@ -50,6 +61,36 @@ export function coarsen(window: Window): Window {
     north: clamp(Number(up(window.north).toFixed(2)), 90),
   };
 }
+
+/**
+ * The window widened by `ratio` of its size on every side, so groups near the edges are
+ * counted whole. Crosses the antimeridian when `west > east`; a window that would cover the
+ * world is the world.
+ */
+export function padWindow(window: Window, ratio: number): Window {
+  const crossing = window.west > window.east;
+  const width = crossing ? window.east - window.west + 360 : window.east - window.west;
+  const height = window.north - window.south;
+  const south = Math.max(-90, window.south - height * ratio);
+  const north = Math.min(90, window.north + height * ratio);
+  if (width * (1 + 2 * ratio) >= 360) {
+    return { west: -180, south, east: 180, north };
+  }
+  const wrap = (value: number) => (value > 180 ? value - 360 : value < -180 ? value + 360 : value);
+  return {
+    west: wrap(window.west - width * ratio),
+    south,
+    east: wrap(window.east + width * ratio),
+    north,
+  };
+}
+
+/** How long a map stands still before the atlas asks for what it shows. */
+export const MOVE_DEBOUNCE_MS = 250;
+/** The share of the window added on each side when asking for groups. */
+export const WINDOW_PADDING = 0.25;
+/** Entries per page of the list beside the map. */
+export const LIST_PAGE = 20;
 
 /**
  * A position snapped to the same grid as a window, [longitude, latitude]: the

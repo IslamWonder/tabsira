@@ -61,6 +61,9 @@ def test_no_cursor_is_no_position():
         encoded(a="whenever"),
         encoded(s="high"),
         encoded(s=True),
+        encoded(s=10**400),
+        encoded(s=float("nan")),
+        encoded(s=float("inf")),
     ],
 )
 def test_a_cursor_this_api_did_not_write_is_refused(raw):

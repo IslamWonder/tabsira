@@ -176,6 +176,64 @@ class AtlasFeatureCollection(BaseModel):
     truncated: bool = Field(description="More entries lie in the window than were returned")
 
 
+class AtlasEntryProperties(AtlasFeatureProperties):
+    """A single entry among clusters: the entry's own properties, told apart by `kind`."""
+
+    kind: Literal["entry"] = "entry"
+
+
+class AtlasEntryFeature(BaseModel):
+    """A lone entry of the cluster answer, a point on the map like any other."""
+
+    type: Literal["Feature"] = "Feature"
+    id: PublicId
+    geometry: GeoJsonPoint
+    properties: AtlasEntryProperties
+
+
+class AtlasClusterProperties(BaseModel):
+    """
+    What a group of entries says: how many, and where they lie. Never an id, an author or a time.
+
+    The count is of the entries this viewer may see, and the box is the box of their public points.
+    """
+
+    kind: Literal["cluster"] = "cluster"
+    id: str = Field(description="Stable for a grid cell at a zoom; not an entry id")
+    count: int = Field(
+        ge=2, description="Visible entries in the group, after the filters and blocks"
+    )
+    bbox: list[float] = Field(
+        min_length=4,
+        max_length=4,
+        description="West, south, east, north of the members' public points, to zoom to the group",
+    )
+
+
+class AtlasClusterFeature(BaseModel):
+    """A group of entries as a GeoJSON Feature; `geometry` is the mean of their public points."""
+
+    type: Literal["Feature"] = "Feature"
+    geometry: GeoJsonPoint
+    properties: AtlasClusterProperties
+
+
+class AtlasClusterCollection(BaseModel):
+    """Groups and single entries of a window, told apart by `properties.kind`; bounded in size."""
+
+    type: Literal["FeatureCollection"] = "FeatureCollection"
+    features: list[AtlasClusterFeature | AtlasEntryFeature]
+    truncated: bool = Field(description="More groups lie in the window than were returned")
+
+
+class AtlasEntriesPage(BaseModel):
+    """One page of the entries in a window, nearest the map's centre first."""
+
+    items: list[AtlasFeature]
+    next_cursor: str | None
+    total: int = Field(ge=0, description="Visible entries in the whole window, not in the page")
+
+
 class AtlasEntryOut(BaseModel):
     """A published entry on its own page: the insight by reference, the public point, its place."""
 

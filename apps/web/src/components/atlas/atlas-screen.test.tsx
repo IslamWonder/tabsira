@@ -14,10 +14,13 @@ import {
   SPONSORSHIP,
 } from '@/test/atlas';
 import { USER } from '@/test/fixtures';
-import { forgetMaps, loadedMap } from '@/test/maplibre';
+import { type FakeMap, type FakeSource, forgetMaps, loadedMap } from '@/test/maplibre';
 
 /** A route whose answers the test releases one by one, in the order they were asked. */
-function deferred(): { route: Route; answer: (reply: Reply) => void } {
+function deferred(): {
+  route: (request?: Request) => Promise<Reply>;
+  answer: (reply: Reply) => void;
+} {
   const waiting: ((reply: Reply) => void)[] = [];
   return {
     route: () => new Promise<Reply>((resolve) => waiting.push(resolve)),
@@ -35,14 +38,50 @@ afterEach(() => {
   window.history.replaceState(null, '', '/atlas');
 });
 
-const collection = (features = [FEATURE, SECOND_FEATURE], truncated = false) => ({
-  body: { type: 'FeatureCollection', features, truncated },
+/** One page of the list beside the map. */
+const collection = (
+  items = [FEATURE, SECOND_FEATURE],
+  total = items.length,
+  nextCursor: string | null = null
+) => ({ body: { items, next_cursor: nextCursor, total } });
+
+/** What the server drew for the map: every entry alone, as it does from zoom 16. */
+const drawn = (features = [FEATURE, SECOND_FEATURE], truncated = false) => ({
+  body: {
+    type: 'FeatureCollection',
+    features: features.map((feature) => ({
+      ...feature,
+      properties: { ...feature.properties, kind: 'entry' },
+    })),
+    truncated,
+  },
 });
+
+const CLUSTER = {
+  type: 'Feature',
+  geometry: { type: 'Point', coordinates: [10.1, 36.7] },
+  properties: { kind: 'cluster', id: 'c-1', count: 12, bbox: [10, 36.6, 10.2, 36.8] },
+};
+
+/** What the map was handed to draw. */
+const drawnOn = (map: FakeMap) =>
+  (
+    (map.getSource('entries') as FakeSource).data as {
+      features: { properties: { id: string; kind: string; count?: number } }[];
+    }
+  ).features;
+
+const PAGE = '/atlas/entries/page';
+const CLUSTERS = '/atlas/clusters';
+const asked = (api: { requests: Request[] }, path: string) =>
+  api.requests.filter((r) => new URL(r.url).pathname === path);
+const queryOf = (request: Request | undefined) => new URL(request?.url ?? '').searchParams;
 
 function guest(extra: Record<string, Route> = {}) {
   return mockApi({
     'GET /auth/me': apiError(401, 'UNAUTHORIZED'),
-    'GET /atlas/entries': collection(),
+    [`GET ${CLUSTERS}`]: drawn(),
+    [`GET ${PAGE}`]: collection(),
     ...extra,
   });
 }
@@ -53,21 +92,34 @@ describe('AtlasScreen', () => {
     render(<AtlasScreen />);
     await loadedMap();
     expect(await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ })).toBeInTheDocument();
-    const request = api.requests.find((r) => r.url.includes('/atlas/entries'));
-    const query = new URL(request?.url ?? '').searchParams;
+    // The list asks for the window the map shows, around its centre; the map for the window padded by a quarter.
+    const query = queryOf(asked(api, PAGE)[0]);
     expect([query.get('west'), query.get('south'), query.get('east'), query.get('north')]).toEqual([
       '9',
       '35',
       '11',
       '37',
     ]);
+    expect([query.get('center_lng'), query.get('center_lat'), query.get('limit')]).toEqual([
+      '10',
+      '36',
+      '20',
+    ]);
     expect(query.get('since')).toBeNull();
+    const wide = queryOf(asked(api, CLUSTERS)[0]);
+    expect([wide.get('west'), wide.get('south'), wide.get('east'), wide.get('north')]).toEqual([
+      '8.5',
+      '34.5',
+      '11.5',
+      '37.5',
+    ]);
+    expect(wide.get('zoom')).toBe('8');
     expect(screen.getByText('بصيرتان')).toBeInTheDocument();
     // What the server sent is what is drawn: approximate points, nothing else.
     expect(document.body.textContent).not.toContain('36.8065');
   });
 
-  it('opens an entry from the list, and asks again only when told to after a move', async () => {
+  it('opens an entry from the list, and asks again for the new window once the map has moved', async () => {
     const api = guest();
     render(<AtlasScreen />);
     const map = await loadedMap();
@@ -82,20 +134,19 @@ describe('AtlasScreen', () => {
     ).toHaveAttribute('href', '/u/rain_reader');
     expect(map.flyTo).toHaveBeenCalled();
 
-    const before = api.requests.filter((r) => r.url.includes('/atlas/entries')).length;
+    const before = asked(api, PAGE).length;
     map.bounds = { west: 39, south: 21, east: 40, north: 22 };
     map.emit('moveend', { originalEvent: {} });
-    expect(api.requests.filter((r) => r.url.includes('/atlas/entries')).length).toBe(before);
-    await userEvent.click(screen.getByRole('button', { name: 'ابحث في هذه المنطقة' }));
-    await waitFor(() =>
-      expect(api.requests.filter((r) => r.url.includes('/atlas/entries')).length).toBe(before + 1)
-    );
-    expect(new URL(api.requests.at(-1)?.url ?? '').searchParams.get('west')).toBe('39');
+    // Not at once: the map has to stand still for a moment first.
+    expect(asked(api, PAGE)).toHaveLength(before);
+    await waitFor(() => expect(asked(api, PAGE)).toHaveLength(before + 1));
+    expect(queryOf(asked(api, PAGE).at(-1)).get('west')).toBe('39');
+    expect(screen.queryByRole('button', { name: 'ابحث في هذه المنطقة' })).toBeNull();
   });
 
   it('names no author beside an entry whose place was widened', async () => {
     const widened = { ...FEATURE, properties: { ...FEATURE.properties, author: null } };
-    guest({ 'GET /atlas/entries': collection([widened]) });
+    guest({ [`GET ${PAGE}`]: collection([widened]) });
     render(<AtlasScreen />);
     await loadedMap();
     await userEvent.click(await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ }));
@@ -105,21 +156,21 @@ describe('AtlasScreen', () => {
   });
 
   it('says when a window is empty or cut short, and when the API fails', async () => {
-    guest({ 'GET /atlas/entries': collection([], false) });
+    guest({ [`GET ${PAGE}`]: collection([]) });
     const { unmount } = render(<AtlasScreen />);
     await loadedMap();
     expect(await screen.findByText(/لا توجد بصائر منشورة في هذه المنطقة بعد/)).toBeInTheDocument();
     unmount();
     forgetMaps();
 
-    guest({ 'GET /atlas/entries': collection([FEATURE], true) });
+    guest({ [`GET ${CLUSTERS}`]: drawn([FEATURE], true) });
     const second = render(<AtlasScreen />);
     await loadedMap();
     expect(await screen.findByText(/قرّب الخريطة لترى المزيد/)).toBeInTheDocument();
     second.unmount();
     forgetMaps();
 
-    guest({ 'GET /atlas/entries': 'network-error' });
+    guest({ [`GET ${PAGE}`]: 'network-error' });
     render(<AtlasScreen />);
     await loadedMap();
     expect(await screen.findByRole('alert')).toHaveTextContent(/تعذّر الوصول/);
@@ -185,13 +236,17 @@ describe('AtlasScreen', () => {
     );
 
     const getCurrentPosition = vi.fn((ok: (position: unknown) => void) =>
-      ok({ coords: { latitude: 36.0, longitude: 10.0 } })
+      ok({ coords: { latitude: 36.123, longitude: 10.456 } })
     );
     vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } });
     await userEvent.click(screen.getByRole('button', { name: 'قريب مني' }));
-    expect(map.flyTo).toHaveBeenLastCalledWith(expect.objectContaining({ center: [10.0, 36.0] }));
+    expect(map.flyTo).toHaveBeenLastCalledWith(
+      expect.objectContaining({ center: [10.456, 36.123] })
+    );
     // The position went to the map alone.
-    expect(api.requests.some((r) => r.url.includes('36') && r.url.includes('lat'))).toBe(false);
+    expect(api.requests.some((r) => r.url.includes('36.123') || r.url.includes('10.456'))).toBe(
+      false
+    );
 
     vi.stubGlobal('navigator', {
       ...navigator,
@@ -343,7 +398,7 @@ describe('AtlasScreen', () => {
       id: '7400000000000000009',
       properties: { ...FEATURE.properties, id: '7400000000000000009', place: null },
     };
-    guest({ 'GET /atlas/entries': collection([noPlace]) });
+    guest({ [`GET ${PAGE}`]: collection([noPlace]) });
     render(<AtlasScreen />);
     await loadedMap();
     const item = await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
@@ -405,7 +460,10 @@ describe('AtlasScreen', () => {
         place: { ...PLACE, geoname_id: 104515, country_iso2: 'SA', country_label: null },
       },
     };
-    const api = guest({ 'GET /atlas/entries': collection([FEATURE, unlabelled]) });
+    const api = guest({
+      [`GET ${PAGE}`]: collection([FEATURE, unlabelled]),
+      [`GET ${CLUSTERS}`]: drawn([FEATURE, unlabelled]),
+    });
     render(<AtlasScreen />);
     await loadedMap();
     await screen.findByRole('button', { name: /^\[بصيرة ثانية\]/ });
@@ -423,18 +481,15 @@ describe('AtlasScreen', () => {
 
   it('keeps the answer of the last question only, and asks nothing before the map has a window', async () => {
     const entries = deferred();
-    const api = guest({ 'GET /atlas/entries': entries.route });
+    const api = guest({ [`GET ${PAGE}`]: entries.route });
     render(<AtlasScreen />);
-    await userEvent.click(screen.getByRole('button', { name: 'ابحث في هذه المنطقة' }));
-    expect(api.requests.filter((r) => r.url.includes('/atlas/entries'))).toHaveLength(0);
+    expect(asked(api, PAGE)).toHaveLength(0);
     await loadedMap();
-    await waitFor(() =>
-      expect(api.requests.filter((r) => r.url.includes('/atlas/entries'))).toHaveLength(1)
-    );
+    await waitFor(() => expect(asked(api, PAGE)).toHaveLength(1));
     await userEvent.click(screen.getByRole('radio', { name: 'آخر شهر' }));
-    await waitFor(() =>
-      expect(api.requests.filter((r) => r.url.includes('/atlas/entries'))).toHaveLength(2)
-    );
+    await waitFor(() => expect(asked(api, PAGE)).toHaveLength(2));
+    // The first question was cancelled by the second: its late answer is not shown.
+    expect(asked(api, PAGE)[0]?.signal.aborted).toBe(true);
     entries.answer(collection([FEATURE, SECOND_FEATURE]));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByRole('button', { name: /^\[عنوان البصيرة\]/ })).toBeNull();
@@ -467,6 +522,216 @@ describe('AtlasScreen', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByRole('region', { name: 'بصائري على الأطلس' })).toBeNull();
     expect(screen.queryByText('[عنوان البصيرة]', { selector: 'h3' })).toBeNull();
+  });
+});
+
+describe('AtlasScreen with groups and pages', () => {
+  const more = messages.atlas.loadMore;
+  const second = { ...SECOND_FEATURE };
+
+  it('hands the map what the server grouped, and tells the list apart from it', async () => {
+    const entries = drawn([FEATURE]).body;
+    guest({
+      [`GET ${CLUSTERS}`]: { body: { ...entries, features: [CLUSTER, ...entries.features] } },
+    });
+    render(<AtlasScreen />);
+    const map = await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    await waitFor(() => expect(drawnOn(map)).toHaveLength(2));
+    const data = drawnOn(map);
+    expect(data.map((feature) => feature.properties.kind)).toEqual(['cluster', 'entry']);
+    expect(data[0]?.properties.count).toBe(12);
+  });
+
+  it('says the true total, loads the next page on request, appends it and drops a repeat', async () => {
+    const api = guest({
+      [`GET ${PAGE}`]: (request) =>
+        queryOf(request).get('cursor') === null
+          ? collection([FEATURE], 45, 'next-1')
+          : collection([FEATURE, second], 45, null),
+    });
+    render(<AtlasScreen />);
+    await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    expect(screen.getByRole('heading', { name: /45 بصيرة/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: more }));
+    expect(await screen.findByRole('button', { name: /^\[بصيرة ثانية\]/ })).toBeInTheDocument();
+    // The same window and centre, with the cursor; a repeated entry is not listed twice.
+    const [first, next] = asked(api, PAGE).map(queryOf);
+    expect(next?.get('cursor')).toBe('next-1');
+    for (const key of ['west', 'south', 'east', 'north', 'center_lat', 'center_lng']) {
+      expect(next?.get(key)).toBe(first?.get(key));
+    }
+    expect(screen.getAllByRole('button', { name: /^\[عنوان البصيرة\]/ })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: more })).toBeNull();
+  });
+
+  it('says so when a page cannot be loaded, keeps what is listed, and tries again on request', async () => {
+    let fail = true;
+    guest({
+      [`GET ${PAGE}`]: (request) =>
+        queryOf(request).get('cursor') === null
+          ? collection([FEATURE], 2, 'next-1')
+          : fail
+            ? apiError(500, 'INTERNAL')
+            : collection([second], 2, null),
+    });
+    render(<AtlasScreen />);
+    await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    await userEvent.click(screen.getByRole('button', { name: more }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(messages.atlas.loadMoreFailed);
+    expect(screen.getByRole('button', { name: /^\[عنوان البصيرة\]/ })).toBeInTheDocument();
+    fail = false;
+    await userEvent.click(screen.getByRole('button', { name: more }));
+    expect(await screen.findByRole('button', { name: /^\[بصيرة ثانية\]/ })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('goes back to the first page when the window moves, and drops a page that arrives late', async () => {
+    const late = deferred();
+    let held = false;
+    const api = guest({
+      [`GET ${PAGE}`]: (request) => {
+        if (queryOf(request).get('cursor') !== null) {
+          held = true;
+          return late.route(request);
+        }
+        return collection([FEATURE], 45, 'next-1');
+      },
+    });
+    render(<AtlasScreen />);
+    const map = await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    await userEvent.click(screen.getByRole('button', { name: more }));
+    await waitFor(() => expect(held).toBe(true));
+    expect(screen.getByRole('button', { name: messages.atlas.loadingMore })).toBeDisabled();
+    map.bounds = { west: 39, south: 21, east: 40, north: 22 };
+    map.center = { lng: 39.5, lat: 21.5 };
+    map.emit('moveend', { originalEvent: {} });
+    await waitFor(() => expect(asked(api, PAGE)).toHaveLength(3));
+    expect(queryOf(asked(api, PAGE)[2]).get('cursor')).toBeNull();
+    late.answer(collection([second], 45, null));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByRole('button', { name: /^\[بصيرة ثانية\]/ })).toBeNull();
+    expect(await screen.findByRole('button', { name: more })).toBeEnabled();
+  });
+
+  it('waits for the map to stand still, and skips a view that did not change', async () => {
+    const api = guest();
+    render(<AtlasScreen />);
+    const map = await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    vi.useFakeTimers();
+    try {
+      const still = () => {
+        map.emit('moveend', { originalEvent: {} });
+        return vi.advanceTimersByTimeAsync(250);
+      };
+      // The same view again, and a centre nudged inside the same grid cell: nothing is asked.
+      await still();
+      map.center = { lng: 10.01, lat: 36.01 };
+      await still();
+      expect(asked(api, CLUSTERS)).toHaveLength(1);
+      expect(asked(api, PAGE)).toHaveLength(1);
+
+      // Two moves inside the quiet time make one question, for the last window.
+      map.bounds = { west: 20, south: 30, east: 22, north: 32 };
+      map.center = { lng: 21, lat: 31 };
+      map.emit('moveend', { originalEvent: {} });
+      await vi.advanceTimersByTimeAsync(200);
+      expect(asked(api, CLUSTERS)).toHaveLength(1);
+      map.bounds = { west: 39, south: 21, east: 41, north: 23 };
+      map.center = { lng: 40, lat: 22 };
+      await still();
+      expect(asked(api, CLUSTERS)).toHaveLength(2);
+      expect(asked(api, PAGE)).toHaveLength(2);
+      expect(queryOf(asked(api, PAGE)[1]).get('west')).toBe('39');
+
+      // A zoom that rounds to the same level is not asked again; a new level is, for the map only.
+      map.zoom = 8.3;
+      await still();
+      expect(asked(api, CLUSTERS)).toHaveLength(2);
+      map.zoom = 9;
+      await still();
+      expect(asked(api, CLUSTERS)).toHaveLength(3);
+      expect(asked(api, PAGE)).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('cancels a map question a newer one outdates', async () => {
+    const drawing = deferred();
+    const api = guest({ [`GET ${CLUSTERS}`]: drawing.route });
+    render(<AtlasScreen />);
+    const map = await loadedMap();
+    await waitFor(() => expect(asked(api, CLUSTERS)).toHaveLength(1));
+    map.bounds = { west: 39, south: 21, east: 41, north: 23 };
+    map.center = { lng: 40, lat: 22 };
+    map.emit('moveend', { originalEvent: {} });
+    await waitFor(() => expect(asked(api, CLUSTERS)).toHaveLength(2));
+    expect(asked(api, CLUSTERS)[0]?.signal.aborted).toBe(true);
+    drawing.answer(drawn([FEATURE]));
+    drawing.answer(drawn([SECOND_FEATURE]));
+    await waitFor(() => expect(drawnOn(map)[0]?.properties.id).toBe(SECOND_FEATURE.id));
+  });
+
+  it('asks again for the same view when the filters change, even though the window did not', async () => {
+    const api = guest();
+    render(<AtlasScreen />);
+    await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    await userEvent.click(screen.getByRole('radio', { name: 'آخر أسبوع' }));
+    await waitFor(() => expect(asked(api, CLUSTERS)).toHaveLength(2));
+    await waitFor(() => expect(asked(api, PAGE)).toHaveLength(2));
+    expect(queryOf(asked(api, PAGE)[1]).get('since')).not.toBeNull();
+  });
+
+  it('keeps the card of an entry picked on the map after a move that no longer lists it', async () => {
+    guest();
+    render(<AtlasScreen />);
+    const map = await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    map.emit('click:points', { features: [{ properties: { id: FEATURE.id } }] });
+    expect(await screen.findAllByRole('article', { name: '[عنوان البصيرة]' })).not.toHaveLength(0);
+    guest({
+      [`GET ${CLUSTERS}`]: drawn([], false),
+      [`GET ${PAGE}`]: collection([], 0),
+    });
+    map.bounds = { west: 39, south: 21, east: 41, north: 23 };
+    map.center = { lng: 40, lat: 22 };
+    map.emit('moveend', { originalEvent: {} });
+    expect(await screen.findByText(/لا توجد بصائر منشورة في هذه المنطقة بعد/)).toBeInTheDocument();
+    expect(screen.getAllByRole('article', { name: '[عنوان البصيرة]' }).length).toBeGreaterThan(0);
+  });
+
+  it('shows no card for a selected id nobody has loaded yet', async () => {
+    window.history.replaceState(null, '', '/atlas#e=7400000000000000777');
+    guest();
+    render(<AtlasScreen />);
+    await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    expect(screen.queryByRole('article')).toBeNull();
+  });
+
+  it('says when the groups cannot be loaded, and asks both again on request', async () => {
+    guest({ [`GET ${CLUSTERS}`]: 'network-error' });
+    render(<AtlasScreen />);
+    await loadedMap();
+    expect(await screen.findByRole('alert')).toHaveTextContent(/تعذّر الوصول/);
+    // The list is not held back by the map.
+    expect(await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ })).toBeInTheDocument();
+    guest();
+    await userEvent.click(screen.getByRole('button', { name: 'أعد المحاولة' }));
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  });
+
+  it('says to zoom in when the server cut the groups short', async () => {
+    guest({ [`GET ${CLUSTERS}`]: drawn([FEATURE], true) });
+    render(<AtlasScreen />);
+    await loadedMap();
+    expect(await screen.findByText(messages.atlas.truncated)).toBeInTheDocument();
   });
 });
 
@@ -504,7 +769,7 @@ describe('AtlasScreen with sponsoring', () => {
     expect(geolocation.watchPosition).not.toHaveBeenCalled();
   });
 
-  it('asks again around the new centre only when the window is searched again', async () => {
+  it('asks again around the new centre once the map has moved', async () => {
     const api = guest({ 'GET /atlas/orphans': orphans() });
     render(<AtlasScreen sponsorship />);
     const map = await loadedMap();
@@ -512,11 +777,10 @@ describe('AtlasScreen with sponsoring', () => {
     map.bounds = { west: 39, south: 21, east: 40, north: 22 };
     map.center = { lng: 39.52, lat: 21.48 };
     map.emit('moveend', { originalEvent: {} });
-    const asked = () => api.requests.filter((r) => r.url.includes('/atlas/orphans'));
-    expect(asked()).toHaveLength(1);
-    await userEvent.click(screen.getByRole('button', { name: 'ابحث في هذه المنطقة' }));
-    await waitFor(() => expect(asked()).toHaveLength(2));
-    const query = new URL(asked()[1]?.url ?? '').searchParams;
+    const orphansAsked = () => asked(api, '/atlas/orphans');
+    expect(orphansAsked()).toHaveLength(1);
+    await waitFor(() => expect(orphansAsked()).toHaveLength(2));
+    const query = new URL(orphansAsked()[1]?.url ?? '').searchParams;
     expect([query.get('lng'), query.get('lat')]).toEqual(['39.5', '21.5']);
   });
 

@@ -29,6 +29,8 @@ from src.errors import ErrorCode
 from src.features import FeatureFlag
 from src.scans.deps import PublicIdPath
 from src.schemas.atlas import (
+    AtlasClusterCollection,
+    AtlasEntriesPage,
     AtlasEntryOut,
     AtlasFeatureCollection,
     AtlasOrphansOut,
@@ -55,6 +57,7 @@ Latitude = Annotated[float, Query(ge=-90, le=90)]
 Country = Annotated[str | None, Query(min_length=2, max_length=2, pattern=r"^[A-Za-z]{2}$")]
 Concept = Annotated[str | None, Query(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_.:-]+$")]
 WindowLimit = Annotated[int, Query(ge=1, le=atlas_service.WINDOW_MAX)]
+Zoom = Annotated[int, Query(ge=0, le=22, description="Map zoom level")]
 PageLimit = Annotated[int, Query(ge=1, le=atlas_service.PLACE_PAGE_MAX)]
 Radius = Annotated[
     float,
@@ -164,6 +167,75 @@ async def entries_in_window(
         sponsoring=settings.is_enabled(FeatureFlag.ATLAS_SPONSORSHIP),
     )
     return AtlasFeatureCollection(features=features, truncated=truncated)
+
+
+@router.get("/atlas/clusters", summary="The published entries of a map window, grouped")
+async def clusters_in_window(
+    db: DbDep,
+    settings: SettingsDep,
+    viewer: OptionalUser,
+    west: Degrees,
+    south: Latitude,
+    east: Degrees,
+    north: Latitude,
+    zoom: Zoom,
+    since: date | None = None,
+    country: Country = None,
+    concept: Concept = None,
+) -> AtlasClusterCollection:
+    """
+    Return groups and single entries of the window, whatever the number of entries.
+
+    Each `properties.kind` is `cluster` (a `count` of visible entries, the `bbox` of their public
+    points, a stable `id` of the grid cell, a point at the mean of the public points) or `entry`
+    (one entry, as in `/atlas/entries`). A grid cell is about 60 CSS pixels at the zoom; from
+    zoom 16 nothing is grouped. At most 500 features come back; `truncated` says there were more.
+    Counts leave out the entries a block hides from a signed-in viewer.
+    """
+    return await atlas_service.clusters_in(
+        db,
+        Window(west=west, south=south, east=east, north=north),
+        Filters(since=since, country=country, concept=concept),
+        zoom,
+        viewer,
+        sponsoring=settings.is_enabled(FeatureFlag.ATLAS_SPONSORSHIP),
+    )
+
+
+@router.get("/atlas/entries/page", summary="The entries of a map window, nearest the centre first")
+async def entries_page(
+    db: DbDep,
+    settings: SettingsDep,
+    viewer: OptionalUser,
+    west: Degrees,
+    south: Latitude,
+    east: Degrees,
+    north: Latitude,
+    center_lat: Latitude,
+    center_lng: Degrees,
+    since: date | None = None,
+    country: Country = None,
+    concept: Concept = None,
+    cursor: str | None = None,
+    limit: PageLimit = atlas_service.PLACE_PAGE_DEFAULT,
+) -> AtlasEntriesPage:
+    """
+    Return one page of the window's visible entries by distance from the map's centre, and the total.
+
+    `total` counts every visible entry of the window, not the page. Ask for the next page with the
+    same window and centre and the `next_cursor`. The centre is snapped to a 0.05 degree cell
+    before it is used, for this request only; no distance is returned. Entries of members a block stands between are left out.
+    """
+    return await atlas_service.entries_page(
+        db,
+        Window(west=west, south=south, east=east, north=north),
+        (center_lat, center_lng),
+        Filters(since=since, country=country, concept=concept),
+        cursors.decode(cursor),
+        limit,
+        viewer,
+        sponsoring=settings.is_enabled(FeatureFlag.ATLAS_SPONSORSHIP),
+    )
 
 
 @router.get("/atlas/entries/{entry_id}", summary="One published entry")

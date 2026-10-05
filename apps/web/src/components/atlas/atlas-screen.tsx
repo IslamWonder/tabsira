@@ -2,14 +2,15 @@
 
 import type { Route } from 'next';
 import Link from 'next/link';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useSession } from '@/account/session';
-import { entriesIn, myEntries, searchPlaces } from '@/atlas/api';
+import { myEntries, searchPlaces } from '@/atlas/api';
 import {
   type AtlasFeature,
   type AtlasFilters,
   DEFAULT_VIEW,
   EMPTY_FILTERS,
+  isCluster,
   lngLatOf,
   type MapEntryOwner,
   type Period,
@@ -33,6 +34,7 @@ import { MapView } from './map-view';
 import { MySponsorships } from './my-sponsorships';
 import { OrphansSection } from './orphans-section';
 import { entryPath, placePath } from './paths';
+import { useAtlasData } from './use-atlas-data';
 
 const A = messages.atlas;
 const S = messages.atlas.sponsor;
@@ -44,11 +46,6 @@ const SCOPES: readonly Scope[] = ['public', 'mine'];
 const SCOPES_WITH_SPONSORING: readonly Scope[] = ['public', 'mine', 'sponsored'];
 
 type View = AtlasView;
-
-type Load =
-  | { kind: 'idle' | 'loading' }
-  | { kind: 'ready'; truncated: boolean }
-  | { kind: 'failed'; message: string };
 
 export { entryPath, placePath };
 
@@ -110,6 +107,36 @@ export function EntryCard({ feature, onClose }: { feature: AtlasFeature; onClose
     </GlassPanel>
   );
 }
+
+/** One row of the list; memoised so a move that changes nothing for it does not redraw it. */
+const EntryRow = memo(function EntryRow({
+  feature,
+  selected,
+  onPick,
+}: {
+  feature: AtlasFeature;
+  selected: boolean;
+  onPick: (feature: AtlasFeature) => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        aria-pressed={selected}
+        onClick={() => onPick(feature)}
+        className={cx(
+          'flex min-h-12 w-full flex-col items-start rounded-[var(--radius-card)] px-3 py-2 text-start transition-colors duration-200',
+          selected ? 'bg-[var(--chip-primary-bg)]' : 'hover:bg-surface'
+        )}
+      >
+        <span className="font-semibold text-fg">{feature.properties.title}</span>
+        <span className="text-[0.8125rem] text-fg-muted">
+          {feature.properties.place?.label ?? feature.properties.precision_label}
+        </span>
+      </button>
+    </li>
+  );
+});
 
 /** Finds a city or place by name; the atlas and the camera screen both pick a region with it. */
 export function PlaceSearch({ onPick }: { onPick: (hit: PlaceHit) => void }) {
@@ -431,22 +458,14 @@ export function AtlasScreen({
   sponsorship?: boolean;
 }) {
   const session = useSession();
-  const [features, setFeatures] = useState<AtlasFeature[]>([]);
-  const [load, setLoad] = useState<Load>({ kind: 'idle' });
   const [filters, setFilters] = useState<AtlasFilters>(EMPTY_FILTERS);
   const [scope, setScope] = useState<Scope>('public');
   const [view, setView] = useState<View | null>(() => initialView ?? viewFromAddress());
   const [selected, setSelected] = useState<string | null>(null);
-  const [moved, setMoved] = useState(false);
   const [nearNote, setNearNote] = useState<string | null>(null);
-  const window_ = useRef<Window | null>(null);
   // What the map shows after its last move; what the address carries.
   const [shownView, setShownView] = useState<View | null>(view);
-  const latest = useRef(0);
-  // The map's centre when it last moved, and the one the orphans were last asked around:
-  // a public map view, never the device's position.
-  const centre = useRef<View['center'] | null>(null);
-  const [orphanPoint, setOrphanPoint] = useState<View['center'] | null>(null);
+  const { map, list, listCentre, onMoved: onWindow, loadMore, retry } = useAtlasData(filters);
 
   // The selection and filters of the address, once in the browser; the map's view was read above.
   useEffect(() => {
@@ -469,55 +488,18 @@ export function AtlasScreen({
     window.history.replaceState(null, '', hash === '' ? window.location.pathname : hash);
   }, [selected, filters, shownView]);
 
-  const fetchWindow = useCallback(async (window: Window, applied: AtlasFilters) => {
-    const mine = ++latest.current;
-    setLoad({ kind: 'loading' });
-    setOrphanPoint(centre.current);
-    const result = await entriesIn(window, applied);
-    if (mine !== latest.current) {
-      return;
-    }
-    if (result.ok) {
-      setFeatures(result.data.features);
-      setLoad({ kind: 'ready', truncated: result.data.truncated });
-      setMoved(false);
-    } else {
-      setLoad({ kind: 'failed', message: failureMessage(result) });
-    }
-  }, []);
-
   const onMoved = useCallback(
-    (window: Window, _byHand: boolean, current: View) => {
-      const first = window_.current === null;
-      window_.current = window;
+    (window: Window, byHand: boolean, current: View) => {
       setShownView(current);
-      centre.current = current.center;
-      if (first) {
-        void fetchWindow(window, filters);
-      } else {
-        setMoved(true);
-      }
+      onWindow(window, byHand, current);
     },
-    [fetchWindow, filters]
+    [onWindow]
   );
 
-  const searchHere = () => {
-    if (window_.current !== null) {
-      void fetchWindow(window_.current, filters);
-    }
-  };
-
-  // A filter change asks again for the same window.
-  const first = useRef(true);
-  useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    if (window_.current !== null) {
-      void fetchWindow(window_.current, filters);
-    }
-  }, [filters, fetchWindow]);
+  const flyToEntry = useCallback((feature: AtlasFeature) => {
+    setSelected(feature.id);
+    setView({ center: lngLatOf(feature.geometry), zoom: 12 });
+  }, []);
 
   const nearMe = () => {
     setNearNote(null);
@@ -528,16 +510,17 @@ export function AtlasScreen({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setView({ center: [position.coords.longitude, position.coords.latitude], zoom: 11 });
-        setMoved(true);
       },
       () => setNearNote(A.nearMeDenied),
       { maximumAge: 60_000, timeout: 10_000 }
     );
   };
 
+  const entries = map.features.filter((feature): feature is AtlasFeature => !isCluster(feature));
+  const known = [...list.items, ...entries];
   const countries = Array.from(
     new Map(
-      features
+      known
         .map((feature) => feature.properties.place)
         .filter(
           (place): place is NonNullable<typeof place> =>
@@ -550,7 +533,15 @@ export function AtlasScreen({
     ),
     ([iso2, label]) => ({ iso2, label })
   );
-  const selectedFeature = features.find((feature) => feature.id === selected) ?? null;
+  // An entry picked on the map keeps its card after a move that no longer lists it.
+  const found = known.find((feature) => feature.id === selected) ?? null;
+  const [pinned, setPinned] = useState<AtlasFeature | null>(null);
+  useEffect(() => {
+    if (found !== null) {
+      setPinned(found);
+    }
+  }, [found]);
+  const selectedFeature = found ?? (pinned?.id === selected ? pinned : null);
 
   const panel = (
     <div className="flex flex-col gap-5 px-4 py-6 tablet:px-5">
@@ -563,7 +554,6 @@ export function AtlasScreen({
       <PlaceSearch
         onPick={(hit) => {
           setView({ center: [hit.longitude, hit.latitude], zoom: 11 });
-          setMoved(true);
         }}
       />
       <div className="flex flex-wrap items-center gap-2">
@@ -575,13 +565,6 @@ export function AtlasScreen({
             {A.camera.open}
           </LinkButton>
         ) : null}
-        <Button
-          onClick={searchHere}
-          disabled={load.kind === 'loading'}
-          className={cx(!moved && 'hidden')}
-        >
-          {A.searchHere}
-        </Button>
       </div>
       <p className="m-0 text-[0.8125rem] text-fg-muted">{A.nearMeHint}</p>
       {nearNote === null ? null : (
@@ -609,7 +592,6 @@ export function AtlasScreen({
         <MyEntries
           onShow={(point) => {
             setView({ center: point, zoom: 12 });
-            setMoved(true);
           }}
         />
       ) : null}
@@ -622,55 +604,59 @@ export function AtlasScreen({
       >
         <h2 className="m-0 flex items-baseline justify-between font-semibold text-lg text-fg">
           <span>{A.inView}</span>
-          <span className="text-[0.875rem] text-fg-muted">{A.count(features.length)}</span>
+          <span className="text-[0.875rem] text-fg-muted">{A.count(list.total)}</span>
         </h2>
-        {load.kind === 'loading' ? (
+        {list.status === 'loading' && list.items.length === 0 ? (
           <p role="status" className="m-0 text-fg-muted">
             {A.loading}
           </p>
         ) : null}
-        {load.kind === 'failed' ? (
+        {list.status === 'failed' || map.status === 'failed' ? (
           <div role="alert" className="flex flex-col items-start gap-3">
-            <Notice tone="error">{load.message}</Notice>
-            <Button variant="ghost" onClick={searchHere}>
+            <Notice tone="error">{list.message ?? map.message}</Notice>
+            <Button variant="ghost" onClick={retry}>
               {A.retry}
             </Button>
           </div>
         ) : null}
-        {load.kind === 'ready' && features.length === 0 ? (
+        {list.status === 'ready' && list.items.length === 0 ? (
           <p role="status" className="m-0 text-fg-soft leading-[1.85]">
             {A.empty} {A.emptyHint}
           </p>
         ) : null}
-        {load.kind === 'ready' && load.truncated ? (
+        {map.status === 'ready' && map.truncated ? (
           <p className="m-0 text-fg-muted text-sm">{A.truncated}</p>
         ) : null}
-        <ul className="m-0 flex list-none flex-col gap-1 p-0">
-          {features.map((feature) => (
-            <li key={feature.id}>
-              <button
-                type="button"
-                aria-pressed={feature.id === selected}
-                onClick={() => {
-                  setSelected(feature.id);
-                  setView({ center: lngLatOf(feature.geometry), zoom: 12 });
-                }}
-                className={cx(
-                  'flex min-h-12 w-full flex-col items-start rounded-[var(--radius-card)] px-3 py-2 text-start transition-colors duration-200',
-                  feature.id === selected ? 'bg-[var(--chip-primary-bg)]' : 'hover:bg-surface'
-                )}
-              >
-                <span className="font-semibold text-fg">{feature.properties.title}</span>
-                <span className="text-[0.8125rem] text-fg-muted">
-                  {feature.properties.place?.label ?? feature.properties.precision_label}
-                </span>
-              </button>
-            </li>
+        <ul aria-busy={list.status === 'loading'} className="m-0 flex list-none flex-col gap-1 p-0">
+          {list.items.map((feature) => (
+            <EntryRow
+              key={feature.id}
+              feature={feature}
+              selected={feature.id === selected}
+              onPick={flyToEntry}
+            />
           ))}
         </ul>
+        {list.cursor === null ? null : (
+          <>
+            {list.more === 'failed' ? (
+              <p role="alert" className="m-0 text-fg-muted text-sm">
+                {A.loadMoreFailed}
+              </p>
+            ) : null}
+            <Button
+              variant="secondary"
+              onClick={() => void loadMore()}
+              disabled={list.more === 'loading' || list.status === 'loading'}
+              className="self-start"
+            >
+              {list.more === 'loading' ? A.loadingMore : A.loadMore}
+            </Button>
+          </>
+        )}
       </section>
       {sponsorship && (session.status !== 'signed-in' || scope === 'public') ? (
-        <OrphansSection point={orphanPoint} />
+        <OrphansSection point={listCentre} />
       ) : null}
     </div>
   );
@@ -682,7 +668,7 @@ export function AtlasScreen({
         panel={panel}
         map={
           <MapView
-            features={features}
+            features={map.features}
             selectedId={selected}
             onSelect={setSelected}
             onMoved={onMoved}

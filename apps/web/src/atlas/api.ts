@@ -1,6 +1,8 @@
 import { api } from '@/lib/api/client';
 import { attempt, type Result } from '@/lib/api/result';
 import {
+  type AtlasClusterCollection,
+  type AtlasEntriesPage,
   type AtlasEntry,
   type AtlasFeatureCollection,
   type AtlasFilters,
@@ -9,6 +11,7 @@ import {
   type CapturePointIn,
   coarsen,
   coarsePoint,
+  LIST_PAGE,
   type MapEntryOwner,
   ORPHAN_PAGE,
   ORPHAN_RADIUS_M,
@@ -52,6 +55,71 @@ export function entriesIn(
           concept: filters.concept ?? undefined,
         },
       },
+    })
+  );
+}
+
+/** The groups and single entries of a window, drawn by the map; `signal` cancels a request a move has outdated. */
+export function clustersIn(
+  window: Window,
+  zoom: number,
+  filters: AtlasFilters,
+  signal: AbortSignal,
+  now: () => number = Date.now
+): Promise<Result<AtlasClusterCollection>> {
+  const wide = coarsen(window);
+  return attempt(
+    api.GET('/atlas/clusters', {
+      params: {
+        query: {
+          west: wide.west,
+          south: wide.south,
+          east: wide.east,
+          north: wide.north,
+          zoom,
+          since: sinceOf(filters, now),
+          country: filters.country ?? undefined,
+          concept: filters.concept ?? undefined,
+        },
+      },
+      signal,
+    })
+  );
+}
+
+/**
+ * One page of the entries of a window, nearest its centre first. The window and the centre
+ * are snapped to the grid here, so the request never says where the map is to the metre; the
+ * cursor belongs to the window and centre it was given.
+ */
+export function entriesPage(
+  window: Window,
+  centre: readonly [number, number],
+  filters: AtlasFilters,
+  cursor: string | null,
+  signal: AbortSignal,
+  now: () => number = Date.now
+): Promise<Result<AtlasEntriesPage>> {
+  const wide = coarsen(window);
+  const [lng, lat] = coarsePoint(centre);
+  return attempt(
+    api.GET('/atlas/entries/page', {
+      params: {
+        query: {
+          west: wide.west,
+          south: wide.south,
+          east: wide.east,
+          north: wide.north,
+          center_lat: lat,
+          center_lng: lng,
+          since: sinceOf(filters, now),
+          country: filters.country ?? undefined,
+          concept: filters.concept ?? undefined,
+          limit: LIST_PAGE,
+          ...(cursor === null ? {} : { cursor }),
+        },
+      },
+      signal,
     })
   );
 }

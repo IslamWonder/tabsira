@@ -14,6 +14,7 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+import math
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -69,4 +70,11 @@ def decode(raw: str | None) -> Cursor | None:
     )
     if not zoned or not numeric or not identified:
         raise invalid()
-    return Cursor(at=at, id=cursor_id, as_of=as_of, score=None if score is None else float(score))
+    try:
+        value = None if score is None else float(score)
+    except OverflowError:
+        raise invalid() from None
+    # NaN and infinity compare with nothing: a position that cannot have been written here.
+    if value is not None and not math.isfinite(value):
+        raise invalid()
+    return Cursor(at=at, id=cursor_id, as_of=as_of, score=value)
