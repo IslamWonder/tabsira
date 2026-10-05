@@ -427,6 +427,7 @@ def test_every_table_lives_in_the_app_schema():
         "world_relations",
         "treasures",
         "world_reveals",
+        "insight_feedback",
         # Time series (TimescaleDB hypertables)
         "scan_events",
         "ai_calls",
