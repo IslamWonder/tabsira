@@ -177,6 +177,20 @@ async def test_the_same_key_is_answered_once_and_counted_once(browser, store, fl
     assert len(model.calls) == 1
 
 
+async def test_done_closes_the_chat_and_keeps_what_was_said(browser, store, flow_settings, model):
+    insight_id = await an_insight(browser, store, flow_settings)
+    model.answers.append(said())
+    await ask(browser, insight_id, key="before-done")
+
+    assert (await browser.post(f"/insights/{insight_id}/complete")).status_code == 200
+    after = await ask(browser, insight_id, key="after-done")
+    shown = (await browser.get(f"/insights/{insight_id}")).json()["chat"]
+
+    assert (after.status_code, after.json()["error"]) == (409, "CHAT_CLOSED")
+    assert (shown["closed"], shown["used"]) == (True, 1)
+    assert len(model.calls) == 1
+
+
 async def test_the_fourth_message_is_refused(browser, store, flow_settings, model):
     insight_id = await an_insight(browser, store, flow_settings)
     model.answers.extend([said(), said(), said()])

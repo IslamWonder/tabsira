@@ -236,7 +236,8 @@ export function InsightScreen({
         open={chatOpen}
         onClose={() => setChatOpen(false)}
         insightTitle={insight.title}
-        chat={chat}
+        // Completing the insight closes the discussion at once; the server says the same on the next load.
+        chat={finish.status === 'done' ? { ...chat, closed: true } : chat}
         onAsk={controls.ask}
       />
     </>

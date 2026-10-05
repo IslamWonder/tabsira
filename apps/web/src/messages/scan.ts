@@ -144,6 +144,8 @@ export const scanMessages = {
       send: 'اسأل',
       sending: 'أجيب…',
       limit: 'اكتمل النقاش حول هذه البصيرة',
+      /** After «تمّ»: what was discussed stays readable, no new question (owners, 2026-10-05). */
+      closed: 'أُغلقت هذه البصيرة بـ«تمّ»، فلا أسئلة جديدة عليها. صوّر مشهدًا آخر لتسأل عنه.',
       disabled: 'النقاش غير متاح الآن.',
       asked: 'سؤالك',
       answered: 'الجواب',

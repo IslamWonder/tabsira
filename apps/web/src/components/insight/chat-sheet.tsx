@@ -47,7 +47,7 @@ export function ChatSheet({ open, onClose, insightTitle, chat, onAsk }: ChatShee
   const key = useRef<string | null>(null);
   const fieldId = useId();
   const errorId = useId();
-  const canAsk = chat.enabled && chat.remaining > 0;
+  const canAsk = chat.enabled && !chat.closed && chat.remaining > 0;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -115,7 +115,12 @@ export function ChatSheet({ open, onClose, insightTitle, chat, onAsk }: ChatShee
         )}
 
         {chat.enabled ? null : <Notice tone="info">{T.disabled}</Notice>}
-        {chat.enabled && chat.remaining === 0 ? (
+        {chat.enabled && chat.closed ? (
+          <div role="status">
+            <Notice tone="info">{T.closed}</Notice>
+          </div>
+        ) : null}
+        {chat.enabled && !chat.closed && chat.remaining === 0 ? (
           <div role="status">
             <Notice tone="info">{T.limit}</Notice>
           </div>

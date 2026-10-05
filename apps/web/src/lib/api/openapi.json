@@ -4727,6 +4727,12 @@
             "type": "boolean",
             "title": "Enabled"
           },
+          "closed": {
+            "type": "boolean",
+            "title": "Closed",
+            "description": "«تمّ» closed the insight: its messages stay, no new question",
+            "default": false
+          },
           "used": {
             "type": "integer",
             "title": "Used"
@@ -5724,6 +5730,7 @@
           "SOURCE_UNAVAILABLE",
           "PAIR_INCOMPLETE",
           "CHAT_LIMIT_REACHED",
+          "CHAT_CLOSED",
           "SAVE_FAILED",
           "PUBLISH_FAILED",
           "STORAGE_UNAVAILABLE",

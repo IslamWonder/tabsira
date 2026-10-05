@@ -256,6 +256,7 @@ async def chat_of(
     limit = settings.max_chat_user_messages
     return ChatOut(
         enabled=settings.feature_chat,
+        closed=insight.completed_at is not None,
         used=len(rows),
         limit=limit,
         remaining=max(limit - len(rows), 0),
