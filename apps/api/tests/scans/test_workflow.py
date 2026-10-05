@@ -32,7 +32,6 @@ from src.pipeline.engine import (
     EngineResult,
     EngineStage,
     EngineStatus,
-    HadithRef,
     ProgressCallback,
 )
 from src.pipeline.image_validator import validate_image
@@ -191,7 +190,6 @@ async def test_a_scan_runs_through_every_stage_and_saves_its_insights(
         EngineResult(
             status=EngineStatus.OK,
             insights=[proposed()],
-            awaiting_ruling=[HadithRef(collection="bukhari", number="1032")],
             stage_ms={EngineStage.SEARCHING: 40},
         )
     )
@@ -207,7 +205,7 @@ async def test_a_scan_runs_through_every_stage_and_saves_its_insights(
         None,
     )
     assert scan.scene["description"] == "نبتة صغيرة تحت المطر"
-    assert scan.awaiting_ruling == [{"collection": "bukhari", "number": "1032"}]
+    assert scan.awaiting_ruling == []
     assert not scan.sensitive
     async with store() as db:
         insights = (await db.scalars(select(Insight).where(Insight.scan_id == scan_id))).all()
@@ -483,11 +481,6 @@ async def test_an_engine_that_cannot_answer_fails_the_scan_with_its_code(
         (
             EngineResult(status=EngineStatus.NO_RELEVANT_EVIDENCE),
             ScanOutcome.NO_RELEVANT_EVIDENCE,
-            None,
-        ),
-        (
-            EngineResult(status=EngineStatus.INCOMPLETE_EVIDENCE_PAIR, trace={"status": "x"}),
-            ScanOutcome.INCOMPLETE_EVIDENCE_PAIR,
             None,
         ),
         (

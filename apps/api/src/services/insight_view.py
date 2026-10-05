@@ -3,13 +3,10 @@ An insight as its owner sees it: every text of scripture read from the store by 
 
 Nothing a model wrote is ever shown as Quran or hadith. The verse and the
 hadith come from the scripture read API's own readers (exact text, hash,
-spans, quranpedia link, «تحقق في الدرر» link, the editor's dorar.net ruling).
-A hadith is shown only when it is eligible: its ruling in force is صحيح or حسن
-(decision 18), or it has none yet and counts as one of the enriched Sunnah
-file's (decision 58); any other hadith without a ruling makes the insight say
-it waits for verification and show the verse alone; with any other ruling it is
-not shown at all. A small step that
-rests on a text that is not shown is not shown either.
+spans, quranpedia link). A hadith is shown as it is, with no ruling displayed
+(decision 64); only a hadith an editor ruled out is not shown, and then the
+insight shows its verse alone. A small step that rests on a text that is not
+shown is not shown either.
 
 Rendering to the owner is recorded: `describe` writes a `shown` exposure the first
 time each text of the insight reaches its owner (v2 §11, masar §10.5), unless memory
@@ -73,23 +70,16 @@ def evidence_why(evidence: dict[str, Any] | None) -> EvidenceWhy | None:
 
 async def evidence(
     db: AsyncSession, quran: tuple[int, int] | None, hadith: tuple[str, str] | None
-) -> tuple[QuranVerseOut | None, HadithOut | None, bool]:
-    """Return the verse and the hadith to show, and whether the hadith waits for its ruling."""
+) -> tuple[QuranVerseOut | None, HadithOut | None]:
+    """Return the verse and the hadith to show; a ruled-out hadith reads as none (decision 64)."""
     verse = await read_verse(db, *quran) if quran is not None else None
-    shown = None
-    awaiting = False
-    if hadith is not None:
-        found = await read_hadith(db, *hadith)
-        if found is not None and found.eligible:
-            shown = found
-        elif found is not None and found.ruling is None:
-            awaiting = True
-    return verse, shown, awaiting
+    shown = await read_hadith(db, *hadith) if hadith is not None else None
+    return verse, shown
 
 
 async def shown_evidence(
     db: AsyncSession, insight: Insight
-) -> tuple[QuranVerseOut | None, HadithOut | None, bool]:
+) -> tuple[QuranVerseOut | None, HadithOut | None]:
     """Return what `evidence` returns for the references an insight keeps."""
     quran = (
         (insight.quran_surah, insight.quran_ayah)
@@ -235,7 +225,7 @@ async def found_texts(
                 return None
         else:
             hadith = await read_hadith(db, match.group("book"), match.group("number"))
-            if hadith is None or not hadith.eligible:
+            if hadith is None:
                 return None
     return verse, hadith
 
@@ -306,14 +296,13 @@ def shown_fields(
     insight: Insight,
     verse: QuranVerseOut | None,
     hadith: HadithOut | None,
-    awaiting: bool,
     *,
     public: bool = False,
 ) -> dict[str, Any]:
     """
     Return the fields every reader sees alike, owner or stranger, from what the store shows.
 
-    One place for the hidden-hadith rules (status, notice, the parts and the step that rest on a
+    One place for the hidden-hadith rules (status, the parts and the step that rest on a
     text not shown), so the owner's view and the public view cannot drift apart. A public reader
     gets the texts without «لماذا ظهر هذا؟» (`why`, which can come from the photo or the
     profile) and without the «ما ظهر» part, which describes the photo.
@@ -341,8 +330,7 @@ def shown_fields(
     return {
         "quran": quran,
         "hadith": sunnah,
-        "hadith_status": "shown" if hadith else "awaiting_verification" if awaiting else "none",
-        "notice": texts.hadith_awaits_verification if awaiting else None,
+        "hadith_status": "shown" if hadith else "none",
         "pair_complete": verse is not None and hadith is not None,
         "explanation_tag": texts.explanation_tag,
         "explanation": [p for p in explanation if p.section != "seen"] if public else explanation,
@@ -386,7 +374,7 @@ async def describe(
     db: AsyncSession, settings: Settings, insight: Insight, owner: Owner
 ) -> InsightDetailOut:
     """Return the owner's insight, its scripture hydrated from the store, and record the display."""
-    verse, hadith, awaiting = await shown_evidence(db, insight)
+    verse, hadith = await shown_evidence(db, insight)
     await record_display(db, owner, insight, verse, hadith)
     scan = await db.get(Scan, insight.scan_id) if insight.scan_id is not None else None
     sensitive = bool(scan and scan.sensitive)
@@ -402,7 +390,7 @@ async def describe(
         relation=RelationType(insight.relation),
         relation_label=messages_for().relation_labels[insight.relation],
         sound_url=sound_path(insight),
-        **shown_fields(insight, verse, hadith, awaiting),
+        **shown_fields(insight, verse, hadith),
         why=InsightWhyOut(
             visible_clues=list(insight.why.get("visible_clues", [])),
             concept=str(insight.why.get("concept", "")),

@@ -679,7 +679,7 @@ async def _shown(db: AsyncSession, item: Treasure) -> tuple[QuranVerseOut | None
         if item.hadith_collection is not None and item.hadith_number is not None
         else None
     )
-    verse, hadith, _awaiting = await evidence(db, quran, hadith_ref)
+    verse, hadith = await evidence(db, quran, hadith_ref)
     return verse, hadith
 
 

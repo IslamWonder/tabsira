@@ -138,7 +138,7 @@ async def test_every_stored_hadith_is_served_exactly_with_its_hash(api):
     assert served == 11
 
 
-async def test_a_hadith_carries_its_book_spans_unverified_status_and_dorar_link(api):
+async def test_a_hadith_carries_its_book_spans_and_status_and_no_ruling_or_link(api):
     body = (await api.get("/scripture/hadith/bukhari/1032")).json()
 
     assert body["collection"]["slug"] == "bukhari"
@@ -148,8 +148,9 @@ async def test_a_hadith_carries_its_book_spans_unverified_status_and_dorar_link(
     assert (body["number"], body["arabic_number"]) == ("1032", "1032")
     assert body["chapter"]["book_number"] == 15
     assert [span["role"] for span in body["spans"]] == ["chain", "body", "words", "tail"]
-    assert (body["ruling"], body["eligible"], body["status"]) == (None, False, "local_corpus")
-    assert body["links"]["dorar_verification"].startswith("https://dorar.net/hadith/search?q=")
+    assert body["status"] == "local_corpus"
+    for field in ("ruling", "eligible", "links"):
+        assert field not in body
 
 
 async def test_a_decimal_number_is_found_as_the_dataset_writes_it(api):
@@ -159,40 +160,53 @@ async def test_a_decimal_number_is_found_as_the_dataset_writes_it(api):
     assert response.json()["number"] == "402.2"
 
 
-async def test_a_hadith_of_the_enriched_file_is_eligible_with_no_ruling(api, db_session):
+async def test_a_hadith_with_no_ruling_is_shown_whether_or_not_the_file_enriches_it(
+    api, db_session
+):
+    plain = await api.get("/scripture/hadith/bukhari/1032")
     hadith = await find_hadith(db_session, "bukhari", "1032")
     assert hadith is not None
     await enrich_hadith(db_session, hadith.id)
+    enriched = await api.get("/scripture/hadith/bukhari/1032")
 
-    body = (await api.get("/scripture/hadith/bukhari/1032")).json()
-
-    assert (body["ruling"], body["eligible"]) == (None, True)
-    assert body["links"]["dorar_verification"].startswith("https://dorar.net/hadith/search?q=")
+    assert (plain.status_code, enriched.status_code) == (200, 200)
+    assert enriched.json() == plain.json()
 
 
-async def test_an_editor_ruling_of_sahih_makes_the_hadith_eligible(api, db_session):
-    hadith = await find_hadith(db_session, "bukhari", "1032")
-    assert hadith is not None
-    await record_ruling(
-        db_session,
-        hadith.id,
-        RulingInput(
-            ruling_text="[صحيح]",
-            scholar="s",
-            source_book="b",
-            page="1",
-            dorar_url="https://dorar.net/h/x",
-            classification=HadithClassification.SAHIH,
-            editor_name="private editor",
-        ),
+def _ruling(classification: HadithClassification) -> RulingInput:
+    return RulingInput(
+        ruling_text="[حكم]",
+        scholar="s",
+        source_book="b",
+        page="1",
+        dorar_url="https://dorar.net/h/x",
+        classification=classification,
+        editor_name="private editor",
     )
 
-    body = (await api.get("/scripture/hadith/bukhari/1032")).json()
 
-    assert body["eligible"] is True
-    assert body["ruling"]["ruling_text"] == "[صحيح]"
-    assert body["ruling"]["classification"] == "صحيح"
-    assert "private editor" not in str(body)
+async def test_an_editor_ruling_of_sahih_leaves_the_hadith_shown_without_the_ruling(
+    api, db_session
+):
+    hadith = await find_hadith(db_session, "bukhari", "1032")
+    assert hadith is not None
+    await record_ruling(db_session, hadith.id, _ruling(HadithClassification.SAHIH))
+
+    response = await api.get("/scripture/hadith/bukhari/1032")
+
+    assert response.status_code == 200
+    assert "ruling" not in response.json()
+    assert "private editor" not in response.text
+
+
+async def test_a_hadith_an_editor_ruled_weak_is_not_found(api, db_session):
+    hadith = await find_hadith(db_session, "bukhari", "1032")
+    assert hadith is not None
+    await record_ruling(db_session, hadith.id, _ruling(HadithClassification.DAIF))
+
+    response = await api.get("/scripture/hadith/bukhari/1032")
+
+    assert (response.status_code, response.json()["error"]) == (404, "NOT_FOUND")
 
 
 async def test_model_written_signals_never_reach_the_hadith_answer(api, db_session):

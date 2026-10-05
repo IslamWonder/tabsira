@@ -94,10 +94,9 @@ def test_a_request_carries_the_learner_context_apart_from_the_scene():
     assert request.max_insights == 3
 
 
-def test_a_result_reports_its_status_stages_and_awaited_rulings():
+def test_a_result_reports_its_status_and_stages():
     result = EngineResult(
         status=EngineStatus.NO_RELEVANT_EVIDENCE,
-        awaiting_ruling=[HadithRef(collection="muslim", number="8")],
         stage_ms={EngineStage.SEARCHING: 120},
     )
 

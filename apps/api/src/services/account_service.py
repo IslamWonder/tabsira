@@ -46,7 +46,7 @@ async def _chat_export(
     """Keep every answer's text, and say which ones are no longer shown (right of access)."""
     shown: dict[int, set[str]] = {}
     for insight in insights:
-        verse, hadith, _awaiting = await shown_evidence(db, insight)
+        verse, hadith = await shown_evidence(db, insight)
         shown[insight.id] = shown_ids(verse, hadith)
     return [
         {

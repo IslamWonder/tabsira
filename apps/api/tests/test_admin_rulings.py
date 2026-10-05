@@ -143,7 +143,7 @@ async def test_a_hadith_page_shows_its_text_whole_with_its_hash_and_never_as_a_f
     assert 'name="text"' not in body
     assert "wanted 3 times" in body
     assert "None yet." in body
-    assert 'Eligible as evidence</dt><dd class="col-8">no' in body
+    assert 'Eligible as evidence</dt><dd class="col-8">yes</dd>' in body
     for field in (
         "ruling_text",
         "scholar",

@@ -54,7 +54,6 @@ def render(result: EvaluationResult, raw_path: str) -> str:
         abstain=_ratio(facts.abstain_correct, facts.abstain_expected),
         insight=_ratio(facts.insight_correct, facts.insight_expected),
         hoped=_ratio(facts.hoped_found, facts.hoped),
-        awaiting=facts.awaiting_ruling,
         cost_per_scan=f"{facts.cost_per_scan:.4f}",
         cost=f"{facts.cost:.4f}",
         statuses=_counts(facts.statuses),

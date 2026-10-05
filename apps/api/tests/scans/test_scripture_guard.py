@@ -74,14 +74,17 @@ async def test_a_text_of_the_store_copied_without_any_mark_is_refused(store):
     assert len(accepted.insights) == 1
 
 
-async def test_a_hadith_waiting_for_its_ruling_with_no_verse_shows_nothing_and_is_dropped(store):
+async def test_a_hadith_alone_is_accepted_with_no_ruling_and_refused_once_ruled_out(store):
     async with store() as db:
-        waiting = await accept(db, scene(), [proposed(quran=None)])
-        await rule(db, "bukhari", "1032")
-        ruled = await accept(db, scene(), [proposed(quran=None)])
+        unruled = await accept(db, scene(), [proposed(quran=None)])
+        await rule(db, "bukhari", "1032", HadithClassification.DAIF)
+        ruled_out = await accept(db, scene(), [proposed(quran=None)])
 
-    assert (waiting.insights, waiting.refusals) == ([], ["nothing_to_show"])
-    assert len(ruled.insights) == 1
+    assert (len(unruled.insights), unruled.refusals) == (1, [])
+    assert (ruled_out.insights, ruled_out.refusals) == (
+        [],
+        ["hadith_ineligible", "no_evidence"],
+    )
 
 
 async def test_a_part_or_step_citing_anything_but_its_own_texts_or_a_unit_is_dropped(store):
@@ -276,15 +279,15 @@ NO_VERSE = {"quran_surah": None, "quran_ayah": None, "quran_evidence": None}
 NO_HADITH = {"hadith_collection": None, "hadith_number": None, "hadith_evidence": None}
 
 
-@pytest.mark.parametrize("ruled", [False, True])
+@pytest.mark.parametrize("ruled_out", [False, True])
 @pytest.mark.parametrize("with_verse", [True, False])
 async def test_the_chat_model_is_told_only_what_the_learner_is_shown(
-    browser, store, flow_settings, model, ruled, with_verse
+    browser, store, flow_settings, model, ruled_out, with_verse
 ):
     owner = await as_guest(browser, store, flow_settings)
     async with store() as db:
-        if ruled:
-            await rule(db, "bukhari", "1032")
+        if ruled_out:
+            await rule(db, "bukhari", "1032", HadithClassification.DAIF)
         scan = scan_row(owner, status="done")
         db.add(scan)
         await db.flush()
@@ -304,9 +307,9 @@ async def test_the_chat_model_is_told_only_what_the_learner_is_shown(
     call = model.calls[0]
     hidden = ["يعلّم الحديث دعاء المطر.", "ادع بالدعاء الوارد.", "احفظ الدعاء.", "1032"]
     assert "قطرات على ورق نبتة." in call["user"]
-    assert [text in call["user"] for text in hidden] == [ruled] * len(hidden)
-    assert ("«الحديث المعروض»" in call["system"]) is ruled
-    assert ("no hadith is shown" in call["system"]) is not ruled
+    assert [text in call["user"] for text in hidden] == [not ruled_out] * len(hidden)
+    assert ("«الحديث المعروض»" in call["system"]) is not ruled_out
+    assert ("no hadith is shown" in call["system"]) is ruled_out
     assert ("«الآية المعروضة»" in call["system"]) is with_verse
 
 

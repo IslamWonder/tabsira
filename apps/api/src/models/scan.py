@@ -69,8 +69,8 @@ class ScanOutcome(StrEnum):
     INSIGHTS = "insights"
     NEEDS_CLARIFICATION = "needs_clarification"
     NO_RELEVANT_EVIDENCE = "no_relevant_evidence"
-    # Evidence was accepted but cannot be shown yet: the only fitting hadith waits for an
-    # editor's ruling and no verse stands beside it (v2 §26 PAIR_INCOMPLETE).
+    # Reserved: produced between the engine rebuild and decision 64 (nothing waits for a
+    # ruling any more); kept so stored rows and the check constraint stay valid.
     INCOMPLETE_EVIDENCE_PAIR = "incomplete_evidence_pair"
 
 
@@ -161,7 +161,7 @@ class Scan(Base):
     # the scene and the queries), candidate ids with their channels, verdicts, reasons and the
     # choice. Never a stored text, never the learner.
     engine_trace: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
-    # Hadith the engine wanted and that wait for an editor's ruling: [{collection, number}].
+    # Kept for stored rows; nothing waits for a ruling since decision 64, so it stays empty.
     awaiting_ruling: Mapped[list[dict[str, str]]] = mapped_column(
         JSONB, server_default=text("'[]'::jsonb")
     )

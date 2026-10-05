@@ -22,8 +22,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.scripture import Hadith, HadithCollection, HadithRuling, QuranSurah, QuranVerse
 from src.schemas.social import HadithEvidenceOut, QuranEvidenceOut
-from src.scripture.links import dorar_search_url, quranpedia_verse_url
-from src.scripture.rulings import eligible_given, enriched_among
+from src.scripture.links import quranpedia_verse_url
+from src.scripture.rulings import eligible_given
 
 type QuranKey = tuple[int, int]
 type HadithKey = tuple[str, str]
@@ -82,13 +82,9 @@ async def _hadiths(db: AsyncSession, keys: set[HadithKey]) -> dict[HadithKey, Ha
             .ext(distinct_on(HadithRuling.hadith_id))
         )
     }
-    enriched = await enriched_among(
-        db, [hadith.id for hadith, _ in rows if hadith.id not in rulings]
-    )
     shown: dict[HadithKey, HadithEvidenceOut] = {}
     for hadith, collection_name in rows:
-        ruling = rulings.get(hadith.id)
-        if not eligible_given(ruling, enriched=hadith.id in enriched):
+        if not eligible_given(rulings.get(hadith.id)):
             continue
         shown[(hadith.collection, hadith.number)] = HadithEvidenceOut(
             collection=hadith.collection,
@@ -96,8 +92,6 @@ async def _hadiths(db: AsyncSession, keys: set[HadithKey]) -> dict[HadithKey, Ha
             number=hadith.number,
             text=hadith.text,
             sha256=hadith.text_sha256,
-            classification=ruling.classification if ruling is not None else None,
-            verification_url=dorar_search_url(hadith.text),
         )
     return shown
 

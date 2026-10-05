@@ -1,4 +1,4 @@
-"""The pair of texts behind an insight: a waiting hadith, a same-tier stand-in, an absent half."""
+"""The pair of texts behind an insight: an unruled hadith, a same-tier stand-in, an absent half."""
 
 from __future__ import annotations
 
@@ -81,7 +81,7 @@ async def _gate(
     )
 
 
-async def test_a_wanted_hadith_waiting_for_its_ruling_is_never_replaced_by_another(store):
+async def test_a_wanted_hadith_with_no_ruling_is_simply_chosen_over_a_ruled_one(store):
     verse, wanted, sibling = await _ids(store)
     await _rule(store, sibling, HadithClassification.SAHIH)
     pair = {"quran": "Q1", "hadith": "H1", "shared_meaning": "م"}
@@ -90,29 +90,22 @@ async def test_a_wanted_hadith_waiting_for_its_ruling_is_never_replaced_by_anoth
         store, verse, [wanted, sibling], pair, Q1="direct", H1="direct", H2="direct"
     )
 
-    # Decisions 18 and 58: the wanted hadith waits; the insight carries its verse alone.
-    assert result.hadith is None
-    assert result.quran is not None
-    assert result.rejections == {"H1": "awaiting_ruling"}
-    assert [ref.number for ref in result.awaiting] == [
-        await store.scalar(select(Hadith.number).where(Hadith.id == wanted))
-    ]
-    assert result.pair_complete is False
+    # Decision 64: no ruling is shown as it is; nothing waits and nothing stands in.
+    assert result.hadith.found.key == wanted
+    assert result.rejections == {}
+    assert result.pair_complete
 
 
-async def test_a_wanted_hadith_of_the_enriched_file_shows_without_waiting_for_a_ruling(store):
+async def test_the_enriched_file_changes_nothing_for_a_wanted_hadith(store):
     verse, wanted, sibling = await _ids(store)
     await enrich_hadith(store, wanted)
-    await _rule(store, sibling, HadithClassification.SAHIH)
     pair = {"quran": "Q1", "hadith": "H1", "shared_meaning": "م"}
 
     result = await _gate(
         store, verse, [wanted, sibling], pair, Q1="direct", H1="direct", H2="direct"
     )
 
-    # Decision 58: no ruling, but one of the enriched file's hadiths: it shows, nothing waits.
     assert result.hadith.found.key == wanted
-    assert result.awaiting == []
     assert result.pair_complete
 
 
@@ -131,11 +124,9 @@ async def test_a_wanted_hadith_ruled_weak_gives_way_to_an_equally_close_sound_on
 
     assert same_tier.hadith.found.key == sibling
     assert same_tier.rejections == {"H1": "ruled_ineligible"}
-    assert same_tier.awaiting == []
-    # A weaker hadith never stands in: the verse alone, nothing queued.
+    # A weaker hadith never stands in: the verse alone.
     assert weaker.hadith is None
     assert weaker.quran is not None
-    assert weaker.awaiting == []
 
 
 async def test_the_server_pairs_only_when_the_verifier_named_no_pair_and_never_across_tiers(
@@ -210,7 +201,6 @@ async def test_a_corpus_the_planner_asked_nothing_of_is_not_searched(maker):
     labels = [text["label"] for text in seen[0]["texts"]]
     assert labels and all(label.startswith("Q") for label in labels)
     assert result.insights[0].hadith is None
-    assert result.awaiting_ruling == []
     traced = result.trace["rounds"][0]["intents"][0]
     assert traced["hadith"]["note"] == "not_searched"
     assert traced["gate"]["rejections"] == {"H": "not_searched"}

@@ -128,7 +128,7 @@ async def _remember(db: AsyncSession, owner: Owner, insight: Insight) -> None:
         path_version=insight.learning_path_version,
         at=completed_at,
     )
-    verse, hadith, _awaiting = await shown_evidence(db, insight)
+    verse, hadith = await shown_evidence(db, insight)
     db.add(
         learner_service.exposure(
             owner,

@@ -95,9 +95,6 @@ class ScanOut(BaseModel):
     entities: list[ScanEntityOut]
     clarification_question: str | None
     insights: list[InsightSummary]
-    awaiting_verification: int = Field(
-        description="Hadith wanted by this scan that wait for a ruling"
-    )
     events_url: str
     created_at: datetime
     finished_at: datetime | None

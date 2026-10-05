@@ -23,16 +23,15 @@ from src.database import get_db
 from src.errors import AppError, ErrorCode
 from src.models import (
     Hadith,
-    HadithClassification,
     HadithCollection,
     QuranSurah,
     QuranVerse,
     ScriptureSyncState,
 )
-from src.scripture.links import dorar_search_url, quranpedia_verse_url
+from src.scripture.links import quranpedia_verse_url
 from src.scripture.quran import SYNC_SOURCE
 from src.scripture.quranpedia import MUSHAF_ID, SITE_URL
-from src.scripture.rulings import eligible_given, is_enriched, latest_ruling
+from src.scripture.rulings import eligible_given, latest_ruling
 from src.scripture.spans import SpanRole, hadith_spans
 
 router = APIRouter(prefix="/scripture", tags=["scripture"])
@@ -102,22 +101,6 @@ class GradeOut(BaseModel):
     grade: str
 
 
-class RulingOut(BaseModel):
-    ruling_text: str = Field(description="As dorar.net gives it, copied by an editor")
-    scholar: str
-    source_book: str
-    page: str
-    dorar_url: str
-    classification: HadithClassification
-    recorded_at: datetime
-
-
-class HadithLinks(BaseModel):
-    dorar_verification: str = Field(
-        description="A dorar.net search for this hadith («تحقق في الدرر»)"
-    )
-
-
 class HadithOut(BaseModel):
     collection: CollectionOut
     number: str = Field(description="As the dataset numbers it")
@@ -134,14 +117,6 @@ class HadithOut(BaseModel):
     informational_grades: list[GradeOut] | None = Field(
         description="The dataset's grades as given; informational only, never decide eligibility"
     )
-    ruling: RulingOut | None = Field(description="The editor-recorded dorar.net ruling in force")
-    eligible: bool = Field(
-        description=(
-            "Whether it may be shown as evidence: the ruling in force is صحيح or حسن, or there is"
-            " no ruling and the hadith belongs to the enriched Sunnah file (decision 58)"
-        )
-    )
-    links: HadithLinks
     status: CorpusStatus = "local_corpus"
 
 
@@ -183,7 +158,12 @@ async def read_verse(session: AsyncSession, surah: int, ayah: int) -> QuranVerse
 
 
 async def read_hadith(session: AsyncSession, collection: str, number: str) -> HadithOut | None:
-    """Return a stored hadith as the read API shows it, or None; shared with the insight pages."""
+    """
+    Return a stored hadith as the read API shows it, or None; shared with the insight pages.
+
+    None also for a hadith an editor ruled out (decision 64): it is never shown, and no
+    ruling of any kind is displayed.
+    """
     row = (
         await session.execute(
             select(Hadith, HadithCollection)
@@ -194,7 +174,8 @@ async def read_hadith(session: AsyncSession, collection: str, number: str) -> Ha
     if row is None:
         return None
     stored, book = row
-    ruling = await latest_ruling(session, stored.id)
+    if not eligible_given(await latest_ruling(session, stored.id)):
+        return None
     has_chapter = stored.book_number is not None
     return HadithOut(
         collection=CollectionOut(
@@ -225,21 +206,6 @@ async def read_hadith(session: AsyncSession, collection: str, number: str) -> Ha
             if stored.informational_grades is not None
             else None
         ),
-        ruling=RulingOut(
-            ruling_text=ruling.ruling_text,
-            scholar=ruling.scholar,
-            source_book=ruling.source_book,
-            page=ruling.page,
-            dorar_url=ruling.dorar_url,
-            classification=ruling.classification,
-            recorded_at=ruling.recorded_at,
-        )
-        if ruling
-        else None,
-        eligible=eligible_given(
-            ruling, enriched=ruling is None and await is_enriched(session, stored.id)
-        ),
-        links=HadithLinks(dorar_verification=dorar_search_url(stored.text)),
     )
 
 

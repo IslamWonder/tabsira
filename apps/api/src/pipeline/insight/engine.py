@@ -14,10 +14,10 @@ SEARCHING       per intent and per corpus (the Quran and the hadiths stay
 VERIFYING       the relevance verifier tests every shortlisted text against
                 its intent, one call per intent, all at once, and names the
                 pair that serves one meaning; the gate applies eligibility
-                (decisions 18 and 58: an unruled hadith waits, the verse shows
-                alone), pairs on its own only when the verifier named no pair
-                and then within one tier, and prefers a text the learner has
-                not seen. When
+                (decision 64: a hadith with no ruling is shown as it is, one an
+                editor ruled out is not), pairs on its own only when the
+                verifier named no pair and then within one tier, and prefers a
+                text the learner has not seen. When
                 no intent reached a complete pair, the intents that found no
                 accepted text go back to the planner with the rejection
                 reasons: two refinement rounds at most, same clues, same
@@ -30,8 +30,7 @@ COMPOSING       the server chooses the learning unit and orders what passed
 
 The result says what happened: `needs_clarification` with one question,
 `no_relevant_evidence` when the searches ran and nothing passed (abstaining is
-a correct result), `incomplete_evidence_pair` when the only fitting hadith
-waits for a ruling and no verse stands beside it, `corpus_unavailable` when
+a correct result), `corpus_unavailable` when
 the store holds no vectors of the configured model, `retrieval_error` when
 the query embedding failed, `model_unavailable` when a model call failed or
 kept writing scripture-like text, `source_unavailable` when the database did
@@ -64,7 +63,6 @@ from src.pipeline.engine import (
     EngineResult,
     EngineStage,
     EngineStatus,
-    HadithRef,
     ProgressCallback,
 )
 from src.pipeline.insight.composer import Composable, InsightComposer
@@ -257,12 +255,11 @@ class PipelineInsightEngine:
         self, request: EngineRequest, on_stage: ProgressCallback | None = None
     ) -> EngineResult:
         clock = _Clock(on_stage, self._clock)
-        awaiting: list[HadithRef] = []
         trace: dict[str, Any] = {"version": TRACE_VERSION, "scan_id": request.scan_id}
         try:
             async with self._sessionmaker() as session:
                 try:
-                    return await self._propose(session, request, clock, awaiting, trace)
+                    return await self._propose(session, request, clock, trace)
                 except _Stopped as stopped:
                     await session.commit()
                     clock.stop()
@@ -270,7 +267,6 @@ class PipelineInsightEngine:
                     return EngineResult(
                         status=stopped.status,
                         clarification_question=stopped.question,
-                        awaiting_ruling=awaiting,
                         stage_ms=clock.stage_ms,
                         trace=trace,
                     )
@@ -289,14 +285,11 @@ class PipelineInsightEngine:
         session: AsyncSession,
         request: EngineRequest,
         clock: _Clock,
-        awaiting: list[HadithRef],
         trace: dict[str, Any],
     ) -> EngineResult:
         await clock.enter(EngineStage.UNDERSTANDING)
         context, plan, resources = await self._understand(session, request, trace)
-        passed = await self._find_evidence(
-            session, request, context, plan, resources, clock, awaiting, trace
-        )
+        passed = await self._find_evidence(session, request, context, plan, resources, clock, trace)
         ranked = self._ranked(request, passed, resources.path)
         await session.commit()
         await clock.enter(EngineStage.COMPOSING)
@@ -331,16 +324,12 @@ class PipelineInsightEngine:
         if not composition.insights:
             trace["status"] = EngineStatus.MODEL_UNAVAILABLE.value
             return EngineResult(
-                status=EngineStatus.MODEL_UNAVAILABLE,
-                awaiting_ruling=awaiting,
-                stage_ms=clock.stage_ms,
-                trace=trace,
+                status=EngineStatus.MODEL_UNAVAILABLE, stage_ms=clock.stage_ms, trace=trace
             )
         trace["status"] = EngineStatus.OK.value
         return EngineResult(
             status=EngineStatus.OK,
             insights=composition.insights,
-            awaiting_ruling=awaiting,
             stage_ms=clock.stage_ms,
             trace=trace,
         )
@@ -402,7 +391,6 @@ class PipelineInsightEngine:
         plan: IntentPlan,
         resources: Resources,
         clock: _Clock,
-        awaiting: list[HadithRef],
         trace: dict[str, Any],
     ) -> list[GateResult]:
         search = EvidenceSearch(
@@ -434,7 +422,6 @@ class PipelineInsightEngine:
                     seen_verses=seen_verses,
                     seen_hadiths=seen_hadiths,
                 )
-                awaiting += [ref for ref in result.awaiting if ref not in awaiting]
                 gated.append({**searched[index], "gate": result.as_trace()})
                 if result.passed:
                     passed.append(result)
@@ -458,10 +445,6 @@ class PipelineInsightEngine:
                 rounds.append({"round": refinements, "intents": [], "dropped": retry.dropped})
                 break
         if not passed:
-            # Evidence was found and accepted, but the only fitting hadith waits for a ruling:
-            # that is not «no text fits», and the reader is told so.
-            if awaiting:
-                raise _Stopped(EngineStatus.INCOMPLETE_EVIDENCE_PAIR)
             # A verifier that kept writing scripture-like text left an intent unjudged: a model
             # fault, never «no text fits».
             if leaked:

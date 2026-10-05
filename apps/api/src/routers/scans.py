@@ -273,7 +273,6 @@ async def describe(db: AsyncSession, scan: Scan, redis: RedisDep) -> ScanOut:
             )
             for insight in insights
         ],
-        awaiting_verification=len(scan.awaiting_ruling),
         events_url=f"/scans/{scan.id}/events",
         created_at=scan.created_at,
         finished_at=scan.finished_at,

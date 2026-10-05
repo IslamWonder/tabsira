@@ -51,7 +51,7 @@ from src.pipeline.insight.learning import UnitOption, personalised_reason
 from src.pipeline.prompt import load_prompt
 from src.pipeline.schemas import BBox, SceneAnalysis
 
-SYSTEM_PROMPT = "insight_composer_system.v5"
+SYSTEM_PROMPT = "insight_composer_system.v6"
 # A part's sources name the insight's own texts (quran:S:A, hadith:C:N) or its unit.
 UNIT_PREFIX = "masar:"
 MAX_OUTPUT_TOKENS = 2000

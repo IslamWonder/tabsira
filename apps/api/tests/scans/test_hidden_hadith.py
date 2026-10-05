@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from src.models import HadithClassification
 from src.routers.scripture import read_hadith, read_verse
 from src.services.insight_view import explanation_out, step_out
 from tests.scans.builders import insight_row, scan_row
@@ -77,9 +78,10 @@ async def test_only_a_practice_the_shown_hadith_grounds_is_from_the_sunnah(store
     assert shown.label == label
 
 
-async def test_a_hidden_hadith_hides_its_section_on_an_insight(browser, store, flow_settings):
+async def test_a_hadith_ruled_out_hides_its_section_on_an_insight(browser, store, flow_settings):
     owner = await as_guest(browser, store, flow_settings)
     async with store() as db:
+        await rule(db, "bukhari", "1032", HadithClassification.DAIF)
         scan = scan_row(owner, status="done")
         db.add(scan)
         await db.flush()
@@ -99,23 +101,25 @@ async def test_a_hidden_hadith_hides_its_section_on_an_insight(browser, store, f
     assert [part["section"] for part in body["explanation"]] == ["quran"]
 
 
-async def test_the_tutorial_says_nothing_of_a_hadith_before_its_ruling(browser, store):
-    waiting = (await browser.get("/tutorial/rain")).json()["insights"]
+async def test_the_tutorial_shows_a_hadith_with_no_ruling_and_says_nothing_of_one_ruled_out(
+    browser, store
+):
+    unruled = (await browser.get("/tutorial/rain")).json()["insights"]
     async with store() as db:
-        await rule(db, "bukhari", "1032")
-        await rule(db, "bukhari", "2320")
+        await rule(db, "bukhari", "1032", HadithClassification.DAIF)
+        await rule(db, "bukhari", "2320", HadithClassification.MAWDU)
         await db.commit()
-    ruled = (await browser.get("/tutorial/rain")).json()["insights"]
+    ruled_out = (await browser.get("/tutorial/rain")).json()["insights"]
 
     def sections(insight: dict[str, Any]) -> list[str]:
         return [part["section"] for part in insight["explanation"]]
 
+    assert [sections(insight) for insight in unruled] == [
+        ["seen", "value", "quran", "sunnah", "life"],
+        ["seen", "value", "quran", "sunnah", "life"],
+    ]
     # The drop's life part names its hadith; the planting's value part restates its own.
-    assert [sections(insight) for insight in waiting] == [
+    assert [sections(insight) for insight in ruled_out] == [
         ["seen", "value", "quran"],
         ["seen", "quran", "life"],
-    ]
-    assert [sections(insight) for insight in ruled] == [
-        ["seen", "value", "quran", "sunnah", "life"],
-        ["seen", "value", "quran", "sunnah", "life"],
     ]

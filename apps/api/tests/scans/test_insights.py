@@ -28,7 +28,7 @@ async def keep(store, owner: Owner, *, scan: bool = True, **values) -> int:
         return insight.id
 
 
-async def test_an_insight_shows_its_verse_exactly_as_stored_and_waits_for_its_hadith_ruling(
+async def test_an_insight_shows_its_verse_and_its_unruled_hadith_exactly_as_stored(
     browser, store, flow_settings
 ):
     owner = await as_guest(browser, store, flow_settings)
@@ -51,16 +51,17 @@ async def test_an_insight_shows_its_verse_exactly_as_stored_and_waits_for_its_ha
         "matched_on": "إحياء الأرض",
         "link": None,
     }
-    assert body["hadith"] is None
-    assert body["hadith_status"] == "awaiting_verification"
-    assert "بانتظار التحقق" in body["notice"]
-    assert body["pair_complete"] is False
-    # The step rests on the hadith, which is not shown yet.
-    assert body["small_step"] is None
+    # Decision 64: no ruling, so the hadith is shown as it is, with no notice.
+    assert body["hadith"]["hadith"]["text"] == hadith_text("bukhari", 1032)
+    assert (body["hadith_status"], body["pair_complete"]) == ("shown", True)
+    assert "notice" not in body
+    assert body["small_step"]["kind"] == "text_grounded"
     assert body["explanation_tag"] == "شرح تبصرة"
-    assert body["explanation"] == [
-        {"section": "seen", "label": "ما ظهر", "text": "قطرات على ورق نبتة."}
-    ]
+    assert body["explanation"][0] == {
+        "section": "seen",
+        "label": "ما ظهر",
+        "text": "قطرات على ورق نبتة.",
+    }
     assert body["label"] is None
     assert body["chat"] == {
         "enabled": True,
@@ -90,26 +91,21 @@ async def test_reading_an_insight_records_each_text_as_shown_once(
 
     assert (await browser.get(f"/insights/{insight_id}")).status_code == 200
     assert (await browser.get(f"/insights/{insight_id}")).status_code == 200
-    async with store() as db:
-        await rule(db, "bukhari", "1032")
-        await db.commit()
-    assert (await browser.get(f"/insights/{insight_id}")).json()["hadith_status"] == "shown"
     assert (await browser.get(f"/insights/{insight_id}")).status_code == 200
     assert (await other.get(f"/insights/{insight_id}")).status_code == 404
 
     async with store() as db:
         rows = (await db.scalars(select(EvidenceExposure).order_by(EvidenceExposure.at))).all()
         context = await learner_service.learner_context(db, owner)
-    # One row for the verse on the first display, one for the hadith once its ruling shows it.
+    # One row for the verse and the hadith together on the first display, none on the next ones.
     assert [
         (r.kind, r.insight_id, r.quran_surah, r.quran_ayah, r.hadith_collection, r.hadith_number)
         for r in rows
     ] == [
-        ("shown", insight_id, 30, 50, None, None),
-        ("shown", insight_id, None, None, "bukhari", "1032"),
+        ("shown", insight_id, 30, 50, "bukhari", "1032"),
     ]
     assert {r.guest_key for r in rows} == {owner.guest_key}
-    assert [(r.concept, r.learning_unit_id) for r in rows] == [("الإحياء", "T01_06")] * 2
+    assert [(r.concept, r.learning_unit_id) for r in rows] == [("الإحياء", "T01_06")]
     # The engine's diversity reads the displayed texts, not only the completed ones.
     assert [(ref.surah, ref.ayah) for ref in context.seen_quran] == [(30, 50)]
     assert [(ref.collection, ref.number) for ref in context.seen_hadith] == [("bukhari", "1032")]
@@ -149,7 +145,7 @@ async def test_no_display_is_recorded_while_memory_is_off_or_nothing_shows(
         assert (await db.scalars(select(EvidenceExposure))).all() == []
 
 
-async def test_a_ruled_hadith_is_shown_whole_with_its_spans_ruling_and_links(
+async def test_a_ruled_hadith_is_shown_whole_with_its_spans_and_no_ruling_or_link(
     browser, store, flow_settings
 ):
     owner = await as_guest(browser, store, flow_settings)
@@ -165,10 +161,9 @@ async def test_a_ruled_hadith_is_shown_whole_with_its_spans_ruling_and_links(
     assert hadith["text"] == hadith_text("bukhari", 1032)
     assert hashlib.sha256(hadith["text"].encode()).hexdigest() == hadith["sha256"]
     assert "".join(hadith["text"][s["start"] : s["end"]] for s in hadith["spans"]) == hadith["text"]
-    assert hadith["ruling"]["classification"] == "صحيح"
-    assert hadith["links"]["dorar_verification"].startswith("https://dorar.net/hadith/search?q=")
+    assert all(field not in hadith for field in ("ruling", "eligible", "links"))
     assert hadith["status"] == "local_corpus"
-    assert (body["hadith_status"], body["notice"], body["pair_complete"]) == ("shown", None, True)
+    assert (body["hadith_status"], body["pair_complete"]) == ("shown", True)
     assert body["small_step"] == {
         "text": "احفظ الدعاء الوارد في الحديث.",
         "kind": "text_grounded",
@@ -192,7 +187,7 @@ async def test_a_weak_hadith_is_never_shown_and_a_step_without_grounding_is_a_su
 
     body = (await browser.get(f"/insights/{insight_id}")).json()
 
-    assert (body["hadith"], body["hadith_status"], body["notice"]) == (None, "none", None)
+    assert (body["hadith"], body["hadith_status"]) == (None, "none")
     assert body["small_step"]["label"] == "اقتراح عملي"
     assert "محاكاة" in body["label"]
 

@@ -16,7 +16,6 @@ from typing import Annotated, Literal
 from fastapi import Path
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from src.models.scripture import HadithClassification
 from src.models.social import (
     COMMENT_MAX,
     REFLECTION_MAX,
@@ -116,24 +115,13 @@ class QuranEvidenceOut(BaseModel):
 
 
 class HadithEvidenceOut(BaseModel):
-    """
-    A hadith read from the scripture store, shown only while it is eligible.
-
-    Its ruling is صحيح or حسن, or it has no ruling and belongs to the enriched Sunnah file
-    (decision 58).
-    """
+    """A hadith read from the scripture store, as it is; one an editor ruled out is absent (decision 64)."""
 
     collection: str
     collection_name: str
     number: str
     text: str = Field(description="Exactly as stored; never normalised")
     sha256: str = Field(description="SHA-256 of the UTF-8 bytes of `text`")
-    classification: HadithClassification | None = Field(
-        description="The editor's reading of the ruling in force; null when none is recorded yet"
-    )
-    verification_url: str = Field(
-        description="A dorar.net search the reader opens («تحقق في الدرر»)"
-    )
     verified: Literal[True] = True
 
 

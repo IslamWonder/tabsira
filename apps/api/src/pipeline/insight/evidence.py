@@ -12,10 +12,8 @@ Three things are kept apart and none stands in for another (the brief of
   requires, and the reason of a rejection. Texts are labelled Q1, H1 ...: the
   model never handles a stored id and never writes a text. A text that fits
   only as a general reminder is rejected;
-- eligibility of a hadith, decided by the server alone from the editors'
-  rulings (decision 18) and the enriched Sunnah file (decision 58): a wanted
-  hadith with no ruling is queued for an editor and the insight carries its
-  verse alone, never another hadith; a hadith an editor ruled out may give way
+- eligibility of a hadith, decided by the server alone (decision 64): a hadith
+  with no ruling is shown as it is; a hadith an editor ruled out may give way
   to an accepted hadith of the same relation tier, never a weaker one. A verse
   is always eligible: the store holds it exactly as quranpedia gives it;
 - the pair: the verifier names the one verse and the one hadith that serve
@@ -175,8 +173,6 @@ class GateResult:
     quran_ref: QuranRef | None = None
     hadith_ref: HadithRef | None = None
     shared_meaning: str | None = None
-    # The hadith it wanted that waits for an editor's ruling.
-    awaiting: list[HadithRef] = field(default_factory=list)
     # Why each judged text was not kept, by label, for the trace and the refinement.
     rejections: dict[str, str] = field(default_factory=dict)
 
@@ -210,7 +206,6 @@ class GateResult:
             "hadith": self.hadith.found.key if self.hadith else None,
             "pair_complete": self.pair_complete,
             "relation": self.relation.value,
-            "awaiting": [ref.model_dump(exclude={"kind"}) for ref in self.awaiting],
             "rejections": dict(self.rejections),
         }
 
@@ -473,17 +468,12 @@ async def _choose_hadith(
     label: str,
     seen: frozenset[int],
 ) -> None:
-    """Keep the wanted hadith when eligible; queue an unruled one; replace a ruled-out one in its tier."""
+    """Keep the wanted hadith when eligible; replace a ruled-out one within its tier, or not at all."""
     hadiths = [name for name in labelled if name.startswith("H") and name in accepted]
     tier = _tier(hadiths, accepted, RelationType(accepted[label].relation))
     eligible = [name for name in tier if await rulings.is_eligible(session, labelled[name].key)]
     if label in eligible:
         result.hadith = _chosen(label, labelled, accepted, eligible, seen)
-    elif await rulings.enqueue_demand(session, labelled[label].key):
-        # Decisions 18 and 58: the wanted hadith has no ruling yet; it waits for an editor, in
-        # demand order, and the insight shows its verse alone, never another hadith.
-        result.awaiting.append(await hadith_ref(session, labelled[label].key))
-        result.rejections[label] = "awaiting_ruling"
     else:
         # Ruled out by an editor: an accepted hadith of the same tier may stand in, never a
         # weaker one.
@@ -491,7 +481,7 @@ async def _choose_hadith(
         if eligible:
             result.hadith = _chosen(eligible[0], labelled, accepted, eligible, seen)
     if result.hadith is not None:
-        # Decision 58: shown before any ruling, it still counts as demand for an editor.
+        # Shown without a ruling: counted so the editors see which hadiths are shown most.
         await rulings.enqueue_demand(session, result.hadith.found.key)
         result.hadith_ref = await hadith_ref(session, result.hadith.found.key)
 

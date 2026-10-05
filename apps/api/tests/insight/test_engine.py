@@ -124,11 +124,9 @@ async def test_a_rain_scene_hadith_of_the_enriched_file_shows_beside_its_verse(m
     assert result.status is EngineStatus.OK
     (insight,) = result.insights
     assert isinstance(insight.quran.ref, QuranRef)
-    # Decision 58: no ruling yet, but one of the enriched file's hadiths: it shows now, and is
-    # counted once for an editor while nothing waits for it.
+    # Decision 64: no ruling yet, and it shows; it is counted once for an editor, nothing waits.
     assert isinstance(insight.hadith.ref, HadithRef)
     assert insight.quran.link and insight.hadith.link
-    assert result.awaiting_ruling == []
     assert result.trace["status"] == "ok"
     assert result.trace["chosen"][0]["quran"] == {
         "surah": insight.quran.ref.surah,
@@ -142,7 +140,7 @@ async def test_a_rain_scene_hadith_of_the_enriched_file_shows_beside_its_verse(m
         assert await session.scalar(select(HadithVerificationQueue.demand_count)) == 1
 
 
-async def test_a_rain_scene_gets_an_insight_backed_by_its_verse_while_the_hadith_waits(maker):
+async def test_a_rain_scene_hadith_with_no_ruling_shows_whether_or_not_the_file_enriches_it(maker):
     await _outside_the_enriched_file(maker)
     engine, client = make_engine(maker, [plan_answer(intent()), accept_all(), composed()])
     stages: list[EngineStage] = []
@@ -162,9 +160,9 @@ async def test_a_rain_scene_gets_an_insight_backed_by_its_verse_while_the_hadith
     assert set(result.stage_ms) == set(stages)
     (insight,) = result.insights
     assert isinstance(insight.quran.ref, QuranRef)
-    # No hadith has an editor's ruling or is enriched: the insight carries its verse alone.
-    assert insight.hadith is None
-    assert [part.section for part in insight.explanation] == ["seen", "value", "quran", "life"]
+    # No hadith has an editor's ruling or is enriched: it is shown as it is (decision 64).
+    assert isinstance(insight.hadith.ref, HadithRef)
+    assert [part.section for part in insight.explanation][2:4] == ["quran", "sunnah"]
     # The unit was chosen by the server from the confirmed intent, never by the planner.
     assert insight.learning_unit_id == "T01_06"
     assert insight.explanation[0].sources == ["masar:T01_06"]
@@ -172,13 +170,12 @@ async def test_a_rain_scene_gets_an_insight_backed_by_its_verse_while_the_hadith
         f"quran:{insight.quran.ref.surah}:{insight.quran.ref.ayah}",
         "masar:T01_06",
     ]
-    assert insight.small_step.kind == "ethical_application"
+    assert insight.small_step.kind == "text_grounded"
     assert insight.learning_path_version == "tabsira-masar-1.0"
     assert insight.anchor is not None
     assert insight.why.visible_clues == ["مطر"]
     assert insight.why.limits[0] == "لا تظهر الصورة حال الأرض قبل المطر"
     assert insight.why.personalised_because is not None
-    assert result.awaiting_ruling
     async with maker() as session:
         queued = await session.scalar(select(HadithVerificationQueue.demand_count))
     assert queued == 1
@@ -201,7 +198,6 @@ async def test_an_eligible_hadith_completes_the_pair_and_grounds_the_step(maker)
         f"hadith:{insight.hadith.ref.collection}:{insight.hadith.ref.number}"
     ]
     assert [part.section for part in insight.explanation][2:4] == ["quran", "sunnah"]
-    assert result.awaiting_ruling == []
 
 
 async def test_a_text_already_seen_is_shown_again_as_a_review_when_none_is_as_strong(maker):
@@ -434,21 +430,20 @@ async def test_the_resource_check_reads_whether_the_vectors_of_the_model_are_sto
     assert with_model.searchable
 
 
-async def test_the_only_fitting_hadith_waiting_for_its_ruling_is_an_incomplete_pair(maker):
-    await _outside_the_enriched_file(maker)
-
+async def test_the_only_fitting_hadith_with_no_ruling_is_shown_without_a_verse(maker):
     def hadith_only(call: dict[str, Any]) -> dict[str, Any]:
         return verify_answer(
             [judged(label, accepted=label.startswith("H")) for label in shown_labels(call)]
         )
 
-    engine, _ = make_engine(maker, [plan_answer(intent()), hadith_only, plan_answer()], rounds=1)
+    engine, _ = make_engine(maker, [plan_answer(intent()), hadith_only, composed()], rounds=1)
 
     result = await engine.propose(EngineRequest(scan_id="s26", scene=rain_scene()))
 
-    assert result.status is EngineStatus.INCOMPLETE_EVIDENCE_PAIR
-    assert result.awaiting_ruling
-    assert result.insights == []
+    assert result.status is EngineStatus.OK
+    (insight,) = result.insights
+    assert insight.quran is None
+    assert isinstance(insight.hadith.ref, HadithRef)
 
 
 async def test_a_composer_that_keeps_leaking_leaves_no_insight(maker):
@@ -460,7 +455,6 @@ async def test_a_composer_that_keeps_leaking_leaves_no_insight(maker):
 
     assert result.status is EngineStatus.MODEL_UNAVAILABLE
     assert result.trace["composer"]["leaked"] == [0]
-    assert result.awaiting_ruling
 
 
 async def _today_3_190(maker) -> str:
@@ -629,14 +623,15 @@ def test_the_engine_is_built_from_the_active_provider(make_settings):
     assert build_engine(settings, http, None, client=own)._client is own  # type: ignore[arg-type]
 
 
-async def test_a_queued_hadith_is_counted_once_per_scan(maker):
+async def test_a_shown_unruled_hadith_is_counted_once_per_scan(maker):
     engine, _ = make_engine(maker, [plan_answer(intent()), accept_all(), composed()])
 
     result = await engine.propose(EngineRequest(scan_id="s21", scene=rain_scene()))
 
-    assert len(result.awaiting_ruling) == len(set(result.awaiting_ruling))
-    assert all(ref.collection for ref in result.awaiting_ruling)
     assert RelationType(result.insights[0].relation)
+    async with maker() as session:
+        counts = (await session.scalars(select(HadithVerificationQueue.demand_count))).all()
+    assert counts == [1]
 
 
 async def test_an_intent_no_unit_fits_makes_an_insight_without_a_unit(maker):

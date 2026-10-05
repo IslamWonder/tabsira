@@ -47,9 +47,7 @@ async def describe(db: AsyncSession, tutorial: Tutorial) -> TutorialOut:
 
 async def _insight(db: AsyncSession, insight: TutorialInsight) -> TutorialInsightOut:
     hadith_ref = (insight.hadith.collection, insight.hadith.number) if insight.hadith else None
-    verse, hadith, awaiting = await evidence(
-        db, (insight.quran.surah, insight.quran.ayah), hadith_ref
-    )
+    verse, hadith = await evidence(db, (insight.quran.surah, insight.quran.ayah), hadith_ref)
     if verse is None:
         raise AppError(
             ErrorCode.ASSET_MISSING,
@@ -75,8 +73,7 @@ async def _insight(db: AsyncSession, insight: TutorialInsight) -> TutorialInsigh
         )
         if hadith
         else None,
-        hadith_status="shown" if hadith else "awaiting_verification" if awaiting else "none",
-        notice=messages_for().hadith_awaits_verification if awaiting else None,
+        hadith_status="shown" if hadith else "none",
         pair_complete=hadith is not None,
         explanation_tag=messages_for().explanation_tag,
         explanation=explanation_out(

@@ -93,7 +93,6 @@ class SceneRun(BaseModel):
     leaks: list[str]
     hoped: list[str]
     hoped_found: list[str]
-    awaiting_ruling: int
     clarification_question: str | None
     vision_ms: int
     stage_ms: dict[str, int]
@@ -221,7 +220,6 @@ async def check_result(
         "unresolved": unresolved,
         "leaks": leaks,
         "hoped_found": hoped_found(expectation.hoped, evidence),
-        "awaiting_ruling": len(result.awaiting_ruling),
         "clarification_question": result.clarification_question,
         "stage_ms": {stage.value: ms for stage, ms in result.stage_ms.items()},
     }
@@ -290,7 +288,6 @@ async def evaluate_scene(
             "unresolved": [],
             "leaks": [],
             "hoped_found": [],
-            "awaiting_ruling": 0,
             "clarification_question": None,
             "stage_ms": {},
             **checked,
@@ -322,7 +319,6 @@ class EvaluationSummary(BaseModel):
     insight_correct: int
     hoped: int
     hoped_found: int
-    awaiting_ruling: int
     stages: dict[str, tuple[float, float]]
     cost_per_scan: float
     cost: float
@@ -355,7 +351,6 @@ def summary(result: EvaluationResult) -> EvaluationSummary:
         insight_correct=count("insight", correct=True),
         hoped=sum(len(run.hoped) for run in runs),
         hoped_found=sum(len(run.hoped_found) for run in runs),
-        awaiting_ruling=sum(run.awaiting_ruling for run in runs),
         stages={name: percentiles(values) for name, values in stages.items()},
         cost_per_scan=result.cost_usd / len(runs) if runs else 0.0,
         cost=result.cost_usd,

@@ -398,9 +398,7 @@ async def test_an_entry_s_page_shows_the_insight_by_reference_and_its_place(
     hadith = body["hadith"][0]
     assert hadith["text"] == hadith_text("bukhari", 1)
     assert hadith["sha256"] == sha256_hex(hadith["text"])
-    assert hadith["classification"] == "صحيح" and hadith["verification_url"].startswith(
-        "https://dorar.net/"
-    )
+    assert "classification" not in hadith and "verification_url" not in hadith
 
     assert (await guest.http.get(f"/atlas/entries/{int(entry_id) + 1}")).status_code == 404
 
@@ -582,12 +580,11 @@ def test_public_schemas_have_no_field_for_a_private_location():
 # ─── The scripture rule: nothing is shown or published that rests on a text not shown ───
 
 
-async def test_an_insight_without_eligible_evidence_cannot_be_placed(
+async def test_an_insight_whose_evidence_is_ruled_out_or_missing_cannot_be_placed(
     db_session, make_member, make_insight, world
 ):
     author = await make_member("author")
     weak = await _insight(db_session, author, hadith_number="8")
-    unruled = await _insight(db_session, author, hadith_number="1032")
     missing_verse = await _insight(db_session, author, quran_surah=2, quran_ayah=999)
     nothing = await _insight(
         db_session,
@@ -600,7 +597,7 @@ async def test_an_insight_without_eligible_evidence_cannot_be_placed(
         small_step=None,
     )
 
-    for insight_id in (weak, unruled, missing_verse, nothing):
+    for insight_id in (weak, missing_verse, nothing):
         response = await _place(author, insight_id)
         assert (response.status_code, response.json()["error"]) == (
             409,

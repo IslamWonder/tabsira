@@ -10,8 +10,8 @@ scan does:
 - the hybrid search of `src.pipeline.insight.search`, with the embedding and
   the reranker the settings name, the insight's own texts left out;
 - the relevance verifier, testing the shortlist against the scan's stored scene;
-- the gate, with its rules unchanged: a hadith that is not eligible
-  (decisions 18 and 58) is queued for an editor and never shown.
+- the gate, with its rules unchanged: a hadith an editor ruled out is never
+  shown (decision 64).
 
 The cost is one embedding call and one verifier call. A query embedding that
 fails is raised as the model fault it is, never answered as «nothing found».
@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 import httpx
@@ -34,7 +34,7 @@ from src.ai.client import ModelClient
 from src.ai.errors import AiCallError, AiErrorCode
 from src.config import Settings
 from src.models import EmbeddedCorpus, Hadith, Insight, QuranVerse, Scan
-from src.pipeline.engine import HadithRef, RelationType
+from src.pipeline.engine import RelationType
 from src.pipeline.insight.engine import ResourceCache, build_reranker
 from src.pipeline.insight.evidence import EvidenceRelevanceVerifier, gate, shortlist_of
 from src.pipeline.insight.guard import scripture_guard
@@ -64,8 +64,6 @@ class NewText:
 
     verse: QuranVerseOut | None = None
     hadith: HadithOut | None = None
-    # The hadith the gate wanted that waits for an editor's ruling (decisions 18 and 58).
-    awaiting: list[HadithRef] = field(default_factory=list)
 
     @property
     def passed(self) -> bool:
@@ -249,4 +247,4 @@ async def _find(
         if gated.hadith_ref is not None
         else None
     )
-    return NewText(verse=verse, hadith=hadith, awaiting=list(gated.awaiting))
+    return NewText(verse=verse, hadith=hadith)

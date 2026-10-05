@@ -62,7 +62,7 @@ from src.services.insight_view import (
     step_out,
 )
 
-SYSTEM_PROMPT = "insight_chat_system.v6"
+SYSTEM_PROMPT = "insight_chat_system.v7"
 USER_PROMPT = "insight_chat_user.v2"
 MAX_OUTPUT_TOKENS = 1200
 # What the system prompt says of a learner who declared nothing, or keeps personalization off.
@@ -260,7 +260,7 @@ async def answer(
         )
     used = await _used(db, insight)
     limit = settings.max_chat_user_messages
-    verse, hadith, _awaiting = await shown_evidence(db, insight)
+    verse, hadith = await shown_evidence(db, insight)
     return ChatReply(
         message=await message_out(db, row, shown_ids(verse, hadith)),
         used=used,
@@ -289,7 +289,7 @@ async def _answer(
     http: httpx.AsyncClient | None,
     resources: ResourceCache,
 ) -> None:
-    verse, hadith, _awaiting = await shown_evidence(db, insight)
+    verse, hadith = await shown_evidence(db, insight)
     references: list[str] = []
     corpus = await _cited_texts(db, insight)
     if verse is not None:
@@ -352,7 +352,7 @@ async def _answer(
         raise _refused(ErrorCode.CHAT_ANSWER_REJECTED, "The answer was refused.", 502)
     # An editor may have ruled while the model wrote: an answer about texts that
     # are no longer the ones shown is refused before anyone reads it.
-    verse_now, hadith_now, _awaiting = await shown_evidence(db, insight)
+    verse_now, hadith_now = await shown_evidence(db, insight)
     shown = shown_ids(verse, hadith)
     if shown_ids(verse_now, hadith_now) != shown:
         await _give_back(db, row, log, insight.id)

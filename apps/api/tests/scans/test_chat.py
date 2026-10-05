@@ -39,7 +39,6 @@ from tests.fakes import FakeModelClient
 from tests.retrieval.support import EmbeddingClient
 from tests.scans.builders import insight_row, scan_row, scene
 from tests.scans.conftest import as_guest, make_account, rule, sign_in
-from tests.scripture.fixtures import enrich_hadith
 
 
 def said(
@@ -396,7 +395,7 @@ async def test_a_request_for_another_text_searches_again_verifies_and_shows_the_
     async with store() as db:
         row = await db.scalar(select(ChatMessage))
         assert row is not None
-        assert row.evidence_ids == ["quran:30:50", "quran:6:99"]
+        assert row.evidence_ids == ["hadith:bukhari:1032", "quran:30:50", "quran:6:99"]
         # The fake embeds without a call record; the verifier call is recorded with the chat's.
         calls = (await db.scalars(select(AiCall))).all()
         assert sorted((c.stage, str(c.insight_id)) for c in calls) == [
@@ -424,7 +423,7 @@ async def test_a_request_for_a_verse_searches_the_quran_alone_and_says_when_noth
     async with store() as db:
         row = await db.scalar(select(ChatMessage))
         assert row is not None
-        assert row.evidence_ids == ["quran:30:50"]
+        assert row.evidence_ids == ["hadith:bukhari:1032", "quran:30:50"]
 
 
 async def test_a_request_whose_searches_find_nothing_calls_no_verifier(
@@ -439,7 +438,7 @@ async def test_a_request_whose_searches_find_nothing_calls_no_verifier(
     assert [call["stage"].value for call in model.calls] == ["chat"]
 
 
-async def test_a_found_hadith_without_a_ruling_is_queued_and_never_shown(
+async def test_a_found_hadith_without_a_ruling_is_shown_from_the_store_and_counted(
     browser, store, flow_settings, flow_app
 ):
     insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
@@ -447,9 +446,14 @@ async def test_a_found_hadith_without_a_ruling_is_queued_and_never_shown(
 
     body = (await ask(browser, insight_id, "أعطني حديثًا عن الغرس والزرع")).json()
 
-    assert body["message"]["answer"] == messages_for().chat_needs_new_search
-    assert body["message"]["kind"] == "new_search"
-    assert body["message"]["hadith"] is None
+    # Decision 64: no ruling, so it is shown as it is; no ruling or link is part of the answer.
+    hadith = body["message"]["hadith"]["hadith"]
+    text = await stored_hadith(store, "bukhari", "2320")
+    assert (hadith["collection"]["slug"], hadith["number"]) == ("bukhari", "2320")
+    assert hadith["text"] == text
+    assert hadith["sha256"] == hashlib.sha256(text.encode("utf-8")).hexdigest()
+    assert all(field not in hadith for field in ("ruling", "eligible", "links"))
+    assert body["message"]["kind"] == "answer"
     assert all(label.startswith("H") for label in labels(model.calls[1]))
     async with store() as db:
         queued = (await db.scalars(select(HadithVerificationQueue))).all()
@@ -459,7 +463,11 @@ async def test_a_found_hadith_without_a_ruling_is_queued_and_never_shown(
         assert [(q.hadith_id, q.demand_count) for q in queued] == [(wanted, 1)]
         row = await db.scalar(select(ChatMessage))
         assert row is not None
-        assert row.evidence_ids == ["quran:30:50"]
+        assert row.evidence_ids == [
+            "hadith:bukhari:1032",
+            "hadith:bukhari:2320",
+            "quran:30:50",
+        ]
 
 
 async def test_a_found_hadith_with_an_eligible_ruling_is_shown_from_the_store_until_ruled_out(
@@ -479,7 +487,7 @@ async def test_a_found_hadith_with_an_eligible_ruling_is_shown_from_the_store_un
     assert (hadith["collection"]["slug"], hadith["number"]) == ("bukhari", "2320")
     assert hadith["text"] == text
     assert hadith["sha256"] == hashlib.sha256(text.encode("utf-8")).hexdigest()
-    assert hadith["eligible"] is True
+    assert all(field not in hadith for field in ("ruling", "eligible", "links"))
     assert message["hadith"]["tag"] == messages_for().sunnah_tag
     assert message["quran"] is None
     assert message["answer"] == messages_for().chat_new_text_found.format(
@@ -489,7 +497,11 @@ async def test_a_found_hadith_with_an_eligible_ruling_is_shown_from_the_store_un
     async with store() as db:
         row = await db.scalar(select(ChatMessage))
         assert row is not None
-        assert row.evidence_ids == ["hadith:bukhari:2320", "quran:30:50"]
+        assert row.evidence_ids == [
+            "hadith:bukhari:1032",
+            "hadith:bukhari:2320",
+            "quran:30:50",
+        ]
 
     async with store() as db:
         await rule(db, "bukhari", "2320", HadithClassification.DAIF)
@@ -499,30 +511,6 @@ async def test_a_found_hadith_with_an_eligible_ruling_is_shown_from_the_store_un
     assert page["answer"] == messages_for().chat_answer_withdrawn
     assert (page["quran"], page["hadith"]) == (None, None)
     assert text not in json.dumps(page, ensure_ascii=False)
-
-
-async def test_a_found_hadith_of_the_enriched_file_shows_before_any_ruling(
-    browser, store, flow_settings, flow_app
-):
-    insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
-    async with store() as db:
-        wanted = await db.scalar(
-            select(Hadith.id).where(Hadith.collection == "bukhari", Hadith.number == "2320")
-        )
-        await enrich_hadith(db, wanted)
-        await db.commit()
-    searching_model(flow_app, wants("hadith"), relevant_where("يغرس"))
-
-    body = (await ask(browser, insight_id, "أعطني حديثًا عن الغرس والزرع")).json()
-
-    # Decision 58: shown from the store with no ruling, and counted for an editor.
-    hadith = body["message"]["hadith"]["hadith"]
-    text = await stored_hadith(store, "bukhari", "2320")
-    assert (hadith["number"], hadith["ruling"], hadith["eligible"]) == ("2320", None, True)
-    assert hadith["sha256"] == hashlib.sha256(text.encode("utf-8")).hexdigest()
-    async with store() as db:
-        queued = (await db.scalars(select(HadithVerificationQueue))).all()
-        assert [q.hadith_id for q in queued] == [wanted]
 
 
 async def test_a_verifier_that_fails_gives_the_slot_back(browser, store, flow_settings, flow_app):
@@ -813,9 +801,12 @@ async def test_an_answer_whose_found_text_is_unknown_or_gone_from_the_store_is_w
     assert all((m["quran"], m["hadith"]) == (None, None) for m in shown["messages"])
 
 
-@pytest.mark.parametrize("classification", [HadithClassification.SAHIH, HadithClassification.DAIF])
-async def test_an_answer_written_while_its_hadith_awaited_a_ruling_stays_shown(
-    browser, store, flow_settings, model, classification
+@pytest.mark.parametrize(
+    ("classification", "shown"),
+    [(HadithClassification.SAHIH, True), (HadithClassification.DAIF, False)],
+)
+async def test_an_answer_written_beside_an_unruled_hadith_follows_a_later_ruling(
+    browser, store, flow_settings, model, classification, shown
 ):
     insight_id = await an_insight(browser, store, flow_settings)
     model.answers.append(said(answer="جواب قبل الحكم."))
@@ -824,9 +815,10 @@ async def test_an_answer_written_while_its_hadith_awaited_a_ruling_stays_shown(
         await rule(db, "bukhari", "1032", classification)
         await db.commit()
 
-    shown = (await browser.get(f"/insights/{insight_id}")).json()["chat"]
+    page = (await browser.get(f"/insights/{insight_id}")).json()["chat"]
 
-    assert [m["answer"] for m in shown["messages"]] == ["جواب قبل الحكم."]
+    expected = "جواب قبل الحكم." if shown else messages_for().chat_answer_withdrawn
+    assert [m["answer"] for m in page["messages"]] == [expected]
 
 
 class RulingWhileWriting(FakeModelClient):

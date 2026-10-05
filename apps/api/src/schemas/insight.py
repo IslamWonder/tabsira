@@ -37,7 +37,7 @@ class InsightQuran(BaseModel):
 class InsightHadith(BaseModel):
     tag: str = Field(description="«السنة»: the fixed tag of quoted Sunnah")
     hadith: HadithOut = Field(
-        description="The hadith exactly as stored, its spans, its dorar.net ruling and links"
+        description="The hadith exactly as stored, with its spans; no ruling is shown (decision 64)"
     )
     why: EvidenceWhy | None
 
@@ -54,7 +54,7 @@ class PublicHadith(BaseModel):
 
     tag: str = Field(description="«السنة»: the fixed tag of quoted Sunnah")
     hadith: HadithOut = Field(
-        description="The hadith exactly as stored, its spans, its dorar.net ruling and links"
+        description="The hadith exactly as stored, with its spans; no ruling is shown (decision 64)"
     )
 
 
@@ -150,8 +150,7 @@ class InsightDetailOut(BaseModel):
     )
     quran: InsightQuran | None
     hadith: InsightHadith | None
-    hadith_status: Literal["shown", "awaiting_verification", "none"]
-    notice: str | None = Field(description="Set when the hadith waits for its dorar.net ruling")
+    hadith_status: Literal["shown", "none"]
     pair_complete: bool
     explanation_tag: str
     explanation: list[ExplanationOut]
@@ -265,8 +264,7 @@ class PublicInsightOut(BaseModel):
     relation_label: str
     quran: PublicQuran | None
     hadith: PublicHadith | None
-    hadith_status: Literal["shown", "awaiting_verification", "none"]
-    notice: str | None
+    hadith_status: Literal["shown", "none"]
     pair_complete: bool
     explanation_tag: str
     explanation: list[ExplanationOut]

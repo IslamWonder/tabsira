@@ -95,12 +95,8 @@ async def test_the_scripture_in_a_response_is_the_stored_text_with_its_stored_ha
     assert verse["source_url"].startswith("https://quranpedia.net/surah/2/112#verse-")
     assert hadith["text"] == hadith_text("bukhari", 1)
     assert hadith["sha256"] == sha256_hex(hadith["text"])
-    assert (hadith["collection"], hadith["number"], hadith["classification"]) == (
-        "bukhari",
-        "1",
-        "صحيح",
-    )
-    assert hadith["verification_url"].startswith("https://dorar.net/hadith/search?")
+    assert (hadith["collection"], hadith["number"]) == ("bukhari", "1")
+    assert "classification" not in hadith and "verification_url" not in hadith
     # The publication row holds references and no scripture at all.
     row = await db_session.scalar(select(InsightPublication))
     assert verse_text(112, 1) not in repr(
