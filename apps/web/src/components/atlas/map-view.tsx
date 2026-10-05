@@ -85,6 +85,9 @@ function token(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#3fd69a';
 }
 
+/** The worker file, copied into public/ by scripts/copy-maplibre-worker.mjs. */
+export const MAPLIBRE_WORKER_URL = '/maplibre/maplibre-gl-worker.mjs';
+
 /** The app's own layers: the basemap theming leaves them to `paintOwnLayers`. */
 const OWN_LAYERS: ReadonlySet<string> = new Set([
   'cluster-halo',
@@ -168,10 +171,12 @@ export function MapView({
   // biome-ignore lint/correctness/useExhaustiveDependencies: built once; `view` and `interactive` are read at that moment only.
   useEffect(() => {
     let cancelled = false;
-    void import('maplibre-gl').then(({ Map: MapLibre, NavigationControl }) => {
+    void import('maplibre-gl').then(({ Map: MapLibre, NavigationControl, setWorkerUrl }) => {
       if (cancelled || container.current === null) {
         return;
       }
+      // Bundled, the library cannot find its worker beside itself: name the copy served from public/.
+      setWorkerUrl(MAPLIBRE_WORKER_URL);
       let instance: MapLibreMap;
       try {
         instance = new MapLibre({

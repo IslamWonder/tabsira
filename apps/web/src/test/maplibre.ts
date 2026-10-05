@@ -121,6 +121,9 @@ export class FakeMap {
 
 export class NavigationControl {}
 
+/** Where the map was told its worker lives. */
+export const setWorkerUrl = vi.fn();
+
 /** The newest map the page built, once its load event was fired. */
 export async function loadedMap(): Promise<FakeMap> {
   await vi.waitFor(() => {

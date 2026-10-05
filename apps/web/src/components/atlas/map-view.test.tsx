@@ -2,7 +2,7 @@ import { act, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { messages } from '@/messages';
 import { FEATURE, SECOND_FEATURE } from '@/test/atlas';
-import { FakeMap, type FakeSource, forgetMaps, loadedMap } from '@/test/maplibre';
+import { FakeMap, type FakeSource, forgetMaps, loadedMap, setWorkerUrl } from '@/test/maplibre';
 import { MapView } from './map-view';
 
 vi.mock('maplibre-gl', () => import('@/test/maplibre'));
@@ -15,6 +15,8 @@ describe('MapView', () => {
     render(<MapView features={[FEATURE]} onMoved={onMoved} />);
     const map = await loadedMap();
     expect(map.options.style).toBe('https://tiles.openfreemap.org/styles/liberty');
+    // Bundled, the library cannot find its worker beside itself: it is given the served copy.
+    expect(setWorkerUrl).toHaveBeenCalledWith('/maplibre/maplibre-gl-worker.mjs');
     expect(map.layers).toEqual(
       expect.arrayContaining(['clusters', 'points', 'cell-fill', 'marker'])
     );

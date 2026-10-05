@@ -85,3 +85,6 @@ Thumbs.db
 # Claude Code per-machine settings
 .claude/settings.local.json
 .claude/worktrees/
+
+# MapLibre worker, copied from node_modules by apps/web/scripts/copy-maplibre-worker.mjs
+apps/web/public/maplibre/
