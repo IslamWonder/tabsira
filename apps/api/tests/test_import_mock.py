@@ -19,6 +19,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from src import security
 from src.cli import import_mock
 from src.cli.import_mock import MockImportError
 from src.config import Environment, Settings
@@ -27,13 +28,20 @@ from src.models import (
     Bookmark,
     Comment,
     CommentStatus,
+    FeedbackState,
     Follow,
     Insight,
+    InsightFeedback,
+    InsightPublication,
     MapCapturePoint,
     MapEntry,
+    MapEntryGeneralisation,
+    MapEntryRetiredId,
     MapEntrySponsorship,
+    MapEntryStatus,
     Post,
     PostReaction,
+    PostVisibility,
     QuranVerse,
     ReactionKind,
     Report,
@@ -42,14 +50,19 @@ from src.models import (
     Scan,
     User,
 )
-from src.models.consent import Consent
+from src.models.consent import Consent, ConsentKind
+from src.models.moderation import ModerationAction
 from src.models.profile import Profile
+from src.models.timeseries import EvidenceExposure
+from src.models.world import WorldPlace, WorldReveal
+from src.services import orphan_service
 from tests import geo_dataset as world_data
 
 AT = "2026-08-01T10:00:00Z"
 LATER = "2026-08-02T11:30:00Z"
 EXACT = (10.181534, 36.806512)
 PUBLISH = "2026-08-03T09:00:00Z"
+SPONSORED = "2026-09-20T09:00:00Z"
 
 
 def body(**values: Any) -> dict[str, Any]:
@@ -102,6 +115,7 @@ def document() -> dict[str, Any]:
                     hadith={"collection": "bukhari", "number": "9999", "matched_on": "x"}
                 ),
             },
+            {"placepix_id": 16, "scene": {"labels": ["sea"], "ar": "بحر"}, "insight": body()},
             {
                 "placepix_id": 15,
                 "scene": {"labels": ["sky"], "ar": "سماء"},
@@ -109,7 +123,19 @@ def document() -> dict[str, Any]:
             },
         ],
         "members": [
-            member("m1", "amal_tn"),
+            member(
+                "m1",
+                "amal_tn",
+                gender="woman",
+                age_range="25_39",
+                goals=["reflection", "curiosity"],
+                knowledge_level="general",
+                religious_background="muslim",
+                theme="dark",
+                reduced_motion="on",
+                sound=True,
+                public_full_name=True,
+            ),
             member("m2", "bilal_tn"),
             member("m3", "Carim_tn"),
             member("m4", "1bad"),
@@ -120,23 +146,65 @@ def document() -> dict[str, Any]:
             insight("i3", "m2", 14),
             insight("i4", "m2", 15),
             insight("i5", "m3", 12, completed_at=None),
+            insight(
+                "i6",
+                "m1",
+                16,
+                feedback={"helpful": False, "reasons": ["wrong_text"], "at": LATER},
+            ),
+            insight("i7", "m2", 16),
+            insight("i8", "m1", 16),
+            insight("i9", "m1", 16),
         ],
         "posts": [
             {"ref": "p1", "insight": "i1", "published_at": PUBLISH, "reflection": "تأمل قصير"},
             {"ref": "p2", "insight": "i5", "published_at": PUBLISH, "reflection": None},
             {"ref": "p3", "insight": "i4", "published_at": PUBLISH, "reflection": None},
+            {
+                "ref": "p5",
+                "insight": "i7",
+                "published_at": PUBLISH,
+                "reflection": "بلا صورة",
+                "visibility": "followers",
+                "photo": False,
+            },
             {"ref": "p4", "insight": "i2", "published_at": PUBLISH, "reflection": None},
         ],
         "map_entries": [
             {"insight": "i1", "published_at": PUBLISH},
             {"insight": "i4", "published_at": PUBLISH},
             {"insight": "i2", "published_at": PUBLISH},
+            {
+                "insight": "i6",
+                "published_at": PUBLISH,
+                "orphaned": True,
+                "sponsor": {"member": "m2", "at": SPONSORED, "reflection": "كفالة طيبة"},
+            },
+            {
+                "insight": "i7",
+                "published_at": PUBLISH,
+                "orphaned": True,
+                "sponsor": {"member": "m2", "at": SPONSORED, "reflection": "لا تُقبل"},
+            },
+            {
+                "insight": "i8",
+                "published_at": PUBLISH,
+                "orphaned": True,
+                "sponsor": {"member": "m9", "at": SPONSORED},
+            },
+            {"insight": "i9", "published_at": PUBLISH, "orphaned": True},
         ],
         "follows": [
             {"from": "m1", "to": "m2", "at": AT},
             {"from": "m2", "to": "m1", "at": LATER},
             {"from": "m1", "to": "m1", "at": AT},
             {"from": "m1", "to": "m4", "at": AT},
+            {"from": "m3", "to": "m2", "at": AT},
+        ],
+        "blocks": [{"from": "m2", "to": "m3", "at": LATER}, {"from": "m2", "to": "m9", "at": AT}],
+        "bookmarks": [
+            {"post": "p1", "member": "m2", "at": LATER},
+            {"post": "p9", "member": "m3", "at": LATER},
         ],
         "reactions": [
             {"post": "p1", "member": "m2", "kind": "benefited", "at": LATER},
@@ -191,11 +259,13 @@ async def run(
 async def test_the_file_is_written_through_the_services(db_session, settings, world):
     report = await run(db_session, settings, document())
 
-    assert (report.members, report.insights, report.completions) == (3, 3, 2)
-    assert report.posts == 2
-    assert report.entries == 1
+    assert (report.members, report.insights, report.completions) == (3, 7, 6)
+    assert report.posts == 3
+    assert (report.entries, report.orphaned, report.sponsorships) == (5, 4, 1)
     assert report.follows == 2
+    assert report.blocks == 1
     assert report.likes == 2
+    assert report.bookmarks == 1
     assert report.comments == 2
     assert report.ignored_reactions == 1
     assert report.missing_evidence == ["i3"]
@@ -203,22 +273,51 @@ async def test_the_file_is_written_through_the_services(db_session, settings, wo
     assert report.skipped["member with an unusable or taken handle"] == 1
     assert report.skipped["reply without its comment"] == 1
     assert report.skipped["comment without a text or a post"] == 1
+    assert report.skipped["sponsorship refused by the app"] == 1
     assert len(report.lines()) >= 4
 
     amal = await db_session.scalar(select(User).where(User.handle == "amal_tn"))
     assert amal.email == "amal_tn@mock.tabsira.me"
-    assert amal.password_hash is None
+    assert amal.is_active
+    assert amal.public_full_name is True
     assert amal.email_verified_at is not None
     assert amal.created_at.isoformat() == "2026-08-01T10:00:00+00:00"
     profile = await db_session.get(Profile, amal.id)
     assert profile.photo_storage_consent is True
-    kinds = sorted(
-        c.kind.value
-        for c in await db_session.scalars(select(Consent).where(Consent.user_id == amal.id))
+    assert profile.consent_version == settings.privacy_version
+    assert profile.profile_completed_at.isoformat() == "2026-08-01T10:03:00+00:00"
+    assert profile.questions_asked is True
+    assert (profile.gender.value, profile.age_range.value) == ("woman", "25_39")
+    assert profile.goals == ["reflection", "curiosity"]
+    assert (profile.knowledge_level.value, profile.religious_background.value) == (
+        "general",
+        "muslim",
     )
-    assert kinds == ["photo_storage", "privacy", "terms"]
+    assert (profile.theme.value, profile.reduced_motion.value, profile.sound_enabled) == (
+        "dark",
+        "on",
+        True,
+    )
+    assert profile.language == "ar"
+    rows = (await db_session.scalars(select(Consent).where(Consent.user_id == amal.id))).all()
+    assert sorted((c.kind.value, c.version, c.granted) for c in rows) == [
+        ("photo_storage", settings.privacy_version, True),
+        ("privacy", settings.privacy_version, True),
+        ("public_full_name", settings.privacy_version, True),
+        ("terms", settings.terms_version, True),
+    ]
+    assert {c.created_at.isoformat() for c in rows} == {"2026-08-01T10:00:00+00:00"}
+    bilal = await db_session.scalar(select(User).where(User.handle == "bilal_tn"))
+    refused = await db_session.scalar(
+        select(Consent.granted).where(
+            Consent.user_id == bilal.id, Consent.kind == ConsentKind.PUBLIC_FULL_NAME
+        )
+    )
+    assert refused is False
 
-    first = await db_session.scalar(select(Insight).where(Insight.user_id == amal.id))
+    post = await db_session.scalar(select(Post).where(Post.reflection == "تأمل قصير"))
+    publication = await db_session.get(InsightPublication, post.publication_id)
+    first = await db_session.get(Insight, publication.insight_id)
     assert first.engine == "pipeline"
     assert first.photo_key == "https://placepix.net/id/12/1080/1080"
     assert first.photo_public_key == first.photo_key
@@ -226,18 +325,178 @@ async def test_the_file_is_written_through_the_services(db_session, settings, wo
     scan = await db_session.get(Scan, first.scan_id)
     assert scan.engine == "pipeline"
 
-    post = await db_session.scalar(select(Post).where(Post.author_id == amal.id))
     assert post.published_at.isoformat() == "2026-08-03T09:00:00+00:00"
-    assert post.reflection == "تأمل قصير"
+    assert post.visibility is PostVisibility.PUBLIC
+    quiet = await db_session.scalar(select(Post).where(Post.reflection == "بلا صورة"))
+    assert quiet.visibility is PostVisibility.FOLLOWERS
+    assert (await db_session.get(InsightPublication, quiet.publication_id)).photo_ref is None
 
-    entry = await db_session.scalar(select(MapEntry).where(MapEntry.user_id == amal.id))
+    entry = await db_session.scalar(
+        select(MapEntry).where(MapEntry.user_id == amal.id, MapEntry.insight_id == first.id)
+    )
     assert entry.published_at.isoformat() == "2026-08-03T09:00:00+00:00"
+    assert entry.status is MapEntryStatus.PUBLISHED
     assert (entry.public_lat, entry.public_lng) != (EXACT[1], EXACT[0])
     point = await db_session.get(MapCapturePoint, entry.id)
     assert (point.latitude, point.longitude) == (EXACT[1], EXACT[0])
     assert await count(db_session, Follow) == 2
     assert await count(db_session, PostReaction) == 2
     assert await count(db_session, Comment) == 2
+    assert await count(db_session, Bookmark) == 1
+    assert await count(db_session, Block) == 1
+    assert await count(db_session, Report) == 0
+    assert await count(db_session, ModerationAction) == 0 + await count_widenings(db_session)
+
+
+async def count_widenings(db: AsyncSession) -> int:
+    """The daily job's own log row for each widened entry (`superseded_at_widening`)."""
+    return await count(db, MapEntryRetiredId)
+
+
+async def test_completions_write_the_world_and_the_exposures_as_a_save_does(
+    db_session, settings, world
+):
+    await run(db_session, settings, document())
+    amal = await db_session.scalar(select(User).where(User.handle == "amal_tn"))
+
+    places = (
+        await db_session.scalars(select(WorldPlace).where(WorldPlace.user_id == amal.id))
+    ).all()
+    reveals = (
+        await db_session.scalars(select(WorldReveal).where(WorldReveal.user_id == amal.id))
+    ).all()
+    exposures = await db_session.scalar(
+        select(func.count())
+        .select_from(EvidenceExposure)
+        .where(EvidenceExposure.user_id == amal.id)
+    )
+    assert len(places) == 1
+    assert len(reveals) == 4
+    assert exposures == 4
+    done = (
+        await db_session.scalars(
+            select(Insight).where(Insight.user_id == amal.id, Insight.completed_at.is_not(None))
+        )
+    ).all()
+    assert {i.place_id for i in done} == {places[0].id}
+    assert min(r.learned_at for r in reveals).isoformat() == "2026-08-02T11:30:00+00:00"
+    pending = await db_session.scalar(
+        select(Insight).where(Insight.title == "ماء يجري", Insight.completed_at.is_(None))
+    )
+    assert pending is None or pending.place_id is None
+
+
+async def test_the_feedback_is_kept_reviewed_so_the_admin_queue_stays_empty(
+    db_session, settings, world
+):
+    await run(db_session, settings, document())
+
+    row = await db_session.scalar(select(InsightFeedback))
+    assert (row.helpful, row.reasons, row.state) == (False, ["wrong_text"], FeedbackState.REVIEWED)
+    assert row.updated_at.isoformat() == "2026-08-02T11:30:00+00:00"
+    assert await count(db_session, InsightFeedback) == 1
+
+
+async def test_orphaned_entries_are_widened_by_the_jobs_function_and_half_are_sponsored(
+    db_session, settings, world
+):
+    await run(db_session, settings, document())
+
+    orphaned = (
+        await db_session.scalars(select(MapEntry).where(MapEntry.widened_level.is_not(None)))
+    ).all()
+    assert len(orphaned) == 4
+    assert await count(db_session, MapEntryGeneralisation) == 4
+    assert await count(db_session, MapEntryRetiredId) == 4
+    sponsored = await db_session.scalar(select(MapEntrySponsorship))
+    entry = await db_session.get(MapEntry, sponsored.entry_id)
+    assert entry.status is MapEntryStatus.PUBLISHED
+    assert entry.last_active_at.isoformat() == "2026-09-20T09:00:00+00:00"
+    assert sponsored.started_at.isoformat() == "2026-09-20T09:00:00+00:00"
+    assert sponsored.reflection == "كفالة طيبة"
+    assert sponsored.reflection_status is CommentStatus.PUBLISHED
+    still = [e for e in orphaned if e.status is MapEntryStatus.ORPHANED]
+    assert len(still) == 3
+    # No public row says where the hidden point was.
+    for row in orphaned:
+        assert (row.public_lat, row.public_lng) != (EXACT[1], EXACT[0])
+
+
+async def test_a_sponsorship_without_a_reflection_is_written_alone(db_session, settings, world):
+    data = document()
+    data["map_entries"] = [data["map_entries"][4]]
+    data["map_entries"][0]["sponsor"] = {"member": "m3", "at": SPONSORED}
+    data["map_entries"][0]["insight"] = "i6"
+
+    report = await run(db_session, settings, data)
+
+    assert report.sponsorships == 1
+    assert (await db_session.scalar(select(MapEntrySponsorship))).reflection is None
+
+
+async def test_an_entry_that_cannot_be_orphaned_stops_the_whole_import(
+    db_session, settings, world, monkeypatch
+):
+    async def skipped(*_: Any) -> orphan_service.Marked:
+        return orphan_service.Marked.SKIPPED
+
+    monkeypatch.setattr(orphan_service, "mark_one", skipped)
+
+    with pytest.raises(MockImportError, match="could not be orphaned"):
+        await run(db_session, settings, document())
+
+
+async def test_the_services_run_with_every_feature_on_whatever_the_host_switches_say(
+    db_session, make_settings, world
+):
+    off = make_settings(disabled_features="atlas,world,photo_storage,social,treasure")
+
+    report = await run(db_session, off, document())
+
+    assert report.entries == 5
+    assert await count(db_session, WorldReveal) > 0
+    shown = await db_session.scalar(
+        select(func.count()).select_from(Insight).where(Insight.photo_public_key.is_not(None))
+    )
+    assert shown > 0
+
+
+async def test_every_member_signs_in_with_the_shared_password_and_nothing_asks_again(
+    web, db_session, account_settings, world
+):
+    await run(db_session, account_settings, document())
+
+    wrong = await web.post(
+        "/auth/login", json={"email": "amal_tn@mock.tabsira.me", "password": "Tabsira"}
+    )
+    ok = await web.post(
+        "/auth/login", json={"email": "Amal_TN@mock.tabsira.me", "password": "tabsira"}
+    )
+    me = (await web.get("/auth/me")).json()
+
+    assert wrong.status_code == 401
+    assert ok.status_code == 200
+    assert me["legal_acceptance_required"] is False
+    assert (await web.get("/profile")).status_code == 200
+    assert (await web.get("/feed/latest")).status_code == 200
+    assert (await web.get("/world")).status_code == 200
+
+
+async def test_the_shared_password_is_hashed_with_the_configured_rounds(
+    db_session, settings, world
+):
+    await run(db_session, settings, document())
+    user = await db_session.scalar(select(User).where(User.handle == "amal_tn"))
+
+    assert security.verify_password("tabsira", user.password_hash, settings.password_bcrypt_rounds)
+    assert user.password_hash.startswith(f"$2b${settings.password_bcrypt_rounds:02d}$")
+
+
+@pytest.mark.parametrize("value", ["under_13", "teen"])
+def test_a_member_declared_under_13_or_unknown_is_a_wrong_shape(value):
+    raw = json.dumps({"version": 1, "members": [member("m1", "amal_tn", age_range=value)]}).encode()
+    with pytest.raises(MockImportError, match="wrong shape"):
+        import_mock.parse(raw)
 
 
 async def test_a_second_run_imports_nothing_and_clean_removes_only_mock_rows(
@@ -286,9 +545,10 @@ async def test_an_insight_whose_evidence_is_missing_is_skipped_never_replaced(
     assert report.missing_evidence == ["i3"]
     owner = await db_session.scalar(select(User).where(User.handle == "bilal_tn"))
     kept = (await db_session.scalars(select(Insight).where(Insight.user_id == owner.id))).all()
-    # Only the one with a ruled-out hadith (bukhari 8) is kept, and it is not published.
-    assert [i.hadith_number for i in kept] == ["8"]
-    assert await db_session.scalar(select(Post).where(Post.author_id == owner.id)) is None
+    # The one with a ruled-out hadith (bukhari 8) is kept but not published.
+    assert sorted(i.hadith_number for i in kept) == ["1", "8"]
+    posted = (await db_session.scalars(select(Post).where(Post.author_id == owner.id))).all()
+    assert [p.reflection for p in posted] == ["بلا صورة"]
 
 
 async def test_a_text_that_is_scripture_refuses_the_whole_file(db_session, settings, world):

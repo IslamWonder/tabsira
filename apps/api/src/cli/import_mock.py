@@ -33,22 +33,25 @@ import re
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Literal
 
 from botocore.exceptions import BotoCoreError, ClientError
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import and_, delete, func, or_, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from src import security
 from src.config import ConfigError, Settings, load_settings
 from src.database import dispose_engine, get_sessionmaker
 from src.errors import AppError
 from src.mock_accounts import MOCK_DOMAINS, mock_email
 from src.models.atlas import (
+    SPONSOR_REFLECTION_MAX,
     LocationMeaning,
     LocationSource,
     MapCapturePoint,
@@ -56,7 +59,25 @@ from src.models.atlas import (
     MapEntrySponsorship,
 )
 from src.models.consent import Consent, ConsentKind
-from src.models.scan import Insight, Scan, ScanOutcome, ScanSource, ScanStatus
+from src.models.profile import (
+    AgeRange,
+    Gender,
+    Goal,
+    KnowledgeLevel,
+    ReducedMotion,
+    ReligiousBackground,
+    Theme,
+)
+from src.models.scan import (
+    FeedbackReason,
+    FeedbackState,
+    Insight,
+    InsightFeedback,
+    Scan,
+    ScanOutcome,
+    ScanSource,
+    ScanStatus,
+)
 from src.models.scripture import Hadith, QuranVerse
 from src.models.social import (
     COMMENT_MAX,
@@ -93,11 +114,15 @@ from src.schemas.atlas import CapturePointIn
 from src.schemas.social import clean_text
 from src.services import (
     atlas_service,
+    completion_service,
     legal_service,
+    orphan_service,
     photo_service,
     post_service,
     profile_service,
+    public_identity,
     publication_service,
+    sponsorship_service,
 )
 from src.services.insight_table_source import InsightTableSource
 from src.services.post_service import looks_like_scripture
@@ -118,7 +143,11 @@ _UNSAFE_TEXT = re.compile(
     re.IGNORECASE,
 )
 CHUNK = 1000
-PHOTO_CONSENT_VERSION = "mock"
+# The one password of every mock member, an owners' decision for the contest's judges; hashed
+# like any password, with the configured rounds. Production is reset at launch.
+MOCK_PASSWORD = "tabsira"  # noqa: S105
+# The profile form is filled a few minutes after the account is made.
+PROFILE_DELAY = timedelta(minutes=3)
 TEMPLATE_DATABASE = "tabsira_template"
 SCHEME_S3 = "s3"
 
@@ -184,6 +213,31 @@ class MemberIn(_Model):
     handle: str
     display_name: str
     joined_at: AwareDatetime
+    # What the person declared at sign-up and in the profile form: private, as for every member.
+    gender: Gender = Gender.UNKNOWN
+    age_range: AgeRange = AgeRange.UNKNOWN
+    goals: list[Goal] = []
+    knowledge_level: KnowledgeLevel = KnowledgeLevel.UNKNOWN
+    religious_background: ReligiousBackground = ReligiousBackground.UNKNOWN
+    theme: Theme = Theme.SYSTEM
+    reduced_motion: ReducedMotion = ReducedMotion.SYSTEM
+    sound: bool = False
+    # Whether the person ticked the box that shows the full name beside the handle (decision 64).
+    public_full_name: bool = False
+
+    @field_validator("age_range")
+    @classmethod
+    def _not_a_child(cls, value: AgeRange) -> AgeRange:
+        if value is AgeRange.UNDER_13:
+            message = "a mock member is never under 13"
+            raise ValueError(message)
+        return value
+
+
+class FeedbackIn(_Model):
+    helpful: bool
+    reasons: list[FeedbackReason] = []
+    at: AwareDatetime
 
 
 class InsightIn(_Model):
@@ -194,6 +248,7 @@ class InsightIn(_Model):
     completed_at: AwareDatetime | None = None
     # GeoJSON order: [longitude, latitude].
     point: tuple[float, float]
+    feedback: FeedbackIn | None = None
 
 
 class PostIn(_Model):
@@ -201,11 +256,25 @@ class PostIn(_Model):
     insight: str
     published_at: AwareDatetime
     reflection: str | None = None
+    visibility: PostVisibility = PostVisibility.PUBLIC
+    # Whether the post shows the insight's photo (the owner's choice, v2 §19).
+    photo: bool = True
+
+
+class SponsorIn(_Model):
+    """The member who looks after an orphaned entry, and the words they left under it."""
+
+    member: str
+    at: AwareDatetime
+    reflection: str | None = None
 
 
 class EntryIn(_Model):
     insight: str
     published_at: AwareDatetime
+    # Quiet for 30 days: widened by the daily job's own function, and maybe looked after since.
+    orphaned: bool = False
+    sponsor: SponsorIn | None = None
 
 
 class FollowIn(_Model):
@@ -215,10 +284,20 @@ class FollowIn(_Model):
     at: AwareDatetime
 
 
+class BlockIn(FollowIn):
+    pass
+
+
 class ReactionIn(_Model):
     post: str
     member: str
     kind: str
+    at: AwareDatetime
+
+
+class BookmarkIn(_Model):
+    post: str
+    member: str
     at: AwareDatetime
 
 
@@ -239,7 +318,9 @@ class MockFile(_Model):
     posts: list[PostIn] = []
     map_entries: list[EntryIn] = []
     follows: list[FollowIn] = []
+    blocks: list[BlockIn] = []
     reactions: list[ReactionIn] = []
+    bookmarks: list[BookmarkIn] = []
     comments: list[CommentIn] = []
 
 
@@ -253,8 +334,12 @@ class ImportReport:
     posts: int = 0
     entries: int = 0
     follows: int = 0
+    blocks: int = 0
     likes: int = 0
+    bookmarks: int = 0
     comments: int = 0
+    sponsorships: int = 0
+    orphaned: int = 0
     ignored_reactions: int = 0
     skipped: dict[str, int] = field(default_factory=dict)
     missing_evidence: list[str] = field(default_factory=list)
@@ -265,10 +350,11 @@ class ImportReport:
     def lines(self) -> list[str]:
         done = (
             f"members {self.members}, insights {self.insights} ({self.completions} completed), "
-            f"posts {self.posts}, atlas entries {self.entries}, follows {self.follows}, "
-            f"likes {self.likes}, comments {self.comments}"
+            f"posts {self.posts}, atlas entries {self.entries} ({self.orphaned} orphaned, "
+            f"{self.sponsorships} sponsored), follows {self.follows}, blocks {self.blocks}, "
+            f"reactions {self.likes}, bookmarks {self.bookmarks}, comments {self.comments}"
         )
-        out = [done, f"reactions ignored (no table yet): {self.ignored_reactions}"]
+        out = [done, f"reactions of an unknown kind, ignored: {self.ignored_reactions}"]
         out += [f"skipped {reason}: {count}" for reason, count in sorted(self.skipped.items())]
         out += [f"evidence missing from the store, insight skipped: {self.missing_evidence}"]
         return out
@@ -390,6 +476,11 @@ def texts_of(data: MockFile) -> dict[str, str]:
         texts[f"member.{member.ref}.display_name"] = member.display_name
     texts |= {f"post.{p.ref}": p.reflection for p in data.posts if p.reflection}
     texts |= {f"comment.{c.ref}": c.text for c in data.comments if c.text}
+    texts |= {
+        f"sponsor.{e.insight}": e.sponsor.reflection
+        for e in data.map_entries
+        if e.sponsor and e.sponsor.reflection
+    }
     return {key: text for key, text in texts.items() if text.strip()}
 
 
@@ -422,6 +513,11 @@ def member_texts_of(data: MockFile) -> dict[str, tuple[str, int]]:
         found[f"member.{member.ref}.display_name"] = (member.display_name, NAME_MAX)
     found |= {f"post.{p.ref}": (p.reflection, REFLECTION_MAX) for p in data.posts if p.reflection}
     found |= {f"comment.{c.ref}": (c.text, COMMENT_MAX) for c in data.comments if c.text}
+    found |= {
+        f"sponsor.{e.insight}": (e.sponsor.reflection, SPONSOR_REFLECTION_MAX)
+        for e in data.map_entries
+        if e.sponsor and e.sponsor.reflection
+    }
     return found
 
 
@@ -520,14 +616,22 @@ def _proposed(body: InsightBodyIn) -> ProposedInsight:
     )
 
 
-async def _add_member(db: AsyncSession, settings: Settings, member: MemberIn) -> User:
-    """Make the account as sign-up does, verified, with the two consent rows and photo consent."""
+async def _add_member(
+    db: AsyncSession, settings: Settings, member: MemberIn, password_hash: str
+) -> User:
+    """
+    Make the account as sign-up and the profile form leave it.
+
+    Verified, signed in with the shared password, both legal texts accepted at the current
+    versions, the profile complete.
+    """
     user = User(
         email=mock_email(member.handle),
-        password_hash=None,
+        password_hash=password_hash,
         display_name=member.display_name[:60],
         handle=member.handle,
         public_name=member.display_name[:40],
+        public_full_name=member.public_full_name,
         email_verified_at=member.joined_at,
         created_at=member.joined_at,
     )
@@ -536,17 +640,28 @@ async def _add_member(db: AsyncSession, settings: Settings, member: MemberIn) ->
     profile = await profile_service.ensure_profile(db, user.id)
     legal_service.record_acceptance(db, settings, user.id)
     # Consent rows are append-only (a trigger refuses any update), so their time is set while
-    # they are still pending, and the photo consent is written as the service would.
-    db.add(
-        Consent(
-            user_id=user.id,
-            kind=ConsentKind.PHOTO_STORAGE,
-            version=PHOTO_CONSENT_VERSION,
-            granted=True,
+    # they are still pending. The photo consent and the full-name answer are what the profile
+    # form records, at the privacy text's version, the one the person last answered.
+    for kind, granted in (
+        (ConsentKind.PHOTO_STORAGE, True),
+        (ConsentKind.PUBLIC_FULL_NAME, member.public_full_name),
+    ):
+        db.add(
+            Consent(user_id=user.id, kind=kind, version=settings.privacy_version, granted=granted)
         )
-    )
     profile.photo_storage_consent = True
-    profile.consent_version = PHOTO_CONSENT_VERSION
+    profile.consent_version = settings.privacy_version
+    profile.goals = [goal.value for goal in member.goals]
+    profile.knowledge_level = member.knowledge_level
+    profile.age_range = member.age_range
+    profile.religious_background = member.religious_background
+    profile.gender = member.gender
+    profile.language = "ar"
+    profile.theme = member.theme
+    profile.reduced_motion = member.reduced_motion
+    profile.sound_enabled = member.sound
+    profile.questions_asked = True
+    profile.profile_completed_at = member.joined_at + PROFILE_DELAY
     # Every pending row is this member's: the earlier ones were flushed.
     for row in [row for row in db.new if isinstance(row, Consent)]:
         row.created_at = member.joined_at
@@ -568,7 +683,8 @@ async def _add_insight(
     )
     db.add(scan)
     await db.flush()
-    insight = insight_row(Owner(user_id=user.id), _proposed(body), scan=scan, position=0)
+    owner = Owner(user_id=user.id)
+    insight = insight_row(owner, _proposed(body), scan=scan, position=0)
     insight.created_at = item.created_at
     insight.completed_at = item.completed_at
     address = photo_address(image)
@@ -576,6 +692,26 @@ async def _add_insight(
     assert is_mock_photo_address(address)
     insight.photo_key = address
     db.add(insight)
+    await db.flush()
+    if item.completed_at is not None:
+        # What the first «تمّ» writes, by the same functions, at the time the file gives. A mock
+        # insight has no learning unit (the pipeline gives scans none), so no unit state is made,
+        # exactly as for a member's own scan.
+        await completion_service.remember(db, owner, insight)
+        await completion_service.place_in_world(db, owner, insight, treasure=True)
+    if item.feedback is not None:
+        db.add(
+            InsightFeedback(
+                insight_id=insight.id,
+                helpful=item.feedback.helpful,
+                reasons=[reason.value for reason in item.feedback.reasons],
+                note=None,
+                # Nothing waits in the admin queue.
+                state=FeedbackState.REVIEWED,
+                created_at=item.feedback.at,
+                updated_at=item.feedback.at,
+            )
+        )
     await db.flush()
     return insight
 
@@ -590,11 +726,11 @@ async def _add_post(
 ) -> Post | None:
     try:
         publication = await publication_service.create_publication(
-            db, InsightTableSource(), user, insight.id, settings, publish_photo=True
+            db, InsightTableSource(), user, insight.id, settings, publish_photo=item.photo
         )
     except AppError:
         return None
-    post = post_service.create_draft(db, user, publication, item.reflection, PostVisibility.PUBLIC)
+    post = post_service.create_draft(db, user, publication, item.reflection, item.visibility)
     await db.flush()
     # Published as the guard publishes a post without text, but with no moderation-log row:
     # that log is append-only, so a row written here could never be removed by `--clean`.
@@ -607,14 +743,13 @@ async def _add_post(
 
 
 async def _add_entry(
-    db: AsyncSession,
-    settings: Settings,
-    store: PhotoStore,
+    run: _Run,
     user: User,
     insight: Insight,
     point: tuple[float, float],
     item: EntryIn,
 ) -> bool:
+    db, store = run.db, run.store
     body = CapturePointIn(
         longitude=point[0],
         latitude=point[1],
@@ -623,16 +758,46 @@ async def _add_entry(
         photo=True,
     )
     try:
-        await atlas_service.place(db, settings, user, insight.id, body, photos=store)
+        await atlas_service.place(db, run.settings, user, insight.id, body, photos=store)
         await atlas_service.publish(db, user, insight.id, photos=store)
     except AppError:
         return False
     entry = (await db.scalars(select(MapEntry).where(MapEntry.insight_id == insight.id))).one()
-    entry.published_at = entry.created_at = item.published_at
+    entry.published_at = entry.created_at = entry.last_active_at = item.published_at
     capture = await db.get(MapCapturePoint, entry.id)
     assert capture is not None  # `place` made it
     capture.confirmed_at = item.published_at
     await db.flush()
+    if item.orphaned:
+        return await _orphan(run, entry.id, insight.id, item)
+    return True
+
+
+async def _orphan(run: _Run, entry_id: int, insight_id: int, item: EntryIn) -> bool:
+    """Orphan the entry as the daily job does, then let its sponsor look after it."""
+    db = run.db
+    # The job's own function: it widens the place, writes the generalisation row and gives the
+    # entry its new public id; the cutoff is the start of today, later than any time of the file.
+    marked = await orphan_service.mark_one(db, entry_id, orphan_service.cutoff_for(0), run.store)
+    if marked is not orphan_service.Marked.WIDENED:
+        message = f"the entry of insight {insight_id} could not be orphaned"
+        raise MockImportError(message)
+    entry = (await db.scalars(select(MapEntry).where(MapEntry.insight_id == insight_id))).one()
+    sponsor = item.sponsor
+    if sponsor is None or sponsor.member not in run.users:
+        return True
+    try:
+        sponsorship = await sponsorship_service.start(db, run.users[sponsor.member], entry.id)
+    except AppError:
+        run.report.skip("sponsorship refused by the app")
+        return True
+    sponsorship.started_at = entry.last_active_at = sponsor.at
+    if sponsor.reflection:
+        # Judged beforehand, as the guard would: published, with no moderation-log row.
+        sponsorship.reflection = sponsor.reflection
+        sponsorship.reflection_status = CommentStatus.PUBLISHED
+    await db.flush()
+    run.report.sponsorships += 1
     return True
 
 
@@ -675,15 +840,23 @@ async def _members(run: _Run) -> None:
         for handle in await run.db.scalars(select(User.handle).where(User.handle.is_not(None)))
         if handle
     }
+    # One hash for the run: the same password, hashed by the app's own function in a thread.
+    password_hash = await asyncio.to_thread(
+        security.hash_password, MOCK_PASSWORD, run.settings.password_bcrypt_rounds
+    )
     for member in run.data.members:
         name = member.handle.lower()
         if name in existing:
             run.users[member.ref] = existing[name]
-        elif re.fullmatch(HANDLE_PATTERN, member.handle) is None or member.handle.lower() in taken:
+        elif (
+            re.fullmatch(HANDLE_PATTERN, member.handle) is None
+            or name in taken
+            or public_identity.handle_problem(public_identity.clean_handle(member.handle))
+        ):
             run.report.skip("member with an unusable or taken handle")
         else:
-            run.users[member.ref] = await _add_member(run.db, run.settings, member)
-            taken.add(member.handle.lower())
+            run.users[member.ref] = await _add_member(run.db, run.settings, member, password_hash)
+            taken.add(name)
             run.created.add(member.ref)
             run.report.members += 1
 
@@ -734,22 +907,16 @@ async def _publications(run: _Run) -> None:
         if (
             insight is not None
             and source is not None
-            and await _add_entry(
-                run.db,
-                run.settings,
-                run.store,
-                run.users[source.member],
-                insight,
-                source.point,
-                entry,
-            )
+            and await _add_entry(run, run.users[source.member], insight, source.point, entry)
         ):
             run.report.entries += 1
+            run.report.orphaned += entry.orphaned
         else:
             run.report.skip("atlas entry without a publishable insight")
 
 
 async def _graph(run: _Run) -> None:
+    blocked = {frozenset((edge.follower, edge.followee)) for edge in run.data.blocks}
     follows = [
         {
             "follower_id": run.users[edge.follower].id,
@@ -760,9 +927,24 @@ async def _graph(run: _Run) -> None:
         if edge.follower in run.created
         and edge.followee in run.users
         and edge.follower != edge.followee
+        # A block ends the follows between two accounts: none is written across one.
+        and frozenset((edge.follower, edge.followee)) not in blocked
     ]
     await _bulk(run.db, Follow, follows)
     run.report.follows = len(follows)
+    blocks = [
+        {
+            "blocker_id": run.users[edge.follower].id,
+            "blocked_id": run.users[edge.followee].id,
+            "created_at": edge.at,
+        }
+        for edge in run.data.blocks
+        if edge.follower in run.created
+        and edge.followee in run.created
+        and edge.follower != edge.followee
+    ]
+    await _bulk(run.db, Block, blocks)
+    run.report.blocks = len(blocks)
     likes: dict[tuple[str, str, str], dict[str, Any]] = {}
     kinds = {kind.value: kind for kind in ReactionKind}
     for reaction in run.data.reactions:
@@ -777,6 +959,17 @@ async def _graph(run: _Run) -> None:
             }
     await _bulk(run.db, PostReaction, list(likes.values()))
     run.report.likes = len(likes)
+    saved = {
+        (mark.post, mark.member): {
+            "post_id": run.posts[mark.post].id,
+            "user_id": run.users[mark.member].id,
+            "created_at": mark.at,
+        }
+        for mark in run.data.bookmarks
+        if mark.member in run.created and mark.post in run.posts
+    }
+    await _bulk(run.db, Bookmark, list(saved.values()))
+    run.report.bookmarks = len(saved)
     await _comments(run)
 
 
@@ -809,10 +1002,13 @@ async def import_file(db: AsyncSession, settings: Settings, data: MockFile) -> I
     Write what `data` describes that is not there yet, after the checks; the caller commits.
 
     Nothing is written for a member whose address already exists: neither the member nor
-    anything the file says that member did.
+    anything the file says that member did. The services run with every feature on, whatever the
+    host's switches say (decision 63): the rows are the same on a host that turns the atlas or
+    the network on later, and a photo of a post is not refused by the photo switch.
     """
     await check_scripture_guard(db, data)
     check_member_texts(data)
+    settings = settings.model_copy(update={"disabled_features": "", "enabled_features": ""})
     run = _Run(db, settings, data, _store(settings))
     await _members(run)
     await _insights(run)
