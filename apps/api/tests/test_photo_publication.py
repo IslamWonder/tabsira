@@ -34,9 +34,12 @@ from src.owner import Owner
 from src.services import moderation_service, photo_service
 from src.services.insight_table_source import InsightTableSource
 from src.storage.base import (
+    InvalidKeyError,
     ObjectNotFoundError,
     Storage,
     StorageUnavailableError,
+    check_key,
+    is_mock_photo_address,
     new_private_key,
     new_public_key,
 )
@@ -737,3 +740,149 @@ async def test_the_export_states_the_photo_of_a_post_as_facts_and_never_as_a_key
         {"insight_id": str(shown.id), "published": True},
         {"insight_id": str(chosen_no_copy.id), "published": False},
     ]
+
+
+# ─── Placeholder photo addresses of mock members (decision 63) ───
+
+MOCK_ADDRESS = "https://placepix.net/id/12/800/600"
+LOOKALIKES = [
+    "http://placepix.net/id/12/800/600",
+    "https://placepix.net.evil.com/id/12/800/600",
+    "https://evil.com/id/12/800/600",
+    "https://placepix.net/id/12/800/600/extra",
+    "https://placepix.net/id/12/800/600?x=1",
+    "https://placepix.net/id/12/800/600#top",
+    "https://placepix.net/id/12/800/600\n",
+    "https://placepix.net:443/id/12/800/600",
+    "https://user@placepix.net/id/12/800/600",
+    "https://placepix.net/id/a/800/600",
+    "https://placepix.net/id/12/800",
+    "https://placepix.net/id/\u0661\u0662/800/600",
+    "https://placepix.net/id/" + "1" * 40 + "/800/600",
+    "",
+]
+
+
+class NoStorage(LocalStorage):
+    """A storage that fails the test on any call that could touch an object."""
+
+    calls: list[str]
+
+    def _refuse(self, name: str) -> Any:
+        self.calls.append(name)
+        raise AssertionError(f"storage.{name} was called for a placeholder address")
+
+    async def put(self, key: str, data: bytes, *, content_type: str = "image/jpeg") -> None:
+        self._refuse("put")
+
+    async def get(self, key: str) -> bytes:
+        return cast("bytes", self._refuse("get"))
+
+    async def exists(self, key: str) -> bool:
+        return cast("bool", self._refuse("exists"))
+
+    async def delete(self, key: str) -> None:
+        self._refuse("delete")
+
+    async def copy(self, source: str, destination: str) -> None:
+        self._refuse("copy")
+
+    def signed_url(self, key: str, *, ttl_seconds: int | None = None) -> str:
+        return cast("str", self._refuse("signed_url"))
+
+
+@pytest.fixture
+def no_storage(photos: PhotoStore, media: Path, account_app: Any) -> NoStorage:
+    storage = NoStorage(
+        media,
+        base_url="https://api.tabsira.test",
+        signing_key=b"k" * 32,
+        default_ttl_seconds=300,
+    )
+    storage.calls = []
+    account_app.state.photo_store = PhotoStore(storage, photos.settings)
+    return storage
+
+
+def test_only_the_exact_placeholder_address_is_one():
+    assert is_mock_photo_address(MOCK_ADDRESS)
+    assert len(MOCK_ADDRESS) <= 64
+    assert not is_mock_photo_address(None)
+    for lookalike in LOOKALIKES:
+        assert not is_mock_photo_address(lookalike), lookalike
+
+
+def test_the_key_rules_still_refuse_a_placeholder_address_and_its_lookalikes(photos):
+    for value in [MOCK_ADDRESS, *LOOKALIKES]:
+        with pytest.raises(InvalidKeyError):
+            check_key(value)
+    # A lookalike is no placeholder: it goes to the storage, which refuses it as before.
+    for lookalike in LOOKALIKES[:-1]:
+        with pytest.raises(InvalidKeyError):
+            photo_service.public_url(photos, lookalike)
+
+
+def test_a_placeholder_address_is_its_own_public_address(photos):
+    assert photo_service.public_url(photos, MOCK_ADDRESS) == MOCK_ADDRESS
+    assert photo_service.public_url(photos, None) is None
+
+
+async def test_a_placeholder_photo_is_shown_as_is_and_no_storage_call_is_made(
+    db_session, make_member, photos, no_storage, world
+):
+    author = await make_member("author")
+    await consent(author)
+    insight = await kept_insight(
+        db_session, author, photos, with_photo=False, photo_key=MOCK_ADDRESS
+    )
+    other = await kept_insight(db_session, author, photos, with_photo=False, photo_key=MOCK_ADDRESS)
+    post_id = await post_with_photo(author, insight)
+
+    submitted = await author.http.post(f"/posts/{post_id}/submit")
+
+    assert submitted.json()["status"] == "published", submitted.text
+    assert await keys_of(db_session, insight) == (MOCK_ADDRESS, MOCK_ADDRESS)
+    assert submitted.json()["insight"]["photo_url"] == MOCK_ADDRESS
+    latest = await author.http.get("/feed/latest")
+    assert [item["insight"]["photo_url"] for item in latest.json()["items"]] == [MOCK_ADDRESS]
+
+    # The reconcile checks it and leaves it alone.
+    report = await photo_service.reconcile_public_copies(
+        db_session, PhotoStore(no_storage, photos.settings)
+    )
+    assert (report.checked, report.deleted, report.failed) == (1, 0, 0)
+    assert await keys_of(db_session, insight) == (MOCK_ADDRESS, MOCK_ADDRESS)
+
+    # Withdrawing the post forgets the public address; nothing is deleted anywhere.
+    assert (await author.http.delete(f"/posts/{post_id}")).status_code == 204
+    assert await keys_of(db_session, insight) == (MOCK_ADDRESS, None)
+
+    # A withdrawn consent or a deleted account removes both keys without a storage call.
+    other.photo_public_key = MOCK_ADDRESS
+    await db_session.flush()
+    store = PhotoStore(no_storage, photos.settings)
+    assert await photo_service.remove_all(db_session, store, author.user.id) == 2
+    assert await keys_of(db_session, other) == (None, None)
+    assert await keys_of(db_session, insight) == (None, None)
+    assert no_storage.calls == []
+
+
+async def test_a_lost_consent_takes_a_placeholder_public_key_away_without_a_storage_call(
+    db_session, make_member, photos, no_storage, world
+):
+    author = await make_member("author")
+    await consent(author)
+    insight = await kept_insight(
+        db_session, author, photos, with_photo=False, photo_key=MOCK_ADDRESS
+    )
+    post_id = await post_with_photo(author, insight)
+    assert (await author.http.post(f"/posts/{post_id}/submit")).status_code == 200
+    assert await keys_of(db_session, insight) == (MOCK_ADDRESS, MOCK_ADDRESS)
+
+    await consent(author, granted=False)
+    await photo_service.sync_public_copy(
+        db_session, PhotoStore(no_storage, photos.settings), insight.id
+    )
+
+    assert (await keys_of(db_session, insight))[1] is None
+    assert no_storage.calls == []

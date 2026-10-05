@@ -36,6 +36,13 @@ KEY = re.compile(
     rf"^(?P<prefix>private|public)/(?:users/(?P<owner>{_UUID})/insights/)?(?P<id>[0-9a-f]{{32}})\.jpg$"
 )
 OWNER_PREFIX = re.compile(rf"^private/users/{_UUID}/$")
+# A mock member's photo is the address of a placeholder image (decision 63), shown as is: it
+# is not an object of ours, so `KEY` refuses it and nothing here ever stores, copies, signs or
+# deletes it. Strict on purpose: https, that host, `/id/<n>/<w>/<h>` with ASCII digits, nothing
+# else (no query, no port, no user, no extra path), and short enough for the 64-character column.
+MOCK_PHOTO_HOST = "placepix.net"
+MOCK_PHOTO_ADDRESS = re.compile(r"https://placepix\.net/id/[0-9]+/[0-9]+/[0-9]+")
+MOCK_PHOTO_MAX_LENGTH = 64
 # The longest a signed link may live, whatever a caller asks for.
 MAX_SIGNED_URL_TTL_SECONDS = 3600
 # The most one object may hold: a re-encoded photo is a few megabytes at most.
@@ -125,6 +132,15 @@ def check_key(key: str) -> str:
 def is_public_key(key: str) -> bool:
     """Whether `key` is under the public prefix. The key is checked first."""
     return split_key(key)[0] == PUBLIC_PREFIX
+
+
+def is_mock_photo_address(value: str | None) -> bool:
+    """Whether `value` is a placeholder photo address that is shown as is and never stored."""
+    return (
+        value is not None
+        and len(value) <= MOCK_PHOTO_MAX_LENGTH
+        and MOCK_PHOTO_ADDRESS.fullmatch(value) is not None
+    )
 
 
 def check_ttl(seconds: int) -> int:

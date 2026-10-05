@@ -36,7 +36,7 @@ from src.models.social import InsightPublication, Post, PostStatus, PostVisibili
 from src.scans import buffer
 from src.services import photo_reconcile
 from src.services.image_service import ImageRejectedError, process_photo_in_thread
-from src.storage.base import StorageError
+from src.storage.base import StorageError, is_mock_photo_address
 from src.storage.photos import PhotoFacts, PhotoStore
 
 log = logging.getLogger("tabsira.photos")
@@ -141,6 +141,12 @@ async def sync_public_copy(
         bool(await db.scalar(_shown_by_a_live_publication(insight.id)))
         and facts.refusal(store.settings) is None
     )
+    if is_mock_photo_address(insight.photo_key):
+        # A placeholder address is shown as is (decision 63): there is no copy to make or
+        # delete, so the public key is the address itself, or nothing.
+        insight.photo_public_key = insight.photo_key if wanted else None
+        await db.flush()
+        return True
     try:
         if wanted and insight.photo_public_key is None:
             insight.photo_public_key = (await store.publish(facts, insight.photo_key)).key
@@ -204,7 +210,11 @@ def public_url(store: PhotoStore, public_key: str | None) -> str | None:
     Built from the store alone (`S3_PUBLIC_BASE_URL`, or the API's own `/media` route for the
     local disk): the address names the public key, which says nothing about the private one.
     """
-    return None if public_key is None else store.storage.public_url(public_key)
+    if public_key is None:
+        return None
+    if is_mock_photo_address(public_key):
+        return public_key
+    return store.storage.public_url(public_key)
 
 
 async def public_urls(db: AsyncSession, store: PhotoStore, insight_ids: set[int]) -> dict[int, str]:
@@ -246,9 +256,12 @@ async def remove_all(db: AsyncSession, store: PhotoStore, user_id: uuid.UUID) ->
 
 async def remove(store: PhotoStore, insight: Insight) -> None:
     """Delete both copies of the insight's photo and forget their keys; nothing when there is none."""
+    # A placeholder address is not ours to delete: it is only forgotten.
     if insight.photo_public_key is not None:
-        await store.withdraw(insight.photo_public_key)
+        if not is_mock_photo_address(insight.photo_public_key):
+            await store.withdraw(insight.photo_public_key)
         insight.photo_public_key = None
     if insight.photo_key is not None:
-        await store.remove(insight.photo_key)
+        if not is_mock_photo_address(insight.photo_key):
+            await store.remove(insight.photo_key)
         insight.photo_key = None

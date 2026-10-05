@@ -12,7 +12,7 @@ Two programs and one file:
 
 | Step                                             | Status | Notes                                                    |
 | ------------------------------------------------ | ------ | -------------------------------------------------------- |
-| Placepix photo addresses shown as is             | ⬜     | Task 22.1. Decision 63. Privacy review.                  |
+| Placepix photo addresses shown as is             | ✅     | Task 22.1. Decision 63. Privacy review.                  |
 | Generator: catalogue, members, places, the graph | ⬜     | Task 22.2.                                               |
 | Importer and `--clean`                           | ⬜     | Task 22.3.                                               |
 | Real processing of every photo                   | ⏸      | Task 22.4, after the owners' retrieval rework is pulled. |
@@ -94,7 +94,7 @@ Two programs and one file:
 
 ### 22.1 Placepix photo addresses shown as is
 
-- **Status:** ⬜ open
+- **Status:** ✅ done (privacy text 2026-10-05T10:00Z names placepix.net as a fourth third-party request)
 - **Goal:** An insight's `photo_key` and `photo_public_key` may hold `https://placepix.net/id/<n>/<w>/<h>` (it fits the 64-character column; no migration). `photo_service.public_url` returns such an address unchanged; `storage/base.check_key` still refuses it, and every path that would store, copy, probe, reconcile or delete a key (`photo_service.remove`, `remove_all`, publishing and withdrawing, `photo_reconcile`) leaves it alone. The host is one constant beside the key rules.
 - **Depends on:** nothing.
 - **Touches:** apps/api/src/{storage/base.py,services/photo_service.py,services/photo_reconcile.py}, their tests, docs/PRIVACY.md (the visitor's browser fetches these photos from placepix.net), the privacy text if it lists the hosts a page contacts.
