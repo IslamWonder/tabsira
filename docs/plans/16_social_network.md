@@ -26,3 +26,11 @@ Posts made from verified insights, follows, likes, comments, reports and moderat
 - **Depends on:** Phase 2.
 - **Touches:** apps/web community routes.
 - **Done when:** Privacy re-review first.
+
+### 16.2 Community summary on the home page
+
+- **Status:** ✅ 2026-10-05 18:43 (Tunis)
+- **Goal:** A quiet «مجتمع تبصرة» card that tells a visitor how large the community is: members and their countries, published insights, entries on the atlas, entries waiting for a sponsor, with one link to the feed or the atlas.
+- **Depends on:** 16.1, 17 (atlas), 21 (sponsoring).
+- **Touches:** `GET /community/summary` (public, aggregate counts of public things only, `null` for a feature that is off, kept ten minutes per worker, 503 when the database is down); `apps/web/src/components/landing/community-summary.tsx`, rendered by the home page on the server with a ten-minute revalidation, after the steps so it is never on a phone's first screen beside the capture (decision 62).
+- **Done when:** the card is hidden when the API fails or members are under 50; the counts carry no person, place or id (`docs/PRIVACY.md`).

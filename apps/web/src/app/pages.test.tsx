@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { CaptureProvider } from '@/components/capture/capture-provider';
+import { apiError, mockApi } from '@/test/api';
 import AtlasPage, { metadata as atlasMetadata } from './atlas/page';
 import CommunityPage, { metadata as communityMetadata } from './community/page';
 import CommunityPublishPage from './community/publish/page';
@@ -93,12 +94,36 @@ describe('placeholder routes', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it('opens on the landing page, its camera one tap away', () => {
+  it('opens on the landing page, its camera one tap away', async () => {
+    mockApi({
+      'GET /community/summary': apiError(503, 'SERVICE_UNAVAILABLE'),
+      'GET /tutorial/rain': () => new Promise(() => undefined),
+    });
     // The root layout's CaptureProvider holds every page; the landing page sends through it.
-    render(<HomePage />, { wrapper: CaptureProvider });
+    render(await HomePage(), { wrapper: CaptureProvider });
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('انظر إلى العالم');
     expect(screen.getAllByRole('button', { name: /صوّر مشهدًا/ }).length).toBeGreaterThan(0);
     expect(homeMetadata.alternates?.canonical).toBe('/');
+    // The database is down: the page still loads, without the community box.
+    expect(screen.queryByRole('region', { name: 'مجتمع تبصرة' })).toBeNull();
+  });
+
+  it('shows the community box once the community is large enough', async () => {
+    mockApi({
+      'GET /community/summary': {
+        body: {
+          members: 1000,
+          insights: 2000,
+          reactions: 5000,
+          atlas_entries: 700,
+          countries: 22,
+          sponsorships_open: 30,
+        },
+      },
+      'GET /tutorial/rain': () => new Promise(() => undefined),
+    });
+    render(await HomePage(), { wrapper: CaptureProvider });
+    expect(screen.getByRole('region', { name: 'مجتمع تبصرة' })).toHaveTextContent('١٬٠٠٠');
   });
 });
 

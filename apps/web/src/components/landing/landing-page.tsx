@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Fragment, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { tutorialOffered, useSession } from '@/account/session';
 import { LogoMark } from '@/components/brand/logo';
 import { useCapture } from '@/components/capture/capture-provider';
@@ -542,9 +542,17 @@ function Closing() {
  * one tap each. The hero's phone is a still picture; no camera runs and no
  * permission is asked until the reader taps the capture button. The features shown
  * are the ones switched on, from the server's flags. An account that holds an insight of its
- * own gets the capture card in place of the hero and no example (decision 64 (6)).
+ * own gets the capture card in place of the hero and no example (decision 64 (6)). `community`
+ * is the server-rendered box of public counts, placed after the steps so that on a phone it is
+ * never on the first screen beside the capture (decision 62).
  */
-export function LandingPage({ features }: { features: LandingFeatures }) {
+export function LandingPage({
+  features,
+  community = null,
+}: {
+  features: LandingFeatures;
+  community?: ReactNode;
+}) {
   const tutorial = tutorialOffered(useSession());
   return (
     <div className="flex flex-col gap-10 pb-10 tablet:gap-14 tablet:pt-6 desktop:gap-[68px]">
@@ -553,6 +561,7 @@ export function LandingPage({ features }: { features: LandingFeatures }) {
         {tutorial ? <Hero /> : <OwnCapture />}
       </div>
       <Journey />
+      {community}
       <Stories features={features} tutorial={tutorial} />
       {tutorial ? <Example /> : null}
       <Trust />

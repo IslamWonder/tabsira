@@ -445,6 +445,27 @@ export const ar = {
       unavailable: 'تعذّر تحميل المثال الآن. يمكنك أن تصوّر مشهدك مباشرة.',
       retry: 'أعد المحاولة',
     },
+    /** The quiet box of public counts under the way in (GET /community/summary). */
+    community: {
+      title: 'مجتمع تبصرة',
+      lead: 'أناسٌ يتأمّلون مشاهدهم، ويشاركون ما انتفعوا به.',
+      members: 'الأعضاء',
+      /** Under the members' figure; `shown` is the count as written on the page. */
+      fromCountries: (count: number, shown: string) => {
+        if (count === 1) {
+          return 'من بلد واحد';
+        }
+        if (count === 2) {
+          return 'من بلدين';
+        }
+        return count <= 10 ? `من ${shown} بلدان` : `من ${shown} بلدًا`;
+      },
+      insights: 'بصائر منشورة',
+      atlas: 'على الأطلس',
+      sponsorships: 'تنتظر الكفالة',
+      toCommunity: 'تعرّف إلى المجتمع',
+      toAtlas: 'افتح الأطلس',
+    },
     trust: {
       title: 'لماذا تبصرة؟',
       items: [

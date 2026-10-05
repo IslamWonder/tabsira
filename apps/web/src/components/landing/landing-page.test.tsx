@@ -36,6 +36,20 @@ beforeEach(() => {
 });
 
 describe('LandingPage', () => {
+  it('places the community box after the steps, never beside the way in', () => {
+    render(
+      <CaptureProvider>
+        <LandingPage features={ALL_ON} community={<section aria-label="community box" />} />
+      </CaptureProvider>
+    );
+
+    const box = screen.getByRole('region', { name: 'community box' });
+    const steps = screen.getByRole('heading', { name: 'من صورةٍ تلتقطها، إلى بصيرةٍ تعيشها.' });
+    const stories = screen.getByRole('heading', { name: 'تبدأ بصورة. وتتّسع مع كلّ بصيرة.' });
+    expect(steps.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(box.compareDocumentPosition(stories) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('says what TABSIRA does, with its two ways in before the picture', () => {
     page();
 
