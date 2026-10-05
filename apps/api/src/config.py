@@ -502,7 +502,10 @@ class _WithoutCodeOnlyKeys(PydanticBaseSettingsSource):
         super().__init__(settings_cls)
         self._source = source
 
-    def get_field_value(self, field: Any, field_name: str) -> tuple[Any, str, bool]:
+    def get_field_value(  # pragma: no cover
+        self, field: Any, field_name: str
+    ) -> tuple[Any, str, bool]:
+        # Required by the base class; `__call__` below answers wholesale, so nothing calls it.
         return None, field_name, False
 
     def __call__(self) -> dict[str, Any]:

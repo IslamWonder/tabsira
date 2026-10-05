@@ -10,7 +10,7 @@ import pytest
 from dotenv import dotenv_values
 from pydantic import SecretStr, ValidationError
 
-from src.config import AiStage, ProviderSettings, Settings
+from src.config import CODE_ONLY_KEYS, AiStage, ProviderSettings, Settings
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 EXAMPLE = REPO_ROOT / ".env.example"
@@ -37,8 +37,8 @@ def settings_keys() -> set[str]:
     """Every environment variable the settings read, nested blocks flattened."""
     keys = set()
     for name, field in Settings.model_fields.items():
-        if name == "legacy_feature_keys":
-            continue  # filled by the loader from FEATURE_* keys, never configured
+        if name == "legacy_feature_keys" or name in CODE_ONLY_KEYS:
+            continue  # filled by the loader, or owned by the code: never configured
         if isinstance(field.default, ProviderSettings):
             keys |= {f"{name}__{sub}".upper() for sub in type(field.default).model_fields}
         else:

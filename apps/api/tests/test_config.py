@@ -1196,6 +1196,16 @@ def test_the_moderation_log_compresses_before_it_drops():
     )
 
 
+def test_the_legal_versions_are_never_read_from_the_environment(make_settings, monkeypatch):
+    monkeypatch.setenv("TERMS_VERSION", "1999-01-01T00:00Z")
+    monkeypatch.setenv("PRIVACY_VERSION", "1999-01-01T00:00Z")
+
+    settings = make_settings()
+
+    assert settings.terms_version == "2026-10-05T18:00Z"
+    assert settings.privacy_version == "2026-10-05T23:30Z"
+
+
 def test_contact_addresses_and_legal_versions_default_to_the_published_ones(make_settings):
     settings = make_settings()
 
