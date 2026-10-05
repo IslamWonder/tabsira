@@ -16,6 +16,7 @@ Two programs, two libraries and one file:
 | Generator: catalogue, members, places, the graph | ✅     | task 23.2.                                 |
 | Importer and `--clean`                           | ✅     | task 23.3.                                 |
 | Real processing of the photos                    | ✅     | task 23.4, on the retrieval of 2026-10-05. |
+| Optional country in the profile                  | ✅     | task 23.7. Decision 67. Privacy review.    |
 
 **How we check it**
 
@@ -149,3 +150,13 @@ Two programs, two libraries and one file:
 - **Touches:** apps/api/src/{cli/import_mock.py,mock_accounts.py,services/email_service.py,services/completion_service.py}, tools/mockdata, apps/web (public photo, legal text), docs.
 - **Production `.env`:** no new key. The privacy text version moved to 2026-10-05T23:00Z (`PRIVACY_VERSION`, already in both examples).
 - **Done when:** 100 % of `import_mock.py` and of `tools/mockdata`; a mock member signs in with `tabsira` through the API and reads feed, profile, world and an atlas entry.
+
+### 23.7 Optional country in the profile, public by its own switch
+
+- **Status:** ✅ done 2026-10-05
+- **Goal:** decision 67. A member may declare a country and, separately, choose to show it; the mock members get the country of the file, about seven in ten shown.
+- **Done:** `profiles.country` (ISO2, nullable, shape checked by the database, existence checked against GeoNames by `profile_service`, 422 for an unknown code) and `profiles.show_country` (mirror of the new `public_country` consent kind, off by default), migration `20261005_200000` on the app chain. `PATCH /profile` takes `country` (null clears it), `POST /consents` takes `public_country`; under 13 it is refused, declaring under 13 withdraws it, and `public_identity.shown_countries` never returns the country of such an account. `GET /u/{handle}` (`MemberProfileOut.country`) and every post's author (`PostAuthorOut.country`, feeds, member posts, a post) carry `{code, name}` only while the switch is on; `MemberOut` (comments, blocks, the atlas) and public insights do not. The Arabic name is the label `GET /geo/countries` gives, read once per process (`geo_service.country_labels`). `ProfileOut` carries both fields, so `GET /account/export` does; the profile row goes with the account. Web: a country select (native, type-ahead, sorted by the Arabic name, «لا أريد التحديد» first) and the switch under it in «ملفي», the country after the handle on a post («· تونس») and after the month joined on a public profile; consent text version `2026-10-05.2`. `import_mock` declares `members[].country` and answers the switch from a SHA-256 of the handle (70 %), once, completing members imported earlier; an unknown code is reported and left empty. Privacy text `2026-10-05T23:30Z` (terms unchanged).
+- **Touches:** apps/api/src/{models/profile.py,models/consent.py,schemas/profile.py,schemas/social.py,schemas/geo.py,services/profile_service.py,services/public_identity.py,services/geo_service.py,services/member_service.py,services/post_view.py,cli/import_mock.py}, apps/api/alembic/versions/20261005_200000_add_profile_country.py, apps/web/src/{account,components/me/settings-section.tsx,components/community,messages,lib/api}, docs.
+- **Tests:** `tests/test_profile_country.py` (the country is absent from every public answer while the switch is off, and only in the profile and the post author while on), `tests/test_import_mock.py` (100 % of `import_mock.py`), Vitest for the settings, the post card, the profile screen and the country list.
+- **Production `.env`:** no new key. `PRIVACY_VERSION` moves to `2026-10-05T23:30Z` in `.env.example` and `deploy/env.production.example`; the owners set the same value in production, and every account accepts the privacy text again at its next visit.
+- **Reviews:** privacy review before merge (profile, consent, public identity); its findings on the under-13 guard and the tests are fixed.
