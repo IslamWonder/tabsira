@@ -110,6 +110,8 @@ from src.models.world import (
     TreasureKind,
     WorldPlace,
     WorldRelation,
+    WorldReveal,
+    WorldTheme,
 )
 
 __all__ = [
@@ -213,5 +215,7 @@ __all__ = [
     "VectorsBase",
     "WorldPlace",
     "WorldRelation",
+    "WorldReveal",
+    "WorldTheme",
     "public_id_pk",
 ]

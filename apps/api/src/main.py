@@ -57,6 +57,7 @@ from src.services import (  # noqa: F401 - the sitemaps register themselves
     social_sitemap,
     turnstile_service,
 )
+from src.services.content import load_layout
 from src.services.insight_source import InsightSource
 from src.services.insight_table_source import InsightTableSource
 from src.storage.notice import announce_storage
@@ -125,13 +126,15 @@ OPENAPI_TAGS = [
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
-    Prove the photo storage works before serving, then release everything on stop.
+    Prove the photo storage and the world layout are usable before serving, then release everything.
 
     On stop it flushes error reports, then releases the database, Redis, queue and HTTP
     connections. In production a storage that cannot be used raises here, so the worker exits at boot
-    (decision 44).
+    (decision 44); so does a world layout out of step with the regions file, which would
+    otherwise fail every world and every first «تمّ».
     """
     await check_storage(app.state.settings)
+    load_layout()
     yield
     shutdown_error_tracking()
     reporter: WebReporter | None = getattr(app.state, "web_reporter", None)

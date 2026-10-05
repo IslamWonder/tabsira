@@ -195,6 +195,16 @@ class PlaceOut(BaseModel):
     created: bool = Field(description="The fog lifted from this place with this completion")
 
 
+class CompletionRevealOut(BaseModel):
+    """What the completion lifted from the clouds of the world picture (decision 59)."""
+
+    id: PublicId
+    landmark: bool = Field(description="The region's landmark: the first concept learned there")
+    created: bool = Field(
+        description="Made by this completion; false when the concept was learned before"
+    )
+
+
 class CompletionOut(BaseModel):
     insight_id: PublicId
     completed_at: datetime
@@ -202,6 +212,10 @@ class CompletionOut(BaseModel):
         description="False when «تمّ» was already recorded: nothing was saved twice"
     )
     place: PlaceOut | None
+    reveal: CompletionRevealOut | None = Field(
+        description="The reveal of the insight's concept; null with the world off, or when "
+        "its region had no room left"
+    )
     treasure_prepared: bool = Field(description="A hidden treasure waits; it shows on return")
     badges_earned: list[str]
     options: list[AfterOption]

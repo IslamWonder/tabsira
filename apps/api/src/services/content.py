@@ -1,9 +1,9 @@
 """
-Prepared content shipped as data: the world's regions and the rain tutorial.
+Prepared content shipped as data: the world's regions, their place on the world picture, the rain tutorial.
 
-Both are versioned files under `data/`, read once and checked: a release adds a
-file, it changes no code (v2 §13 and §16). The tutorial cites its verses and
-hadith by reference only; their text is always read from the store.
+All are versioned files under `data/`, read once and checked: a release adds a
+file, it changes no code (v2 §13 and §16, decision 59). The tutorial cites its
+verses and hadith by reference only; their text is always read from the store.
 """
 
 from __future__ import annotations
@@ -14,15 +14,18 @@ from typing import Annotated, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from src.models.world import MAX_REVEAL_RADIUS, WorldTheme
 from src.pipeline.engine import ExplanationPart, RelationType, SmallStep, WhyThis
 from src.pipeline.schemas import BBox
 
 # apps/api/src/services/content.py -> the repository root, four levels up.
 REPO_ROOT = Path(__file__).resolve().parents[4]
 REGIONS_PATH = REPO_ROOT / "data" / "world" / "regions-1.0.json"
+LAYOUT_PATH = REPO_ROOT / "data" / "world" / "layout-1.json"
 TUTORIAL_PATH = REPO_ROOT / "data" / "tutorial" / "rain-1.0.json"
 
 Ratio = Annotated[float, Field(ge=0, le=1)]
+Radius = Annotated[float, Field(gt=0, le=MAX_REVEAL_RADIUS)]
 
 
 class _Data(BaseModel):
@@ -78,6 +81,63 @@ class Regions(_Data):
             return found
         # The validator made sure the fallback region exists.
         return next(region for region in self.regions if region.id == self.fallback_region)
+
+
+class LayoutImage(_Data):
+    width: Annotated[int, Field(gt=0)]
+    height: Annotated[int, Field(gt=0)]
+
+
+class LayoutSlot(_Data):
+    """One circle of the picture: its centre as ratios of the picture, its radius of its width."""
+
+    x: Ratio
+    y: Ratio
+    radius: Radius
+
+
+class LayoutRegion(_Data):
+    id: str
+    theme: WorldTheme
+    # The landmark's drawing in the web app's icon set.
+    icon: Annotated[str, Field(pattern=r"^[a-z]{2,16}$")]
+    # Slot 0 is the landmark; each further concept learned in the region takes the next free one.
+    slots: Annotated[list[LayoutSlot], Field(min_length=1)]
+
+    @model_validator(mode="before")
+    @classmethod
+    def _slots_as_triples(cls, data: object) -> object:
+        # The file writes each slot as [x, y, radius], one line per region.
+        if isinstance(data, dict) and isinstance(data.get("slots"), list):
+            data = {
+                **data,
+                "slots": [
+                    dict(zip(("x", "y", "radius"), slot, strict=True))
+                    if isinstance(slot, list)
+                    else slot
+                    for slot in data["slots"]
+                ],
+            }
+        return data
+
+
+class Layout(_Data):
+    version: Annotated[str, Field(pattern=r"^[0-9]{1,8}$")]
+    regions_version: str
+    description: str
+    image: LayoutImage
+    regions: list[LayoutRegion]
+
+    @model_validator(mode="after")
+    def _one_entry_per_region(self) -> Self:
+        ids = [region.id for region in self.regions]
+        if len(ids) != len(set(ids)):
+            message = "a region is laid out twice"
+            raise ValueError(message)
+        return self
+
+    def region(self, region_id: str) -> LayoutRegion | None:
+        return next((region for region in self.regions if region.id == region_id), None)
 
 
 class TutorialQuran(_Data):
@@ -136,6 +196,18 @@ class Tutorial(_Data):
 @lru_cache(maxsize=4)
 def load_regions(path: Path = REGIONS_PATH) -> Regions:
     return Regions.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=4)
+def load_layout(path: Path = LAYOUT_PATH) -> Layout:
+    """Read the world picture's layout; refuse one that leaves a region of the regions file out."""
+    layout = Layout.model_validate_json(path.read_text(encoding="utf-8"))
+    regions = load_regions()
+    missing = {region.id for region in regions.regions} - {region.id for region in layout.regions}
+    if layout.regions_version != regions.version or missing:
+        message = f"layout {layout.version} does not lay out regions {regions.version}"
+        raise ValueError(message)
+    return layout
 
 
 @lru_cache(maxsize=4)
