@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { ar } from './ar';
 
+describe('the insights of the world and of the top bar', () => {
+  it('count them the Arabic way, singly in the top bar summary and in the world', () => {
+    expect(ar.nav.progress.insights(1)).toBe('بصيرة واحدة');
+    expect(ar.nav.progress.label(1, 0)).toBe('تقدّمك: بصيرة واحدة. افتح تمرينك');
+    expect(ar.world.count(1)).toBe('بصيرة واحدة');
+    expect(ar.world.landmark('[موضع]', 3, '[عنوان]')).toBe('افتح ما تعلّمته في [موضع]: 3 بصائر');
+  });
+});
+
+describe('the profile flow', () => {
+  it('says which question of how many the reader is at', () => {
+    expect(ar.profile.flow.progress(2, 5)).toBe('السؤال 2 من 5');
+  });
+});
+
 describe('the Arabic counted nouns', () => {
   it('count minutes: one, two, three to ten, eleven and more', () => {
     expect(ar.errors.minutes(0)).toBe('دقيقة');

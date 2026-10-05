@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { markProfileRequired, readSession, setSignedIn } from '@/account/session';
@@ -131,6 +131,32 @@ describe('ProfileGate', () => {
         complete_profile: true,
       },
     ]);
+  });
+
+  it('sends the answers once when the form is submitted again while they travel', async () => {
+    let release: () => void = () => undefined;
+    const api = mockApi(
+      routes({
+        'PATCH /profile': async () => {
+          await new Promise<void>((resolve) => {
+            release = resolve;
+          });
+          return { body: PROFILE };
+        },
+      })
+    );
+    setSignedIn(NEW);
+    render(<ProfileGate />);
+    const dialog = await screen.findByRole('dialog');
+    await answerEverything();
+    const form = dialog.querySelector('form') as HTMLFormElement;
+
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    await act(async () => release());
+
+    await waitFor(() => expect(readSession()).toMatchObject({ user: { profile_completed: true } }));
+    expect(await api.bodies('PATCH', '/profile')).toHaveLength(1);
   });
 
   it('says when the answers were not kept, and stays', async () => {

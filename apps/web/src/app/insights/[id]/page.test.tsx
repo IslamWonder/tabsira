@@ -51,6 +51,12 @@ describe('the public page of an insight', () => {
     expect(screen.getByRole('link', { name: 'ادخل إلى حسابك' })).toHaveAttribute('href', '/signin');
   });
 
+  it('shows the handle alone when the owner agreed to no public name', async () => {
+    await open({ author: { handle: 'sara_21', public_name: null } });
+    expect(screen.getByText('@sara_21')).toBeInTheDocument();
+    expect(screen.queryByText('سارة')).not.toBeInTheDocument();
+  });
+
   it('names no author when the owner chose none, and shows no photo', async () => {
     const container = await open({ author: null });
     expect(screen.queryByText('@sara_21')).not.toBeInTheDocument();

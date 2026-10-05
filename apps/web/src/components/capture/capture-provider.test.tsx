@@ -151,6 +151,74 @@ describe('CaptureProvider', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('says a refusal, offers to send the same photo again, and goes on when it works', async () => {
+    let answers = 0;
+    mockApi({
+      'POST /scans': () =>
+        answers++ === 0
+          ? apiError(500, 'server_error')
+          : { status: 202, body: scanOut({ id: '110000000000000077', status: 'queued' }) },
+    });
+    const { result } = renderHook(() => useCapture(), { wrapper: CaptureProvider });
+
+    await act(async () => result.current.send(new File(['x'], 'x.jpg', { type: 'image/jpeg' })));
+
+    const sheet = await screen.findByRole('dialog', { name: 'صورتك' });
+    expect(await within(sheet).findByRole('alert')).toBeInTheDocument();
+    await userEvent.click(within(sheet).getByRole('button', { name: 'أعد المحاولة' }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/scan/110000000000000077'));
+  });
+
+  it("leaves the sending sheet on the reader's word, with nothing left of the failure", async () => {
+    mockApi({ 'POST /scans': apiError(500, 'server_error') });
+    const { result } = renderHook(() => useCapture(), { wrapper: CaptureProvider });
+    await act(async () => result.current.send(new File(['x'], 'x.jpg', { type: 'image/jpeg' })));
+    const sheet = await screen.findByRole('dialog', { name: 'صورتك' });
+    await within(sheet).findByRole('alert');
+
+    await userEvent.click(within(sheet).getByRole('button', { name: 'عد إلى المشهد' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('drops the answer of a photo the reader cancelled while it travelled', async () => {
+    let release: () => void = () => undefined;
+    mockApi({
+      'POST /scans': async () => {
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return { status: 202, body: scanOut({ id: '110000000000000088', status: 'queued' }) };
+      },
+    });
+    const { result } = renderHook(() => useCapture(), { wrapper: CaptureProvider });
+    await act(async () => result.current.send(new File(['x'], 'x.jpg', { type: 'image/jpeg' })));
+    const sheet = await screen.findByRole('dialog', { name: 'صورتك' });
+
+    await userEvent.click(within(sheet).getByRole('button', { name: 'ألغِ' }));
+    await act(async () => release());
+
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('closes the capture sheet with Escape', async () => {
+    stubCamera('granted');
+    render(
+      <CaptureProvider>
+        <Opener />
+      </CaptureProvider>
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'صوّر مشهدًا' }));
+    await screen.findByRole('dialog', { name: 'صوّر مشهدًا' });
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
   it('is needed by every page that captures', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     expect(() => renderHook(() => useCapture())).toThrow('outside a CaptureProvider');

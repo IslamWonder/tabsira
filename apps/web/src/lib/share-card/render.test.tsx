@@ -152,6 +152,13 @@ describe('the share card image', () => {
     expect(texts).toContain(insight.disclosure);
   });
 
+  it('draws the handle alone when the author agreed to no public name', async () => {
+    const insight = publicInsightOut({ author: { handle: 'tester', public_name: null } });
+    const { specs } = await render(insight);
+    expect(specs.map((spec) => spec.text)).toContain(messages.shareCard.authorHandle('tester'));
+    expect(messages.shareCard.authorHandle('tester')).toContain('\u2066@tester\u2069');
+  });
+
   it('draws a card for an insight with a verse only', async () => {
     const insight = publicInsightOut({ hadith: null, hadith_status: 'none' });
     const { specs, info } = await render(insight);

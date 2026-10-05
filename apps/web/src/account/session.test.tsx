@@ -4,6 +4,7 @@ import { apiError, mockApi } from '@/test/api';
 import { USER } from '@/test/fixtures';
 import {
   loadSession,
+  markProfileRequired,
   markTutorialClosed,
   readSession,
   setGuest,
@@ -34,6 +35,16 @@ describe('the session store', () => {
     const closed = readSession();
     markTutorialClosed();
     expect(readSession()).toBe(closed);
+  });
+
+  it('leaves a guest and an account with the form already open as they are', () => {
+    setGuest();
+    markProfileRequired();
+    expect(readSession()).toEqual({ status: 'guest' });
+    setSignedIn({ ...USER, profile_completed: false });
+    const open = readSession();
+    markProfileRequired();
+    expect(readSession()).toBe(open);
   });
 
   it('asks the API once, however many readers, and knows the account', async () => {

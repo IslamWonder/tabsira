@@ -44,6 +44,20 @@ describe('ProfileScreen', () => {
     expect(document.body.textContent).not.toContain('example.com');
   });
 
+  it('heads a profile without a public name with the handle, shown once', async () => {
+    mockApi({
+      'GET /auth/me': apiError(401, 'UNAUTHORIZED'),
+      'GET /u/rain_reader': { body: { ...PROFILE, public_name: null } },
+      'GET /u/rain_reader/posts': { body: page([POST]) },
+    });
+    render(<ProfileScreen handle="rain_reader" />);
+    const heading = await screen.findByRole('heading', { level: 1 });
+    expect(heading).toHaveTextContent('@rain_reader');
+    expect(
+      within(screen.getByRole('region', { name: '@rain_reader' })).getAllByText('@rain_reader')
+    ).toHaveLength(1);
+  });
+
   it('follows and unfollows through the API', async () => {
     const api = member({
       'PUT /u/rain_reader/follow': { status: 204 },

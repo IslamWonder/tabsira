@@ -64,6 +64,20 @@ describe('the post page metadata', () => {
   });
 });
 
+describe('the post page for an author who shows no full name', () => {
+  it('renders the article data without an author name, the handle never standing for it', async () => {
+    mockApi({
+      [`GET /posts/${POST.id}`]: {
+        body: { ...POST, author: { handle: 'rain_reader', public_name: null } },
+      },
+    });
+    const { container } = render(await PostPage(params({ id: POST.id })));
+    const jsonLd = container.querySelector('script[type="application/ld+json"]');
+    expect(jsonLd?.textContent).toContain('"@type":"Article"');
+    expect(jsonLd?.textContent).not.toContain('rain_reader');
+  });
+});
+
 describe('the profile page metadata', () => {
   it('names the member by public name and handle only, once they have a public post', async () => {
     const api = mockApi({ 'GET /u/rain_reader': { body: PROFILE } });

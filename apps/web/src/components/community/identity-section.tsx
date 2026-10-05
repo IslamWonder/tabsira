@@ -177,6 +177,7 @@ export function BlocksList() {
 function FullNameSwitch() {
   const session = useSession();
   const save = useSaveState();
+  /* v8 ignore next 3: narrows the type; IdentitySection renders this switch only for a signed-in session */
   if (session.status !== 'signed-in') {
     return null;
   }

@@ -197,6 +197,17 @@ describe('the sponsoring part of an entry page', () => {
     expect(screen.getByText(/@quiet_keeper/)).toBeInTheDocument();
   });
 
+  it('names a sponsor without a public name by the handle alone', async () => {
+    member({
+      [ENTRY_PATH]: {
+        body: { ...SPONSORED_ENTRY, sponsor: { ...SPONSOR, public_name: null } },
+      },
+    });
+    render(<EntryScreen entryId={ID} sponsorship />);
+    const link = await screen.findByRole('link', { name: '@quiet_keeper' });
+    expect(link).toHaveAttribute('href', `/u/${SPONSOR.handle}`);
+  });
+
   it('lets the sponsor end the sponsoring only after a confirmation', async () => {
     const mine = { ...SPONSORED_ENTRY, sponsor: ME, sponsor_reflection: null };
     const api = member({

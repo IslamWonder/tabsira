@@ -572,6 +572,27 @@ describe('AtlasScreen with sponsoring', () => {
     expect(within(mine).getAllByRole('link', { name: 'افتحها على الأطلس' })).toHaveLength(2);
   });
 
+  it('names the sponsor of an own entry by the handle when there is no public name', async () => {
+    setSignedIn(USER);
+    guest({
+      'GET /atlas/orphans': orphans([]),
+      'GET /me/map-entries': {
+        body: [
+          {
+            ...OWNER_ENTRY,
+            status: 'published' as const,
+            sponsor: { ...SPONSOR, public_name: null },
+          },
+        ],
+      },
+    });
+    render(<AtlasScreen sponsorship />);
+    await loadedMap();
+    await userEvent.click(await screen.findByRole('radio', { name: 'بصائري المنشورة' }));
+    const mine = await screen.findByRole('region', { name: 'بصائري على الأطلس' });
+    expect(await within(mine).findByText(S.mine.by('@quiet_keeper'))).toBeInTheDocument();
+  });
+
   it('tells the author, on their own entry, that its place was widened for anonymity', async () => {
     setSignedIn(USER);
     const widened = {

@@ -104,6 +104,13 @@ describe('IdentitySection', () => {
     expect(screen.getByText('لم تحجب أحدًا.')).toBeInTheDocument();
   });
 
+  it('lists a blocked member who has no public name by the handle alone', async () => {
+    member({ 'GET /blocks': { body: [{ ...OTHER, public_name: null }] } });
+    render(<IdentitySection />);
+    expect(await screen.findByText('@other_one')).toBeInTheDocument();
+    expect(screen.queryByText('[عضو آخر]')).toBeNull();
+  });
+
   async function submitIdentity() {
     render(<IdentitySection />);
     await userEvent.type(await screen.findByLabelText('المعرّف'), 'reader');

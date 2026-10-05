@@ -79,6 +79,21 @@ describe('the atlas entry page metadata', () => {
   });
 });
 
+describe('the atlas entry page for an author who shows no full name', () => {
+  it('names no author in the article data, the handle never standing for a name', async () => {
+    mockApi({
+      [`GET /atlas/entries/${ENTRY.id}`]: {
+        body: { ...ENTRY, author: { handle: 'rain_reader', public_name: null } },
+      },
+    });
+    const { container } = render(await AtlasEntryPage(params({ id: ENTRY.id })));
+    const data = container.querySelector('script[type="application/ld+json"]')?.textContent;
+    expect(data).toContain('"headline"');
+    expect(data).not.toContain('"author"');
+    expect(data).not.toContain('rain_reader');
+  });
+});
+
 describe('the atlas entry page for an entry that cannot be shown', () => {
   it('renders the screen without article data for a gone entry or a malformed id', async () => {
     mockApi({ [`GET /atlas/entries/${ENTRY.id}`]: apiError(410, 'GONE') });
