@@ -104,10 +104,20 @@ async def _reserve(
 ) -> ChatMessage:
     """Hold a slot for one message, or return the answered message of the same key."""
     # The lock also re-reads `completed_at`: a completion committed since the
-    # caller loaded the row must close the insight here, not be missed.
-    completed_at = await db.scalar(
-        select(Insight.completed_at).where(Insight.id == insight.id).with_for_update()
-    )
+    # caller loaded the row must close the insight here, not be missed. An
+    # insight gone meanwhile (a scan run again drops its unfinished insights)
+    # is not found, rather than a message held for a row that no longer exists.
+    locked = (
+        await db.execute(
+            select(Insight.id, Insight.completed_at)
+            .where(Insight.id == insight.id)
+            .with_for_update()
+        )
+    ).one_or_none()
+    if locked is None:
+        await db.commit()
+        raise _refused(ErrorCode.NOT_FOUND, "No such insight.", 404)
+    completed_at = locked.completed_at
     stale_before = clock.utcnow() - CHAT_RESERVATION
     await db.execute(
         delete(ChatMessage).where(

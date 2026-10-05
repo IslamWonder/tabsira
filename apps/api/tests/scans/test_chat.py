@@ -10,12 +10,12 @@ from datetime import timedelta
 from typing import Any
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from src import clock
 from src.ai.errors import AiCallError, AiErrorCode
-from src.errors import AppError
+from src.errors import AppError, ErrorCode
 from src.messages import messages_for
 from src.models import (
     AiCall,
@@ -26,6 +26,7 @@ from src.models import (
     Hadith,
     HadithClassification,
     HadithVerificationQueue,
+    Insight,
     Profile,
     QuranVerse,
 )
@@ -263,6 +264,37 @@ async def test_done_closes_the_chat_and_keeps_what_was_said(browser, store, flow
     assert (after.status_code, after.json()["error"]) == (409, "CHAT_CLOSED")
     assert (shown["closed"], shown["used"]) == (True, 1)
     assert len(model.calls) == 1
+
+
+async def test_a_completion_committed_meanwhile_closes_the_chat(browser, store, flow_settings):
+    insight_id = int(await an_insight(browser, store, flow_settings))
+    async with store() as db:
+        # The caller loaded the insight before «تمّ» was committed from another request.
+        stale = await db.get(Insight, insight_id)
+        async with store() as other:
+            await other.execute(
+                update(Insight).where(Insight.id == insight_id).values(completed_at=clock.utcnow())
+            )
+            await other.commit()
+        with pytest.raises(AppError) as refused:
+            await chat_service._reserve(db, flow_settings, stale, "late-key", "سؤال")
+    assert (refused.value.code, refused.value.status_code) == (ErrorCode.CHAT_CLOSED, 409)
+    async with store() as db:
+        assert (
+            await db.scalar(select(ChatMessage).where(ChatMessage.insight_id == insight_id)) is None
+        )
+
+
+async def test_a_question_for_an_insight_gone_meanwhile_is_not_found(browser, store, flow_settings):
+    insight_id = int(await an_insight(browser, store, flow_settings))
+    async with store() as db:
+        stale = await db.get(Insight, insight_id)
+        async with store() as other:
+            await other.execute(delete(Insight).where(Insight.id == insight_id))
+            await other.commit()
+        with pytest.raises(AppError) as refused:
+            await chat_service._reserve(db, flow_settings, stale, "gone-key", "سؤال")
+    assert (refused.value.code, refused.value.status_code) == (ErrorCode.NOT_FOUND, 404)
 
 
 async def test_the_fourth_message_is_refused(browser, store, flow_settings, model):
