@@ -362,6 +362,46 @@ describe('the sponsoring part of an entry page', () => {
     expect(section.textContent).not.toMatch(/أجر|حسنات|نقاط|مستوى/);
   });
 
+  it('lets a signed-in member report the sponsor’s reflection, and a guest not', async () => {
+    const api = member({
+      [ENTRY_PATH]: { body: SPONSORED_ENTRY },
+      'POST /reports': { status: 201, body: { id: '1' } },
+    });
+    await open();
+    await userEvent.click(await screen.findByRole('button', { name: S.entry.reportReflection }));
+    const dialog = screen.getByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'أرسل البلاغ' }));
+    await waitFor(async () =>
+      expect(await api.bodies('POST', '/reports')).toEqual([
+        expect.objectContaining({
+          target_type: 'sponsorship',
+          target_id: SPONSORED_ENTRY.sponsor_reflection_id,
+        }),
+      ])
+    );
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('offers no report to a guest, to the sponsor, or without a reflection to report', async () => {
+    mockApi({
+      'GET /auth/me': apiError(401, 'UNAUTHORIZED'),
+      [ENTRY_PATH]: { body: SPONSORED_ENTRY },
+    });
+    const { unmount } = render(<EntryScreen entryId={ID} sponsorship />);
+    await screen.findByText('[تأمل الكافل]');
+    expect(screen.queryByRole('button', { name: S.entry.reportReflection })).toBeNull();
+    unmount();
+  });
+
+  it('offers no report on the sponsor’s own reflection or when it has no id', async () => {
+    member({ [ENTRY_PATH]: { body: { ...SPONSORED_ENTRY, sponsor: ME } } });
+    await open();
+    await screen.findByText('[تأمل الكافل]');
+    await screen.findByRole('button', { name: S.end.action });
+    expect(screen.queryByRole('button', { name: S.entry.reportReflection })).toBeNull();
+  });
+
   it('shows the message of a removed reflection to its sponsor', async () => {
     member({
       [ENTRY_PATH]: { body: { ...SPONSORED_ENTRY, sponsor: ME, sponsor_reflection: null } },

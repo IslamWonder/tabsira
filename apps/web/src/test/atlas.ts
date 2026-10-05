@@ -185,6 +185,7 @@ export const SPONSORED_ENTRY: AtlasEntry = {
   orphaned: false,
   sponsor: SPONSOR,
   sponsor_reflection: '[تأمل الكافل]',
+  sponsor_reflection_id: '7500000000000000001',
 };
 
 export const SPONSORSHIP: Sponsorship = {

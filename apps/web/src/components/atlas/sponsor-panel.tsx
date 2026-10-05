@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
 import { signInHref } from '@/account/links';
+import { useSession } from '@/account/session';
 import { endSponsorship, mySponsorships, sponsorEntry, writeReflection } from '@/atlas/api';
 import type { AtlasEntry, Sponsorship } from '@/atlas/types';
 import { IdentityForm } from '@/components/community/identity-section';
-import { AccessNote } from '@/components/community/sheets';
+import { AccessNote, ReportSheet } from '@/components/community/sheets';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { Notice } from '@/components/ui/notice';
@@ -185,6 +186,8 @@ export function SponsorPanel({
   const access = useAccess();
   const identity = useIdentity();
   const pathname = usePathname();
+  const session = useSession();
+  const [reporting, setReporting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -244,6 +247,23 @@ export function SponsorPanel({
             {S.entry.reflectionOf} · {S.entry.reflectionNote}
           </figcaption>
           <p className="m-0 text-fg leading-[1.9]">{entry.sponsor_reflection}</p>
+          {session.status === 'signed-in' && !mine && entry.sponsor_reflection_id != null ? (
+            <>
+              <Button
+                variant="ghost"
+                onClick={() => setReporting(true)}
+                className="min-h-10 self-start px-3 text-[0.875rem]"
+              >
+                {S.entry.reportReflection}
+              </Button>
+              <ReportSheet
+                open={reporting}
+                onClose={() => setReporting(false)}
+                targetType="sponsorship"
+                targetId={entry.sponsor_reflection_id}
+              />
+            </>
+          ) : null}
         </figure>
       )}
       {waiting ? (
