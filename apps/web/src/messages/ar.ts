@@ -22,6 +22,17 @@ function insightCount(count: number): string {
   return count <= 10 ? `${count} بصائر` : `${count} بصيرة`;
 }
 
+/** Days in a row, counted the Arabic way. */
+function dayCount(count: number): string {
+  if (count === 1) {
+    return 'يوم واحد';
+  }
+  if (count === 2) {
+    return 'يومان';
+  }
+  return count <= 10 ? `${count} أيام` : `${count} يومًا`;
+}
+
 export const ar = {
   meta: {
     siteName: 'تبصرة',
@@ -71,6 +82,15 @@ export const ar = {
     atlas: 'الأطلس',
     me: 'ملفي',
     captureScene: 'صوّر مشهدًا',
+    /** The small summary of the top bar: insights learned and the days in a row. */
+    progress: {
+      insights: insightCount,
+      streak: (days: number) => `${dayCount(days)} متتالية`,
+      label: (insights: number, days: number) =>
+        days > 0
+          ? `تقدّمك: ${insightCount(insights)}، ${dayCount(days)} متتالية. افتح تمرينك`
+          : `تقدّمك: ${insightCount(insights)}. افتح تمرينك`,
+    },
     signIn: 'دخول',
   },
 

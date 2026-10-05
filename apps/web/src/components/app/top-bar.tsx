@@ -13,6 +13,7 @@ import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 import { Brand } from './brand';
 import { isActive, SECTIONS } from './nav-items';
+import { ProgressPill } from './progress-pill';
 
 /**
  * The top bar of tablets and desktops (DESIGN_DECISION.md «Responsive web
@@ -71,6 +72,7 @@ export function TopBar() {
           </ul>
         </nav>
         <div className="flex shrink-0 items-center gap-2">
+          <ProgressPill />
           <SoundToggle />
           <ThemeToggle />
           {/* Shown until the API says someone is signed in: most visitors are guests.
