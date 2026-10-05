@@ -213,6 +213,8 @@ class MemberIn(_Model):
     handle: str
     display_name: str
     joined_at: AwareDatetime
+    # Where the member lives (ISO 3166 alpha-2); an atlas entry must resolve to the same country.
+    country: str | None = None
     # What the person declared at sign-up and in the profile form: private, as for every member.
     gender: Gender = Gender.UNKNOWN
     age_range: AgeRange = AgeRange.UNKNOWN
@@ -748,7 +750,9 @@ async def _add_entry(
     insight: Insight,
     point: tuple[float, float],
     item: EntryIn,
-) -> bool:
+    country: str | None = None,
+) -> bool | None:
+    """Place and publish the entry: True when done, False when refused, None when left out."""
     db, store = run.db, run.store
     body = CapturePointIn(
         longitude=point[0],
@@ -758,11 +762,20 @@ async def _add_entry(
         photo=True,
     )
     try:
-        await atlas_service.place(db, run.settings, user, insight.id, body, photos=store)
+        async with db.begin_nested() as placed:
+            await atlas_service.place(db, run.settings, user, insight.id, body, photos=store)
+            entry = (
+                await db.scalars(select(MapEntry).where(MapEntry.insight_id == insight.id))
+            ).one()
+            # A point near a border can resolve to the neighbour's nearest place: a member of one
+            # country would then show another country's name, so such an entry is left out.
+            if None not in (country, entry.country_iso2) and entry.country_iso2 != country:
+                await placed.rollback()
+                run.report.skip("atlas entry resolved outside its member's country")
+                return None
         await atlas_service.publish(db, user, insight.id, photos=store)
     except AppError:
         return False
-    entry = (await db.scalars(select(MapEntry).where(MapEntry.insight_id == insight.id))).one()
     entry.published_at = entry.created_at = entry.last_active_at = item.published_at
     capture = await db.get(MapCapturePoint, entry.id)
     assert capture is not None  # `place` made it
@@ -901,17 +914,26 @@ async def _publications(run: _Run) -> None:
         else:
             run.posts[item.ref] = post
             run.report.posts += 1
+    countries = {member.ref: member.country for member in run.data.members}
     for entry in run.data.map_entries:
         insight = run.insights.get(entry.insight)
         source = by_ref[entry.insight] if insight is not None else None
-        if (
-            insight is not None
-            and source is not None
-            and await _add_entry(run, run.users[source.member], insight, source.point, entry)
-        ):
+        done = (
+            await _add_entry(
+                run,
+                run.users[source.member],
+                insight,
+                source.point,
+                entry,
+                countries.get(source.member),
+            )
+            if insight is not None and source is not None
+            else False
+        )
+        if done:
             run.report.entries += 1
             run.report.orphaned += entry.orphaned
-        else:
+        elif done is False:
             run.report.skip("atlas entry without a publishable insight")
 
 

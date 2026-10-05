@@ -1019,3 +1019,26 @@ def test_a_big_s3_object_is_refused_by_its_length_or_by_the_capped_read(
 
     with pytest.raises(MockImportError, match="larger than"):
         import_mock.read_source("s3://bucket/key", settings)
+
+
+async def test_an_entry_that_resolves_to_another_country_is_left_out(
+    db_session, settings, world, monkeypatch
+):
+    placed = import_mock.atlas_service.place
+
+    async def across_the_border(db, *args, **kwargs):
+        await placed(db, *args, **kwargs)
+        for entry in (await db.scalars(select(MapEntry))).all():
+            entry.country_iso2 = entry.country_iso2 or "TN"
+        first = await db.scalar(select(MapEntry).order_by(MapEntry.id).limit(1))
+        first.country_iso2 = "IL"
+
+    monkeypatch.setattr(import_mock.atlas_service, "place", across_the_border)
+    data = document()
+    data["map_entries"] = [data["map_entries"][0]]
+
+    report = await run(db_session, settings, data)
+
+    assert report.entries == 0
+    assert report.skipped["atlas entry resolved outside its member's country"] == 1
+    assert await count(db_session, MapEntry) == 0
