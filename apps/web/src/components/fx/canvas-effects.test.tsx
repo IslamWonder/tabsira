@@ -64,6 +64,38 @@ describe('LightMotes', () => {
     expect(frames.pending).toBe(false);
   });
 
+  it('takes the new colour when the theme changes, and stops listening when removed', async () => {
+    const context = withContext();
+    manualFrames();
+    const media = stubMatchMedia();
+    document.documentElement.style.setProperty('--mote', '#123456');
+    const { unmount } = render(<LightMotes />);
+    act(() => setAmbientMotion(false));
+    expect(context.fillStyle).toBe('#123456');
+
+    // A theme chosen in the app: data-theme on <html>.
+    document.documentElement.style.setProperty('--mote', '#abcdef');
+    await act(async () => {
+      document.documentElement.setAttribute('data-theme', 'light');
+    });
+    expect(context.fillStyle).toBe('#abcdef');
+
+    // The device's own scheme changing.
+    document.documentElement.style.setProperty('--mote', '#fedcba');
+    act(() => media.fire());
+    expect(context.fillStyle).toBe('#fedcba');
+
+    unmount();
+    document.documentElement.style.setProperty('--mote', '#000000');
+    await act(async () => {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    });
+    act(() => media.fire());
+    expect(context.fillStyle).toBe('#fedcba');
+    document.documentElement.removeAttribute('data-theme');
+    act(() => setAmbientMotion(true));
+  });
+
   it('refits on resize, honours the pixel ratio, and stops when removed', () => {
     withContext();
     const frames = manualFrames();
