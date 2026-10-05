@@ -399,6 +399,7 @@ def test_public_urls_are_normalised(make_settings, value, expected):
         ("https://tabsira.me/path", "no path"),
         ("https://tabsira.me?x=1", "no path"),
         ("https://tabsira.me#top", "no path"),
+        ("https://owner:secret@tabsira.me", "no user name or password"),
     ],
 )
 def test_public_urls_are_rejected_when_malformed(value, reason):
@@ -449,6 +450,19 @@ def test_production_refuses_a_site_key_the_web_app_would_drop(site_key):
     )
 
     assert "TURNSTILE_SITE_KEY must be 8 to 64 letters, digits, - or _" in message
+
+
+@pytest.mark.parametrize(
+    ("given", "missing"),
+    [
+        ({"turnstile_site_key": "0x4AAAAAAAexample-key_1"}, "TURNSTILE_SECRET_KEY"),
+        ({"turnstile_secret_key": "0x4AAAAAAAsecretvalue"}, "TURNSTILE_SITE_KEY"),
+    ],
+)
+def test_one_turnstile_key_without_the_other_is_refused(given, missing):
+    message = errors_of(**given)
+
+    assert f"{missing} must be set together with the other Turnstile key" in message
 
 
 def test_production_accepts_real_looking_turnstile_keys(make_settings):
