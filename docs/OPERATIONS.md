@@ -198,12 +198,17 @@ The file is made on a development machine in three steps (`tools/mockdata/README
 One command does it all, on a development machine or a host (like `make data`, it checks before it writes):
 
 ```bash
-scripts/mock-data.sh import                                                        # ../tabsira-data/mock/tabsira-mock-v1.json
-scripts/mock-data.sh import s3://<bucket>/mock/tabsira-mock-v1.json --allow-production   # on production
-scripts/mock-data.sh reset s3://<bucket>/mock/tabsira-mock-v1.json --allow-production    # clean, then import
-scripts/mock-data.sh clean --allow-production                                      # remove every mock row (stops if real members depend on them; --also-dependent-rows removes those too)
-scripts/mock-data.sh status                                                        # how many mock members, insights, posts
+scripts/mock-data.sh import --allow-production    # on production: downloads the published file
+scripts/mock-data.sh import                       # a development machine: ../tabsira-data/mock/tabsira-mock-v1.json if present
+scripts/mock-data.sh reset --allow-production     # clean, then import again
+scripts/mock-data.sh clean --allow-production     # remove every mock row (stops if real members depend on them; --also-dependent-rows removes those too)
+scripts/mock-data.sh backup                       # dump the app schema only
+scripts/mock-data.sh status                       # how many mock members, insights, posts
 ```
+
+- Without a source the script reads `MOCK_FILE`, then the local file, then the published file `https://s3-v2.riastorage.com/tabsira/mock/tabsira-mock-v1.json` (an `https` address, a path or `s3://bucket/key` may also be given). A downloaded file is removed when the script ends.
+- `import`, `reset` and `clean` first dump the `app` schema to `../tabsira-data/backups/app-<UTC time>.dump` (members and everything they own; the `corpus`, `geodata` and `vectors` schemas are large and reinstall from their archives), unless `--no-backup` is given. Restore with `pg_restore --clean --if-exists --schema=app -d <database> <file>`.
+- An atlas entry whose point resolves to a GeoNames place of another country than its member's (a point near a border) is left out and counted in the report.
 
 `import` and `reset` first apply any missing migration and stop when the scripture store, the hadiths or GeoNames are not installed. The Make targets call the importer directly:
 
