@@ -1,13 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  adminInspectorUrl,
-  featureAtlas,
-  featureCameraDiscovery,
-  featureFlag,
-  featureSocial,
-  landingFeatures,
-  turnstileSiteKey,
-} from './server-env';
+import { adminInspectorUrl, featureEnabled, landingFeatures, turnstileSiteKey } from './server-env';
 
 describe('the Turnstile site key', () => {
   it('is read from the environment at request time, trimmed', () => {
@@ -30,29 +22,23 @@ describe('the Turnstile site key', () => {
   });
 });
 
-describe('the feature flags the web server reads', () => {
-  it('are on unless the environment file says otherwise, read as the API reads them', () => {
-    expect(featureFlag('ATLAS', {})).toBe(true);
-    expect(featureFlag('ATLAS', { FEATURE_ATLAS: '' })).toBe(true);
-    for (const yes of ['true', 'True', ' 1 ', 'yes', 'on', 'y', 't']) {
-      expect(featureFlag('ATLAS', { FEATURE_ATLAS: yes })).toBe(true);
-    }
-    for (const no of ['false', 'False', '0', 'no', 'off', 'nonsense']) {
-      expect(featureFlag('ATLAS', { FEATURE_ATLAS: no })).toBe(false);
-    }
+describe('the feature switches the web server reads', () => {
+  it('are on unless DISABLED_FEATURES names them, trimmed and with blanks ignored', () => {
+    expect(featureEnabled('atlas', {})).toBe(true);
+    expect(featureEnabled('atlas', { DISABLED_FEATURES: '' })).toBe(true);
+    expect(featureEnabled('atlas', { DISABLED_FEATURES: ' chat , atlas ,,' })).toBe(false);
+    expect(featureEnabled('chat', { DISABLED_FEATURES: 'atlas' })).toBe(true);
   });
 
-  it('name the atlas and the network flags', () => {
-    expect(featureAtlas({ FEATURE_ATLAS: 'false' })).toBe(false);
-    expect(featureAtlas({ FEATURE_ATLAS: 'true' })).toBe(true);
-    expect(featureAtlas()).toBe(true);
-    expect(featureSocial({ FEATURE_SOCIAL: 'false' })).toBe(false);
-    expect(featureSocial({ FEATURE_SOCIAL: 'true' })).toBe(true);
-    expect(featureSocial()).toBe(true);
+  it('keep the two off-by-default features off until ENABLED_FEATURES names them', () => {
+    expect(featureEnabled('social_comments', {})).toBe(false);
+    expect(featureEnabled('camera_anchor', {})).toBe(false);
+    expect(featureEnabled('social_comments', { ENABLED_FEATURES: 'social_comments' })).toBe(true);
+    expect(featureEnabled('camera_anchor', { ENABLED_FEATURES: ' camera_anchor ' })).toBe(true);
   });
 
   it('give the landing page its public subset, and nothing administrative', () => {
-    const features = landingFeatures({ FEATURE_CHAT: 'false', FEATURE_ADMIN: 'true' });
+    const features = landingFeatures({ DISABLED_FEATURES: 'chat' });
     expect(features).toEqual({
       chat: false,
       world: true,
@@ -66,10 +52,35 @@ describe('the feature flags the web server reads', () => {
     expect(landingFeatures().chat).toBe(true);
   });
 
-  it('name the camera discovery flag', () => {
-    expect(featureCameraDiscovery({ FEATURE_CAMERA_DISCOVERY: 'false' })).toBe(false);
-    expect(featureCameraDiscovery({ FEATURE_CAMERA_DISCOVERY: 'true' })).toBe(true);
-    expect(featureCameraDiscovery()).toBe(true);
+  it('let ENABLED_FEATURES win over DISABLED_FEATURES', () => {
+    const env = {
+      DISABLED_FEATURES: 'chat,social_comments',
+      ENABLED_FEATURES: 'chat,social_comments',
+    };
+    expect(featureEnabled('chat', env)).toBe(true);
+    expect(featureEnabled('social_comments', env)).toBe(true);
+  });
+
+  it.each([
+    ['social_comments', 'social'],
+    ['atlas_sponsorship', 'atlas'],
+    ['camera_anchor', 'camera_discovery'],
+    ['dev_inspector', 'admin'],
+  ] as const)('count %s as off while %s is off', (child, parent) => {
+    expect(featureEnabled(child, { ENABLED_FEATURES: child, DISABLED_FEATURES: parent })).toBe(
+      false
+    );
+    expect(featureEnabled(child, { ENABLED_FEATURES: child })).toBe(true);
+  });
+
+  it('ignore a name the API would refuse instead of crashing', () => {
+    expect(featureEnabled('chat', { DISABLED_FEATURES: 'nonsense' })).toBe(true);
+  });
+
+  it('read the process environment by default', () => {
+    vi.stubEnv('DISABLED_FEATURES', 'social');
+    expect(featureEnabled('social')).toBe(false);
+    expect(featureEnabled('atlas')).toBe(true);
   });
 });
 

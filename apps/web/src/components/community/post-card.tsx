@@ -35,6 +35,8 @@ export interface PostCardProps {
   /** In a feed the evidence waits behind a reveal; on its own page it is shown at once. */
   variant?: 'feed' | 'full';
   headingLevel?: 1 | 2 | 3;
+  /** The social_comments feature, read by the server: without it no comment link or count is shown. */
+  comments?: boolean;
   className?: string;
 }
 
@@ -104,6 +106,7 @@ export function PostCard({
   onRemoved,
   variant = 'feed',
   headingLevel = 2,
+  comments = false,
   className,
 }: PostCardProps) {
   const titleId = useId();
@@ -260,13 +263,15 @@ export function PostCard({
               </span>
             ) : null}
           </button>
-          <Link
-            href={`${postPath(post.id)}#comments`}
-            className="inline-flex min-h-12 items-center gap-2 rounded-full px-3 text-[0.9375rem] text-fg-soft transition-colors duration-200 hover:text-fg"
-          >
-            <CommentIcon width="20" height="20" />
-            {M.commentCount(post.comment_count)}
-          </Link>
+          {comments ? (
+            <Link
+              href={`${postPath(post.id)}#comments`}
+              className="inline-flex min-h-12 items-center gap-2 rounded-full px-3 text-[0.9375rem] text-fg-soft transition-colors duration-200 hover:text-fg"
+            >
+              <CommentIcon width="20" height="20" />
+              {M.commentCount(post.comment_count)}
+            </Link>
+          ) : null}
           <button
             type="button"
             aria-pressed={post.viewer?.bookmarked === true}

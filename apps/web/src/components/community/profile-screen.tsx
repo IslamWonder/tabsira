@@ -120,7 +120,13 @@ function FollowButton({
  * read (docs/SOCIAL_NETWORK.md «Public profile»). Nothing else about the
  * person exists in the answer, so nothing else is shown.
  */
-export function ProfileScreen({ handle }: { handle: string }) {
+export function ProfileScreen({
+  handle,
+  comments = false,
+}: {
+  handle: string;
+  comments?: boolean;
+}) {
   const session = useSession();
   const headingId = useId();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -224,6 +230,7 @@ export function ProfileScreen({ handle }: { handle: string }) {
               pages={pages}
               emptyText={() => P.noPosts}
               headingLevel={3}
+              comments={comments}
               onAuthorBlocked={(blocked) => {
                 if (blocked === handle) {
                   setLoad({ kind: 'blocked' });

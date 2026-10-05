@@ -395,7 +395,7 @@ export function AtlasScreen({
   cameraDiscovery = false,
 }: {
   initialView?: View | null;
-  /** FEATURE_CAMERA_DISCOVERY, read by the server: shows the way to the camera discovery. */
+  /** The camera_discovery feature, read by the server: shows the way to the camera discovery. */
   cameraDiscovery?: boolean;
 }) {
   const session = useSession();

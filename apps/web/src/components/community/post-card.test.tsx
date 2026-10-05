@@ -258,6 +258,16 @@ describe('PostCard reactions', () => {
   });
 });
 
+describe('comments on a card', () => {
+  it('link to the thread with their count only while the social_comments feature is on', () => {
+    guest();
+    const { rerender } = render(<PostCard post={POST} onChange={vi.fn()} />);
+    expect(document.querySelector('a[href$="#comments"]')).toBeNull();
+    rerender(<PostCard post={POST} onChange={vi.fn()} comments />);
+    expect(document.querySelector('a[href$="#comments"]')).not.toBeNull();
+  });
+});
+
 describe('what a card leaves out', () => {
   it('names the reveal by what the post holds', () => {
     const only = (quran: number, hadith: number) => ({

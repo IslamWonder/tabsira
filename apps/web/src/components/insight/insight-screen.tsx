@@ -83,7 +83,7 @@ export function InsightScreen({
   publishTo = NO_TARGETS,
 }: {
   insightId: string;
-  /** FEATURE_ATLAS and FEATURE_SOCIAL, read by the server: the other ways to publish inside sharing. */
+  /** the atlas and social features, read by the server: the other ways to publish inside sharing. */
   publishTo?: PublishTargets;
 }) {
   const controls = useInsight(insightId);

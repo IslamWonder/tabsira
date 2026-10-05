@@ -161,15 +161,15 @@ describe('manifest', () => {
   });
 });
 
-describe('the network pages (FEATURE_SOCIAL)', () => {
+describe('the network pages (the social feature)', () => {
   it('do not exist while the flag is off: the feeds and the publish screen are 404s (decision 1)', () => {
-    vi.stubEnv('FEATURE_SOCIAL', 'false');
+    vi.stubEnv('DISABLED_FEATURES', 'social');
     expect(() => render(<CommunityPage />)).toThrow('NEXT_NOT_FOUND');
     expect(() => render(<CommunityPublishPage />)).toThrow('NEXT_NOT_FOUND');
   });
 
   it('open the publish screen while the flag is on', () => {
-    vi.stubEnv('FEATURE_SOCIAL', 'true');
+    vi.stubEnv('DISABLED_FEATURES', '');
     render(<CommunityPublishPage />);
     expect(screen.getByRole('heading', { level: 1, name: 'اختر بصيرة أولًا' })).toBeInTheDocument();
   });

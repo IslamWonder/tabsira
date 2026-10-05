@@ -99,9 +99,9 @@ describe('the atlas place page metadata', () => {
   });
 });
 
-describe('the camera discovery page (FEATURE_CAMERA_DISCOVERY)', () => {
+describe('the camera discovery page (the camera_discovery feature)', () => {
   it('is a 404 while the flag is off, on the atlas too', () => {
-    vi.stubEnv('FEATURE_CAMERA_DISCOVERY', 'false');
+    vi.stubEnv('DISABLED_FEATURES', 'camera_discovery');
     expect(() => render(<AtlasCameraPage />)).toThrow('NEXT_NOT_FOUND');
     mockApi({});
     render(<AtlasPage />);
@@ -109,7 +109,7 @@ describe('the camera discovery page (FEATURE_CAMERA_DISCOVERY)', () => {
   });
 
   it('opens on its explanation while the flag is on, outside the sitemap', () => {
-    vi.stubEnv('FEATURE_CAMERA_DISCOVERY', 'true');
+    vi.stubEnv('DISABLED_FEATURES', '');
     mockApi({});
     render(<AtlasCameraPage />);
     expect(
@@ -127,16 +127,16 @@ describe('the camera discovery page (FEATURE_CAMERA_DISCOVERY)', () => {
   });
 });
 
-describe('the atlas pages (FEATURE_ATLAS)', () => {
+describe('the atlas pages (the atlas feature)', () => {
   it('do not exist while the flag is off: the map and the placing screen are 404s (decision 1)', () => {
-    vi.stubEnv('FEATURE_ATLAS', 'false');
+    vi.stubEnv('DISABLED_FEATURES', 'atlas');
     mockApi({});
     expect(() => render(<AtlasPage />)).toThrow('NEXT_NOT_FOUND');
     expect(() => render(<AtlasPublishPage />)).toThrow('NEXT_NOT_FOUND');
   });
 
   it('open while the flag is on', () => {
-    vi.stubEnv('FEATURE_ATLAS', 'true');
+    vi.stubEnv('DISABLED_FEATURES', '');
     mockApi({});
     render(<AtlasPage />);
     expect(

@@ -1,4 +1,5 @@
 import type { LandingFeatures } from '@/components/landing/landing-model';
+import type { components } from '@/lib/api/schema';
 import { apiOrigin, siteOrigin } from '@/lib/site';
 
 /**
@@ -63,41 +64,63 @@ export function serverSiteOrigin(env: Env = process.env): URL {
 /** How long the sitemap waits for the API: a page of 10 000 entries is more than a consent check. */
 export const SITEMAP_TIMEOUT_MS = 10_000;
 
-// The spellings pydantic accepts for a boolean setting, so the web and the API read one value alike.
-const TRUE_WORDS = new Set(['1', 'true', 't', 'yes', 'y', 'on']);
+/** A feature switch: the names of the API's `FeatureFlag`, from its generated types. */
+export type FeatureFlag = components['schemas']['FeatureFlag'];
 
-/**
- * A FEATURE_* flag the web server reads at request time, from the same
- * environment file as the API (deploy/ecosystem.config.cjs): on unless the
- * value says otherwise, as the API's own defaults are. Server code only; no
- * flag is baked into the bundle.
- */
-export function featureFlag(name: string, env: Env = process.env): boolean {
-  const value = env[`FEATURE_${name}`]?.trim().toLowerCase() ?? '';
-  return value === '' ? true : TRUE_WORDS.has(value);
+// The rule of decision 63, the same as apps/api/src/features.py: every feature is on unless
+// DISABLED_FEATURES names it, except these, which are on only when ENABLED_FEATURES names them.
+const OFF_BY_DEFAULT: ReadonlySet<FeatureFlag> = new Set<FeatureFlag>([
+  'social_comments',
+  'camera_anchor',
+]);
+
+// child -> parent: a child counts as off whenever its parent is off.
+const PARENT: Readonly<Partial<Record<FeatureFlag, FeatureFlag>>> = {
+  social_comments: 'social',
+  atlas_sponsorship: 'atlas',
+  camera_anchor: 'camera_discovery',
+  dev_inspector: 'admin',
+};
+
+// The API refuses a name it does not know at start, so the web ignores one rather than crash.
+function names(raw: string | undefined): ReadonlySet<string> {
+  return new Set(
+    (raw ?? '')
+      .split(',')
+      .map((name) => name.trim())
+      .filter((name) => name !== '')
+  );
 }
 
 /**
- * What the landing page may announce: the public subset of the flags, read here at request
+ * Whether a feature is on. DISABLED_FEATURES and ENABLED_FEATURES are read at request time from
+ * the same environment file as the API (deploy/ecosystem.config.cjs); ENABLED_FEATURES wins, and
+ * a child is off while its parent is. Server code only: nothing is baked into the bundle.
+ */
+export function featureEnabled(flag: FeatureFlag, env: Env = process.env): boolean {
+  const own =
+    names(env.ENABLED_FEATURES).has(flag) ||
+    (!OFF_BY_DEFAULT.has(flag) && !names(env.DISABLED_FEATURES).has(flag));
+  const parent = PARENT[flag];
+  return own && (parent === undefined || featureEnabled(parent, env));
+}
+
+/**
+ * What the landing page may announce: the public subset of the features, read here at request
  * time and handed to the page as plain values. Nothing administrative is in it, and the
- * camera anchor, off, is not a thing the page ever offers.
+ * camera anchor, off by default, is not a thing the page ever offers.
  */
 export function landingFeatures(env: Env = process.env): LandingFeatures {
   return {
-    chat: featureFlag('CHAT', env),
-    world: featureFlag('WORLD', env),
-    treasure: featureFlag('TREASURE', env),
-    social: featureFlag('SOCIAL', env),
-    atlas: featureFlag('ATLAS', env),
-    cameraDiscovery: featureFlag('CAMERA_DISCOVERY', env),
-    photoStorage: featureFlag('PHOTO_STORAGE', env),
-    canonicalVerify: featureFlag('CANONICAL_VERIFY', env),
+    chat: featureEnabled('chat', env),
+    world: featureEnabled('world', env),
+    treasure: featureEnabled('treasure', env),
+    social: featureEnabled('social', env),
+    atlas: featureEnabled('atlas', env),
+    cameraDiscovery: featureEnabled('camera_discovery', env),
+    photoStorage: featureEnabled('photo_storage', env),
+    canonicalVerify: featureEnabled('canonical_verify', env),
   };
-}
-
-/** The camera discovery, levels A and B (decision 9); off in production until proven on phones. */
-export function featureCameraDiscovery(env: Env = process.env): boolean {
-  return featureFlag('CAMERA_DISCOVERY', env);
 }
 
 /** The admin area of `make dev`; production names its own in ADMIN_URL (docs/ADMIN.md). */
@@ -118,16 +141,6 @@ export function adminInspectorUrl(scanId: string, env: Env = process.env): strin
   }
   const base = env.ADMIN_URL?.trim() || DEVELOPMENT_ADMIN_URL;
   return new URL(`/admin/inspect/${scanId}`, base).toString();
-}
-
-/** The world atlas: while it is off, its pages do not exist (decision 1), as the API's routes do not. */
-export function featureAtlas(env: Env = process.env): boolean {
-  return featureFlag('ATLAS', env);
-}
-
-/** The social network: while it is off, its pages do not exist (decision 1), as the API's routes do not. */
-export function featureSocial(env: Env = process.env): boolean {
-  return featureFlag('SOCIAL', env);
 }
 
 // A Turnstile site key: letters, digits, "_" and "-" (Cloudflare's own begin with "0x4" or "1x0").

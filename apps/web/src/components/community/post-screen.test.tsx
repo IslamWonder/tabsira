@@ -12,12 +12,23 @@ const guest = (routes = {}) =>
   mockApi({ 'GET /auth/me': apiError(401, 'UNAUTHORIZED'), ...routes });
 
 describe('PostScreen', () => {
+  it('shows no thread while the social_comments feature is off', async () => {
+    const api = guest({ [`GET /posts/${POST.id}`]: { body: POST } });
+    render(<PostScreen postId={POST.id} />);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: '[عنوان البصيرة]' })
+    ).toBeInTheDocument();
+    expect(screen.queryByText('[تعليق]')).toBeNull();
+    expect(document.getElementById('comments')).toBeNull();
+    expect(api.requests.some((request) => request.url.includes('/comments'))).toBe(false);
+  });
+
   it('shows the post with its evidence and its comments', async () => {
     guest({
       [`GET /posts/${POST.id}`]: { body: POST },
       [`GET /posts/${POST.id}/comments`]: { body: page([COMMENT]) },
     });
-    render(<PostScreen postId={POST.id} />);
+    render(<PostScreen postId={POST.id} comments />);
     expect(
       await screen.findByRole('heading', { level: 1, name: '[عنوان البصيرة]' })
     ).toBeInTheDocument();
@@ -31,14 +42,14 @@ describe('PostScreen', () => {
 
   it('tells a withdrawn post from one the viewer may not see', async () => {
     guest({ [`GET /posts/${POST.id}`]: apiError(410, 'GONE') });
-    const { unmount } = render(<PostScreen postId={POST.id} />);
+    const { unmount } = render(<PostScreen postId={POST.id} comments />);
     expect(
       await screen.findByRole('heading', { level: 1, name: 'سُحب هذا المنشور' })
     ).toBeInTheDocument();
     unmount();
 
     guest({ [`GET /posts/${POST.id}`]: apiError(404, 'NOT_FOUND') });
-    render(<PostScreen postId={POST.id} />);
+    render(<PostScreen postId={POST.id} comments />);
     expect(
       await screen.findByRole('heading', { level: 1, name: 'لم نجد هذا المنشور' })
     ).toBeInTheDocument();
@@ -46,7 +57,7 @@ describe('PostScreen', () => {
 
   it('says when the post cannot be loaded and tries again', async () => {
     guest({ [`GET /posts/${POST.id}`]: 'network-error' });
-    render(<PostScreen postId={POST.id} />);
+    render(<PostScreen postId={POST.id} comments />);
     expect(await screen.findByRole('alert')).toHaveTextContent(/تعذّر الوصول/);
     guest({
       [`GET /posts/${POST.id}`]: { body: POST },
@@ -67,7 +78,7 @@ describe('PostScreen', () => {
       [`PUT /posts/${POST.id}/like`]: { body: { liked: true, like_count: 3 } },
       [`DELETE /posts/${POST.id}`]: { status: 204 },
     });
-    render(<PostScreen postId={POST.id} />);
+    render(<PostScreen postId={POST.id} comments />);
     await screen.findByRole('heading', { level: 1, name: '[عنوان البصيرة]' });
     await waitFor(() => expect(screen.getByLabelText('اكتب تعليقًا')).toBeEnabled());
     await userEvent.click(screen.getByRole('button', { name: /^أثر/ }));
@@ -86,7 +97,7 @@ describe('PostScreen', () => {
       'GET /me/public-identity': { body: IDENTITY },
       [`GET /posts/${POST.id}`]: { body: { ...MY_POST, status: 'pending_review' } },
     });
-    const { unmount } = render(<PostScreen postId={POST.id} />);
+    const { unmount } = render(<PostScreen postId={POST.id} comments />);
     await screen.findByRole('heading', { level: 1, name: '[عنوان البصيرة]' });
     expect(screen.queryByRole('heading', { name: 'التعليقات' })).toBeNull();
     unmount();
@@ -99,7 +110,7 @@ describe('PostScreen', () => {
       [`GET /posts/${POST.id}/comments`]: { body: page([byAuthor]) },
       'PUT /blocks/rain_reader': { status: 204 },
     });
-    render(<PostScreen postId={POST.id} />);
+    render(<PostScreen postId={POST.id} comments />);
     const comment = (await screen.findByText('[تعليق الكاتب]')).closest(
       '[data-comment-id]'
     ) as HTMLElement;
@@ -121,7 +132,7 @@ describe('PostScreen', () => {
       [`GET /posts/${POST.id}/comments`]: { body: page([]) },
       'PUT /blocks/rain_reader': { status: 204 },
     });
-    render(<PostScreen postId={POST.id} />);
+    render(<PostScreen postId={POST.id} comments />);
     await screen.findByRole('heading', { level: 1, name: '[عنوان البصيرة]' });
     await waitFor(() => expect(screen.getByLabelText('اكتب تعليقًا')).toBeEnabled());
     await userEvent.click(screen.getByRole('button', { name: 'المزيد' }));
@@ -140,7 +151,7 @@ describe('PostScreen', () => {
           answer = () => resolve({ body: POST });
         }),
     });
-    const { unmount } = render(<PostScreen postId={POST.id} />);
+    const { unmount } = render(<PostScreen postId={POST.id} comments />);
     await waitFor(() => expect(answer).not.toBeNull());
     unmount();
     (answer as unknown as () => void)();
