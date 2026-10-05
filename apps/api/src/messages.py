@@ -72,6 +72,8 @@ class Messages:
     # «أطلس بصائر العالم»: how precise a public point is, and what it stands for.
     atlas_precision: str
     atlas_meanings: dict[str, str]
+    # How coarse a widened place is (decision 60), by level.
+    atlas_levels: dict[str, str]
     # Clarification questions, one per constraint that asks something.
     question_specify_before_search: str
     question_confirm_scene_meaning: str
@@ -223,6 +225,12 @@ ARABIC = Messages(
     atlas_meanings={
         "capture_point": "موضع الالتقاط، تقريبًا",
         "public_place": "مكان عام اختاره صاحبها",
+    },
+    atlas_levels={
+        "city": "على مستوى المدينة",
+        "region": "على مستوى المنطقة",
+        "country": "على مستوى الدولة",
+        "grid": "موقع تقريبي واسع",
     },
     question_specify_before_search="ما نوع «{label}» الذي تقصده، أو ما الذي يحدث هنا بالضبط؟",
     question_confirm_scene_meaning="ما الذي يحدث في هذا المشهد كما تراه أنت؟",

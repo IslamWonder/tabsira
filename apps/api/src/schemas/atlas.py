@@ -16,7 +16,12 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.models.atlas import LocationMeaning, LocationSource, MapEntryStatus
+from src.models.atlas import (
+    LocationMeaning,
+    LocationSource,
+    MapEntryStatus,
+    WidenLevel,
+)
 from src.schemas.geo import GeoJsonPoint
 from src.schemas.public_id import PublicId
 from src.schemas.social import HadithEvidenceOut, MemberOut, QuranEvidenceOut
@@ -81,12 +86,27 @@ class PublicLocationOut(BaseModel):
     precision_label: str
     meaning: LocationMeaning
     meaning_label: str
+    widened_level: WidenLevel | None = Field(
+        default=None,
+        description="Set once the place was widened to a city, a region or a country (decision 60): "
+        "the point is then that area's centre, and it is never narrowed again",
+    )
 
 
 class PublicLocationPreview(PublicLocationOut):
     """The owner's preview before publishing: the cell itself, so they can see what is shown."""
 
-    cell: GeoJsonPolygon
+    cell: GeoJsonPolygon | None = Field(
+        default=None, description="Null once the place was widened: there is no cell any more"
+    )
+
+
+class WidenedOut(BaseModel):
+    """What the owner is told about the widening of their entry's place (never the earlier cell)."""
+
+    level: WidenLevel
+    label: str | None
+    at: datetime
 
 
 class MapEntryOwnerOut(BaseModel):
@@ -101,6 +121,14 @@ class MapEntryOwnerOut(BaseModel):
     public: PublicLocationPreview | None = Field(description="Null once the entry is withdrawn")
     place: PlaceRef | None
     photo: bool = Field(description="The owner chose to show the insight's photo with it")
+    sponsor: MemberOut | None = Field(
+        default=None,
+        description="Who looks after the entry now, when it is sponsored (decision 60)",
+    )
+    widened: WidenedOut | None = Field(
+        default=None,
+        description="When and to what level the entry's public place was widened, if it was",
+    )
     published_at: datetime | None
     withdrawn_at: datetime | None
     created_at: datetime
@@ -115,11 +143,20 @@ class AtlasFeatureProperties(BaseModel):
     id: PublicId
     title: str
     glimpse: str
-    author: MemberOut
+    author: MemberOut | None = Field(
+        description="Null once the entry was orphaned: a widened place carries no author's name"
+    )
     place: PlaceRef | None
     cell_m: int
     precision_label: str
     published_on: date = Field(description="The day, never the time: no trail of a person's hours")
+    orphaned: bool = Field(
+        default=False, description="Nobody looks after it: it can be sponsored (decision 60)"
+    )
+    widened_level: WidenLevel | None = None
+    sponsor: MemberOut | None = Field(
+        default=None, description="Who looks after it; chosen in public by the sponsor"
+    )
 
 
 class AtlasFeature(BaseModel):
@@ -147,7 +184,23 @@ class AtlasEntryOut(BaseModel):
     explanation: str = Field(description="The app's explanation, shortened; written by the app")
     step: str | None
     concepts: list[str]
-    author: MemberOut
+    author: MemberOut | None = Field(
+        description="Null once the entry was orphaned, and for good after it: no handle beside a widened place"
+    )
+    orphaned: bool = Field(
+        default=False, description="Nobody looks after it: any verified member may sponsor it"
+    )
+    sponsor: MemberOut | None = Field(
+        default=None, description="Who looks after it; the sponsor chose to be named"
+    )
+    sponsor_reflection: str | None = Field(
+        default=None,
+        description="The sponsor's own words, once published; never scripture, never the author's",
+    )
+    sponsor_reflection_id: PublicId | None = Field(
+        default=None,
+        description="The id to report the reflection by (`target_type` sponsorship); null without one",
+    )
     location: PublicLocationOut
     place: PlaceRef | None
     quran: list[QuranEvidenceOut]

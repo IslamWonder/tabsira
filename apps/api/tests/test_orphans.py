@@ -22,11 +22,18 @@ from src.models import (
     MapCapturePoint,
     MapEntry,
     MapEntryGeneralisation,
+    MapEntryRetiredId,
     MapEntrySponsorship,
     MapEntryStatus,
+    ModerationAction,
+    ModerationActionKind,
+    ModerationSource,
+    Report,
+    ReportStatus,
     WidenLevel,
 )
-from src.services import orphan_service
+from src.services import orphan_service, sitemap_service
+from src.services.sitemap_service import Section
 from src.storage.local import LocalStorage
 from src.storage.photos import PhotoStore, build_photo_store
 from tests import geo_dataset as world_data
@@ -36,12 +43,14 @@ from tests.support_orphans import (
     HAMLET,
     HANDLE,
     OLD,
+    WHOLE,
+    current_id,
     entry_row,
     fresh,
     generalisations,
     run_job,
 )
-from tests.test_atlas import _insight, _place
+from tests.test_atlas import EXACT, PRIVATE_KEYS, _insight, _place, _published, keys_of
 
 # ─── What the job selects ───
 
@@ -489,6 +498,188 @@ async def test_a_photo_copy_the_store_would_not_delete_is_counted_as_a_failure(
     # The place is widened all the same; the hourly reconcile deletes the copy.
     assert (await fresh(db_session, entry)).widened_level is not None
     assert capsys.readouterr().out == "orphans: 1 entries orphaned, 1 places widened, 1 failed\n"
+
+
+# ─── Nothing public carries the earlier cell or the author ───
+
+
+async def test_no_public_answer_carries_the_earlier_cell_or_the_author(
+    db_session, factory, make_member, make_settings, world
+):
+    author = await make_member(HANDLE)
+    guest = await make_member(signed_in=False)
+    insight_id = await _insight(db_session, author)
+    assert (await _place(author, insight_id)).status_code == 200
+    old_id = await _published(author, insight_id)
+    entry = await fresh(db_session, int(old_id))
+    before = (entry.public_lat, entry.public_lng)
+    entry.last_active_at = clock.utcnow() - timedelta(days=OLD)
+    await db_session.flush()
+
+    await run_job(factory, db_session, make_settings)
+
+    entry_id = await current_id(db_session, insight_id)
+    responses = [
+        await guest.http.get("/atlas/entries", params=WHOLE),
+        await guest.http.get(f"/atlas/entries/{entry_id}"),
+        await guest.http.get(f"/atlas/places/{world_data.TUNIS_GOVERNORATE}"),
+    ]
+    # The listing and the place no longer show it (an orphan appears only where orphans are asked
+    # for); the entry's page does.
+    assert [response.status_code for response in responses] == [200, 200, 404]
+    assert responses[0].json()["features"] == []
+    for response in responses:
+        text = response.text
+        assert HANDLE not in text and "author name" not in text
+        assert str(before[0]) not in text and str(before[1]) not in text
+        assert str(EXACT[0]) not in text and str(EXACT[1]) not in text
+        assert old_id not in text
+        if response.headers["content-type"].startswith("application/json"):
+            assert not keys_of(response.json()) & (PRIVATE_KEYS | {"previous_cell_m"})
+            assert "previous" not in text
+    page = responses[1].json()
+    assert page["author"] is None and page["orphaned"] is True and page["post_id"] is None
+    assert page["location"]["point"]["coordinates"] == [10.2, 36.8]
+    assert page["location"]["widened_level"] == "region"
+    assert page["location"]["precision_label"] == "على مستوى المنطقة"
+    # The sitemap lists no place for it: only published entries make a place page.
+    provider = sitemap_service.PROVIDERS[Section.PLACES]
+    assert await provider.pages(db_session, 10) == []
+    assert await provider.entries(db_session, 0, 10) == []
+
+
+async def test_the_author_still_sees_the_entry_marked_orphaned_with_their_own_point(
+    db_session, factory, make_member, make_settings, world
+):
+    author = await make_member(HANDLE)
+    insight_id = await _insight(db_session, author)
+    entry_id = await _published(author, insight_id)
+    entry = await fresh(db_session, int(entry_id))
+    entry.last_active_at = clock.utcnow() - timedelta(days=OLD)
+    await db_session.flush()
+    await run_job(factory, db_session, make_settings)
+
+    mine = (await author.http.get("/me/map-entries")).json()
+    exported = (await author.http.get("/account/export")).json()["map_entries"]
+
+    assert [item["status"] for item in mine] == ["orphaned"]
+    assert (mine[0]["capture"]["latitude"], mine[0]["capture"]["longitude"]) == EXACT
+    assert mine[0]["public"]["point"]["coordinates"] == [10.2, 36.8]
+    assert mine[0]["public"]["cell"] is None
+    assert mine[0]["public"]["widened_level"] == "region"
+    # The owner is told the level, the label and the time, and never the earlier cell.
+    assert (mine[0]["widened"]["level"], mine[0]["widened"]["label"]) == ("region", "ولاية تونس")
+    assert mine[0]["widened"]["at"] and "previous" not in str(mine[0])
+    assert exported[0]["widened"] == mine[0]["widened"]
+    assert (await author.http.get(f"/insights/{insight_id}/map")).json()["status"] == "orphaned"
+
+
+# ─── Never narrowed again ───
+
+
+async def test_placing_the_entry_again_keeps_the_widened_place_and_the_handle_hidden(
+    db_session, factory, make_member, make_settings, world
+):
+    author = await make_member(HANDLE)
+    guest = await make_member(signed_in=False)
+    insight_id = await _insight(db_session, author)
+    first_id = await _published(author, insight_id)
+    entry = await fresh(db_session, int(first_id))
+    entry.last_active_at = clock.utcnow() - timedelta(days=OLD)
+    entry.with_photo = True
+    await db_session.flush()
+    await run_job(factory, db_session, make_settings)
+    entry_id = await current_id(db_session, insight_id)
+
+    moved = await _place(author, insight_id, latitude=36.80, longitude=10.18, photo=True)
+
+    assert moved.status_code == 200, moved.text
+    body = moved.json()
+    assert body["status"] == "draft" and body["photo"] is False
+    assert body["public"]["point"]["coordinates"] == [10.2, 36.8]
+    assert body["public"]["cell"] is None and body["public"]["widened_level"] == "region"
+    # The owner's private point moved; the public one did not.
+    assert (body["capture"]["latitude"], body["capture"]["longitude"]) == (36.80, 10.18)
+    stored = await fresh(db_session, int(entry_id))
+    assert (stored.cell_m, stored.place_geoname_id) == (
+        orphan_service.LEVEL_CELL_M[WidenLevel.REGION],
+        world_data.TUNIS_GOVERNORATE,
+    )
+    assert stored.last_active_at > clock.utcnow() - timedelta(minutes=1)
+    # Published again by its author, it is anonymous still, and the region is all it shows.
+    assert (await author.http.post(f"/insights/{insight_id}/map/publish")).status_code == 200
+    page = await guest.http.get(f"/atlas/entries/{entry_id}")
+    assert page.status_code == 200
+    assert page.json()["author"] is None and page.json()["orphaned"] is False
+    assert page.json()["location"]["point"]["coordinates"] == [10.2, 36.8]
+    window = (await guest.http.get("/atlas/entries", params=WHOLE)).json()["features"]
+    assert [feature["properties"]["author"] for feature in window] == [None]
+    assert len(await generalisations(db_session, int(entry_id))) == 1
+
+
+async def test_a_withdrawal_erases_the_earlier_cell_and_a_new_placing_starts_fresh(
+    db_session, factory, make_member, make_settings, world
+):
+    author = await make_member(HANDLE)
+    insight_id = await _insight(db_session, author)
+    first_id = await _published(author, insight_id)
+    (await fresh(db_session, int(first_id))).last_active_at = clock.utcnow() - timedelta(days=OLD)
+    await db_session.flush()
+    await run_job(factory, db_session, make_settings)
+    entry_id = await current_id(db_session, insight_id)
+    assert len(await generalisations(db_session, int(entry_id))) == 1
+
+    assert (await author.http.delete(f"/insights/{insight_id}/map")).status_code == 204
+
+    assert await generalisations(db_session, int(entry_id)) == []
+    again = await _place(author, insight_id)
+    assert again.json()["id"] != entry_id
+    assert again.json()["public"]["widened_level"] is None
+    assert again.json()["public"]["cell"] is not None
+
+
+# ─── A new public id ───
+
+
+async def test_widening_gives_the_entry_a_new_public_id_and_the_old_address_answers_gone(
+    db_session, factory, make_member, make_settings, world
+):
+    author = await make_member(HANDLE)
+    reader = await make_member("reader")
+    guest = await make_member(signed_in=False)
+    insight_id = await _insight(db_session, author)
+    old_id = await _published(author, insight_id)
+    report = {"target_type": "map_entry", "target_id": old_id, "reason": "wrong_place"}
+    first_report = await reader.http.post("/reports", json=report)
+    assert first_report.status_code == 201
+    (await fresh(db_session, int(old_id))).last_active_at = clock.utcnow() - timedelta(days=OLD)
+    await db_session.flush()
+
+    await run_job(factory, db_session, make_settings)
+
+    new_id = await current_id(db_session, insight_id)
+    assert int(new_id) > int(old_id)
+    for who in (guest, reader, author):
+        gone = await who.http.get(f"/atlas/entries/{old_id}")
+        assert (gone.status_code, gone.json()["error"]) == (410, "GONE")
+        assert new_id not in gone.text
+    assert (await guest.http.get(f"/atlas/entries/{new_id}")).status_code == 200
+    # What names the entry followed it; the old id is kept apart, with nothing that leads on.
+    assert await db_session.get(MapCapturePoint, int(new_id)) is not None
+    assert await db_session.get(MapCapturePoint, int(old_id)) is None
+    assert len(await generalisations(db_session, int(new_id))) == 1
+    assert await db_session.get(MapEntryRetiredId, int(old_id)) is not None
+    # Reports do not follow the entry: the old one is closed as superseded, under the old id, and
+    # a report of the new address is a fresh one that no id links to the first.
+    [old_report] = (await db_session.scalars(select(Report))).all()
+    assert (old_report.target_id, old_report.status) == (int(old_id), ReportStatus.DISMISSED)
+    again = await reader.http.post("/reports", json={**report, "target_id": new_id})
+    assert again.status_code == 201 and again.json()["id"] != first_report.json()["id"]
+    logged = list(await db_session.scalars(select(ModerationAction)))
+    assert [(row.target_id, row.action, row.source) for row in logged] == [
+        (int(old_id), ModerationActionKind.SUPERSEDED, ModerationSource.JOB)
+    ]
+    assert [item["id"] for item in (await author.http.get("/me/map-entries")).json()] == [new_id]
 
 
 # ─── The command ───

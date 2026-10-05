@@ -120,6 +120,7 @@ async def my_entries(user: CurrentUser, db: DbDep) -> list[MapEntryOwnerOut]:
 @router.get("/atlas/entries", summary="The published entries inside a map window")
 async def entries_in_window(
     db: DbDep,
+    settings: SettingsDep,
     viewer: OptionalUser,
     west: Degrees,
     south: Latitude,
@@ -145,25 +146,48 @@ async def entries_in_window(
         Filters(since=since, country=country, concept=concept),
         limit,
         viewer,
+        sponsoring=settings.is_enabled(FeatureFlag.ATLAS_SPONSORSHIP),
     )
     return AtlasFeatureCollection(features=features, truncated=truncated)
 
 
 @router.get("/atlas/entries/{entry_id}", summary="One published entry")
 async def entry(
-    entry_id: PublicIdPath, db: DbDep, viewer: OptionalUser, photos: PhotoStoreDep
+    entry_id: PublicIdPath,
+    db: DbDep,
+    settings: SettingsDep,
+    viewer: OptionalUser,
+    photos: PhotoStoreDep,
 ) -> AtlasEntryOut:
-    """Return the entry's page: the insight with its scripture from the store, the public point and its place; 410 once withdrawn."""
-    return await atlas_service.entry_detail(db, entry_id, viewer, photos=photos)
+    """
+    Return the entry's page: the insight with its scripture from the store, the public point and its place.
+
+    410 once withdrawn, and for the id an entry had before its place was widened.
+    """
+    return await atlas_service.entry_detail(
+        db,
+        entry_id,
+        viewer,
+        photos=photos,
+        sponsoring=settings.is_enabled(FeatureFlag.ATLAS_SPONSORSHIP),
+    )
 
 
 @router.get("/atlas/places/{geoname_id}", summary="A place and the entries labelled with it")
 async def place_entries(
     geoname_id: Annotated[int, Path(ge=1)],
     db: DbDep,
+    settings: SettingsDep,
     viewer: OptionalUser,
     cursor: str | None = None,
     limit: PageLimit = atlas_service.PLACE_PAGE_DEFAULT,
 ) -> AtlasPlaceOut:
     """«ذاكرة المكان»: the place from GeoNames and its published entries, newest first; 404 without any."""
-    return await atlas_service.place_page(db, geoname_id, cursors.decode(cursor), limit, viewer)
+    return await atlas_service.place_page(
+        db,
+        geoname_id,
+        cursors.decode(cursor),
+        limit,
+        viewer,
+        sponsoring=settings.is_enabled(FeatureFlag.ATLAS_SPONSORSHIP),
+    )

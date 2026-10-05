@@ -130,7 +130,7 @@ def _location_of(entry: MapEntry) -> PublicLocation:
     labels = (entry.place_label, entry.admin_label, entry.country_label)
     return PublicLocation(
         place="، ".join(label for label in labels if label),
-        precision=precision_label(entry.cell_m),
+        precision=precision_label(entry.cell_m, entry.widened_level),
         meaning=meaning_label(entry.location_meaning),
         lat=entry.public_lat,
         lng=entry.public_lng,
@@ -202,12 +202,16 @@ async def _queue_of(db: AsyncSession, kind: str) -> list[QueueRow]:
     """Return the items of `kind` to look at: held ones, and published ones with open reports."""
     model = KINDS[kind]
     reports = _open_reports(kind)
+    # An orphaned entry is shown on the atlas too, so a report of it counts.
+    live = [PostStatus.PUBLISHED.value]
+    if kind == ReportTarget.MAP_ENTRY.value:
+        live.append(MapEntryStatus.ORPHANED.value)
     rows = await db.execute(
         select(model, func.coalesce(reports.c.open_reports, 0))
         .outerjoin(reports, reports.c.target_id == model.id)
         .where(
             (model.status == PostStatus.PENDING_REVIEW.value)
-            | ((model.status == PostStatus.PUBLISHED.value) & (reports.c.open_reports > 0))
+            | (model.status.in_(live) & (reports.c.open_reports > 0))
         )
         .order_by(model.created_at, model.id)
         .limit(QUEUE_LIMIT)
@@ -321,8 +325,9 @@ class ModerationQueueView(BaseView):
             "log": await _log_of(db, kind, item.id),
             "reasons": reason_choices(),
             "can_reject": item.status == PostStatus.PENDING_REVIEW.value,
-            "can_remove": item.status == PostStatus.PUBLISHED.value,
-            "can_approve": item.status != PostStatus.PUBLISHED.value and not _owner_withdrew(item),
+            "can_remove": item.status in moderation_service.live_states(item),
+            "can_approve": item.status not in moderation_service.live_states(item)
+            and not _owner_withdrew(item),
             "error": error,
             "queue_url": self._queue_url(request),
         }

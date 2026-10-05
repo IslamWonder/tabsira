@@ -18,13 +18,13 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import clock
 from src.errors import AppError, ErrorCode
 from src.messages import messages_for
-from src.models.atlas import MapEntry, MapEntryStatus
+from src.models.atlas import MapEntry, MapEntrySponsorship, MapEntryStatus
 from src.models.moderation import (
     ModerationAction,
     ModerationActionKind,
@@ -66,6 +66,12 @@ def _published(item: Item) -> ItemStatus:
     return MapEntryStatus.PUBLISHED if isinstance(item, MapEntry) else CommentStatus.PUBLISHED
 
 
+def live_states(item: Item) -> set[str]:
+    """Return the states in which an item is shown; an orphaned entry is shown too, at its widened place."""
+    live = {PostStatus.PUBLISHED.value}
+    return live | {MapEntryStatus.ORPHANED.value} if isinstance(item, MapEntry) else live
+
+
 def _held(item: Item) -> ItemStatus:
     if isinstance(item, Post):
         return PostStatus.PENDING_REVIEW
@@ -78,6 +84,22 @@ def _removed(item: Item) -> ItemStatus:
     if isinstance(item, Post):
         return PostStatus.REMOVED
     return MapEntryStatus.REMOVED if isinstance(item, MapEntry) else CommentStatus.REMOVED
+
+
+async def _restored(db: AsyncSession, item: Item) -> ItemStatus:
+    """
+    Return the state an approved item comes back to.
+
+    A widened entry nobody sponsors goes back to `orphaned`, not `published`: approval must not
+    turn an anonymous entry into one that is shown as the author's, and its widened level never
+    changes. A sponsored one is published, as it was. Anything else is simply published.
+    """
+    if isinstance(item, MapEntry) and item.widened_level is not None:
+        sponsored = await db.scalar(
+            select(MapEntrySponsorship.id).where(MapEntrySponsorship.entry_id == item.id)
+        )
+        return MapEntryStatus.PUBLISHED if sponsored else MapEntryStatus.ORPHANED
+    return _published(item)
 
 
 def log_action(
@@ -185,6 +207,11 @@ async def _lock(db: AsyncSession, item: Item, allowed: set[str]) -> None:
         raise _wrong_state()
 
 
+async def _drop_sponsorship(db: AsyncSession, entry: MapEntry) -> None:
+    """Delete the sponsorship of an entry a moderator takes down: the sponsor's words go with it."""
+    await db.execute(delete(MapEntrySponsorship).where(MapEntrySponsorship.entry_id == entry.id))
+
+
 async def _sync_photo(db: AsyncSession, item: Item, photos: PhotoStore | None) -> None:
     """After a post or an entry changes state, make or delete the public copy of its photo."""
     if photos is None or isinstance(item, Comment):
@@ -216,7 +243,7 @@ async def approve(
     )
     was = item.status
     now = clock.utcnow()
-    _set_state(item, _published(item), None, now)
+    _set_state(item, await _restored(db, item), None, now)
     item.reviewed_by = actor_id
     if isinstance(item, Post | MapEntry):
         item.published_at = item.published_at or now
@@ -250,6 +277,7 @@ async def reject(
     if isinstance(item, MapEntry):
         _set_state(item, MapEntryStatus.REMOVED, reason, now)
         item.removed_at = now
+        await _drop_sponsorship(db, item)
     else:
         _set_state(
             item,
@@ -283,9 +311,11 @@ async def remove(
 
     With `photos`, the public copy of the photo a post or an entry showed is deleted too.
     """
-    await _lock(db, item, {PostStatus.PUBLISHED.value})
+    await _lock(db, item, live_states(item))
     now = clock.utcnow()
     _set_state(item, _removed(item), reason, now)
+    if isinstance(item, MapEntry):
+        await _drop_sponsorship(db, item)
     item.reviewed_by = actor_id
     if isinstance(item, Post | MapEntry):
         item.removed_at = now
@@ -316,7 +346,7 @@ async def hold_if_reported(
     number is a setting and 0 turns this off. With `photos`, the public copy of the photo it
     showed goes with it; a later approval makes the copy again. Returns whether the item was held.
     """
-    if threshold <= 0 or item.status != _published(item).value:
+    if threshold <= 0 or item.status not in live_states(item):
         return False
     reporters = await db.scalar(
         select(func.count(func.distinct(Report.reporter_id))).where(
