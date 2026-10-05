@@ -76,7 +76,7 @@ def build_message(
         **context,
         "site_name": catalog.site_name,
         "logo_cid": logo_cid[1:-1],
-        "support_email": settings.mail_reply_to,
+        "support_url": f"{settings.mail_link_base}/support",
     }
     message = EmailMessage()
     message["Subject"] = subject

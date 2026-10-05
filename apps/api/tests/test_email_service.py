@@ -51,8 +51,11 @@ async def test_the_verification_mail_is_arabic_rtl_with_a_text_and_an_html_part(
     assert "https://x.example/#token=t" in html
     assert "https://x.example/#token=t" in text
     assert "24 ساعة" in html
-    assert "help@tabsira.me" in html
-    assert "help@tabsira.me" in text
+    # No support address is ever written in a mail: the support form is the way in.
+    assert "help@tabsira.me" not in html
+    assert "help@tabsira.me" not in text
+    assert f"{settings.mail_link_base}/support" in html
+    assert f"{settings.mail_link_base}/support" in text
     assert [part.get_content_type() for part in message.iter_parts()] == [
         "text/plain",
         "multipart/related",
@@ -109,7 +112,6 @@ def test_a_reply_to_is_added_only_when_one_is_configured(make_settings):
     )
 
     assert message["Reply-To"] is None
-    assert "للمساعدة اكتب" not in body_of(message, "plain")
 
 
 def test_the_link_keeps_the_token_in_the_fragment_and_escapes_it(settings):
