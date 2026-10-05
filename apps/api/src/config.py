@@ -487,6 +487,28 @@ def _check_redis_url(value: str) -> str:
     return value.strip()
 
 
+# The legal versions belong to the texts shipped with the code, never to a host's `.env`: a
+# value left there would ask nobody to accept a changed text, or everybody to accept an
+# unchanged one. So the environment and the .env files are not read for them.
+CODE_ONLY_KEYS = frozenset({"terms_version", "privacy_version"})
+
+
+class _WithoutCodeOnlyKeys(PydanticBaseSettingsSource):
+    """An environment or .env source that never answers for the keys the code owns."""
+
+    def __init__(
+        self, settings_cls: type[BaseSettings], source: PydanticBaseSettingsSource
+    ) -> None:
+        super().__init__(settings_cls)
+        self._source = source
+
+    def get_field_value(self, field: Any, field_name: str) -> tuple[Any, str, bool]:
+        return None, field_name, False
+
+    def __call__(self) -> dict[str, Any]:
+        return {k: v for k, v in self._source().items() if k not in CODE_ONLY_KEYS}
+
+
 class _LegacyFeatureKeys(PydanticBaseSettingsSource):
     """
     A settings source that finds the `FEATURE_*` keys of the earlier scheme.
@@ -620,8 +642,9 @@ class Settings(BaseSettings):
     # support form mails SUPPORT_EMAIL.
     support_email: str = DEFAULT_SUPPORT_EMAIL
     privacy_email: str = DEFAULT_PRIVACY_EMAIL
-    # Versions of the terms of use and the privacy policy. Changing one asks every
-    # account to accept again (decision 35).
+    # Versions of the terms of use and the privacy policy, set in the code with the texts and
+    # never read from the environment (CODE_ONLY_KEYS). Changing one asks every account to
+    # accept again (decision 35).
     terms_version: Annotated[str, Field(min_length=1, max_length=32)] = DEFAULT_LEGAL_VERSION
     privacy_version: Annotated[str, Field(min_length=1, max_length=32)] = DEFAULT_PRIVACY_VERSION
     # Limits of the support form, shared by every worker through PostgreSQL: per client IP
@@ -847,7 +870,13 @@ class Settings(BaseSettings):
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         """Add the source that reports FEATURE_* keys, which `extra="ignore"` would drop."""
         legacy = _LegacyFeatureKeys(settings_cls, env_settings, dotenv_settings)
-        return (init_settings, env_settings, dotenv_settings, file_secret_settings, legacy)
+        return (
+            init_settings,
+            _WithoutCodeOnlyKeys(settings_cls, env_settings),
+            _WithoutCodeOnlyKeys(settings_cls, dotenv_settings),
+            file_secret_settings,
+            legacy,
+        )
 
     @field_validator("disabled_features")
     @classmethod
