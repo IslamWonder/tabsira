@@ -3,6 +3,7 @@ import path from 'node:path';
 import { parseEnv } from 'node:util';
 import type { NextConfig } from 'next';
 import { PHASE_DEVELOPMENT_SERVER } from 'next/constants';
+import { PICTURE_CACHE_RULES } from './src/config/cache-headers';
 import { mergeEnv, resolvePublicEnv } from './src/config/public-env';
 import { QURAN_SOURCE, TEXT_SOURCES } from './src/lib/share-card/fonts';
 
@@ -76,16 +77,8 @@ export default function nextConfig(phase: string): NextConfig {
             { key: 'Service-Worker-Allowed', value: '/' },
           ],
         },
-        // The decorative pictures are the heaviest files in the app (the world
-        // landscape alone is ~660 KB) and Next would otherwise revalidate them
-        // on every visit. They are served for a year instead: any change to one
-        // of them is a new file name (as with the courtyard picture). Icons and
-        // the share card stay revalidating — the service worker precaches and
-        // link previews name them, so a pinned stale copy would be invisible.
-        ...['/world/:path*', '/landing/:path*', '/scene/:path*'].map((source) => ({
-          source,
-          headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
-        })),
+        // A year for the decorative pictures, by file name only (src/config/cache-headers.ts).
+        ...PICTURE_CACHE_RULES,
       ];
     },
   };
