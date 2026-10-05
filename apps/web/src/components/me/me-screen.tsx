@@ -51,7 +51,9 @@ export function MeScreen() {
         </nav>
       }
     >
-      <h1 className="m-0 font-bold font-display text-[2rem] text-fg">{M.title}</h1>
+      <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
+        {M.title}
+      </h1>
       <AccountSection
         session={session}
         notice={notice}

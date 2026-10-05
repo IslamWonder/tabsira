@@ -128,7 +128,7 @@ export function PlaceScreen({ geonameId }: { geonameId: number }) {
           {load.kind === 'ready' ? (
             <>
               <header className="flex flex-col gap-1.5">
-                <h1 className="m-0 font-bold font-display text-[2rem] text-gilded leading-[1.3]">
+                <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
                   {A.place.title(label)}
                 </h1>
                 <p className="m-0 text-[0.875rem] text-fg-muted">

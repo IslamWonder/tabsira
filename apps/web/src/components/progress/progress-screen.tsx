@@ -28,7 +28,7 @@ const COUNTS = [
 function Counts({ counts }: { counts: Progress['counts'] }) {
   return (
     <GlassPanel as="section" aria-labelledby="practice-counts" className="flex flex-col gap-3">
-      <h2 id="practice-counts" className="m-0 font-bold font-display text-[1.5rem] text-fg">
+      <h2 id="practice-counts" className="m-0 font-bold font-display text-heading text-fg">
         {M.counts.title}
       </h2>
       <dl className="m-0 grid grid-cols-2 gap-2 tablet:grid-cols-3">
@@ -37,7 +37,7 @@ function Counts({ counts }: { counts: Progress['counts'] }) {
             key={field}
             className="flex flex-col gap-0.5 rounded-[var(--radius-card)] border border-line p-3"
           >
-            <dd className="m-0 font-bold font-display text-[1.5rem] text-fg">{counts[field]}</dd>
+            <dd className="m-0 font-bold font-display text-heading text-fg">{counts[field]}</dd>
             <dt className="text-fg-muted text-sm">{M.counts[label]}</dt>
           </div>
         ))}
@@ -64,7 +64,9 @@ function Header() {
       >
         {M.back}
       </Link>
-      <h1 className="m-0 font-bold font-display text-[2rem] text-fg">{M.title}</h1>
+      <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
+        {M.title}
+      </h1>
       <p className="m-0 max-w-[40rem] text-fg-soft leading-[1.9]">{M.lead}</p>
     </header>
   );

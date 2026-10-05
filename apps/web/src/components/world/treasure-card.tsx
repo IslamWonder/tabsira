@@ -75,7 +75,7 @@ function Revealed({ treasure }: { treasure: Treasure }) {
           id={`treasure-${treasure.id}`}
           ref={heading}
           tabIndex={-1}
-          className="m-0 font-bold font-display text-[1.5rem] text-gilded outline-none"
+          className="m-0 font-bold font-display text-heading text-gilded outline-none"
         >
           {M.revealedTitle}
         </h3>
@@ -117,7 +117,7 @@ export function TreasureCard({ id }: { id: string }) {
   }
   return (
     <GlassPanel as="section" aria-label={M.title} className="flex flex-col items-start gap-3">
-      <h3 className="m-0 flex items-center gap-2 font-bold font-display text-[1.5rem] text-gilded">
+      <h3 className="m-0 flex items-center gap-2 font-bold font-display text-heading text-gilded">
         <SparkIcon width="20" height="20" className="text-[var(--glow-gold)]" />
         {M.title}
       </h3>

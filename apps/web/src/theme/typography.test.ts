@@ -26,6 +26,11 @@ const NAMED_SIZES_PX: Record<string, number> = {
   '4xl': 36,
   '5xl': 48,
   '6xl': 60,
+  // The product's own scale (app/globals.css).
+  title: 28,
+  'title-lg': 32,
+  heading: 24,
+  subheading: 20,
 };
 
 function sourceFiles(directory: string): string[] {
@@ -41,7 +46,9 @@ function sourceFiles(directory: string): string[] {
 /** The font sizes a class string sets, in CSS pixels; the first one is the phone size. */
 function sizesIn(classes: string): number[] {
   const sizes: number[] = [];
-  for (const match of classes.matchAll(/(?:^|\s|:)text-(\[[\d.]+(?:rem|px)\]|[a-z0-9]+)/g)) {
+  for (const match of classes.matchAll(
+    /(?:^|\s|:)text-(\[[\d.]+(?:rem|px)\]|[a-z0-9]+(?:-[a-z0-9]+)*)/g
+  )) {
     const token = match[1] as string;
     const arbitrary = /^\[([\d.]+)(rem|px)\]$/.exec(token);
     if (arbitrary !== null) {
@@ -98,5 +105,6 @@ describe('sizesIn', () => {
     expect(sizesIn('font-display text-[2.25rem] desktop:text-[3rem]')).toEqual([36, 48]);
     expect(sizesIn('text-[30px] text-2xl tablet:text-5xl')).toEqual([30, 24, 48]);
     expect(sizesIn('text-fg text-gilded text-center')).toEqual([]);
+    expect(sizesIn('text-title tablet:text-title-lg text-heading')).toEqual([28, 32, 24]);
   });
 });

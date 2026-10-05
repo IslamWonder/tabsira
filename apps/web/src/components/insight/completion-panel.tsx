@@ -73,7 +73,7 @@ export function CompletionPanel({
     <div className="flex flex-col gap-4">
       <section ref={region} aria-labelledby={titleId} tabIndex={-1} className="outline-none">
         <GlassPanel ornate tone="primary" className="flex flex-col gap-4">
-          <h2 id={titleId} className="m-0 font-bold font-display text-[1.5rem] text-gilded">
+          <h2 id={titleId} className="m-0 font-bold font-display text-heading text-gilded">
             {T.title}
           </h2>
 

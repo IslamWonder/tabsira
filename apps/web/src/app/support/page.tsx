@@ -23,7 +23,7 @@ export default function SupportPage() {
         className="motion-safe:animate-fade-in flex flex-col gap-5 p-5 tablet:p-8"
       >
         <header className="flex flex-col gap-3">
-          <h1 className="m-0 font-bold text-[2rem] text-gilded tablet:text-[2.5rem]">
+          <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
             {support.title}
           </h1>
           <p className="m-0 text-fg leading-[2]">{support.intro}</p>

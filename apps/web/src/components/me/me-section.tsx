@@ -23,7 +23,7 @@ export function MeSection({ id, title, description, className, children }: MeSec
       className={cx('flex scroll-mt-28 flex-col gap-5 tablet:p-7', className)}
     >
       <header className="flex flex-col gap-1">
-        <h2 id={titleId} className="m-0 text-[1.375rem] text-fg">
+        <h2 id={titleId} className="m-0 text-subheading text-fg">
           {title}
         </h2>
         {description === undefined ? null : (

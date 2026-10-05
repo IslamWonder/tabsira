@@ -175,7 +175,7 @@ export function ConsentScreen({ initial }: { initial: ServerConsent }) {
             <Logo title={messages.brand.name} className="fx-enter mb-1 h-24 tablet:h-28" />
             <h2
               id={titleId}
-              className="fx-enter fx-enter--2 m-0 font-bold font-display text-[1.875rem] text-gilded leading-[1.35]"
+              className="fx-enter fx-enter--2 m-0 font-bold font-display text-title text-gilded"
             >
               {T.title}
             </h2>

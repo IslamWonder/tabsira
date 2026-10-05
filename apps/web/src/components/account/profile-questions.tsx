@@ -50,7 +50,7 @@ export function ProfileQuestions({ max = 3, onAnswer, onFinish }: ProfileQuestio
   if (question === undefined) {
     return (
       <GlassPanel as="section" aria-labelledby={titleId} className="flex flex-col gap-3">
-        <h2 id={titleId} className="m-0 text-fg text-xl">
+        <h2 id={titleId} className="m-0 text-fg text-subheading">
           {P.flow.title}
         </h2>
         <div role="status">
@@ -99,7 +99,7 @@ export function ProfileQuestions({ max = 3, onAnswer, onFinish }: ProfileQuestio
   return (
     <GlassPanel as="section" ornate aria-labelledby={titleId} className="flex flex-col gap-4">
       <header className="flex flex-col gap-1">
-        <h2 id={titleId} className="m-0 text-fg text-xl">
+        <h2 id={titleId} className="m-0 text-fg text-subheading">
           {P.flow.title}
         </h2>
         <p className="m-0 text-fg-muted text-sm">{P.statement}</p>

@@ -157,7 +157,9 @@ export function CommunityScreen() {
       aside={
         <div className="flex flex-col gap-5">
           <header className="flex flex-col gap-1.5">
-            <h1 className="m-0 font-bold font-display text-[2rem] text-gilded">{C.title}</h1>
+            <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
+              {C.title}
+            </h1>
             <p className="m-0 text-fg-soft leading-[1.85]">{C.lead}</p>
           </header>
           <Tabs

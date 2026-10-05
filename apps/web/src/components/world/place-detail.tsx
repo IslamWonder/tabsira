@@ -87,7 +87,7 @@ export function PlaceDetail({ view, onClose }: { view: RegionView; onClose: () =
           id={`detail-${regionId}`}
           ref={heading}
           tabIndex={-1}
-          className="m-0 font-bold font-display text-[1.5rem] text-gilded outline-none"
+          className="m-0 font-bold font-display text-heading text-gilded outline-none"
         >
           {view.region.name}
         </h2>
