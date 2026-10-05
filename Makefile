@@ -68,5 +68,5 @@ mock-import: ## Import the mock members of MOCK_FILE (a path or s3://bucket/key)
 	@test -n "$(MOCK_FILE)" || { echo "usage: make mock-import MOCK_FILE=<path or s3://bucket/key>"; exit 2; }
 	@cd apps/api && uv run python -m src.cli.import_mock "$(MOCK_FILE)" --i-understand $(MOCK_ARGS)
 
-mock-clean: ## Delete every mock member (@mock.tabsira.invalid) and what they own; MOCK_ARGS=--allow-production on production
+mock-clean: ## Delete every mock member (@mock.tabsira.me) and what they own; MOCK_ARGS=--allow-production on production
 	@cd apps/api && uv run python -m src.cli.import_mock --clean --i-understand $(MOCK_ARGS)

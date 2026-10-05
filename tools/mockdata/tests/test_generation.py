@@ -15,7 +15,7 @@ from mockdata import activity, cli, output
 from mockdata.activity import MAX_PHOTO_USES, Knobs, make_activity, parse
 from mockdata.catalogue import Photo
 from mockdata.members import EMAIL_DOMAIN, NameFactory, make_members
-from mockdata.names import FAMILY, FEMALE, MALE
+from mockdata.names import FAMILY, FAMILY_BY_COUNTRY, FEMALE, MALE
 from mockdata.output import MockFile
 from mockdata.places import COUNTRIES, City, Gazetteer, Place, haversine_km
 
@@ -560,3 +560,10 @@ def test_the_uses_follow_the_evidence_of_the_insight() -> None:
     assert cli.max_uses_of({"quran": {"surah": 1}, "hadith": {"number": "1"}}) == 7
     assert cli.max_uses_of({"quran": {"surah": 1}, "hadith": None}) == 4
     assert cli.max_uses_of({"quran": None, "hadith": {"number": "1"}}) == 3
+
+
+def test_the_family_name_belongs_to_the_members_country(gazetteer: Gazetteer) -> None:
+    members = make_members(1, 220, NOW, cities_of(gazetteer))
+    for m in members:
+        families = {a for a, _ in FAMILY_BY_COUNTRY[m.country]}
+        assert any(m.display_name.endswith(f" {family}") for family in families)

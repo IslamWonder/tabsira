@@ -10,7 +10,7 @@ from __future__ import annotations
 import random
 from datetime import datetime, timedelta
 
-from mockdata.names import FAMILY, FEMALE, MALE
+from mockdata.names import FAMILY, FAMILY_BY_COUNTRY, FEMALE, MALE
 from mockdata.output import Member, stamp
 from mockdata.places import City, country_quotas, pick_city
 
@@ -57,11 +57,15 @@ class NameFactory:
             return "unknown"
         return "woman" if draw < UNKNOWN_SHARE + WOMAN_SHARE else "man"
 
-    def person(self, gender: str) -> tuple[str, str, str]:
-        """(Arabic full name, Latin first name, Latin family name); the first name fits the gender."""
+    def person(self, gender: str, country: str) -> tuple[str, str, str]:
+        """
+        (Arabic full name, Latin first name, Latin family name).
+
+        The first name fits the gender and the family name the country.
+        """
         pool = {"man": MALE, "woman": FEMALE}.get(gender) or self._rng.choice((MALE, FEMALE))
         first_ar, first_latin = self._rng.choice(pool)
-        family_ar, family_latin = self._rng.choice(FAMILY)
+        family_ar, family_latin = self._rng.choice(FAMILY_BY_COUNTRY.get(country, FAMILY))
         return f"{first_ar} {family_ar}", first_latin, family_latin
 
     def handle(self, first: str, family: str, taken: set[str]) -> str:
@@ -114,7 +118,7 @@ def make_members(
             city = pick_city(rng, cities_by_country[country])
             joined = now - timedelta(seconds=rng.randrange(SIGNUP_WINDOW_DAYS * 86400))
             gender = names.gender()
-            full_name, first, family = names.person(gender)
+            full_name, first, family = names.person(gender, country)
             handle = names.handle(first, family, taken)
             members.append(
                 Member(
