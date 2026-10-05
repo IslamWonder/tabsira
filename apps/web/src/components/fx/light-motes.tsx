@@ -34,20 +34,27 @@ export function LightMotes() {
     let frame = 0;
     let last = 0;
     let time = 0;
+    // The colours change only with the theme, so they are read here and again
+    // on a theme change — never once per frame.
+    let palette = tokens();
 
     const draw = () => {
-      const { color, opacity } = tokens();
       context.clearRect(0, 0, width, height);
-      context.fillStyle = color;
-      context.shadowColor = color;
+      context.fillStyle = palette.color;
+      context.shadowColor = palette.color;
       for (const mote of motes) {
-        context.globalAlpha = opacity * moteAlpha(mote, time);
+        context.globalAlpha = palette.opacity * moteAlpha(mote, time);
         context.shadowBlur = mote.radius * 4;
         context.beginPath();
         context.arc(mote.x + moteOffset(mote, time), mote.y, mote.radius, 0, Math.PI * 2);
         context.fill();
       }
       context.globalAlpha = 1;
+    };
+
+    const reread = () => {
+      palette = tokens();
+      draw();
     };
 
     const tick = (now: number) => {
@@ -85,11 +92,20 @@ export function LightMotes() {
     resize();
     window.addEventListener('resize', resize);
     document.addEventListener('visibilitychange', sync);
+    const observer = new MutationObserver(reread);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+    const scheme = window.matchMedia('(prefers-color-scheme: dark)');
+    scheme.addEventListener('change', reread);
     const unsubscribe = subscribeAmbientMotion(sync);
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', sync);
+      observer.disconnect();
+      scheme.removeEventListener('change', reread);
       unsubscribe();
     };
   }, []);
