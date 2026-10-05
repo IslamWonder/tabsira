@@ -59,7 +59,14 @@ export function ScanStage({
 }: ScanStageProps) {
   const photo = shownPhoto(scan);
   if (photo === null) {
-    return <PhotoPlaceholder note={placeholderNote(scan, running)} backHref={backHref} fill />;
+    return (
+      <PhotoPlaceholder
+        note={placeholderNote(scan, running)}
+        backHref={backHref}
+        busy={running && scan?.sensitive !== true}
+        fill
+      />
+    );
   }
   if (focusing) {
     return (

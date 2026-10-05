@@ -128,10 +128,7 @@ function Window({
       >
         <header className="flex flex-col items-center gap-3 text-center">
           <Logo title={messages.brand.name} className="mb-1 h-24 tablet:h-28" />
-          <h2
-            id={titleId}
-            className="m-0 font-bold font-display text-[1.875rem] text-gilded leading-[1.35]"
-          >
+          <h2 id={titleId} className="m-0 font-bold font-display text-title text-gilded">
             {L.gate.title}
           </h2>
           <p id={bodyId} className="m-0 text-fg-soft leading-[1.85]">

@@ -209,7 +209,13 @@ export const ar = {
   scene: {
     prepared: 'مثال موثّق مُعدّ',
     hint: 'المس البصيرة التي لفتتك',
-    captureOwn: 'أو صوّر مشهدك أنت',
+    /** The invitation to a scene of one's own, under the example on a phone and in the panel beside it. */
+    capture: {
+      heading: 'صوّر مشهدك أنت',
+      lead: 'التقط ما أمامك أو اختر صورة، ونبحث معك عن البصيرة فيه.',
+      camera: 'التقط صورة',
+      drop: 'أو اسحب صورة وأفلتها هنا.',
+    },
     listHeading: 'البصائر في الصورة',
     glimpseAndPosition: (glimpse: string, position: string) => `${glimpse}، ${position}`,
     /**
@@ -225,8 +231,9 @@ export const ar = {
       ],
     },
     starter: {
-      prompt: 'أو ابدأ بمشهدك: اسحب صورة إلى هنا',
       dropping: 'أفلت الصورة هنا',
+      /** Over the live preview: what to do, in one line. */
+      aim: 'وجّه الكاميرا إلى ما لفتك، ثم التقط.',
       choose: 'اختر صورة',
       camera: 'التقط بالكاميرا',
       cameraPreview: 'معاينة الكاميرا',
@@ -1289,6 +1296,7 @@ export const ar = {
     frames: {
       shell: 'الهيكل وإطار المشهد في المقاسات الثلاثة',
       insight: 'إطار البصيرة',
+      scan: 'إطار التحليل',
       layouts: 'قوالب التخطيط',
       components: 'المكوّنات في المظهرين',
     },

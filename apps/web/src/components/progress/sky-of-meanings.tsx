@@ -73,7 +73,7 @@ export function SkyOfMeanings({ sky }: { sky: Progress['sky'] }) {
   return (
     <GlassPanel as="section" ornate aria-labelledby="practice-sky" className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 id="practice-sky" className="m-0 font-bold font-display text-[1.5rem] text-fg">
+        <h2 id="practice-sky" className="m-0 font-bold font-display text-heading text-fg">
           {M.title}
         </h2>
         <span className="text-fg-soft text-sm">{M.count(sky.count)}</span>

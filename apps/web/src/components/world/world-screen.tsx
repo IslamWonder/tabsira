@@ -22,7 +22,7 @@ function Invitation() {
       aria-labelledby="world-invitation"
       className="flex flex-col items-start gap-3"
     >
-      <h2 id="world-invitation" className="m-0 font-bold font-display text-[1.5rem] text-gilded">
+      <h2 id="world-invitation" className="m-0 font-bold font-display text-heading text-gilded">
         {M.empty.title}
       </h2>
       <p className="m-0 text-fg-soft leading-[1.9]">{M.empty.body}</p>
@@ -36,7 +36,7 @@ function Invitation() {
 function Notice({ text, onRetry }: { text: string | null; onRetry?: () => void }) {
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-6 py-16 text-center">
-      <h1 className="m-0 font-bold font-display text-[1.75rem] text-gilded">
+      <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
         {messages.pages.world.title}
       </h1>
       <p role={onRetry ? 'alert' : 'status'} className="m-0 text-fg-soft leading-[1.9]">
@@ -79,7 +79,7 @@ export function WorldView({
   return (
     <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 pt-[max(24px,env(safe-area-inset-top))] pb-4 tablet:grid tablet:grid-cols-[20rem_minmax(0,1fr)] tablet:items-start tablet:gap-x-6 tablet:px-6 tablet:py-6 desktop:grid-cols-[26rem_minmax(0,1fr)] desktop:px-10">
       <header className="flex flex-col gap-1 tablet:col-start-1 tablet:row-start-1">
-        <h1 className="m-0 font-bold font-display text-[2rem] text-fg">
+        <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
           {messages.pages.world.title}
         </h1>
         <p className="m-0 text-fg-muted text-sm leading-[1.8]">

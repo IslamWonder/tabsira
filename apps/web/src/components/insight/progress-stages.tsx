@@ -69,7 +69,7 @@ export function ProgressStages({
         <div role="status" aria-live="polite" aria-atomic="true" className="flex flex-col gap-1">
           <p
             key={current}
-            className="m-0 font-semibold text-fg text-xl motion-safe:animate-fade-in"
+            className="m-0 font-semibold text-fg text-subheading motion-safe:animate-fade-in"
           >
             {label}
           </p>

@@ -27,10 +27,10 @@ describe('the development gallery', () => {
   it('shows the real shell at the three breakpoints in both themes, as inert pictures', () => {
     render(<DevUiPage />);
     expect(metadata.robots).toEqual({ index: false, follow: false });
-    // Shell: 3 sizes × 2 themes; insight: phone and desktop; layouts: 3 desktop frames.
-    expect(previews('phone')).toHaveLength(3);
+    // Shell: 3 sizes × 2 themes; analysis and insight: phone and desktop; layouts: 3 desktop frames.
+    expect(previews('phone')).toHaveLength(4);
     expect(previews('tablet')).toHaveLength(2);
-    expect(previews('desktop')).toHaveLength(6);
+    expect(previews('desktop')).toHaveLength(7);
     for (const frame of previews('desktop')) {
       expect(frame).toHaveAttribute('inert');
       expect(frame.style.getPropertyValue('--app-height')).toMatch(/px$/);
@@ -146,12 +146,26 @@ describe('the development gallery', () => {
   it('receives a photo from the starter, and sends nothing', async () => {
     render(<DevUiPage />);
     const half = within(lightHalf());
-    const zone = half.getByRole('region', { name: /اسحب صورة/ });
+    const zone = half.getByRole('region', { name: 'صوّر مشهدك أنت' });
     await userEvent.upload(
       within(zone).getByLabelText('اختر صورة'),
       new File(['x'], 'rain.jpg', { type: 'image/jpeg' })
     );
     expect(half.getByText(/وصل ملف: rain.jpg/)).toBeInTheDocument();
+  });
+
+  it('opens the camera from the capture card, and leaves the frames inert', async () => {
+    render(<DevUiPage />);
+    const half = within(lightHalf());
+    await userEvent.click(half.getByRole('button', { name: 'التقط صورة' }));
+    expect(half.getByText('صوّر مشهدًا')).toBeInTheDocument();
+    // Phone previews: the shell in two themes, then the analysis, then the insight.
+    const [phone, , scan] = previews('phone');
+    fireEvent.click(within(phone as HTMLElement).getByRole('button', { name: 'التقط صورة' }));
+    fireEvent.click(within(scan as HTMLElement).getByRole('button', { name: 'ألغِ' }));
+    expect(
+      within(scan as HTMLElement).getByText('أبحث عن الأدلة', { selector: 'p' })
+    ).toBeInTheDocument();
   });
 
   it('plays the insight frame inside its preview', () => {

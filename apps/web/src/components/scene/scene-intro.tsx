@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 
 /**
@@ -6,16 +7,14 @@ import { messages } from '@/messages';
  * the promise as the page's title, and one line on what the app does. Short on
  * purpose: the photo beside it is the subject (Selective attention).
  */
-export function SceneIntro({ chip }: { chip?: ReactNode }) {
+export function SceneIntro({ chip, className }: { chip?: ReactNode; className?: string }) {
   return (
-    <div className="flex flex-col items-start gap-4">
+    <div className={cx('flex flex-col items-start gap-3', className)}>
       {chip}
-      <h1 className="m-0 font-bold font-display text-[2.25rem] text-gilded leading-[1.3] desktop:text-[3rem]">
+      <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
         {messages.brand.tagline}
       </h1>
-      <p className="m-0 text-[1.0625rem] text-fg-soft leading-[1.85] desktop:text-lg">
-        {messages.brand.promise}
-      </p>
+      <p className="m-0 text-fg-soft leading-[1.85]">{messages.brand.promise}</p>
     </div>
   );
 }

@@ -11,7 +11,16 @@ import { cx } from '@/lib/cx';
  * also fits inside a gallery preview frame.
  */
 
-const FULL_HEIGHT = 'tablet:h-[calc(var(--app-height)-var(--topbar-height))]';
+const FULL_HEIGHT = 'tablet:min-h-[calc(var(--app-height)-var(--topbar-height))]';
+
+/*
+ * One scroller per page: the panel beside a photo or a map flows with the page
+ * instead of scrolling inside itself, and the photo or the map stays in view
+ * under the top bar while it does. A second scrollbar inside a full-height
+ * panel, with the page's own beside it for the footer, read as two pages.
+ */
+const PINNED =
+  'tablet:sticky tablet:top-[var(--topbar-height)] tablet:h-[calc(var(--app-height)-var(--topbar-height))] tablet:self-start';
 
 interface Slot {
   className?: string;
@@ -68,15 +77,14 @@ export function StageLayout({
         className
       )}
     >
-      <div className="scroll-quiet min-h-0 tablet:overflow-y-auto tablet:px-8 tablet:py-8 desktop:ps-10 desktop:pe-12">
-        {panel}
-      </div>
+      <div className="min-w-0 tablet:px-8 tablet:py-8 desktop:ps-10 desktop:pe-12">{panel}</div>
       <section
         aria-label={stageLabel}
         className={cx(
-          'relative min-h-0 overflow-hidden tablet:h-auto',
+          'relative min-h-0 overflow-hidden',
           // The phone height is full screen unless the page sets its own (the two would fight).
-          stageClassName ?? 'h-[var(--app-height)]'
+          stageClassName ?? 'h-[var(--app-height)]',
+          PINNED
         )}
       >
         {stage}
@@ -156,12 +164,10 @@ export function MapLayout({ panel, map, mapLabel, mapClassName, className }: Map
         className
       )}
     >
-      <aside className="min-h-0 tablet:overflow-y-auto tablet:border-line tablet:border-e">
-        {panel}
-      </aside>
+      <aside className="min-w-0 tablet:border-line tablet:border-e">{panel}</aside>
       <section
         aria-label={mapLabel}
-        className={cx('relative h-[var(--app-height)] min-h-0 tablet:h-auto', mapClassName)}
+        className={cx('relative h-[var(--app-height)] min-h-0', mapClassName, PINNED)}
       >
         {map}
       </section>
