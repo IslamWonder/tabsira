@@ -16,7 +16,7 @@ import type { AtlasFeature, Window } from '@/atlas/types';
 import { DEFAULT_VIEW, lngLatOf, MAP_STYLE_URL } from '@/atlas/types';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
-import { basemapColours, type ThemableMap, themeBasemap } from './basemap';
+import { basemapColours, MAP_MODES, type MapMode, type ThemableMap, themeBasemap } from './basemap';
 
 const A = messages.atlas;
 
@@ -132,10 +132,30 @@ function paintOwnLayers(map: MapLibreMap): void {
   set('marker', 'circle-stroke-color', ring);
 }
 
-/** Repaint the basemap and the app's layers from the theme in force. */
-function applyTheme(map: MapLibreMap): void {
-  themeBasemap(map as unknown as ThemableMap, basemapColours(token), OWN_LAYERS);
+/** Repaint the basemap for the theme in force and the chosen view, then the app's layers. */
+function applyTheme(map: MapLibreMap, mode: MapMode): void {
+  themeBasemap(map as unknown as ThemableMap, basemapColours(token), OWN_LAYERS, mode);
   paintOwnLayers(map);
+}
+
+/** The view a reader last chose on this device; the streets until then. */
+export const MAP_MODE_KEY = 'tabsira.map.mode';
+
+function storedMode(): MapMode {
+  try {
+    const value = window.localStorage.getItem(MAP_MODE_KEY);
+    return value === 'geographic' ? 'geographic' : 'streets';
+  } catch {
+    return 'streets';
+  }
+}
+
+function storeMode(mode: MapMode): void {
+  try {
+    window.localStorage.setItem(MAP_MODE_KEY, mode);
+  } catch {
+    // Private mode or a full store: the choice holds for this visit.
+  }
 }
 
 /**
@@ -162,6 +182,8 @@ export function MapView({
   const [unsupported, setUnsupported] = useState(false);
   const map = useRef<MapLibreMap | null>(null);
   const ready = useRef(false);
+  const [mode, setMode] = useState<MapMode>('streets');
+  const modeRef = useRef<MapMode>('streets');
   const handlers = useRef({ onSelect, onMoved, onPick });
   handlers.current = { onSelect, onMoved, onPick };
   const latest = useRef({ features, marker, cell, selectedId });
@@ -171,185 +193,196 @@ export function MapView({
   // biome-ignore lint/correctness/useExhaustiveDependencies: built once; `view` and `interactive` are read at that moment only.
   useEffect(() => {
     let cancelled = false;
-    void import('maplibre-gl').then(({ Map: MapLibre, NavigationControl, setWorkerUrl }) => {
-      if (cancelled || container.current === null) {
-        return;
-      }
-      // Bundled, the library cannot find its worker beside itself: name the copy served from public/.
-      setWorkerUrl(MAPLIBRE_WORKER_URL);
-      let instance: MapLibreMap;
-      try {
-        instance = new MapLibre({
-          container: container.current,
-          style: MAP_STYLE_URL,
-          center: view?.center ?? DEFAULT_VIEW.center,
-          zoom: view?.zoom ?? DEFAULT_VIEW.zoom,
-          interactive,
-          attributionControl: false,
-          // A pointer that moves is a scroll, not a zoom, until the map is touched (Jakob's law).
-          cooperativeGestures: interactive,
-        });
-      } catch {
-        // No WebGL2 (old device, blocked GPU, headless browser): the list beside the map still works.
-        setUnsupported(true);
-        return;
-      }
-      map.current = instance;
-      if (interactive) {
-        instance.addControl(new NavigationControl({ showCompass: false }), 'top-left');
-      }
-      instance.on('load', () => {
-        if (cancelled) {
+    const chosen = storedMode();
+    modeRef.current = chosen;
+    setMode(chosen);
+    void import('maplibre-gl').then(
+      ({ Map: MapLibre, NavigationControl, ScaleControl, FullscreenControl, setWorkerUrl }) => {
+        if (cancelled || container.current === null) {
           return;
         }
-        instance.addSource(SOURCE, {
-          type: 'geojson',
-          data: collection(latest.current.features),
-          cluster: true,
-          clusterRadius: 48,
-          clusterMaxZoom: 15,
-          promoteId: 'id',
-        });
-        const clustered: FilterSpecification = ['has', 'point_count'];
-        const single: FilterSpecification = ['!', ['has', 'point_count']];
-        const clusterSize: ExpressionSpecification = [
-          'step',
-          ['get', 'point_count'],
-          15,
-          10,
-          19,
-          50,
-          24,
-        ];
-        instance.addLayer({
-          id: 'cluster-halo',
-          type: 'circle',
-          source: SOURCE,
-          filter: clustered,
-          paint: {
-            'circle-radius': ['+', clusterSize, 9],
-            'circle-blur': 0.9,
-            'circle-opacity': 0.45,
-          },
-        });
-        instance.addLayer({
-          id: 'clusters',
-          type: 'circle',
-          source: SOURCE,
-          filter: clustered,
-          paint: {
-            'circle-radius': clusterSize,
-            'circle-opacity': 0.95,
-            'circle-stroke-width': 2,
-          },
-        });
-        instance.addLayer({
-          id: 'cluster-count',
-          type: 'symbol',
-          source: SOURCE,
-          filter: clustered,
-          layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 13 },
-          paint: { 'text-color': '#04130d' },
-        });
-        instance.addLayer({
-          id: 'point-halo',
-          type: 'circle',
-          source: SOURCE,
-          filter: single,
-          paint: {
-            'circle-radius': ['case', SELECTED, 20, 14],
-            'circle-blur': 0.85,
-            'circle-opacity': 0.6,
-          },
-        });
-        instance.addLayer({
-          id: 'points',
-          type: 'circle',
-          source: SOURCE,
-          filter: single,
-          paint: {
-            'circle-radius': ['case', SELECTED, 8, 6],
-            'circle-stroke-width': 2,
-          },
-        });
-        instance.addSource(CELL_SOURCE, {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: [] },
-        });
-        instance.addLayer({
-          id: 'cell-fill',
-          type: 'fill',
-          source: CELL_SOURCE,
-          paint: { 'fill-opacity': 0.18 },
-        });
-        instance.addLayer({
-          id: 'cell-line',
-          type: 'line',
-          source: CELL_SOURCE,
-          paint: { 'line-width': 1.5 },
-        });
-        instance.addSource(MARKER_SOURCE, {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: [] },
-        });
-        instance.addLayer({
-          id: 'marker-halo',
-          type: 'circle',
-          source: MARKER_SOURCE,
-          paint: { 'circle-radius': 20, 'circle-blur': 0.85, 'circle-opacity': 0.6 },
-        });
-        instance.addLayer({
-          id: 'marker',
-          type: 'circle',
-          source: MARKER_SOURCE,
-          paint: { 'circle-radius': 8, 'circle-stroke-width': 2 },
-        });
-        applyTheme(instance);
-        ready.current = true;
-        applyMarker(instance, latest.current.marker, latest.current.cell);
-        applySelection(instance, latest.current.features, latest.current.selectedId);
-
-        instance.on('click', 'points', (event) => {
-          const id = event.features?.[0]?.properties?.id;
-          if (typeof id === 'string') {
-            handlers.current.onSelect?.(id);
-          }
-        });
-        instance.on('click', 'clusters', (event) => {
-          const feature = event.features?.[0];
-          const clusterId = feature?.properties?.cluster_id;
-          const source = instance.getSource<GeoJSONSource>(SOURCE);
-          if (feature?.geometry.type !== 'Point' || typeof clusterId !== 'number' || !source) {
+        // Bundled, the library cannot find its worker beside itself: name the copy served from public/.
+        setWorkerUrl(MAPLIBRE_WORKER_URL);
+        let instance: MapLibreMap;
+        try {
+          instance = new MapLibre({
+            container: container.current,
+            style: MAP_STYLE_URL,
+            center: view?.center ?? DEFAULT_VIEW.center,
+            zoom: view?.zoom ?? DEFAULT_VIEW.zoom,
+            interactive,
+            attributionControl: false,
+            // A pointer that moves is a scroll, not a zoom, until the map is touched (Jakob's law).
+            cooperativeGestures: interactive,
+          });
+        } catch {
+          // No WebGL2 (old device, blocked GPU, headless browser): the list beside the map still works.
+          setUnsupported(true);
+          return;
+        }
+        map.current = instance;
+        if (interactive) {
+          // Zoom, and a compass that shows the bearing and puts the north back up (tilt too).
+          instance.addControl(
+            new NavigationControl({ showCompass: true, visualizePitch: true }),
+            'top-left'
+          );
+          instance.addControl(new FullscreenControl(), 'top-left');
+          instance.addControl(new ScaleControl({ maxWidth: 110, unit: 'metric' }), 'bottom-right');
+        }
+        instance.on('load', () => {
+          if (cancelled) {
             return;
           }
-          const geometry = feature.geometry;
-          void source.getClusterExpansionZoom(clusterId).then((zoom) => {
-            const center = geometry.coordinates as [number, number];
-            if (reducedMotion()) {
-              instance.jumpTo({ center, zoom });
-            } else {
-              instance.easeTo({ center, zoom });
+          instance.addSource(SOURCE, {
+            type: 'geojson',
+            data: collection(latest.current.features),
+            cluster: true,
+            clusterRadius: 48,
+            clusterMaxZoom: 15,
+            promoteId: 'id',
+          });
+          const clustered: FilterSpecification = ['has', 'point_count'];
+          const single: FilterSpecification = ['!', ['has', 'point_count']];
+          const clusterSize: ExpressionSpecification = [
+            'step',
+            ['get', 'point_count'],
+            15,
+            10,
+            19,
+            50,
+            24,
+          ];
+          instance.addLayer({
+            id: 'cluster-halo',
+            type: 'circle',
+            source: SOURCE,
+            filter: clustered,
+            paint: {
+              'circle-radius': ['+', clusterSize, 9],
+              'circle-blur': 0.9,
+              'circle-opacity': 0.45,
+            },
+          });
+          instance.addLayer({
+            id: 'clusters',
+            type: 'circle',
+            source: SOURCE,
+            filter: clustered,
+            paint: {
+              'circle-radius': clusterSize,
+              'circle-opacity': 0.95,
+              'circle-stroke-width': 2,
+            },
+          });
+          instance.addLayer({
+            id: 'cluster-count',
+            type: 'symbol',
+            source: SOURCE,
+            filter: clustered,
+            layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 13 },
+            paint: { 'text-color': '#04130d' },
+          });
+          instance.addLayer({
+            id: 'point-halo',
+            type: 'circle',
+            source: SOURCE,
+            filter: single,
+            paint: {
+              'circle-radius': ['case', SELECTED, 20, 14],
+              'circle-blur': 0.85,
+              'circle-opacity': 0.6,
+            },
+          });
+          instance.addLayer({
+            id: 'points',
+            type: 'circle',
+            source: SOURCE,
+            filter: single,
+            paint: {
+              'circle-radius': ['case', SELECTED, 8, 6],
+              'circle-stroke-width': 2,
+            },
+          });
+          instance.addSource(CELL_SOURCE, {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] },
+          });
+          instance.addLayer({
+            id: 'cell-fill',
+            type: 'fill',
+            source: CELL_SOURCE,
+            paint: { 'fill-opacity': 0.18 },
+          });
+          instance.addLayer({
+            id: 'cell-line',
+            type: 'line',
+            source: CELL_SOURCE,
+            paint: { 'line-width': 1.5 },
+          });
+          instance.addSource(MARKER_SOURCE, {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] },
+          });
+          instance.addLayer({
+            id: 'marker-halo',
+            type: 'circle',
+            source: MARKER_SOURCE,
+            paint: { 'circle-radius': 20, 'circle-blur': 0.85, 'circle-opacity': 0.6 },
+          });
+          instance.addLayer({
+            id: 'marker',
+            type: 'circle',
+            source: MARKER_SOURCE,
+            paint: { 'circle-radius': 8, 'circle-stroke-width': 2 },
+          });
+          applyTheme(instance, modeRef.current);
+          ready.current = true;
+          applyMarker(instance, latest.current.marker, latest.current.cell);
+          applySelection(instance, latest.current.features, latest.current.selectedId);
+
+          instance.on('click', 'points', (event) => {
+            const id = event.features?.[0]?.properties?.id;
+            if (typeof id === 'string') {
+              handlers.current.onSelect?.(id);
             }
           });
-        });
-        instance.on('click', (event) => {
-          const hits = instance.queryRenderedFeatures(event.point, {
-            layers: ['points', 'clusters'],
+          instance.on('click', 'clusters', (event) => {
+            const feature = event.features?.[0];
+            const clusterId = feature?.properties?.cluster_id;
+            const source = instance.getSource<GeoJSONSource>(SOURCE);
+            if (feature?.geometry.type !== 'Point' || typeof clusterId !== 'number' || !source) {
+              return;
+            }
+            const geometry = feature.geometry;
+            void source.getClusterExpansionZoom(clusterId).then((zoom) => {
+              const center = geometry.coordinates as [number, number];
+              if (reducedMotion()) {
+                instance.jumpTo({ center, zoom });
+              } else {
+                instance.easeTo({ center, zoom });
+              }
+            });
           });
-          if (hits.length === 0) {
-            handlers.current.onPick?.([event.lngLat.lng, event.lngLat.lat]);
-          }
+          instance.on('click', (event) => {
+            const hits = instance.queryRenderedFeatures(event.point, {
+              layers: ['points', 'clusters'],
+            });
+            if (hits.length === 0) {
+              handlers.current.onPick?.([event.lngLat.lng, event.lngLat.lat]);
+            }
+          });
+          instance.on('moveend', (event: { originalEvent?: unknown }) => {
+            handlers.current.onMoved?.(
+              windowOf(instance),
+              event.originalEvent !== undefined,
+              viewOf(instance)
+            );
+          });
+          handlers.current.onMoved?.(windowOf(instance), false, viewOf(instance));
         });
-        instance.on('moveend', (event: { originalEvent?: unknown }) => {
-          handlers.current.onMoved?.(
-            windowOf(instance),
-            event.originalEvent !== undefined,
-            viewOf(instance)
-          );
-        });
-        handlers.current.onMoved?.(windowOf(instance), false, viewOf(instance));
-      });
-    });
+      }
+    );
     return () => {
       cancelled = true;
       ready.current = false;
@@ -358,12 +391,23 @@ export function MapView({
     };
   }, []);
 
+  // The chosen view: kept on the device, and the basemap redrawn at once.
+  const chooseMode = (next: MapMode) => {
+    modeRef.current = next;
+    setMode(next);
+    storeMode(next);
+    const instance = map.current;
+    if (instance !== null && ready.current) {
+      applyTheme(instance, next);
+    }
+  };
+
   // The map follows the app's theme: a switch in the settings or in the system repaints it.
   useEffect(() => {
     const repaint = () => {
       const instance = map.current;
       if (instance !== null && ready.current) {
-        applyTheme(instance);
+        applyTheme(instance, modeRef.current);
       }
     };
     const observer = new MutationObserver(repaint);
@@ -418,6 +462,27 @@ export function MapView({
         >
           {A.mapUnsupported}
         </p>
+      ) : null}
+      {interactive && !unsupported ? (
+        <fieldset className="absolute end-2 top-2 m-0 flex gap-1 rounded-[14px] border-0 bg-[var(--surface-glass)] p-1 shadow-[var(--panel-shadow)]">
+          <legend className="sr-only">{A.mapMode.label}</legend>
+          {MAP_MODES.map((choice) => (
+            <button
+              key={choice}
+              type="button"
+              aria-pressed={mode === choice}
+              onClick={() => chooseMode(choice)}
+              className={cx(
+                'min-h-11 rounded-[10px] px-3 font-medium text-sm transition-colors duration-200',
+                mode === choice
+                  ? 'bg-[var(--chip-primary-bg)] text-fg'
+                  : 'text-fg-soft hover:text-fg'
+              )}
+            >
+              {A.mapMode[choice]}
+            </button>
+          ))}
+        </fieldset>
       ) : null}
       <nav
         aria-label={A.attribution.label}

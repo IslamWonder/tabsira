@@ -1,9 +1,10 @@
-import { act, render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { messages } from '@/messages';
 import { FEATURE, SECOND_FEATURE } from '@/test/atlas';
 import { FakeMap, type FakeSource, forgetMaps, loadedMap, setWorkerUrl } from '@/test/maplibre';
-import { MapView } from './map-view';
+import { MAP_MODE_KEY, MapView } from './map-view';
 
 vi.mock('maplibre-gl', () => import('@/test/maplibre'));
 
@@ -182,6 +183,78 @@ describe('MapView', () => {
     root.removeAttribute('data-theme');
     root.style.removeProperty('--map-water');
     root.style.removeProperty('--point-emerald-halo');
+  });
+
+  it('has zoom, a compass with tilt, full screen and a metric scale', async () => {
+    render(<MapView features={[FEATURE]} />);
+    const map = await loadedMap();
+    const controls = map.addControl.mock.calls.map(([control, place]) => [
+      (control as object).constructor.name,
+      place,
+    ]);
+    expect(controls).toEqual([
+      ['NavigationControl', 'top-left'],
+      ['FullscreenControl', 'top-left'],
+      ['ScaleControl', 'bottom-right'],
+    ]);
+    const calls = map.addControl.mock.calls as [{ options: unknown }][];
+    expect(calls[0]?.[0].options).toEqual({ showCompass: true, visualizePitch: true });
+    expect(calls[2]?.[0].options).toEqual({ maxWidth: 110, unit: 'metric' });
+  });
+
+  it('switches between the streets and the geographic view, and remembers it on the device', async () => {
+    window.localStorage.removeItem(MAP_MODE_KEY);
+    const { unmount } = render(<MapView features={[FEATURE]} />);
+    const map = await loadedMap();
+    const streets = screen.getByRole('button', { name: messages.atlas.mapMode.streets });
+    const geographic = screen.getByRole('button', { name: messages.atlas.mapMode.geographic });
+    expect(streets).toHaveAttribute('aria-pressed', 'true');
+    expect(map.layout.get('road_primary:visibility')).toBe('visible');
+
+    await userEvent.click(geographic);
+    expect(geographic).toHaveAttribute('aria-pressed', 'true');
+    expect(map.layout.get('road_primary:visibility')).toBe('none');
+    expect(window.localStorage.getItem(MAP_MODE_KEY)).toBe('geographic');
+    unmount();
+    forgetMaps();
+
+    // The next map opens on the view chosen last.
+    render(<MapView features={[FEATURE]} />);
+    const next = await loadedMap();
+    expect(next.layout.get('road_primary:visibility')).toBe('none');
+    window.localStorage.removeItem(MAP_MODE_KEY);
+  });
+
+  it('keeps the streets when the device will not store the choice, and shows no switch on a still map', async () => {
+    const blocked = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    const { unmount } = render(<MapView features={[FEATURE]} />);
+    await loadedMap();
+    await userEvent.click(screen.getByRole('button', { name: messages.atlas.mapMode.geographic }));
+    expect(screen.getByRole('button', { name: messages.atlas.mapMode.geographic })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    blocked.mockRestore();
+    vi.restoreAllMocks();
+    unmount();
+    forgetMaps();
+    render(<MapView marker={[10, 36]} interactive={false} />);
+    await loadedMap();
+    expect(screen.queryByRole('button', { name: messages.atlas.mapMode.streets })).toBeNull();
+  });
+
+  it('switching before the map is ready only remembers the choice', async () => {
+    render(<MapView features={[FEATURE]} />);
+    await vi.waitFor(() => expect(FakeMap.instances).toHaveLength(1));
+    await userEvent.click(screen.getByRole('button', { name: messages.atlas.mapMode.geographic }));
+    expect((FakeMap.instances[0] as FakeMap).setLayoutProperty).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem(MAP_MODE_KEY)).toBe('geographic');
+    window.localStorage.removeItem(MAP_MODE_KEY);
   });
 
   it('waits for the map to load before following a theme switch', async () => {

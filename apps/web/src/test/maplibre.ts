@@ -123,7 +123,13 @@ export class FakeMap {
   }
 }
 
-export class NavigationControl {}
+export class NavigationControl {
+  constructor(readonly options: unknown = {}) {}
+}
+export class ScaleControl {
+  constructor(readonly options: unknown = {}) {}
+}
+export class FullscreenControl {}
 
 /** Where the map was told its worker lives. */
 export const setWorkerUrl = vi.fn();

@@ -945,6 +945,12 @@ export const ar = {
     mapUnsupported:
       'لا يدعم هذا المتصفح أو الجهاز عرض الخريطة (يلزم WebGL2). تبقى النتائج في القائمة بجانبها.',
     joinLabels: (parts: readonly (string | null | undefined)[]) => parts.filter(Boolean).join('، '),
+    /** The two views of the basemap (src/components/atlas/basemap.ts). */
+    mapMode: {
+      label: 'نوع الخريطة',
+      streets: 'شوارع',
+      geographic: 'جغرافية',
+    },
     /** The credits the map's sources ask for, with their links (OpenStreetMap: © and a link to its copyright page). */
     attribution: {
       label: 'مصادر الخريطة',
