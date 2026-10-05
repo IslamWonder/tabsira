@@ -9,8 +9,7 @@ const M = messages.community.post;
  * The verified pair of a post, exactly as the API returned it from the
  * scripture store: the text goes to the card untouched (AGENTS.md: byte for
  * byte, never typed or changed here). A publication may cite up to three of
- * each kind; a hadith whose ruling is no longer eligible is simply absent, and
- * the verse then stands alone, with a line saying so.
+ * each kind; when the gate kept no hadith, the verse stands alone, with a line saying so.
  */
 export function PostEvidence({
   insight,
@@ -37,10 +36,6 @@ export function PostEvidence({
       headingLevel={headingLevel}
       text={hadith.text}
       reference={M.hadithReference(hadith.collection_name, hadith.number)}
-      verifyHref={hadith.verification_url}
-      classification={hadith.classification ?? undefined}
-      // The verified label (evidence.verified) could read as a grade: a hadith shown before its ruling never carries it.
-      verified={hadith.verified && hadith.classification !== null}
     />
   ));
   const quranBlock = <div className="flex flex-col gap-4">{verses}</div>;

@@ -1102,7 +1102,7 @@ export interface paths {
      * @description Return the newest readable posts, ranked, each with `why` («لماذا أرى هذا؟»).
      *
      *     The ranking uses freshness, the members the caller follows, variety of topics and what the
-     *     caller has already liked, saved or commented on. It never uses religion or any personal
+     *     caller has already reacted to, saved or commented on. It never uses religion or any personal
      *     detail, and the caller can switch personalisation off, which leaves freshness and variety.
      *     The first request pins the moment of ranking in `next_cursor`, so the next pages continue the
      *     same list.
@@ -3010,17 +3010,8 @@ export interface components {
       grade: string;
     };
     /**
-     * HadithClassification
-     * @description An editor's reading of a dorar.net ruling; only the first two make a hadith evidence.
-     * @enum {string}
-     */
-    HadithClassification: 'صحيح' | 'حسن' | 'ضعيف' | 'موضوع' | 'مختلف_فيه';
-    /**
      * HadithEvidenceOut
-     * @description A hadith read from the scripture store, shown only while it is eligible.
-     *
-     *     Its ruling is صحيح or حسن, or it has no ruling and belongs to the enriched Sunnah file
-     *     (decision 58).
+     * @description A hadith read from the scripture store, as it is; one an editor ruled out is absent (decision 64).
      */
     HadithEvidenceOut: {
       /** Collection */
@@ -3039,27 +3030,12 @@ export interface components {
        * @description SHA-256 of the UTF-8 bytes of `text`
        */
       sha256: string;
-      /** @description The editor's reading of the ruling in force; null when none is recorded yet */
-      classification: components['schemas']['HadithClassification'] | null;
-      /**
-       * Verification Url
-       * @description A dorar.net search the reader opens («تحقق في الدرر»)
-       */
-      verification_url: string;
       /**
        * Verified
        * @default true
        * @constant
        */
       verified: true;
-    };
-    /** HadithLinks */
-    HadithLinks: {
-      /**
-       * Dorar Verification
-       * @description A dorar.net search for this hadith («تحقق في الدرر»)
-       */
-      dorar_verification: string;
     };
     /** HadithOut */
     HadithOut: {
@@ -3092,14 +3068,6 @@ export interface components {
        * @description The dataset's grades as given; informational only, never decide eligibility
        */
       informational_grades: components['schemas']['GradeOut'][] | null;
-      /** @description The editor-recorded dorar.net ruling in force */
-      ruling: components['schemas']['RulingOut'] | null;
-      /**
-       * Eligible
-       * @description Whether it may be shown as evidence: the ruling in force is صحيح or حسن, or there is no ruling and the hadith belongs to the enriched Sunnah file (decision 58)
-       */
-      eligible: boolean;
-      links: components['schemas']['HadithLinks'];
       /**
        * Status
        * @default local_corpus
@@ -3156,12 +3124,7 @@ export interface components {
        * Hadith Status
        * @enum {string}
        */
-      hadith_status: 'shown' | 'awaiting_verification' | 'none';
-      /**
-       * Notice
-       * @description Set when the hadith waits for its dorar.net ruling
-       */
-      notice: string | null;
+      hadith_status: 'shown' | 'none';
       /** Pair Complete */
       pair_complete: boolean;
       /** Explanation Tag */
@@ -3259,7 +3222,7 @@ export interface components {
        * @description «السنة»: the fixed tag of quoted Sunnah
        */
       tag: string;
-      /** @description The hadith exactly as stored, its spans, its dorar.net ruling and links */
+      /** @description The hadith exactly as stored, with its spans; no ruling is shown (decision 64) */
       hadith: components['schemas']['HadithOut'];
       why: components['schemas']['EvidenceWhy'] | null;
     };
@@ -3962,7 +3925,7 @@ export interface components {
        * @description «السنة»: the fixed tag of quoted Sunnah
        */
       tag: string;
-      /** @description The hadith exactly as stored, its spans, its dorar.net ruling and links */
+      /** @description The hadith exactly as stored, with its spans; no ruling is shown (decision 64) */
       hadith: components['schemas']['HadithOut'];
     };
     /**
@@ -4022,9 +3985,7 @@ export interface components {
        * Hadith Status
        * @enum {string}
        */
-      hadith_status: 'shown' | 'awaiting_verification' | 'none';
-      /** Notice */
-      notice: string | null;
+      hadith_status: 'shown' | 'none';
       /** Pair Complete */
       pair_complete: boolean;
       /** Explanation Tag */
@@ -4302,6 +4263,36 @@ export interface components {
       progress: number;
     };
     /**
+     * ReactionCountsOut
+     * @description How many members said each thing; public, since encouraging good is no harm (61).
+     */
+    ReactionCountsOut: {
+      /** Benefited */
+      benefited: number;
+      /** Jazak */
+      jazak: number;
+    };
+    /**
+     * ReactionExport
+     * @description A reaction the account gave to a post.
+     */
+    ReactionExport: {
+      /** Post Id */
+      post_id: string;
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      kind: components['schemas']['ReactionKind'];
+    };
+    /**
+     * ReactionKind
+     * @description What a reader says to a post: it benefited them, or thanks to its author.
+     * @enum {string}
+     */
+    ReactionKind: 'benefited' | 'jazak';
+    /**
      * ReactionOut
      * @description A post's reaction counts and the kinds the caller gave.
      */
@@ -4578,28 +4569,6 @@ export interface components {
       admin_area: components['schemas']['AdminArea'] | null;
       country: components['schemas']['CountryRef'] | null;
     };
-    /** RulingOut */
-    RulingOut: {
-      /**
-       * Ruling Text
-       * @description As dorar.net gives it, copied by an editor
-       */
-      ruling_text: string;
-      /** Scholar */
-      scholar: string;
-      /** Source Book */
-      source_book: string;
-      /** Page */
-      page: string;
-      /** Dorar Url */
-      dorar_url: string;
-      classification: components['schemas']['HadithClassification'];
-      /**
-       * Recorded At
-       * Format: date-time
-       */
-      recorded_at: string;
-    };
     /** ScanEntityOut */
     ScanEntityOut: {
       /** Id */
@@ -4696,11 +4665,6 @@ export interface components {
       clarification_question: string | null;
       /** Insights */
       insights: components['schemas']['InsightSummary'][];
-      /**
-       * Awaiting Verification
-       * @description Hadith wanted by this scan that wait for a ruling
-       */
-      awaiting_verification: number;
       /** Events Url */
       events_url: string;
       /**
@@ -5082,12 +5046,7 @@ export interface components {
        * Hadith Status
        * @enum {string}
        */
-      hadith_status: 'shown' | 'awaiting_verification' | 'none';
-      /**
-       * Notice
-       * @description Set while the hadith waits for its dorar.net ruling
-       */
-      notice: string | null;
+      hadith_status: 'shown' | 'none';
       /** Pair Complete */
       pair_complete: boolean;
       /** Explanation Tag */
@@ -5307,36 +5266,6 @@ export interface components {
     ScanFromUrl: {
       /** Url */
       url: string;
-    };
-    /**
-     * ReactionKind
-     * @description What a reader says to a post: it benefited them, or thanks to its author.
-     * @enum {string}
-     */
-    ReactionKind: 'benefited' | 'jazak';
-    /**
-     * ReactionCountsOut
-     * @description How many members said each thing; public, since encouraging good is no harm (61).
-     */
-    ReactionCountsOut: {
-      /** Benefited */
-      benefited: number;
-      /** Jazak */
-      jazak: number;
-    };
-    /**
-     * ReactionExport
-     * @description A reaction the account gave to a post.
-     */
-    ReactionExport: {
-      /** Post Id */
-      post_id: string;
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      kind: components['schemas']['ReactionKind'];
     };
   };
   responses: never;
@@ -8081,66 +8010,6 @@ export interface operations {
       };
     };
   };
-  public_photo_media_public__name__get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        name: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'image/jpeg': unknown;
-        };
-      };
-      /** @description An error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-    };
-  };
-  rain_tutorial_rain_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['TutorialOut'];
-        };
-      };
-      /** @description An error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-    };
-  };
   orphans_near_atlas_orphans_get: {
     parameters: {
       query: {
@@ -8288,6 +8157,66 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['SponsorshipOut'][];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  public_photo_media_public__name__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'image/jpeg': unknown;
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  rain_tutorial_rain_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TutorialOut'];
         };
       };
       /** @description An error */

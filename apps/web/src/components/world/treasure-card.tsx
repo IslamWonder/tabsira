@@ -47,11 +47,6 @@ function Evidence({ treasure }: { treasure: Treasure }) {
             hadith.hadith.collection.name_ar,
             hadith.hadith.arabic_number ?? hadith.hadith.number
           )}
-          sourceHref={hadith.hadith.collection.source_url}
-          verifyHref={hadith.hadith.links.dorar_verification}
-          ruling={hadith.hadith.ruling?.ruling_text}
-          // The verified label (evidence.verified) could read as a grade: a hadith shown before its ruling never carries it.
-          verified={hadith.hadith.ruling !== null}
         />
       )}
     </div>

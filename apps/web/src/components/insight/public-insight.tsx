@@ -1,7 +1,6 @@
 import { SparkIcon } from '@/components/icons';
 import { LinkButton } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
-import { Notice } from '@/components/ui/notice';
 import { DISPLAY_TIME_ZONE, formatDay } from '@/lib/dates';
 import type { PublicInsight } from '@/lib/public-insight';
 import { messages } from '@/messages';
@@ -91,11 +90,6 @@ export function PublicInsightPage({ insight }: { insight: PublicInsight }) {
           </p>
         </header>
         <InsightEvidence insight={insight} />
-        {insight.notice !== null && insight.hadith_status !== 'awaiting_verification' ? (
-          <div role="note">
-            <Notice tone="info">{insight.notice}</Notice>
-          </div>
-        ) : null}
         <ExplanationSections tag={insight.explanation_tag} parts={insight.explanation} />
         {insight.small_step === null ? null : <SmallStep step={insight.small_step} />}
         {/* The share action and the share image of task 09.3 go here, after the content and before the invitation. */}

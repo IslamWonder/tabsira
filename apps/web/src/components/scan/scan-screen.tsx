@@ -186,26 +186,11 @@ export function ScanScreen({ scanId }: { scanId: string }) {
       <>
         <SceneInsightList points={points.inList} selectedId={undefined} onSelect={openInsight} />
         {view.scan.description === null ? null : <SeenNote text={view.scan.description} />}
-        {view.scan.awaiting_verification > 0 ? (
-          <Notice tone="info">{T.noEvidence.awaiting}</Notice>
-        ) : null}
         <div className="flex flex-wrap gap-2.5">
           {chooseFocus}
           {another}
         </div>
       </>
-    );
-  } else if (view.scan.outcome === 'incomplete_evidence_pair') {
-    announcement = T.incompletePair.title;
-    body = (
-      <section className="flex flex-col items-start gap-4">
-        <h2 className="m-0 font-semibold text-[1.25rem] text-fg">{T.incompletePair.title}</h2>
-        <p className="m-0 text-fg-soft leading-[1.9]">{T.incompletePair.body}</p>
-        <div className="flex flex-wrap gap-2.5">
-          {chooseFocus}
-          {another}
-        </div>
-      </section>
     );
   } else {
     announcement = T.noEvidence.title;
@@ -213,9 +198,6 @@ export function ScanScreen({ scanId }: { scanId: string }) {
       <section className="flex flex-col items-start gap-4">
         <h2 className="m-0 font-semibold text-subheading text-fg">{T.noEvidence.title}</h2>
         <p className="m-0 text-fg-soft leading-[1.9]">{T.noEvidence.body}</p>
-        {view.scan.awaiting_verification > 0 ? (
-          <Notice tone="info">{T.noEvidence.awaiting}</Notice>
-        ) : null}
         <div className="flex flex-wrap gap-2.5">
           {chooseFocus}
           {another}

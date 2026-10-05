@@ -33,23 +33,16 @@ describe('InsightEvidence', () => {
     expect(verse).toContain('  ');
   });
 
-  it('shows the reference, the ruling as recorded, its source and the links', () => {
+  it('shows the references, with no link, ruling or dorar mention', () => {
     render(<InsightEvidence insight={insightOut()} />);
     const quran = screen.getByRole('article', { name: 'القرآن' });
     expect(within(quran).getByText('سورة اختبار، الآية 50')).toBeInTheDocument();
     expect(within(quran).queryByRole('link')).toBeNull();
     const sunnah = screen.getByRole('article', { name: 'السنة' });
     expect(within(sunnah).getByText('صحيح اختبار، رقم 1032')).toBeInTheDocument();
-    expect(within(sunnah).getByText('حكم الدرر: إسناده صحيح')).toBeInTheDocument();
-    expect(within(sunnah).getByText('محدّث الاختبار، كتاب الاختبار، 12')).toBeInTheDocument();
-    expect(within(sunnah).getByRole('link', { name: /افتح المصدر/ })).toHaveAttribute(
-      'href',
-      'https://dorar.net/hadith/sharh/1'
-    );
-    expect(within(sunnah).getByRole('link', { name: /تحقق في الدرر/ })).toHaveAttribute(
-      'href',
-      'https://dorar.net/hadith/search?q=test'
-    );
+    expect(within(sunnah).queryByRole('link')).toBeNull();
+    expect(within(sunnah).queryByText(/الدرر|حكم/)).toBeNull();
+    expect(within(sunnah).queryByText('نص موثّق من مصدره')).toBeNull();
   });
 
   it('applies the display spans without cutting or changing the text', () => {
@@ -87,24 +80,12 @@ describe('InsightEvidence', () => {
     expect(paragraph?.querySelector('[data-role="chain"]')?.textContent).toBe('a\u{1F600}');
   });
 
-  it('shows the verse alone, with the API notice, while the hadith waits for its ruling', () => {
-    const insight = insightOut({
-      hadith: null,
-      hadith_status: 'awaiting_verification',
-      notice: '[الحديث بانتظار الحكم]',
-      pair_complete: false,
-    });
-    const { container } = render(<InsightEvidence insight={insight} />);
+  it('shows the verse alone when no hadith was kept', () => {
+    const insight = insightOut({ hadith: null, hadith_status: 'none', pair_complete: false });
+    render(<InsightEvidence insight={insight} />);
     expect(screen.getByRole('article', { name: 'القرآن' })).toBeInTheDocument();
     expect(screen.queryByRole('article', { name: 'السنة' })).toBeNull();
-    expect(screen.getByRole('status')).toHaveTextContent('[الحديث بانتظار الحكم]');
-    expect(container.querySelector('svg[focusable="false"][width="24"]')).toBeNull();
-  });
-
-  it('shows no notice when there is no hadith and none is awaited', () => {
-    render(<InsightEvidence insight={insightOut({ hadith: null, hadith_status: 'none' })} />);
     expect(screen.queryByRole('status')).toBeNull();
-    expect(screen.queryByRole('article', { name: 'السنة' })).toBeNull();
   });
 
   it('shows a hadith without its verse, with no thread between', () => {
@@ -124,24 +105,6 @@ describe('InsightEvidence', () => {
   it('marks the verse as matched to its source, as the API says it was', () => {
     render(<InsightEvidence insight={insightOut()} />);
     expect(screen.getByText('نص موثّق من مصدره')).toBeInTheDocument();
-  });
-
-  it('falls back to the search link and says no ruling is recorded when none was', () => {
-    const base = insightOut();
-    const hadith = base.hadith as NonNullable<Insight['hadith']>;
-    const insight = insightOut({
-      hadith: { ...hadith, hadith: { ...hadith.hadith, ruling: null } },
-    });
-    render(<InsightEvidence insight={insight} />);
-    const sunnah = screen.getByRole('article', { name: 'السنة' });
-    expect(within(sunnah).queryByText(/^حكم الدرر:/)).toBeNull();
-    expect(
-      within(sunnah).getByText('لم نسجّل حكم الدرر لهذا الحديث بعد؛ تحقّق منه في الدرر.')
-    ).toBeInTheDocument();
-    expect(within(sunnah).getByRole('link', { name: /افتح المصدر/ })).toHaveAttribute(
-      'href',
-      'https://dorar.net/hadith/search?q=test'
-    );
   });
 
   it('puts two short texts side by side on wide screens, and two long ones one above the other', () => {

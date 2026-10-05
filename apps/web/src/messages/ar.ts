@@ -277,12 +277,6 @@ export const ar = {
     sunnah: 'السنة',
     openSource: 'افتح المصدر',
     verified: 'نص موثّق من مصدره',
-    verifyDorar: 'تحقق في الدرر',
-    ruling: (ruling: string) => `حكم الدرر: ${ruling}`,
-    /** The editor's reading of the ruling (decision 18), when dorar's own words are not in the answer. */
-    classification: (classification: string) => `تصنيف المحرّر لحكم الدرر: ${classification}`,
-    /** A hadith shown with no recorded ruling (DECISIONS.md 58): said plainly, beside the dorar link. */
-    unruled: 'لم نسجّل حكم الدرر لهذا الحديث بعد؛ تحقّق منه في الدرر.',
     quranOpen: '﴿',
     quranClose: '﴾',
   },
@@ -409,7 +403,7 @@ export const ar = {
       items: [
         {
           title: 'النصّ مع مصدره',
-          text: 'تُعرض الآية والحديث كما هما في مصدريهما، مع المرجع ورابط التحقق؛ والحديث الذي لم نسجّل حكمه بعد يقال عنه ذلك صراحة.',
+          text: 'تُعرض الآية والحديث كما هما في مصدريهما مع مرجع كل منهما. يُعرض الحديث من كتابه بلا حكم عليه في هذه المرحلة.',
         },
         {
           title: 'المعنى قريب منك',
@@ -1657,7 +1651,6 @@ export const ar = {
       hadithWords: '[كلمات النبي ﷺ تأتي من المدونة]',
       hadithTail: ' [تعليق المحدّث يأتي من المدونة]',
       hadithReference: '[الكتاب · رقم الحديث]',
-      ruling: '[حكم الدرر كما يسجّله محرّر]',
       explanation: '[شرح تبصرة يأتي من الخادم بعد التحقق]',
       map: '[الخريطة]',
       mapPanel: '[قائمة الأماكن]',

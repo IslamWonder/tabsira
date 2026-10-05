@@ -206,7 +206,6 @@ describe('ScanScreen: the insights', () => {
             completed: false,
           },
         ],
-        awaiting_verification: 1,
       })
     );
     render(<ScanScreen scanId="1" />);
@@ -215,7 +214,7 @@ describe('ScanScreen: the insights', () => {
     expect(within(list).getAllByRole('button')).toHaveLength(3);
     expect(within(list).getByText('تمّت · لمحة البصيرة الثانية')).toBeInTheDocument();
     expect(screen.getByText('نبتة صغيرة في أصيص')).toBeInTheDocument();
-    expect(screen.getByText(/بانتظار التحقق من حكمه في الدرر/)).toBeInTheDocument();
+    expect(screen.queryByText(/الدرر/)).toBeNull();
     await userEvent.click(within(list).getByRole('button', { name: /عنوان بلا موضع/ }));
     expect(push).toHaveBeenCalledWith('/insight/110000000000000004');
   });
@@ -317,27 +316,12 @@ describe('ScanScreen: the single question', () => {
 
 describe('ScanScreen: no reliable link', () => {
   it('says so as a result of its own, with a way to focus and a way to try another scene', () => {
-    setControls(ready({ outcome: 'no_relevant_evidence', insights: [], awaiting_verification: 2 }));
+    setControls(ready({ outcome: 'no_relevant_evidence', insights: [] }));
     render(<ScanScreen scanId="1" />);
     expect(
       screen.getByRole('heading', { level: 2, name: 'لم أجد صلة موثوقة بهذا المشهد بعد' })
     ).toBeInTheDocument();
     expect(screen.getByText(/لا نكمل بنص بعيد/)).toBeInTheDocument();
-    expect(screen.getByText(/بانتظار التحقق من حكمه في الدرر/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'وضّح ما تقصد' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'جرّب مشهدًا آخر' })).toBeInTheDocument();
-  });
-
-  it('tells apart evidence that waits for its ruling from no evidence at all', () => {
-    setControls(
-      ready({ outcome: 'incomplete_evidence_pair', insights: [], awaiting_verification: 1 })
-    );
-    render(<ScanScreen scanId="1" />);
-    expect(
-      screen.getByRole('heading', { level: 2, name: 'وجدنا دليلًا، ولم تكتمل البصيرة بعد' })
-    ).toBeInTheDocument();
-    expect(screen.getByText(/بانتظار التحقق من حكمه في الدرر/)).toBeInTheDocument();
-    expect(screen.queryByText(/لا نكمل بنص بعيد/)).toBeNull();
     expect(screen.getByRole('button', { name: 'وضّح ما تقصد' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'جرّب مشهدًا آخر' })).toBeInTheDocument();
   });

@@ -4,8 +4,7 @@
  * Wording follows docs/spec/tajriba.md §7: an action is named by what it does and
  * nothing is announced before it has happened.
  *
- * What the API says (the title, the notice of a hadith awaiting its ruling, the
- * engine label, the author) is shown as the API sends it and is not written
+ * What the API says (the title, the engine label, the author) is shown as the API sends it and is not written
  * here. No Quran or hadith text belongs in this file, ever.
  */
 
@@ -43,11 +42,6 @@ export const shareMessages = {
   shareCard: {
     /** Under the verse when the hadith is too long to fit whole on the card. */
     hadithOnPage: 'الحديث كاملًا في صفحة البصيرة',
-    /** The hadith's reference, then the source's own words on its ruling and who gave it, each on its own line. */
-    hadithWithRuling: (reference: string, ruling: string, source: string) =>
-      `${reference}\n${ruling}\n${source}`,
-    /** A hadith shown before any ruling (DECISIONS.md 58): the card says so, as the page does. */
-    hadithUnruled: (reference: string, unruled: string) => `${reference}\n${unruled}`,
     /** The author's public name and handle; the handle is isolated so it keeps its own direction in the right-to-left line. */
     author: (name: string, handle: string) => `نشرها ${name} \u2066@${handle}\u2069`,
     /** The author who did not agree to show a full name: the handle alone. */

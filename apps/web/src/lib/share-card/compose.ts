@@ -46,7 +46,6 @@ export interface Parts {
   readonly disclosure: TextImage;
   readonly author: TextImage | null;
   readonly title: TextImage;
-  readonly notice: TextImage | null;
   readonly pointer: TextImage | null;
   readonly verse: Source | null;
   readonly hadith: Source | null;
@@ -187,7 +186,6 @@ function content(parts: Parts, spot: Spot): Block[] {
     ...(parts.verse === null ? [] : [source(parts.verse)]),
     ...(parts.hadith === null ? [] : [source(parts.hadith)]),
     ...(parts.pointer === null ? [] : [line(parts.pointer)]),
-    ...(parts.notice === null ? [] : [line(parts.notice)]),
   ];
 }
 

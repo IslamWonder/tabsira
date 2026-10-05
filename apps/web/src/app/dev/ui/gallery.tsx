@@ -125,9 +125,6 @@ function SunnahSample() {
       text={HADITH_TEXT}
       spans={HADITH_SPANS}
       reference={P.hadithReference}
-      sourceHref="https://dorar.net/"
-      verifyHref="https://dorar.net/"
-      ruling={P.ruling}
     />
   );
 }

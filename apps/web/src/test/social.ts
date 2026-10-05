@@ -51,8 +51,6 @@ export const POST: Post = {
         number: '1032',
         text: HADITH_TEXT,
         sha256: sha256(HADITH_TEXT),
-        classification: 'صحيح',
-        verification_url: 'https://dorar.net/',
         verified: true,
       },
     ],

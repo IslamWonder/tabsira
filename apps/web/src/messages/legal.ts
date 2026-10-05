@@ -605,7 +605,7 @@ const sources: LegalDocument = {
           'This Open-Hadith-Data project is made available under the Open Database License: http://opendatacommons.org/licenses/odbl/1.0/. Any rights in individual contents of the database are licensed under the Database Contents License: http://opendatacommons.org/licenses/dbcl/1.0/'
         ),
         p(
-          'أحكام المحدثين على الأحاديث ينقلها محررونا يدويًا من «الدرر السنية» https://dorar.net مع اسم العالم والكتاب والصفحة، ونضع مع كل حكم رابط صفحته هناك لتتحقق منه بنفسك.'
+          'نصوص الأحاديث تُعرض من الكتب التسعة كما هي مخزنة عندنا، مع اسم الكتاب ورقم الحديث. ولا نعرض حكمًا على الحديث في هذه المرحلة، إلى أن نختار طريقة أفضل لعرضه.'
         ),
       ],
     },

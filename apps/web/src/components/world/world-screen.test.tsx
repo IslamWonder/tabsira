@@ -109,17 +109,14 @@ describe('WorldScreen', () => {
   });
 
   it('lists what was learned in «بصائري» and opens one at its place, with its sources', async () => {
-    const unruled = insightOut({
+    const second = insightOut({
       id: '9002',
       title: '[بصيرة ثانية]',
       completed_at: '2026-10-02T08:00:00Z',
     });
-    const hadith = unruled.hadith as NonNullable<typeof unruled.hadith>;
     const api = open({
       'GET /world': { body: WORLD },
-      'GET /insights/9002': {
-        body: { ...unruled, hadith: { ...hadith, hadith: { ...hadith.hadith, ruling: null } } },
-      },
+      'GET /insights/9002': { body: second },
       'POST /world/places/7002/visit': { body: PLACE_TWO },
     });
 
@@ -140,12 +137,10 @@ describe('WorldScreen', () => {
       await within(panel).findByRole('heading', { level: 3, name: '[بصيرة ثانية]' })
     ).toBeInTheDocument();
     expect(within(panel).getByText('بصيرة متعلّمة')).toBeInTheDocument();
-    expect(within(panel).getByText(unruled.glimpse)).toBeInTheDocument();
+    expect(within(panel).getByText(second.glimpse)).toBeInTheDocument();
     expect(within(panel).getByText('سورة اختبار · 50')).toBeInTheDocument();
     expect(within(panel).getByText('صحيح اختبار · 1032')).toBeInTheDocument();
-    expect(
-      within(panel).getByText('لم نسجّل حكم الدرر لهذا الحديث بعد؛ تحقّق منه في الدرر.')
-    ).toBeInTheDocument();
+    expect(within(panel).queryByText(/الدرر/)).toBeNull();
     expect(within(panel).getByText('احفظ الدعاء الوارد في الحديث.')).toBeInTheDocument();
     expect(within(panel).getByRole('link', { name: 'افتح البصيرة' })).toHaveAttribute(
       'href',
@@ -158,7 +153,7 @@ describe('WorldScreen', () => {
       )
     );
     // The scripture text itself stays on the insight's own screen.
-    expect(within(panel).queryByText(unruled.quran?.verse.text as string)).toBeNull();
+    expect(within(panel).queryByText(second.quran?.verse.text as string)).toBeNull();
 
     await userEvent.click(within(panel).getByRole('button', { name: 'انتقل إلى موضعها' }));
     expect(screen.queryByRole('dialog')).toBeNull();

@@ -36,7 +36,6 @@ function parts(overrides: Partial<Parts> = {}): Parts {
     disclosure: image(600, 24),
     author: null,
     title: image(700, 60),
-    notice: null,
     pointer: null,
     verse: source(80, 'centre'),
     hadith: source(120),
@@ -72,14 +71,13 @@ describe('placing the pieces of a card', () => {
   });
 
   it('places the label in a pill beside the host, and the author at the far end of the footer', () => {
-    const plain = placeFixed(WIDE, parts());
+    const plain = placeFixed(WIDE, parts({ hadith: null }));
     const full = placeFixed(
       WIDE,
       parts({
         hadith: null,
         label: image(150, 24, 'label'),
         author: image(200, 24, 'author'),
-        notice: image(900, 30),
         pointer: image(300, 30),
       })
     );
