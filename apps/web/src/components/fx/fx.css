@@ -186,14 +186,16 @@
   background: linear-gradient(
     180deg,
     transparent 0%,
-    color-mix(in srgb, var(--glow-gold) 12%, transparent) 34%,
-    color-mix(in srgb, var(--glow-gold) 40%, transparent) 48%,
+    color-mix(in srgb, var(--glow-gold) 6%, transparent) 36%,
+    color-mix(in srgb, var(--glow-gold) 18%, transparent) 48%,
     var(--sweep-band) 50%,
-    color-mix(in srgb, var(--glow-gold) 40%, transparent) 52%,
-    color-mix(in srgb, var(--glow-gold) 12%, transparent) 66%,
+    color-mix(in srgb, var(--glow-gold) 18%, transparent) 52%,
+    color-mix(in srgb, var(--glow-gold) 6%, transparent) 64%,
     transparent 100%
   );
-  animation: fx-sweep 2.8s cubic-bezier(0.45, 0.02, 0.55, 0.98) infinite;
+  /* A light pass, not a flash: the reader is looking at their own photo. */
+  opacity: 0.55;
+  animation: fx-sweep 3.6s cubic-bezier(0.45, 0.02, 0.55, 0.98) infinite;
 }
 
 .fx-bracket {
