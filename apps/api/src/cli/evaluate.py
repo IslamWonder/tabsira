@@ -119,10 +119,13 @@ def factory_for(
 
 
 async def _progress(run: SceneRun) -> None:
-    _say(
+    line = (
         f"{run.scene}: {run.status}, {run.insights} insights, "
         f"{run.total_ms / 1000:.1f} s, ${run.cost_usd:.4f}"
     )
+    if run.failure:
+        line += f" ({run.failure})"
+    _say(line)
 
 
 async def _case_progress(run: ChatCaseRun) -> None:

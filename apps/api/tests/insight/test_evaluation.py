@@ -232,7 +232,11 @@ async def test_a_vision_failure_or_a_vision_leak_is_a_failed_scene(store):
     )  # fmt: skip
 
     assert first.runs[0].status == "vision_failed"
+    # The fault is named, so a missing key and a refused image never read alike.
+    assert first.runs[0].failure is not None
+    assert first.runs[0].failure.split(":")[0] in {code.value for code in AiErrorCode}
     assert second.runs[0].status == "vision_leak"
+    assert second.runs[0].failure
     assert not first.runs[0].correct
     assert seen == first.runs
 
@@ -419,3 +423,20 @@ def test_the_report_names_what_reranked(make_settings):
     )
     assert command.models_of(make_settings(ai_provider="ovh"))["rerank"] == "off"
     assert command.models_of(make_settings(reranker="cross_encoder"))["rerank"] == "cross_encoder"
+
+
+async def test_the_terminal_line_names_the_fault_that_ended_a_scene(capsys):
+    failed = (
+        _evaluation()
+        .runs[0]
+        .model_copy(
+            update={"status": "vision_failed", "failure": "not_configured: the key is empty"}
+        )
+    )
+
+    await command._progress(_evaluation().runs[0])
+    await command._progress(failed)
+
+    lines = capsys.readouterr().out.splitlines()
+    assert "(" not in lines[0]
+    assert lines[1].endswith("(not_configured: the key is empty)")

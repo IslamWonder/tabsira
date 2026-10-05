@@ -335,6 +335,7 @@ async def evaluate_case(
     level: str | None = None
     answer = ""
     disclosed = False
+    failed_with: str | None = None
     started = timer()
     savepoint = await connection.begin_nested()
     maker = async_sessionmaker(
@@ -355,6 +356,9 @@ async def evaluate_case(
                 )
             except AppError as error:
                 kind = "refused" if error.code is ErrorCode.CHAT_ANSWER_REJECTED else "failed"
+                if kind == "failed":
+                    # Named, so a missing key never reads like «nothing found» (§16 of the brief).
+                    failed_with = f"{error.code.value}: {error}"
             else:
                 kind = reply.message.kind
                 level = reply.message.level
@@ -370,6 +374,8 @@ async def evaluate_case(
     if level is None and said is not None:
         level = getattr(said, "level", None)
     failures = score(case.expect, kind=kind, level=level, answer=answer, disclosed=disclosed)
+    if failed_with:
+        failures.append(failed_with)
     failures += [f"leak in {where}" for where in leaks]
     return ChatCaseRun(
         case=case.id,
