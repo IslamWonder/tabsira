@@ -9,9 +9,9 @@ import { useCapture } from '@/components/capture/capture-provider';
 import { revealDelay, useReveal } from '@/components/fx/use-reveal';
 import { CameraIcon, MenuIcon, OnwardIcon, PlayIcon, ShieldIcon } from '@/components/icons';
 import { CaptureCard } from '@/components/scene/capture-card';
+import { Emblem, type EmblemName, EmblemTile } from '@/components/ui/emblem';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
-import { Emblem, type EmblemName, EmblemTile } from './emblem';
 import { HeroAtmosphere, KhatamStar } from './hero-atmosphere';
 import { InsightExample } from './insight-example';
 import {
@@ -25,7 +25,7 @@ import { PhonePreview } from './phone-preview';
 
 const L = messages.landing;
 
-/** Each benefit's emblem (src/components/landing/emblem-data.ts). */
+/** Each benefit's emblem (src/components/ui/emblem-data.ts). */
 const BENEFIT_EMBLEMS: Record<BenefitIcon, EmblemName> = {
   lens: 'camera',
   chat: 'chat',

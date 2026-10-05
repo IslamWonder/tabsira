@@ -8,7 +8,7 @@ import { SoundSwitch } from '@/components/ui/sound-switch';
 import { SwitchRow } from '@/components/ui/switch-row';
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { messages } from '@/messages';
-import { MeSection, SubHeading } from './me-section';
+import { MeSection } from './me-section';
 import { SaveStatus, useSaveState } from './save-status';
 import type { ProfileEditor } from './use-profile';
 
@@ -73,12 +73,29 @@ function AccountSettings({
 }
 
 /**
- * The settings (tajriba S13): what this device shows (theme, decorative
- * motion, the sound effect) for everyone, then what the account keeps
- * (personalisation, memory, photo storage, and the two private answers) once
- * signed in.
+ * What this device shows, for everyone, signed in or not (tajriba S13): the
+ * theme, the decorative motion and the sound effect. Kept on the device only.
  */
-export function SettingsSection({
+export function AppearanceSection() {
+  return (
+    <MeSection
+      id="appearance"
+      title={messages.pages.me.sections.appearance}
+      description={messages.pages.me.summaries.appearance}
+    >
+      <ThemeSwitcher />
+      <MotionSwitch />
+      <SoundSwitch />
+    </MeSection>
+  );
+}
+
+/**
+ * What the account keeps about how it serves the reader (tajriba S13):
+ * personalisation, memory, photo storage and the two private answers. A guest
+ * is told these come with an account.
+ */
+export function PersonalizationSection({
   editor,
   signedIn,
 }: {
@@ -87,12 +104,11 @@ export function SettingsSection({
 }) {
   const { load } = editor;
   return (
-    <MeSection id="settings" title={messages.pages.me.sections.settings}>
-      <SubHeading>{S.device}</SubHeading>
-      <ThemeSwitcher />
-      <MotionSwitch />
-      <SoundSwitch />
-      <SubHeading>{S.account}</SubHeading>
+    <MeSection
+      id="personalization"
+      title={messages.pages.me.sections.personalization}
+      description={messages.pages.me.summaries.personalization}
+    >
       {signedIn ? null : (
         <p className="m-0 text-fg-soft">{messages.pages.me.guest.accountSettings}</p>
       )}

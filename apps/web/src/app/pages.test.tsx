@@ -79,14 +79,18 @@ describe('placeholder routes', () => {
   );
 
   it('lets «ملفي» choose the theme and the decorative motion already', () => {
+    window.history.replaceState(null, '', '/me#appearance');
     render(<MePage />);
     expect(screen.getByRole('group', { name: 'المظهر' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'الحركة الزخرفية' })).toBeInTheDocument();
-    const sections = screen.getByRole('navigation', { name: 'أقسام ملفي' });
-    // A guest (the API has not answered yet): the account, the settings, practice and cookies.
-    expect(Array.from(sections.querySelectorAll('a'), (link) => link.getAttribute('href'))).toEqual(
-      ['#account', '#settings', '#practice', '#app', '#cookies']
-    );
+    const [sections] = screen.getAllByRole('navigation', { name: 'أقسام ملفي' });
+    // A guest (the API has not answered yet): the account, the device, practice, the app and cookies.
+    expect(
+      Array.from((sections as HTMLElement).querySelectorAll('a'), (link) =>
+        link.getAttribute('href')
+      )
+    ).toEqual(['#account', '#appearance', '#personalization', '#practice', '#app', '#cookies']);
+    window.history.replaceState(null, '', '/');
   });
 
   it('opens on the landing page, its camera one tap away', () => {

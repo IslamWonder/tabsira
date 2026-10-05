@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
+import { EmblemTile } from '@/components/ui/emblem';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { messages } from '@/messages';
-import { EmblemTile } from './emblem';
 import { KhatamStar } from './hero-atmosphere';
 
 const E = messages.landing.example;
