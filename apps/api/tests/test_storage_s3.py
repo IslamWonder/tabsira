@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import socket
+import uuid
 from collections.abc import Iterator
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
@@ -14,7 +15,7 @@ from botocore.stub import Stubber
 from moto import mock_aws
 
 from src.config import Environment
-from src.storage import build_storage
+from src.storage import build_storage, s3
 from src.storage.base import (
     InvalidKeyError,
     InvalidTtlError,
@@ -23,6 +24,7 @@ from src.storage.base import (
     StorageUnavailableError,
     new_private_key,
     new_public_key,
+    owner_prefix,
 )
 from src.storage.local import LocalStorage
 from src.storage.s3 import PRIVATE_CACHE_CONTROL, PUBLIC_CACHE_CONTROL, S3Storage
@@ -340,3 +342,40 @@ def test_an_explicit_local_store_wins_over_a_bucket(make_settings, tmp_path):
 
 def test_a_public_object_is_cached_for_five_minutes_and_never_immutable():
     assert PUBLIC_CACHE_CONTROL == "public, max-age=300"
+
+
+# ─── One folder per account ────────────────────────────────────────────────────
+
+ACCOUNT = uuid.UUID("0199b6a0-0000-7000-8000-0000000000aa")
+
+
+async def test_deleting_an_account_folder_removes_its_objects_only_page_by_page(
+    bucket, monkeypatch
+):
+    monkeypatch.setattr(s3, "DELETE_BATCH", 2)
+    mine = [new_private_key(ACCOUNT) for _ in range(5)]
+    theirs = new_private_key(uuid.UUID("0199b6a0-0000-7000-8000-0000000000bb"))
+    for key in [*mine, theirs]:
+        await bucket.put(key, JPEG)
+
+    assert await bucket.delete_prefix(owner_prefix(ACCOUNT)) == 5
+    listed = raw(bucket).list_objects_v2(Bucket=BUCKET)["Contents"]
+    assert [item["Key"] for item in listed] == [theirs]
+    assert await bucket.delete_prefix(owner_prefix(ACCOUNT)) == 0
+
+
+async def test_a_folder_the_service_cannot_fully_delete_is_storage_unavailable(bucket, monkeypatch):
+    await bucket.put(new_private_key(ACCOUNT), JPEG)
+
+    def refuse(**_arguments):
+        return {"Errors": [{"Code": "AccessDenied"}]}
+
+    monkeypatch.setattr(bucket.client, "delete_objects", refuse)
+    with pytest.raises(StorageUnavailableError):
+        await bucket.delete_prefix(owner_prefix(ACCOUNT))
+
+
+async def test_only_an_account_folder_can_be_deleted_whole(bucket):
+    for prefix in ("private/", "public/", "private/users/"):
+        with pytest.raises(InvalidKeyError):
+            await bucket.delete_prefix(prefix)

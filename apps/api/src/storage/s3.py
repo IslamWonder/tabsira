@@ -30,6 +30,7 @@ from src.storage.base import (
     StorageUnavailableError,
     check_key,
     check_object,
+    check_owner_prefix,
     check_ttl,
     is_public_key,
 )
@@ -40,6 +41,8 @@ log = logging.getLogger("tabsira.storage")
 # copy is deleted when it is withdrawn, so it is cached for five minutes at most and is never
 # marked immutable: that is how long a withdrawn photo can linger, as the privacy text says.
 PRIVATE_CACHE_CONTROL = "private, no-store"
+# S3 lists and deletes at most a thousand keys a call.
+DELETE_BATCH = 1000
 PUBLIC_CACHE_CONTROL = "public, max-age=300"
 _NOT_FOUND_CODES = frozenset({"NoSuchKey", "NotFound", "404"})
 
@@ -144,6 +147,31 @@ class S3Storage:
     async def delete(self, key: str) -> None:
         # S3 answers 204 for a key that is not there, so this is idempotent as is.
         await self._call("delete_object", Key=check_key(key))
+
+    async def delete_prefix(self, prefix: str) -> int:
+        check_owner_prefix(prefix)
+        removed = 0
+        token: str | None = None
+        while True:
+            listing = await self._call(
+                "list_objects_v2",
+                Prefix=prefix,
+                MaxKeys=DELETE_BATCH,
+                **({} if token is None else {"ContinuationToken": token}),
+            )
+            keys = [item["Key"] for item in listing.get("Contents", [])]
+            if keys:
+                answer = await self._call(
+                    "delete_objects",
+                    Delete={"Objects": [{"Key": key} for key in keys], "Quiet": True},
+                )
+                if answer.get("Errors"):
+                    message = "some objects of the folder could not be deleted"
+                    raise StorageUnavailableError(message)
+                removed += len(keys)
+            if not listing.get("IsTruncated"):
+                return removed
+            token = listing.get("NextContinuationToken")
 
     async def copy(self, source: str, destination: str) -> None:
         check_key(source)

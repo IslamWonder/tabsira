@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import stat
+import uuid
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
@@ -18,10 +19,13 @@ from src.storage.base import (
     ObjectNotFoundError,
     StorageError,
     check_key,
+    check_owner_prefix,
+    in_owner_folder,
     is_public_key,
     new_key,
     new_private_key,
     new_public_key,
+    owner_prefix,
 )
 from src.storage.local import LocalStorage, default_media_root
 
@@ -311,3 +315,39 @@ def test_only_a_published_copy_has_a_public_address(store):
         store.public_url(private)
     with pytest.raises(InvalidKeyError):
         store.public_url("../etc/passwd")
+
+
+# ─── One folder per account ────────────────────────────────────────────────────
+
+ACCOUNT = uuid.UUID("0199b6a0-0000-7000-8000-0000000000aa")
+
+
+def test_an_owner_key_sits_in_the_account_folder_and_a_public_key_never_names_one():
+    key = new_private_key(ACCOUNT)
+    assert re.fullmatch(rf"private/users/{ACCOUNT}/insights/[0-9a-f]{{32}}\.jpg", key)
+    assert check_key(key) == key
+    assert in_owner_folder(key)
+    assert not in_owner_folder(new_private_key())
+    assert owner_prefix(ACCOUNT) == f"private/users/{ACCOUNT}/"
+    with pytest.raises(InvalidKeyError):
+        check_key(f"public/users/{ACCOUNT}/insights/{'a' * 32}.jpg")
+    with pytest.raises(InvalidKeyError):
+        check_owner_prefix("private/users/../")
+    with pytest.raises(InvalidKeyError):
+        check_owner_prefix("private/")
+
+
+async def test_an_account_folder_is_stored_as_its_key_and_deleted_whole(store, tmp_path):
+    mine = [new_private_key(ACCOUNT), new_private_key(ACCOUNT)]
+    theirs = new_private_key(uuid.UUID("0199b6a0-0000-7000-8000-0000000000bb"))
+    legacy = new_private_key()
+    for key in [*mine, theirs, legacy]:
+        await store.put(key, JPEG)
+    assert (tmp_path / "media" / mine[0]).is_file()
+
+    assert await store.delete_prefix(owner_prefix(ACCOUNT)) == 2
+    assert not await store.exists(mine[0])
+    assert await store.exists(theirs)
+    assert await store.exists(legacy)
+    # An empty or missing folder is nothing to delete.
+    assert await store.delete_prefix(owner_prefix(ACCOUNT)) == 0

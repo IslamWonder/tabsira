@@ -204,17 +204,32 @@ async def test_the_folder_stays_empty_after_every_refusal(photos, disk):
 async def test_a_kept_photo_is_the_clean_image_under_a_random_private_key(photos, disk):
     stored = await photos.keep(facts(), photo())
 
-    assert stored.key.startswith("private/")
+    assert stored.key.startswith(f"private/users/{OWNER}/insights/")
     assert (stored.width, stored.height) == (64, 48)
     assert await disk.get(stored.key) == CLEAN
 
 
-async def test_two_photos_get_two_keys_that_say_nothing_about_each_other_or_the_owner(photos):
+async def test_two_photos_get_two_keys_and_a_published_copy_never_names_the_owner(photos):
     first = await photos.keep(facts(), photo())
     second = await photos.keep(facts(), photo())
 
     assert first.key != second.key
-    assert str(OWNER).replace("-", "") not in first.key
+    # The private copy sits in its owner's folder; the published one names nobody.
+    published = await photos.publish(facts(), first.key)
+    assert str(OWNER) not in published.key
+    assert str(OWNER) not in published.url
+
+
+async def test_removing_an_owner_empties_their_folder_and_nothing_else(photos, disk):
+    mine = await photos.keep(facts(), photo())
+    other = await photos.keep(facts(owner_id=uuid.UUID(int=7)), photo())
+    published = await photos.publish(facts(), mine.key)
+
+    assert await photos.remove_owner(OWNER) == 1
+    assert not await disk.exists(mine.key)
+    assert await disk.exists(other.key)
+    # The published copy is withdrawn by its row, never by the folder.
+    assert await disk.exists(published.key)
 
 
 async def test_what_is_kept_has_no_gps_though_the_photo_that_came_in_had_it(photos, disk):
