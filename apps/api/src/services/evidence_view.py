@@ -4,11 +4,9 @@ Scripture in a response: always read from the store by reference, never copied.
 A publication holds references only (surah and ayah, collection and number). When a post is
 shown, the text is read from the scripture store here, byte for byte as stored, with its
 stored hash, and goes out as it is: no step normalises, shortens or rewrites it. A hadith is
-shown only while it is eligible: the editor-recorded dorar.net ruling in force is صحيح or حسن
-(decision 18), or it has no ruling and belongs to the enriched Sunnah file (decision 58, its
-classification then absent); once it is not, the post shows what is left of its evidence, the
-verse alone, rather than a hadith that is no longer eligible. A reference the store no longer
-holds is left out, never replaced by anything.
+shown as stored, with no ruling displayed (decision 64); only one an editor ruled out is left
+out, and the post then shows what is left of its evidence, the verse alone. A reference the
+store no longer holds is left out, never replaced by anything.
 """
 
 from __future__ import annotations

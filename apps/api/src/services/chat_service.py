@@ -164,8 +164,8 @@ async def _cited_texts(db: AsyncSession, insight: Insight) -> list[str]:
     """
     Return the stored texts the insight cites, shown or not, as the leak guard's corpus.
 
-    A hadith that is not shown (no ruling and not counted under decision 58, or a ruling
-    other than صحيح or حسن) is guarded against all the same: the model must not quote it either.
+    A hadith that is not shown (an editor ruled it out, decision 64) is guarded against all
+    the same: the model must not quote it either.
     """
     texts: list[str | None] = []
     if insight.quran_surah is not None and insight.quran_ayah is not None:

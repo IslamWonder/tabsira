@@ -178,8 +178,8 @@ class Insight(Base):
 
     The verse and the hadith are kept as references (surah and ayah, collection
     and number) with why they were chosen; their text is read from the store by
-    reference every time the insight is shown. A hadith without an editor's
-    eligible ruling is kept but not shown (decision 18).
+    reference every time the insight is shown. A hadith an editor ruled out is
+    kept as a reference but not shown (decision 64).
     """
 
     __tablename__ = "insights"
