@@ -54,7 +54,7 @@ Orchestrated by `PipelineInsightEngine` in [pipeline/insight/engine.py](../../ap
 
 ### The flow
 
-```
+```text
 scene (from the scene analyzer)
   1. UNDERSTAND  ontology + learning path  ->  planner (LLM)  ->  up to 3 candidates,
                                                 each with Quran queries and hadith queries
