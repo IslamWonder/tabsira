@@ -40,6 +40,10 @@ select = [
 ignore = [
   "E501", "ISC001", "S101", "S603", "S607", "PLR2004", "PLR0913", "PLR0917", "FIX002", "FIX003",
   "TC001", "TC002", "TC003", "PLC0415", "D203", "D212",
+  # Seeded pseudo-randomness is the point here: the output must repeat for a seed.
+  "S311",
+  # Summaries here describe what a function returns, not an order to give.
+  "D401",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -73,6 +77,8 @@ exclude_lines = [
   "pragma: no cover",
   # Entry-point guard of a module run with `python -m`; main() is tested.
   "if __name__ == .__main__.:",
+  # A Protocol only describes a shape for the type checker; its body never runs.
+  "class .*\\(Protocol\\):",
 ]
 
 [tool.mypy]

@@ -1,0 +1,120 @@
+"""The file of version 1: typed models and deterministic JSON. References only, no scripture."""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime
+from pathlib import Path
+
+from pydantic import BaseModel, ConfigDict, Field
+
+SCHEMA_VERSION = 1
+
+
+def stamp(moment: datetime) -> str:
+    """A naive UTC time as `2026-10-05T10:00:00Z`; every time in the generator is naive UTC."""
+    return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+class _Row(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+
+class Scene(_Row):
+    labels: list[str]
+    ar: str
+
+
+class Image(_Row):
+    placepix_id: int
+    url: str
+    filename: str
+    category: str
+    width: int
+    height: int
+    scene: Scene
+    # Filled by task 22.4 with the pipeline's outcome; null until then.
+    insight: None = None
+
+
+class Member(_Row):
+    ref: str
+    handle: str
+    display_name: str
+    email: str
+    country: str
+    city_geoname_id: int
+    joined_at: str
+
+
+class Insight(_Row):
+    ref: str
+    member: str
+    image: int
+    created_at: str
+    completed_at: str
+    # GeoJSON order: [longitude, latitude].
+    point: tuple[float, float]
+
+
+class Post(_Row):
+    ref: str
+    insight: str
+    published_at: str
+    reflection: None = None
+
+
+class MapEntry(_Row):
+    insight: str
+    published_at: str
+
+
+class Follow(_Row):
+    from_: str = Field(alias="from")
+    to: str
+    at: str
+
+
+class Reaction(_Row):
+    post: str
+    member: str
+    kind: str
+    at: str
+
+
+class Comment(_Row):
+    ref: str
+    post: str
+    member: str
+    parent: str | None
+    text: None = None
+    at: str
+
+
+class MockFile(_Row):
+    version: int = SCHEMA_VERSION
+    seed: int
+    generated_at: str
+    images: list[Image]
+    members: list[Member]
+    insights: list[Insight]
+    posts: list[Post]
+    map_entries: list[MapEntry]
+    follows: list[Follow]
+    reactions: list[Reaction]
+    comments: list[Comment]
+
+
+def dumps(file: MockFile) -> str:
+    """Sorted keys, UTF-8 text, no ASCII escapes: the same input is the same bytes."""
+    return json.dumps(
+        file.model_dump(by_alias=True),
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+
+
+def write(path: Path, file: MockFile) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes((dumps(file) + "\n").encode("utf-8"))

@@ -13,7 +13,7 @@ Two programs and one file:
 | Step                                             | Status | Notes                                                    |
 | ------------------------------------------------ | ------ | -------------------------------------------------------- |
 | Placepix photo addresses shown as is             | ✅     | Task 22.1. Decision 63. Privacy review.                  |
-| Generator: catalogue, members, places, the graph | ⬜     | Task 22.2.                                               |
+| Generator: catalogue, members, places, the graph | ✅     | Task 22.2.                                               |
 | Importer and `--clean`                           | ✅     | Task 22.3.                                               |
 | Real processing of every photo                   | ⏸      | Task 22.4, after the owners' retrieval rework is pulled. |
 
@@ -36,6 +36,9 @@ Two programs and one file:
   "images": [
     {
       "placepix_id": 12,
+      "url": "https://placepix.net/id/12/1080/1080",
+      "width": 2636,
+      "height": 1804,
       "filename": "camels.jpg",
       "category": "animal",
       "scene": { "labels": ["camel"], "ar": "جمال في الصحراء" },
@@ -103,7 +106,7 @@ Two programs and one file:
 
 ### 22.2 Generator: catalogue, members, places and the graph
 
-- **Status:** 🔄 paused 2026-10-05 until the owners' retrieval rework; done: the uv project and the placepix catalogue (`catalogue.py`, untested); left: scenes, places, members, activity, output, cli, tests, `make mock-data`
+- **Status:** ✅ done 2026-10-05; 69 tests, 100 % of the package; the real file is generated; photos are capped at three uses, so the number of insights follows the catalogue (about 1650)
 - **Goal:** `tools/mockdata/` (uv, Python 3.12, Faker with the Arabic locales, typed, ruff), run by `make mock-data` (`MOCK_SEED`, `MOCK_MEMBERS=1000`):
   - **Catalogue.** `GET https://placepix.net/api/categories` and `/api/info/id/<n>`; keep animal, bird, cat, dog, flower, food, nature, city, travel, interior, education, transportation; drop `kid` and any filename naming a person, a face, a portrait of a human or a body, so no child or face is shown. A filename becomes the scene's labels and its Arabic line (a small reviewed word list, not a model).
   - **Members.** 22 countries (MA, DZ, TN, LY, EG, SD, MR, SA, AE, QA, KW, BH, OM, YE, JO, PS, SY, LB, IQ, SO, DJ, KM) weighted by the square root of their population with at least 10 each; cities from `geodata.geonames` (class P, population ≥ 15 000, `ar_name` set) weighted by population; Arabic display names, Latin handles, `<handle>@mock.tabsira.invalid`; sign-ups spread over the last six months; private profile fields left empty.

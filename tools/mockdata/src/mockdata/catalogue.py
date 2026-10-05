@@ -48,6 +48,18 @@ HUMAN_WORDS = frozenset(
 )  # fmt: skip
 ANIMAL_CATEGORIES = frozenset({"animal", "bird", "cat", "dog"})
 ANIMAL_WORDS = frozenset({"cat", "dog", "animal", "puppy", "kitten", "bird"})
+# On an animal these words describe its head, not a human face.
+ANIMAL_FACE_WORDS = frozenset({"portrait", "face", "eye", "head", "hair"})
+# Not a person, but not shown on a platform for Muslims either: pork, drink, drugs, other
+# faiths' idols and shrines. A small reviewed list; the owners may extend it.
+UNSUITABLE_WORDS = frozenset(
+    {
+        "bacon", "pork", "ham", "wine", "beer", "alcohol", "cocktail", "whisky", "vodka",
+        "hangover", "marihuana", "cannabis", "skull", "statue", "stupa", "stupas", "buddha",
+        "monastery", "church", "cross", "temple", "rider", "farmer", "lover", "lovers",
+        "policeman", "policemen", "mom", "mongolians", "valentine",
+    }
+)  # fmt: skip
 
 _WORD = re.compile(r"[A-Za-z][a-z]*|[A-Z]+(?![a-z])")
 
@@ -76,9 +88,11 @@ def names_a_human(photo: Photo) -> bool:
     # A singular or plural form is the same word for this check.
     found |= {w.removesuffix("s") for w in found}
     hits = found & HUMAN_WORDS
-    if hits == {"portrait"} and (found & ANIMAL_WORDS or photo.category in ANIMAL_CATEGORIES):
-        return False
-    return bool(hits)
+    if {h.removesuffix("s") for h in hits} <= ANIMAL_FACE_WORDS and (
+        found & ANIMAL_WORDS or photo.category in ANIMAL_CATEGORIES
+    ):
+        hits = set()
+    return bool(hits or found & UNSUITABLE_WORDS)
 
 
 def keep(photo: Photo) -> bool:

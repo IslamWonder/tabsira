@@ -41,7 +41,7 @@ while IFS= read -r file; do
 done < <(list_shell_files)
 check "ShellCheck" shellcheck "${shell_files[@]}"
 
-for dir in apps/api services/vision; do
+for dir in apps/api services/vision tools/mockdata; do
 	if [[ -f "$dir/pyproject.toml" ]]; then
 		require_cmd uv "Run: make install"
 		check "Ruff lint ($dir)" bash -c "cd '$dir' && uv run --quiet ruff check ."

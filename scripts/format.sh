@@ -49,7 +49,7 @@ run() {
 
 # ─── Python ─────────────────────────────────────────────────────────
 banner "Python: ruff format"
-for dir in apps/api services/vision; do
+for dir in apps/api services/vision tools/mockdata; do
 	if [[ ! -f "$dir/pyproject.toml" ]]; then
 		skip "$dir does not exist yet"
 		continue
