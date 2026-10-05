@@ -62,16 +62,24 @@ describe('install state', () => {
     expect(installSnapshot()).toEqual({ way: 'none', installed: false });
   });
 
-  it('picks up a prompt the head script kept before the code ran', () => {
-    // Runs the exact inline script the layout ships, as the browser would.
-    const script = document.createElement('script');
-    script.textContent = INSTALL_CAPTURE_SCRIPT;
-    document.head.append(script);
-    script.remove();
+  it('picks up a prompt the head script kept before the code ran', async () => {
+    // A fresh copy of the module: the listeners that earlier tests left on `window`
+    // belong to the first copy and cannot feed this one, so only the kept prompt can.
+    vi.resetModules();
+    const fresh = await import('./install');
+    // Runs the exact inline script the layout ships, in the page's own realm: jsdom
+    // does not execute a <script> a test appends.
+    new Function(INSTALL_CAPTURE_SCRIPT)();
     const event = installPrompt();
+    const prevent = vi.spyOn(event, 'preventDefault');
     window.dispatchEvent(event);
-    listenForInstall();
-    expect(installSnapshot().way).toBe('prompt');
+    expect(prevent).toHaveBeenCalled();
+
+    fresh.listenForInstall();
+    expect(fresh.installSnapshot().way).toBe('prompt');
+    expect(await fresh.promptInstall()).toBe(true);
+    expect(event.prompt).toHaveBeenCalledOnce();
+    fresh.resetInstall();
   });
 
   it('is installed once the browser says so, or when opened from the home screen', () => {
