@@ -906,7 +906,12 @@ def test_auto_with_a_half_filled_bucket_refuses_instead_of_falling_back_to_disk(
     assert "S3_BUCKET is set, so photos go to S3, which needs S3_ACCESS_KEY_ID" in message
 
 
-def test_the_local_folder_defaults_to_the_checkout_and_follows_the_setting(make_settings, tmp_path):
+def test_the_local_folder_defaults_to_the_checkout_and_follows_the_setting(
+    make_settings, tmp_path, monkeypatch
+):
+    # The suite sends kept photos to a folder of its run; the default is what is tested here.
+    monkeypatch.delenv("LOCAL_MEDIA_DIR", raising=False)
+
     assert make_settings().local_media_path == config.checkout_root() / "data" / "media"
     assert make_settings(local_media_dir=f" {tmp_path} ").local_media_path == tmp_path.resolve()
 
