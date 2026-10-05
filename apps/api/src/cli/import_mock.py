@@ -85,14 +85,14 @@ from src.services import (
     publication_service,
 )
 from src.services.insight_table_source import InsightTableSource
-from src.storage.base import Storage
+from src.storage.base import Storage, is_mock_photo_address
 from src.storage.photos import PhotoStore
 
 SUPPORTED_VERSION = 1
 MOCK_DOMAIN = "mock.tabsira.invalid"
-# The size asked of placepix for every photo; the file holds the id alone.
-PHOTO_WIDTH = 1200
-PHOTO_HEIGHT = 800
+# The size asked of placepix when the file gives an image's id without its address.
+PHOTO_WIDTH = 1080
+PHOTO_HEIGHT = 1080
 # The reaction a member can give today: «أثر» is `post_likes`. `jazak` has no table yet.
 LIKE_KIND = "benefited"
 CHUNK = 1000
@@ -151,6 +151,7 @@ class SceneIn(_Model):
 
 class ImageIn(_Model):
     placepix_id: int
+    url: str | None = None
     scene: SceneIn = SceneIn()
     insight: InsightBodyIn | None = None
 
@@ -269,8 +270,11 @@ def mock_email(handle: str) -> str:
     return f"{handle.lower()}@{MOCK_DOMAIN}"
 
 
-def photo_address(placepix_id: int) -> str:
-    return f"https://placepix.net/id/{placepix_id}/{PHOTO_WIDTH}/{PHOTO_HEIGHT}"
+def photo_address(image: ImageIn) -> str:
+    """Return the file's own placepix address of the image, or the default size of its id."""
+    if is_mock_photo_address(image.url):
+        return str(image.url)
+    return f"https://placepix.net/id/{image.placepix_id}/{PHOTO_WIDTH}/{PHOTO_HEIGHT}"
 
 
 # ─── What may run, and reading the file ───
@@ -492,7 +496,7 @@ async def _add_insight(
     insight = insight_row(Owner(user_id=user.id), _proposed(body), scan=scan, position=0)
     insight.created_at = item.created_at
     insight.completed_at = item.completed_at
-    insight.photo_key = photo_address(image.placepix_id)
+    insight.photo_key = photo_address(image)
     db.add(insight)
     await db.flush()
     return insight

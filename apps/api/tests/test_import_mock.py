@@ -211,7 +211,7 @@ async def test_the_file_is_written_through_the_services(db_session, settings, wo
 
     first = await db_session.scalar(select(Insight).where(Insight.user_id == amal.id))
     assert first.engine == "pipeline"
-    assert first.photo_key == "https://placepix.net/id/12/1200/800"
+    assert first.photo_key == "https://placepix.net/id/12/1080/1080"
     assert first.photo_public_key == first.photo_key
     assert first.completed_at.isoformat() == "2026-08-02T11:30:00+00:00"
     scan = await db_session.get(Scan, first.scan_id)
@@ -513,3 +513,14 @@ async def test_without_a_session_factory_the_engine_is_used_and_closed(
 
     assert code == 0
     assert closed == [True]
+
+
+def test_the_photo_address_is_the_files_own_placepix_address() -> None:
+    image = import_mock.ImageIn(placepix_id=6, url="https://placepix.net/id/6/640/480")
+    assert import_mock.photo_address(image) == "https://placepix.net/id/6/640/480"
+
+
+@pytest.mark.parametrize("url", [None, "https://placepix.net.evil.com/id/6/640/480"])
+def test_an_image_without_a_placepix_address_takes_the_default_size(url: str | None) -> None:
+    image = import_mock.ImageIn(placepix_id=6, url=url)
+    assert import_mock.photo_address(image) == "https://placepix.net/id/6/1080/1080"
