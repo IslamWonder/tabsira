@@ -36,6 +36,8 @@ export default function nextConfig(phase: string): NextConfig {
     outputFileTracingIncludes: {
       '/insights/[id]/card': [QURAN_SOURCE, ...TEXT_SOURCES].map((file) => `./${file}`),
     },
+    // sharp is already a dependency; AVIF trims the landing cards further.
+    images: { formats: ['image/avif', 'image/webp'] },
     turbopack: { root: REPO_ROOT },
     poweredByHeader: false,
     // Our rules live in the root AGENTS.md; stop `next dev` writing its own copies.
@@ -74,6 +76,16 @@ export default function nextConfig(phase: string): NextConfig {
             { key: 'Service-Worker-Allowed', value: '/' },
           ],
         },
+        // The decorative pictures are the heaviest files in the app (the world
+        // landscape alone is ~660 KB) and Next would otherwise revalidate them
+        // on every visit. They are served for a year instead: any change to one
+        // of them is a new file name (as with the courtyard picture). Icons and
+        // the share card stay revalidating — the service worker precaches and
+        // link previews name them, so a pinned stale copy would be invisible.
+        ...['/world/:path*', '/landing/:path*', '/scene/:path*'].map((source) => ({
+          source,
+          headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+        })),
       ];
     },
   };
