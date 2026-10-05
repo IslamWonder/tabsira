@@ -99,6 +99,7 @@ export const ar = {
         identity: 'هويتك العامة',
         settings: 'الإعدادات',
         practice: 'تمرينك',
+        app: 'التطبيق',
         data: 'بياناتك',
         cookies: 'ملفات تعريف الارتباط',
       },
@@ -1374,6 +1375,31 @@ export const ar = {
 
   ...scanMessages,
   ...shareMessages,
+
+  /** Installing the app on the home screen (src/pwa/install.ts). */
+  install: {
+    region: 'ثبّت تبصرة',
+    title: 'ثبّت تبصرة على شاشتك',
+    body: 'تفتح كتطبيق بملء الشاشة، وتصل إلى الكاميرا بلمسة. بلا متجر ولا مساحة تُذكر.',
+    install: 'ثبّت',
+    later: 'ليس الآن',
+    iosTitle: 'أضف تبصرة إلى الشاشة الرئيسية',
+    iosSteps: [
+      'المس زر المشاركة في شريط المتصفح (مربع يخرج منه سهم).',
+      'اختر «إضافة إلى الشاشة الرئيسية»، ثم «إضافة».',
+    ],
+    iosShow: 'كيف أثبّتها؟',
+    gotIt: 'فهمت',
+    meTitle: 'التطبيق',
+    meHint: 'ثبّت تبصرة على شاشتك لتفتحها كتطبيق.',
+    meInstall: 'ثبّت التطبيق',
+    meInstalled: 'تبصرة مثبّتة على هذا الجهاز.',
+    meUnsupported:
+      'لا يثبّت هذا المتصفح التطبيقات. افتح تبصرة في Chrome أو Edge، أو في Safari على iPhone، لتثبيتها.',
+    accepted: 'ثُبّتت تبصرة. تجدها على شاشتك الرئيسية.',
+    updateReady: 'نسخة جديدة من تبصرة جاهزة.',
+    updateNow: 'حدّث الآن',
+  },
 } as const;
 
 export type Messages = typeof ar;

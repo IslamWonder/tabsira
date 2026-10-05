@@ -85,7 +85,7 @@ describe('placeholder routes', () => {
     const sections = screen.getByRole('navigation', { name: 'أقسام ملفي' });
     // A guest (the API has not answered yet): the account, the settings, practice and cookies.
     expect(Array.from(sections.querySelectorAll('a'), (link) => link.getAttribute('href'))).toEqual(
-      ['#account', '#settings', '#practice', '#cookies']
+      ['#account', '#settings', '#practice', '#app', '#cookies']
     );
   });
 
@@ -134,6 +134,16 @@ describe('error, not found and offline', () => {
 });
 
 describe('manifest', () => {
+  it('reopens the open window and offers the camera and the world from the icon', () => {
+    const app = manifest();
+    expect(app.launch_handler).toEqual({ client_mode: ['navigate-existing', 'auto'] });
+    expect(app.prefer_related_applications).toBe(false);
+    expect(app.shortcuts?.map((shortcut) => [shortcut.name, shortcut.url])).toEqual([
+      ['صوّر مشهدًا', '/?capture=1'],
+      ['عالمي', '/world'],
+    ]);
+  });
+
   it('describes an installable Arabic right-to-left app named تبصرة', () => {
     const app = manifest();
     expect(app).toMatchObject({

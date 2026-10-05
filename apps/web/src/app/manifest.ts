@@ -18,10 +18,29 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/',
     scope: '/',
     display: 'standalone',
+    display_override: ['standalone', 'minimal-ui'],
+    // A tap on the icon brings the open window forward instead of a second one.
+    launch_handler: { client_mode: ['navigate-existing', 'auto'] },
+    prefer_related_applications: false,
     // The night of direction C is the brand's ground: the splash screen uses it.
     background_color: THEME_BACKGROUND.dark,
     theme_color: THEME_BACKGROUND.dark,
     categories: ['education', 'lifestyle'],
+    // Long-press the icon: straight to the camera, the world, or the insights kept.
+    shortcuts: [
+      {
+        name: messages.nav.captureScene,
+        short_name: messages.nav.captureScene,
+        url: '/?capture=1',
+        icons: [{ src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+      },
+      {
+        name: messages.nav.world,
+        short_name: messages.nav.world,
+        url: '/world',
+        icons: [{ src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+      },
+    ],
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
