@@ -330,3 +330,23 @@ Served by the web app itself (no third-party request from the visitor's browser)
 | `courtyard-lanterns.webp` | A courtyard with arches, lit lanterns and a small fountain, a door open on a town at sunset | Freepik (Magnific) resource 416320164, «Beautiful Eid Mubarak background featuring Islamic patterns golden lanterns…» by yanfatihbazla, downloaded through the owners' Freepik API key on 5 October 2026 (5888×3328 JPEG, kept in `../tabsira-artifact/freepik/416320164-original.jpg`, sha256 `fadf1a27d8fbc779bad71c40058684191ba076322e0fc8f1e785c6e659ec24b5`); centre-cropped to 3∶2 and resized | `4739a80c9230eef133c9f2cb217780ac2ef45390760e4187c17912dfccb8574d` | Freepik premium licence, `https://www.magnific.com/profile/license/pdf/416320164?lang=en`. The picture looks AI-generated; no crescent or text in the crop |
 | `meaning-dialogue.webp`   | An olive seedling in the rain                                                               | stand-in cut from the project's own pictures (docs/plans/10_design_brand_app.md)                                                                                                                                                                                                                                                                                                                      | —                                                                  | the project's own                                                                                                                                          |
 | `world-atlas.webp`        | A wide coastal landscape with paths, lakes and a domed building                             | stand-in cut from the project's own pictures (docs/plans/10_design_brand_app.md)                                                                                                                                                                                                                                                                                                                      | —                                                                  | the project's own                                                                                                                                          |
+
+## 13. Landing page emblems (`apps/web/src/components/landing/emblem-data.ts`)
+
+Thirteen icons of one premium Magnific family, **Good Ware Lineal** (family 546, author Good Ware), chosen by the owners on 5 October 2026 and downloaded as SVG through the owners' Freepik API key the same day. Licence: Magnific (Flaticon) premium licence for the owners' account; no attribution is shown on the page. Each SVG's path data is kept in the module above, rounded to a tenth of a unit and drawn in `currentColor` (the landing's gold), so the visitor's browser fetches nothing from Magnific; the originals are not kept in the repository.
+
+| Name        | Magnific id | Title          | Where                    |
+| ----------- | ----------- | -------------- | ------------------------ |
+| `camera`    | 686497      | Camera         | step 1, «عدسة البصيرة»   |
+| `chat`      | 4803742     | Talk           | «حاور بصيرتك»            |
+| `verify`    | 3633411     | Success        | «تحقّق من المصدر»        |
+| `world`     | 1086914     | Globe          | «عالمي»                  |
+| `atlas`     | 4746152     | Map            | «أطلس بصائر العالم»      |
+| `around`    | 2933564     | Compass        | «اكتشف حولك»             |
+| `treasure`  | 5999315     | Treasure chest | «الكنز الخفي»            |
+| `community` | 3633449     | Team           | «تبصرة تواصل»            |
+| `photos`    | 4618132     | Photos         | «صورك، باختيارك»         |
+| `book`      | 6007509     | Open book      | step 2, «النصّ مع مصدره» |
+| `sprout`    | 2683226     | Sprout         | step 3                   |
+| `lantern`   | 5987673     | Lantern        | «المعنى قريب منك»        |
+| `choice`    | 3718115     | Safety         | «الاختيار بيدك»          |
