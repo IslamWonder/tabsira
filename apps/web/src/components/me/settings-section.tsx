@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { type CountryOption, loadCountries } from '@/account/countries';
 import type { ConsentSwitch, Profile } from '@/account/profile';
 import { GENDER_CHOICES, RELIGION_CHOICES } from '@/components/account/profile-options';
@@ -24,20 +24,24 @@ type CountriesLoad =
 /** The GeoNames country list, read when the settings open; a failure offers a retry. */
 function useCountries(): { load: CountriesLoad; retry: () => void } {
   const [load, setLoad] = useState<CountriesLoad>({ status: 'loading' });
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    let live = true;
+  // An answer that arrives after the settings closed is dropped.
+  const live = useRef(true);
+  const read = useCallback(() => {
     setLoad({ status: 'loading' });
     void loadCountries().then((result) => {
-      if (live) {
+      if (live.current) {
         setLoad(result.ok ? { status: 'ready', countries: result.data } : { status: 'failed' });
       }
     });
+  }, []);
+  useEffect(() => {
+    live.current = true;
+    read();
     return () => {
-      live = false;
+      live.current = false;
     };
-  }, [attempt]);
-  return { load, retry: () => setAttempt((n) => n + 1) };
+  }, [read]);
+  return { load, retry: read };
 }
 
 /**

@@ -279,6 +279,26 @@ describe('MeScreen signed in', () => {
     expect(await screen.findByRole('combobox', { name: 'بلدي' })).toBeInTheDocument();
   });
 
+  it('drops the country list when it arrives after the settings closed', async () => {
+    let release: () => void = () => undefined;
+    const api = mockApi(
+      signedIn({
+        'GET /geo/countries': () =>
+          new Promise((resolve) => {
+            release = () => resolve({ body: COUNTRIES });
+          }),
+      })
+    );
+    const view = renderAt('personalization');
+    expect(await screen.findByText('نحمّل قائمة البلدان…')).toBeInTheDocument();
+    view.unmount();
+    release();
+    await waitFor(() =>
+      expect(api.requests.filter((r) => r.url.endsWith('/geo/countries'))).toHaveLength(1)
+    );
+    expect(screen.queryByRole('combobox')).toBeNull();
+  });
+
   it('shows the latest answer when two saves cross', async () => {
     const answers: Array<() => void> = [];
     mockApi(
