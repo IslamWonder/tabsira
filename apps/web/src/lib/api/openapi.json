@@ -213,7 +213,7 @@
       "post": {
         "tags": ["auth"],
         "summary": "Accept the current terms of use and privacy policy",
-        "description": "Record that the signed-in account accepts both texts, for a version that changed.\n\nThe versions must be the current ones (`GET /legal`); anything else is a 422\n`legal_acceptance_required`. Two consent rows are appended; none is ever edited. It also\ntakes, for a Google account, the real full name (`display_name`) and the answer to the\n`public_full_name` consent (decision 63); both are optional.",
+        "description": "Record that the signed-in account accepts both texts, for a version that changed.\n\nThe versions must be the current ones (`GET /legal`); anything else is a 422\n`legal_acceptance_required`. Two consent rows are appended; none is ever edited. It also\ntakes, for a Google account, the real full name (`display_name`, only while the acceptance\nis pending or the name is empty; an account with no name must give one: 422) and the answer\nto the `public_full_name` consent (decision 63).",
         "operationId": "accept_legal_auth_legal_accept_post",
         "requestBody": {
           "content": {
@@ -631,7 +631,7 @@
       "post": {
         "tags": ["profile"],
         "summary": "Record an answer to a consent question",
-        "description": "Append the answer to the user's consent history, and update the matching switch.\n\nA consent is withdrawn by recording the same kind with `granted` false. The\nhistory is never edited. Withdrawing the photo consent deletes the kept photos\nfirst; 503 STORAGE_UNAVAILABLE, with nothing recorded, when the store is down.",
+        "description": "Append the answer to the user's consent history, and update the matching switch.\n\nA consent is withdrawn by recording the same kind with `granted` false. The\nhistory is never edited. Withdrawing the photo consent deletes the kept photos\nfirst; 503 STORAGE_UNAVAILABLE, with nothing recorded, when the store is down.\n\nWithdrawing needs no acceptance of the current texts, as taking an insight off public view\ndoes not; giving a consent does (403 `legal_acceptance_required`).",
         "operationId": "post_consent_consents_post",
         "requestBody": {
           "content": {

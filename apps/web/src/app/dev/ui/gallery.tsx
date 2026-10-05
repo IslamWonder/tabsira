@@ -2,7 +2,6 @@
 
 import { type ReactNode, useId, useState } from 'react';
 import { LegalConsent } from '@/components/account/legal-consent';
-import { ProfileQuestions } from '@/components/account/profile-questions';
 import { SaveInvitation } from '@/components/account/save-invitation';
 import { AppNav } from '@/components/app/app-nav';
 import { Brand } from '@/components/app/brand';
@@ -368,10 +367,6 @@ function Showcase({ theme }: { theme: Theme }) {
 
       <Section title={messages.dev.sections.invitation}>
         <SaveInvitation returnTo="/" />
-      </Section>
-
-      <Section title={messages.dev.sections.questions}>
-        <ProfileQuestions onAnswer={async () => true} onFinish={() => undefined} />
       </Section>
 
       <Section title={messages.dev.sections.buttons}>

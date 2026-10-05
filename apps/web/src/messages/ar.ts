@@ -693,7 +693,7 @@ export const ar = {
     },
     optional: 'تجرّب مشهد المطر وبصيرة واحدة من صورتك بلا حساب؛ بعدها يلزم حساب.',
     fullName: {
-      label: 'أوافق على ظهور اسمي الكامل مع منشوراتي',
+      label: 'أوافق على ظهور اسمي الكامل مع منشوراتي وتعليقاتي وملفي العام',
       hint: 'غير مفعّل ما لم تفعّله. إن تركته فلا يظهر إلا معرّفك، وتغيّر رأيك متى شئت من «ملفي».',
     },
     backToScene: 'عد إلى المشهد',
@@ -817,6 +817,18 @@ export const ar = {
 
   /** The optional profile (master prompt v2 §5): every answer can be skipped and stays `unknown`. */
   profile: {
+    /** The mandatory form right after sign-up (decision 63): each answer explicit, none preselected. */
+    gate: {
+      title: 'عرّفنا بك قبل أن تبدأ',
+      statement:
+        'نستعمل إجاباتك لنلائم لك التعلّم والشرح، وتغيّرها أو توقف التخصيص متى شئت من «ملفي».',
+      explicit: 'أجب عن كل سؤال. وإن لم ترد الإجابة فاختر «أفضّل عدم الإجابة»، فهي إجابة كاملة.',
+      preferNot: 'أفضّل عدم الإجابة',
+      missing: 'بقيت أسئلة بلا إجابة',
+      submit: 'احفظ وتابع',
+      submitting: 'أحفظ…',
+      signOut: 'اخرج من الحساب',
+    },
     title: 'عنك',
     statement: 'نستخدم اختياراتك وبصائرك السابقة لتقديم تعلّم يناسبك، ويمكنك تعطيل ذلك.',
     optional: 'كل سؤال اختياري. لا نستنتج شيئًا عنك من صورك أو اسمك أو مكانك.',
@@ -1512,7 +1524,6 @@ export const ar = {
       done: 'زر «تمّ»',
       fields: 'الحقول والرسائل والاختيارات',
       invitation: 'دعوة حفظ المسار',
-      questions: 'أسئلة الملف الاختيارية',
     },
     samples: {
       primary: 'تمّ',

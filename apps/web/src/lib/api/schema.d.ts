@@ -152,8 +152,9 @@ export interface paths {
      *
      *     The versions must be the current ones (`GET /legal`); anything else is a 422
      *     `legal_acceptance_required`. Two consent rows are appended; none is ever edited. It also
-     *     takes, for a Google account, the real full name (`display_name`) and the answer to the
-     *     `public_full_name` consent (decision 63); both are optional.
+     *     takes, for a Google account, the real full name (`display_name`, only while the acceptance
+     *     is pending or the name is empty; an account with no name must give one: 422) and the answer
+     *     to the `public_full_name` consent (decision 63).
      */
     post: operations['accept_legal_auth_legal_accept_post'];
     delete?: never;
@@ -364,6 +365,9 @@ export interface paths {
      *     A consent is withdrawn by recording the same kind with `granted` false. The
      *     history is never edited. Withdrawing the photo consent deletes the kept photos
      *     first; 503 STORAGE_UNAVAILABLE, with nothing recorded, when the store is down.
+     *
+     *     Withdrawing needs no acceptance of the current texts, as taking an insight off public view
+     *     does not; giving a consent does (403 `legal_acceptance_required`).
      */
     post: operations['post_consent_consents_post'];
     delete?: never;

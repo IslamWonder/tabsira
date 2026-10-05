@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { CLARITY_MASK } from '@/analytics/clarity';
 import { LegalGate } from '@/components/account/legal-gate';
+import { ProfileGate } from '@/components/account/profile-gate';
 import { AccountPreferencesSync } from '@/components/app/account-preferences-sync';
 import { AppNav } from '@/components/app/app-nav';
 import { AudioUnlock } from '@/components/app/audio-unlock';
@@ -125,6 +126,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         {/* In the first paint when a choice is needed: no flash of the page before it. */}
         <ConsentScreen initial={consent} />
         <LegalGate />
+        <ProfileGate />
         <BurstLayer />
         <VictoryLayer />
         <FocusCursor />

@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { forgetSession, setGuest, setSignedIn } from '@/account/session';
+import { forgetSession, readSession, setGuest, setSignedIn } from '@/account/session';
 import { apiError, mockApi, type Route } from '@/test/api';
 import { PROFILE, USER } from '@/test/fixtures';
 import {
@@ -194,6 +194,18 @@ describe('InsightScreen: why, the chat and the step', () => {
     expect(screen.getByRole('button', { name: /ناقش البصيرة/ })).toHaveTextContent('استُعمل 1 من 3');
   });
 
+  it('opens the profile form when the chat says the profile is not complete', async () => {
+    setSignedIn(USER);
+    await open(insightOut(), { [`POST /insights/${ID}/chat`]: apiError(403, 'profile_required') });
+    await userEvent.click(screen.getByRole('button', { name: /ناقش البصيرة/ }));
+    const sheet = screen.getByRole('dialog', { name: 'ناقش البصيرة' });
+    await userEvent.type(within(sheet).getByLabelText('سؤالك'), 'ما معنى هذا؟');
+    await userEvent.click(within(sheet).getByRole('button', { name: 'اسأل' }));
+    await waitFor(() =>
+      expect(readSession()).toMatchObject({ user: { profile_completed: false } })
+    );
+  });
+
   it('labels the step as the API does, and records «done» with what the API says it means', async () => {
     await open(insightOut(), {
       [`POST /insights/${ID}/action`]: { body: { state: 'done', at: null, means: '[ما يعنيه]' } },
@@ -343,27 +355,11 @@ describe('InsightScreen: «تمّ»', () => {
     expect(screen.getByRole('region', { name: 'اكتملت بصيرتك' })).toBeInTheDocument();
   });
 
-  it('offers a guest the optional questions after a first «تمّ», each skippable, and only then', async () => {
+  it('no longer asks the optional first-insight questions: the mandatory profile covers them', async () => {
     setGuest();
     await open(insightOut(), {
       [`POST /insights/${ID}/complete`]: { body: completionOut() },
       'GET /me/progress': { body: progressOut() },
-    });
-    expect(screen.queryByRole('heading', { name: 'كيف تحب أن تتعلم وتتأمل؟' })).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
-    const questions = await screen.findByRole('region', { name: 'كيف تحب أن تتعلم وتتأمل؟' });
-    expect(within(questions).getByRole('button', { name: 'تخطَّ' })).toBeInTheDocument();
-    // The completion panel comes first: the questions never stand between «تمّ» and what it earned.
-    const panel = screen.getByRole('region', { name: 'اكتملت بصيرتك' });
-    expect(
-      panel.compareDocumentPosition(questions) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-  });
-
-  it('asks no question when «تمّ» was already recorded on this insight', async () => {
-    setGuest();
-    await open(insightOut(), {
-      [`POST /insights/${ID}/complete`]: { body: completionOut({ first_time: false }) },
     });
     await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
     await screen.findByRole('region', { name: 'اكتملت بصيرتك' });

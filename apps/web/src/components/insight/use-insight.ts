@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { markProfileRequired } from '@/account/session';
 import { RAIN_PHOTO } from '@/components/scene/rain-scene';
 import type { Failure } from '@/lib/api/result';
 import {
@@ -17,6 +18,7 @@ import {
   type Progress,
 } from '@/lib/scan/api';
 import { journeyFailureMessage } from '@/lib/scan/failure';
+import { profileRequired } from '@/lib/scan/gate';
 import type { StepStatus } from './step-card';
 
 export type InsightLoad =
@@ -198,6 +200,10 @@ export function useInsight(insightId: string): InsightControls {
     async (message: string, key: string): Promise<Failure | null> => {
       const result = await askInsight(insightId, message, key);
       if (!result.ok) {
+        if (profileRequired(result)) {
+          // The profile form opens before anything else (decision 63).
+          markProfileRequired();
+        }
         return result;
       }
       const { used, limit, remaining, message: reply } = result.data;

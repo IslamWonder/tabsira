@@ -63,7 +63,12 @@ export function ChoiceGroup<T extends string>({
   onChange,
   disabled,
   ...frame
-}: GroupProps & { options: readonly Choice<T>[]; value: T; onChange: (value: T) => void }) {
+}: GroupProps & {
+  options: readonly Choice<T>[];
+  /** `null`: nothing chosen yet, so no chip is on (a form that must not preselect). */
+  value: T | null;
+  onChange: (value: T) => void;
+}) {
   const name = useId();
   return (
     <Frame {...frame}>

@@ -4,7 +4,6 @@ import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useSession } from '@/account/session';
-import { FirstInsightQuestions } from '@/components/account/first-insight-questions';
 import { StatusScreen } from '@/components/app/status-screen';
 import { ReadingLayout } from '@/components/layout/layouts';
 import { Button, LinkButton } from '@/components/ui/button';
@@ -14,7 +13,6 @@ import type { Insight } from '@/lib/scan/api';
 import { journeyFailureMessage } from '@/lib/scan/failure';
 import { signUpHref } from '@/lib/scan/gate';
 import { centre } from '@/lib/scan/spans';
-import { profileQuestionsMax } from '@/lib/site';
 import { messages } from '@/messages';
 import { ChatSheet } from './chat-sheet';
 import { CompletionPanel, type ShareOption } from './completion-panel';
@@ -209,12 +207,6 @@ export function InsightScreen({
             share={share}
           />
         )}
-        {finish.completion ? (
-          <FirstInsightQuestions
-            max={profileQuestionsMax()}
-            firstTime={finish.completion.first_time}
-          />
-        ) : null}
         {finish.status === 'done' && finish.completion === null ? (
           <div className="flex flex-col items-start gap-2">
             <p className="m-0 font-semibold text-fg">{T.done.alreadyTitle}</p>
