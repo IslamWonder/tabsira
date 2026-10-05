@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Put the mock members of plan 22 into the database, or take them out (decision 63).
+# Put the mock members of plan 23 into the database, or take them out (decision 66).
 #
 # Usage: scripts/mock-data.sh <command> [source] [--allow-production]
 #   import <source>   import the v1 file (a path or s3://bucket/key); a second run adds nothing

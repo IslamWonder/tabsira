@@ -1,5 +1,5 @@
 """
-`python -m mockdata.process`: task 22.4, the real pipeline over the placepix photos, then the texts.
+`python -m mockdata.process`: task 23.4, the real pipeline over the placepix photos, then the texts.
 
     make mock-photos     # photos -> photo-library.json (stops at 150 photos with an insight)
     make mock-data       # the generator builds the members' activity from those photos

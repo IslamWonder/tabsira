@@ -1,5 +1,5 @@
 """
-Reflections and comments of the mock posts (task 22.4), written by the provider's composer model.
+Reflections and comments of the mock posts (task 23.4), written by the provider's composer model.
 
 One call per post: the model receives the post's insight by its own words only (title, glimpse,
 small step), never a verse or a hadith, and the countries of the author and of each commenter,
@@ -137,7 +137,7 @@ def text_model(settings: Settings) -> str:
     """
     Return the model that writes the members' words: the active provider's composer model.
 
-    Plan 22 names it. OVH's smallest text model (Qwen3.5-9B) was tried on 2026-10-05 and wrote
+    Plan 23 names it. OVH's smallest text model (Qwen3.5-9B) was tried on 2026-10-05 and wrote
     broken Arabic (mixed scripts, words that do not exist), so the small model is not used.
     """
     return settings.ai.compose_model

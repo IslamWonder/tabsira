@@ -34,7 +34,7 @@ KEEP_CATEGORIES = frozenset(
 )
 
 # Any filename word that names a person, a face or a body drops the photo, so no child
-# or face is ever shown (decision 63, plan 22.2).
+# or face is ever shown (decision 66, plan 23.2).
 HUMAN_WORDS = frozenset(
     {
         "person", "people", "man", "men", "woman", "women", "girl", "girls", "boy", "boys",

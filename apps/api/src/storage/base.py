@@ -36,7 +36,7 @@ KEY = re.compile(
     rf"^(?P<prefix>private|public)/(?:users/(?P<owner>{_UUID})/insights/)?(?P<id>[0-9a-f]{{32}})\.jpg$"
 )
 OWNER_PREFIX = re.compile(rf"^private/users/{_UUID}/$")
-# A mock member's photo is the address of a placeholder image (decision 63), shown as is: it
+# A mock member's photo is the address of a placeholder image (decision 66), shown as is: it
 # is not an object of ours, so `KEY` refuses it and nothing here ever stores, copies, signs or
 # deletes it. Strict on purpose: https, that host, `/id/<n>/<w>/<h>` with ASCII digits, nothing
 # else (no query, no port, no user, no extra path), and short enough for the 64-character column.

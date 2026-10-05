@@ -742,7 +742,7 @@ async def test_the_export_states_the_photo_of_a_post_as_facts_and_never_as_a_key
     ]
 
 
-# ─── Placeholder photo addresses of mock members (decision 63) ───
+# ─── Placeholder photo addresses of mock members (decision 66) ───
 
 MOCK_ADDRESS = "https://placepix.net/id/12/800/600"
 LOOKALIKES = [

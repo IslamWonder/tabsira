@@ -6,16 +6,16 @@ The platform opens with about 1000 mock members living in real cities of the Ara
 
 Two programs, two libraries and one file:
 
-1. **The generator** (`tools/mockdata/`, its own uv project) reads the photo library and the GeoNames tables and writes `tabsira-mock-v<N>.json` to `../tabsira-data/mock/`. Its process step (task 22.4) runs the real pipeline over the placepix photos into `photo-library.json` and writes the posts' texts into `texts-library.json` and the file. Nothing of it is committed; the owners upload the file to their bucket (s3-v2) and regenerate it when retrieval changes.
+1. **The generator** (`tools/mockdata/`, its own uv project) reads the photo library and the GeoNames tables and writes `tabsira-mock-v<N>.json` to `../tabsira-data/mock/`. Its process step (task 23.4) runs the real pipeline over the placepix photos into `photo-library.json` and writes the posts' texts into `texts-library.json` and the file. Nothing of it is committed; the owners upload the file to their bucket (s3-v2) and regenerate it when retrieval changes.
 2. **The importer** (`python -m src.cli.import_mock`, in `apps/api`) reads that file from a path or the bucket and writes the rows through the application's own services, so approximate places, public ids and photo rules are the ones members get. `--clean` removes every mock row.
 3. **The file** holds references only: placepix ids, GeoNames ids, exact points, times, evidence ids (surah and ayah, collection and number) and the composed insight text. Never a verse or a hadith text.
 
 | Step                                             | Status | Notes                                      |
 | ------------------------------------------------ | ------ | ------------------------------------------ |
-| Placepix photo addresses shown as is             | ✅     | Task 22.1. Decision 63. Privacy review.    |
-| Generator: catalogue, members, places, the graph | ✅     | Task 22.2.                                 |
-| Importer and `--clean`                           | ✅     | Task 22.3.                                 |
-| Real processing of the photos                    | ✅     | Task 22.4, on the retrieval of 2026-10-05. |
+| Placepix photo addresses shown as is             | ✅     | task 23.1. Decision 63. Privacy review.    |
+| Generator: catalogue, members, places, the graph | ✅     | task 23.2.                                 |
+| Importer and `--clean`                           | ✅     | task 23.3.                                 |
+| Real processing of the photos                    | ✅     | task 23.4, on the retrieval of 2026-10-05. |
 
 **How we check it**
 
@@ -106,7 +106,7 @@ Two programs, two libraries and one file:
 
 ### 22.2 Generator: catalogue, members, places and the graph
 
-- **Status:** ✅ done 2026-10-05; 69 tests, 100 % of the package; the real file is generated; photos were capped at three uses (task 22.4 changed the cap to seven and the photos to the photo library's)
+- **Status:** ✅ done 2026-10-05; 69 tests, 100 % of the package; the real file is generated; photos were capped at three uses (task 23.4 changed the cap to seven and the photos to the photo library's)
 - **Goal:** `tools/mockdata/` (uv, Python 3.12, Faker with the Arabic locales, typed, ruff), run by `make mock-data` (`MOCK_SEED`, `MOCK_MEMBERS=1000`):
   - **Catalogue.** `GET https://placepix.net/api/categories` and `/api/info/id/<n>`; keep animal, bird, cat, dog, flower, food, nature, city, travel, interior, education, transportation; drop `kid` and any filename naming a person, a face, a portrait of a human or a body, so no child or face is shown. A filename becomes the scene's labels and its Arabic line (a small reviewed word list, not a model).
   - **Members.** 22 countries (MA, DZ, TN, LY, EG, SD, MR, SA, AE, QA, KW, BH, OM, YE, JO, PS, SY, LB, IQ, SO, DJ, KM) weighted by the square root of their population with at least 10 each; cities from `geodata.geonames` (class P, population ≥ 15 000, `ar_name` set) weighted by population; Arabic display names, Latin handles, `<handle>@mock.tabsira.invalid`; sign-ups spread over the last six months; private profile fields left empty.

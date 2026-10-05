@@ -1,7 +1,7 @@
 [project]
 name = "tabsira-mockdata"
 version = "0.1.0"
-description = "Generates the mock members file (plan 22): references only, never scripture text"
+description = "Generates the mock members file (plan 23): references only, never scripture text"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "faker>=40.40.0",
@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-# The process step (task 22.4) runs the real pipeline: apps/api's dependencies, with apps/api
+# The process step (task 23.4) runs the real pipeline: apps/api's dependencies, with apps/api
 # itself put on the path (it is not a package).
 process = ["tabsira-api"]
 dev = [

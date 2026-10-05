@@ -191,7 +191,7 @@ Decision 44. Production keeps consented photos in a private S3-compatible bucket
 
 ## Mock members
 
-The platform starts with about 1000 mock members (decision 63, plan 22). `tools/mockdata` writes `tabsira-mock-v1.json` to `../tabsira-data/mock/`; the owners upload it to their bucket (never committed). The importer reads it from a path or from `s3://bucket/key` with the same `S3_*` keys as the photos (no new setting).
+The platform starts with about 1000 mock members (decision 66, plan 23). `tools/mockdata` writes `tabsira-mock-v1.json` to `../tabsira-data/mock/`; the owners upload it to their bucket (never committed). The importer reads it from a path or from `s3://bucket/key` with the same `S3_*` keys as the photos (no new setting).
 
 The file is made on a development machine in three steps (`tools/mockdata/README.md`): `make mock-photos` runs the real pipeline over the placepix photos into `photo-library.json`, `make mock-data` builds the members and their activity from the photos that gave an insight, and `make mock-texts` writes the posts' reflections and comments, checks the file with the importer's checks and writes `process-report.json` beside it. They read the development database and never write to it.
 

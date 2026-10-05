@@ -1,6 +1,6 @@
 # Mock data generator
 
-Writes `tabsira-mock-v1.json` for plan 22 (decision 63): about 1000 mock members in real cities
+Writes `tabsira-mock-v1.json` for plan 23 (decision 66): about 1000 mock members in real cities
 of 22 Arabic-speaking countries, with insights, posts, follows, reactions, comments and atlas
 entries. The file holds references and the pipeline's composed words only (placepix ids,
 GeoNames ids, points, times, evidence ids). It never holds a verse or a hadith.
@@ -34,7 +34,7 @@ make mock-texts      # the posts' reflections and comments -> texts-library.json
   `--map-entries`. The number of insights is capped by the photos (seven uses each).
 - Tests: `cd tools/mockdata && uv run pytest --cov`. No network, no database.
 
-## The photo and text stages (task 22.4)
+## The photo and text stages (task 23.4)
 
 `python -m mockdata.process photos` and `python -m mockdata.process texts` run the real scan
 pipeline of `apps/api` and the members' words:

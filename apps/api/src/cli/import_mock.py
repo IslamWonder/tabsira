@@ -1,5 +1,5 @@
 """
-Import the mock members that start the platform, or remove them (decision 63, plan 22).
+Import the mock members that start the platform, or remove them (decision 66, plan 23).
 
     uv run python -m src.cli.import_mock <file-or-s3://bucket/key> --i-understand
     uv run python -m src.cli.import_mock --clean --i-understand

@@ -34,7 +34,7 @@ class Image(_Row):
     width: int
     height: int
     scene: Scene
-    # The pipeline's insight from the photo library (task 22.4), in the importer's shape.
+    # The pipeline's insight from the photo library (task 23.4), in the importer's shape.
     insight: dict[str, Any] | None = None
 
 

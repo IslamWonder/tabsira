@@ -142,7 +142,7 @@ async def sync_public_copy(
         and facts.refusal(store.settings) is None
     )
     if is_mock_photo_address(insight.photo_key):
-        # A placeholder address is shown as is (decision 63): there is no copy to make or
+        # A placeholder address is shown as is (decision 66): there is no copy to make or
         # delete, so the public key is the address itself, or nothing.
         insight.photo_public_key = insight.photo_key if wanted else None
         await db.flush()

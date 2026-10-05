@@ -1,5 +1,5 @@
 """
-The importer of the mock members and its `--clean` (decision 63, plan 22).
+The importer of the mock members and its `--clean` (decision 66, plan 23).
 
 A small version-1 file goes through the real services on the test database: members, insights
 with their placepix photo addresses, posts, atlas entries, follows, likes and comments. The
