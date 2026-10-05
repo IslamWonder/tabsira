@@ -14,6 +14,7 @@ from src.config import (
     ConfigError,
     Environment,
     GeonamesSource,
+    HadithSearchScope,
     ProviderSettings,
     RerankerKind,
     ScanEngine,
@@ -1442,3 +1443,11 @@ def test_geonames_comes_from_the_dump_unless_the_original_import_is_chosen(make_
     assert "GEONAMES_SOURCE: Input should be 'dump' or 'geonames'" in errors_of(
         geonames_source="osm"
     )
+
+
+def test_the_hadith_search_looks_in_the_enriched_file_first_unless_told_otherwise(make_settings):
+    # The brief of 2026-10-05, §7 and §12: the file is the candidate source; widening is the fallback.
+    assert make_settings().hadith_search_scope is HadithSearchScope.ENRICHED_FIRST
+    assert make_settings(hadith_search_scope="all").hadith_search_scope is HadithSearchScope.ALL
+    with pytest.raises(ValidationError):
+        make_settings(hadith_search_scope="books")

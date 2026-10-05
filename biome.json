@@ -71,7 +71,8 @@
       "!apps/api/tests/evaluation/results/retrieval-*.json",
       "!apps/api/tests/evaluation/results/chat-*.json",
       "!docs/spec",
-      "!services/vision/weights"
+      "!services/vision/weights",
+      "!apps/web/public/maplibre"
     ]
   }
 }

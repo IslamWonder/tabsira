@@ -29,7 +29,7 @@ export const ar = {
     titleTemplate: '%s · تبصرة',
     description:
       'صوّر مشهدًا من حولك، فتريك تبصرة بصيرةً فيه تسندها آية من القرآن وحديث من السنة، بالعربية.',
-    shortDescription: 'بصيرة من مشهدك، تسندها آية وحديث.',
+    shortDescription: 'صوّر ما حولك، واكتشف معناه في القرآن والسنة.',
   },
 
   /** Text for search engines, share cards and agents (docs/SEO.md): never shown in the interface. */
@@ -392,6 +392,8 @@ export const ar = {
       lead: 'في مشهد واحد بصيرتان، لكلّ منهما آية وحديث. اختر إحداهما، ثم افتحها كاملة.',
       tabs: 'بصائر المشهد',
       reflection: 'التأمّل',
+      /** Under the reflection's title: an invitation to slow down, not an instruction. */
+      reflectionHint: 'خذ لحظة، واقرأ على مهل.',
       open: 'افتح البصيرة',
       opening: 'نفتحها…',
       loading: 'نحضّر المثال…',

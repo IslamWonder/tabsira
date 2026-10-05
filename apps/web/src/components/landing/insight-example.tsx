@@ -13,6 +13,7 @@ import { cx } from '@/lib/cx';
 import { getRainTutorial, keepRainInsight, type Tutorial } from '@/lib/scan/api';
 import { journeyFailureMessage } from '@/lib/scan/failure';
 import { messages } from '@/messages';
+import { ReflectionPanel } from './reflection-panel';
 
 const E = messages.landing.example;
 
@@ -173,19 +174,11 @@ export function InsightExample() {
                 {insight.title}
               </h3>
               <InsightEvidence insight={insight} headingLevel={3} />
-              <section
-                aria-label={E.reflection}
-                className="flex flex-col gap-1 rounded-[18px] border border-line bg-surface p-4"
-              >
-                <h4 className="m-0 font-semibold text-[0.875rem] text-fg-soft">{E.reflection}</h4>
-                <p className="m-0 text-base text-fg leading-[1.9]">{insight.glimpse}</p>
-                {insight.small_step === null ? null : (
-                  <p className="m-0 text-[0.9375rem] text-fg-soft leading-[1.9]">
-                    <span className="font-semibold text-fg">{insight.small_step.label}: </span>
-                    {insight.small_step.text}
-                  </p>
-                )}
-              </section>
+              <ReflectionPanel
+                key={active.id}
+                glimpse={insight.glimpse}
+                smallStep={insight.small_step}
+              />
               <div className="flex flex-col items-start gap-2">
                 <Button onClick={() => void open()} disabled={opening}>
                   {opening ? E.opening : E.open}

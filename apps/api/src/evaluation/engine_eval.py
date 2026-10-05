@@ -94,6 +94,8 @@ class SceneRun(BaseModel):
     hoped: list[str]
     hoped_found: list[str]
     clarification_question: str | None
+    # The model fault that ended the scene before any result, named (code and message).
+    failure: str | None = None
     vision_ms: int
     stage_ms: dict[str, int]
     total_ms: int
@@ -266,7 +268,9 @@ async def evaluate_scene(
         checked = await check_result(session, expectation, result, quran)
     except (AiCallError, ScriptureLeakError) as error:
         status = "vision_failed" if isinstance(error, AiCallError) else "vision_leak"
-        checked = {"status": status, "correct": False}
+        # Said in the run and on the terminal: a missing key and a refused image must not read
+        # alike (the brief of 2026-10-05, §16).
+        checked = {"status": status, "correct": False, "failure": str(error)}
     finally:
         if not moderation.done():
             moderation.cancel()

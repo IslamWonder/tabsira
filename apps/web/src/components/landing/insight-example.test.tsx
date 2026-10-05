@@ -32,7 +32,10 @@ describe('InsightExample', () => {
     const reflection = within(panel).getByRole('region', { name: 'التأمّل' });
     expect(reflection).toHaveTextContent('كيف تُحيا الأرض');
     // The step is the API's, under its own label: it may rest on either text, both shown.
-    expect(reflection).toHaveTextContent(`${drop.small_step?.label}: ${drop.small_step?.text}`);
+    // The small step under the API's own label, as a quest of its own below the reflection.
+    expect(within(reflection).getByText(drop.small_step?.label as string)).toBeInTheDocument();
+    expect(within(reflection).getByText(drop.small_step?.text as string)).toBeInTheDocument();
+    expect(reflection).toHaveTextContent('خذ لحظة، واقرأ على مهل.');
   });
 
   it('moves between its tabs with the arrows, and says why a hadith still waits', async () => {
