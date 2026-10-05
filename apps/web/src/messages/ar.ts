@@ -392,6 +392,8 @@ export const ar = {
       lead: 'في مشهد واحد بصيرتان، لكلّ منهما آية وحديث. اختر إحداهما، ثم افتحها كاملة.',
       tabs: 'بصائر المشهد',
       reflection: 'التأمّل',
+      /** Under the reflection's title: an invitation to slow down, not an instruction. */
+      reflectionHint: 'خذ لحظة، واقرأ على مهل.',
       open: 'افتح البصيرة',
       opening: 'نفتحها…',
       loading: 'نحضّر المثال…',
