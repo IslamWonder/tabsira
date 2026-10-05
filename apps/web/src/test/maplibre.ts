@@ -98,8 +98,19 @@ export class FakeMap {
     this.zoomRanges.set(layer, [min, max]);
   });
 
-  addLayer(layer: { id: string; filter?: unknown }): void {
+  images = new Map<string, { image: unknown; options: unknown }>();
+  addImage = vi.fn((id: string, image: unknown, options: unknown = {}) => {
+    this.images.set(id, { image, options });
+  });
+  hasImage(id: string): boolean {
+    return this.images.has(id);
+  }
+
+  /** Every layer the page added, with its whole spec, in order. */
+  specs: { id: string; type?: string; layout?: unknown; paint?: unknown }[] = [];
+  addLayer(layer: { id: string; type?: string; filter?: unknown }): void {
     this.layers.push(layer.id);
+    this.specs.push(layer);
     if (layer.filter !== undefined) {
       this.filters.set(layer.id, layer.filter);
     }

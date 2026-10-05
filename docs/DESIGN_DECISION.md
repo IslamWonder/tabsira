@@ -137,6 +137,10 @@ How the sponsoring screens (decision 60, task 21.2) apply the direction above; n
 - **Motion.** Only what the shared sheet and notices already do on display; nothing moves on hover, and it all stops under reduced motion.
 - **Privacy on the wire.** The offer asks the server with the map's centre or the camera's centre snapped to the 0.05° grid, and never asks the device for its position on its own account.
 
+### Atlas pin (added 5 October 2026)
+
+The owners chose pin «A» of three drawn for TABSIRA: the familiar pin shape, an emerald drop in a gold rim with the eight-point khatam inside and a small shadow on the ground. Every published insight on the map stands on its tip as this pin; the chosen one is the same pin a third larger with a gold glow at its foot; the point a reader places when publishing uses it too. Clusters stay emerald discs in a gold ring. The pin keeps its own emerald and gold in both themes. It is drawn in code on a canvas (`apps/web/src/components/atlas/map-pin.ts`) at twice its size and handed to MapLibre as an image, so no file or third-party asset is fetched; where no canvas can draw, the map keeps its circles.
+
 ### Logo (added 4 October 2026)
 
 The designer's logo (`brand/`) replaces the temporary eight-point star mark and the typed wordmark everywhere: the round calligraphic «تبصرة» is the mark, and «TABSIRA» joins it in the full logo. On night surfaces it is brand gold `#B28B38` (5.99:1); on day surfaces it is deep gold `#8D6E2C` (4.53:1), because brand gold reaches only 3.00:1 on the day background. Favicon, PWA, Apple touch and tile icons carry their own night background with the brand gold mark, so they read on any browser chrome. See `brand/README.md`.
