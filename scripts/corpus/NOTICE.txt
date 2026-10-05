@@ -1,0 +1,34 @@
+TABSIRA reference data: sources, licences and credits
+
+This archive republishes data of other projects. Their terms travel with it.
+
+Quran text (tables quran_*)
+  Source: Quranpedia.net, «الموسوعة القرآنية», https://quranpedia.net
+  Mushaf 2, «مصحف حفص نسخة نصية», from its official dumps, version @QURANPEDIA_VERSION@
+  (https://api.quranpedia.net/dumps). Licence: Quranpedia.net Data License, version
+  2026-10-01 (https://api.quranpedia.net/dumps/LICENSE.md). The Quran text is the
+  shared heritage of the ummah; its digitisation, structuring, verification,
+  diacritical correction and metadata are the work of the Quranpedia.net team.
+  The text is corrected continuously: keep any copy current through
+  https://quranpedia.net/api/v1/changes?since=<version> (TABSIRA applies it daily,
+  src.cli.sync_quran). Provided as is, without warranty; verification remains the
+  user's duty.
+
+Hadith: al-Bukhari, Muslim, Abu Dawud, al-Tirmidhi, al-Nasa'i, Ibn Majah, Malik
+  Source: fawazahmed0/hadith-api, https://github.com/fawazahmed0/hadith-api
+  Licence: The Unlicense (public domain dedication), https://unlicense.org
+
+Hadith: Musnad Ahmad, Sunan al-Darimi
+  Source: mhashim6/Open-Hadith-Data, https://github.com/mhashim6/Open-Hadith-Data
+  The rows of these two books, with their search copies, are a database derived
+  from Open-Hadith-Data and are shared under the same licence:
+
+  This Open-Hadith-Data project is made available under the Open Database
+  License: http://opendatacommons.org/licenses/odbl/1.0/. Any rights in
+  individual contents of the database are licensed under the Database Contents
+  License: http://opendatacommons.org/licenses/dbcl/1.0/
+
+Made by the TABSIRA team (Firas Ben Sassi, Ghazi Triki)
+  The Quran annotations and the hadith signals (retrieval aids written with
+  language models, never scripture), the world ontology and the learning path.
+  Shared with the TABSIRA source code, https://github.com/IslamWonder/tabsira
