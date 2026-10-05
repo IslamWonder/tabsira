@@ -44,16 +44,16 @@ scripts\windows\dev.ps1          # nginx + api + worker + web (+ vision), Ctrl-C
 scripts\windows\dev.ps1 -Stop    # from another window: stop a running dev.ps1
 ```
 
-Steps 4 to 7 of [docs/SETUP.md](SETUP.md) (corpora, scripture store, GeoNames, vectors) and the ontology and learning path are one script here, run after `migrate.ps1`. What it needs comes from the owners' bucket (`https://s3-v2.riastorage.com/tabsira`): the two corpora from `corpus/` when `data\corpus` lacks them, the owners' copies of the source downloads from `cache/` into `data\cache`, the GeoNames export from `geodata/` and the vectors from `vectors/` into `..\tabsira-data`.
+The reference data (steps 5 to 7 of [docs/SETUP.md](SETUP.md): GeoNames, the corpus, the vectors) comes from the owners' bucket, checked against its `.sha256`, into `..\tabsira-data`. On a development or test machine, the counterpart of the production host's `deploy/load-data.sh`:
 
 ```powershell
-scripts\windows\data.ps1                        # every step: geodata, scripture, ontology, masar, vectors
-scripts\windows\data.ps1 -Only ontology,masar   # some steps only
-scripts\windows\data.ps1 -Only scripture -Force # import again on purpose
-scripts\windows\data.ps1 -FromGeoNames          # import GeoNames from geonames.org instead of the export
+scripts\windows\load-data.ps1 -Check       # the schemas, the extensions and what is loaded; changes nothing
+scripts\windows\load-data.ps1              # load what is missing (GeoNames included), then prove it by counting
+scripts\windows\load-data.ps1 -NoGeonames  # without the places of the atlas
+scripts\windows\load-data.ps1 -Force       # install again what is there (the corpus is replaced whole)
 ```
 
-Each step checks the database first and does nothing when its data is there, so a second run by mistake changes nothing; `-Force` imports again. A failed step does not stop the others (the vectors wait for the scripture store), and the summary lists each step's outcome. Every download is checked: the corpora and the GeoNames export against their SHA-256 files, the source downloads by the importer against their sources' manifests. `-FromGeoNames` and the vector import run the repository's own `scripts/seed-geonames.sh` and `scripts/vectors/import.sh` with Git's bash. `psql` and `pg_restore` are in `..\tabsira-tools\PostgreSQL\18\bin`.
+It runs `scripts\data.ps1` (what `make data` does, GeoNames only when asked) and ends with the counts of the four schemas, failing when something is missing. Data that is there is left alone; a corpus that is partly filled is refused rather than mixed, and only `-Force` replaces it. A `.env` whose `ENVIRONMENT` is `production` is refused. `psql` and `pg_restore` are in `..\tabsira-tools\PostgreSQL\18\bin`.
 
 `dev.ps1` starts nginx when it is not running and stops it at the end; every service's output is prefixed with its name and kept in `..\tabsira-tools\logs\<name>.log`. `-NoVision`, `-NoWorker` and `-NoNginx` leave a service out. Then open `http://tabsira.test` (API: `http://api.tabsira.test`, admin: `http://admin.tabsira.test`).
 
@@ -63,13 +63,13 @@ Each step checks the database first and does nothing when its data is there, so 
 | ------------------ | ---------------------------------------------------------------------- |
 | `make install`     | `scripts\windows\install.ps1`                                          |
 | `make migrate`     | `scripts\windows\migrate.ps1`                                          |
-| `make data`        | `scripts\windows\data.ps1` (GeoNames included)                         |
+| `make data`        | `scripts\data.ps1`, or `scripts\windows\load-data.ps1` to also check   |
 | `make dev`         | `scripts\windows\dev.ps1`                                              |
 | `make test`        | `pnpm test` and, in `apps\api`, `uv run pytest -n 2`                   |
 | `make lint`        | `pnpm lint` and, in `apps\api`, `uv run ruff check . && uv run mypy .` |
 | `make format`      | `bash scripts/format.sh` from Git bash                                 |
 
-The other targets (`data`, `coverage`, `eval`, `smoke`, `benchmark`, `stats`) are shell scripts that run from Git bash once uv and pnpm are on the PATH; they have no PowerShell counterpart yet.
+The other targets (`coverage`, `eval`, `smoke`, `benchmark`, `stats`) are shell scripts that run from Git bash once uv and pnpm are on the PATH; they have no PowerShell counterpart yet.
 
 ## Where things are
 

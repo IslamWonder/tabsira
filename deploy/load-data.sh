@@ -7,7 +7,9 @@
 # The database has four schemas: `app` (the application) and `corpus` (the
 # reference data, decision 57) share the app chain; `geodata` (GeoNames) and
 # `vectors` (the scripture embeddings) have one Alembic chain each. The first
-# deploy runs the migrations; this script fills them.
+# deploy runs the migrations; this script fills them. Its twin for a native
+# Windows development or test machine is scripts/windows/load-data.ps1: the two
+# change together.
 #
 # Run as the application user, on the application host:
 #   deploy/load-data.sh [--check] [--no-geonames] [--geonames-source=dump|geonames] [--force]
