@@ -171,6 +171,13 @@ describe('ChatSheet', () => {
     );
   });
 
+  it('keeps the answers but takes no new question once «تمّ» closed the insight', () => {
+    const { sheet } = renderChat(chatWith({ closed: true, used: 1, remaining: 2 }));
+    expect(within(sheet).queryByLabelText('سؤالك')).toBeNull();
+    expect(within(sheet).getByText(/أُغلقت هذه البصيرة/)).toBeInTheDocument();
+    expect(within(sheet).queryByText('اكتمل النقاش حول هذه البصيرة')).toBeNull();
+  });
+
   it('says so when the chat is switched off', () => {
     const { sheet } = renderChat(chatWith({ enabled: false }));
     expect(within(sheet).queryByLabelText('سؤالك')).toBeNull();

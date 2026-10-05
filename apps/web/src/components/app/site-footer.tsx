@@ -10,6 +10,7 @@ const PAGES = [
   ['/terms', messages.footer.terms],
   ['/privacy', messages.footer.privacy],
   ['/support', messages.footer.support],
+  ['/sources', messages.footer.sources],
 ] as const;
 
 /**

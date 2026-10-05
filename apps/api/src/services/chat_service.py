@@ -9,7 +9,8 @@ while its answer is being written answers CHAT_IN_PROGRESS. A slot is held by a
 pending row while the model answers and given back if the answer fails, so
 only successful messages count; a pending row older than CHAT_RESERVATION is
 the remains of a crash and is cleared. The fourth message answers
-CHAT_LIMIT_REACHED.
+CHAT_LIMIT_REACHED. «تمّ» closes the insight: its messages stay readable and a
+new one answers CHAT_CLOSED.
 
 The model writes the level of the question (v2 §12) before its answer. A
 request for another text is never answered from memory: the app runs the
@@ -120,6 +121,10 @@ async def _reserve(
     held = await db.scalar(
         select(func.count()).select_from(ChatMessage).where(ChatMessage.insight_id == insight.id)
     )
+    # «تمّ» closes the insight: what was discussed stays readable, nothing new is asked.
+    if insight.completed_at is not None:
+        await db.commit()
+        raise _refused(ErrorCode.CHAT_CLOSED, messages_for().chat_closed, 409)
     if int(held or 0) >= settings.max_chat_user_messages:
         await db.commit()
         raise _refused(ErrorCode.CHAT_LIMIT_REACHED, messages_for().chat_limit_reached, 409)

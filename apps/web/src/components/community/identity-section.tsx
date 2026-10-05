@@ -131,6 +131,7 @@ export function BlocksList() {
     setFailure(null);
     const result = await setBlock(member.handle, false);
     if (result.ok) {
+      /* v8 ignore next 7: a block is lifted only from the ready list, so `current` is always ready; the other arm satisfies the union */
       setLoad((current) =>
         current.kind === 'ready'
           ? {

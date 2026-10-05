@@ -1,6 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { messages } from '@/messages';
+import { REFLECTION_MAX } from '@/social/types';
 import { apiError, mockApi, type Route } from '@/test/api';
 import { USER } from '@/test/fixtures';
 import { insightOut } from '@/test/scan';
@@ -196,5 +198,82 @@ describe('PublishScreen', () => {
       expect(screen.getAllByRole('button', { name: 'أنشئ المسودة' })).toHaveLength(2)
     );
     expect(screen.queryByRole('checkbox', { name: 'أرفق الصورة' })).toBeNull();
+  });
+
+  it('asks an unverified account to verify its address first', async () => {
+    member({ 'GET /auth/me': { body: { ...USER, email_verified: false } } });
+    render(<PublishScreen />);
+    expect(await screen.findByText(messages.community.publish.verify)).toBeInTheDocument();
+  });
+
+  it.each([
+    ['SERVICE_UNAVAILABLE', 503, messages.community.publish.unavailable],
+    ['PUBLIC_IDENTITY_REQUIRED', 409, messages.community.publish.identityFirst],
+  ])('says what %s means when the draft cannot be made', async (code, status, text) => {
+    member({ 'POST /posts': apiError(status, code) });
+    render(<PublishScreen />);
+    await userEvent.click(await screen.findByRole('button', { name: 'أنشئ المسودة' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(text);
+  });
+
+  it('falls back to the general message for any other refusal', async () => {
+    member({ 'POST /posts': apiError(500, 'INTERNAL') });
+    render(<PublishScreen />);
+    await userEvent.click(await screen.findByRole('button', { name: 'أنشئ المسودة' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+  });
+
+  it('sends nothing when the words are over the limit', async () => {
+    const api = member();
+    render(<PublishScreen />);
+    const field = await screen.findByLabelText('كلماتك (اختياري)');
+    fireEvent.change(field, { target: { value: 'ا'.repeat(REFLECTION_MAX + 1) } });
+    fireEvent.submit(field.closest('form') as HTMLFormElement);
+    expect(api.requests.filter((r) => r.method === 'POST')).toHaveLength(0);
+  });
+
+  it('tells a refused outcome, and a published one', async () => {
+    member({
+      'POST /posts': { status: 201, body: DRAFT },
+      [`POST /posts/${DRAFT.id}/submit`]: {
+        body: { ...DRAFT, status: 'rejected', status_message: '[لم يُقبل]' },
+      },
+    });
+    render(<PublishScreen />);
+    await userEvent.click(await screen.findByRole('button', { name: 'أنشئ المسودة' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'انشر' }));
+    expect(
+      await screen.findByText(messages.community.publish.outcome.rejected)
+    ).toBeInTheDocument();
+  });
+
+  it('tells a published outcome', async () => {
+    member({
+      'POST /posts': { status: 201, body: DRAFT },
+      [`POST /posts/${DRAFT.id}/submit`]: { body: { ...DRAFT, status: 'published' } },
+    });
+    render(<PublishScreen />);
+    await userEvent.click(await screen.findByRole('button', { name: 'أنشئ المسودة' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'انشر' }));
+    expect(
+      await screen.findByText(messages.community.publish.outcome.published)
+    ).toBeInTheDocument();
+  });
+
+  it('shows a failed submit under the preview, and leaves an edit unsaved on cancel', async () => {
+    member({
+      'POST /posts': { status: 201, body: DRAFT },
+      [`POST /posts/${DRAFT.id}/submit`]: apiError(500, 'INTERNAL'),
+    });
+    render(<PublishScreen />);
+    await userEvent.click(await screen.findByRole('button', { name: 'أنشئ المسودة' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'انشر' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'عدّل المسودة' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: messages.community.publish.cancelEdit })
+    );
+    expect(screen.getByRole('heading', { level: 2, name: 'هكذا يظهر منشورك' })).toBeInTheDocument();
   });
 });

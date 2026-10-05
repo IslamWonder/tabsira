@@ -50,7 +50,7 @@ from src.scripture import rulings
 
 log = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = "insight_verifier_system.v1"
+SYSTEM_PROMPT = "insight_verifier_system.v2"
 MAX_OUTPUT_TOKENS = 4096
 # Texts of each corpus shown to the verifier per candidate, and their length.
 SHORTLIST = 4

@@ -77,20 +77,34 @@ describe('LegalPage', () => {
     expect(container.querySelector('details')).not.toHaveAttribute('open');
   });
 
-  it('links the other two pages, never itself', () => {
+  it('links the other pages, never itself', () => {
     render(<LegalPage document={terms} seo={SEO} />);
     const related = screen.getByRole('navigation', { name: 'صفحات ذات صلة' });
     expect(
       within(related)
         .getAllByRole('link')
         .map((link) => link.getAttribute('href'))
-    ).toEqual(['/privacy', '/support']);
+    ).toEqual(['/privacy', '/support', '/sources']);
   });
 
   it('renders lists as lists and addresses as links', () => {
     render(<LegalPage document={terms} seo={SEO} />);
     expect(screen.getAllByRole('list').length).toBeGreaterThan(3);
     expect(screen.getAllByRole('link', { name: 'support@tabsira.me' }).length).toBeGreaterThan(0);
+  });
+
+  it('turns a web address into a link, the sentence full stop left outside', () => {
+    const { sources } = legalMessages();
+    render(<LegalPage document={sources} seo={{ ...SEO, path: '/sources' }} />);
+    const quranpedia = screen.getByRole('link', { name: 'https://quranpedia.net' });
+    expect(quranpedia).toHaveAttribute('href', 'https://quranpedia.net');
+    expect(quranpedia).toHaveAttribute('dir', 'ltr');
+    expect(
+      screen.getByRole('link', { name: 'http://opendatacommons.org/licenses/odbl/1.0/' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'https://github.com/IslamWonder/tabsira' })
+    ).toHaveAttribute('href', 'https://github.com/IslamWonder/tabsira');
   });
 
   it('uses no hover motion: nothing moves or scales on hover', () => {

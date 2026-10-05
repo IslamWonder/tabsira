@@ -13,7 +13,7 @@ export interface CameraCaptureProps {
   onPick: (event: ChangeEvent<HTMLInputElement>) => void;
   /**
    * Ask for the camera as soon as this shows, once: for a view opened by the reader's own tap
-   * on «صوّر مشهدًا», never on a page that merely loads (no permission is asked unprompted).
+   * on the capture button, never on a page that merely loads (no permission is asked unprompted).
    */
   autoStart?: boolean;
 }

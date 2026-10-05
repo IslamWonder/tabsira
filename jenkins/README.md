@@ -6,15 +6,18 @@ The scripts and defaults behind the root `Jenkinsfile`. How to set Jenkins up, w
 
 ## Files
 
-| File                      | Purpose                                                                                     | Used by                        |
-| ------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------ |
-| `jenkins.env`             | Defaults of every setting: SonarQube, Node tool, Zulip, service images, timeouts            | `Jenkinsfile`, every script    |
-| `ci-env.sh`               | Loads `jenkins.env` for a script without overriding a value that is already set             | sourced by the scripts         |
-| `ci-services.sh`          | Starts, removes and sweeps the build's PostgreSQL and Redis containers                      | `Services` stage and `finally` |
-| `ci-postgres/*.sql`       | The role, databases, schemas and nine extensions of that database                           | `ci-services.sh up`            |
-| `vision-coverage.sh`      | The vision service's tests with coverage, reports in `services/vision/coverage/`            | `Vision Tests` stage           |
-| `sonar-scan.sh`           | Pinned, checksum-verified SonarScanner run on the coverage the suites wrote, gate waited on | `SonarQube` stage              |
-| `prepare-jenkins-deps.sh` | One-time agent setup (`sudo`), or `--check` to verify it                                    | `Prepare` stage, the operator  |
+| File                      | Purpose                                                                                              | Used by                        |
+| ------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `jenkins.env`             | Defaults of every setting: SonarQube, Node tool, Zulip, service images, timeouts                     | `Jenkinsfile`, every script    |
+| `ci-env.sh`               | Loads `jenkins.env` for a script without overriding a value that is already set                      | sourced by the scripts         |
+| `ci-services.sh`          | Starts, removes and sweeps the build's PostgreSQL and Redis containers                               | `Services` stage and `finally` |
+| `ci-postgres/*.sql`       | The role, databases, schemas and nine extensions of that database                                    | `ci-services.sh up`            |
+| `vision-coverage.sh`      | The vision service's tests with coverage, reports in `services/vision/coverage/`                     | `Vision Tests` stage           |
+| `sonar-scan.sh`           | Pinned, checksum-verified SonarScanner run on the coverage the suites wrote, gate waited on          | `SonarQube` stage              |
+| `prepare-jenkins-deps.sh` | One-time agent setup (`sudo`), or `--check` to verify it                                             | `Prepare` stage, the operator  |
+| `Jenkinsfile.deploy`      | The production deploy job: ssh to the application host, `git pull`, `deploy/deploy.sh`, health check | `tabsira-deploy`, held inline  |
+| `tabsira-deploy.xml.tmpl` | That job's configuration with its parameters; `@SCRIPT@` receives the Jenkinsfile                    | `apply-jobs.sh`                |
+| `apply-jobs.sh`           | Creates or updates the jobs Jenkins does not discover by itself; run after each change               | the operator                   |
 
 The scanner's scope is [`../sonar-project.properties`](../sonar-project.properties).
 

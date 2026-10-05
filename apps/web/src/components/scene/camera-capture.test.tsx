@@ -1,10 +1,18 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { StrictMode } from 'react';
 import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { forgetDevice, stubCamera } from '@/test/camera';
-import { CameraCapture, cameraProblem, frameToFile } from './camera-capture';
+import { CameraCapture, cameraProblem, frameToFile, useCameraAvailability } from './camera-capture';
 
 /** jsdom draws nothing: a canvas that hands back a small JPEG, or nothing when asked. */
 function stubCanvas(blob: Blob | null = new Blob(['jpeg'], { type: 'image/jpeg' })) {
@@ -135,6 +143,69 @@ describe('CameraCapture', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('لم تُلتقط الصورة');
     expect(onFile).not.toHaveBeenCalled();
+  });
+
+  it('takes no photo when the shutter fires before the camera is live', async () => {
+    const { track } = stubCamera('granted');
+    const pending = new Promise<MediaStream>(() => {});
+    vi.mocked(navigator.mediaDevices.getUserMedia).mockReturnValue(pending);
+    const drawImage = stubCanvas();
+    const onFile = vi.fn();
+    render(<CameraCapture onFile={onFile} onPick={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /التقط بالكاميرا/ }));
+    const shutter = await screen.findByRole('button', { name: 'التقط' });
+    expect(shutter).toBeDisabled();
+    // A disabled button gets no click from the browser; the handler itself still refuses.
+    const propsKey = Object.keys(shutter).find((key) => key.startsWith('__reactProps'));
+    const props = (shutter as unknown as Record<string, { onClick: () => void }>)[propsKey ?? ''];
+    await act(async () => {
+      props?.onClick();
+    });
+
+    expect(drawImage).not.toHaveBeenCalled();
+    expect(onFile).not.toHaveBeenCalled();
+    expect(track.stop).not.toHaveBeenCalled();
+  });
+
+  it('ignores the device list when the view closes before it is read', async () => {
+    stubCamera('granted');
+    withDevices(['videoinput']);
+    let release: (list: MediaDeviceInfo[]) => void = () => {};
+    vi.mocked(navigator.mediaDevices.enumerateDevices).mockReturnValue(
+      new Promise((resolve) => {
+        release = resolve;
+      })
+    );
+    const { unmount } = render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
+    unmount();
+    await act(async () => {
+      release([{ kind: 'videoinput' } as MediaDeviceInfo]);
+    });
+    expect(navigator.mediaDevices.removeEventListener).toHaveBeenCalled();
+  });
+
+  it('reads the device list again when a camera is plugged in or removed', async () => {
+    stubCamera('granted');
+    withDevices([], 'unsupported');
+    render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
+    expect(await screen.findByText(/لم يتم العثور على كاميرا/)).toBeInTheDocument();
+
+    const listener = vi.mocked(navigator.mediaDevices.addEventListener).mock.calls[0]?.[1];
+    vi.mocked(navigator.mediaDevices.enumerateDevices).mockResolvedValue([
+      { kind: 'videoinput' } as MediaDeviceInfo,
+    ]);
+    await act(async () => {
+      (listener as EventListener)(new Event('devicechange'));
+    });
+    expect(await screen.findByRole('button', { name: /التقط بالكاميرا/ })).toBeInTheDocument();
+  });
+
+  it('reports the camera as unsupported where there is no navigator at all', () => {
+    vi.stubGlobal('navigator', undefined);
+    const { result } = renderHook(() => useCameraAvailability(true));
+    vi.unstubAllGlobals();
+    expect(result.current).toEqual({ availability: 'unsupported', cameras: 0 });
   });
 
   it('falls back to the phone camera picker when the camera is refused at the tap', async () => {

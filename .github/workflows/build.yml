@@ -1,0 +1,106 @@
+# Build and test TABSIRA on every push and pull request.
+#
+# One file for GitHub Actions and Gitea Actions: Gitea reads .github/workflows
+# when the repository has no .gitea/workflows, and maps the `github` context and
+# the actions below the same way. It runs what the Jenkinsfile runs, in three
+# jobs: lint, web (tests and the production build) and api (migrations and
+# tests with coverage, against the per-build PostgreSQL and Redis containers of
+# jenkins/ci-services.sh, so the runner needs Docker). Deploying stays a manual
+# Jenkins job (jenkins/Jenkinsfile.deploy).
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CI: 'true'
+  NEXT_TELEMETRY_DISABLED: '1'
+  UV_PYTHON_PREFERENCE: only-managed
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+      - name: Shell tools
+        run: bash scripts/install-quality-tools.sh shellcheck shfmt
+      - name: Install
+        run: |
+          pnpm install --frozen-lockfile
+          (cd apps/api && uv sync --locked)
+          (cd services/vision && uv sync --locked)
+      - name: Lint
+        run: bash scripts/lint.sh
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Tests with coverage
+        run: bash scripts/test-web-coverage.sh
+      - name: Production build
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_SITE_URL: https://tabsira.me
+          NEXT_PUBLIC_API_URL: https://api.tabsira.me
+        run: pnpm --filter @tabsira/web build
+
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+      - name: Database and Redis
+        env:
+          # Names the containers; `down` finds them again through TABSIRA_CI_CONTAINER.
+          JOB_NAME: actions
+          BUILD_NUMBER: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          bash jenkins/ci-services.sh doctor
+          bash jenkins/ci-services.sh up
+          # The generated passwords stay out of the log; the next steps read them from the environment.
+          while IFS='=' read -r key value; do
+            case "$key" in *PASSWORD* | *_URL) echo "::add-mask::$value" ;; esac
+            echo "$key=$value" >>"$GITHUB_ENV"
+          done <.env.ci
+      - name: Install
+        run: cd apps/api && uv sync --locked
+      - name: Migrations
+        run: bash scripts/migrate.sh
+      - name: Tests with coverage
+        env:
+          PYTEST_WORKERS: '2'
+        run: bash scripts/test-coverage.sh
+      - name: Remove the containers
+        if: always()
+        run: bash jenkins/ci-services.sh down

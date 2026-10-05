@@ -35,6 +35,7 @@ from src.models import (
     Treasure,
     WorldPlace,
     WorldRelation,
+    WorldReveal,
 )
 
 SIGNATURE_PURPOSE = "guest-cookie"
@@ -145,12 +146,16 @@ async def merge_into_user(
 
     A guest past GUEST_TTL_DAYS is not merged: it is due for deletion. A place
     the account already has absorbs the guest's place of the same region (its
-    insights, treasures and threads move to it); learner unit rows are added together.
+    insights, treasures, reveals and threads move to it); learner unit rows are
+    added together. A guest's reveal moves when the account has neither its
+    concept nor its slot; otherwise it goes, and the account's world reveals the
+    concept again from the merged insights in a free slot, without the effect.
     """
     guest = await db.get(Guest, key)
     if guest is None or guest.last_seen_at < _expired_before(settings):
         return False
     await _merge_places(db, key, user_id)
+    await _merge_reveals(db, key, user_id)
     for model in (Scan, Insight):
         await db.execute(
             update(model)
@@ -187,12 +192,36 @@ async def _merge_places(db: AsyncSession, key: str, user_id: uuid.UUID) -> None:
         await db.execute(
             update(Treasure).where(Treasure.place_id == place.id).values(place_id=kept.id)
         )
+        await db.execute(
+            update(WorldReveal).where(WorldReveal.place_id == place.id).values(place_id=kept.id)
+        )
         await _move_relations(db, place.id, kept.id)
         if place.last_visited_at and (
             kept.last_visited_at is None or place.last_visited_at > kept.last_visited_at
         ):
             kept.last_visited_at = place.last_visited_at
         await db.delete(place)
+    await db.flush()
+
+
+async def _merge_reveals(db: AsyncSession, key: str, user_id: uuid.UUID) -> None:
+    """Move the guest's reveals the account has room for; drop the others, which the world remakes."""
+    account = list(await db.scalars(select(WorldReveal).where(WorldReveal.user_id == user_id)))
+    concepts = {reveal.concept_key for reveal in account}
+    slots = {(reveal.layout_version, reveal.region_id, reveal.slot) for reveal in account}
+    guest_reveals = await db.scalars(
+        select(WorldReveal)
+        .where(WorldReveal.guest_key == key)
+        .order_by(WorldReveal.learned_at, WorldReveal.id)
+    )
+    for reveal in guest_reveals:
+        slot = (reveal.layout_version, reveal.region_id, reveal.slot)
+        if reveal.concept_key in concepts or slot in slots:
+            await db.delete(reveal)
+            continue
+        reveal.user_id, reveal.guest_key = user_id, None
+        concepts.add(reveal.concept_key)
+        slots.add(slot)
     await db.flush()
 
 

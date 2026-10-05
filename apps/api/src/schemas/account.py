@@ -125,6 +125,25 @@ class PlaceExport(BaseModel):
     last_visited_at: datetime | None
 
 
+class RevealExport(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: PublicId
+    insight_id: PublicId
+    place_id: PublicId
+    concept_key: str
+    region_id: str
+    layout_version: str
+    slot: int
+    theme: str
+    x: float
+    y: float
+    radius: float
+    learned_at: datetime
+    created_at: datetime
+    shown_at: datetime | None
+
+
 class TreasureExport(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -184,6 +203,7 @@ class LearningExport(BaseModel):
     insights: list[InsightExport]
     chat_messages: list[ChatMessageExport]
     places: list[PlaceExport]
+    reveals: list[RevealExport]
     treasures: list[TreasureExport]
     learner_units: list[LearnerUnitExport]
     exposures: list[ExposureExport]

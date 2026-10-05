@@ -10,7 +10,7 @@ import { messages, siteLanguage } from '@/messages';
  */
 
 /** Routes in the sitemap's static list and indexed. The API's `static` section must carry all of them. */
-export const INDEXED_ROUTES = ['/', '/terms', '/privacy', '/support'] as const;
+export const INDEXED_ROUTES = ['/', '/terms', '/privacy', '/support', '/sources'] as const;
 
 /**
  * Routes served but outside the sitemap: every one answers `noindex`

@@ -7,6 +7,7 @@ import {
   type ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -29,7 +30,7 @@ export interface Capture {
 const CaptureContext = createContext<Capture | null>(null);
 
 /**
- * One way to capture a scene, from every page (decision 51): each «صوّر مشهدًا»
+ * One way to capture a scene, from every page (decision 51): each capture button
  * opens this sheet with the live camera already starting and the file picker
  * beside it, and every photo, taken or chosen, is sent the same way. The sheet
  * says what is being sent without the file's name, and a refusal is said in
@@ -69,6 +70,21 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
     setSending(null);
     setFailure(null);
   };
+
+  // The installed app's capture shortcut opens on /?capture=1: the reader's own long-press is the tap that asks.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('capture') !== '1') {
+      return;
+    }
+    url.searchParams.delete('capture');
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${url.pathname}${url.search}${url.hash}`
+    );
+    setOpen(true);
+  }, []);
 
   const capture = useMemo<Capture>(
     () => ({ open: () => setOpen(true), send: (file) => void send(file) }),

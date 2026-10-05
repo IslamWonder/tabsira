@@ -4,8 +4,8 @@ import { LEGAL_PATHS, legalMetadata, webPageJsonLd } from './legal-seo';
 const SEO = { path: '/terms', title: 'شروط الاستخدام', description: 'وصف' } as const;
 
 describe('legal SEO', () => {
-  it('lists the three public paths', () => {
-    expect(LEGAL_PATHS).toEqual(['/terms', '/privacy', '/support']);
+  it('lists the four public paths', () => {
+    expect(LEGAL_PATHS).toEqual(['/terms', '/privacy', '/support', '/sources']);
   });
 
   it('indexes the page with its own canonical, ar and x-default, and no snippet', () => {

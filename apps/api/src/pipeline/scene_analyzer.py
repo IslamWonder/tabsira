@@ -53,7 +53,7 @@ from src.pipeline.schemas import (
     SensitiveCategory,
 )
 
-SYSTEM_PROMPT = "scene_analyzer_system.v1"
+SYSTEM_PROMPT = "scene_analyzer_system.v2"
 USER_PROMPT = "scene_analyzer_user.v1"
 # Room for a thinking model's reasoning plus the answer; a truncated answer is a failure.
 MAX_OUTPUT_TOKENS = 8192

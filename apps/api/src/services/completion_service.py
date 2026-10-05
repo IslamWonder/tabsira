@@ -4,9 +4,11 @@
 The first «تمّ» on an insight, and only the first, marks it completed (a
 completion, never mastery), counts the completion of its unit, records what
 was shown (the verse and the hadith by reference, the concept, the time), lifts
-the fog from its place in the world (made once, then reused), records the
-threads it makes, and hides its treasure when a verified one exists. A second
-«تمّ» changes nothing and answers the same place. With memory switched off the
+the fog from its place in the world (made once, then reused) and, in the same
+transaction, gives its concept a reveal of the world picture when the concept
+is new (decision 59), records the threads it makes, and hides its treasure when
+a verified one exists. A second «تمّ» changes nothing and answers the same
+place and reveal. With memory switched off the
 learner state and the exposures are not written; the insight and its place are.
 For a signed-in owner who consented to keep photos, the first «تمّ» also keeps
 the scan's photo privately (v2 §19); a guest's photo is never kept.
@@ -21,10 +23,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import clock
 from src.config import Settings
 from src.messages import messages_for
-from src.models import Insight, Treasure, WorldPlace
+from src.models import Insight, Treasure, WorldPlace, WorldReveal
 from src.owner import Owner
 from src.pipeline.engine import HadithRef, QuranRef
-from src.schemas.insight import AfterOption, CompletionOut, PlaceOut
+from src.schemas.insight import AfterOption, CompletionOut, CompletionRevealOut, PlaceOut
 from src.services import learner_service, photo_service, progress_service, world_service
 from src.services.content import load_regions
 from src.services.insight_view import shown_evidence
@@ -70,6 +72,8 @@ async def complete(
     ).one_or_none() is not None
     await db.refresh(insight)
     place_created = False
+    reveal: WorldReveal | None = None
+    reveal_created = False
     treasure_prepared = False
     if first:
         await _remember(db, owner, insight)
@@ -79,6 +83,7 @@ async def complete(
             place, place_created = await world_service.ensure_place(db, owner, region)
             insight.place_id = place.id
             await db.flush()
+            reveal, reveal_created = await world_service.reveal_concept(db, owner, insight, place)
             await world_service.record_relations(db, owner, insight, place.id)
             if settings.feature_treasure:
                 treasure_prepared = await world_service.prepare_treasure(db, owner, insight, place)
@@ -87,11 +92,20 @@ async def complete(
         treasure_prepared = (
             await db.scalar(select(Treasure.id).where(Treasure.insight_id == insight.id))
         ) is not None
+        reveal = await db.scalar(
+            select(WorldReveal).where(
+                owner.where(WorldReveal),
+                WorldReveal.concept_key == world_service.concept_key(insight),
+            )
+        )
     return CompletionOut(
         insight_id=insight.id,
         completed_at=insight.completed_at or now,
         first_time=first,
         place=await _place(db, insight, created=place_created),
+        reveal=CompletionRevealOut(id=reveal.id, landmark=reveal.slot == 0, created=reveal_created)
+        if reveal is not None
+        else None,
         treasure_prepared=treasure_prepared,
         badges_earned=sorted(await _earned(db, owner) - earned_before) if first else [],
         options=options(),

@@ -2085,6 +2085,12 @@ export interface components {
     ChatOut: {
       /** Enabled */
       enabled: boolean;
+      /**
+       * Closed
+       * @description «تمّ» closed the insight: its messages stay, no new question
+       * @default false
+       */
+      closed: boolean;
       /** Used */
       used: number;
       /** Limit */
@@ -2561,6 +2567,7 @@ export interface components {
       | 'SOURCE_UNAVAILABLE'
       | 'PAIR_INCOMPLETE'
       | 'CHAT_LIMIT_REACHED'
+      | 'CHAT_CLOSED'
       | 'SAVE_FAILED'
       | 'PUBLISH_FAILED'
       | 'STORAGE_UNAVAILABLE'

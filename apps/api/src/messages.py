@@ -115,6 +115,8 @@ class Messages:
     continue_as_guest: str
     # Chat (v2 §14); level د gives general information first, then the referral.
     chat_limit_reached: str
+    # Said once «تمّ» closed the insight: its discussion stays readable, no new question.
+    chat_closed: str
     chat_needs_new_search: str
     # Said when a request for another text found one that passed the gate: `{references}`
     # names it; the text itself is read from the store beside the answer.
@@ -274,6 +276,7 @@ ARABIC = Messages(
     suggest_account="هل تحفظ ما تعلّمته لنواصل من هنا؟",
     continue_as_guest="أتابع كضيف",
     chat_limit_reached="اكتمل النقاش حول هذه البصيرة",
+    chat_closed="أُغلقت هذه البصيرة بـ«تمّ»، فلا أسئلة جديدة عليها. صوّر مشهدًا آخر لتسأل عنه.",
     chat_needs_new_search=(
         "بحثنا من جديد في المصادر وتحققنا، فلم نجد نصًا آخر موثوقًا يناسب طلبك،"
         " ولا نذكر نصًا من الذاكرة. وضّح ما تقصد أو صوّر مشهدًا آخر لنبحث لك."
