@@ -399,7 +399,6 @@ def test_public_urls_are_normalised(make_settings, value, expected):
         ("https://tabsira.me/path", "no path"),
         ("https://tabsira.me?x=1", "no path"),
         ("https://tabsira.me#top", "no path"),
-        ("https://owner:secret@tabsira.me", "no user name or password"),
     ],
 )
 def test_public_urls_are_rejected_when_malformed(value, reason):
@@ -1009,6 +1008,7 @@ def test_the_s3_secret_is_a_secret(make_settings):
         "https://",
         "https://m.example/a?x=1",
         "https://m.example/#a",
+        "https://owner:secret@m.example",
     ],
 )
 def test_an_s3_address_is_an_http_url_without_query_or_fragment(key, value):
