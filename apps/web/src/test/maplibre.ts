@@ -22,12 +22,21 @@ export class FakeMap {
   static failWith: Error | null = null;
   options: Record<string, unknown>;
   sources = new Map<string, FakeSource>();
+  sourceOptions = new Map<string, Record<string, unknown>>();
+  /** The filter each layer was added with. */
+  filters = new Map<string, unknown>();
   layers: string[] = [];
   handlers = new Map<string, Handler[]>();
   featureState = new Map<string, Record<string, unknown>>();
   jumpTo = vi.fn();
   flyTo = vi.fn();
   easeTo = vi.fn();
+  fitBounds = vi.fn();
+  /** The camera the bounds would get; `undefined` when they cannot be fitted. */
+  cameraForBounds = vi.fn((): { center: [number, number]; zoom: number } | undefined => ({
+    center: [10, 36],
+    zoom: 12,
+  }));
   remove = vi.fn();
   addControl = vi.fn();
   queryRenderedFeatures = vi.fn((): unknown[] => []);
@@ -59,6 +68,7 @@ export class FakeMap {
   }
 
   addSource(id: string, spec: { data?: unknown } = {}): void {
+    this.sourceOptions.set(id, spec);
     const source = new FakeSource();
     source.data = spec.data ?? null;
     this.sources.set(id, source);
@@ -88,8 +98,11 @@ export class FakeMap {
     this.zoomRanges.set(layer, [min, max]);
   });
 
-  addLayer(layer: { id: string }): void {
+  addLayer(layer: { id: string; filter?: unknown }): void {
     this.layers.push(layer.id);
+    if (layer.filter !== undefined) {
+      this.filters.set(layer.id, layer.filter);
+    }
   }
 
   getLayer(id: string): { id: string } | undefined {

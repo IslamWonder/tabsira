@@ -1000,7 +1000,6 @@ export const ar = {
       ],
       more: 'المصادر',
     },
-    searchHere: 'ابحث في هذه المنطقة',
     nearMe: 'قريب مني',
     nearMeHint:
       'يحرّك الخريطة إلى موضعك على جهازك؛ موضعك نفسه لا يُرسل إلى تبصرة، وما يُرسل عند البحث هو نطاق الخريطة المعروض.',
@@ -1027,6 +1026,9 @@ export const ar = {
       return count === 2 ? 'بصيرتان' : count <= 10 ? `${count} بصائر` : `${count} بصيرة`;
     },
     inView: 'في هذه المنطقة',
+    loadMore: 'عرض المزيد',
+    loadingMore: 'نحمّل المزيد…',
+    loadMoreFailed: 'تعذّر تحميل المزيد الآن.',
     filters: {
       label: 'المرشحات',
       period: 'الفترة',

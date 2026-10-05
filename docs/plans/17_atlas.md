@@ -4,18 +4,19 @@
 
 A real map of shared insights, at approximate locations only.
 
-| Step                                     | Status | Notes                                                                                                                                                                                   |
-| ---------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Place search and the approximation grid  | ✅     |                                                                                                                                                                                         |
-| Map entries: publish and withdraw        | ✅     | Task 17.1: two tables, the exact point private, the cell centre public.                                                                                                                 |
-| Map screen with clusters and place pages | ✅     | Task 17.1: MapLibre with OpenFreeMap tiles, filters, place pages, placing an insight.                                                                                                   |
-| Map entries in the moderation queue      | ✅     | Task 17.2: held and reported entries, approve or remove, public place only.                                                                                                             |
-| Privacy re-review fixes before switch-on | ✅     | Task 17.3: reports and the handle with the atlas alone, no caching, day precision, tombstones, terms.                                                                                   |
-| Wave 4 audit web fixes                   | ✅     | Task 17.4: 404 while off, camera wording, the view in the address, concept and own-entries filters, publish actions inside sharing, terms.                                              |
-| «نفس المعنى حول العالم» and more filters | ⏸      | Task 17.5: `GET /map/related`, concept labels, scene type and «جديد عليّ».                                                                                                              |
-| EXIF location as a placing candidate     | ⏸      | Task 17.6: the upload's own GPS offered on the placing screen, never the device's position by default.                                                                                  |
-| Map quality, controls and two views      | ✅     | 2026-10-05: the worker served from /maplibre, Arabic place names first, nearby places from zoom 15, land types kept; zoom, compass, full screen, scale; a streets or geographic switch. |
-| Clusters and a paginated list (API)      | ✅     | Task 17.7: `GET /atlas/clusters` and `GET /atlas/entries/page`; the web part is open.                                                                                                   |
+| Step                                     | Status | Notes                                                                                                                                                                                    |
+| ---------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Place search and the approximation grid  | ✅     |                                                                                                                                                                                          |
+| Map entries: publish and withdraw        | ✅     | Task 17.1: two tables, the exact point private, the cell centre public.                                                                                                                  |
+| Map screen with clusters and place pages | ✅     | Task 17.1: MapLibre with OpenFreeMap tiles, filters, place pages, placing an insight.                                                                                                    |
+| Map entries in the moderation queue      | ✅     | Task 17.2: held and reported entries, approve or remove, public place only.                                                                                                              |
+| Privacy re-review fixes before switch-on | ✅     | Task 17.3: reports and the handle with the atlas alone, no caching, day precision, tombstones, terms.                                                                                    |
+| Wave 4 audit web fixes                   | ✅     | Task 17.4: 404 while off, camera wording, the view in the address, concept and own-entries filters, publish actions inside sharing, terms.                                               |
+| «نفس المعنى حول العالم» and more filters | ⏸      | Task 17.5: `GET /map/related`, concept labels, scene type and «جديد عليّ».                                                                                                               |
+| EXIF location as a placing candidate     | ⏸      | Task 17.6: the upload's own GPS offered on the placing screen, never the device's position by default.                                                                                   |
+| Map quality, controls and two views      | ✅     | 2026-10-05: the worker served from /maplibre, Arabic place names first, nearby places from zoom 15, land types kept; zoom, compass, full screen, scale; a streets or geographic switch.  |
+| Clusters and a paginated list (API)      | ✅     | Task 17.7: `GET /atlas/clusters` and `GET /atlas/entries/page`.                                                                                                                          |
+| Clusters and a paginated list (web)      | ✅     | Task 17.8: the map draws the server's groups, a tap zooms to the group, the list is paged («عرض المزيد») with the true total; «ابحث في هذه المنطقة» is gone, moving refreshes by itself. |
 
 **How we check it**
 
@@ -79,10 +80,20 @@ A real map of shared insights, at approximate locations only.
 
 ### 17.7 Atlas clusters and a paginated list, API part
 
-- **Status:** ✅ 2026-10-05 18:50, owners' agent (API contract addition approved by the owners on 2026-10-05; branch worktree-agent-a599f4e24aa57d3fd). The web part (MapLibre fed by the clusters, the list on the page route) is open.
+- **Status:** ✅ 2026-10-05 18:50, owners' agent (API contract addition approved by the owners on 2026-10-05; branch worktree-agent-a599f4e24aa57d3fd). The web part is task 17.8.
 - **Goal:** Bound the atlas payload whatever the number of entries, give true counts when zoomed out, and paginate the list. `GET /atlas/entries` is unchanged.
 - **What was done:** `GET /atlas/clusters?west&south&east&north&zoom&since&country&concept` (zoom 0 to 22, required) answers a FeatureCollection of `properties.kind` `cluster` (`id` of the cell and zoom, `count`, `bbox`; the point is the mean of the members' public points) and `entry` (the usual feature properties). The entries are snapped in Web Mercator to a grid of about 60 CSS px (60 x 156543.03392 / 2^zoom metres, the number of cells across the world rounded to a whole so that none straddles the antimeridian), grouped in one SQL query after the envelope filter; a cell of one entry is fetched by id in a second query and shown as an entry. From zoom 16 nothing is grouped; at most 500 features are returned, `truncated` says there were more. `GET /atlas/entries/page` (same window and filters, `center_lat`, `center_lng`, `cursor`, `limit` 20 to 50) lists the visible entries by geography distance from the centre, ties by id, with a keyset cursor and the true `total` of the window. Both apply the visibility rules of `/atlas/entries` (published and orphaned as sponsoring decides, blocks, filters); only public points are read, and a cluster holds no entry id, author or time. No migration: the partial GiST index `ix_map_entries_public_geom` already serves the window filter.
 - **Depends on:** 17.1.
 - **Touches:** apps/api/src/{routers/atlas.py,services/atlas_service.py,schemas/atlas.py}, tests/test_atlas_clusters.py, the generated web client.
 - **Done when:** The two routes answer as above with their tests; a privacy review of the diff follows.
 - **Left for the owners:** a review of the location-privacy side (the map centre sent for the list is used for ordering only and is returned nowhere).
+
+### 17.8 Atlas clusters and a paginated list, web part
+
+- **Status:** ✅ 2026-10-05 18:59 (Tunis), owners' agent (approved by the owners on 2026-10-05).
+- **Goal:** Draw what the server grouped and list the window page by page, at the lowest cost for the phone and the API.
+- **What was done:** The map source is `/atlas/clusters` with MapLibre's own clustering off; groups are GPU circle and symbol layers sized by `count` in the same theme tokens, entries and selection as before. A tap on a group fits the box of its members with 48 px of padding (a jump under reduced motion) and never lands at or below the zoom it started from. The map and the list refresh by themselves 250 ms after the map stops, cancelling the older request; the map asks for the window padded by a quarter on each side and skips a request whose padded window (snapped to the 0.05° grid), rounded zoom and filters did not change; the list asks for the visible window around the map centre (snapped too), 20 at a time, with «عرض المزيد» appending the next cursor and a reset to the first page when the window, centre or filters change. The heading shows the true total. An entry picked on the map keeps its card when a move no longer lists it. The server's `truncated` shows the existing «قرّب الخريطة» notice. **The «ابحث في هذه المنطقة» button is removed** (moving refreshes by itself), with its string; the address's fragment still restores the view. No new dependency, and the list rows are memoised.
+- **Depends on:** 17.7.
+- **Touches:** apps/web/src/{atlas/api.ts,atlas/types.ts,components/atlas/{atlas-screen.tsx,map-view.tsx,use-atlas-data.ts},messages/ar.ts,test/maplibre.ts} and their tests.
+- **Done when:** The unit tests of the new and changed code are at 100 %; `GET /atlas/entries` stays for its other callers (the camera discovery).
+- **Left for the owners:** the extension spec (§ the atlas screen) still names a «ابحث في هذه المنطقة» button; it is superseded by this task.

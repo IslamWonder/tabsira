@@ -12,8 +12,8 @@ import type {
   Map as MapLibreMap,
 } from 'maplibre-gl';
 import { useEffect, useRef, useState } from 'react';
-import type { AtlasFeature, Window } from '@/atlas/types';
-import { DEFAULT_VIEW, lngLatOf, MAP_STYLE_URL } from '@/atlas/types';
+import type { AtlasClusterFeature, MapFeature, Window } from '@/atlas/types';
+import { DEFAULT_VIEW, isCluster, lngLatOf, MAP_STYLE_URL } from '@/atlas/types';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 import { basemapColours, MAP_MODES, type MapMode, type ThemableMap, themeBasemap } from './basemap';
@@ -21,8 +21,8 @@ import { basemapColours, MAP_MODES, type MapMode, type ThemableMap, themeBasemap
 const A = messages.atlas;
 
 export interface MapViewProps {
-  /** The published entries to draw; clustered by the map itself. */
-  features?: readonly AtlasFeature[];
+  /** What to draw: groups and entries as the server grouped them (the map never clusters by itself). */
+  features?: readonly MapFeature[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   /** The window after every move, with the centre and zoom; `byHand` says a person dragged or zoomed, not the page. */
@@ -69,17 +69,32 @@ function reducedMotion(): boolean {
   );
 }
 
-function collection(features: readonly AtlasFeature[]): FeatureCollection {
+function collection(features: readonly MapFeature[]): FeatureCollection {
   return {
     type: 'FeatureCollection',
-    features: features.map((feature) => ({
-      type: 'Feature',
-      id: Number(feature.id.slice(-9)),
-      geometry: { type: 'Point', coordinates: lngLatOf(feature.geometry) },
-      properties: { id: feature.id, title: feature.properties.title },
-    })),
+    features: features.map((feature) =>
+      isCluster(feature)
+        ? {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: lngLatOf(feature.geometry) },
+            properties: {
+              id: feature.properties.id,
+              kind: 'cluster',
+              count: feature.properties.count,
+            },
+          }
+        : {
+            type: 'Feature',
+            id: Number(feature.id.slice(-9)),
+            geometry: { type: 'Point', coordinates: lngLatOf(feature.geometry) },
+            properties: { id: feature.id, kind: 'entry', title: feature.properties.title },
+          }
+    ),
   };
 }
+
+/** The padding around a group's box when a tap zooms to it, in pixels. */
+const CLUSTER_PADDING = 48;
 
 function token(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#3fd69a';
@@ -237,16 +252,13 @@ export function MapView({
           instance.addSource(SOURCE, {
             type: 'geojson',
             data: collection(latest.current.features),
-            cluster: true,
-            clusterRadius: 48,
-            clusterMaxZoom: 15,
             promoteId: 'id',
           });
-          const clustered: FilterSpecification = ['has', 'point_count'];
-          const single: FilterSpecification = ['!', ['has', 'point_count']];
+          const clustered: FilterSpecification = ['==', ['get', 'kind'], 'cluster'];
+          const single: FilterSpecification = ['!=', ['get', 'kind'], 'cluster'];
           const clusterSize: ExpressionSpecification = [
             'step',
-            ['get', 'point_count'],
+            ['get', 'count'],
             15,
             10,
             19,
@@ -280,7 +292,7 @@ export function MapView({
             type: 'symbol',
             source: SOURCE,
             filter: clustered,
-            layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 13 },
+            layout: { 'text-field': ['to-string', ['get', 'count']], 'text-size': 13 },
             paint: { 'text-color': '#04130d' },
           });
           instance.addLayer({
@@ -348,21 +360,13 @@ export function MapView({
             }
           });
           instance.on('click', 'clusters', (event) => {
-            const feature = event.features?.[0];
-            const clusterId = feature?.properties?.cluster_id;
-            const source = instance.getSource<GeoJSONSource>(SOURCE);
-            if (feature?.geometry.type !== 'Point' || typeof clusterId !== 'number' || !source) {
-              return;
+            const id = event.features?.[0]?.properties?.id;
+            const group = latest.current.features.find(
+              (feature) => isCluster(feature) && feature.properties.id === id
+            );
+            if (group !== undefined && isCluster(group)) {
+              zoomToCluster(instance, group);
             }
-            const geometry = feature.geometry;
-            void source.getClusterExpansionZoom(clusterId).then((zoom) => {
-              const center = geometry.coordinates as [number, number];
-              if (reducedMotion()) {
-                instance.jumpTo({ center, zoom });
-              } else {
-                instance.easeTo({ center, zoom });
-              }
-            });
           });
           instance.on('click', (event) => {
             const hits = instance.queryRenderedFeatures(event.point, {
@@ -510,14 +514,42 @@ export function MapView({
 
 function applySelection(
   instance: MapLibreMap,
-  features: readonly AtlasFeature[],
+  features: readonly MapFeature[],
   selectedId: string | null
 ): void {
   for (const feature of features) {
-    instance.setFeatureState(
-      { source: SOURCE, id: feature.id },
-      { selected: feature.id === selectedId }
-    );
+    if (!isCluster(feature)) {
+      instance.setFeatureState(
+        { source: SOURCE, id: feature.id },
+        { selected: feature.id === selectedId }
+      );
+    }
+  }
+}
+
+/**
+ * A tap on a group zooms to the box of its members, with room around it; it never lands at
+ * or below the zoom it started from, so a tap always gets closer. A person who asked for
+ * less motion gets a jump.
+ */
+function zoomToCluster(instance: MapLibreMap, group: AtlasClusterFeature): void {
+  const [west = 0, south = 0, east = 0, north = 0] = group.properties.bbox;
+  const bounds: [[number, number], [number, number]] = [
+    [west, south],
+    [east, north],
+  ];
+  const next = instance.getZoom() + 1;
+  const fitted = instance.cameraForBounds(bounds, { padding: CLUSTER_PADDING });
+  const jump = reducedMotion();
+  if (fitted?.zoom !== undefined && fitted.zoom >= next) {
+    instance.fitBounds(bounds, { padding: CLUSTER_PADDING, maxZoom: 17, animate: !jump });
+    return;
+  }
+  const center = lngLatOf(group.geometry);
+  if (jump) {
+    instance.jumpTo({ center, zoom: next });
+  } else {
+    instance.easeTo({ center, zoom: next });
   }
 }
 
