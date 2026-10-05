@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import socket
 import stat
 from collections.abc import Iterator
@@ -109,7 +110,10 @@ def test_the_probe_object_is_private_with_a_random_name(uses_client, make_settin
     probe_storage(make_settings(**production()))
 
     assert len(set(keys)) == 2
-    assert all(k.startswith("private/") for k in keys)
+    # In a random account's folder, so the probe also proves the folder can be listed and emptied.
+    assert all(
+        re.fullmatch(r"private/users/[0-9a-f-]{36}/insights/[0-9a-f]{32}\.jpg", k) for k in keys
+    )
 
 
 def test_a_missing_bucket_fails_and_names_the_bucket_and_endpoint(uses_client, make_settings):
@@ -149,8 +153,45 @@ def test_a_key_that_may_not_delete_fails_at_the_delete(uses_client, make_setting
     with Stubber(uses_client) as stub:
         stub.add_response("head_bucket", {})
         stub.add_response("put_object", {})
+        stub.add_response("list_objects_v2", {})
         stub.add_client_error("delete_object", "AccessDenied", http_status_code=403)
         with pytest.raises(StorageProbeError, match="DeleteObject"):
+            probe_storage(make_settings(**production()))
+
+
+def test_a_key_that_may_not_list_fails_before_any_account_deletion_can(uses_client, make_settings):
+    with Stubber(uses_client) as stub:
+        stub.add_response("head_bucket", {})
+        stub.add_response("put_object", {})
+        stub.add_client_error("list_objects_v2", "AccessDenied", http_status_code=403)
+        # The object just written is removed on the way out.
+        stub.add_response("delete_object", {})
+        with pytest.raises(StorageProbeError, match=r"ListObjectsV2.*AccessDenied"):
+            probe_storage(make_settings(**production()))
+        stub.assert_no_pending_responses()
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        pytest.param(None, id="refused"),
+        pytest.param(
+            {"Errors": [{"Key": "k", "Code": "AccessDenied", "Message": "no"}]}, id="errors"
+        ),
+        pytest.param({"Errors": [{"Key": "k", "Message": "no"}]}, id="errors-without-code"),
+    ],
+)
+def test_a_key_that_may_not_delete_in_batch_fails(uses_client, make_settings, answer):
+    with Stubber(uses_client) as stub:
+        stub.add_response("head_bucket", {})
+        stub.add_response("put_object", {})
+        stub.add_response("list_objects_v2", {})
+        stub.add_response("delete_object", {})
+        if answer is None:
+            stub.add_client_error("delete_objects", "NotImplemented", http_status_code=501)
+        else:
+            stub.add_response("delete_objects", answer)
+        with pytest.raises(StorageProbeError, match="DeleteObjects"):
             probe_storage(make_settings(**production()))
 
 

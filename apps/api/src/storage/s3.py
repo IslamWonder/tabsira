@@ -77,6 +77,11 @@ def build_client(
         aws_secret_access_key=settings.s3_secret_access_key.get_secret_value(),
         config=Config(
             signature_version="s3v4",
+            # Some S3-compatible providers refuse the CRC32 checksums boto3 now adds by default:
+            # send one only where the operation requires it. DeleteObjects still requires one;
+            # a provider that refuses it there fails the start-up probe at that step.
+            request_checksum_calculation="when_required",
+            response_checksum_validation="when_required",
             # Another provider's endpoint rarely serves a bucket under its own host name.
             s3={"addressing_style": "path" if endpoint else "auto"},
             retries={"max_attempts": attempts - 1, "mode": "standard"},
