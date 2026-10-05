@@ -29,7 +29,7 @@ export interface Capture {
 const CaptureContext = createContext<Capture | null>(null);
 
 /**
- * One way to capture a scene, from every page (decision 51): each «صوّر مشهدًا»
+ * One way to capture a scene, from every page (decision 51): each capture button
  * opens this sheet with the live camera already starting and the file picker
  * beside it, and every photo, taken or chosen, is sent the same way. The sheet
  * says what is being sent without the file's name, and a refusal is said in
