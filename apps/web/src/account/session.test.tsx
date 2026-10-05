@@ -2,7 +2,16 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { apiError, mockApi } from '@/test/api';
 import { USER } from '@/test/fixtures';
-import { loadSession, readSession, setGuest, signOut, useSession } from './session';
+import {
+  loadSession,
+  markTutorialClosed,
+  readSession,
+  setGuest,
+  setSignedIn,
+  signOut,
+  tutorialOffered,
+  useSession,
+} from './session';
 
 function Probe() {
   const session = useSession();
@@ -10,6 +19,23 @@ function Probe() {
 }
 
 describe('the session store', () => {
+  it('stops offering the example once the account holds an insight of its own', () => {
+    expect(tutorialOffered(readSession())).toBe(true);
+    markTutorialClosed();
+    expect(readSession()).toEqual({ status: 'unknown' });
+    setGuest();
+    expect(tutorialOffered(readSession())).toBe(true);
+    setSignedIn(USER);
+    expect(tutorialOffered(readSession())).toBe(true);
+
+    markTutorialClosed();
+
+    expect(tutorialOffered(readSession())).toBe(false);
+    const closed = readSession();
+    markTutorialClosed();
+    expect(readSession()).toBe(closed);
+  });
+
   it('asks the API once, however many readers, and knows the account', async () => {
     const api = mockApi({ 'GET /auth/me': { body: USER } });
     render(

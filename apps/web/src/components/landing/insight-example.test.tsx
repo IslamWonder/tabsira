@@ -2,7 +2,9 @@ import { createHash } from 'node:crypto';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readSession, setSignedIn } from '@/account/session';
 import { apiError, mockApi } from '@/test/api';
+import { USER } from '@/test/fixtures';
 import { insightOut, tutorialOut } from '@/test/scan';
 import { InsightExample } from './insight-example';
 
@@ -123,6 +125,21 @@ describe('InsightExample', () => {
 
     expect(await screen.findByText(/تعذّر|حاول/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'افتح البصيرة' })).toBeEnabled();
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it('gives way to the capture when the account holds an insight of its own', async () => {
+    setSignedIn(USER);
+    mockApi({
+      'GET /tutorial/rain': { body: tutorialOut() },
+      'POST /tutorial/rain/insights/drop': apiError(403, 'tutorial_closed'),
+    });
+    render(<InsightExample />);
+    await screen.findByRole('heading', { name: 'الحياة في قطرة' });
+
+    await userEvent.click(screen.getByRole('button', { name: 'افتح البصيرة' }));
+
+    await waitFor(() => expect(readSession()).toMatchObject({ user: { has_own_insight: true } }));
     expect(router.push).not.toHaveBeenCalled();
   });
 });

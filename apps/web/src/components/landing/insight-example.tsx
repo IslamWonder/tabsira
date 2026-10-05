@@ -4,6 +4,7 @@ import type { Route } from 'next';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
+import { markTutorialClosed } from '@/account/session';
 import { InsightEvidence } from '@/components/insight/insight-evidence';
 import { RAIN_PHOTO } from '@/components/scene/rain-scene';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { Notice } from '@/components/ui/notice';
 import { cx } from '@/lib/cx';
 import { getRainTutorial, keepRainInsight, type Tutorial } from '@/lib/scan/api';
 import { journeyFailureMessage } from '@/lib/scan/failure';
+import { tutorialClosed } from '@/lib/scan/gate';
 import { messages } from '@/messages';
 import { ReflectionPanel } from './reflection-panel';
 
@@ -96,6 +98,11 @@ export function InsightExample() {
     const result = await keepRainInsight(active.id);
     if (result.ok) {
       router.push(`/insight/${result.data.id}` as Route);
+      return;
+    }
+    if (tutorialClosed(result)) {
+      // The account holds an insight of its own: the landing gives the capture instead.
+      markTutorialClosed();
       return;
     }
     setOpening(false);

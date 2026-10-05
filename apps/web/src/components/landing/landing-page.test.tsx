@@ -136,4 +136,39 @@ describe('LandingPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'القائمة' }));
     await vi.waitFor(() => expect(screen.queryByRole('link', { name: 'دخول' })).toBeNull());
   });
+
+  it('gives an account with an insight of its own the capture card, and no example', async () => {
+    mockApi({
+      'GET /tutorial/rain': () => new Promise(() => undefined),
+      'GET /auth/me': { body: { ...USER, has_own_insight: true } },
+    });
+    page();
+
+    const card = await screen.findByRole('region', { name: 'صوّر مشهدك أنت' });
+    expect(within(card).getByRole('button', { name: 'التقط صورة' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('تبصرة');
+    expect(screen.queryByRole('link', { name: 'جرّب مثالًا' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'جرّب بصيرة الآن' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'جرّب بصيرة' })).toBeNull();
+    expect(document.getElementById('example')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'القائمة' }));
+    const menu = screen.getByRole('navigation', { name: 'أقسام الصفحة' });
+    expect(within(menu).queryByRole('link', { name: 'جرّب بصيرة' })).toBeNull();
+
+    await userEvent.click(within(card).getByRole('button', { name: 'التقط صورة' }));
+    expect(await screen.findByRole('dialog', { name: 'صوّر مشهدًا' })).toBeInTheDocument();
+  });
+
+  it('keeps the example for an account without an insight of its own', async () => {
+    mockApi({
+      'GET /tutorial/rain': () => new Promise(() => undefined),
+      'GET /auth/me': { body: USER },
+    });
+    page();
+    await userEvent.click(screen.getByRole('button', { name: 'القائمة' }));
+    await vi.waitFor(() => expect(screen.queryByRole('link', { name: 'دخول' })).toBeNull());
+
+    expect(screen.getByRole('link', { name: 'جرّب مثالًا' })).toBeInTheDocument();
+    expect(document.getElementById('example')).not.toBeNull();
+  });
 });

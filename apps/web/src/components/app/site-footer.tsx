@@ -4,6 +4,7 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { tutorialOffered, useSession } from '@/account/session';
 import { LogoMark } from '@/components/brand/logo';
 import { openConsentSettings } from '@/consent/store';
 import { cx } from '@/lib/cx';
@@ -11,10 +12,11 @@ import { messages } from '@/messages';
 
 const QUIET =
   'inline-flex min-h-12 items-center text-fg-soft text-sm underline-offset-4 transition-colors duration-200 hover:text-fg hover:underline';
+const EXAMPLE = '/#example';
 const EXPLORE = [
   ['/#how', messages.landing.nav.how],
   ['/#features', messages.landing.nav.features],
-  ['/#example', messages.landing.nav.example],
+  [EXAMPLE, messages.landing.nav.example],
 ] as const;
 const PAGES = [
   ['/support', messages.footer.support],
@@ -42,6 +44,7 @@ function Column({ title, children }: { title: string; children: ReactNode }) {
  */
 export function SiteFooter() {
   const pathname = usePathname();
+  const session = useSession();
   if (pathname === '/world') {
     return null;
   }
@@ -67,13 +70,15 @@ export function SiteFooter() {
           </p>
         </div>
         <Column title={messages.footer.explore}>
-          {EXPLORE.map(([href, label]) => (
-            <li key={href}>
-              <Link href={href as Route} className={QUIET}>
-                {label}
-              </Link>
-            </li>
-          ))}
+          {EXPLORE.filter(([href]) => href !== EXAMPLE || tutorialOffered(session)).map(
+            ([href, label]) => (
+              <li key={href}>
+                <Link href={href as Route} className={QUIET}>
+                  {label}
+                </Link>
+              </li>
+            )
+          )}
         </Column>
         <Column title={messages.footer.help}>
           {PAGES.map(([href, label]) => (

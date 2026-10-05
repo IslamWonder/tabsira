@@ -89,6 +89,21 @@ export function markProfileRequired(): void {
   }
 }
 
+/**
+ * Decision 64 (6): an account that holds an insight of its own is no longer offered the prepared
+ * rain example; its first screen is the capture. Guests and the other accounts keep it.
+ */
+export function tutorialOffered(session: SessionState): boolean {
+  return !(session.status === 'signed-in' && session.user.has_own_insight);
+}
+
+/** The API said 403 `tutorial_closed`: the example goes, and the capture takes its place. */
+export function markTutorialClosed(): void {
+  if (state.status === 'signed-in' && !state.user.has_own_insight) {
+    publish({ status: 'signed-in', user: { ...state.user, has_own_insight: true } });
+  }
+}
+
 /** After signing out or deleting the account. */
 export function setGuest(): void {
   publish({ status: 'guest' });

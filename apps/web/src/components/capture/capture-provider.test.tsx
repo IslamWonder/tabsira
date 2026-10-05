@@ -124,6 +124,20 @@ describe('CaptureProvider', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('offers no example to an account that holds an insight of its own', async () => {
+    stubCamera('granted');
+    setSignedIn({ ...USER, has_own_insight: true });
+    render(
+      <CaptureProvider>
+        <Opener />
+      </CaptureProvider>
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'صوّر مشهدًا' }));
+    const sheet = await screen.findByRole('dialog', { name: 'صوّر مشهدًا' });
+
+    expect(within(sheet).queryByRole('link', { name: 'جرّب مثالًا' })).toBeNull();
+  });
+
   it('opens the camera from the installed app shortcut and leaves a clean address', async () => {
     stubCamera('granted');
     window.history.replaceState(null, '', '/?capture=1&from=icon');

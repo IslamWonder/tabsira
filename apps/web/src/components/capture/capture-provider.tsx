@@ -13,7 +13,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { markProfileRequired } from '@/account/session';
+import { markProfileRequired, tutorialOffered, useSession } from '@/account/session';
 import { SummoningCircle } from '@/components/fx/summoning-circle';
 import { PlayIcon } from '@/components/icons';
 import { SceneStarter } from '@/components/scene/scene-starter';
@@ -44,6 +44,7 @@ const CaptureContext = createContext<Capture | null>(null);
 export function CaptureProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const session = useSession();
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState<File | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -113,14 +114,16 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
       <Sheet open={open} onClose={() => setOpen(false)} title={messages.nav.captureScene}>
         <SceneStarter onFile={capture.send} startCamera className="mb-2" />
         {/* The third way in: the prepared example, with no camera and no photo. */}
-        <Link
-          href={'/#example' as Route}
-          onClick={() => setOpen(false)}
-          className="mb-2 inline-flex min-h-12 items-center gap-2 font-semibold text-link underline-offset-4 hover:underline"
-        >
-          <PlayIcon width="18" height="18" />
-          {messages.landing.hero.tryExample}
-        </Link>
+        {tutorialOffered(session) ? (
+          <Link
+            href={'/#example' as Route}
+            onClick={() => setOpen(false)}
+            className="mb-2 inline-flex min-h-12 items-center gap-2 font-semibold text-link underline-offset-4 hover:underline"
+          >
+            <PlayIcon width="18" height="18" />
+            {messages.landing.hero.tryExample}
+          </Link>
+        ) : null}
       </Sheet>
       <Sheet open={sending !== null} onClose={leave} title={messages.sending.title}>
         <div className="flex flex-col gap-4 pb-2">

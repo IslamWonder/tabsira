@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { networkFailure } from '@/lib/api/result';
-import { accountRequired, profileRequired, signUpHref } from './gate';
+import { accountRequired, profileRequired, signUpHref, tutorialClosed } from './gate';
 
-const refused = (code: 'ACCOUNT_REQUIRED' | 'PROFILE_REQUIRED', status = 403) => ({
+const refused = (
+  code: 'ACCOUNT_REQUIRED' | 'PROFILE_REQUIRED' | 'TUTORIAL_CLOSED',
+  status = 403
+) => ({
   ...networkFailure(),
   code,
   status,
@@ -20,5 +23,11 @@ describe('the gates of decision 64', () => {
     expect(accountRequired(refused('ACCOUNT_REQUIRED', 500))).toBe(false);
     expect(profileRequired(refused('PROFILE_REQUIRED'))).toBe(true);
     expect(profileRequired(refused('ACCOUNT_REQUIRED'))).toBe(false);
+  });
+
+  it('tells the example closed to an account with an insight of its own', () => {
+    expect(tutorialClosed(refused('TUTORIAL_CLOSED'))).toBe(true);
+    expect(tutorialClosed(refused('PROFILE_REQUIRED'))).toBe(false);
+    expect(tutorialClosed(refused('TUTORIAL_CLOSED', 500))).toBe(false);
   });
 });

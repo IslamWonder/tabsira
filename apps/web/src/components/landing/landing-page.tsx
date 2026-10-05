@@ -3,11 +3,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
-import { useSession } from '@/account/session';
+import { tutorialOffered, useSession } from '@/account/session';
 import { LogoMark } from '@/components/brand/logo';
 import { useCapture } from '@/components/capture/capture-provider';
 import { revealDelay, useReveal } from '@/components/fx/use-reveal';
 import { CameraIcon, MenuIcon, OnwardIcon, PlayIcon, ShieldIcon } from '@/components/icons';
+import { CaptureCard } from '@/components/scene/capture-card';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 import { Emblem, type EmblemName, EmblemTile } from './emblem';
@@ -36,6 +37,9 @@ const BENEFIT_EMBLEMS: Record<BenefitIcon, EmblemName> = {
   community: 'community',
   photos: 'photos',
 };
+
+/** The menu's link to the prepared example, left out once the account holds an insight of its own. */
+const EXAMPLE_LINK = '/#example';
 
 const CONTAINER = 'mx-auto w-full max-w-[1200px] px-4 tablet:px-7 desktop:px-6 wide:max-w-[1240px]';
 
@@ -88,7 +92,9 @@ function PhoneHeader() {
           className="absolute end-4 top-[72px] z-30 w-56 rounded-[18px] border border-line bg-canvas p-2 shadow-[var(--panel-shadow)]"
         >
           <ul className="m-0 flex list-none flex-col p-0">
-            {LANDING_LINKS.map((item) => (
+            {LANDING_LINKS.filter(
+              (item) => item.href !== EXAMPLE_LINK || tutorialOffered(session)
+            ).map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
@@ -308,8 +314,8 @@ function Journey() {
   );
 }
 
-function StoryCard({ story, index }: { story: Story; index: number }) {
-  const { action } = story;
+function StoryCard({ story, index, tutorial }: { story: Story; index: number; tutorial: boolean }) {
+  const action = story.action?.kind === 'example' && !tutorial ? null : story.action;
   const actionClass =
     'inline-flex min-h-12 items-center gap-2 self-start font-semibold text-primary underline-offset-4 hover:underline';
   return (
@@ -366,7 +372,7 @@ function StoryCard({ story, index }: { story: Story; index: number }) {
   );
 }
 
-function Stories({ features }: { features: LandingFeatures }) {
+function Stories({ features, tutorial }: { features: LandingFeatures; tutorial: boolean }) {
   const stories = featureStories(features);
   const reveal = useReveal<HTMLDivElement>();
   return (
@@ -383,7 +389,7 @@ function Stories({ features }: { features: LandingFeatures }) {
       />
       <div {...reveal} className="grid gap-6 desktop:grid-cols-3">
         {stories.map((story, index) => (
-          <StoryCard key={story.id} story={story} index={index} />
+          <StoryCard key={story.id} story={story} index={index} tutorial={tutorial} />
         ))}
       </div>
     </section>
@@ -410,6 +416,25 @@ function Example() {
         </div>
         <InsightExample />
       </div>
+    </section>
+  );
+}
+
+/**
+ * The first screen of an account that holds an insight of its own (decision 64 (6)): the
+ * prepared example is no longer offered, so the capture card is the whole first screen.
+ */
+function OwnCapture() {
+  const capture = useCapture();
+  return (
+    <section
+      aria-labelledby="landing-title"
+      className={cx(CONTAINER, 'flex min-h-[70dvh] flex-col items-center justify-center gap-4')}
+    >
+      <h1 id="landing-title" className="sr-only">
+        {messages.brand.name}
+      </h1>
+      <CaptureCard onCamera={capture.open} onFile={capture.send} className="w-full max-w-[34rem]" />
     </section>
   );
 }
@@ -516,18 +541,20 @@ function Closing() {
  * does and the two ways in, a photo of one's own or the prepared example, with
  * one tap each. The hero's phone is a still picture; no camera runs and no
  * permission is asked until the reader taps the capture button. The features shown
- * are the ones switched on, from the server's flags.
+ * are the ones switched on, from the server's flags. An account that holds an insight of its
+ * own gets the capture card in place of the hero and no example (decision 64 (6)).
  */
 export function LandingPage({ features }: { features: LandingFeatures }) {
+  const tutorial = tutorialOffered(useSession());
   return (
     <div className="flex flex-col gap-10 pb-10 tablet:gap-14 tablet:pt-6 desktop:gap-[68px]">
       <div className="flex flex-col">
         <PhoneHeader />
-        <Hero />
+        {tutorial ? <Hero /> : <OwnCapture />}
       </div>
       <Journey />
-      <Stories features={features} />
-      <Example />
+      <Stories features={features} tutorial={tutorial} />
+      {tutorial ? <Example /> : null}
       <Trust />
       <Questions />
       <Closing />

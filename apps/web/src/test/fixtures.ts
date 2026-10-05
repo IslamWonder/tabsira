@@ -16,6 +16,7 @@ export const USER: User = {
   legal_acceptance_required: false,
   profile_completed: true,
   public_full_name: false,
+  has_own_insight: false,
 };
 
 export const PROFILE: Profile = {

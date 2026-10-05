@@ -22,6 +22,11 @@ export function accountRequired(failure: Failure): boolean {
   return failure.status === 403 && failure.code === 'ACCOUNT_REQUIRED';
 }
 
+/** The refusal of the prepared example to an account that holds an insight of its own. */
+export function tutorialClosed(failure: Failure): boolean {
+  return failure.status === 403 && failure.code === 'TUTORIAL_CLOSED';
+}
+
 /** The refusal of a scan or a chat message by an account whose profile is not complete. */
 export function profileRequired(failure: Failure): boolean {
   return failure.status === 403 && failure.code === 'PROFILE_REQUIRED';
