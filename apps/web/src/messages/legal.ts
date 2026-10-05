@@ -638,6 +638,9 @@ const sources: LegalDocument = {
         p(
           'Readex Pro وReem Kufi وNoto Naskh Arabic، برخصة SIL Open Font License 1.1 https://openfontlicense.org، نقدمها من خادمنا.'
         ),
+        p(
+          'خط المصحف KFGQPC HAFS Uthmanic Script من مجمع الملك فهد لطباعة المصحف الشريف https://fonts.qurancomplex.gov.sa، برخصته المرفقة بملف الخط: نستعمله وننشره كما هو، دون تعديل ولا مقابل.'
+        ),
       ],
     },
     {
