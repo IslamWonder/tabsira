@@ -69,7 +69,7 @@ export const POST: Post = {
   status_message: null,
   published_at: '2026-10-04T10:00:00Z',
   created_at: '2026-10-04T09:50:00Z',
-  like_count: 2,
+  reactions: { benefited: 2, jazak: 1 },
   comment_count: 1,
   viewer: null,
   why: null,
@@ -78,7 +78,7 @@ export const POST: Post = {
 /** The same post as its signed-in author sees it, with the feed's reason. */
 export const MY_POST: Post = {
   ...POST,
-  viewer: { liked: false, bookmarked: false, is_author: true },
+  viewer: { reactions: [], bookmarked: false, is_author: true },
 };
 
 export const COMMENT: Comment = {

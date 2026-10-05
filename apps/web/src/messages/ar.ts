@@ -1177,8 +1177,9 @@ export const ar = {
 
   /**
    * «تبصرة تواصل» (docs/SOCIAL_NETWORK.md). Posts are made from verified
-   * insights; the author's own words are always labelled as theirs. A like is
-   * an «أثر», a gentle glow, never a score (DESIGN_DECISION.md «Game feel»).
+   * insights; the author's own words are always labelled as theirs. A reaction says
+   * «انتفعتُ بها» or «جزاك الله خيرًا» (decision 61): a gentle glow when given, never a
+   * score, a rank or a reward.
    */
   community: {
     title: 'تبصرة تواصل',
@@ -1226,10 +1227,8 @@ export const ar = {
       looksLikeScripture: 'يبدو هذا النص كآية أو حديث، وهو من كلمات الكاتب ولم تتحقق منه تبصرة.',
       explanation: 'شرح تبصرة',
       step: 'خطوة صغيرة',
-      like: 'أثر',
-      liked: 'تركت أثرًا',
-      unlike: 'ارفع أثرك',
-      likeCount: (count: number) => (count === 1 ? 'أثر واحد' : `${count} آثار`),
+      benefited: 'انتفعتُ بها',
+      jazak: 'جزاك الله خيرًا',
       comments: 'التعليقات',
       commentCount: (count: number) => {
         if (count === 0) {
@@ -1269,15 +1268,15 @@ export const ar = {
         'الجدّة: المنشور الأحدث يسبق الأقدم.',
         'المتابعة: منشور من تتابعه يتقدم قليلًا.',
         'التنويع: موضوع تكرر في القائمة يتأخر قليلًا.',
-        'ما لقيته: منشور تركت فيه أثرًا أو حفظته أو علّقت عليه يتأخر.',
+        'ما لقيته: منشور تفاعلت معه أو حفظته أو علّقت عليه يتأخر.',
       ],
       never: 'لا يدخل في الترتيب دينك ولا عمرك ولا جنسك ولا أي إجابة من ملفك، ولا يتعلّم من نقراتك.',
       personalisation: 'إن أوقفت التخصيص من «ملفي» بقي الترتيب على الجدّة والتنويع وحدهما.',
       settings: 'افتح «ملفي»',
     },
     reactions: {
-      signIn: 'ادخل لتترك أثرًا أو تحفظ منشورًا.',
-      verify: 'أكّد بريدك لتترك أثرًا.',
+      signIn: 'ادخل لتتفاعل مع منشور أو تحفظه.',
+      verify: 'أكّد بريدك لتتفاعل مع المنشورات.',
     },
     comments: {
       title: 'التعليقات',

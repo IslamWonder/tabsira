@@ -24,8 +24,6 @@ describe('the Arabic counted nouns', () => {
   });
 
   it('count the likes and the comments of a post', () => {
-    expect(ar.community.post.likeCount(1)).toBe('أثر واحد');
-    expect(ar.community.post.likeCount(3)).toBe('3 آثار');
     expect(ar.community.post.commentCount(0)).toBe('لا تعليقات');
     expect(ar.community.post.commentCount(1)).toBe('تعليق واحد');
     expect(ar.community.post.commentCount(2)).toBe('تعليقان');

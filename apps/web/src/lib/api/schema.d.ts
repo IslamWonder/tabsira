@@ -911,7 +911,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/posts/{post_id}/like': {
+  '/posts/{post_id}/reactions/{kind}': {
     parameters: {
       query?: never;
       header?: never;
@@ -920,16 +920,16 @@ export interface paths {
     };
     get?: never;
     /**
-     * Like a post («أثر»)
-     * @description Like a published post the caller may read; liking again changes nothing.
+     * React to a post: «انتفعتُ بها» or «جزاك الله خيرًا»
+     * @description React to a published post the caller may read; reacting again changes nothing.
      */
-    put: operations['like_post_posts__post_id__like_put'];
+    put: operations['react_to_post_posts__post_id__reactions__kind__put'];
     post?: never;
     /**
-     * Take back a like
-     * @description Take back the caller's like; safe to repeat.
+     * Take back a reaction
+     * @description Take back the caller's reaction of this kind; safe to repeat.
      */
-    delete: operations['unlike_post_posts__post_id__like_delete'];
+    delete: operations['unreact_to_post_posts__post_id__reactions__kind__delete'];
     options?: never;
     head?: never;
     patch?: never;
@@ -3611,7 +3611,7 @@ export interface components {
     };
     /**
      * PostMarkExport
-     * @description A post the account liked or saved.
+     * @description A post the account saved.
      */
     PostMarkExport: {
       /** Post Id */
@@ -3645,8 +3645,7 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
-      /** Like Count */
-      like_count: number;
+      reactions: components['schemas']['ReactionCountsOut'];
       /** Comment Count */
       comment_count: number;
       /** @description Null for a guest */
@@ -4110,12 +4109,14 @@ export interface components {
        */
       progress: number;
     };
-    /** ReactionOut */
+    /**
+     * ReactionOut
+     * @description A post's reaction counts and the kinds the caller gave.
+     */
     ReactionOut: {
-      /** Liked */
-      liked: boolean;
-      /** Like Count */
-      like_count: number;
+      reactions: components['schemas']['ReactionCountsOut'];
+      /** Mine */
+      mine: components['schemas']['ReactionKind'][];
     };
     /** Readiness */
     Readiness: {
@@ -4640,8 +4641,8 @@ export interface components {
       following: components['schemas']['HandleExport'][];
       /** Blocked */
       blocked: components['schemas']['HandleExport'][];
-      /** Likes */
-      likes: components['schemas']['PostMarkExport'][];
+      /** Reactions */
+      reactions: components['schemas']['ReactionExport'][];
       /** Bookmarks */
       bookmarks: components['schemas']['PostMarkExport'][];
       /** Reports */
@@ -4947,8 +4948,11 @@ export interface components {
     };
     /** ViewerPostOut */
     ViewerPostOut: {
-      /** Liked */
-      liked: boolean;
+      /**
+       * Reactions
+       * @description The reactions the reader gave
+       */
+      reactions: components['schemas']['ReactionKind'][];
       /** Bookmarked */
       bookmarked: boolean;
       /** Is Author */
@@ -5032,6 +5036,36 @@ export interface components {
     ScanFromUrl: {
       /** Url */
       url: string;
+    };
+    /**
+     * ReactionKind
+     * @description What a reader says to a post: it benefited them, or thanks to its author.
+     * @enum {string}
+     */
+    ReactionKind: 'benefited' | 'jazak';
+    /**
+     * ReactionCountsOut
+     * @description How many members said each thing; public, since encouraging good is no harm (61).
+     */
+    ReactionCountsOut: {
+      /** Benefited */
+      benefited: number;
+      /** Jazak */
+      jazak: number;
+    };
+    /**
+     * ReactionExport
+     * @description A reaction the account gave to a post.
+     */
+    ReactionExport: {
+      /** Post Id */
+      post_id: string;
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      kind: components['schemas']['ReactionKind'];
     };
   };
   responses: never;
@@ -6447,13 +6481,14 @@ export interface operations {
       };
     };
   };
-  like_post_posts__post_id__like_put: {
+  react_to_post_posts__post_id__reactions__kind__put: {
     parameters: {
       query?: never;
       header?: never;
       path: {
         /** @description The post's public id */
         post_id: string;
+        kind: components['schemas']['ReactionKind'];
       };
       cookie?: never;
     };
@@ -6479,13 +6514,14 @@ export interface operations {
       };
     };
   };
-  unlike_post_posts__post_id__like_delete: {
+  unreact_to_post_posts__post_id__reactions__kind__delete: {
     parameters: {
       query?: never;
       header?: never;
       path: {
         /** @description The post's public id */
         post_id: string;
+        kind: components['schemas']['ReactionKind'];
       };
       cookie?: never;
     };

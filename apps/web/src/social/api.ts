@@ -10,6 +10,7 @@ import type {
   PostVisibility,
   PublicIdentity,
   Reaction,
+  ReactionKind,
   ReportReason,
   ReportTarget,
 } from './types';
@@ -91,10 +92,16 @@ export function withdrawPost(postId: string): Promise<Result<unknown>> {
   return attempt(api.DELETE('/posts/{post_id}', { params: { path: { post_id: postId } } }));
 }
 
-export function setLike(postId: string, liked: boolean): Promise<Result<Reaction>> {
-  const params = { params: { path: { post_id: postId } } };
+export function setReaction(
+  postId: string,
+  kind: ReactionKind,
+  given: boolean
+): Promise<Result<Reaction>> {
+  const params = { params: { path: { post_id: postId, kind } } };
   return attempt(
-    liked ? api.PUT('/posts/{post_id}/like', params) : api.DELETE('/posts/{post_id}/like', params)
+    given
+      ? api.PUT('/posts/{post_id}/reactions/{kind}', params)
+      : api.DELETE('/posts/{post_id}/reactions/{kind}', params)
   );
 }
 

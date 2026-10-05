@@ -8,7 +8,7 @@ The social network leans on acts with a meaning in Islam: sponsoring an insight 
 | --------------------------------------------- | ------ | ------------------------------------------------ |
 | One feature switchboard, comments off         | ✅     | Task 21.0. Decision 63.                          |
 | «كفالة بصيرة»: orphaned atlas entries         | ⬜     | Task 21.1 (server), 21.2 (screens). Decision 60. |
-| Reactions «انتفعتُ بها» and «جزاك الله خيرًا» | ⬜     | Task 21.3. Decision 61.                          |
+| Reactions «انتفعتُ بها» and «جزاك الله خيرًا» | ✅     | Task 21.3. Decision 61.                          |
 | «أهدِ بصيرة»: giving an insight               | ⏸      | Task 21.4, a plan only until the owners decide.  |
 
 **How we check it**
@@ -48,12 +48,13 @@ The social network leans on acts with a meaning in Islam: sponsoring an insight 
 
 ### 21.3 Reactions with a meaning
 
-- **Status:** ⬜ open
+- **Status:** ✅ done 2026-10-05 09:22 (Tunis)
 - **Goal:** Replace `post_likes` with `post_reactions` (post, member, kind `benefited` | `jazak`, time; one of each per member and post); move every existing like to `benefited` in the migration; feeds and posts answer both counts and the reader's own reactions; the «لك» feed ranks on them as it did on likes; the post screen shows «انتفعتُ بها» and «جزاك الله خيرًا» with their counts.
 - **Depends on:** 16.1.
 - **Touches:** apps/api/src/{models/social.py,services/post_service.py,services/feed_service.py,routers/posts.py}, a migration in the app chain, apps/web community components and messages, the generated web client, the terms if they name likes.
 - **Done when:** No «like» or «أثر» is left in the API or the interface; account deletion removes a member's reactions.
 - **Waiting on the owners:** an API contract change (AGENTS.md, ask first), approved by decision 61.
+- **Notes:** Migration `20261005_160000` copies every like as `benefited`; `PUT`/`DELETE /posts/{id}/reactions/{kind}` replace the like routes; posts carry `reactions` counts and `viewer.reactions`; the «لك» feed treats either kind as met. The terms say «التفاعلات» and needed no change.
 
 ### 21.4 «أهدِ بصيرة»: giving an insight (plan only)
 

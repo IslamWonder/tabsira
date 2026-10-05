@@ -341,6 +341,14 @@ export function BookmarkIcon(props: IconProps) {
   );
 }
 
+export function ThanksIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 20.5s-7.5-4.4-7.5-10A4.3 4.3 0 0 1 12 7.8a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10-7.5 10Z" />
+    </Icon>
+  );
+}
+
 export function CommentIcon(props: IconProps) {
   return (
     <Icon {...props}>

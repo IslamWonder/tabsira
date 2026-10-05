@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useId, useState } from 'react';
 import { signInHref } from '@/account/links';
-import { BookmarkIcon, CommentIcon, MoreIcon, SparkIcon } from '@/components/icons';
+import { BookmarkIcon, CommentIcon, MoreIcon, SparkIcon, ThanksIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { GlassPanel } from '@/components/ui/glass-panel';
@@ -15,9 +15,9 @@ import { cx } from '@/lib/cx';
 import { formatWhen } from '@/lib/dates';
 import { messages } from '@/messages';
 import { useAccess } from '@/social/access';
-import { setBookmark, setLike } from '@/social/api';
+import { setBookmark, setReaction } from '@/social/api';
 import { postPath, profilePath } from '@/social/identity';
-import type { Post } from '@/social/types';
+import type { Post, ReactionKind } from '@/social/types';
 import { PostEvidence } from './evidence';
 import { PublicPhoto } from './public-photo';
 import { BlockSheet, ReportSheet, WithdrawSheet } from './sheets';
@@ -28,7 +28,7 @@ const C = messages.community;
 
 export interface PostCardProps {
   post: Post;
-  /** The post after a like or a save, so the list shows what the API kept. */
+  /** The post after a reaction or a save, so the list shows what the API kept. */
   onChange: (post: Post) => void;
   /** The post left the viewer's lists: withdrawn, or its author blocked. */
   onRemoved?: (reason: 'withdrawn' | 'blocked') => void;
@@ -93,12 +93,18 @@ function ReflectionBlock({ post }: { post: Post }) {
   );
 }
 
+/** The two reactions of decision 61, in the order they are shown. */
+const REACTIONS = [
+  { kind: 'benefited', Icon: SparkIcon },
+  { kind: 'jazak', Icon: ThanksIcon },
+] as const;
+
 /**
  * One post as an illuminated card (DESIGN_DECISION.md «Game feel»): the
  * author, the insight's title and glimpse, the platform's explanation, the
  * verified pair (behind a reveal in a feed), the author's reflection labelled
- * as theirs, and the reactions: a single gentle trace (the like), the comments, a save
- * and the «more» sheet. Hover changes colour only.
+ * as theirs, and the reactions
+ * with their public counts, the comments, a save and the «more» sheet. Hover changes colour only.
  */
 export function PostCard({
   post,
@@ -123,22 +129,23 @@ export function PostCard({
   const when = post.published_at ?? post.created_at;
   const closeSheets = () => setOpen('none');
 
-  const react = async (kind: 'like' | 'bookmark') => {
+  const given = post.viewer?.reactions ?? [];
+
+  const react = async (kind: ReactionKind | 'bookmark') => {
     if (access === 'guest' || access === 'unverified') {
       setNote(access === 'guest' ? C.reactions.signIn : C.reactions.verify);
       return;
     }
     setNote(null);
     setFailure(null);
-    if (kind === 'like') {
-      const liked = post.viewer?.liked !== true;
-      const result = await setLike(post.id, liked);
+    if (kind !== 'bookmark') {
+      const result = await setReaction(post.id, kind, !given.includes(kind));
       if (result.ok) {
         onChange({
           ...post,
-          like_count: result.data.like_count,
+          reactions: result.data.reactions,
           viewer: {
-            liked: result.data.liked,
+            reactions: result.data.mine,
             bookmarked: post.viewer?.bookmarked === true,
             is_author: isAuthor,
           },
@@ -153,7 +160,7 @@ export function PostCard({
     if (result.ok) {
       onChange({
         ...post,
-        viewer: { liked: post.viewer?.liked === true, bookmarked: saved, is_author: isAuthor },
+        viewer: { reactions: given, bookmarked: saved, is_author: isAuthor },
       });
     } else {
       setFailure(failureMessage(result));
@@ -240,29 +247,38 @@ export function PostCard({
 
       <footer className="flex flex-col gap-2 border-line border-t pt-3">
         <div className="flex flex-wrap items-center gap-1">
-          <button
-            type="button"
-            aria-pressed={post.viewer?.liked === true}
-            onClick={() => void react('like')}
-            className={cx(
-              'inline-flex min-h-12 items-center gap-2 rounded-full px-3 text-[0.9375rem] transition-colors duration-200',
-              post.viewer?.liked
-                ? 'text-primary [text-shadow:var(--hadith-words-glow)]'
-                : 'text-fg-soft hover:text-fg'
-            )}
-          >
-            <SparkIcon
-              width="20"
-              height="20"
-              className={post.viewer?.liked ? 'drop-shadow-[0_0_8px_var(--glow-gold)]' : undefined}
-            />
-            {post.viewer?.liked ? M.liked : M.like}
-            {post.like_count > 0 ? (
-              <span className="text-[0.8125rem] text-fg-muted tabular-nums">
-                {M.likeCount(post.like_count)}
-              </span>
-            ) : null}
-          </button>
+          {REACTIONS.map(({ kind, Icon }) => {
+            const pressed = given.includes(kind);
+            return (
+              <button
+                key={kind}
+                type="button"
+                aria-pressed={pressed}
+                onClick={() => void react(kind)}
+                className={cx(
+                  'inline-flex min-h-12 items-center gap-2 rounded-full px-3 text-[0.9375rem] transition-colors duration-200',
+                  pressed
+                    ? 'text-primary [text-shadow:var(--hadith-words-glow)]'
+                    : 'text-fg-soft hover:text-fg'
+                )}
+              >
+                <Icon
+                  width="20"
+                  height="20"
+                  className={pressed ? 'drop-shadow-[0_0_8px_var(--glow-gold)]' : undefined}
+                />
+                {M[kind]}
+                {post.reactions[kind] > 0 ? (
+                  <>
+                    {' '}
+                    <span className="text-[0.8125rem] text-fg-muted tabular-nums">
+                      {post.reactions[kind]}
+                    </span>
+                  </>
+                ) : null}
+              </button>
+            );
+          })}
           {comments ? (
             <Link
               href={`${postPath(post.id)}#comments`}

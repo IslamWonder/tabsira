@@ -131,21 +131,23 @@ describe('CommunityScreen for a member', () => {
 });
 
 describe('CommunityScreen and what a card changes in the feed', () => {
-  it('keeps a liked post in place with its new count, and hides a blocked author everywhere', async () => {
+  it('keeps a post that was reacted to in place with its new count, and hides a blocked author everywhere', async () => {
     const byOther = {
       ...SECOND,
       author: { handle: 'other_one', public_name: '[عضو آخر]' },
     };
     member({
       'GET /feed/for-you': { body: page([POST, byOther, { ...POST, id: '7345678901234567898' }]) },
-      'PUT /posts/7345678901234567890/like': { body: { liked: true, like_count: 3 } },
+      'PUT /posts/7345678901234567890/reactions/benefited': {
+        body: { reactions: { benefited: 3, jazak: 1 }, mine: ['benefited'] },
+      },
       'PUT /blocks/rain_reader': { status: 204 },
     });
     render(<CommunityScreen />);
-    const likes = await screen.findAllByRole('button', { name: /^أثر/ });
+    const likes = await screen.findAllByRole('button', { name: /^انتفعتُ بها/ });
     await waitFor(() => expect(screen.getAllByRole('tab')).toHaveLength(5));
     await userEvent.click(likes[0] as HTMLElement);
-    expect(await screen.findByText('3 آثار')).toBeInTheDocument();
+    expect(await screen.findByText('3')).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(3);
 
     await userEvent.click(screen.getAllByRole('button', { name: 'المزيد' })[0] as HTMLElement);

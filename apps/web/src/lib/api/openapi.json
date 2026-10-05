@@ -1800,12 +1800,12 @@
         }
       }
     },
-    "/posts/{post_id}/like": {
+    "/posts/{post_id}/reactions/{kind}": {
       "put": {
         "tags": ["reactions"],
-        "summary": "Like a post («أثر»)",
-        "description": "Like a published post the caller may read; liking again changes nothing.",
-        "operationId": "like_post_posts__post_id__like_put",
+        "summary": "React to a post: «انتفعتُ بها» or «جزاك الله خيرًا»",
+        "description": "React to a published post the caller may read; reacting again changes nothing.",
+        "operationId": "react_to_post_posts__post_id__reactions__kind__put",
         "parameters": [
           {
             "name": "post_id",
@@ -1817,6 +1817,14 @@
               "title": "Post Id"
             },
             "description": "The post's public id"
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReactionKind"
+            }
           }
         ],
         "responses": {
@@ -1844,9 +1852,9 @@
       },
       "delete": {
         "tags": ["reactions"],
-        "summary": "Take back a like",
-        "description": "Take back the caller's like; safe to repeat.",
-        "operationId": "unlike_post_posts__post_id__like_delete",
+        "summary": "Take back a reaction",
+        "description": "Take back the caller's reaction of this kind; safe to repeat.",
+        "operationId": "unreact_to_post_posts__post_id__reactions__kind__delete",
         "parameters": [
           {
             "name": "post_id",
@@ -1858,6 +1866,14 @@
               "title": "Post Id"
             },
             "description": "The post's public id"
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReactionKind"
+            }
           }
         ],
         "responses": {
@@ -8265,7 +8281,7 @@
         "type": "object",
         "required": ["post_id", "at"],
         "title": "PostMarkExport",
-        "description": "A post the account liked or saved."
+        "description": "A post the account saved."
       },
       "PostOut": {
         "properties": {
@@ -8336,9 +8352,8 @@
             "format": "date-time",
             "title": "Created At"
           },
-          "like_count": {
-            "type": "integer",
-            "title": "Like Count"
+          "reactions": {
+            "$ref": "#/components/schemas/ReactionCountsOut"
           },
           "comment_count": {
             "type": "integer",
@@ -8379,7 +8394,7 @@
           "status_message",
           "published_at",
           "created_at",
-          "like_count",
+          "reactions",
           "comment_count",
           "viewer",
           "why"
@@ -9411,18 +9426,21 @@
       },
       "ReactionOut": {
         "properties": {
-          "liked": {
-            "type": "boolean",
-            "title": "Liked"
+          "reactions": {
+            "$ref": "#/components/schemas/ReactionCountsOut"
           },
-          "like_count": {
-            "type": "integer",
-            "title": "Like Count"
+          "mine": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionKind"
+            },
+            "type": "array",
+            "title": "Mine"
           }
         },
         "type": "object",
-        "required": ["liked", "like_count"],
-        "title": "ReactionOut"
+        "required": ["reactions", "mine"],
+        "title": "ReactionOut",
+        "description": "A post's reaction counts and the kinds the caller gave."
       },
       "Readiness": {
         "properties": {
@@ -10571,12 +10589,12 @@
             "type": "array",
             "title": "Blocked"
           },
-          "likes": {
+          "reactions": {
             "items": {
-              "$ref": "#/components/schemas/PostMarkExport"
+              "$ref": "#/components/schemas/ReactionExport"
             },
             "type": "array",
-            "title": "Likes"
+            "title": "Reactions"
           },
           "bookmarks": {
             "items": {
@@ -10594,7 +10612,15 @@
           }
         },
         "type": "object",
-        "required": ["posts", "comments", "following", "blocked", "likes", "bookmarks", "reports"],
+        "required": [
+          "posts",
+          "comments",
+          "following",
+          "blocked",
+          "reactions",
+          "bookmarks",
+          "reports"
+        ],
         "title": "SocialExport"
       },
       "SpanOut": {
@@ -11326,9 +11352,13 @@
       },
       "ViewerPostOut": {
         "properties": {
-          "liked": {
-            "type": "boolean",
-            "title": "Liked"
+          "reactions": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionKind"
+            },
+            "type": "array",
+            "title": "Reactions",
+            "description": "The reactions the reader gave"
           },
           "bookmarked": {
             "type": "boolean",
@@ -11340,7 +11370,7 @@
           }
         },
         "type": "object",
-        "required": ["liked", "bookmarked", "is_author"],
+        "required": ["reactions", "bookmarked", "is_author"],
         "title": "ViewerPostOut"
       },
       "ViewerRelationOut": {
@@ -11514,6 +11544,49 @@
         "required": ["url"],
         "title": "ScanFromUrl",
         "type": "object"
+      },
+      "ReactionKind": {
+        "type": "string",
+        "enum": ["benefited", "jazak"],
+        "title": "ReactionKind",
+        "description": "What a reader says to a post: it benefited them, or thanks to its author."
+      },
+      "ReactionCountsOut": {
+        "properties": {
+          "benefited": {
+            "type": "integer",
+            "title": "Benefited"
+          },
+          "jazak": {
+            "type": "integer",
+            "title": "Jazak"
+          }
+        },
+        "type": "object",
+        "required": ["benefited", "jazak"],
+        "title": "ReactionCountsOut",
+        "description": "How many members said each thing; public, since encouraging good is no harm (61)."
+      },
+      "ReactionExport": {
+        "properties": {
+          "post_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Post Id"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ReactionKind"
+          }
+        },
+        "type": "object",
+        "required": ["post_id", "at", "kind"],
+        "title": "ReactionExport",
+        "description": "A reaction the account gave to a post."
       }
     }
   },

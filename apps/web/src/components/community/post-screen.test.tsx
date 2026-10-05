@@ -75,14 +75,16 @@ describe('PostScreen', () => {
       'GET /me/public-identity': { body: IDENTITY },
       [`GET /posts/${POST.id}`]: { body: MY_POST },
       [`GET /posts/${POST.id}/comments`]: { body: page([]) },
-      [`PUT /posts/${POST.id}/like`]: { body: { liked: true, like_count: 3 } },
+      [`PUT /posts/${POST.id}/reactions/benefited`]: {
+        body: { reactions: { benefited: 3, jazak: 1 }, mine: ['benefited'] },
+      },
       [`DELETE /posts/${POST.id}`]: { status: 204 },
     });
     render(<PostScreen postId={POST.id} comments />);
     await screen.findByRole('heading', { level: 1, name: '[عنوان البصيرة]' });
     await waitFor(() => expect(screen.getByLabelText('اكتب تعليقًا')).toBeEnabled());
-    await userEvent.click(screen.getByRole('button', { name: /^أثر/ }));
-    expect(await screen.findByText('3 آثار')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /^انتفعتُ بها/ }));
+    expect(await screen.findByText('3')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'المزيد' }));
     await userEvent.click(screen.getByRole('button', { name: 'اسحب المنشور' }));
