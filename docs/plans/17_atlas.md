@@ -4,16 +4,17 @@
 
 A real map of shared insights, at approximate locations only.
 
-| Step                                     | Status | Notes                                                                                                                                      |
-| ---------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Place search and the approximation grid  | ✅     |                                                                                                                                            |
-| Map entries: publish and withdraw        | ✅     | Task 17.1: two tables, the exact point private, the cell centre public.                                                                    |
-| Map screen with clusters and place pages | ✅     | Task 17.1: MapLibre with OpenFreeMap tiles, filters, place pages, placing an insight.                                                      |
-| Map entries in the moderation queue      | ✅     | Task 17.2: held and reported entries, approve or remove, public place only.                                                                |
-| Privacy re-review fixes before switch-on | ✅     | Task 17.3: reports and the handle with the atlas alone, no caching, day precision, tombstones, terms.                                      |
-| Wave 4 audit web fixes                   | ✅     | Task 17.4: 404 while off, camera wording, the view in the address, concept and own-entries filters, publish actions inside sharing, terms. |
-| «نفس المعنى حول العالم» and more filters | ⏸      | Task 17.5: `GET /map/related`, concept labels, scene type and «جديد عليّ».                                                                 |
-| EXIF location as a placing candidate     | ⏸      | Task 17.6: the upload's own GPS offered on the placing screen, never the device's position by default.                                     |
+| Step                                     | Status | Notes                                                                                                                                                                                   |
+| ---------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Place search and the approximation grid  | ✅     |                                                                                                                                                                                         |
+| Map entries: publish and withdraw        | ✅     | Task 17.1: two tables, the exact point private, the cell centre public.                                                                                                                 |
+| Map screen with clusters and place pages | ✅     | Task 17.1: MapLibre with OpenFreeMap tiles, filters, place pages, placing an insight.                                                                                                   |
+| Map entries in the moderation queue      | ✅     | Task 17.2: held and reported entries, approve or remove, public place only.                                                                                                             |
+| Privacy re-review fixes before switch-on | ✅     | Task 17.3: reports and the handle with the atlas alone, no caching, day precision, tombstones, terms.                                                                                   |
+| Wave 4 audit web fixes                   | ✅     | Task 17.4: 404 while off, camera wording, the view in the address, concept and own-entries filters, publish actions inside sharing, terms.                                              |
+| «نفس المعنى حول العالم» and more filters | ⏸      | Task 17.5: `GET /map/related`, concept labels, scene type and «جديد عليّ».                                                                                                              |
+| EXIF location as a placing candidate     | ⏸      | Task 17.6: the upload's own GPS offered on the placing screen, never the device's position by default.                                                                                  |
+| Map quality, controls and two views      | ✅     | 2026-10-05: the worker served from /maplibre, Arabic place names first, nearby places from zoom 15, land types kept; zoom, compass, full screen, scale; a streets or geographic switch. |
 
 **How we check it**
 

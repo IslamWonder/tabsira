@@ -5,6 +5,7 @@ import { LegalGate } from '@/components/account/legal-gate';
 import { AccountPreferencesSync } from '@/components/app/account-preferences-sync';
 import { AppNav } from '@/components/app/app-nav';
 import { AudioUnlock } from '@/components/app/audio-unlock';
+import { ErrorReporting } from '@/components/app/error-reporting';
 import { InstallOffer } from '@/components/app/install-offer';
 import { PageShell } from '@/components/app/page-shell';
 import { ServiceWorkerRegister } from '@/components/app/service-worker-register';
@@ -134,6 +135,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <ServiceWorkerRegister />
         <InstallOffer />
         <AudioUnlock />
+        <ErrorReporting />
       </body>
     </html>
   );
