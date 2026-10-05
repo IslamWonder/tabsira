@@ -16,7 +16,7 @@ from collections.abc import Sequence
 from pydantic import BaseModel, ConfigDict, computed_field
 
 from src.evaluation.gold import GoldRules, GoldScene, first_match
-from src.pipeline.scene_analyzer import scene_texts
+from src.pipeline.scene_analyzer import PERSON_DESCRIPTOR_NOTE, scene_texts
 from src.pipeline.schemas import (
     BBox,
     Detection,
@@ -101,6 +101,16 @@ def not_arabic(text: str) -> bool:
     return arabic * 2 < len(letters)
 
 
+def replaced_descriptors(rejected: Sequence[str]) -> list[str]:
+    """Return the person descriptors the scene stage replaced: the model still wrote them."""
+    words: list[str] = []
+    for note in rejected:
+        _, marker, rest = note.partition(PERSON_DESCRIPTOR_NOTE)
+        if marker:
+            words += rest.split(": ", 1)[-1].split(", ")
+    return words
+
+
 def score_scene(
     scene: SceneAnalysis,
     gold: GoldScene,
@@ -115,6 +125,7 @@ def score_scene(
     observed = [a.label for a in scene.actions if a.status is EvidenceStatus.OBSERVED]
     arabic_fields = scene_texts(scene)
     visible_texts = [*arabic_fields.values(), *(entity.label for entity in scene.entities)]
+    written = [*visible_texts, *replaced_descriptors(scene.rejected)]
 
     missing = [group[0] for group in gold.required_entities if not first_match(group, described)]
     found_actions = [group for group in gold.expected_actions if first_match(group, claims)]
@@ -138,7 +149,7 @@ def score_scene(
         {
             term
             for term in rules.identity_terms
-            if first_match([term], visible_texts, exact=True) is not None
+            if first_match([term], written, exact=True) is not None
         }
     )
     invented = [word for group in gold.forbidden_entities if (word := first_match(group, labels))]

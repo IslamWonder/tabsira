@@ -272,6 +272,27 @@ async def test_saved_answers_are_scored_again_without_calling_a_model(tmp_path, 
     assert [r.status for r in again.results] == [r.status for r in first.results]
 
 
+async def test_rescoring_keeps_failed_answers_and_counts_what_the_new_judge_misses(
+    tmp_path, make_settings
+):
+    cells = [cell("named"), cell("down")]
+    behaviours = {"named": (answer(box=[0, 0, 500, 500]), 1000), "down": (broken, 1000)}
+    first = await run(tmp_path, make_settings, cells, behaviours, runs=1)
+    assert by_name(first)["named"].findings == {}
+    saved = SavedRun.model_validate_json(first.model_dump_json())
+    gold = tmp_path / "gold.json"
+    # The judge now wants a pen in the phone scene, which no saved answer names.
+    gold.write_text(gold.read_text().replace('[["هاتف", "phone"]]', '[["قلم"]]'))
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(detector_handler)) as http:
+        again = await rescore_benchmark(saved, gold_path=gold, settings=make_settings(), http=http)
+
+    assert by_name(again)["named"].findings == {"missing: «قلم»": 1}
+    failed = [r for r in again.results if r.analysis is None]
+    assert failed == [r for r in saved.results if r.analysis is None]
+    assert len(failed) == 4
+
+
 # ─── Choosing ──────────────────────────────────────────────────────
 
 

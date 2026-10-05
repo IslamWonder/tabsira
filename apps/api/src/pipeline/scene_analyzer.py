@@ -65,6 +65,8 @@ MAX_ENTITIES = 12
 MAX_ACTIONS = 6
 MAX_RELATIONS = 8
 RATIO_DIGITS = 4
+# How a replaced person descriptor is recorded in `rejected`; the evaluation's judge reads it back.
+PERSON_DESCRIPTOR_NOTE = "person descriptor replaced by "
 
 ModelStatus = Literal["observed", "inferred", "unknown"]
 ActionStatus = Literal["observed", "inferred"]
@@ -289,7 +291,7 @@ def _neutral(text: str, where: str, rejected: list[str], *, label: bool = False)
     result = neutralise_arabic_label(text) if label else neutralise_arabic(text)
     if result.changed:
         words = ", ".join(result.replaced)
-        rejected.append(f"{where}: person descriptor replaced by «شخص»: {words}")
+        rejected.append(f"{where}: {PERSON_DESCRIPTOR_NOTE}«شخص»: {words}")
     return result.text
 
 
@@ -297,9 +299,7 @@ def _neutral_label(label: str, where: str, rejected: list[str]) -> str:
     """Return the English label, or "person" when it names one by a descriptor."""
     result = neutralise_english_label(label)
     if result.changed:
-        rejected.append(
-            f"{where}: person descriptor replaced by 'person': {', '.join(result.replaced)}"
-        )
+        rejected.append(f"{where}: {PERSON_DESCRIPTOR_NOTE}'person': {', '.join(result.replaced)}")
     return result.text
 
 
