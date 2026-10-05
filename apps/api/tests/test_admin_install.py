@@ -51,6 +51,7 @@ def test_the_menu_lists_the_views_in_order_with_their_identities(admin_app):
         ("geo-name", "Places"),
         ("admin-audit-log", "Security"),
         ("two-factor", "Security"),
+        ("inspect", "Developer"),
     ]
 
 

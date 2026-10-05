@@ -56,6 +56,7 @@ async def test_the_export_holds_everything_the_learner_saved_and_never_a_photo(
         "chat_messages",
         "places",
         "treasures",
+        "reveals",
         "learner_units",
         "exposures",
         "photos",

@@ -362,6 +362,7 @@ async def test_every_foreign_key_to_users_cascades_so_deleting_an_account_leaves
         "comments",
         "reports",
         "scans",
+        "world_reveals",
         "insights",
         "world_places",
         "map_entries",
@@ -424,6 +425,7 @@ def test_every_table_lives_in_the_app_schema():
         "world_places",
         "world_relations",
         "treasures",
+        "world_reveals",
         # Time series (TimescaleDB hypertables)
         "scan_events",
         "ai_calls",
