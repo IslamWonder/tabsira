@@ -129,3 +129,11 @@ export function sponsorEntry(entryId: string): Promise<Result<Sponsorship>> {
     api.PUT('/atlas/entries/{entry_id}/sponsorship', { params: { path: { entry_id: entryId } } })
   );
 }
+
+export function endSponsorship(entryId: string): Promise<Result<unknown>> {
+  return attempt(
+    api.DELETE('/atlas/entries/{entry_id}/sponsorship', {
+      params: { path: { entry_id: entryId } },
+    })
+  );
+}

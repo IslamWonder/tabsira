@@ -115,6 +115,7 @@ describe('the sponsoring part of an entry page', () => {
     );
     expect(screen.getByText(S.entry.by)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /\[قارئ\]/ })).toHaveAttribute('href', '/u/reader');
+    expect(screen.getByRole('button', { name: S.end.action })).toBeInTheDocument();
     // The entry still names no author.
     expect(screen.queryByRole('link', { name: '[اسم عام]' })).toBeNull();
   });
@@ -183,6 +184,7 @@ describe('the sponsoring part of an entry page', () => {
     expect(screen.getByText('[تأمل الكافل]')).toBeInTheDocument();
     expect(screen.getByText(new RegExp(S.entry.reflectionNote))).toBeInTheDocument();
     // Another member's entry: no controls, and no author line.
+    expect(screen.queryByRole('button', { name: S.end.action })).toBeNull();
     expect(screen.queryByRole('button', { name: S.entry.action })).toBeNull();
     unmount();
 
@@ -191,6 +193,45 @@ describe('the sponsoring part of an entry page', () => {
     await screen.findByText(S.entry.by);
     expect(screen.queryByRole('link', { name: /\[اسم الكافل\]/ })).toBeNull();
     expect(screen.getByText(/@quiet_keeper/)).toBeInTheDocument();
+  });
+
+  it('lets the sponsor end the sponsoring only after a confirmation', async () => {
+    const mine = { ...SPONSORED_ENTRY, sponsor: ME, sponsor_reflection: null };
+    const api = member({
+      [ENTRY_PATH]: entries(mine, ORPHAN_ENTRY),
+      [`DELETE ${SPONSORSHIP_PATH}`]: { status: 204 },
+    });
+    await open();
+    await userEvent.click(await screen.findByRole('button', { name: S.end.action }));
+    const dialog = screen.getByRole('dialog', { name: S.end.title });
+    expect(within(dialog).getByText(S.end.lead)).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: S.end.cancel }));
+    expect(api.requests.some((r) => r.method === 'DELETE')).toBe(false);
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: S.end.action }));
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(api.requests.some((r) => r.method === 'DELETE')).toBe(false);
+
+    await userEvent.click(screen.getByRole('button', { name: S.end.action }));
+    await userEvent.click(screen.getByRole('button', { name: S.end.confirm }));
+    expect(await screen.findByText(S.end.done)).toBeInTheDocument();
+    expect(api.requests.some((r) => r.method === 'DELETE')).toBe(true);
+    // The entry waits for a sponsor again.
+    expect(await screen.findByRole('button', { name: S.entry.action })).toBeInTheDocument();
+  });
+
+  it('says so when ending fails', async () => {
+    const mine = { ...SPONSORED_ENTRY, sponsor: ME, sponsor_reflection: null };
+    member({
+      [ENTRY_PATH]: { body: mine },
+      [`DELETE ${SPONSORSHIP_PATH}`]: apiError(503, 'SERVICE_UNAVAILABLE'),
+    });
+    await open();
+    await userEvent.click(await screen.findByRole('button', { name: S.end.action }));
+    await userEvent.click(screen.getByRole('button', { name: S.end.confirm }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(messages.errors.server);
   });
 
   it('shows no points, counts or reward wording on a sponsored entry', async () => {

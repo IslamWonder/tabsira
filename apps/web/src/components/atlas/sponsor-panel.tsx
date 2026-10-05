@@ -4,17 +4,19 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { signInHref } from '@/account/links';
-import { sponsorEntry } from '@/atlas/api';
+import { endSponsorship, sponsorEntry } from '@/atlas/api';
 import type { AtlasEntry } from '@/atlas/types';
 import { IdentityForm } from '@/components/community/identity-section';
 import { AccessNote } from '@/components/community/sheets';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
+import { Sheet } from '@/components/ui/sheet';
 import { failureMessage } from '@/lib/api/failure-message';
 import type { Failure } from '@/lib/api/result';
 import { messages } from '@/messages';
 import { useAccess } from '@/social/access';
 import { profilePath } from '@/social/identity';
+import { useIdentity } from '@/social/identity-store';
 
 const S = messages.atlas.sponsor;
 
@@ -80,7 +82,8 @@ function SponsorLine({
 /**
  * Sponsoring on the entry's page (decision 60). An orphaned entry offers
  * the sponsor action to a verified member with a public identity, and to others the
- * missing step; a sponsored one names its sponsor and shows the published reflection.
+ * missing step; a sponsored one names its sponsor and shows the published reflection;
+ * the sponsor alone gets the end action (after a confirmation).
  * Nothing here counts or rewards. The server judges every action; this only says why not.
  */
 export function SponsorPanel({
@@ -95,11 +98,15 @@ export function SponsorPanel({
   refresh: () => Promise<AtlasEntry | null>;
 }) {
   const access = useAccess();
+  const identity = useIdentity();
   const pathname = usePathname();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [ending, setEnding] = useState(false);
   const sponsor = entry.sponsor ?? null;
+  const mine =
+    sponsor !== null && identity.status === 'ready' && identity.identity.handle === sponsor.handle;
   const waiting = entry.orphaned && sponsor === null;
 
   // Once it is no longer offered, the panel stays only to say what just happened.
@@ -118,6 +125,20 @@ export function SponsorPanel({
     } else {
       const fresh = result.code === 'CONFLICT' ? await refresh() : null;
       setProblem(refusalMessage(result, fresh));
+    }
+    setBusy(false);
+  };
+
+  const endIt = async () => {
+    setBusy(true);
+    setProblem(null);
+    const result = await endSponsorship(entry.id);
+    setEnding(false);
+    if (result.ok) {
+      setNotice(S.end.done);
+      await refresh();
+    } else {
+      setProblem(failureMessage(result));
     }
     setBusy(false);
   };
@@ -168,6 +189,29 @@ export function SponsorPanel({
               {busy ? S.entry.acting : S.entry.action}
             </Button>
           ) : null}
+        </>
+      ) : null}
+      {mine ? (
+        <>
+          <p className="m-0 text-fg-soft">{S.entry.mine}</p>
+          <Button variant="ghost" onClick={() => setEnding(true)} className="self-start">
+            {S.end.action}
+          </Button>
+          <Sheet
+            open={ending}
+            onClose={() => setEnding(false)}
+            title={S.end.title}
+            description={S.end.lead}
+          >
+            <div className="flex flex-wrap gap-2.5 pb-2">
+              <Button onClick={() => void endIt()} disabled={busy}>
+                {busy ? S.end.ending : S.end.confirm}
+              </Button>
+              <Button variant="ghost" onClick={() => setEnding(false)}>
+                {S.end.cancel}
+              </Button>
+            </div>
+          </Sheet>
         </>
       ) : null}
       {problem === null ? null : (
