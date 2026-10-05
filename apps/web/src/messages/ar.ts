@@ -760,7 +760,17 @@ export const ar = {
     mapUnsupported:
       'لا يدعم هذا المتصفح أو الجهاز عرض الخريطة (يلزم WebGL2). تبقى النتائج في القائمة بجانبها.',
     joinLabels: (parts: readonly (string | null | undefined)[]) => parts.filter(Boolean).join('، '),
-    attribution: 'بلاط الخريطة من OpenFreeMap، بيانات OpenStreetMap.',
+    /** The credits the map's sources ask for, with their links (OpenStreetMap: © and a link to its copyright page). */
+    attribution: {
+      label: 'مصادر الخريطة',
+      links: [
+        ['OpenFreeMap', 'https://openfreemap.org'],
+        ['© OpenMapTiles', 'https://www.openmaptiles.org/'],
+        ['© OpenStreetMap', 'https://www.openstreetmap.org/copyright'],
+        ['GeoNames', 'https://www.geonames.org'],
+      ],
+      more: 'المصادر',
+    },
     searchHere: 'ابحث في هذه المنطقة',
     nearMe: 'قريب مني',
     nearMeHint:
@@ -1253,6 +1263,7 @@ export const ar = {
     terms: 'شروط الاستخدام',
     privacy: 'سياسة الخصوصية',
     support: 'الدعم',
+    sources: 'المصادر والتراخيص',
     cookieSettings: 'إعدادات ملفات تعريف الارتباط',
   },
 

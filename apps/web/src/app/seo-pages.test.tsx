@@ -14,6 +14,7 @@ import { metadata as privacy } from './privacy/page';
 import { metadata as reset } from './reset-password/page';
 import { metadata as signin } from './signin/page';
 import { metadata as signup } from './signup/page';
+import { metadata as sources } from './sources/page';
 import { metadata as support } from './support/page';
 import { metadata as terms } from './terms/page';
 import { metadata as verify } from './verify-email/page';
@@ -21,7 +22,13 @@ import { metadata as world } from './world/page';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/' }));
 
-const INDEXED = { '/': home, '/terms': terms, '/privacy': privacy, '/support': support };
+const INDEXED = {
+  '/': home,
+  '/terms': terms,
+  '/privacy': privacy,
+  '/support': support,
+  '/sources': sources,
+};
 const UNLISTED = {
   '/world': world,
   '/community': community,

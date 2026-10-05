@@ -3,8 +3,8 @@ import { pageMetadata } from '@/lib/seo';
 
 export { webPageJsonLd } from '@/lib/seo';
 
-/** The public legal routes; the sitemap's static list must carry all three. */
-export const LEGAL_PATHS = ['/terms', '/privacy', '/support'] as const;
+/** The public legal routes; the sitemap's static list must carry all four. */
+export const LEGAL_PATHS = ['/terms', '/privacy', '/support', '/sources'] as const;
 export type LegalPath = (typeof LEGAL_PATHS)[number];
 
 export interface LegalPageSeo {
