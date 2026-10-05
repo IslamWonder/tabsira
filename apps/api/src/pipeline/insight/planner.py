@@ -36,7 +36,7 @@ from src.pipeline.leak_guard import ScriptureLeakError
 from src.pipeline.prompt import load_prompt
 from src.pipeline.schemas import EvidenceStatus, SceneAnalysis
 
-SYSTEM_PROMPT = "insight_planner_system.v1"
+SYSTEM_PROMPT = "insight_planner_system.v2"
 MAX_OUTPUT_TOKENS = 4096
 MAX_QUERIES = 3
 MIN_QUERY_WORDS = 1
