@@ -147,6 +147,7 @@ def test_every_text_the_engine_wrote_is_looked_at():
         "small_step",
         "quran.matched_on",
         "hadith.matched_on",
+        "quran.link",
     }
     bare = insight_texts(proposed(small_step=None, quran=None, hadith=None))
     assert "small_step" not in bare

@@ -13,6 +13,7 @@ from sqlalchemy.exc import OperationalError
 from src.ai.errors import AiCallError, AiErrorCode
 from src.config import AiProvider
 from src.models import (
+    EmbeddedCorpus,
     Hadith,
     HadithClassification,
     HadithSignal,
@@ -29,66 +30,37 @@ from src.pipeline.engine import (
     RelationType,
 )
 from src.pipeline.insight import engine as engine_module
-from src.pipeline.insight.engine import PipelineInsightEngine, ResourceCache, build_engine
+from src.pipeline.insight.engine import (
+    PipelineInsightEngine,
+    ResourceCache,
+    Resources,
+    build_engine,
+)
 from src.pipeline.insight.search import Embedding
+from src.pipeline.leak_guard import ShingleOverlapDetector
+from src.retrieval.concepts import ConceptIndex
 from src.retrieval.reranker import LlmReranker, RerankerClient
 from src.scripture.rulings import RulingInput, record_ruling
 from src.scripture.text import without_marks
 from tests.fakes import FakeModelClient
 from tests.insight.support import (
-    compose_answer,
+    accept_all,
     composed,
     entity,
+    intent,
+    judged,
     plan_answer,
-    planned,
+    queries,
     rain_scene,
+    reject_all,
     scene,
-    verdict,
+    shown_labels,
     verify_answer,
 )
 from tests.retrieval.support import EmbeddingClient
 from tests.scans.conftest import store_extra
 from tests.scripture.fixtures import verse_text
 from tests.scripture.spelling import standard
-
-
-def _labels(call: dict[str, Any], candidate: int = 0) -> list[str]:
-    payload = json.loads(call["user"])
-    return [text["label"] for text in payload["candidates"][candidate]["texts"]]
-
-
-def verify_all(strength: str = "strong", relation: str = "direct") -> Any:
-    """A verifier that finds every shortlisted text relevant."""
-
-    def answer(call: dict[str, Any]) -> dict[str, Any]:
-        payload = json.loads(call["user"])
-        return {
-            "candidates": [
-                {
-                    "candidate": item["candidate"],
-                    "texts": [
-                        verdict(text["label"], strength=strength, relation=relation)
-                        for text in item["texts"]
-                    ],
-                }
-                for item in payload["candidates"]
-            ]
-        }
-
-    return answer
-
-
-def verify_none(call: dict[str, Any]) -> dict[str, Any]:
-    payload = json.loads(call["user"])
-    return {
-        "candidates": [
-            {
-                "candidate": item["candidate"],
-                "texts": [verdict(t["label"], relevant=False) for t in item["texts"]],
-            }
-            for item in payload["candidates"]
-        ]
-    }
 
 
 def make_engine(
@@ -125,12 +97,27 @@ async def _strongly_linked(maker) -> None:
             signal.matches = [{**first, "coverage": 1.0, "cited": True}, *rest]
 
 
+async def _rule_every_hadith(maker) -> None:
+    async with maker() as session, session.begin():
+        for hadith_id in await session.scalars(select(Hadith.id)):
+            await record_ruling(
+                session,
+                hadith_id,
+                RulingInput(
+                    ruling_text="صحيح",
+                    scholar="محرر",
+                    source_book="كتاب",
+                    page="1",
+                    dorar_url="https://dorar.net/hadith/sharh/1",
+                    classification=HadithClassification.SAHIH,
+                    editor_name="محرر",
+                ),
+            )
+
+
 async def test_a_rain_scene_hadith_of_the_enriched_file_shows_beside_its_verse(maker):
     await _strongly_linked(maker)
-    engine, _ = make_engine(
-        maker,
-        [plan_answer(planned()), verify_all(), compose_answer(composed())],
-    )
+    engine, _ = make_engine(maker, [plan_answer(intent()), accept_all(), composed()])
 
     result = await engine.propose(EngineRequest(scan_id="s0", scene=rain_scene()))
 
@@ -140,17 +127,24 @@ async def test_a_rain_scene_hadith_of_the_enriched_file_shows_beside_its_verse(m
     # Decision 58: no ruling yet, but one of the enriched file's hadiths: it shows now, and is
     # counted once for an editor while nothing waits for it.
     assert isinstance(insight.hadith.ref, HadithRef)
+    assert insight.quran.link and insight.hadith.link
     assert result.awaiting_ruling == []
+    assert result.trace["status"] == "ok"
+    assert result.trace["chosen"][0]["quran"] == {
+        "surah": insight.quran.ref.surah,
+        "ayah": insight.quran.ref.ayah,
+    }
+    round_one = result.trace["rounds"][0]["intents"][0]
+    assert round_one["gate"]["pair_complete"] is True
+    assert round_one["quran"]["rerank"] == "off"
+    assert round_one["quran"]["shortlist"][0]["channels"]
     async with maker() as session:
         assert await session.scalar(select(HadithVerificationQueue.demand_count)) == 1
 
 
 async def test_a_rain_scene_gets_an_insight_backed_by_its_verse_while_the_hadith_waits(maker):
     await _outside_the_enriched_file(maker)
-    engine, client = make_engine(
-        maker,
-        [plan_answer(planned()), verify_all(), compose_answer(composed())],
-    )
+    engine, client = make_engine(maker, [plan_answer(intent()), accept_all(), composed()])
     stages: list[EngineStage] = []
 
     async def on_stage(stage: EngineStage) -> None:
@@ -171,42 +165,32 @@ async def test_a_rain_scene_gets_an_insight_backed_by_its_verse_while_the_hadith
     # No hadith has an editor's ruling or is enriched: the insight carries its verse alone.
     assert insight.hadith is None
     assert [part.section for part in insight.explanation] == ["seen", "value", "quran", "life"]
+    # The unit was chosen by the server from the confirmed intent, never by the planner.
+    assert insight.learning_unit_id == "T01_06"
     assert insight.explanation[0].sources == ["masar:T01_06"]
     assert insight.explanation[2].sources == [
         f"quran:{insight.quran.ref.surah}:{insight.quran.ref.ayah}",
         "masar:T01_06",
     ]
     assert insight.small_step.kind == "ethical_application"
-    assert insight.learning_unit_id == "T01_06"
     assert insight.learning_path_version == "tabsira-masar-1.0"
     assert insight.anchor is not None
+    assert insight.why.visible_clues == ["مطر"]
+    assert insight.why.limits[0] == "لا تظهر الصورة حال الأرض قبل المطر"
     assert insight.why.personalised_because is not None
     assert result.awaiting_ruling
     async with maker() as session:
         queued = await session.scalar(select(HadithVerificationQueue.demand_count))
     assert queued == 1
     assert [call["stage"].value for call in client.calls] == ["planner", "verify", "compose"]
+    # The planner never sees the learner; the composer does.
+    assert "learner" not in json.loads(client.calls[0]["user"])
+    assert "learner" in json.loads(client.calls[2]["user"])
 
 
 async def test_an_eligible_hadith_completes_the_pair_and_grounds_the_step(maker):
-    async with maker() as session, session.begin():
-        for hadith_id in await session.scalars(select(Hadith.id)):
-            await record_ruling(
-                session,
-                hadith_id,
-                RulingInput(
-                    ruling_text="صحيح",
-                    scholar="محرر",
-                    source_book="كتاب",
-                    page="1",
-                    dorar_url="https://dorar.net/hadith/sharh/1",
-                    classification=HadithClassification.SAHIH,
-                    editor_name="محرر",
-                ),
-            )
-    engine, _ = make_engine(
-        maker, [plan_answer(planned()), verify_all(), compose_answer(composed())]
-    )
+    await _rule_every_hadith(maker)
+    engine, _ = make_engine(maker, [plan_answer(intent()), accept_all(), composed()])
 
     result = await engine.propose(EngineRequest(scan_id="s2", scene=rain_scene()))
 
@@ -221,16 +205,17 @@ async def test_an_eligible_hadith_completes_the_pair_and_grounds_the_step(maker)
 
 
 async def test_a_text_already_seen_is_shown_again_as_a_review_when_none_is_as_strong(maker):
-    engine, client = make_engine(
-        maker, [plan_answer(planned()), verify_all(), compose_answer(composed())]
-    )
+    engine, client = make_engine(maker, [plan_answer(intent()), accept_all(), composed()])
     first = await engine.propose(EngineRequest(scan_id="s3", scene=rain_scene()))
     seen = first.insights[0].quran.ref
 
     def only_first(call: dict[str, Any]) -> dict[str, Any]:
-        return verify_answer([verdict("Q1")])
+        labels = shown_labels(call)
+        return verify_answer(
+            [judged(label, accepted=label == labels[0]) for label in labels], pair=None
+        )
 
-    client.answers = [plan_answer(planned()), only_first, compose_answer(composed())]
+    client.answers = [plan_answer(intent()), only_first, composed()]
     again = await engine.propose(
         EngineRequest(
             scan_id="s4",
@@ -287,19 +272,20 @@ async def test_no_plan_asks_the_planner_question_or_the_scene_question_or_abstai
     )
     assert from_scene.clarification_question == "لمن هذا الهاتف؟"
     assert abstained.status is EngineStatus.NO_RELEVANT_EVIDENCE
+    assert abstained.trace["status"] == "no_relevant_evidence"
     assert answered.status is EngineStatus.NO_RELEVANT_EVIDENCE
 
 
-async def test_a_candidate_without_evidence_is_refined_then_dropped(maker):
+async def test_an_intent_without_evidence_is_refined_with_the_reasons_then_dropped(maker):
     engine, client = make_engine(
         maker,
         [
-            plan_answer(planned()),
-            verify_none,
-            plan_answer(planned(quran_queries=["خلق السماوات"])),
-            verify_none,
-            plan_answer(planned(quran_queries=["التفكر"])),
-            verify_none,
+            plan_answer(intent()),
+            reject_all,
+            plan_answer(intent(quran=queries(["إحياء الأرض"], ["تحيا الأرض بالماء"]))),
+            reject_all,
+            plan_answer(intent(quran=queries(["حياة الأرض"], ["الأرض تحيا بعد المطر"]))),
+            reject_all,
         ],
     )
 
@@ -308,26 +294,35 @@ async def test_a_candidate_without_evidence_is_refined_then_dropped(maker):
     assert result.status is EngineStatus.NO_RELEVANT_EVIDENCE
     stages = [call["stage"].value for call in client.calls]
     assert stages == ["planner", "verify", "planner", "verify", "planner", "verify"]
-    assert "refine" in client.calls[2]["user"]
+    refine = json.loads(client.calls[2]["user"])["refine"]
+    assert refine[0]["intent_id"] == "i1"
+    assert refine[0]["rejected_because"] == ["lexical_overlap"]
+    assert len(result.trace["rounds"]) == 3
+    # Refined intents are named by the server after their round.
+    assert result.trace["rounds"][1]["intents"][0]["intent_id"] == "r1i1"
 
 
-async def test_a_refinement_that_proposes_nothing_ends_the_search(maker):
-    engine, _ = make_engine(maker, [plan_answer(planned()), verify_none, plan_answer()])
+async def test_a_refinement_that_moves_to_other_clues_is_dropped(maker):
+    engine, _ = make_engine(
+        maker,
+        [plan_answer(intent()), reject_all, plan_answer(intent(scene_anchor_ids=["e2"]))],
+    )
 
     result = await engine.propose(EngineRequest(scan_id="s12", scene=rain_scene()))
 
     assert result.status is EngineStatus.NO_RELEVANT_EVIDENCE
+    assert result.trace["rounds"][-1]["dropped"] == ["intent 0: refinement moved to other clues"]
 
 
-async def test_a_refined_candidate_that_finds_evidence_is_kept(maker):
+async def test_a_refined_intent_that_finds_evidence_is_kept(maker):
     engine, _ = make_engine(
         maker,
         [
-            plan_answer(planned()),
-            verify_none,
-            plan_answer(planned(quran_queries=["إحياء الأرض بعد الجفاف"])),
-            verify_all(),
-            compose_answer(composed()),
+            plan_answer(intent()),
+            reject_all,
+            plan_answer(intent(quran=queries(["إحياء الأرض بعد الجفاف"], None))),
+            accept_all(),
+            composed(),
         ],
         embedding=False,
     )
@@ -337,14 +332,23 @@ async def test_a_refined_candidate_that_finds_evidence_is_kept(maker):
     assert result.status is EngineStatus.OK
 
 
-async def test_once_one_candidate_holds_the_failed_ones_are_not_refined(maker):
+async def test_a_lone_verse_does_not_stop_the_refinement_but_a_complete_pair_does(maker):
+    await _strongly_linked(maker)
+
+    def verse_only(call: dict[str, Any]) -> dict[str, Any]:
+        return verify_answer(
+            [judged(label, accepted=label.startswith("Q")) for label in shown_labels(call)]
+        )
+
     engine, client = make_engine(
         maker,
         [
-            plan_answer(planned(), planned(title="ثانية", quran_queries=["خلق السماوات"])),
-            verify_all(),
-            verify_none,
-            compose_answer(composed(0)),
+            plan_answer(intent(), intent(scene_anchor_ids=["e2"])),
+            verse_only,
+            reject_all,
+            plan_answer(intent(scene_anchor_ids=["e2"])),
+            accept_all(),
+            composed(),
         ],
     )
 
@@ -352,17 +356,21 @@ async def test_once_one_candidate_holds_the_failed_ones_are_not_refined(maker):
 
     assert result.status is EngineStatus.OK
     stages = [call["stage"].value for call in client.calls]
-    assert stages == ["planner", "verify", "verify", "compose"]
+    assert stages == ["planner", "verify", "verify", "planner", "verify", "compose"]
+    # The complete pair is shown; the lone verse of the first intent is not beside it.
+    (insight,) = result.insights
+    assert insight.hadith is not None
+    assert insight.entity_ids == ["e2"]
 
 
-async def test_two_candidates_on_the_same_texts_make_one_insight(maker):
+async def test_two_intents_on_the_same_texts_make_one_insight(maker):
     engine, _ = make_engine(
         maker,
         [
-            plan_answer(planned(), planned(title="ثانية")),
-            verify_all(),
-            verify_all(),
-            compose_answer(composed(0)),
+            plan_answer(intent(), intent()),
+            accept_all(),
+            accept_all(),
+            composed(),
         ],
     )
 
@@ -383,20 +391,75 @@ async def test_a_model_failure_and_a_store_failure_are_told_apart(maker, monkeyp
     source = await store.propose(EngineRequest(scan_id="s16", scene=rain_scene()))
 
     assert model.status is EngineStatus.MODEL_UNAVAILABLE
+    assert model.trace["status"] == "model_unavailable"
     assert source.status is EngineStatus.SOURCE_UNAVAILABLE
+
+
+async def test_a_failed_query_embedding_is_a_retrieval_error_not_an_empty_result(maker):
+    engine, client = make_engine(maker, [plan_answer(intent()), accept_all(), composed()])
+    client.fail_on_call = 1
+
+    result = await engine.propose(EngineRequest(scan_id="s20", scene=rain_scene()))
+
+    assert result.status is EngineStatus.RETRIEVAL_ERROR
+    assert [call["stage"].value for call in client.calls] == ["planner"]
+
+
+async def test_a_store_without_a_searchable_corpus_says_so(maker):
+    engine, client = make_engine(maker, [plan_answer(intent())])
+    empty = {corpus: ConceptIndex(corpus, {}) for corpus in EmbeddedCorpus}
+    engine._resources._resources = Resources(
+        concepts=empty,
+        quran=ShingleOverlapDetector([]),
+        path=None,
+        vectors=dict.fromkeys(EmbeddedCorpus, False),
+    )
+
+    result = await engine.propose(EngineRequest(scan_id="s25", scene=rain_scene()))
+
+    assert result.status is EngineStatus.CORPUS_UNAVAILABLE
+    assert client.calls == []
+    assert result.trace["corpus"]["vectors"] == {"quran": False, "hadith": False}
+
+
+async def test_the_resource_check_reads_whether_the_vectors_of_the_model_are_stored(maker):
+    cache = ResourceCache()
+    async with maker() as session:
+        without = await cache.get(session, None)
+        with_model = await ResourceCache().get(session, Embedding(FakeModelClient(), "m", 8))
+        any_size = await ResourceCache().get(session, Embedding(FakeModelClient(), "m", None))
+
+    assert without.vectors == {EmbeddedCorpus.QURAN: False, EmbeddedCorpus.HADITH: False}
+    assert with_model.vectors == without.vectors == any_size.vectors
+    assert with_model.searchable
+
+
+async def test_the_only_fitting_hadith_waiting_for_its_ruling_is_an_incomplete_pair(maker):
+    await _outside_the_enriched_file(maker)
+
+    def hadith_only(call: dict[str, Any]) -> dict[str, Any]:
+        return verify_answer(
+            [judged(label, accepted=label.startswith("H")) for label in shown_labels(call)]
+        )
+
+    engine, _ = make_engine(maker, [plan_answer(intent()), hadith_only, plan_answer()], rounds=1)
+
+    result = await engine.propose(EngineRequest(scan_id="s26", scene=rain_scene()))
+
+    assert result.status is EngineStatus.INCOMPLETE_EVIDENCE_PAIR
+    assert result.awaiting_ruling
+    assert result.insights == []
 
 
 async def test_a_composer_that_keeps_leaking_leaves_no_insight(maker):
     await _outside_the_enriched_file(maker)
     leaking = composed(life=f"قال تعالى: «{verse_text(30, 50)}»")
-    engine, _ = make_engine(
-        maker,
-        [plan_answer(planned()), verify_all(), compose_answer(leaking), compose_answer(leaking)],
-    )
+    engine, _ = make_engine(maker, [plan_answer(intent()), accept_all(), leaking, leaking])
 
     result = await engine.propose(EngineRequest(scan_id="s17", scene=rain_scene()))
 
     assert result.status is EngineStatus.MODEL_UNAVAILABLE
+    assert result.trace["composer"]["leaked"] == [0]
     assert result.awaiting_ruling
 
 
@@ -430,7 +493,7 @@ async def _unshown_hadith_words(maker) -> str:
 async def test_a_planner_field_repeating_a_hadith_no_stage_was_shown_is_refused(maker):
     await _today_3_190(maker)
     words = await _unshown_hadith_words(maker)
-    engine, _ = make_engine(maker, [plan_answer(planned(value=f"تذكر {words}"))] * 2)
+    engine, _ = make_engine(maker, [plan_answer(intent(concept_basis=f"تذكر {words}"))] * 2)
 
     result = await engine.propose(EngineRequest(scan_id="s-unshown", scene=rain_scene()))
 
@@ -439,16 +502,15 @@ async def test_a_planner_field_repeating_a_hadith_no_stage_was_shown_is_refused(
     assert result.insights == []
 
 
-def _verify_limited_by(limit: str) -> Any:
-    """A verifier that finds every text relevant and writes `limit` as each one's limit."""
-    relevant = verify_all()
+def _verify_linked_by(link: str) -> Any:
+    """A verifier that accepts every text and writes `link` as each one's link."""
+    accepting = accept_all()
 
     def answer(call: dict[str, Any]) -> dict[str, Any]:
-        verdicts = relevant(call)
-        for item in verdicts["candidates"]:
-            for text in item["texts"]:
-                text["limit"] = limit
-        return verdicts
+        verdict = accepting(call)
+        for text in verdict["texts"]:
+            text["link"] = link
+        return verdict
 
     return answer
 
@@ -461,20 +523,12 @@ async def test_a_verse_in_todays_spelling_is_refused_wherever_a_model_writes_it(
     quoting = f"وفي ذلك {today}"
     step = {"text": quoting, "kind": "reflection", "from_hadith": False}
     answers: dict[str, list[Any]] = {
-        "planner": [plan_answer(planned(value=quoting))] * 2,
-        # A verifier that keeps quoting leaves its candidate without evidence; the
-        # refinement that follows proposes nothing.
-        "verifier": [plan_answer(planned()), *[_verify_limited_by(quoting)] * 2, plan_answer()],
-        "explanation": [
-            plan_answer(planned()),
-            verify_all(),
-            *[compose_answer(composed(life=quoting))] * 2,
-        ],
-        "small_step": [
-            plan_answer(planned()),
-            verify_all(),
-            *[compose_answer(composed(small_step=step))] * 2,
-        ],
+        "planner": [plan_answer(intent(concept_basis=quoting))] * 2,
+        # A verifier that keeps quoting leaves its intent unjudged; the refinement that
+        # follows proposes nothing, and the scan ends as a model fault.
+        "verifier": [plan_answer(intent()), *[_verify_linked_by(quoting)] * 2, plan_answer()],
+        "explanation": [plan_answer(intent()), accept_all(), *[composed(life=quoting)] * 2],
+        "small_step": [plan_answer(intent()), accept_all(), *[composed(small_step=step)] * 2],
         "scene_question": [plan_answer()],
     }
     engine, _ = make_engine(maker, answers[where])
@@ -488,15 +542,19 @@ async def test_a_verse_in_todays_spelling_is_refused_wherever_a_model_writes_it(
     assert result.clarification_question is None
     expected = (
         EngineStatus.NO_RELEVANT_EVIDENCE
-        if where in {"scene_question", "verifier"}
+        if where == "scene_question"
         else EngineStatus.MODEL_UNAVAILABLE
     )
     assert result.status is expected
 
 
 async def test_the_reranker_reorders_and_a_down_reranker_keeps_the_fused_order(maker):
+    asked: list[str] = []
+
     def scores(request: httpx.Request) -> httpx.Response:
-        passages = json.loads(request.content)["passages"]
+        body = json.loads(request.content)
+        asked.append(body["query"])
+        passages = body["passages"]
         return httpx.Response(
             200, json={"scores": [0.1 * i for i in range(len(passages))], "model": "m", "ms": 1}
         )
@@ -504,13 +562,13 @@ async def test_the_reranker_reorders_and_a_down_reranker_keeps_the_fused_order(m
     http = httpx.AsyncClient(transport=httpx.MockTransport(scores))
     reranked, _ = make_engine(
         maker,
-        [plan_answer(planned()), verify_all(), compose_answer(composed())],
+        [plan_answer(intent()), accept_all(), composed()],
         reranker=RerankerClient("http://vision", http, timeout_seconds=1),
     )
     down = httpx.AsyncClient(transport=httpx.MockTransport(lambda _r: httpx.Response(503)))
     fused, _ = make_engine(
         maker,
-        [plan_answer(planned()), verify_all(), compose_answer(composed())],
+        [plan_answer(intent()), accept_all(), composed()],
         reranker=RerankerClient("http://vision", down, timeout_seconds=1),
     )
 
@@ -518,7 +576,12 @@ async def test_the_reranker_reorders_and_a_down_reranker_keeps_the_fused_order(m
     without = await fused.propose(EngineRequest(scan_id="s19", scene=rain_scene()))
 
     assert with_scores.insights[0].quran.rerank_score is not None
+    # The reranker reads the intent's own sentence of each corpus, never a pile of queries.
+    assert asked == ["ينزل المطر فتحيا الأرض بعد يبسها", "ما يقال عند نزول المطر"]
     assert without.insights[0].quran.rerank_score is None
+    traced = without.trace["rounds"][0]["intents"][0]["quran"]["rerank"]
+    assert traced == "skipped: http_503"
+    assert with_scores.trace["rounds"][0]["intents"][0]["quran"]["rerank"].startswith("ok: m")
 
 
 async def test_the_small_model_reranks_every_list_of_a_scan_at_once(maker):
@@ -529,7 +592,7 @@ async def test_the_small_model_reranks_every_list_of_a_scan_at_once(maker):
     small = FakeModelClient(answers=[scores, scores])
     engine, client = make_engine(
         maker,
-        [plan_answer(planned()), verify_all(), compose_answer(composed())],
+        [plan_answer(intent()), accept_all(), composed()],
         reranker=LlmReranker(small, model="nano", timeout_seconds=1),
     )
 
@@ -539,17 +602,6 @@ async def test_the_small_model_reranks_every_list_of_a_scan_at_once(maker):
     # One call per searched list (the verse and the hadith), none on the scan's own client.
     assert [call["model"] for call in small.calls] == ["nano", "nano"]
     assert [call["stage"].value for call in client.calls] == ["planner", "verify", "compose"]
-
-
-async def test_a_failed_query_embedding_falls_back_to_lexical_search(maker):
-    engine, client = make_engine(
-        maker, [plan_answer(planned()), verify_all(), compose_answer(composed())]
-    )
-    client.fail_on_call = 1
-
-    result = await engine.propose(EngineRequest(scan_id="s20", scene=rain_scene()))
-
-    assert result.status is EngineStatus.OK
 
 
 def test_the_engine_is_built_from_the_active_provider(make_settings):
@@ -578,9 +630,7 @@ def test_the_engine_is_built_from_the_active_provider(make_settings):
 
 
 async def test_a_queued_hadith_is_counted_once_per_scan(maker):
-    engine, _ = make_engine(
-        maker, [plan_answer(planned()), verify_all(), compose_answer(composed())]
-    )
+    engine, _ = make_engine(maker, [plan_answer(intent()), accept_all(), composed()])
 
     result = await engine.propose(EngineRequest(scan_id="s21", scene=rain_scene()))
 
@@ -589,22 +639,24 @@ async def test_a_queued_hadith_is_counted_once_per_scan(maker):
     assert RelationType(result.insights[0].relation)
 
 
-async def test_a_candidate_outside_the_learning_path_searches_without_anchors(maker):
-    engine, _ = make_engine(
-        maker,
-        [plan_answer(planned(learning_unit_id=None)), verify_all(), compose_answer(composed())],
+async def test_an_intent_no_unit_fits_makes_an_insight_without_a_unit(maker):
+    foreign = intent(
+        candidate_concept="zzqq",
+        observable_meaning="zzqq",
+        relation_description="zzqq",
     )
+    engine, _ = make_engine(maker, [plan_answer(foreign), accept_all(), composed()])
 
-    result = await engine.propose(EngineRequest(scan_id="s23", scene=rain_scene()))
+    result = await engine.propose(
+        EngineRequest(scan_id="s23", scene=rain_scene(description="zzqq"))
+    )
 
     assert result.insights[0].learning_unit_id is None
 
 
 @pytest.mark.parametrize("focus", [None, "e1"])
 async def test_insights_on_the_focus_come_first(maker, focus):
-    engine, _ = make_engine(
-        maker, [plan_answer(planned()), verify_all(), compose_answer(composed())]
-    )
+    engine, _ = make_engine(maker, [plan_answer(intent()), accept_all(), composed()])
 
     result = await engine.propose(
         EngineRequest(scan_id="s22", scene=rain_scene(), focus_entity_id=focus)

@@ -7,6 +7,7 @@ import { SettingsLayout } from '@/components/layout/layouts';
 import { messages } from '@/messages';
 import { AboutSection } from './about-section';
 import { AccountSection } from './account-section';
+import { AppSection } from './app-section';
 import { CookiesSection } from './cookies-section';
 import { DataSection } from './data-section';
 import { PracticeSection } from './practice-section';
@@ -28,8 +29,8 @@ export function MeScreen() {
   const editor = useProfile(signedIn);
   const [notice, setNotice] = useState<string | null>(null);
   const sections: SectionId[] = signedIn
-    ? ['account', 'about', 'identity', 'settings', 'practice', 'data', 'cookies']
-    : ['account', 'settings', 'practice', 'cookies'];
+    ? ['account', 'about', 'identity', 'settings', 'practice', 'app', 'data', 'cookies']
+    : ['account', 'settings', 'practice', 'app', 'cookies'];
 
   return (
     <SettingsLayout
@@ -51,7 +52,9 @@ export function MeScreen() {
         </nav>
       }
     >
-      <h1 className="m-0 font-bold font-display text-[2rem] text-fg">{M.title}</h1>
+      <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
+        {M.title}
+      </h1>
       <AccountSection
         session={session}
         notice={notice}
@@ -63,6 +66,7 @@ export function MeScreen() {
       <IdentitySection />
       <SettingsSection editor={editor} signedIn={signedIn} />
       <PracticeSection />
+      <AppSection />
       {signedIn ? (
         <DataSection onDeleted={() => setNotice(messages.pages.me.delete.deleted)} />
       ) : null}

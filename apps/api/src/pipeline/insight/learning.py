@@ -10,7 +10,8 @@ meanings: it never adds an action, a relation or a text to a scene (masar
 §10.3), and a unit's anchors are only retrieval hints («مراجع الارتكاز»).
 
 Among insights that passed the evidence gate, the order follows masar §10.4:
-the learner's focus, then the strength of the relation, then a unit whose
+the learner's focus, then a complete pair before a lone text (v2 §11), then
+the strength of the relation, then a unit whose
 prerequisites are ready and that is not completed yet (the next step), then
 new texts over texts already seen, then a domain the learner has seen less.
 Misconceptions are not recorded yet, so that criterion is left out; with
@@ -118,22 +119,40 @@ def unit_options(
     return found[:UNIT_OPTIONS]
 
 
+def unit_for(
+    path: LearningPath | None, texts: Sequence[str], learner: LearnerContext
+) -> UnitOption | None:
+    """
+    Return the unit that fits a confirmed intent best, or None.
+
+    Decided by the server after the evidence has passed, from the intent's own words:
+    the path chooses among correct meanings and personalises; it never steers the search
+    (masar §10.3, the brief of 2026-10-05 §14).
+    """
+    if path is None:
+        return None
+    options = unit_options(path, texts, learner)
+    return options[0] if options else None
+
+
 @dataclass(frozen=True, slots=True)
 class RankedInsight:
     """What masar §10.4 weighs, for one insight that passed the gate."""
 
     on_focus: bool
+    pair_complete: bool
     relation: RelationType
     unit: UnitOption | None
     new_texts: int
     domain_seen: int
 
 
-def rank_key(item: RankedInsight) -> tuple[int, int, int, int, int]:
-    """Sort key: focus, relation strength, next step, new texts, less covered domain."""
+def rank_key(item: RankedInsight) -> tuple[int, int, int, int, int, int]:
+    """Sort key: focus, a complete pair, relation strength, next step, new texts, coverage."""
     next_step = 0 if item.unit is not None and item.unit.ready and not item.unit.completed else 1
     return (
         0 if item.on_focus else 1,
+        0 if item.pair_complete else 1,
         RELATION_ORDER[item.relation],
         next_step,
         -item.new_texts,

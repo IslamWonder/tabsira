@@ -110,6 +110,7 @@ export const ar = {
         identity: 'هويتك العامة',
         settings: 'الإعدادات',
         practice: 'تمرينك',
+        app: 'التطبيق',
         data: 'بياناتك',
         cookies: 'ملفات تعريف الارتباط',
       },
@@ -201,7 +202,7 @@ export const ar = {
     },
     sound: {
       label: 'المؤثر الصوتي',
-      hint: 'صوت قصير يُسمع عند فتح البصيرة. يُحفظ اختيارك على هذا الجهاز وحده.',
+      hint: 'صوت المشهد حول الصورة أثناء إعداد البصيرة، يهدأ قبل ظهور الآية. يُحفظ اختيارك على هذا الجهاز وحده.',
     },
   },
 
@@ -219,7 +220,13 @@ export const ar = {
   scene: {
     prepared: 'مثال موثّق مُعدّ',
     hint: 'المس البصيرة التي لفتتك',
-    captureOwn: 'أو صوّر مشهدك أنت',
+    /** The invitation to a scene of one's own, under the example on a phone and in the panel beside it. */
+    capture: {
+      heading: 'صوّر مشهدك أنت',
+      lead: 'التقط ما أمامك أو اختر صورة، ونبحث معك عن البصيرة فيه.',
+      camera: 'التقط صورة',
+      drop: 'أو اسحب صورة وأفلتها هنا.',
+    },
     listHeading: 'البصائر في الصورة',
     glimpseAndPosition: (glimpse: string, position: string) => `${glimpse}، ${position}`,
     /**
@@ -235,8 +242,9 @@ export const ar = {
       ],
     },
     starter: {
-      prompt: 'أو ابدأ بمشهدك: اسحب صورة إلى هنا',
       dropping: 'أفلت الصورة هنا',
+      /** Over the live preview: what to do, in one line. */
+      aim: 'وجّه الكاميرا إلى ما لفتك، ثم التقط.',
       choose: 'اختر صورة',
       camera: 'التقط بالكاميرا',
       cameraPreview: 'معاينة الكاميرا',
@@ -1466,6 +1474,7 @@ export const ar = {
     frames: {
       shell: 'الهيكل وإطار المشهد في المقاسات الثلاثة',
       insight: 'إطار البصيرة',
+      scan: 'إطار التحليل',
       layouts: 'قوالب التخطيط',
       components: 'المكوّنات في المظهرين',
     },
@@ -1552,6 +1561,31 @@ export const ar = {
 
   ...scanMessages,
   ...shareMessages,
+
+  /** Installing the app on the home screen (src/pwa/install.ts). */
+  install: {
+    region: 'ثبّت تبصرة',
+    title: 'ثبّت تبصرة على شاشتك',
+    body: 'تفتح كتطبيق بملء الشاشة، وتصل إلى الكاميرا بلمسة. بلا متجر ولا مساحة تُذكر.',
+    install: 'ثبّت',
+    later: 'ليس الآن',
+    iosTitle: 'أضف تبصرة إلى الشاشة الرئيسية',
+    iosSteps: [
+      'المس زر المشاركة في شريط المتصفح (مربع يخرج منه سهم).',
+      'اختر «إضافة إلى الشاشة الرئيسية»، ثم «إضافة».',
+    ],
+    iosShow: 'كيف أثبّتها؟',
+    gotIt: 'فهمت',
+    meTitle: 'التطبيق',
+    meHint: 'ثبّت تبصرة على شاشتك لتفتحها كتطبيق.',
+    meInstall: 'ثبّت التطبيق',
+    meInstalled: 'تبصرة مثبّتة على هذا الجهاز.',
+    meUnsupported:
+      'لا يثبّت هذا المتصفح التطبيقات. افتح تبصرة في Chrome أو Edge، أو في Safari على iPhone، لتثبيتها.',
+    accepted: 'ثُبّتت تبصرة. تجدها على شاشتك الرئيسية.',
+    updateReady: 'نسخة جديدة من تبصرة جاهزة.',
+    updateNow: 'حدّث الآن',
+  },
 } as const;
 
 export type Messages = typeof ar;

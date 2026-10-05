@@ -349,9 +349,19 @@ def test_main_exits_1_when_the_production_bucket_fails(
 def test_main_exits_0_when_the_bucket_works(uses_client, make_settings, monkeypatch, capsys):
     settings = make_settings(**production())
     monkeypatch.setattr(check_config, "load_settings", lambda: settings)
+    # The production checklist reads the checkout's .env, which differs per machine and is
+    # absent in CI; it has tests of its own. Here only the storage decides the exit code.
+    checklists: list[Any] = []
+
+    def checklist(checked: Any, env_file: Any, *, live: bool) -> bool:
+        checklists.append((checked, env_file, live))
+        return True
+
+    monkeypatch.setattr(check_config, "production_report", checklist)
 
     assert check_config.main([]) == 0
     assert "storage: ok" in capsys.readouterr().out
+    assert checklists == [(settings, None, False)]
 
 
 # ─── Review fixes ─────────────────────────────────────────────────────────────

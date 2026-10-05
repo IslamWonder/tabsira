@@ -6,15 +6,18 @@ The scripts and defaults behind the root `Jenkinsfile`. How to set Jenkins up, w
 
 ## Files
 
-| File                      | Purpose                                                                                     | Used by                        |
-| ------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------ |
-| `jenkins.env`             | Defaults of every setting: SonarQube, Node tool, Zulip, service images, timeouts            | `Jenkinsfile`, every script    |
-| `ci-env.sh`               | Loads `jenkins.env` for a script without overriding a value that is already set             | sourced by the scripts         |
-| `ci-services.sh`          | Starts, removes and sweeps the build's PostgreSQL and Redis containers                      | `Services` stage and `finally` |
-| `ci-postgres/*.sql`       | The role, databases, schemas and nine extensions of that database                           | `ci-services.sh up`            |
-| `vision-coverage.sh`      | The vision service's tests with coverage, reports in `services/vision/coverage/`            | `Vision Tests` stage           |
-| `sonar-scan.sh`           | Pinned, checksum-verified SonarScanner run on the coverage the suites wrote, gate waited on | `SonarQube` stage              |
-| `prepare-jenkins-deps.sh` | One-time agent setup (`sudo`), or `--check` to verify it                                    | `Prepare` stage, the operator  |
+| File                      | Purpose                                                                                              | Used by                        |
+| ------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `jenkins.env`             | Defaults of every setting: SonarQube, Node tool, Zulip, service images, timeouts                     | `Jenkinsfile`, every script    |
+| `ci-env.sh`               | Loads `jenkins.env` for a script without overriding a value that is already set                      | sourced by the scripts         |
+| `ci-services.sh`          | Starts, removes and sweeps the build's PostgreSQL and Redis containers                               | `Services` stage and `finally` |
+| `ci-postgres/*.sql`       | The role, databases, schemas and nine extensions of that database                                    | `ci-services.sh up`            |
+| `vision-coverage.sh`      | The vision service's tests with coverage, reports in `services/vision/coverage/`                     | `Vision Tests` stage           |
+| `sonar-scan.sh`           | Pinned, checksum-verified SonarScanner run on the coverage the suites wrote, gate waited on          | `SonarQube` stage              |
+| `prepare-jenkins-deps.sh` | One-time agent setup (`sudo`), or `--check` to verify it                                             | `Prepare` stage, the operator  |
+| `Jenkinsfile.deploy`      | The production deploy job: ssh to the application host, `git pull`, `deploy/deploy.sh`, health check | `tabsira-deploy`, held inline  |
+| `tabsira-deploy.xml.tmpl` | That job's configuration with its parameters; `@SCRIPT@` receives the Jenkinsfile                    | `apply-jobs.sh`                |
+| `apply-jobs.sh`           | Creates or updates the jobs Jenkins does not discover by itself; run after each change               | the operator                   |
 
 The scanner's scope is [`../sonar-project.properties`](../sonar-project.properties).
 
@@ -26,7 +29,7 @@ Checkout -> Prepare -> Services -> Install -> Migrations
   -> SonarQube (main, or RUN_SONAR) -> archive -> notify -> remove the services
 ```
 
-- **Services.** Each build starts its own PostgreSQL 18 with PostGIS, pgvector and TimescaleDB (image `CI_PG_IMAGE`) and its own Redis (image `CI_REDIS_IMAGE`, with a password), on loopback ports the kernel picks and with passwords generated for that build. Nothing is shared, so builds cannot collide and there is no secret to store. `ci-services.sh up` writes the addresses to `.env.ci` (`DATABASE_URL`, `SYNC_DATABASE_URL`, `TEST_DATABASE_URL`, `REDIS_URL`, `TEST_REDIS_URL`), which the pipeline reads back into the environment of every later stage.
+- **Services.** Each build starts its own PostgreSQL 18 with PostGIS, pgvector and TimescaleDB (image `CI_PG_IMAGE`) and its own Redis (image `CI_REDIS_IMAGE`, with a password), on loopback ports the kernel picks and with passwords generated for that build. Nothing is shared, so builds cannot collide and there is no secret to store. `ci-services.sh up` writes the addresses to `.env.ci` (`DATABASE_URL`, `SYNC_DATABASE_URL`, `TEST_DATABASE_URL`, `REDIS_URL`, `TEST_REDIS_URL`, and the password apart in `REDIS_PASSWORD`, as the API wants it), which the pipeline reads back into the environment of every later stage.
 - **Migrations.** `scripts/migrate.sh`: the `geodata` chain, then the `app` chain.
 - **API tests.** `scripts/test-coverage.sh`: 100 % of the suite and of the changed lines.
 - **Vision tests.** `jenkins/vision-coverage.sh`: the 100 % gate of `services/vision/pyproject.toml`.
@@ -61,7 +64,7 @@ On a machine with Docker, exactly as a build does:
 ```bash
 bash jenkins/prepare-jenkins-deps.sh --check
 bash jenkins/ci-services.sh up                  # PostgreSQL and Redis in containers, writes .env.ci
-set -a; . ./.env.ci; set +a                     # DATABASE_URL, SYNC_DATABASE_URL, TEST_DATABASE_URL, REDIS_URL, TEST_REDIS_URL
+set -a; . ./.env.ci; set +a                     # DATABASE_URL, SYNC_DATABASE_URL, TEST_DATABASE_URL, REDIS_URL, TEST_REDIS_URL, REDIS_PASSWORD
 export ENVIRONMENT=development CI=true
 bash scripts/migrate.sh
 bash scripts/test-coverage.sh                   # API

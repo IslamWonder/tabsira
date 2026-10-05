@@ -2110,6 +2110,12 @@ export interface components {
     ChatOut: {
       /** Enabled */
       enabled: boolean;
+      /**
+       * Closed
+       * @description «تمّ» closed the insight: its messages stay, no new question
+       * @default false
+       */
+      closed: boolean;
       /** Used */
       used: number;
       /** Limit */
@@ -2604,8 +2610,11 @@ export interface components {
       | 'NEEDS_CLARIFICATION'
       | 'NO_RELEVANT_EVIDENCE'
       | 'SOURCE_UNAVAILABLE'
+      | 'CORPUS_UNAVAILABLE'
+      | 'RETRIEVAL_ERROR'
       | 'PAIR_INCOMPLETE'
       | 'CHAT_LIMIT_REACHED'
+      | 'CHAT_CLOSED'
       | 'SAVE_FAILED'
       | 'PUBLISH_FAILED'
       | 'STORAGE_UNAVAILABLE'
@@ -2653,6 +2662,11 @@ export interface components {
       relation_label: string;
       /** Matched On */
       matched_on: string;
+      /**
+       * Link
+       * @description «وجه الصلة»: how the text's own meaning meets the scene, as the checker found it
+       */
+      link?: string | null;
     };
     /** ExplanationOut */
     ExplanationOut: {
@@ -4467,7 +4481,11 @@ export interface components {
      * @description What a finished scan found (v2 §8 and §26): insights, a question, or no reliable link.
      * @enum {string}
      */
-    ScanOutcome: 'insights' | 'needs_clarification' | 'no_relevant_evidence';
+    ScanOutcome:
+      | 'insights'
+      | 'needs_clarification'
+      | 'no_relevant_evidence'
+      | 'incomplete_evidence_pair';
     /**
      * ScanSource
      * @enum {string}

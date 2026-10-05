@@ -43,7 +43,7 @@ function Invitation() {
       aria-labelledby="public-insight-call"
       className="glass flex flex-col gap-3 rounded-[var(--radius-panel)] p-5"
     >
-      <h2 id="public-insight-call" className="m-0 font-bold text-[1.375rem] text-fg">
+      <h2 id="public-insight-call" className="m-0 font-bold text-subheading text-fg">
         {T.callTitle}
       </h2>
       <p className="m-0 text-fg-soft leading-[1.9]">{T.callBody}</p>
@@ -75,7 +75,7 @@ export function PublicInsightPage({ insight }: { insight: PublicInsight }) {
           <div className="flex flex-wrap items-center gap-2">
             <Chip>{insight.relation_label}</Chip>
           </div>
-          <h1 className="m-0 font-bold font-display text-[2rem] text-gilded leading-[1.3] tablet:text-[2.5rem]">
+          <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
             {insight.title}
           </h1>
           <p className="m-0 text-[1.0625rem] text-fg-soft leading-[1.85] tablet:text-lg">

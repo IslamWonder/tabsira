@@ -145,7 +145,8 @@ export function LearnedInsight({ id, onGoTo }: { id: string; onGoTo: () => void 
           <Button variant="secondary" onClick={onGoTo} className="flex-1">
             {M.goTo}
           </Button>
-          {insight.chat.enabled ? (
+          {/* A completed insight's conversation is closed; nothing to offer then. */}
+          {insight.chat.enabled && !insight.chat.closed ? (
             <LinkButton href={insightHref(insight.id)} variant="ghost" className="flex-1">
               {M.chat}
             </LinkButton>

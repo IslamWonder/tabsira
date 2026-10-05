@@ -100,6 +100,22 @@
   --radius-panel: 22px;
   --radius-card: 16px;
 
+  /*
+   * The type scale: every page title, section heading and sub-heading takes
+   * one of these, so two screens never disagree on the size of the same rank.
+   * Body text stays at the base size set on <body>. `title` is the page's h1
+   * on a phone, `title-lg` the same h1 from tablet up; `heading` is the
+   * smallest size the display face may take (24 px, src/theme/typography.test.ts).
+   */
+  --text-title: 1.75rem;
+  --text-title--line-height: 1.35;
+  --text-title-lg: 2rem;
+  --text-title-lg--line-height: 1.35;
+  --text-heading: 1.5rem;
+  --text-heading--line-height: 1.4;
+  --text-subheading: 1.25rem;
+  --text-subheading--line-height: 1.5;
+
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
   --animate-breathe: breathe 2.4s ease-in-out 2;

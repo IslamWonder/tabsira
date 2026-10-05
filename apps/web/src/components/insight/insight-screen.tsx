@@ -31,7 +31,6 @@ import { PhotoPlaceholder } from './photo-placeholder';
 import { NO_TARGETS, type PublishTargets, ShareSheet } from './share-sheet';
 import { StepCard } from './step-card';
 import { type PhotoView, useInsight } from './use-insight';
-import { useInsightSound } from './use-insight-sound';
 import { WhySheet } from './why-sheet';
 
 const T = messages.insightPage;
@@ -89,7 +88,6 @@ export function InsightScreen({
 }) {
   const controls = useInsight(insightId);
   const { load, photo, step, finish } = controls;
-  useInsightSound(load.phase === 'ready' ? load.insight : null);
   const [whyOpen, setWhyOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -236,7 +234,8 @@ export function InsightScreen({
         open={chatOpen}
         onClose={() => setChatOpen(false)}
         insightTitle={insight.title}
-        chat={chat}
+        // Completing the insight closes the discussion at once; the server says the same on the next load.
+        chat={finish.status === 'done' ? { ...chat, closed: true } : chat}
         onAsk={controls.ask}
       />
     </>

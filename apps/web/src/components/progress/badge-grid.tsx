@@ -44,7 +44,7 @@ export function BadgeGrid({ badges }: { badges: readonly Badge[] }) {
   return (
     <GlassPanel as="section" aria-labelledby="practice-badges" className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 id="practice-badges" className="m-0 font-bold font-display text-[1.5rem] text-fg">
+        <h2 id="practice-badges" className="m-0 font-bold font-display text-heading text-fg">
           {M.title}
         </h2>
         <span className="text-fg-soft text-sm">{M.count(earned, badges.length)}</span>

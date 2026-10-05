@@ -4760,6 +4760,12 @@
             "type": "boolean",
             "title": "Enabled"
           },
+          "closed": {
+            "type": "boolean",
+            "title": "Closed",
+            "description": "«تمّ» closed the insight: its messages stay, no new question",
+            "default": false
+          },
           "used": {
             "type": "integer",
             "title": "Used"
@@ -5790,8 +5796,11 @@
           "NEEDS_CLARIFICATION",
           "NO_RELEVANT_EVIDENCE",
           "SOURCE_UNAVAILABLE",
+          "CORPUS_UNAVAILABLE",
+          "RETRIEVAL_ERROR",
           "PAIR_INCOMPLETE",
           "CHAT_LIMIT_REACHED",
+          "CHAT_CLOSED",
           "SAVE_FAILED",
           "PUBLISH_FAILED",
           "STORAGE_UNAVAILABLE",
@@ -5881,6 +5890,18 @@
           "matched_on": {
             "type": "string",
             "title": "Matched On"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link",
+            "description": "«وجه الصلة»: how the text's own meaning meets the scene, as the checker found it"
           }
         },
         "type": "object",
@@ -10247,7 +10268,12 @@
       },
       "ScanOutcome": {
         "type": "string",
-        "enum": ["insights", "needs_clarification", "no_relevant_evidence"],
+        "enum": [
+          "insights",
+          "needs_clarification",
+          "no_relevant_evidence",
+          "incomplete_evidence_pair"
+        ],
         "title": "ScanOutcome",
         "description": "What a finished scan found (v2 §8 and §26): insights, a question, or no reliable link."
       },

@@ -64,6 +64,7 @@ def quran(surah: int = 30, ayah: int = 50, **values: Any) -> EvidenceRef:
         relation=values.get("relation", RelationType.DIRECT),
         retrieval_score=0.8,
         matched_on=values.get("matched_on", "إحياء الأرض"),
+        link=values.get("link", "يذكر النص إحياء الأرض بالماء"),
     )
 
 

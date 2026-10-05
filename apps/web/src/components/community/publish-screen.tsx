@@ -196,7 +196,9 @@ export function PublishScreen() {
         {C.back}
       </Link>
       <header className="flex flex-col gap-2">
-        <h1 className="m-0 font-bold font-display text-[2rem] text-gilded">{P.title}</h1>
+        <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
+          {P.title}
+        </h1>
         <p className="m-0 text-fg-soft leading-[1.85]">{P.lead}</p>
       </header>
 
@@ -241,7 +243,10 @@ export function PublishScreen() {
       {post !== null && !withdrawn ? (
         <div className="flex flex-col gap-5">
           <div role="status" className="empty:hidden">
-            {notice === null ? null : <Notice tone="success">{notice}</Notice>}
+            {notice ===
+            null ? /* v8 ignore next: a post exists only after a call that set its notice; null only satisfies the type */ null : (
+              <Notice tone="success">{notice}</Notice>
+            )}
           </div>
           {editing ? (
             <GlassPanel ornate className="tablet:p-7">
@@ -257,7 +262,7 @@ export function PublishScreen() {
             </GlassPanel>
           ) : (
             <>
-              <h2 className="m-0 font-semibold text-[1.25rem] text-fg">{P.preview}</h2>
+              <h2 className="m-0 font-semibold text-subheading text-fg">{P.preview}</h2>
               <PostCard
                 post={post}
                 variant="full"

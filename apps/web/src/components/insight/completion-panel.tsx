@@ -9,6 +9,8 @@ import { GlassPanel } from '@/components/ui/glass-panel';
 import { Notice } from '@/components/ui/notice';
 import type { Completion, Progress } from '@/lib/scan/api';
 import { messages } from '@/messages';
+import { markEngaged } from '@/pwa/install';
+import { ENGAGED_EVENT } from '@/pwa/use-install';
 import { PlaceReveal } from './place-reveal';
 
 const T = messages.completion;
@@ -67,13 +69,16 @@ export function CompletionPanel({
     const element = region.current as HTMLElement;
     element.focus({ preventScroll: true });
     element.scrollIntoView({ block: 'center' });
+    // A finished insight is the moment the app may be offered for the home screen.
+    markEngaged();
+    window.dispatchEvent(new Event(ENGAGED_EVENT));
   }, []);
 
   return (
     <div className="flex flex-col gap-4">
       <section ref={region} aria-labelledby={titleId} tabIndex={-1} className="outline-none">
         <GlassPanel ornate tone="primary" className="flex flex-col gap-4">
-          <h2 id={titleId} className="m-0 font-bold font-display text-[1.5rem] text-gilded">
+          <h2 id={titleId} className="m-0 font-bold font-display text-heading text-gilded">
             {T.title}
           </h2>
 

@@ -58,6 +58,17 @@ export function CameraIcon(props: IconProps) {
   );
 }
 
+/** A framed picture, a hill and a sun: a photo already on the device. */
+export function GalleryIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <circle cx="9" cy="9.5" r="1.8" />
+      <path d="m21 16-5-5-9 9" />
+    </Icon>
+  );
+}
+
 /** Two arrows turning around the lens: the other camera of the device. */
 export function SwitchCameraIcon(props: IconProps) {
   return (

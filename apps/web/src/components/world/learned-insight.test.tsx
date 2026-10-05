@@ -11,7 +11,7 @@ describe('LearnedInsight', () => {
         body: insightOut({
           id: '9001',
           quran: null,
-          chat: { enabled: false, used: 0, limit: 3, remaining: 3, messages: [] },
+          chat: { enabled: true, closed: true, used: 0, limit: 3, remaining: 3, messages: [] },
         }),
       },
     });

@@ -15,10 +15,7 @@ export function RankCard({ rank }: { rank: Progress['rank'] }) {
     <GlassPanel as="section" ornate aria-labelledby="practice-rank" className="flex flex-col gap-3">
       <p className="m-0 text-[var(--step-title)] text-sm">{M.label}</p>
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
-        <h2
-          id="practice-rank"
-          className="m-0 font-bold font-display text-[2rem] text-gilded leading-[1.3]"
-        >
+        <h2 id="practice-rank" className="m-0 font-bold font-display text-title text-gilded">
           {rank.title}
         </h2>
         <span className="text-fg-soft text-sm">{M.looks(rank.looks)}</span>

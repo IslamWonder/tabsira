@@ -145,7 +145,7 @@ export const WORLD_UNDER_FOG: World = {
   reveals: [],
 };
 
-/** Right after a first «تمّ» elsewhere: one reveal the world has not played yet. */
+/** Right after a first completion elsewhere: one reveal the world has not played yet. */
 export const WORLD_JUST_LEARNED: World = {
   ...WORLD,
   places: [PLACE_ONE],

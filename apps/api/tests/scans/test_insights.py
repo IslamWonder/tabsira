@@ -49,6 +49,7 @@ async def test_an_insight_shows_its_verse_exactly_as_stored_and_waits_for_its_ha
         "relation": "direct",
         "relation_label": "صلة مباشرة",
         "matched_on": "إحياء الأرض",
+        "link": None,
     }
     assert body["hadith"] is None
     assert body["hadith_status"] == "awaiting_verification"
@@ -61,7 +62,14 @@ async def test_an_insight_shows_its_verse_exactly_as_stored_and_waits_for_its_ha
         {"section": "seen", "label": "ما ظهر", "text": "قطرات على ورق نبتة."}
     ]
     assert body["label"] is None
-    assert body["chat"] == {"enabled": True, "used": 0, "limit": 3, "remaining": 3, "messages": []}
+    assert body["chat"] == {
+        "enabled": True,
+        "used": 0,
+        "limit": 3,
+        "remaining": 3,
+        "closed": False,
+        "messages": [],
+    }
     assert body["learning_unit"]["domain_id"] == "T01"
     assert body["image"] == {
         "sensitive": False,

@@ -29,6 +29,9 @@ CONF_SRC="$REPO_ROOT/nginx/local/$SITE.conf"
 SITES_AVAILABLE="/etc/nginx/sites-available/$SITE.conf"
 SITES_ENABLED="/etc/nginx/sites-enabled/$SITE.conf"
 
+if is_macos; then
+	exec bash "$SCRIPT_DIR/setup-nginx-local-macos.sh"
+fi
 is_linux || die "this script configures a Debian or Ubuntu nginx; on another system add the three hosts to your own proxy"
 require_sudo
 [[ -f "$CONF_SRC" ]] || die "$CONF_SRC is missing"

@@ -96,6 +96,17 @@ Kept from the earlier prototype's look: the eight-point star mark beside the gil
 
 Desktop interactions: every action reachable by keyboard with visible focus; hover may change colour or reveal a tooltip but never moves or resizes anything; drag-and-drop has a button equivalent.
 
+### Capture first, one type scale, one scroller (added 5 October 2026)
+
+The owners asked for the capture to be the core of the first screen and for the text to be smaller and the same everywhere (decision 62).
+
+- **Scene on a phone.** The rain photo takes the top 62 % of the screen and fades into the page; «المس البصيرة التي لفتتك» sits above the fade, and the capture card rises from it: «صوّر مشهدك أنت», a one-line promise, «التقط صورة» (the one glowing call, Von Restorff) and «اختر صورة» side by side (Hick: two ways in), and the privacy line. The page scrolls only to the footer. The title stays for screen readers.
+- **Scene from tablet up.** Title, promise, the insights as a list, then the same capture card, which also takes a dropped photo (said only to a fine pointer).
+- **Camera sheet.** Viewfinder 3∶4 on a phone (4∶3 from tablet up) with corner marks and one line «وجّه الكاميرا إلى ما لفتك، ثم التقط.»; «أغلق الكاميرا» on the viewfinder; under it the 76 px shutter in the middle, the gallery on the start side and the other camera on the end side. No live camera: the summoning circle, the reason, then «التقط بالكاميرا» (the phone's camera app) and «اختر صورة» as two full-width buttons.
+- **Sending and analysis.** The sending sheet turns the summoning circle while the photo travels. On the scan screen, until the verdict, the circle turns where the photo will be under a sweep of light; on a phone the panel (title, honest stages, results) is a glass card rising from the photo's foot.
+- **Type scale.** Page title `text-title` 28 px, from tablet `text-title-lg` 32 px; display section heading `text-heading` 24 px (the smallest size of Reem Kufi); interface section heading `text-subheading` 20 px; body 17 px. Quran and hadith sizes are not part of the scale and did not change.
+- **One scroller.** Beside a photo (scene, analysis, camera discovery) or a map (atlas, place), the panel flows with the page and the photo or the map is pinned under the top bar; no panel scrolls inside itself.
+
 ### Game feel: a AAA, Final Fantasy–grade experience (added 4 October 2026)
 
 The owners' target: TABSIRA must feel like a AAA game production — gamified, immersive, cinematic — applied to a social network of meanings, and visibly better than the earlier prototype, whose look («Final Fantasy with a noble cause»: Islamic geometry, gold light, honest game feel) is the starting point. Direction C and the light theme stay the colour systems; this section sets the craft level.

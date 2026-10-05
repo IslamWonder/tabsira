@@ -59,6 +59,18 @@ describe('the atlas entry page metadata', () => {
   });
 });
 
+describe('the atlas entry page for an entry that cannot be shown', () => {
+  it('renders the screen without article data for a gone entry or a malformed id', async () => {
+    mockApi({ [`GET /atlas/entries/${ENTRY.id}`]: apiError(410, 'GONE') });
+    const gone = render(await AtlasEntryPage(params({ id: ENTRY.id })));
+    expect(gone.container.querySelector('script[type="application/ld+json"]')).toBeNull();
+    cleanup();
+    mockApi({});
+    const malformed = render(await AtlasEntryPage(params({ id: 'x' })));
+    expect(malformed.container.querySelector('script[type="application/ld+json"]')).toBeNull();
+  });
+});
+
 describe('the atlas place page metadata', () => {
   it('names the place while it has an entry, and hides it otherwise', async () => {
     mockApi({ 'GET /atlas/places/2464470': { body: PLACE_PAGE } });
@@ -77,6 +89,12 @@ describe('the atlas place page metadata', () => {
   it('renders the place screen for a valid id', async () => {
     mockApi({});
     render(await AtlasPlacePage(params({ id: '2464470' })));
+    expect(screen.getByText('نحمّل المكان…')).toBeInTheDocument();
+  });
+
+  it('still renders the place screen for a malformed id, which it never looks up', async () => {
+    mockApi({});
+    render(await AtlasPlacePage(params({ id: 'x' })));
     expect(screen.getByText('نحمّل المكان…')).toBeInTheDocument();
   });
 });

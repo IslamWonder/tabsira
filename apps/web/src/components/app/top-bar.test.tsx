@@ -52,6 +52,14 @@ describe('TopBar', () => {
     expect(screen.getByRole('link', { name: 'دخول' })).toHaveAttribute('href', '/signin');
   });
 
+  it('offers signing in as a secondary button, with no second sign-up button', () => {
+    render(<TopBar />);
+    const signIn = screen.getByRole('link', { name: 'دخول' });
+    expect(signIn.className).toContain('border-[1.5px]');
+    expect(signIn.className).not.toContain('fill-');
+    expect(screen.queryByRole('link', { name: 'أنشئ حسابًا' })).toBeNull();
+  });
+
   it('drops the sign-in link once the API says someone is signed in', async () => {
     mockApi({ 'GET /auth/me': { body: USER } });
     pathname.value = '/signin';

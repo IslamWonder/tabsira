@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { messages } from '@/messages';
 import { apiError, mockApi, type Route } from '@/test/api';
 import { USER } from '@/test/fixtures';
 import { IDENTITY, POST, PROFILE, page } from '@/test/social';
@@ -109,5 +110,132 @@ describe('ProfileScreen', () => {
     });
     render(<ProfileScreen handle="rain_reader" />);
     expect((await screen.findAllByRole('alert'))[0]).toHaveTextContent(/تعذّر الوصول/);
+  });
+
+  it('asks an unverified account to verify before following, unless it already follows', async () => {
+    member({ 'GET /auth/me': { body: { ...USER, email_verified: false } } });
+    render(<ProfileScreen handle="rain_reader" />);
+    expect(await screen.findByText(messages.community.profile.verify)).toBeInTheDocument();
+  });
+
+  it('lets an unverified account who already follows unfollow', async () => {
+    member({
+      'GET /auth/me': { body: { ...USER, email_verified: false } },
+      'GET /u/rain_reader': { body: { ...PROFILE, viewer: { follows: true, is_self: false } } },
+    });
+    render(<ProfileScreen handle="rain_reader" />);
+    expect(await screen.findByRole('button', { name: 'تتابعه' })).toBeInTheDocument();
+  });
+
+  it('says when following fails and keeps the button as it was', async () => {
+    member({ 'PUT /u/rain_reader/follow': apiError(500, 'INTERNAL') });
+    render(<ProfileScreen handle="rain_reader" />);
+    const follow = await screen.findByRole('button', { name: 'تابع' });
+    await waitFor(() => expect(follow).toBeEnabled());
+    await userEvent.click(follow);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'تابع' })).toBeInTheDocument();
+  });
+
+  it('asks again when the retry is pressed', async () => {
+    let calls = 0;
+    member({
+      'GET /u/rain_reader': () => {
+        calls += 1;
+        return calls === 1
+          ? apiError(500, 'INTERNAL')
+          : { body: { ...PROFILE, viewer: { follows: false, is_self: false } } };
+      },
+    });
+    render(<ProfileScreen handle="rain_reader" />);
+    await userEvent.click(await screen.findByRole('button', { name: 'أعد المحاولة' }));
+    expect(await screen.findByRole('heading', { level: 1, name: '[اسم عام]' })).toBeInTheDocument();
+  });
+
+  it('says when the member published nothing', async () => {
+    member({ 'GET /u/rain_reader/posts': { body: page([], null, 'no_posts') } });
+    render(<ProfileScreen handle="rain_reader" />);
+    expect(await screen.findByText(messages.community.profile.noPosts)).toBeInTheDocument();
+  });
+
+  it('closes the «more» and block sheets without blocking', async () => {
+    member();
+    render(<ProfileScreen handle="rain_reader" />);
+    const header = await screen.findByRole('region', { name: '[اسم عام]' });
+    await userEvent.click(within(header).getByRole('button', { name: 'المزيد' }));
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'احجب [اسم عام]' })).toBeNull()
+    );
+    await userEvent.click(within(header).getByRole('button', { name: 'المزيد' }));
+    await userEvent.click(screen.getByRole('button', { name: 'احجب [اسم عام]' }));
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('heading', { level: 1, name: '[اسم عام]' })).toBeInTheDocument();
+  });
+
+  async function blockFromCard(posts: (typeof POST)[]) {
+    member({
+      'GET /u/rain_reader/posts': { body: page(posts) },
+      'PUT /blocks/other_one': { status: 204 },
+    });
+    render(<ProfileScreen handle="rain_reader" />);
+    await screen.findByRole('heading', { level: 3, name: '[عنوان البصيرة]' });
+    await userEvent.click(screen.getAllByRole('button', { name: 'المزيد' }).at(-1) as HTMLElement);
+    await userEvent.click(screen.getByRole('button', { name: /^احجب/ }));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'احجب' }));
+  }
+
+  it('keeps the profile when the author blocked from a card is somebody else', async () => {
+    const byOther = { ...POST, author: { handle: 'other_one', public_name: '[عضو آخر]' } };
+    await blockFromCard([byOther]);
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { level: 3, name: '[عنوان البصيرة]' })).toBeNull()
+    );
+    expect(screen.getByRole('heading', { level: 1, name: '[اسم عام]' })).toBeInTheDocument();
+  });
+
+  it('shows the blocked notice when the author blocked from a card is the profile itself', async () => {
+    member({
+      'PUT /blocks/rain_reader': { status: 204 },
+    });
+    render(<ProfileScreen handle="rain_reader" />);
+    await screen.findByRole('heading', { level: 3, name: '[عنوان البصيرة]' });
+    const cardMore = screen.getAllByRole('button', { name: 'المزيد' }).at(-1) as HTMLElement;
+    await userEvent.click(cardMore);
+    await userEvent.click(screen.getByRole('button', { name: /^احجب/ }));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'احجب' }));
+    expect(await screen.findByText(/حجبت هذا العضو/)).toBeInTheDocument();
+  });
+
+  it('ignores an answer that arrives after the page moved on', async () => {
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const api = member({
+      'GET /u/rain_reader': async () => {
+        await held;
+        return { body: PROFILE };
+      },
+      'GET /u/other_one': { body: { ...PROFILE, handle: 'other_one', public_name: '[آخر]' } },
+      'GET /u/other_one/posts': { body: page([]) },
+    });
+    const { rerender } = render(<ProfileScreen handle="rain_reader" />);
+    await waitFor(() =>
+      expect(api.requests.some((r) => r.url.endsWith('/u/rain_reader'))).toBe(true)
+    );
+    rerender(<ProfileScreen handle="other_one" />);
+    expect(await screen.findByRole('heading', { level: 1, name: '[آخر]' })).toBeInTheDocument();
+    release();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.getByRole('heading', { level: 1, name: '[آخر]' })).toBeInTheDocument();
+  });
+});
+
+describe('formatMonth', () => {
+  it('falls back to January 1970 for a missing part', () => {
+    expect(formatMonth('2026')).toBe(formatMonth('2026-01'));
+    expect(formatMonth('')).toBe(formatMonth('0-01'));
   });
 });

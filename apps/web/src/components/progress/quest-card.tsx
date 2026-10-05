@@ -24,7 +24,7 @@ export function QuestCard({ quest }: { quest: Progress['daily_quest'] }) {
   return (
     <GlassPanel as="section" aria-labelledby="practice-quest" className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 id="practice-quest" className="m-0 font-bold font-display text-[1.5rem] text-fg">
+        <h2 id="practice-quest" className="m-0 font-bold font-display text-heading text-fg">
           {quest.title}
         </h2>
         <Chip tone={quest.done ? 'primary' : 'neutral'}>{quest.done ? M.done : M.pending}</Chip>

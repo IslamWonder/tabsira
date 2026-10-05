@@ -97,7 +97,7 @@ export function EntryScreen({ entryId }: { entryId: string }) {
                   {A.card.publishedAt(formatDay(load.entry.published_on))}
                 </time>
               </div>
-              <h1 className="m-0 font-bold font-display text-[2rem] text-gilded leading-[1.3]">
+              <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
                 {load.entry.title}
               </h1>
               <p className="m-0 text-[1.0625rem] text-fg-soft leading-[1.85]">

@@ -4,14 +4,14 @@
 
 The night and day themes, the AAA game feel, the logo everywhere, phone to desktop, installable as an app.
 
-| Step                                                         | Status | Notes                          |
-| ------------------------------------------------------------ | ------ | ------------------------------ |
-| Logo cleaned and used everywhere, icons and share image      | ✅     | Deep gold by day for contrast. |
-| Responsive shell, both themes, motion that respects settings | ✅     |                                |
-| Large headings in Reem Kufi only, readable text elsewhere    | ✅     |                                |
-| Accessibility checks clean                                   | ✅     |                                |
-| Installable app and offline page                             | ✅     |                                |
-| Landing page from the owners' landing prompt                 | ✅     | Stand-in feature pictures.     |
+| Step                                                         | Status | Notes                                                                                                          |
+| ------------------------------------------------------------ | ------ | -------------------------------------------------------------------------------------------------------------- |
+| Logo cleaned and used everywhere, icons and share image      | ✅     | Deep gold by day for contrast.                                                                                 |
+| Responsive shell, both themes, motion that respects settings | ✅     |                                                                                                                |
+| Large headings in Reem Kufi only, readable text elsewhere    | ✅     |                                                                                                                |
+| Accessibility checks clean                                   | ✅     |                                                                                                                |
+| Installable app and offline page                             | ✅     | Install offer after a first «تمّ», iPhone steps, «ملفي» › التطبيق, update notice, icon shortcuts (2026-10-05). |
+| Landing page from the owners' landing prompt                 | ✅     | Stand-in feature pictures.                                                                                     |
 
 **How we check it**
 

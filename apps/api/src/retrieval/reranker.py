@@ -134,10 +134,10 @@ class LlmRanking(BaseModel):
 
 LLM_RERANK_SYSTEM = (
     "You rank search results for an Arabic app about the Quran and the Sunnah. "
-    "Given a concept query and numbered passages (folded Arabic text followed by topic "
-    "keywords), give every passage a relevance from 0 (unrelated) to 10 (states the concept "
-    "directly). Judge meaning, not shared words. Answer with the numbers only; never copy "
-    "or quote any passage."
+    "Given one Arabic sentence that states a meaning and numbered passages (folded Arabic "
+    "text followed by topic keywords), give every passage a relevance from 0 (unrelated) to "
+    "10 (its own meaning states that meaning directly). Judge meaning and its direction, not "
+    "shared words. Answer with the numbers only; never copy or quote any passage."
 )
 
 

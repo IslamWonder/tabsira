@@ -73,7 +73,16 @@ describe('MeScreen signed in', () => {
       within(nav)
         .getAllByRole('link')
         .map((link) => link.getAttribute('href'))
-    ).toEqual(['#account', '#about', '#identity', '#settings', '#practice', '#data', '#cookies']);
+    ).toEqual([
+      '#account',
+      '#about',
+      '#identity',
+      '#settings',
+      '#practice',
+      '#app',
+      '#data',
+      '#cookies',
+    ]);
     await userEvent.click(screen.getByRole('button', { name: 'اخرج' }));
     expect(await screen.findByText('خرجت من حسابك على هذا الجهاز.')).toBeInTheDocument();
     expect(readSession()).toEqual({ status: 'guest' });

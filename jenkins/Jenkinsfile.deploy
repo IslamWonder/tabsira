@@ -5,7 +5,12 @@
 //
 // deploy/deploy.sh does the rest (dependencies, migrations, web build, one
 // process at a time, health gate, rollback on failure). Nothing is built on
-// the Jenkins agent. The job is created by jenkins/apply-jobs.sh.
+// the Jenkins agent.
+//
+// The job holds this file inline (jenkins/tabsira-deploy.xml.tmpl), like the
+// other deploy jobs on the controller, so it clones nothing and needs no access
+// to the repository. A change here reaches Jenkins by running
+// jenkins/apply-jobs.sh; the parameters below must match the template's.
 //
 // Parameters left blank fall back to the global SITES_* variables, then to the
 // defaults below. The ssh key is the shared `jenkins-ssh-deploy-devops` credential.
@@ -63,7 +68,7 @@ pipeline {
                 -o StrictHostKeyChecking=accept-new \
                 -o ConnectTimeout=15 \
                 -o ServerAliveInterval=30 \
-                "$TARGET_USER@$TARGET_HOST" "DEPLOY_ARGS='$DEPLOY_ARGS' bash -s" <<'REMOTE'
+                "$TARGET_USER@$TARGET_HOST" "DEPLOY_ARGS='$DEPLOY_ARGS' DRY_RUN='$DRY_RUN' bash -s" <<'REMOTE'
 set -euo pipefail
 # A non-interactive ssh session reads no profile: put the user's toolchain on the PATH.
 export PATH="$HOME/.local/bin:$PATH"
@@ -72,7 +77,9 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 cd /opt/tabsira
 command -v nvm >/dev/null && nvm use --silent >/dev/null
-git pull --ff-only
+# The clone is the application: a dry run must leave it alone, so only a real
+# deploy pulls (deploy.sh resets it to origin/main again, and runs its latest self).
+[ "$DRY_RUN" = true ] || git pull --ff-only
 # shellcheck disable=SC2086  # the parts are words checked by the job
 ./deploy/deploy.sh $DEPLOY_ARGS
 REMOTE

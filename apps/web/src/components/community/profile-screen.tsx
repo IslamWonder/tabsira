@@ -35,6 +35,7 @@ type Load =
 /** `YYYY-MM` as a month name and a year in the site's language, Western digits. */
 export function formatMonth(joined: string): string {
   const [year, month] = joined.split('-').map(Number);
+  /* v8 ignore next 3: `year` is never undefined, split always yields a first part; the fallback only satisfies the index type */
   return new Intl.DateTimeFormat(siteLanguage.intl, { month: 'long', year: 'numeric' }).format(
     new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, 1))
   );
@@ -185,7 +186,7 @@ export function ProfileScreen({ handle }: { handle: string }) {
               <div className="flex min-w-0 flex-col gap-1">
                 <h1
                   id={headingId}
-                  className="m-0 font-bold font-display text-[2rem] text-gilded leading-[1.25]"
+                  className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg"
                 >
                   {load.profile.public_name}
                 </h1>
@@ -218,7 +219,7 @@ export function ProfileScreen({ handle }: { handle: string }) {
             {isSelf ? <p className="m-0 text-[0.875rem] text-fg-muted">{P.you}</p> : null}
           </GlassPanel>
           <section aria-label={P.posts} className="flex flex-col gap-4">
-            <h2 className="m-0 font-semibold text-[1.25rem] text-fg">{P.posts}</h2>
+            <h2 className="m-0 font-semibold text-subheading text-fg">{P.posts}</h2>
             <FeedList
               pages={pages}
               emptyText={() => P.noPosts}

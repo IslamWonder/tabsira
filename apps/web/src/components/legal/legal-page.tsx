@@ -54,7 +54,7 @@ export function LegalPage({ document, seo }: LegalPageProps) {
         className="motion-safe:animate-fade-in mx-auto w-full max-w-[46rem] p-5 tablet:p-8"
       >
         <header className="flex flex-col gap-3">
-          <h1 className="m-0 font-bold text-[2rem] text-gilded tablet:text-[2.5rem]">
+          <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
             {document.title}
           </h1>
           <p className="m-0 flex flex-wrap items-center gap-2 text-fg-soft text-sm">
@@ -90,7 +90,7 @@ export function LegalPage({ document, seo }: LegalPageProps) {
             >
               <h2
                 id={`${section.id}-title`}
-                className="m-0 mb-3 font-bold font-sans text-[1.375rem] text-fg"
+                className="m-0 mb-3 font-bold font-sans text-subheading text-fg"
               >
                 {section.heading}
               </h2>

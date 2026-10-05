@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncIterator
+from dataclasses import replace
 from typing import Any
 
 import httpx
 import pytest
 import pytest_asyncio
 from sqlalchemy import select, update
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.ai.errors import AiCallError, AiErrorCode
 from src.ai.records import CallLog
@@ -39,6 +41,8 @@ from src.scans import buffer, progress, workflow
 from src.scans.engines import DemoEngine, EngineDeps
 from src.scans.workflow import ScanServices, apply_focus, run_scan
 from src.scripture.text import search_copy
+from src.storage.base import ObjectNotFoundError
+from src.storage.sounds import SoundStore
 from tests.fakes import FakeModelClient
 from tests.scans.builders import entity, proposed, scan_row, scene
 from tests.scans.conftest import DATA, photo
@@ -243,6 +247,75 @@ async def test_a_scan_runs_through_every_stage_and_saves_its_insights(
     assert done["run"] == 1
 
 
+class OneSound(SoundStore):
+    """A store holding one sound, E001."""
+
+    def __init__(self) -> None:
+        super().__init__(bucket="", client=None, root=None)  # type: ignore[arg-type]
+
+    async def get(self, entity_id: str) -> bytes:
+        if entity_id != "E001":
+            raise ObjectNotFoundError("none")
+        return b"ID3"
+
+
+async def test_the_scenes_sound_is_announced_once_the_scene_is_understood(
+    store, redis, http, flow_settings, monkeypatch
+):
+    scan_id = await new_scan(store, redis)
+    asked: list[tuple[str | None, bool]] = []
+
+    async def matched(_db, _scene, *, focus_id, clarified):
+        asked.append((focus_id, clarified))
+        return ["E009", "E001"]
+
+    monkeypatch.setattr(workflow, "candidate_entities", matched)
+    engine = StaticEngine(EngineResult(status=EngineStatus.OK, insights=[proposed()]))
+    services, _ = services_for(store, redis, http, flow_settings, engine)
+
+    await run_scan(replace(services, sounds=OneSound()), scan_id, 1)
+
+    published = await events(redis, scan_id)
+    assert published[2] == ("sound", {"run": 1, "url": "/sounds/ontology/E001"})
+    assert [name for name, _ in published[:2]] == ["stage", "stage"]
+    assert asked == [(None, False)]
+
+
+async def test_a_scene_without_a_stored_sound_announces_none(
+    store, redis, http, flow_settings, monkeypatch
+):
+    scan_id = await new_scan(store, redis)
+
+    async def matched(_db, _scene, *, focus_id, clarified):
+        return ["E009"]
+
+    monkeypatch.setattr(workflow, "candidate_entities", matched)
+    engine = StaticEngine(EngineResult(status=EngineStatus.OK, insights=[proposed()]))
+    services, _ = services_for(store, redis, http, flow_settings, engine)
+
+    await run_scan(replace(services, sounds=OneSound()), scan_id, 1)
+
+    assert "sound" not in [name for name, _ in await events(redis, scan_id)]
+
+
+async def test_a_failed_sound_lookup_never_stops_the_scan(
+    store, redis, http, flow_settings, monkeypatch
+):
+    scan_id = await new_scan(store, redis)
+
+    async def broken(_db, _scene, *, focus_id, clarified):
+        raise SQLAlchemyError("down")
+
+    monkeypatch.setattr(workflow, "candidate_entities", broken)
+    engine = StaticEngine(EngineResult(status=EngineStatus.OK, insights=[proposed()]))
+    services, _ = services_for(store, redis, http, flow_settings, engine)
+
+    await run_scan(replace(services, sounds=OneSound()), scan_id, 1)
+
+    assert (await the_scan(store, scan_id)).status is ScanStatus.DONE
+    assert "sound" not in [name for name, _ in await events(redis, scan_id)]
+
+
 async def test_a_sensitive_scene_drops_its_photo_at_once_and_keeps_its_meaning(
     store, redis, http, flow_settings
 ):
@@ -357,6 +430,8 @@ async def test_a_photo_that_left_the_store_fails_as_a_missing_asset(
     [
         (EngineResult(status=EngineStatus.SOURCE_UNAVAILABLE), "SOURCE_UNAVAILABLE"),
         (EngineResult(status=EngineStatus.MODEL_UNAVAILABLE), "MODEL_UNAVAILABLE"),
+        (EngineResult(status=EngineStatus.CORPUS_UNAVAILABLE), "CORPUS_UNAVAILABLE"),
+        (EngineResult(status=EngineStatus.RETRIEVAL_ERROR), "RETRIEVAL_ERROR"),
         (AiCallError(AiErrorCode.RATE_LIMITED, "busy"), "MODEL_UNAVAILABLE"),
         (RuntimeError("bug"), "INTERNAL_ERROR"),
     ],
@@ -411,6 +486,11 @@ async def test_an_engine_that_cannot_answer_fails_the_scan_with_its_code(
             None,
         ),
         (
+            EngineResult(status=EngineStatus.INCOMPLETE_EVIDENCE_PAIR, trace={"status": "x"}),
+            ScanOutcome.INCOMPLETE_EVIDENCE_PAIR,
+            None,
+        ),
+        (
             EngineResult(status=EngineStatus.OK, insights=[proposed(quran=None, hadith=None)]),
             ScanOutcome.NO_RELEVANT_EVIDENCE,
             None,
@@ -433,6 +513,8 @@ async def test_a_scan_without_insights_ends_with_a_question_or_an_honest_no_resu
         outcome,
         question,
     )
+    # The engine's record is kept with the run; an empty one is stored as none.
+    assert scan.engine_trace == (result.trace or None)
 
 
 async def test_a_scan_that_runs_too_long_is_stopped(store, redis, http, make_settings):

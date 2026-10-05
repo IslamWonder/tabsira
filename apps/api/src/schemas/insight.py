@@ -22,6 +22,10 @@ class EvidenceWhy(BaseModel):
     relation: RelationType
     relation_label: str
     matched_on: str
+    link: str | None = Field(
+        default=None,
+        description="«وجه الصلة»: how the text's own meaning meets the scene, as the checker found it",
+    )
 
 
 class InsightQuran(BaseModel):
@@ -101,6 +105,9 @@ class ChatMessageOut(BaseModel):
 
 class ChatOut(BaseModel):
     enabled: bool
+    closed: bool = Field(
+        default=False, description="«تمّ» closed the insight: its messages stay, no new question"
+    )
     used: int
     limit: int
     remaining: int

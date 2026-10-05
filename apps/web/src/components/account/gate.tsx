@@ -90,10 +90,7 @@ export function Gate({ title, lead, footer, children }: GateProps) {
         <Logo title={messages.brand.name} className="mx-auto h-28 tablet:h-32" />
         <GlassPanel ornate className="mt-7 flex flex-col gap-5 px-5 pt-7 pb-7 tablet:px-9">
           <header className="flex flex-col items-center gap-2 text-center">
-            <h1
-              id={titleId}
-              className="m-0 font-bold font-display text-[1.875rem] text-gilded leading-[1.35]"
-            >
+            <h1 id={titleId} className="m-0 font-bold font-display text-title text-gilded">
               {title}
             </h1>
             {lead === undefined ? null : (

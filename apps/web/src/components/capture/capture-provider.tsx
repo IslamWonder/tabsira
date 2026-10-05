@@ -8,10 +8,12 @@ import {
   type ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
+import { SummoningCircle } from '@/components/fx/summoning-circle';
 import { PlayIcon } from '@/components/icons';
 import { SceneStarter } from '@/components/scene/scene-starter';
 import { Button } from '@/components/ui/button';
@@ -72,6 +74,21 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
     setFailure(null);
   };
 
+  // The installed app's capture shortcut opens on /?capture=1: the reader's own long-press is the tap that asks.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('capture') !== '1') {
+      return;
+    }
+    url.searchParams.delete('capture');
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${url.pathname}${url.search}${url.hash}`
+    );
+    setOpen(true);
+  }, []);
+
   const capture = useMemo<Capture>(
     () => ({ open: () => setOpen(true), send: (file) => void send(file) }),
     [send]
@@ -94,7 +111,13 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
       </Sheet>
       <Sheet open={sending !== null} onClose={leave} title={messages.sending.title}>
         <div className="flex flex-col gap-4 pb-2">
-          <p role="status" className="m-0 text-fg leading-[1.9]">
+          {/* No photo is shown back (a sensitive scene never is): the circle turns while it travels. */}
+          {failure === null ? (
+            <div className="flex justify-center pt-1">
+              <SummoningCircle active size={112} />
+            </div>
+          ) : null}
+          <p role="status" className="m-0 text-center text-fg leading-[1.9] empty:hidden">
             {failure === null ? messages.sending.file : null}
           </p>
           {failure === null ? null : (

@@ -66,6 +66,7 @@ def evidence_why(evidence: dict[str, Any] | None) -> EvidenceWhy | None:
         relation=relation,
         relation_label=messages_for().relation_labels[relation.value],
         matched_on=str(evidence.get("matched_on", "")),
+        link=str(evidence["link"]) if evidence.get("link") else None,
     )
 
 
@@ -256,6 +257,7 @@ async def chat_of(
     limit = settings.max_chat_user_messages
     return ChatOut(
         enabled=settings.feature_chat,
+        closed=insight.completed_at is not None,
         used=len(rows),
         limit=limit,
         remaining=max(limit - len(rows), 0),

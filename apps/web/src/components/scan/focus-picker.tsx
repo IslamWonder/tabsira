@@ -104,7 +104,7 @@ export function FocusPanel({
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <h2 id={headingId} className="m-0 font-semibold text-[1.25rem] text-fg">
+        <h2 id={headingId} className="m-0 font-semibold text-subheading text-fg">
           {T.title}
         </h2>
         <p className="m-0 text-fg-soft leading-[1.8]">{T.hint}</p>

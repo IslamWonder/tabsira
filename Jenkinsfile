@@ -235,7 +235,7 @@ node {
                     // Remove what a build that never reached its teardown left behind, then
                     // start this build's own PostgreSQL and Redis. The ports and the
                     // passwords are known only once they run, so they come back in .env.ci
-                    // (DATABASE_URL, SYNC_DATABASE_URL, TEST_DATABASE_URL, REDIS_URL, TEST_REDIS_URL).
+                    // (DATABASE_URL, SYNC_DATABASE_URL, TEST_DATABASE_URL, REDIS_URL, TEST_REDIS_URL, REDIS_PASSWORD).
                     sh 'bash jenkins/ci-services.sh doctor'
                     sh 'bash jenkins/ci-services.sh sweep'
                     sh 'bash jenkins/ci-services.sh up'

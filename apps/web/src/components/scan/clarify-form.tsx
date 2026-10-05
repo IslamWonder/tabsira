@@ -45,7 +45,7 @@ export function ClarifyForm({ question, onAnswer, acting }: ClarifyFormProps) {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
-      <h2 className="m-0 font-semibold text-[1.25rem] text-fg">{T.title}</h2>
+      <h2 className="m-0 font-semibold text-subheading text-fg">{T.title}</h2>
       <p className="m-0 font-medium text-[1.0625rem] text-fg leading-[1.8]">{question}</p>
       <TextField
         label={T.label}

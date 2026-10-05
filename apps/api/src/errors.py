@@ -71,8 +71,13 @@ class ErrorCode(StrEnum):
     NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
     NO_RELEVANT_EVIDENCE = "NO_RELEVANT_EVIDENCE"
     SOURCE_UNAVAILABLE = "SOURCE_UNAVAILABLE"
+    # The store answered but holds no searchable corpus (no vectors of the configured model).
+    CORPUS_UNAVAILABLE = "CORPUS_UNAVAILABLE"
+    # A search step failed (the query embedding), so the search was not run.
+    RETRIEVAL_ERROR = "RETRIEVAL_ERROR"
     PAIR_INCOMPLETE = "PAIR_INCOMPLETE"
     CHAT_LIMIT_REACHED = "CHAT_LIMIT_REACHED"
+    CHAT_CLOSED = "CHAT_CLOSED"
     SAVE_FAILED = "SAVE_FAILED"
     PUBLISH_FAILED = "PUBLISH_FAILED"
     STORAGE_UNAVAILABLE = "STORAGE_UNAVAILABLE"

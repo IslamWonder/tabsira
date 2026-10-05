@@ -34,7 +34,7 @@ export function SaveInvitation({ returnTo, onContinueAsGuest, className }: SaveI
       className={cx('flex flex-col items-center gap-4 px-6 py-7 text-center', className)}
     >
       <LogoMark className="h-14" />
-      <h2 id={titleId} className="m-0 text-[1.25rem] text-fg leading-[1.6]">
+      <h2 id={titleId} className="m-0 text-subheading text-fg">
         {T.title}
       </h2>
       <p className="m-0 max-w-md text-[0.9375rem] text-fg-soft leading-[1.85]">{T.body}</p>

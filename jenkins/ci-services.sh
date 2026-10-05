@@ -277,10 +277,12 @@ write_env_file() {
 		echo "REDIS_PORT=$redis_port"
 		echo "REDIS_PASSWORD=$redis_password"
 		echo "REDIS_DB=0"
-		echo "REDIS_URL=redis://:${redis_password}@127.0.0.1:${redis_port}/0"
+		# The API refuses a Redis address that carries a password (it reads REDIS_PASSWORD
+		# above and keeps the address printable), so neither URL names it.
+		echo "REDIS_URL=redis://127.0.0.1:${redis_port}/0"
 		# Database 1 for tests, the way tabsira_test is the database for tests:
 		# a suite that flushes it can never reach what the application keeps in 0.
-		echo "TEST_REDIS_URL=redis://:${redis_password}@127.0.0.1:${redis_port}/1"
+		echo "TEST_REDIS_URL=redis://127.0.0.1:${redis_port}/1"
 	} >"$tmp"
 	mv "$tmp" "$ENV_FILE"
 	log "Wrote $ENV_FILE (database 127.0.0.1:$port, Redis 127.0.0.1:$redis_port)"

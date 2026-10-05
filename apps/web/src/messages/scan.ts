@@ -49,6 +49,11 @@ export const scanMessages = {
       awaiting:
         'ثمة حديث مرتبط بهذا المشهد بانتظار التحقق من حكمه في الدرر، ولذلك لم تكتمل البصيرة بعد.',
     },
+    /** Evidence was accepted, but its only fitting hadith waits for its ruling (v2 §26). */
+    incompletePair: {
+      title: 'وجدنا دليلًا، ولم تكتمل البصيرة بعد',
+      body: 'الحديث الذي يخدم معنى هذا المشهد بانتظار التحقق من حكمه في الدرر، ولا نكمل مكانه بنص بعيد. وضّح ما تقصد، أو جرّب مشهدًا آخر.',
+    },
     failed: {
       title: 'لم تكتمل قراءة المشهد',
     },
@@ -94,6 +99,10 @@ export const scanMessages = {
       VISION_FAILED: 'لم نستطع قراءة هذه الصورة. جرّب صورة أوضح أو بإضاءة أفضل.',
       SOURCE_UNAVAILABLE:
         'تعذّر الوصول إلى مصادر القرآن والسنة حاليًا. لا نعوّض ذلك بنص مولّد؛ أعد المحاولة بعد قليل.',
+      CORPUS_UNAVAILABLE:
+        'فهرس البحث في القرآن والسنة غير جاهز على خادمنا الآن. المشكلة من جهتنا؛ أعد المحاولة لاحقًا.',
+      RETRIEVAL_ERROR:
+        'تعطّل البحث قبل أن يبدأ، فلم ننظر في النصوص. هذا عطل تقني لا غياب للدليل؛ أعد المحاولة.',
       SCAN_TIMEOUT: 'استغرق التحليل أطول مما ينبغي ولم يكتمل. أعد المحاولة بصورة أخرى.',
       CHAT_LIMIT_REACHED: 'اكتمل النقاش حول هذه البصيرة',
       CHAT_IN_PROGRESS: 'ما زلنا نجيب عن سؤالك السابق. انتظر قليلًا ثم أعد المحاولة.',
@@ -126,6 +135,8 @@ export const scanMessages = {
       sourceSunnah: 'السنة',
       sourceLine: (relation: string, matched: string) =>
         matched === '' ? relation : `${relation}، وجه الصلة: ${matched}`,
+      /** The checker's own words on how the text's meaning meets the scene. */
+      linkLine: (link: string) => `وجه الارتباط: ${link}`,
       limits: 'حدود هذه الصلة',
       personalisation: 'التخصيص',
       personalised: 'اختيارٌ بُني على ما صرّحت به في ملفك:',
@@ -144,6 +155,8 @@ export const scanMessages = {
       send: 'اسأل',
       sending: 'أجيب…',
       limit: 'اكتمل النقاش حول هذه البصيرة',
+      /** After «تمّ»: what was discussed stays readable, no new question (owners, 2026-10-05). */
+      closed: 'أُغلقت هذه البصيرة بـ«تمّ»، فلا أسئلة جديدة عليها. صوّر مشهدًا آخر لتسأل عنه.',
       disabled: 'النقاش غير متاح الآن.',
       asked: 'سؤالك',
       answered: 'الجواب',

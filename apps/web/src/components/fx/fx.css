@@ -299,7 +299,35 @@
   animation: none;
 }
 
+/* The ring of the scene's speaker while its sound loops: a breath of light, opacity only. */
+.fx-sound-ring {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--glow-gold) 70%, transparent);
+  animation: fx-sound-breath 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-sound-ring {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+:root[data-motion="reduce"] .fx-sound-ring {
+  animation: none;
+  opacity: 0.6;
+}
+
 /* ─── Keyframes ────────────────────────────────────────────────────── */
+
+@keyframes fx-sound-breath {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
 
 @keyframes fx-enter {
   from {

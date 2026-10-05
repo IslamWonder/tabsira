@@ -37,7 +37,7 @@ class Prompt:
 
 @lru_cache(maxsize=32)
 def load_prompt(name: str) -> Prompt:
-    """Read `prompts/<name>.txt`, e.g. `load_prompt("scene_analyzer_system.v1")`."""
+    """Read `prompts/<name>.txt`, e.g. `load_prompt("scene_analyzer_system.v2")`."""
     path = PROMPTS_DIR / f"{name}.txt"
     text = path.read_text(encoding="utf-8")
     return Prompt(name=name, text=text, sha256=hashlib.sha256(text.encode("utf-8")).hexdigest())

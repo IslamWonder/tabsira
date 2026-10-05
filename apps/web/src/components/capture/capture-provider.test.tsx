@@ -96,6 +96,19 @@ describe('CaptureProvider', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('opens the camera from the installed app shortcut and leaves a clean address', async () => {
+    stubCamera('granted');
+    window.history.replaceState(null, '', '/?capture=1&from=icon');
+    render(
+      <CaptureProvider>
+        <Opener />
+      </CaptureProvider>
+    );
+    expect(await screen.findByRole('dialog', { name: 'صوّر مشهدًا' })).toBeInTheDocument();
+    expect(`${window.location.pathname}${window.location.search}`).toBe('/?from=icon');
+    window.history.replaceState(null, '', '/');
+  });
+
   it('is needed by every page that captures', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     expect(() => renderHook(() => useCapture())).toThrow('outside a CaptureProvider');
