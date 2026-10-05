@@ -367,7 +367,7 @@ function Showcase({ theme }: { theme: Theme }) {
       </Section>
 
       <Section title={messages.dev.sections.invitation}>
-        <SaveInvitation returnTo="/" onContinueAsGuest={() => setReceived(S.guest)} />
+        <SaveInvitation returnTo="/" />
       </Section>
 
       <Section title={messages.dev.sections.questions}>

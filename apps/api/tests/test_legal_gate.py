@@ -21,6 +21,8 @@ EXEMPT_PATHS = {
     ("DELETE", "/account"),
     ("POST", "/support"),
     ("POST", "/consent"),
+    # Withdrawing a consent needs no acceptance; giving one does (checked in the route).
+    ("POST", "/consents"),
     # Taking one's own insight off public view publishes nothing.
     ("DELETE", "/insights/{insight_id}/publication"),
 }
@@ -36,7 +38,7 @@ async def test_a_gated_route_answers_403_with_the_versions_until_the_texts_are_a
 ):
     await sign_in_unaccepted(web, make_user)
 
-    for method, path in (("GET", "/profile"), ("PATCH", "/profile"), ("POST", "/consents")):
+    for method, path in (("GET", "/profile"), ("PATCH", "/profile")):
         response = await web.request(method, path, json={})
         assert response.status_code == 403, path
         body = response.json()

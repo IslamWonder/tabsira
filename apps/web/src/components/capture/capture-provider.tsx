@@ -2,7 +2,7 @@
 
 import type { Route } from 'next';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   createContext,
   type ReactNode,
@@ -21,6 +21,7 @@ import { Notice } from '@/components/ui/notice';
 import { Sheet } from '@/components/ui/sheet';
 import { startScanFromFile } from '@/lib/scan/api';
 import { journeyFailureMessage } from '@/lib/scan/failure';
+import { accountRequired, signUpHref } from '@/lib/scan/gate';
 import { messages } from '@/messages';
 
 export interface Capture {
@@ -41,6 +42,7 @@ const CaptureContext = createContext<Capture | null>(null);
  */
 export function CaptureProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState<File | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -63,9 +65,15 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
         router.push(`/scan/${result.data.id}` as Route);
         return;
       }
+      if (accountRequired(result)) {
+        // The guest's one own scan is used: sign up, then come back to where they were (decision 63).
+        setSending(null);
+        router.push(signUpHref(pathname, 'scan'));
+        return;
+      }
       setFailure(journeyFailureMessage(result));
     },
-    [router]
+    [router, pathname]
   );
 
   const leave = () => {

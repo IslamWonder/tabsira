@@ -6,12 +6,14 @@ from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 
 from src.deps import DbDep, HumanDep, IpHashDep, SettingsDep, UngatedCurrentUser
 from src.models.email_token import TokenPurpose
+from src.models.login_attempt import AttemptKind
 from src.schemas.auth import LegalAcceptIn, LoginIn, ProviderOut, ProvidersOut, SignupIn, UserOut
 from src.services import (
     auth_service,
     email_service,
     email_token_service,
     legal_service,
+    rate_limit,
     session_service,
 )
 
@@ -117,21 +119,43 @@ async def me(user: UngatedCurrentUser, db: DbDep, settings: SettingsDep) -> User
 
 @router.post("/legal/accept", summary="Accept the current terms of use and privacy policy")
 async def accept_legal(
-    body: LegalAcceptIn, user: UngatedCurrentUser, db: DbDep, settings: SettingsDep
+    body: LegalAcceptIn,
+    user: UngatedCurrentUser,
+    db: DbDep,
+    settings: SettingsDep,
+    ip_hash: IpHashDep,
 ) -> UserOut:
     """
     Record that the signed-in account accepts both texts, for a version that changed.
 
     The versions must be the current ones (`GET /legal`); anything else is a 422
     `legal_acceptance_required`. Two consent rows are appended; none is ever edited. It also
-    takes, for a Google account, the real full name (`display_name`) and the answer to the
-    `public_full_name` consent (decision 63); both are optional.
+    takes, for a Google account, the real full name (`display_name`, only while the acceptance
+    is pending or the name is empty; an account with no name must give one: 422) and the answer
+    to the `public_full_name` consent (decision 63). Rate limited per IP and per account.
     """
     legal_service.require_current(settings, body.terms_version, body.privacy_version)
-    legal_service.record_acceptance(db, settings, user.id)
-    await auth_service.record_name_choices(
-        db, settings, user, display_name=body.display_name, public_full_name=body.public_full_name
+    await rate_limit.reserve_budgets(
+        db,
+        settings,
+        AttemptKind.LEGAL_ACCEPT,
+        ip_hash=ip_hash,
+        email_hash=auth_service.hash_email(settings, user.email),
+        per_ip=rate_limit.LEGAL_ACCEPT_PER_IP,
+        per_email=rate_limit.LEGAL_ACCEPT_PER_ACCOUNT,
+        overall=rate_limit.LEGAL_ACCEPT_OVERALL,
+        window_seconds=rate_limit.LEGAL_ACCEPT_WINDOW_SECONDS,
     )
+    pending = await legal_service.acceptance_required(db, settings, user.id)
+    await auth_service.record_name_choices(
+        db,
+        settings,
+        user,
+        display_name=body.display_name,
+        public_full_name=body.public_full_name,
+        acceptance_pending=pending,
+    )
+    legal_service.record_acceptance(db, settings, user.id)
     await db.commit()
     return await auth_service.describe(db, settings, user)
 

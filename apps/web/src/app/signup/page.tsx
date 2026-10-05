@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { safeNextPath } from '@/account/links';
+import { safeNextPath, signUpReason } from '@/account/links';
 import { SignUpScreen } from '@/components/account/sign-up-screen';
 import { turnstileSiteKey } from '@/config/server-env';
 import { unlistedMetadata } from '@/lib/seo';
@@ -12,9 +12,11 @@ export const metadata: Metadata = unlistedMetadata({
 });
 
 export default async function SignUpPage({ searchParams }: PageProps<'/signup'>) {
+  const query = await searchParams;
   return (
     <SignUpScreen
-      next={safeNextPath((await searchParams).next)}
+      next={safeNextPath(query.next)}
+      reason={signUpReason(query.reason)}
       turnstileSiteKey={turnstileSiteKey()}
     />
   );

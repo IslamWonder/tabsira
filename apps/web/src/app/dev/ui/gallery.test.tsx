@@ -61,8 +61,6 @@ describe('the development gallery', () => {
     expect(half.getByRole('radio', { name: '[جواب ثان]' })).toBeChecked();
     await userEvent.click(half.getByRole('checkbox', { name: /أوافق على/ }));
     expect(half.getByRole('checkbox', { name: /أوافق على/ })).toBeChecked();
-    await userEvent.click(half.getByRole('button', { name: 'أتابع كضيف' }));
-    expect(half.getByText('اختار الضيف أن يتابع')).toBeInTheDocument();
     await userEvent.click(half.getByRole('checkbox', { name: 'التفكر' }));
     await userEvent.click(half.getByRole('button', { name: 'احفظ وتابع' }));
     expect(half.getByText('السؤال 2 من 3')).toBeInTheDocument();

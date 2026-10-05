@@ -1,21 +1,22 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SaveInvitation } from './save-invitation';
 
 describe('SaveInvitation', () => {
-  it('asks softly, with two equal answers', async () => {
-    const onContinueAsGuest = vi.fn();
-    render(<SaveInvitation returnTo="/world" onContinueAsGuest={onContinueAsGuest} />);
+  it('asks for an account, or a sign-in, and has no way to go on as a guest (decision 63)', () => {
+    render(<SaveInvitation returnTo="/world" />);
     expect(
       screen.getByRole('region', { name: 'هل تحفظ ما تعلّمته لنواصل من هنا؟' })
     ).toBeInTheDocument();
-    const save = screen.getByRole('link', { name: 'احفظ مساري' });
-    expect(save).toHaveAttribute('href', '/signup?next=%2Fworld');
-    const guest = screen.getByRole('button', { name: 'أتابع كضيف' });
-    // Equal weight: the same look for both answers, no pressure (tajriba LUX-28).
-    expect(save.className).toBe(guest.className);
-    await userEvent.click(guest);
-    expect(onContinueAsGuest).toHaveBeenCalledOnce();
+    expect(screen.getByRole('link', { name: 'أنشئ حسابي واحفظ بصيرتي' })).toHaveAttribute(
+      'href',
+      '/signup?next=%2Fworld'
+    );
+    expect(screen.getByRole('link', { name: 'لي حساب: ادخل' })).toHaveAttribute(
+      'href',
+      '/signin?next=%2Fworld'
+    );
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.queryByText('أتابع كضيف')).toBeNull();
   });
 });

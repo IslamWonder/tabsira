@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import unicodedata
 import uuid
 from datetime import datetime
@@ -19,16 +20,28 @@ Token = Annotated[str, StringConstraints(min_length=16, max_length=256)]
 LegalVersion = Annotated[str, StringConstraints(min_length=1, max_length=32)]
 
 
+# An address or a link in a name would put a stranger's contact details on a public page.
+_NAME_FORBIDDEN = re.compile(r"[@<>]|https?:|www\.", re.IGNORECASE)
+
+
 def _clean_display_name(value: str) -> str:
-    """Strip a display name and refuse control and format characters (newlines, bidi tricks)."""
+    """
+    Strip a name and refuse control and format characters (newlines, bidi tricks).
+
+    The name is the person's real full name, which may be shown publicly, so an address or a
+    link in it is refused as well.
+    """
     name = " ".join(value.split())
     if not name or any(unicodedata.category(char) in {"Cc", "Cf", "Cs", "Co"} for char in name):
         message = "must be text without control characters"
         raise ValueError(message)
+    if _NAME_FORBIDDEN.search(name):
+        message = "must not contain an address or a link"
+        raise ValueError(message)
     return name
 
 
-def _checked_display_name(value: str) -> str:
+def checked_display_name(value: str) -> str:
     """Clean the person's full name and bound it."""
     name = _clean_display_name(value)
     if len(name) > DISPLAY_NAME_MAX:
@@ -59,7 +72,7 @@ class SignupIn(BaseModel):
     public_full_name: bool = False
 
     _password = field_validator("password")(_checked_password)
-    _display_name = field_validator("display_name")(_checked_display_name)
+    _display_name = field_validator("display_name")(checked_display_name)
 
 
 class LoginIn(BaseModel):
@@ -133,7 +146,7 @@ class LegalAcceptIn(BaseModel):
     @field_validator("display_name")
     @classmethod
     def _display_name(cls, value: str | None) -> str | None:
-        return None if value is None else _checked_display_name(value)
+        return None if value is None else checked_display_name(value)
 
 
 class ProviderOut(BaseModel):

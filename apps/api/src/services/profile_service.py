@@ -74,6 +74,12 @@ async def record_consent(
             "Photos of users under 13 are not stored.",
             status_code=403,
         )
+    if kind == ConsentKind.PUBLIC_FULL_NAME and granted and profile.age_range == AgeRange.UNDER_13:
+        raise AppError(
+            ErrorCode.CONSENT_NOT_ALLOWED,
+            "The full name of an account under 13 is never shown.",
+            status_code=403,
+        )
     if kind == ConsentKind.PHOTO_STORAGE and not granted and photos is not None:
         await _forget_photos(db, user_id, photos)
     consent = Consent(user_id=user_id, kind=kind, version=version, granted=granted)
@@ -133,8 +139,21 @@ async def update_profile(
             granted=False,
             photos=photos,
         )
+    if profile.age_range == AgeRange.UNDER_13 and await _shows_full_name(db, user_id):
+        # Declaring under 13 withdraws the consent to show the full name, on the record.
+        await record_consent(
+            db,
+            user_id,
+            ConsentKind.PUBLIC_FULL_NAME,
+            profile.consent_version or UNVERSIONED,
+            granted=False,
+        )
     await db.flush()
     return profile
+
+
+async def _shows_full_name(db: AsyncSession, user_id: uuid.UUID) -> bool:
+    return bool(await db.scalar(select(User.public_full_name).where(User.id == user_id)))
 
 
 async def require_completed(db: AsyncSession, user_id: uuid.UUID) -> None:

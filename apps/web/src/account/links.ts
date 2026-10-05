@@ -33,6 +33,12 @@ export function safeNextPath(value: string | string[] | undefined | null): Route
   return raw as Route;
 }
 
+/** Why a guest was sent to sign up (`?reason=`): a second scan or the chat; anything else is none. */
+export function signUpReason(value: string | string[] | undefined): 'scan' | 'chat' | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw === 'scan' || raw === 'chat' ? raw : undefined;
+}
+
 /** A mailed link's token, carried after `#token=` so it never reaches a server log (docs/AUTH.md). */
 export function fragmentToken(hash: string): string | null {
   const token = new URLSearchParams(hash.replace(/^#/, '')).get('token');

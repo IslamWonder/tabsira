@@ -486,6 +486,7 @@ async def focus_scan(
 ) -> ScanOut:
     """Run the engine again on the thing the learner chose or the box they drew."""
     scan = await _owned_scan(db, owner, scan_id)
+    await account_gate.require_profile(db, owner)
     _ensure_rerunnable(scan)
     if body.entity_id is not None:
         scene = SceneAnalysis.model_validate(scan.scene)
@@ -516,6 +517,7 @@ async def clarify_scan(
 ) -> ScanOut:
     """Run the engine again with the learner's answer."""
     scan = await _owned_scan(db, owner, scan_id)
+    await account_gate.require_profile(db, owner)
     _ensure_rerunnable(scan)
     if scan.outcome is not ScanOutcome.NEEDS_CLARIFICATION:
         raise AppError(ErrorCode.CONFLICT, "The scan asked no question.", status_code=409)

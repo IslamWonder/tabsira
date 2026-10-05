@@ -123,6 +123,12 @@ describe('SignUpScreen', () => {
     });
   });
 
+  it('says why a guest was sent here, when they were', async () => {
+    mockApi(routes());
+    render(<SignUpScreen next="/me" reason="scan" />);
+    expect(await screen.findByRole('status')).toHaveTextContent(/لبدء مشهد آخر يلزم حساب/);
+  });
+
   it('checks every field before sending', async () => {
     const api = mockApi(routes());
     render(<SignUpScreen next="/me" />);

@@ -16,6 +16,7 @@ from src.services import (
     auth_service,
     email_service,
     email_token_service,
+    legal_service,
     rate_limit,
     session_service,
 )
@@ -154,6 +155,9 @@ async def reset_password(
         security.hash_password, body.password, settings.password_bcrypt_rounds
     )
     if user.email_verified_at is None:
+        # Nobody had proved this address: the name and the consents were a stranger's to give.
+        await auth_service.forget_name(db, user, display_name="")
+        legal_service.record_withdrawal(db, user.id)
         user.email_verified_at = clock.utcnow()
     await email_token_service.cancel_unused(db, user.id, TokenPurpose.PASSWORD_RESET)
     await session_service.revoke_every_session(

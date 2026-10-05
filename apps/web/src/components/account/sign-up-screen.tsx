@@ -62,9 +62,12 @@ function refusedField(failure: Failure): [Field, string] | null {
  */
 export function SignUpScreen({
   next,
+  reason,
   turnstileSiteKey = '',
 }: {
   next: Route;
+  /** Why a guest was sent here (a second scan, the chat of their scan), said above the form. */
+  reason?: 'scan' | 'chat';
   /** Cloudflare Turnstile's site key from the web server; empty means no check (decision 56). */
   turnstileSiteKey?: string;
 }) {
@@ -180,6 +183,11 @@ export function SignUpScreen({
         <SignedInNote user={session.user} />
       ) : (
         <>
+          {reason === undefined ? null : (
+            <div role="status">
+              <Notice tone="info">{T.reason[reason]}</Notice>
+            </div>
+          )}
           <form noValidate onSubmit={submit} className="flex flex-col gap-4" aria-busy={sending}>
             <TextField
               ref={refs.displayName}

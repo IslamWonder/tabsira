@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.errors import AppError, ErrorCode
-from src.models import Scan, ScanStatus
+from src.models import Guest, Scan, ScanStatus
 from src.owner import Owner
 from src.services import profile_service
 
@@ -30,6 +30,9 @@ async def require_may_scan(db: AsyncSession, owner: Owner) -> None:
     if owner.user_id is not None:
         await profile_service.require_completed(db, owner.user_id)
         return
+    # Two parallel first scans would both count none: the guest's row is locked until the scan
+    # that follows is committed, so the second request counts after the first one is there.
+    await db.scalar(select(Guest.key).where(Guest.key == owner.guest_key).with_for_update())
     held = await db.scalar(
         select(func.count())
         .select_from(Scan)
@@ -43,7 +46,7 @@ async def require_may_scan(db: AsyncSession, owner: Owner) -> None:
         )
 
 
-async def require_profile(db: AsyncSession, owner: Owner) -> None:
+async def require_profile(db: AsyncSession, owner: Owner | None) -> None:
     """Answer 403 `profile_required` for an account with no completed profile; guests pass."""
-    if owner.user_id is not None:
+    if owner is not None and owner.user_id is not None:
         await profile_service.require_completed(db, owner.user_id)

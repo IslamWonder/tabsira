@@ -15,12 +15,16 @@ import {
 } from '@/test/scan';
 import { InsightScreen } from './insight-screen';
 
+const push = vi.fn();
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+
 const ID = '110000000000000002';
 const SCAN = '110000000000000001';
 
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
   forgetSession();
+  push.mockClear();
   window.localStorage.clear();
 });
 
@@ -308,7 +312,23 @@ describe('InsightScreen: «تمّ»', () => {
     expect(api.requests.filter((request) => request.url.includes('/complete'))).toHaveLength(1);
   });
 
-  it('invites a guest to save, once, softly', async () => {
+  it('sends a guest who opens the chat of their own scan to sign-up (decision 63)', async () => {
+    setGuest();
+    await open(insightOut({ engine: 'pipeline' }));
+    await userEvent.click(screen.getByRole('button', { name: /ناقش البصيرة/ }));
+    expect(push).toHaveBeenCalledWith(`/signup?next=%2Finsight%2F${ID}&reason=chat`);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('keeps the chat of the prepared tutorial open to a guest', async () => {
+    setGuest();
+    await open(insightOut({ engine: 'prepared' }));
+    await userEvent.click(screen.getByRole('button', { name: /ناقش البصيرة/ }));
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'ناقش البصيرة' })).toBeInTheDocument();
+  });
+
+  it('invites a guest to save, without a guest button', async () => {
     await open(insightOut(), {
       [`POST /insights/${ID}/complete`]: {
         body: completionOut({ suggest_account: 'هل تحفظ ما تعلّمته لنواصل من هنا؟' }),
@@ -316,7 +336,9 @@ describe('InsightScreen: «تمّ»', () => {
       'GET /me/progress': { body: progressOut() },
     });
     await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'أتابع كضيف' }));
+    expect(
+      await screen.findByRole('link', { name: 'أنشئ حسابي واحفظ بصيرتي' })
+    ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'أتابع كضيف' })).toBeNull();
     expect(screen.getByRole('region', { name: 'اكتملت بصيرتك' })).toBeInTheDocument();
   });

@@ -117,3 +117,27 @@ async def test_completing_the_profile_opens_the_scan(browser, store):
 
     assert done.status_code == 200
     assert (await scan(browser)).status_code == 202
+
+
+async def test_looking_again_needs_the_completed_profile_too(browser, flow_app, store):
+    from sqlalchemy import update
+
+    from src.models import Profile
+    from tests.scans.jobs import run_queued
+
+    user = await make_account(store)
+    await sign_in(browser)
+    body = (await scan(browser)).json()
+    await run_queued(flow_app, store)
+    async with store() as db:
+        await db.execute(
+            update(Profile).where(Profile.user_id == user.id).values(profile_completed_at=None)
+        )
+        await db.commit()
+
+    focus = await browser.post(f"/scans/{body['id']}/focus", json={"entity_id": "e1"})
+    clarify = await browser.post(f"/scans/{body['id']}/clarify", json={"answer": "نعم"})
+
+    assert [(r.status_code, r.json()["error"]) for r in (focus, clarify)] == [
+        (403, "profile_required")
+    ] * 2
