@@ -228,7 +228,7 @@ async def test_the_three_chains_build_the_database_and_match_the_models(migrated
     } == tables
     assert set(EXTENSIONS) <= extensions
     assert versions == {
-        "app": "20261005_130000",
+        "app": "20261005_120000",
         "geodata": "20261004_130000",
         "vectors": "20261004_200000",
     }

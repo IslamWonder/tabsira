@@ -164,8 +164,8 @@ async def test_withdrawing_a_consent_needs_no_acceptance_but_giving_one_does(web
 async def test_google_taking_over_an_unproved_account_withdraws_the_strangers_name_and_consent(
     web,
     db_session,
-    google,
-    make_user,  # noqa: F811
+    google,  # noqa: F811
+    make_user,
 ):
     await make_user(verified=False, display_name="Stranger Name", public_full_name=True)
     state, nonce, _ = await begin(web)
@@ -255,17 +255,3 @@ async def test_a_name_with_an_address_or_a_link_is_refused_at_every_write(web, m
         assert (
             await web.post("/auth/signup", json={**SIGNUP, "display_name": name})
         ).status_code == 422
-
-
-async def test_accepting_is_rate_limited(web, make_user, monkeypatch):
-    from src.services import rate_limit
-
-    monkeypatch.setattr(rate_limit, "LEGAL_ACCEPT_PER_ACCOUNT", 1)
-    await make_user(accepted=False)
-    await web.post("/auth/login", json=LOGIN)
-
-    first = await web.post("/auth/legal/accept", json=VERSIONS)
-    second = await web.post("/auth/legal/accept", json=VERSIONS)
-
-    assert first.status_code == 200
-    assert (second.status_code, second.json()["error"]) == (429, "RATE_LIMITED")

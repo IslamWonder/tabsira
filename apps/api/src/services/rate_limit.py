@@ -173,13 +173,6 @@ async def _purge(db: AsyncSession, settings: Settings, now: datetime) -> None:
     await db.execute(delete(LoginAttempt).where(_purge_condition(settings, now)))
 
 
-# `POST /auth/legal/accept` budgets (no setting: a person accepts once or twice in a lifetime).
-LEGAL_ACCEPT_PER_IP = 30
-LEGAL_ACCEPT_PER_ACCOUNT = 10
-LEGAL_ACCEPT_OVERALL = 5000
-LEGAL_ACCEPT_WINDOW_SECONDS = 3600
-
-
 async def reserve_budgets(
     db: AsyncSession,
     settings: Settings,

@@ -6,14 +6,12 @@ from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 
 from src.deps import DbDep, HumanDep, IpHashDep, SettingsDep, UngatedCurrentUser
 from src.models.email_token import TokenPurpose
-from src.models.login_attempt import AttemptKind
 from src.schemas.auth import LegalAcceptIn, LoginIn, ProviderOut, ProvidersOut, SignupIn, UserOut
 from src.services import (
     auth_service,
     email_service,
     email_token_service,
     legal_service,
-    rate_limit,
     session_service,
 )
 
@@ -123,7 +121,6 @@ async def accept_legal(
     user: UngatedCurrentUser,
     db: DbDep,
     settings: SettingsDep,
-    ip_hash: IpHashDep,
 ) -> UserOut:
     """
     Record that the signed-in account accepts both texts, for a version that changed.
@@ -132,20 +129,9 @@ async def accept_legal(
     `legal_acceptance_required`. Two consent rows are appended; none is ever edited. It also
     takes, for a Google account, the real full name (`display_name`, only while the acceptance
     is pending or the name is empty; an account with no name must give one: 422) and the answer
-    to the `public_full_name` consent (decision 63). Rate limited per IP and per account.
+    to the `public_full_name` consent (decision 63).
     """
     legal_service.require_current(settings, body.terms_version, body.privacy_version)
-    await rate_limit.reserve_budgets(
-        db,
-        settings,
-        AttemptKind.LEGAL_ACCEPT,
-        ip_hash=ip_hash,
-        email_hash=auth_service.hash_email(settings, user.email),
-        per_ip=rate_limit.LEGAL_ACCEPT_PER_IP,
-        per_email=rate_limit.LEGAL_ACCEPT_PER_ACCOUNT,
-        overall=rate_limit.LEGAL_ACCEPT_OVERALL,
-        window_seconds=rate_limit.LEGAL_ACCEPT_WINDOW_SECONDS,
-    )
     pending = await legal_service.acceptance_required(db, settings, user.id)
     await auth_service.record_name_choices(
         db,

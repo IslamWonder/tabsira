@@ -33,6 +33,7 @@ async def test_the_export_lists_the_terms_and_privacy_rows(web):
     assert {(c["kind"], c["version"], c["granted"]) for c in consents} == {
         ("terms", "2026-10-05T12:00Z", True),
         ("privacy", "2026-10-05T12:00Z", True),
+        ("public_full_name", "2026-10-05T12:00Z", False),
     }
 
 

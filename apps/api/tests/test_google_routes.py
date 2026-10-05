@@ -178,7 +178,7 @@ async def test_the_same_person_signing_in_again_reuses_the_account(web, db_sessi
     assert await db_session.scalar(select(func.count()).select_from(Session)) == 1
 
 
-async def test_a_google_name_is_cut_to_60_characters_and_a_missing_one_falls_back_to_the_address(
+async def test_a_google_name_is_cut_to_60_characters_and_a_missing_one_stays_empty(
     web, db_session, google
 ):
     state, nonce, _ = await begin(web)
@@ -189,7 +189,7 @@ async def test_a_google_name_is_cut_to_60_characters_and_a_missing_one_falls_bac
     )
 
     names = {u.email: u.display_name for u in (await db_session.scalars(select(User))).all()}
-    assert names == {"reader@example.com": "ن" * 60, "second.person@example.com": "second.person"}
+    assert names == {"reader@example.com": "ن" * 60, "second.person@example.com": ""}
 
 
 async def test_linking_a_verified_password_account_keeps_its_password_and_sessions(

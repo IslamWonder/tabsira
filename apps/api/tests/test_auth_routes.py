@@ -275,6 +275,8 @@ async def test_signing_up_records_the_acceptance_of_both_texts(web, db_session):
     assert {(row.kind, row.version, row.granted) for row in rows} == {
         (ConsentKind.TERMS, "2026-10-05T12:00Z", True),
         (ConsentKind.PRIVACY, "2026-10-05T12:00Z", True),
+        # The unticked full-name box is a recorded refusal.
+        (ConsentKind.PUBLIC_FULL_NAME, "2026-10-05T12:00Z", False),
     }
 
 

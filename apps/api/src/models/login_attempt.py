@@ -18,7 +18,6 @@ class AttemptKind(StrEnum):
     RESEND_VERIFICATION = "resend_verification"
     PASSWORD_FORGOT = "forgot_password"  # noqa: S105 - an attempt kind, not a password  # nosec B105
     SUPPORT = "support"
-    LEGAL_ACCEPT = "legal_accept"
     EMAIL_TOKEN = "email_token"  # noqa: S105 - redeeming a verification or reset link  # nosec B105
 
 
