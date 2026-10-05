@@ -65,11 +65,16 @@ async def _chat_export(
 async def export_learning(db: AsyncSession, user_id: uuid.UUID) -> LearningExport:
     """Collect what the scan workflow keeps: scripture by reference, kept photos by insight."""
     scans = (
-        await db.scalars(select(Scan).where(Scan.user_id == user_id).order_by(Scan.created_at))
+        await db.scalars(
+            select(Scan).where(Scan.user_id == user_id).order_by(Scan.created_at, Scan.id)
+        )
     ).all()
     insights = (
         await db.scalars(
-            select(Insight).where(Insight.user_id == user_id).order_by(Insight.created_at)
+            select(Insight)
+            .where(Insight.user_id == user_id)
+            # Two insights of one scan share a creation time: the id keeps the order stable.
+            .order_by(Insight.created_at, Insight.id)
         )
     ).all()
     messages = (
@@ -82,7 +87,9 @@ async def export_learning(db: AsyncSession, user_id: uuid.UUID) -> LearningExpor
     ).all()
     places = (
         await db.scalars(
-            select(WorldPlace).where(WorldPlace.user_id == user_id).order_by(WorldPlace.created_at)
+            select(WorldPlace)
+            .where(WorldPlace.user_id == user_id)
+            .order_by(WorldPlace.created_at, WorldPlace.id)
         )
     ).all()
     reveals = (
@@ -97,7 +104,7 @@ async def export_learning(db: AsyncSession, user_id: uuid.UUID) -> LearningExpor
             select(Treasure)
             .join(Insight, Insight.id == Treasure.insight_id)
             .where(Insight.user_id == user_id)
-            .order_by(Treasure.created_at)
+            .order_by(Treasure.created_at, Treasure.id)
         )
     ).all()
     units = (
