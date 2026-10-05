@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import uuid
 
+import pytest
 from sqlalchemy import func, select
 
+from src.features import FeatureFlag
 from src.models import (
     Block,
     Bookmark,
@@ -15,11 +17,18 @@ from src.models import (
     InsightPublication,
     ModerationAction,
     Post,
-    PostLike,
+    PostReaction,
     Report,
     User,
 )
+from tests.helpers import switched
 from tests.support_social import draft_post, publish_post
+
+
+@pytest.fixture
+def account_settings(account_settings):
+    """These tests write and read comments, which are off until the owners enable them."""
+    return switched(account_settings, on=[FeatureFlag.SOCIAL_COMMENTS])
 
 
 async def test_the_export_holds_the_posts_comments_and_everything_done_on_the_network(
@@ -31,7 +40,8 @@ async def test_the_export_holds_the_posts_comments_and_everything_done_on_the_ne
     draft = (await draft_post(ann, make_insight(ann), reflection="مسودتي")).json()["id"]
     theirs = await publish_post(bob, make_insight)
     await ann.http.put("/u/bob/follow")
-    await ann.http.put(f"/posts/{theirs}/like")
+    await ann.http.put(f"/posts/{theirs}/reactions/benefited")
+    await ann.http.put(f"/posts/{theirs}/reactions/jazak")
     await ann.http.put(f"/posts/{theirs}/bookmark")
     comment = (await ann.http.post(f"/posts/{theirs}/comments", json={"body": "تعليقي"})).json()[
         "id"
@@ -66,7 +76,11 @@ async def test_the_export_holds_the_posts_comments_and_everything_done_on_the_ne
     # The block ended the follow.
     assert social["following"] == []
     assert [b["handle"] for b in social["blocked"]] == ["bob"]
-    assert [m["post_id"] for m in social["likes"]] == [theirs]
+    assert sorted((m["post_id"], m["kind"]) for m in social["reactions"]) == [
+        (theirs, "benefited"),
+        (theirs, "jazak"),
+    ]
+    assert "likes" not in social
     assert [m["post_id"] for m in social["bookmarks"]] == [theirs]
     assert [(r["target_id"], r["reason"], r["details"]) for r in social["reports"]] == [
         (theirs, "wrong_place", "خطأ")
@@ -124,11 +138,12 @@ async def test_deleting_the_account_removes_every_post_comment_and_reaction_and_
     mine = await publish_post(ann, make_insight, reflection="تأملي")
     theirs = await publish_post(bob, make_insight)
     await ann.http.put("/u/bob/follow")
-    await ann.http.put(f"/posts/{theirs}/like")
+    await ann.http.put(f"/posts/{theirs}/reactions/benefited")
+    await ann.http.put(f"/posts/{theirs}/reactions/jazak")
     await ann.http.put(f"/posts/{theirs}/bookmark")
     await ann.http.post(f"/posts/{theirs}/comments", json={"body": "تعليقي"})
     await bob.http.post(f"/posts/{mine}/comments", json={"body": "رد بوب"})
-    await bob.http.put(f"/posts/{mine}/like")
+    await bob.http.put(f"/posts/{mine}/reactions/jazak")
     await ann.http.post(
         "/reports", json={"target_type": "post", "target_id": theirs, "reason": "spam"}
     )
@@ -140,7 +155,7 @@ async def test_deleting_the_account_removes_every_post_comment_and_reaction_and_
     assert response.status_code == 204
     assert (await guest.http.get(f"/posts/{mine}")).status_code == 404
     assert (await guest.http.get("/u/ann")).status_code == 404
-    for model in (Follow, Block, PostLike, Bookmark, Report):
+    for model in (Follow, Block, PostReaction, Bookmark, Report):
         assert await db_session.scalar(select(func.count()).select_from(model)) == 0, model
     posts = (await db_session.scalars(select(Post))).all()
     assert [p.id for p in posts] == [int(theirs)]

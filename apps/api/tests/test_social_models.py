@@ -23,9 +23,10 @@ from src.models import (
     ModerationSource,
     ModerationTarget,
     Post,
-    PostLike,
+    PostReaction,
     PostStatus,
     PostVisibility,
+    ReactionKind,
     RemovalSource,
     Report,
     ReportReason,
@@ -226,7 +227,7 @@ async def test_a_new_post_is_a_public_draft_with_no_counters(db_session):
     assert row.reflection_looks_like_scripture is False
     assert row.published_at is None
     assert row.updated_at is not None
-    assert {"like_count", "comment_count", "likes", "comments"}.isdisjoint(
+    assert {"reaction_count", "comment_count", "reactions", "comments"}.isdisjoint(
         {column.name for column in Post.__table__.columns}
     )
 
@@ -272,21 +273,24 @@ async def test_a_publication_backs_one_post_and_a_deleted_one_leaves_the_post_st
     assert row.publication_id is None
 
 
-async def test_a_like_and_a_bookmark_are_one_per_account_and_post(db_session):
+async def test_a_reaction_of_a_kind_and_a_bookmark_are_one_per_account_and_post(db_session):
     author = await user(db_session)
     row = await post(db_session, author)
     db_session.add_all(
         [
-            PostLike(post_id=row.id, user_id=author.id),
+            PostReaction(post_id=row.id, user_id=author.id, kind=ReactionKind.JAZAK),
             Bookmark(user_id=author.id, post_id=row.id),
         ]
     )
     await db_session.flush()
 
-    with pytest.raises(IntegrityError, match="pk_post_likes"):
+    with pytest.raises(IntegrityError, match="pk_post_reactions"):
         async with db_session.begin_nested():
-            db_session.add(PostLike(post_id=row.id, user_id=author.id))
+            db_session.add(PostReaction(post_id=row.id, user_id=author.id, kind=ReactionKind.JAZAK))
             await db_session.flush()
+    # The other kind is another reaction.
+    db_session.add(PostReaction(post_id=row.id, user_id=author.id, kind=ReactionKind.BENEFITED))
+    await db_session.flush()
     with pytest.raises(IntegrityError, match="pk_bookmarks"):
         async with db_session.begin_nested():
             db_session.add(Bookmark(user_id=author.id, post_id=row.id))
@@ -359,7 +363,7 @@ async def test_deleting_a_user_removes_everything_they_published_and_did(db_sess
         [
             Follow(follower_id=reader.id, followee_id=author.id),
             Block(blocker_id=author.id, blocked_id=reader.id),
-            PostLike(post_id=row.id, user_id=reader.id),
+            PostReaction(post_id=row.id, user_id=reader.id, kind=ReactionKind.BENEFITED),
             Bookmark(user_id=reader.id, post_id=row.id),
             comment,
             Report(
@@ -380,7 +384,7 @@ async def test_deleting_a_user_removes_everything_they_published_and_did(db_sess
         "blocks",
         "insight_publications",
         "posts",
-        "post_likes",
+        "post_reactions",
         "bookmarks",
         "comments",
         "reports",

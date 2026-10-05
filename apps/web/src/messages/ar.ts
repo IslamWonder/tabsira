@@ -383,7 +383,7 @@ export const ar = {
       },
       community: {
         tag: 'اجمع وشارك',
-        alt: 'بساتين وأعمدة حجرية في منظر رمزي هادئ',
+        alt: 'فناء بيت عربي بأقواس وفوانيس مضاءة ونافورة صغيرة، وباب مفتوح على مدينة بيضاء عند الغروب',
         title: 'بصيرة لك. وأثرٌ يصل لغيرك.',
         lead: 'احتفظ بما يلهمك، وشارك ما تختاره.',
         treasure: { title: 'الكنز الخفي', text: 'باب آخر للاكتشاف داخل رحلتك مع تبصرة.' },
@@ -725,7 +725,7 @@ export const ar = {
       doneHint:
         'إن لم تصلك الرسالة خلال دقائق، فافحص مجلد الرسائل غير المرغوب فيها، أو اطلب رابطًا جديدًا من «ملفي».',
       continue: 'تابع',
-      /** Why a guest was sent here (decision 63): one own scan without an account, then this. */
+      /** Why a guest was sent here (decision 64): one own scan without an account, then this. */
       reason: {
         scan: 'لبدء مشهد آخر يلزم حساب. بصيرتك الأولى تنتقل إلى حسابك كما هي.',
         chat: 'لمناقشة بصيرتك يلزم حساب. بصيرتك تنتقل إلى حسابك كما هي.',
@@ -817,7 +817,7 @@ export const ar = {
 
   /** The optional profile (master prompt v2 §5): every answer can be skipped and stays `unknown`. */
   profile: {
-    /** The mandatory form right after sign-up (decision 63): each answer explicit, none preselected. */
+    /** The mandatory form right after sign-up (decision 64): each answer explicit, none preselected. */
     gate: {
       title: 'عرّفنا بك قبل أن تبدأ',
       statement:
@@ -967,6 +967,12 @@ export const ar = {
     mapUnsupported:
       'لا يدعم هذا المتصفح أو الجهاز عرض الخريطة (يلزم WebGL2). تبقى النتائج في القائمة بجانبها.',
     joinLabels: (parts: readonly (string | null | undefined)[]) => parts.filter(Boolean).join('، '),
+    /** The two views of the basemap (src/components/atlas/basemap.ts). */
+    mapMode: {
+      label: 'نوع الخريطة',
+      streets: 'شوارع',
+      geographic: 'جغرافية',
+    },
     /** The credits the map's sources ask for, with their links (OpenStreetMap: © and a link to its copyright page). */
     attribution: {
       label: 'مصادر الخريطة',
@@ -1017,7 +1023,7 @@ export const ar = {
       conceptActive: 'بالمعنى نفسه: بصائر تشترك في معنى البصيرة التي جئت منها.',
       clearConcept: 'امسح المعنى',
       scope: 'ما يُعرض',
-      scopes: { public: 'بصائر الناس', mine: 'بصائري المنشورة' },
+      scopes: { public: 'بصائر الناس', mine: 'بصائري المنشورة', sponsored: 'كفالاتي' },
       clear: 'امسح المرشحات',
     },
     /** The owner's own entries, from every state, beside the public map (extension §4). */
@@ -1044,8 +1050,9 @@ export const ar = {
       back: 'العودة إلى الأطلس',
       notFound: { title: 'لم نجد هذه البصيرة', description: 'ربما لم تُنشر بعد، أو لا تُعرض.' },
       gone: {
-        title: 'سُحبت هذه البصيرة من الأطلس',
-        description: 'سحبها صاحبها، فلم يبق منها إلا هذا العنوان.',
+        title: 'سُحبت هذه البصيرة أو تغيّر عنوانها',
+        description:
+          'سحبها صاحبها، أو تغيّر عنوانها حين اتسع موضعها حفاظًا على خصوصية صاحبها. ابحث عنها في الأطلس.',
       },
       mapLabel: 'موضع البصيرة التقريبي',
       locationNote:
@@ -1115,6 +1122,7 @@ export const ar = {
         pending_review: 'مخفية حتى يراجعها مشرف',
         removed: 'أزالها مشرف',
         withdrawn: 'مسحوبة',
+        orphaned: 'بصيرة تنتظر من يكفلها',
       },
       notPublishable:
         'لا يمكن وضع هذه البصيرة على الأطلس: تُنشر البصائر المتحقَّقة التي تملكها وحدها.',
@@ -1125,6 +1133,88 @@ export const ar = {
       photoHint:
         'تصير صورة مشهدك عامة مع النقطة على الأطلس لكل من يفتحها، وتُحذف نسختها العامة حين تسحبها.',
       withPhoto: 'تُعرض الصورة مع النقطة',
+    },
+    /**
+     * «كفالة بصيرة» (decision 60): an entry nobody looks after is offered, at its
+     * widened place and without its author's name, to a verified member who may
+     * look after it. Nothing here counts, ranks or promises a reward.
+     */
+    sponsor: {
+      orphans: {
+        heading: 'بصائر تنتظر من يكفلها',
+        lead: 'بصائر طال عليها الصمت، فاتسع موضعها وغاب اسم صاحبها. يستطيع عضو موثَّق أن يكفل واحدة منها.',
+        privacy: 'يُرسل إلى تبصرة مركز الخريطة المعروض مقرَّبًا إلى شبكة واسعة، لا موضعك.',
+        list: 'قائمة البصائر التي تنتظر من يكفلها قرب هذه المنطقة',
+        failed: 'تعذّر عرض البصائر التي تنتظر من يكفلها الآن.',
+        more: 'اعرض المزيد',
+        loadingMore: 'نحمّل المزيد…',
+      },
+      entry: {
+        waiting: 'هذه البصيرة تنتظر من يكفلها',
+        waitingLead:
+          'لم يتعهّدها أحد منذ مدة، فاتسع موضعها وغاب اسم صاحبها. من يكفلها يُذكر اسمه العام بجانبها، وله أن يكتب تحتها تأملًا من عنده.',
+        section: 'كفالة البصيرة',
+        action: 'اكفل هذه البصيرة',
+        acting: 'نكفلها…',
+        signIn: 'ادخل لتكفل هذه البصيرة.',
+        verify: 'أكّد بريدك قبل أن تكفل بصيرة.',
+        identityFirst: 'اختر هويتك العامة أولًا؛ يظهر اسمك العام بجانب البصيرة ما دمت كافلها.',
+        sponsored: 'صرت كافل هذه البصيرة.',
+        by: 'في كفالة',
+        mine: 'أنت تكفل هذه البصيرة.',
+        reflectionOf: 'تأمّل الكافل',
+        reflectionNote: 'كلمات الكافل نفسه، لا نصّ من القرآن ولا من الحديث.',
+        reportReflection: 'بلّغ عن هذا التأمل',
+      },
+      refusal: {
+        own: 'هذه بصيرتك، فلا تكفلها أنت؛ يكفلها غيرك.',
+        already: 'سبقك إلى كفالتها عضو آخر.',
+        notOrphaned: 'لم تعد هذه البصيرة تنتظر من يكفلها.',
+        under13: 'لا تتيح تبصرة الكفالة لحساب صرّح صاحبه بأنه دون الثالثة عشرة.',
+        identity: 'اختر هويتك العامة أولًا، ثم عُد إلى هذه البصيرة.',
+        verify: 'أكّد بريدك قبل أن تكفل بصيرة.',
+        unavailable: 'لم تعد هذه البصيرة متاحة للكفالة.',
+      },
+      end: {
+        action: 'إنهاء الكفالة',
+        title: 'إنهاء الكفالة؟',
+        lead: 'تعود البصيرة إلى من ينتظر من يكفلها، ويُمحى تأملك المكتوب تحتها. يبقى موضعها واسعًا كما هو.',
+        confirm: 'أنهِ الكفالة',
+        ending: 'ننهي…',
+        cancel: 'تراجع',
+        done: 'انتهت كفالتك.',
+      },
+      reflection: {
+        label: 'تأمّلك تحت البصيرة',
+        hint: 'كلمات من عندك، حتى 500 حرف. لا تكتب آية ولا حديثًا؛ يُرفض ما يشبه نصًّا منهما.',
+        save: 'احفظ التأمل',
+        saving: 'نحفظ…',
+        status: 'حال تأملك',
+        statuses: {
+          published: 'منشور تحت البصيرة',
+          pending_review: 'قيد المراجعة، لا يراه غيرك',
+          rejected: 'لم يُقبل',
+          removed: 'أُزيل',
+        },
+        scripture:
+          'يشبه كلامك نصًّا من القرآن أو الحديث، ولا تقبل تبصرة ذلك من أحد. اكتب بكلماتك أنت.',
+      },
+      mine: {
+        by: (name: string) => `في كفالة ${name}`,
+        widened: (place: string, when: string) =>
+          `اتسع موضعها العام إلى ${place} في ${when} حفاظًا على خصوصيتك. موضعك الدقيق يبقى لك وحدك.`,
+        levels: { grid: 'منطقة أوسع', city: 'مدينتها', region: 'منطقتها', country: 'دولتها' },
+        orphaned:
+          'اتسع موضعها العام إلى منطقتها الأوسع وغاب اسمك عنها إلى أن يكفلها أحد. موضعك الدقيق يبقى لك وحدك.',
+      },
+      list: {
+        heading: 'كفالاتي',
+        loading: 'نحمّل كفالاتك…',
+        empty: 'لم تكفل بصيرة بعد.',
+        emptyHint: 'تظهر هنا البصائر التي تكفلها الآن.',
+        since: (when: string) => `بدأت في ${when}`,
+        open: 'افتح البصيرة',
+      },
     },
     /**
      * «اكتشف البصائر حولك» (extension §5–7): published entries near the device,
@@ -1199,8 +1289,9 @@ export const ar = {
 
   /**
    * «تبصرة تواصل» (docs/SOCIAL_NETWORK.md). Posts are made from verified
-   * insights; the author's own words are always labelled as theirs. A like is
-   * an «أثر», a gentle glow, never a score (DESIGN_DECISION.md «Game feel»).
+   * insights; the author's own words are always labelled as theirs. A reaction says
+   * «انتفعتُ بها» or «جزاك الله خيرًا» (decision 61): a gentle glow when given, never a
+   * score, a rank or a reward.
    */
   community: {
     title: 'تبصرة تواصل',
@@ -1248,10 +1339,8 @@ export const ar = {
       looksLikeScripture: 'يبدو هذا النص كآية أو حديث، وهو من كلمات الكاتب ولم تتحقق منه تبصرة.',
       explanation: 'شرح تبصرة',
       step: 'خطوة صغيرة',
-      like: 'أثر',
-      liked: 'تركت أثرًا',
-      unlike: 'ارفع أثرك',
-      likeCount: (count: number) => (count === 1 ? 'أثر واحد' : `${count} آثار`),
+      benefited: 'انتفعتُ بها',
+      jazak: 'جزاك الله خيرًا',
       comments: 'التعليقات',
       commentCount: (count: number) => {
         if (count === 0) {
@@ -1291,15 +1380,15 @@ export const ar = {
         'الجدّة: المنشور الأحدث يسبق الأقدم.',
         'المتابعة: منشور من تتابعه يتقدم قليلًا.',
         'التنويع: موضوع تكرر في القائمة يتأخر قليلًا.',
-        'ما لقيته: منشور تركت فيه أثرًا أو حفظته أو علّقت عليه يتأخر.',
+        'ما لقيته: منشور تفاعلت معه أو حفظته أو علّقت عليه يتأخر.',
       ],
       never: 'لا يدخل في الترتيب دينك ولا عمرك ولا جنسك ولا أي إجابة من ملفك، ولا يتعلّم من نقراتك.',
       personalisation: 'إن أوقفت التخصيص من «ملفي» بقي الترتيب على الجدّة والتنويع وحدهما.',
       settings: 'افتح «ملفي»',
     },
     reactions: {
-      signIn: 'ادخل لتترك أثرًا أو تحفظ منشورًا.',
-      verify: 'أكّد بريدك لتترك أثرًا.',
+      signIn: 'ادخل لتتفاعل مع منشور أو تحفظه.',
+      verify: 'أكّد بريدك لتتفاعل مع المنشورات.',
     },
     comments: {
       title: 'التعليقات',

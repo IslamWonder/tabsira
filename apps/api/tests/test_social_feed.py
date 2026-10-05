@@ -4,8 +4,16 @@ from __future__ import annotations
 
 import pytest
 
+from src.features import FeatureFlag
 from src.services import feed_service
+from tests.helpers import switched
 from tests.support_social import REVIEW, draft_post, publish_post
+
+
+@pytest.fixture
+def account_settings(account_settings):
+    """These tests write and read comments, which are off until the owners enable them."""
+    return switched(account_settings, on=[FeatureFlag.SOCIAL_COMMENTS])
 
 
 async def ids(response):
@@ -234,7 +242,7 @@ async def test_switching_personalisation_off_removes_the_follow_lift_and_the_met
     older = await publish_post(bob, make_insight)
     newer = await publish_post(carol, make_insight)
     await ann.http.put("/u/bob/follow")
-    await ann.http.put(f"/posts/{newer}/like")
+    await ann.http.put(f"/posts/{newer}/reactions/benefited")
     personal = await ids(await feed(ann, "for-you"))
 
     await ann.http.post(
@@ -247,13 +255,13 @@ async def test_switching_personalisation_off_removes_the_follow_lift_and_the_met
     assert all(i["why"]["code"] != "followed_author" for i in plain["items"])
 
 
-async def test_a_post_the_reader_already_liked_saved_or_commented_on_sinks(
+async def test_a_post_the_reader_already_reacted_to_saved_or_commented_on_sinks(
     make_member, make_insight, guard
 ):
     ann = await make_member("ann")
     bob = await make_member("bob")
     posts = [await publish_post(bob, make_insight) for _ in range(4)]
-    await ann.http.put(f"/posts/{posts[3]}/like")
+    await ann.http.put(f"/posts/{posts[3]}/reactions/jazak")
     await ann.http.put(f"/posts/{posts[2]}/bookmark")
     await ann.http.post(f"/posts/{posts[1]}/comments", json={"body": "x"})
 
@@ -387,7 +395,7 @@ async def test_every_feed_answers_404_while_the_feature_is_off(
     make_member, account_app, account_settings
 ):
     reader = await make_member("reader")
-    account_app.state.settings = account_settings.model_copy(update={"feature_social": False})
+    account_app.state.settings = account_settings.model_copy(update={"disabled_features": "social"})
 
     for path in (
         "/feed/latest",

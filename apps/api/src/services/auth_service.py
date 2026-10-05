@@ -108,7 +108,7 @@ async def signup(
     The versions of the terms and the privacy policy the person accepted must be the
     current ones; that is checked first, so a sign-up that did not accept creates and
     counts nothing. The acceptance is recorded in the same transaction as the account, and so
-    is the consent to show the full name when the box was ticked (decision 63).
+    is the consent to show the full name when the box was ticked (decision 64).
     """
     legal_service.require_current(settings, accepted_terms_version, accepted_privacy_version)
     normalized = normalize_email(email)
@@ -136,7 +136,7 @@ async def signup(
         raise taken from None
     await profile_service.ensure_profile(db, user.id)
     legal_service.record_acceptance(db, settings, user.id)
-    # The choice is recorded either way: an unticked box is a recorded refusal (decision 63).
+    # The choice is recorded either way: an unticked box is a recorded refusal (decision 64).
     await profile_service.record_consent(
         db,
         user.id,

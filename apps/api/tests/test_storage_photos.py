@@ -105,7 +105,10 @@ def test_each_reason_alone_refuses(values, reason, make_settings):
 
 
 def test_a_switched_off_feature_refuses_everyone(make_settings):
-    assert facts().refusal(make_settings(feature_photo_storage=False)) is PhotoRefusal.FEATURE_OFF
+    assert (
+        facts().refusal(make_settings(disabled_features="photo_storage"))
+        is PhotoRefusal.FEATURE_OFF
+    )
 
 
 def test_when_several_reasons_hold_the_first_in_order_is_given(make_settings):
@@ -117,7 +120,8 @@ def test_when_several_reasons_hold_the_first_in_order_is_given(make_settings):
     )
 
     assert (
-        everything.refusal(make_settings(feature_photo_storage=False)) is PhotoRefusal.FEATURE_OFF
+        everything.refusal(make_settings(disabled_features="photo_storage"))
+        is PhotoRefusal.FEATURE_OFF
     )
     assert everything.refusal(make_settings()) is PhotoRefusal.GUEST
     assert (
@@ -157,7 +161,7 @@ async def test_a_refused_photo_is_not_kept_and_the_storage_is_never_asked(
 
 
 async def test_a_photo_is_not_kept_while_the_feature_is_off(make_settings):
-    store = PhotoStore(Untouchable(), make_settings(feature_photo_storage=False))  # type: ignore[arg-type]
+    store = PhotoStore(Untouchable(), make_settings(disabled_features="photo_storage"))  # type: ignore[arg-type]
 
     with pytest.raises(PhotoNotAllowedError) as caught:
         await store.keep(facts(), photo())
@@ -204,17 +208,32 @@ async def test_the_folder_stays_empty_after_every_refusal(photos, disk):
 async def test_a_kept_photo_is_the_clean_image_under_a_random_private_key(photos, disk):
     stored = await photos.keep(facts(), photo())
 
-    assert stored.key.startswith("private/")
+    assert stored.key.startswith(f"private/users/{OWNER}/insights/")
     assert (stored.width, stored.height) == (64, 48)
     assert await disk.get(stored.key) == CLEAN
 
 
-async def test_two_photos_get_two_keys_that_say_nothing_about_each_other_or_the_owner(photos):
+async def test_two_photos_get_two_keys_and_a_published_copy_never_names_the_owner(photos):
     first = await photos.keep(facts(), photo())
     second = await photos.keep(facts(), photo())
 
     assert first.key != second.key
-    assert str(OWNER).replace("-", "") not in first.key
+    # The private copy sits in its owner's folder; the published one names nobody.
+    published = await photos.publish(facts(), first.key)
+    assert str(OWNER) not in published.key
+    assert str(OWNER) not in published.url
+
+
+async def test_removing_an_owner_empties_their_folder_and_nothing_else(photos, disk):
+    mine = await photos.keep(facts(), photo())
+    other = await photos.keep(facts(owner_id=uuid.UUID(int=7)), photo())
+    published = await photos.publish(facts(), mine.key)
+
+    assert await photos.remove_owner(OWNER) == 1
+    assert not await disk.exists(mine.key)
+    assert await disk.exists(other.key)
+    # The published copy is withdrawn by its row, never by the folder.
+    assert await disk.exists(published.key)
 
 
 async def test_what_is_kept_has_no_gps_though_the_photo_that_came_in_had_it(photos, disk):
@@ -315,9 +334,7 @@ def test_the_store_is_built_from_the_settings(make_settings):
 
 
 def test_an_age_range_given_as_a_plain_string_still_refuses_an_under_13_account():
-    refused = facts(age_range="under_13").refusal(
-        Settings(_env_file=None, feature_photo_storage=True)
-    )
+    refused = facts(age_range="under_13").refusal(Settings(_env_file=None))
 
     assert refused is PhotoRefusal.UNDER_13
 

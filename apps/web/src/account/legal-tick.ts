@@ -13,7 +13,7 @@ export const TICK_LIFETIME_MS = 10 * 60 * 1000;
 export interface LegalTick {
   terms_version: string;
   privacy_version: string;
-  /** The unticked-by-default full-name box of the sign-up view (decision 63). */
+  /** The unticked-by-default full-name box of the sign-up view (decision 64). */
   public_full_name: boolean;
 }
 

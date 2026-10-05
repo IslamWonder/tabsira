@@ -99,7 +99,7 @@ function Tabs({
  * (DESIGN_DECISION.md «Responsive web application»). The ranking of the for-you feed is
  * explained on every item by the why-this button.
  */
-export function CommunityScreen() {
+export function CommunityScreen({ comments = false }: { comments?: boolean }) {
   const session = useSession();
   const signedIn = session.status === 'signed-in';
   const [tab, setTab] = useState<Tab>('for-you');
@@ -188,7 +188,7 @@ export function CommunityScreen() {
           aria-labelledby={`tab-${tab}`}
           className="flex flex-col gap-5 pt-1 desktop:pt-0"
         >
-          <FeedList pages={pages} emptyText={emptyTextFor(tab)} gate={gate} />
+          <FeedList pages={pages} emptyText={emptyTextFor(tab)} gate={gate} comments={comments} />
         </div>
       }
     />

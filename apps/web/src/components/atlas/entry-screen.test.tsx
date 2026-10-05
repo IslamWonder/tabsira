@@ -62,6 +62,18 @@ describe('EntryScreen', () => {
     expect(screen.queryByRole('button', { name: 'بلّغ' })).toBeNull();
   });
 
+  it('names no author, and no dot before the place, for an entry whose place was widened', async () => {
+    mockApi({
+      'GET /auth/me': apiError(401, 'UNAUTHORIZED'),
+      [`GET /atlas/entries/${ENTRY.id}`]: { body: { ...ENTRY, author: null, orphaned: true } },
+    });
+    render(<EntryScreen entryId={ENTRY.id} />);
+    await screen.findByRole('heading', { level: 1, name: '[عنوان البصيرة]' });
+    expect(screen.queryByRole('link', { name: '[اسم عام]' })).toBeNull();
+    const place = screen.getByRole('link', { name: '[تونس]، [تونس البلد]' });
+    expect(place.parentElement?.textContent).toBe(place.textContent);
+  });
+
   it('lets a member report the entry with a place reason', async () => {
     const api = mockApi({
       'GET /auth/me': { body: USER },
@@ -88,7 +100,7 @@ describe('EntryScreen', () => {
     });
     const { unmount } = render(<EntryScreen entryId={ENTRY.id} />);
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'سُحبت هذه البصيرة من الأطلس' })
+      await screen.findByRole('heading', { level: 1, name: 'سُحبت هذه البصيرة أو تغيّر عنوانها' })
     ).toBeInTheDocument();
     unmount();
 

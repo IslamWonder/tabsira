@@ -38,7 +38,7 @@ export interface ProfileFormProps {
 }
 
 /**
- * The whole profile, asked once, right after the account is created (decision 63): goals (any
+ * The whole profile, asked once, right after the account is created (decision 64): goals (any
  * number), knowledge level, age range, religious background and gender. Nothing is preselected;
  * «prefer not to answer» is a choice of its own in every question and is stored as `unknown`
  * (goals: an empty list), so the button waits only for an explicit answer to each. There is no

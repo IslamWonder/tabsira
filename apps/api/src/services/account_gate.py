@@ -1,5 +1,5 @@
 """
-Who may start a scan and use the chat (decision 63).
+Who may start a scan and use the chat (decision 64).
 
 A visitor without an account does the rain tutorial and one scan of their own photo; the
 next scan asks for an account. An account must have completed its profile before the scan and

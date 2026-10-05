@@ -32,6 +32,7 @@ import redis
 from sqlalchemy.engine import make_url
 
 from src.config import AiStage, RerankerKind, Settings, checkout_root
+from src.features import FeatureFlag
 from src.services import turnstile_service
 
 REQUIRED, RECOMMENDED, OPTIONAL = "required", "recommended", "optional"
@@ -172,9 +173,9 @@ def _api_checks(settings: Settings, env: Mapping[str, str], add: Add) -> None:
     )
     add(
         "API",
-        "FEATURE_CAMERA_ANCHOR=false",
+        "camera_anchor is not in ENABLED_FEATURES",
         RECOMMENDED,
-        not settings.feature_camera_anchor,
+        not settings.is_enabled(FeatureFlag.CAMERA_ANCHOR),
         "camera level C is off until it is proven on devices",
     )
     add(

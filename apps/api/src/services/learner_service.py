@@ -4,7 +4,7 @@ What the engine may know of a learner, and what a completion records.
 The profile reaches the engine only when its owner keeps personalization on,
 and the history (the texts already shown, the units completed) only when
 memory is on (v2 §5); the insight chat reads the profile alone, under the
-same switch (decision 63). A guest has no profile: the engine gets the neutral
+same switch (decision 64). A guest has no profile: the engine gets the neutral
 defaults, `unknown` everywhere, and nothing is assumed. A completion counts in
 `learner_unit_states` as a completion, never as mastery, and records what was
 shown in `evidence_exposures`; with memory off, neither is written.

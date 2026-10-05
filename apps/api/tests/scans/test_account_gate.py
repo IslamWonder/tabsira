@@ -1,4 +1,4 @@
-"""Decision 63: one own scan for a guest, a completed profile for an account."""
+"""Decision 64: one own scan for a guest, a completed profile for an account."""
 
 from __future__ import annotations
 

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { PostScreen } from '@/components/community/post-screen';
 import { JsonLd } from '@/components/legal/json-ld';
+import { featureEnabled } from '@/config/server-env';
 import { articleJsonLd, pageMetadata } from '@/lib/seo';
 import { messages } from '@/messages';
 import { postPath } from '@/social/identity';
@@ -54,7 +55,7 @@ export default async function PostPage({ params }: Params) {
           })}
         />
       ) : null}
-      <PostScreen postId={id} />
+      <PostScreen postId={id} comments={featureEnabled('social_comments')} />
     </>
   );
 }

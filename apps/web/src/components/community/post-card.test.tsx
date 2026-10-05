@@ -98,7 +98,7 @@ describe('PostCard and the scripture it shows', () => {
 });
 
 describe('PostCard reactions', () => {
-  it('shows only the handle when the author did not agree to show a full name (decision 63)', () => {
+  it('shows only the handle when the author did not agree to show a full name (decision 64)', () => {
     guest();
     render(
       <PostCard
@@ -111,44 +111,91 @@ describe('PostCard reactions', () => {
     expect(screen.queryByText('[اسم عام]')).toBeNull();
   });
 
-  it('asks a guest to sign in instead of liking', async () => {
+  it('asks a guest to sign in instead of reacting', async () => {
     guest();
     render(<PostCard post={POST} onChange={vi.fn()} />);
-    await userEvent.click(screen.getByRole('button', { name: /^أثر/ }));
-    expect(screen.getByRole('status')).toHaveTextContent('ادخل لتترك أثرًا أو تحفظ منشورًا.');
+    await userEvent.click(screen.getByRole('button', { name: /^انتفعتُ بها/ }));
+    expect(screen.getByRole('status')).toHaveTextContent('ادخل لتتفاعل مع منشور أو تحفظه.');
     expect(screen.getByRole('link', { name: 'ادخل' })).toHaveAttribute(
       'href',
       '/signin?next=%2Fcommunity'
     );
   });
 
-  it('likes and saves through the API and shows what it kept', async () => {
+  it('reacts and saves through the API and shows what it kept', async () => {
     const onChange = vi.fn();
     const api = member({
-      'PUT /posts/7345678901234567890/like': { body: { liked: true, like_count: 3 } },
+      'PUT /posts/7345678901234567890/reactions/benefited': {
+        body: { reactions: { benefited: 3, jazak: 1 }, mine: ['benefited'] },
+      },
       'PUT /posts/7345678901234567890/bookmark': { status: 204 },
     });
     render(
       <PostCard
-        post={{ ...POST, viewer: { liked: false, bookmarked: false, is_author: false } }}
+        post={{ ...POST, viewer: { reactions: [], bookmarked: false, is_author: false } }}
         onChange={onChange}
       />
     );
-    await screen.findByRole('button', { name: /^أثر/ });
+    await screen.findByRole('button', { name: /^انتفعتُ بها/ });
     await waitFor(() =>
       expect(api.requests.some((r) => r.url.endsWith('/me/public-identity'))).toBe(true)
     );
-    await userEvent.click(screen.getByRole('button', { name: /^أثر/ }));
+    await userEvent.click(screen.getByRole('button', { name: /^انتفعتُ بها/ }));
     await waitFor(() =>
-      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ like_count: 3 }))
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({ reactions: { benefited: 3, jazak: 1 } })
+      )
     );
     expect(onChange.mock.lastCall?.[0].viewer).toEqual({
-      liked: true,
+      reactions: ['benefited'],
       bookmarked: false,
       is_author: false,
     });
     await userEvent.click(screen.getByRole('button', { name: 'احفظ' }));
     await waitFor(() => expect(onChange.mock.lastCall?.[0].viewer.bookmarked).toBe(true));
+  });
+
+  it('shows both reactions with their public counts and presses the ones the reader gave', async () => {
+    member({});
+    render(
+      <PostCard
+        post={{
+          ...POST,
+          reactions: { benefited: 4, jazak: 0 },
+          viewer: { reactions: ['benefited'], bookmarked: false, is_author: false },
+        }}
+        onChange={vi.fn()}
+      />
+    );
+    const benefited = screen.getByRole('button', { name: 'انتفعتُ بها 4' });
+    const thanks = screen.getByRole('button', { name: 'جزاك الله خيرًا' });
+    expect(benefited).toHaveAttribute('aria-pressed', 'true');
+    expect(thanks).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('takes a reaction back with DELETE and keeps the other one', async () => {
+    const onChange = vi.fn();
+    const api = member({
+      'DELETE /posts/7345678901234567890/reactions/benefited': {
+        body: { reactions: { benefited: 1, jazak: 1 }, mine: ['jazak'] },
+      },
+    });
+    render(
+      <PostCard
+        post={{
+          ...POST,
+          viewer: { reactions: ['benefited', 'jazak'], bookmarked: false, is_author: false },
+        }}
+        onChange={onChange}
+      />
+    );
+    await waitFor(() =>
+      expect(api.requests.some((r) => r.url.endsWith('/me/public-identity'))).toBe(true)
+    );
+    await userEvent.click(screen.getByRole('button', { name: /^انتفعتُ بها/ }));
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect(onChange.mock.lastCall?.[0].viewer.reactions).toEqual(['jazak']);
+    expect(onChange.mock.lastCall?.[0].reactions).toEqual({ benefited: 1, jazak: 1 });
   });
 
   it('tells the author the state only they see, and lets them withdraw', async () => {
@@ -182,7 +229,7 @@ describe('PostCard reactions', () => {
     });
     render(
       <PostCard
-        post={{ ...POST, viewer: { liked: false, bookmarked: false, is_author: false } }}
+        post={{ ...POST, viewer: { reactions: [], bookmarked: false, is_author: false } }}
         onChange={vi.fn()}
         onRemoved={onRemoved}
       />
@@ -233,26 +280,28 @@ describe('PostCard reactions', () => {
       'GET /auth/me': { body: { ...USER, email_verified: false } },
     });
     render(<PostCard post={POST} onChange={onChange} />);
-    await waitFor(() => expect(screen.getByRole('button', { name: /^أثر/ })).toBeInTheDocument());
-    await userEvent.click(screen.getByRole('button', { name: /^أثر/ }));
-    expect(await screen.findByRole('status')).toHaveTextContent('أكّد بريدك لتترك أثرًا.');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /^انتفعتُ بها/ })).toBeInTheDocument()
+    );
+    await userEvent.click(screen.getByRole('button', { name: /^انتفعتُ بها/ }));
+    expect(await screen.findByRole('status')).toHaveTextContent('أكّد بريدك لتتفاعل مع المنشورات.');
     expect(screen.queryByRole('link', { name: 'ادخل' })).toBeNull();
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('says when a like or a save is refused and keeps the post as it was', async () => {
+  it('says when a reaction or a save is refused and keeps the post as it was', async () => {
     const onChange = vi.fn();
     const api = member({
-      'DELETE /posts/7345678901234567890/like': apiError(429, 'RATE_LIMITED'),
+      'DELETE /posts/7345678901234567890/reactions/jazak': apiError(429, 'RATE_LIMITED'),
       'DELETE /posts/7345678901234567890/bookmark': 'network-error',
     });
     render(
       <PostCard
         post={{
           ...POST,
-          like_count: 0,
+          reactions: { benefited: 0, jazak: 1 },
           visibility: 'followers',
-          viewer: { liked: true, bookmarked: true, is_author: false },
+          viewer: { reactions: ['jazak'], bookmarked: true, is_author: false },
         }}
         onChange={onChange}
       />
@@ -261,13 +310,23 @@ describe('PostCard reactions', () => {
       expect(api.requests.some((r) => r.url.endsWith('/me/public-identity'))).toBe(true)
     );
     expect(screen.getByText('للمتابعين')).toBeInTheDocument();
-    const like = screen.getByRole('button', { name: 'تركت أثرًا' });
-    expect(like).toHaveAttribute('aria-pressed', 'true');
-    await userEvent.click(like);
+    const thanks = screen.getByRole('button', { name: /^جزاك الله خيرًا/ });
+    expect(thanks).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(thanks);
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'محفوظ' }));
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/تعذّر/));
     expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('comments on a card', () => {
+  it('link to the thread with their count only while the social_comments feature is on', () => {
+    guest();
+    const { rerender } = render(<PostCard post={POST} onChange={vi.fn()} />);
+    expect(document.querySelector('a[href$="#comments"]')).toBeNull();
+    rerender(<PostCard post={POST} onChange={vi.fn()} comments />);
+    expect(document.querySelector('a[href$="#comments"]')).not.toBeNull();
   });
 });
 

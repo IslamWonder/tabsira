@@ -10,7 +10,7 @@ workflow kept: the scan's status and outcome, every stage of every run with its 
 
 Never the photo, and nothing about the person: the owner, the exact location, the answer
 the person typed to a clarification and the box they drew stay out of it. The scripture
-is named by reference only; its text is never read here. `FEATURE_DEV_INSPECTOR` switches
+is named by reference only; its text is never read here. The `dev_inspector` feature switches
 the page off, and production keeps it off.
 """
 

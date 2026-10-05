@@ -41,7 +41,7 @@ export function handleProblem(raw: string): string | null {
 
 /**
  * What names a member in a sentence or an accessible name: the full name only when the
- * API sent it (the person consented, decision 63), otherwise the handle alone.
+ * API sent it (the person consented, decision 64), otherwise the handle alone.
  */
 export function memberLabel(member: { handle: string; public_name: string | null }): string {
   return member.public_name ?? `@${member.handle}`;

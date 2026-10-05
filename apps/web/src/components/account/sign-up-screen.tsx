@@ -56,7 +56,7 @@ function refusedField(failure: Failure): [Field, string] | null {
 
 /**
  * Create an account: the full name, an address and a password, and the separate, unticked
- * box for showing the name (decision 63). The profile questions come right after, in the
+ * box for showing the name (decision 64). The profile questions come right after, in the
  * mandatory profile step. The new account is signed in at once; the address is confirmed by the mailed link, needed
  * only before publishing (owner decision 25).
  */

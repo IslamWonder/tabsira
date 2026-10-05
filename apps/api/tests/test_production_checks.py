@@ -154,7 +154,7 @@ def test_recommendations_are_reported_as_such_not_as_required():
     checks = production_checks.run_checks(
         settings_of(
             admin_require_two_factor=False,
-            feature_camera_anchor=True,
+            enabled_features="camera_anchor",
             geo_approx_cell_meters=500,
             glitchtip_dsn="",
             detector_url="http://10.0.0.9:8100",
@@ -167,7 +167,7 @@ def test_recommendations_are_reported_as_such_not_as_required():
     assert failing(checks, production_checks.REQUIRED) == []
     assert set(failing(checks, production_checks.RECOMMENDED)) >= {
         "ADMIN_REQUIRE_TWO_FACTOR=true",
-        "FEATURE_CAMERA_ANCHOR=false",
+        "camera_anchor is not in ENABLED_FEATURES",
         "GEO_APPROX_CELL_METERS is at least 1000",
         "GLITCHTIP_DSN",
         "DETECTOR_URL is loopback",

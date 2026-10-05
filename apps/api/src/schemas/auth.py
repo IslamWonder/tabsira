@@ -67,7 +67,7 @@ class SignupIn(BaseModel):
     # the current ones (decision 35); the check answers `legal_acceptance_required`.
     accepted_terms_version: LegalVersion
     accepted_privacy_version: LegalVersion
-    # The separate, unticked box «أوافق على ظهور اسمي الكامل مع منشوراتي» (decision 63): the
+    # The separate, unticked box «أوافق على ظهور اسمي الكامل مع منشوراتي» (decision 64): the
     # display name is the person's real full name, shown publicly only while this is true.
     public_full_name: bool = False
 
@@ -123,7 +123,7 @@ class UserOut(BaseModel):
     # True when the latest accepted terms or privacy version is not the current one, or there is
     # none: the web app then asks for the acceptance (`POST /auth/legal/accept`) before going on.
     legal_acceptance_required: bool
-    # False until the whole profile was answered (decision 63): the web app then shows the
+    # False until the whole profile was answered (decision 64): the web app then shows the
     # profile form before anything else, and the scan and the chat answer `profile_required`.
     profile_completed: bool
     # Whether the full name may be shown beside the handle on public pages.

@@ -20,7 +20,7 @@ import type { Member } from '@/social/types';
 const I = messages.community.identity;
 const B = messages.community.block;
 
-/** Choose or change the handle; the full name is shown only by the consent switch below (decision 63). */
+/** Choose or change the handle; the full name is shown only by the consent switch below (decision 64). */
 export function IdentityForm() {
   const identity = useIdentity();
   const [handle, setHandle] = useState('');
@@ -173,7 +173,7 @@ export function BlocksList() {
   );
 }
 
-/** The separate, unticked-until-given consent to show the real full name (decision 63). */
+/** The separate, unticked-until-given consent to show the real full name (decision 64). */
 function FullNameSwitch() {
   const session = useSession();
   const save = useSaveState();

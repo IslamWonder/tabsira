@@ -1,4 +1,4 @@
-"""Decision 63: the real full name is public only while its own consent is given."""
+"""Decision 64: the real full name is public only while its own consent is given."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ async def test_signing_up_without_the_box_records_no_consent_and_shows_no_name(
 
     assert response.status_code == 201
     assert response.json()["public_full_name"] is False
-    # An unticked box is a recorded refusal (decision 63).
+    # An unticked box is a recorded refusal (decision 64).
     assert await name_rows(db_session) == [(SIGNUP["accepted_privacy_version"], False)]
 
 

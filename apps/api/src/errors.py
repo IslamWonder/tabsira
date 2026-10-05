@@ -60,7 +60,7 @@ class ErrorCode(StrEnum):
     # The codes below are lower case on purpose: they are the strings the web app matches.
     legal_acceptance_required = "legal_acceptance_required"
     mail_unavailable = "mail_unavailable"
-    # Decision 63, HTTP 403: a guest who holds one scan of its own must sign up; an account
+    # Decision 64, HTTP 403: a guest who holds one scan of its own must sign up; an account
     # whose profile is not completed must complete it. The web app matches the strings.
     account_required = "account_required"
     profile_required = "profile_required"

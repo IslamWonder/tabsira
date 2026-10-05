@@ -214,7 +214,7 @@ def _learner(learner: LearnerContext) -> str:
     """
     Return the profile fields the learner declared: the composer's, and the declared gender.
 
-    The chat is private to its owner, so it alone may address a declared gender (decision 63).
+    The chat is private to its owner, so it alone may address a declared gender (decision 64).
     """
     shared = learner_view(learner)
     if learner.personalization_enabled and learner.gender != BACKGROUND_UNKNOWN:

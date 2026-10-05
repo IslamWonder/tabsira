@@ -4,7 +4,7 @@ Revision ID: 20261005_120000
 Revises: 20261005_110000
 Create Date: 2026-10-05 12:00:00.000000
 
-Decision 63. `profiles.profile_completed_at` is set once the person answered every question of
+Decision 64. `profiles.profile_completed_at` is set once the person answered every question of
 the profile; empty means the scan and the chat refuse (`profile_required`). It is not
 backfilled: no existing account ever answered the religious background or the gender through a
 form that offered «أفضّل عدم الإجابة», so each is asked once at its next visit. `users.public_full_name`
@@ -21,7 +21,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "20261005_120000"
-down_revision: str | Sequence[str] | None = "20261005_110000"
+down_revision: str | Sequence[str] | None = "20261005_170000"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -177,9 +177,9 @@ async def test_the_world_and_the_treasure_can_be_switched_off(
         store, owner, {}, {"learning_unit_id": "T01_01", "quran_surah": 3, "quran_ayah": 190}
     )
 
-    flow_app.state.settings = make_settings(feature_world=False)
+    flow_app.state.settings = make_settings(disabled_features="world")
     without_world = await complete(browser, plain)
-    flow_app.state.settings = make_settings(feature_treasure=False)
+    flow_app.state.settings = make_settings(disabled_features="treasure")
     without_treasure = await complete(browser, unit)
 
     assert without_world["place"] is None

@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect } from 'react';
 import { StatusScreen } from '@/components/app/status-screen';
 import { Button, LinkButton } from '@/components/ui/button';
+import { reportError } from '@/lib/errors/report';
 import { messages } from '@/messages';
 
 export interface ErrorPageProps {
@@ -13,9 +15,13 @@ export interface ErrorPageProps {
 /**
  * A failure is ours, never the reader's (tajriba §7). Nothing from the error is
  * shown: in production its message is generic anyway, and the digest is for
- * server logs, not for people.
+ * server logs, not for people. The error itself goes to the API's error reports.
  */
-export default function ErrorPage({ retry }: ErrorPageProps) {
+export default function ErrorPage({ error, retry }: ErrorPageProps) {
+  // The page caught it, so the browser's own handlers never see it: send it from here.
+  useEffect(() => {
+    reportError(error, { handled: false });
+  }, [error]);
   return (
     <div className="pt-[max(40px,env(safe-area-inset-top))] pb-6">
       <StatusScreen

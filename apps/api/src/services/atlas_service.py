@@ -10,32 +10,54 @@ on the public point; `map_capture_points` is read by the owner's routes and the 
 An entry is made from one of the owner's own insights that came out of the real pipeline
 (the social network applies the same rule, `insight_table_source.PUBLISHABLE_ENGINE`). Only
 an account with a public identity publishes, since the atlas names the author as the posts do.
+
+An orphaned entry (decision 60) is read through the same functions: its place was widened by
+`orphan_service`, it carries no author, and `place` keeps the widened place whatever the author
+does afterwards. Only the sponsor, when there is one, is named beside it.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 
+from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import func, or_, select
+from sqlalchemy import cast, delete, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
 from src import clock
 from src.config import Settings
 from src.errors import AppError, ErrorCode
-from src.geo.privacy import approximate, cell_polygon
+from src.geo.privacy import METERS_PER_DEGREE, approximate, cell_polygon
 from src.messages import messages_for
-from src.models.atlas import LocationMeaning, MapCapturePoint, MapEntry, MapEntryStatus
+from src.models.atlas import (
+    LocationMeaning,
+    MapCapturePoint,
+    MapEntry,
+    MapEntryGeneralisation,
+    MapEntryRetiredId,
+    MapEntrySponsorship,
+    MapEntryStatus,
+    WidenLevel,
+)
 from src.models.geonames import GeoName
 from src.models.scan import Insight, Scan
-from src.models.social import InsightPublication, Post, PostStatus, PostVisibility
+from src.models.social import (
+    CommentStatus,
+    InsightPublication,
+    Post,
+    PostStatus,
+    PostVisibility,
+)
 from src.models.user import User
 from src.schemas.atlas import (
     AtlasEntryOut,
     AtlasFeature,
     AtlasFeatureProperties,
+    AtlasOrphansOut,
     AtlasPlaceOut,
     CapturePointIn,
     CapturePointOut,
@@ -44,6 +66,7 @@ from src.schemas.atlas import (
     PlaceRef,
     PublicLocationOut,
     PublicLocationPreview,
+    WidenedOut,
 )
 from src.schemas.geo import GeoJsonPoint
 from src.schemas.social import MemberOut
@@ -61,6 +84,15 @@ WINDOW_DEFAULT = 300
 WINDOW_MAX = 1000
 PLACE_PAGE_DEFAULT = 20
 PLACE_PAGE_MAX = 50
+ORPHAN_RADIUS_DEFAULT_M = 150_000
+# A widened place is tens of kilometres wide at least: a smaller radius would find nothing.
+ORPHAN_RADIUS_MIN_M = 10_000
+ORPHAN_RADIUS_MAX_M = 500_000
+# The position a viewer sends is snapped to this grid (about 0.05 degrees, like the camera's window)
+# before it is used, so that the queries never hold the point itself.
+ORPHAN_QUERY_CELL_M = 5_550
+# Never nearer than this to the pole or the antimeridian when a box is used to prefilter.
+_MIN_COSINE = 0.05
 
 
 @dataclass(frozen=True)
@@ -92,7 +124,10 @@ def _wrong_state(message: str) -> AppError:
     return AppError(ErrorCode.CONFLICT, message, status_code=409)
 
 
-def precision_label(cell_m: int) -> str:
+def precision_label(cell_m: int, level: WidenLevel | None = None) -> str:
+    """Say how precise a public place is: a size for a cell, a level for a widened place."""
+    if level is not None:
+        return messages_for().atlas_levels[level.value]
     return messages_for().atlas_precision.format(metres=cell_m)
 
 
@@ -104,7 +139,7 @@ def _point(lat: float, lng: float) -> GeoJsonPoint:
     return GeoJsonPoint(coordinates=[lng, lat])
 
 
-def _place_of(entry: MapEntry) -> PlaceRef | None:
+def place_of(entry: MapEntry) -> PlaceRef | None:
     if entry.place_geoname_id is None or entry.place_label is None:
         return None
     return PlaceRef(
@@ -122,14 +157,73 @@ def public_location(entry: MapEntry) -> PublicLocationOut | None:
     return PublicLocationOut(
         point=_point(entry.public_lat, entry.public_lng),
         cell_m=entry.cell_m,
-        precision_label=precision_label(entry.cell_m),
+        precision_label=precision_label(entry.cell_m, entry.widened_level),
         meaning=entry.location_meaning,
         meaning_label=meaning_label(entry.location_meaning),
+        widened_level=entry.widened_level,
     )
 
 
 def _author(user: User) -> MemberOut:
     return MemberOut(handle=user.handle or "", public_name=public_identity.shown_name(user))
+
+
+def _shown_author(entry: MapEntry, user: User) -> MemberOut | None:
+    """Name the author unless the place was widened: an orphaned entry is anonymous for good."""
+    return None if entry.widened_level is not None else _author(user)
+
+
+@dataclass(frozen=True)
+class Sponsor:
+    """Who looks after an entry, and the words they published under it (never a held one)."""
+
+    member: MemberOut
+    # The sponsorship's public id, and the words once published: a report names them by it.
+    sponsorship_id: int
+    reflection: str | None
+
+
+async def sponsors_of(
+    db: AsyncSession, entry_ids: list[int], viewer: User | None
+) -> dict[int, Sponsor]:
+    """
+    Return the open sponsor of each of the entries, by entry id.
+
+    The sponsor chose to sponsor in public, so the handle is shown; one a block stands between
+    and the viewer is left out, as everywhere, and so is one whose account is closed. The
+    reflection is the sponsor's only once the guard or a moderator published it.
+    """
+    if not entry_ids:
+        return {}
+    statement = (
+        select(MapEntrySponsorship, User)
+        .join(User, User.id == MapEntrySponsorship.user_id)
+        .where(
+            MapEntrySponsorship.entry_id.in_(entry_ids),
+            *_visible_author(),
+        )
+    )
+    if viewer is not None:
+        statement = statement.where(User.id.not_in(blocked_with(viewer.id)))
+    return {
+        sponsorship.entry_id: Sponsor(
+            member=_author(sponsor),
+            sponsorship_id=sponsorship.id,
+            reflection=(
+                sponsorship.reflection
+                if sponsorship.reflection_status is CommentStatus.PUBLISHED
+                else None
+            ),
+        )
+        for sponsorship, sponsor in (await db.execute(statement))
+    }
+
+
+async def _sponsors(
+    db: AsyncSession, entry_ids: list[int], viewer: User | None, sponsoring: bool
+) -> dict[int, Sponsor]:
+    """Return the sponsors, or none while sponsoring is switched off: the atlas then knows none."""
+    return await sponsors_of(db, entry_ids, viewer) if sponsoring else {}
 
 
 # ─── The owner's side ───
@@ -206,29 +300,47 @@ async def place(
     makes it a draft again, since what is shown changed. The cell size is the setting's at
     the time of placing, kept with the entry. With `photos`, a public copy that only the
     entry showed is deleted with the draft, whatever the new choice of photo.
+
+    An entry whose place was widened (decision 60) is never narrowed: the owner's new point
+    replaces the private one, and the public point, the cell and the labels stay as widened. The
+    photo is not shown either, since it could say where the place is. An entry a member
+    sponsors cannot be placed again while the sponsorship stands: 409.
     """
     insight = await _own_insight(db, user, insight_id)
     await _check_publishable(db, insight)
     cell_m = int(settings.geo_approx_cell_meters)
     centre = approximate(body.latitude, body.longitude, cell_m)
     labels = await _label(db, centre.lat, centre.lng)
-    entry = await db.scalar(select(MapEntry).where(_live(insight.id)))
+    # Locked and read fresh: the daily job widening it, or a member sponsoring it, must be seen
+    # below, not guessed from an earlier read.
+    entry = await db.scalar(
+        select(MapEntry)
+        .where(_live(insight.id))
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
     decided = {MapEntryStatus.PENDING_REVIEW, MapEntryStatus.REMOVED}
     if entry is not None and entry.status in decided:
         message = "A moderator's decision stands on this entry; it cannot be placed again."
+        raise _wrong_state(message)
+    if entry is not None and await is_sponsored(db, entry.id):
+        message = "A member sponsors this entry; it cannot be placed again while they do."
         raise _wrong_state(message)
     if entry is None:
         # A withdrawn tombstone may stand beside it: the new entry takes a new address.
         entry = MapEntry(user_id=user.id, insight_id=insight.id, cell_m=cell_m)
         db.add(entry)
-    entry.public_lat = centre.lat
-    entry.public_lng = centre.lng
-    entry.public_geom = WKTElement(f"POINT({centre.lng} {centre.lat})", srid=4326)
-    entry.cell_m = cell_m
+    widened = entry.widened_level is not None
+    if not widened:
+        entry.public_lat = centre.lat
+        entry.public_lng = centre.lng
+        entry.public_geom = WKTElement(f"POINT({centre.lng} {centre.lat})", srid=4326)
+        entry.cell_m = cell_m
+        for column, value in labels.items():
+            setattr(entry, column, value)
     entry.location_meaning = body.meaning
-    entry.with_photo = body.photo
-    for column, value in labels.items():
-        setattr(entry, column, value)
+    entry.with_photo = body.photo and not widened
+    entry.last_active_at = clock.utcnow()
     entry.status = MapEntryStatus.DRAFT
     entry.status_reason = None
     # `published_at` is kept: it records that the address was once public, so that a later
@@ -252,16 +364,43 @@ async def place(
     return owner_view(entry, insight, point)
 
 
+async def is_sponsored(db: AsyncSession, entry_id: int) -> bool:
+    return bool(
+        await db.scalar(
+            select(MapEntrySponsorship.id).where(MapEntrySponsorship.entry_id == entry_id)
+        )
+    )
+
+
+async def widenings_of(db: AsyncSession, entry_ids: list[int]) -> dict[int, MapEntryGeneralisation]:
+    """Return the latest widening record of each entry that has one; for its owner's view only."""
+    rows = await db.scalars(
+        select(MapEntryGeneralisation)
+        .where(MapEntryGeneralisation.entry_id.in_(entry_ids))
+        .order_by(MapEntryGeneralisation.id)
+    )
+    return {record.entry_id: record for record in rows}
+
+
 def owner_view(
-    entry: MapEntry, insight: Insight, point: MapCapturePoint | None
+    entry: MapEntry,
+    insight: Insight,
+    point: MapCapturePoint | None,
+    sponsor: Sponsor | None = None,
+    widening: MapEntryGeneralisation | None = None,
 ) -> MapEntryOwnerOut:
     public = public_location(entry)
     preview = None
     if public is not None and point is not None:
-        polygon = cell_polygon(point.latitude, point.longitude, entry.cell_m)
+        # A widened place has no cell: the private point's cell would say where it lies.
+        polygon = (
+            None
+            if entry.widened_level is not None
+            else cell_polygon(point.latitude, point.longitude, entry.cell_m)
+        )
         preview = PublicLocationPreview(
             **public.model_dump(),
-            cell=GeoJsonPolygon(coordinates=polygon["coordinates"]),
+            cell=None if polygon is None else GeoJsonPolygon(coordinates=polygon["coordinates"]),
         )
     return MapEntryOwnerOut(
         id=entry.id,
@@ -283,8 +422,16 @@ def owner_view(
             )
         ),
         public=preview,
-        place=_place_of(entry),
+        place=place_of(entry),
         photo=entry.with_photo,
+        sponsor=None if sponsor is None else sponsor.member,
+        widened=(
+            None
+            if widening is None
+            else WidenedOut(
+                level=widening.new_level, label=widening.new_label, at=widening.created_at
+            )
+        ),
         published_at=entry.published_at,
         withdrawn_at=entry.withdrawn_at,
         created_at=entry.created_at,
@@ -293,7 +440,9 @@ def owner_view(
 
 async def mine(db: AsyncSession, user: User, insight_id: int) -> MapEntryOwnerOut:
     entry, insight = await _own_entry(db, user, insight_id)
-    return owner_view(entry, insight, await db.get(MapCapturePoint, entry.id))
+    sponsor = (await sponsors_of(db, [entry.id], user)).get(entry.id)
+    widening = (await widenings_of(db, [entry.id])).get(entry.id)
+    return owner_view(entry, insight, await db.get(MapCapturePoint, entry.id), sponsor, widening)
 
 
 async def list_mine(db: AsyncSession, user: User) -> list[MapEntryOwnerOut]:
@@ -304,7 +453,14 @@ async def list_mine(db: AsyncSession, user: User) -> list[MapEntryOwnerOut]:
         .where(MapEntry.user_id == user.id)
         .order_by(MapEntry.created_at.desc(), MapEntry.id.desc())
     )
-    return [owner_view(entry, insight, point) for entry, insight, point in rows]
+    found = rows.all()
+    ids = [entry.id for entry, _, _ in found]
+    sponsors = await sponsors_of(db, ids, user)
+    widenings = await widenings_of(db, ids)
+    return [
+        owner_view(entry, insight, point, sponsors.get(entry.id), widenings.get(entry.id))
+        for entry, insight, point in found
+    ]
 
 
 async def publish(
@@ -324,6 +480,7 @@ async def publish(
     await _check_publishable(db, insight)
     entry.status = MapEntryStatus.PUBLISHED
     entry.published_at = clock.utcnow()
+    entry.last_active_at = entry.published_at
     await db.flush()
     if entry.with_photo:
         await photo_service.sync_public_copy(db, photos, insight.id)
@@ -352,10 +509,20 @@ async def withdraw(db: AsyncSession, user: User, insight_id: int, *, photos: Pho
         await db.delete(entry)
         await db.flush()
         return
+    # The sponsor's words go with the entry, and so does the earlier cell: neither outlives it.
+    await drop_sponsorships(db, entry.id)
+    await db.execute(
+        delete(MapEntryGeneralisation).where(MapEntryGeneralisation.entry_id == entry.id)
+    )
     _clear_public_side(entry)
     await db.flush()
     if entry.with_photo:
         await photo_service.sync_public_copy(db, photos, insight.id)
+
+
+async def drop_sponsorships(db: AsyncSession, entry_id: int) -> None:
+    """Delete the entry's sponsorship, the sponsor's reflection with it: the words were for the entry."""
+    await db.execute(delete(MapEntrySponsorship).where(MapEntrySponsorship.entry_id == entry_id))
 
 
 def _clear_public_side(entry: MapEntry) -> None:
@@ -421,7 +588,14 @@ def _day_start(entry: MapEntry) -> datetime:
     return datetime.combine(_published_on(entry), time.min, tzinfo=UTC)
 
 
-def _feature(entry: MapEntry, insight: Insight, author: User) -> AtlasFeature:
+def _feature(
+    entry: MapEntry,
+    insight: Insight,
+    author: User,
+    sponsor: Sponsor | None = None,
+    *,
+    sponsoring: bool = True,
+) -> AtlasFeature:
     # A published entry always has its point (a database constraint); the checks keep mypy honest.
     lat = entry.public_lat if entry.public_lat is not None else 0.0
     lng = entry.public_lng if entry.public_lng is not None else 0.0
@@ -432,25 +606,51 @@ def _feature(entry: MapEntry, insight: Insight, author: User) -> AtlasFeature:
             id=entry.id,
             title=insight.title,
             glimpse=insight.glimpse,
-            author=_author(author),
-            place=_place_of(entry),
+            author=_shown_author(entry, author),
+            place=place_of(entry),
             cell_m=entry.cell_m,
-            precision_label=precision_label(entry.cell_m),
+            precision_label=precision_label(entry.cell_m, entry.widened_level),
             published_on=_published_on(entry),
+            orphaned=sponsoring and entry.status is MapEntryStatus.ORPHANED,
+            widened_level=entry.widened_level,
+            sponsor=None if sponsor is None else sponsor.member,
         ),
     )
 
 
-def _published_rows(filters: Filters, viewer: User | None):  # type: ignore[no-untyped-def]
+def _not_hidden_by_a_block(viewer: User) -> ColumnElement[bool]:
+    """
+    Match the entries a block does not hide from `viewer`.
+
+    A block between the viewer and an entry's author hides it, except once its place was widened:
+    the author is anonymous then, and a block that hid the entry would tell the blocker, by
+    its absence, who wrote it. A block against the sponsor hides the entry, since the sponsor is
+    named beside it.
+    """
+    blocked = blocked_with(viewer.id)
+    by_author = MapEntry.widened_level.is_(None) & User.id.in_(blocked)
+    by_sponsor = exists().where(
+        MapEntrySponsorship.entry_id == MapEntry.id, MapEntrySponsorship.user_id.in_(blocked)
+    )
+    return ~(by_author | by_sponsor)
+
+
+def _published_rows(filters: Filters, viewer: User | None, *, sponsoring: bool = True):  # type: ignore[no-untyped-def]
+    # With sponsoring switched off an orphaned entry is served as the plain, anonymous, widened
+    # entry it is, so that it does not vanish; with it on, orphans are asked for by name.
+    shown = (
+        [MapEntryStatus.PUBLISHED]
+        if sponsoring
+        else [MapEntryStatus.PUBLISHED, MapEntryStatus.ORPHANED]
+    )
     statement = (
         select(MapEntry, Insight, User)
         .join(Insight, Insight.id == MapEntry.insight_id)
         .join(User, User.id == MapEntry.user_id)
-        .where(MapEntry.status == MapEntryStatus.PUBLISHED, *_visible_author())
+        .where(MapEntry.status.in_(shown), *_visible_author())
     )
     if viewer is not None:
-        # A block hides each of the two from the other here as everywhere.
-        statement = statement.where(User.id.not_in(blocked_with(viewer.id)))
+        statement = statement.where(_not_hidden_by_a_block(viewer))
     if filters.since is not None:
         statement = statement.where(
             MapEntry.published_at >= datetime.combine(filters.since, time.min, tzinfo=UTC)
@@ -463,49 +663,73 @@ def _published_rows(filters: Filters, viewer: User | None):  # type: ignore[no-u
 
 
 async def features_in(
-    db: AsyncSession, window: Window, filters: Filters, limit: int, viewer: User | None = None
+    db: AsyncSession,
+    window: Window,
+    filters: Filters,
+    limit: int,
+    viewer: User | None = None,
+    *,
+    sponsoring: bool = True,
 ) -> tuple[list[AtlasFeature], bool]:
     """Return the published entries inside the window, newest first, and whether more were left out."""
     rows = (
         await db.execute(
-            _published_rows(filters, viewer).where(_envelopes(window)).limit(limit + 1)
+            _published_rows(filters, viewer, sponsoring=sponsoring)
+            .where(_envelopes(window))
+            .limit(limit + 1)
         )
     ).all()
-    features = [_feature(entry, insight, author) for entry, insight, author in rows[:limit]]
+    sponsors = await _sponsors(db, [entry.id for entry, _, _ in rows[:limit]], viewer, sponsoring)
+    features = [
+        _feature(entry, insight, author, sponsors.get(entry.id), sponsoring=sponsoring)
+        for entry, insight, author in rows[:limit]
+    ]
     return features, len(rows) > limit
 
 
 async def published_entry(db: AsyncSession, entry_id: int, viewer: User | None = None) -> MapEntry:
     """
-    Return a published entry, or 404; 410 once withdrawn, so the address says it was there.
+    Return a published or orphaned entry, or 404; 410 once withdrawn, so the address says it was there.
 
     A held or removed entry, and one of an author a block stands between, answer 404 like one
-    that never existed: an id grants nothing.
+    that never existed: an id grants nothing. An entry whose place was widened is shown without
+    its author, so it does not need the author to have a handle, and a block against its author
+    changes nothing about the answer (it would name the author); a block against its sponsor
+    hides it. The id an entry had before it was widened answers 410.
     """
     entry = await db.get(MapEntry, entry_id)
     if entry is None:
+        if await db.get(MapEntryRetiredId, entry_id) is not None:
+            raise gone()
         raise not_found()
     if entry.status is MapEntryStatus.WITHDRAWN:
         raise gone()
-    if entry.status is not MapEntryStatus.PUBLISHED:
+    if entry.status not in {MapEntryStatus.PUBLISHED, MapEntryStatus.ORPHANED}:
         raise not_found()
     author = await db.get(User, entry.user_id)
     if (
         author is None
         or not author.is_active
         or author.deleted_at is not None
-        or author.handle is None
+        or (author.handle is None and entry.widened_level is None)
     ):
         raise not_found()
-    if viewer is not None and await db.scalar(
-        select(User.id).where(User.id == author.id, User.id.in_(blocked_with(viewer.id)))
+    if viewer is not None and not await db.scalar(
+        select(MapEntry.id)
+        .join(User, User.id == MapEntry.user_id)
+        .where(MapEntry.id == entry.id, _not_hidden_by_a_block(viewer))
     ):
         raise not_found()
     return entry
 
 
 async def entry_detail(
-    db: AsyncSession, entry_id: int, viewer: User | None = None, *, photos: PhotoStore
+    db: AsyncSession,
+    entry_id: int,
+    viewer: User | None = None,
+    *,
+    photos: PhotoStore,
+    sponsoring: bool = True,
 ) -> AtlasEntryOut:
     """
     Return an entry's page: the insight by reference, its scripture from the store, the public point.
@@ -535,17 +759,23 @@ async def entry_detail(
         f"hadith:{c}:{n}" for c, n in hadith if (c, n) in evidence.hadith
     }
     step = visible_step(insight.small_step, shown) or {}
-    post_id = await db.scalar(
-        select(Post.id)
-        .join(InsightPublication, InsightPublication.id == Post.publication_id)
-        .where(
-            InsightPublication.insight_id == insight.id,
-            Post.status == PostStatus.PUBLISHED,
-            Post.visibility == PostVisibility.PUBLIC,
+    # The post of the same insight names its author: an anonymous entry points to none.
+    post_id = (
+        None
+        if entry.widened_level is not None
+        else await db.scalar(
+            select(Post.id)
+            .join(InsightPublication, InsightPublication.id == Post.publication_id)
+            .where(
+                InsightPublication.insight_id == insight.id,
+                Post.status == PostStatus.PUBLISHED,
+                Post.visibility == PostVisibility.PUBLIC,
+            )
+            .order_by(Post.published_at.desc())
+            .limit(1)
         )
-        .order_by(Post.published_at.desc())
-        .limit(1)
     )
+    sponsor = (await _sponsors(db, [entry.id], viewer, sponsoring)).get(entry.id)
     return AtlasEntryOut(
         id=entry.id,
         title=insight.title,
@@ -554,9 +784,15 @@ async def entry_detail(
         explanation=explanation_excerpt(visible_parts(insight.explanation, shown)),
         step=str(step["text"]) if step.get("text") else None,
         concepts=list(insight.entity_ids or []),
-        author=_author(author),
+        author=_shown_author(entry, author),
+        orphaned=sponsoring and entry.status is MapEntryStatus.ORPHANED,
+        sponsor=None if sponsor is None else sponsor.member,
+        sponsor_reflection=None if sponsor is None else sponsor.reflection,
+        sponsor_reflection_id=(
+            None if sponsor is None or sponsor.reflection is None else sponsor.sponsorship_id
+        ),
         location=location,
-        place=_place_of(entry),
+        place=place_of(entry),
         quran=[evidence.quran[key] for key in quran if key in evidence.quran],
         hadith=[evidence.hadith[key] for key in hadith if key in evidence.hadith],
         post_id=post_id,
@@ -573,9 +809,13 @@ async def place_page(
     cursor: cursors.Cursor | None,
     limit: int,
     viewer: User | None = None,
+    *,
+    sponsoring: bool = True,
 ) -> AtlasPlaceOut:
     """Return a place and the published entries labelled with it, newest first; 404 without any."""
-    statement = _published_rows(Filters(), viewer).where(MapEntry.place_geoname_id == geoname_id)
+    statement = _published_rows(Filters(), viewer, sponsoring=sponsoring).where(
+        MapEntry.place_geoname_id == geoname_id
+    )
     if cursor is not None:
         day = _published_day()
         statement = statement.where(
@@ -588,18 +828,110 @@ async def place_page(
     if not rows or geoname is None or geoname.latitude is None or geoname.longitude is None:
         raise AppError(ErrorCode.NOT_FOUND, "No such place on the atlas.", status_code=404)
     first = rows[0][0]
-    ref = _place_of(first)
+    ref = place_of(first)
     if ref is None:
         raise AppError(ErrorCode.NOT_FOUND, "No such place on the atlas.", status_code=404)
     page = rows[:limit]
     last = page[-1][0] if len(rows) > limit else None
+    sponsors = await _sponsors(db, [entry.id for entry, _, _ in page], viewer, sponsoring)
     return AtlasPlaceOut(
         place=ref,
         point=_point(float(geoname.latitude), float(geoname.longitude)),
-        entries=[_feature(entry, insight, author) for entry, insight, author in page],
+        entries=[
+            _feature(entry, insight, author, sponsors.get(entry.id), sponsoring=sponsoring)
+            for entry, insight, author in page
+        ],
         next_cursor=(
             None
             if last is None or last.published_at is None
             else cursors.encode(cursors.Cursor(at=_day_start(last), id=last.id))
         ),
+    )
+
+
+def _near(lat: float, lng: float, radius_m: float) -> ColumnElement[bool]:
+    """Match the public points within `radius_m` metres of a position, by their widened place."""
+    here = func.ST_SetSRID(func.ST_MakePoint(lng, lat), 4326)
+    within = func.ST_DWithin(cast(MapEntry.public_geom, Geography), cast(here, Geography), radius_m)
+    # The box lets the spatial index prune first; one that would pass a pole or the antimeridian
+    # is skipped, since a plain expansion would miss what lies across it.
+    margin = radius_m / (METERS_PER_DEGREE * max(math.cos(math.radians(lat)), _MIN_COSINE))
+    if abs(lng) + margin > 180 or abs(lat) + margin > 90:
+        return within
+    return within & MapEntry.public_geom.op("&&")(func.ST_Expand(here, margin))
+
+
+async def _area_of(db: AsyncSession, lat: float, lng: float) -> list[ColumnElement[bool]]:
+    """
+    Match the widened places the position lies in.
+
+    A place widened to a region or a country is far from its own centre for most of the people
+    who live there, so distance alone would not find it for them. The position's own city, region
+    and country, from GeoNames, say which widened places it is inside of.
+    """
+    found = await geo_service.nearest_place(db, lat, lng)
+    areas: list[ColumnElement[bool]] = []
+    if found.place is not None:
+        areas.append(
+            (MapEntry.widened_level == WidenLevel.CITY)
+            & (MapEntry.place_geoname_id == found.place.geoname_id)
+        )
+    if found.admin_area is not None:
+        areas.append(
+            (MapEntry.widened_level == WidenLevel.REGION)
+            & (MapEntry.place_geoname_id == found.admin_area.geoname_id)
+        )
+    if found.country is not None:
+        areas.append(
+            (MapEntry.widened_level == WidenLevel.COUNTRY)
+            & (MapEntry.country_iso2 == found.country.iso2)
+        )
+    return areas
+
+
+async def orphans_near(
+    db: AsyncSession,
+    lat: float,
+    lng: float,
+    radius_m: float,
+    cursor: cursors.Cursor | None,
+    limit: int,
+) -> AtlasOrphansOut:
+    """
+    Return the orphaned entries around a position, at their widened place only, newest first.
+
+    The position is snapped to a grid of about 0.05 degrees before anything is asked, is used for
+    this one query and is kept nowhere. An entry is near when its public point is within the
+    radius or the position lies inside the area it was widened to. A block changes nothing here:
+    an orphaned entry has no author to name, and hiding it from a blocker would name him.
+    """
+    snapped = approximate(lat, lng, ORPHAN_QUERY_CELL_M)
+    near = or_(
+        _near(snapped.lat, snapped.lng, radius_m), *await _area_of(db, snapped.lat, snapped.lng)
+    )
+    day = _published_day()
+    statement = (
+        select(MapEntry, Insight, User)
+        .join(Insight, Insight.id == MapEntry.insight_id)
+        .join(User, User.id == MapEntry.user_id)
+        .where(
+            MapEntry.status == MapEntryStatus.ORPHANED,
+            User.is_active.is_(True),
+            User.deleted_at.is_(None),
+            near,
+        )
+        .order_by(day.desc(), MapEntry.id.desc())
+    )
+    if cursor is not None:
+        statement = statement.where(
+            (day < cursor.at) | ((day == cursor.at) & (MapEntry.id < cursor.id))
+        )
+    rows = (await db.execute(statement.limit(limit + 1))).all()
+    page = rows[:limit]
+    last = page[-1][0] if len(rows) > limit else None
+    return AtlasOrphansOut(
+        features=[_feature(entry, insight, author) for entry, insight, author in page],
+        next_cursor=None
+        if last is None
+        else cursors.encode(cursors.Cursor(at=_day_start(last), id=last.id)),
     )

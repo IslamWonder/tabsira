@@ -20,12 +20,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import clock
 from src.ai.client import ModelClient, client_for
 from src.ai.records import CallLog
-from src.deps import DbDep, PhotoStoreDep, SettingsDep, UngatedCurrentUser, VerifiedUser, limited
+from src.deps import (
+    DbDep,
+    PhotoStoreDep,
+    SettingsDep,
+    UngatedCurrentUser,
+    VerifiedUser,
+    limited,
+    requires,
+)
 from src.errors import AppError, ErrorCode
+from src.features import FeatureFlag
 from src.models import Insight
 from src.owner import INSIGHT, OptionalOwner, Owner, not_found
 from src.pipeline.insight.engine import SHARED_RESOURCES, ResourceCache
-from src.scans.deps import CHAT_LIMITS, PublicIdPath, RedisDep, address_limit, feature
+from src.scans.deps import CHAT_LIMITS, PublicIdPath, RedisDep, address_limit
 from src.schemas.insight import (
     ActionIn,
     ActionOut,
@@ -109,7 +118,7 @@ async def get_insight(
     "/{insight_id}/chat",
     summary="Ask one question about the insight (three at most)",
     dependencies=[
-        Depends(feature("chat")),
+        Depends(requires(FeatureFlag.CHAT, code=ErrorCode.FEATURE_DISABLED)),
         Depends(address_limit(CHAT_LIMITS, "Too many questions. Try again later.")),
     ],
 )
@@ -129,7 +138,7 @@ async def chat(
     The same `idempotencyKey` returns the same answer and counts once; the
     fourth successful message answers 409 CHAT_LIMIT_REACHED. A request for
     another text runs the retrieval and the verification again (v2 §14). 403
-    `profile_required` for an account that has not completed its profile (decision 63).
+    `profile_required` for an account that has not completed its profile (decision 64).
     """
     held_by, insight = await owned_insight(db, owner, insight_id)
     await account_gate.require_profile(db, held_by)
@@ -192,7 +201,10 @@ async def complete_insight(
 @router.put(
     "/{insight_id}/publication",
     summary="Make the insight public (verified owners)",
-    dependencies=[Depends(feature("world")), limited(WriteKind.POST)],
+    dependencies=[
+        Depends(requires(FeatureFlag.WORLD, code=ErrorCode.FEATURE_DISABLED)),
+        limited(WriteKind.POST),
+    ],
 )
 async def publish_insight(
     insight_id: PublicIdPath, db: DbDep, user: VerifiedUser

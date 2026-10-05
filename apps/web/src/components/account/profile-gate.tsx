@@ -70,7 +70,7 @@ function Window({ user }: { user: User }) {
 }
 
 /**
- * The full profile form before anything else (decision 63): when `/auth/me` says
+ * The full profile form before anything else (decision 64): when `/auth/me` says
  * `profile_completed: false` (a new account, or one made before the rule), a full-screen window
  * asks for the five answers, and the scan and the chat, which the server refuses with 403
  * `profile_required` until then, open it too. The acceptance of the terms comes first; it waits for

@@ -68,7 +68,7 @@ async def make_member(
             return Member(None, guest, None)  # type: ignore[arg-type]
         email = f"{handle or 'member'}@example.com"
         if identity and handle is not None:
-            # A member who consented to show their full name (decision 63); a test that wants
+            # A member who consented to show their full name (decision 64); a test that wants
             # the handle alone passes `public_full_name=False`.
             columns = {
                 "handle": handle,

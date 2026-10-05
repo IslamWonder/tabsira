@@ -2,7 +2,7 @@
 What the account export says about the social network: everything the account wrote or did.
 
 The owner gets their own words back (posts, reflections, comments, reports with their details),
-what they published of an insight, and the lists of what they did (follows, blocks, likes,
+what they published of an insight, and the lists of what they did (follows, blocks, reactions,
 bookmarks). Other people appear only as the handle they chose to be known by.
 """
 
@@ -17,6 +17,7 @@ from src.models.social import (
     CommentStatus,
     PostStatus,
     PostVisibility,
+    ReactionKind,
     RemovalSource,
     ReportReason,
     ReportStatus,
@@ -85,10 +86,16 @@ class HandleExport(BaseModel):
 
 
 class PostMarkExport(BaseModel):
-    """A post the account liked or saved."""
+    """A post the account saved."""
 
     post_id: PublicId
     at: datetime
+
+
+class ReactionExport(PostMarkExport):
+    """A reaction the account gave to a post."""
+
+    kind: ReactionKind
 
 
 class ReportExport(BaseModel):
@@ -108,6 +115,6 @@ class SocialExport(BaseModel):
     comments: list[CommentExport]
     following: list[HandleExport]
     blocked: list[HandleExport]
-    likes: list[PostMarkExport]
+    reactions: list[ReactionExport]
     bookmarks: list[PostMarkExport]
     reports: list[ReportExport]

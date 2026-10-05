@@ -157,7 +157,7 @@ async def _shows_full_name(db: AsyncSession, user_id: uuid.UUID) -> bool:
 
 
 async def require_completed(db: AsyncSession, user_id: uuid.UUID) -> None:
-    """Answer 403 `profile_required` unless the account completed its profile (decision 63)."""
+    """Answer 403 `profile_required` unless the account completed its profile (decision 64)."""
     completed_at = await db.scalar(
         select(Profile.profile_completed_at).where(Profile.user_id == user_id)
     )

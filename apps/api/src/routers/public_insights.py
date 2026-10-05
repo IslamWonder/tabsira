@@ -10,8 +10,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from src.deps import DbDep
-from src.scans.deps import PublicIdPath, feature
+from src.deps import DbDep, requires
+from src.errors import ErrorCode
+from src.features import FeatureFlag
+from src.scans.deps import PublicIdPath
 from src.schemas.insight import PublicInsightOut
 from src.services import public_insight_service
 
@@ -21,7 +23,7 @@ router = APIRouter(prefix="/public/insights", tags=["public"])
 @router.get(
     "/{insight_id}",
     summary="One published insight, its scripture read from the store",
-    dependencies=[Depends(feature("world"))],
+    dependencies=[Depends(requires(FeatureFlag.WORLD, code=ErrorCode.FEATURE_DISABLED))],
 )
 async def get_public_insight(insight_id: PublicIdPath, db: DbDep) -> PublicInsightOut:
     """Return the published insight: verse and hadith as stored, the author only if chosen."""

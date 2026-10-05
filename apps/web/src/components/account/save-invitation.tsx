@@ -18,7 +18,7 @@ export interface SaveInvitationProps {
 }
 
 /**
- * The invitation after the guest's first own insight (decision 63, amending v2 §4.7): create
+ * The invitation after the guest's first own insight (decision 64, amending v2 §4.7): create
  * an account to keep it, or sign in to an existing one. There is no «continue as a guest»: a
  * second scan or the chat of this one needs an account, and the insight moves into it. Shown
  * once the insight is done, after the done button.

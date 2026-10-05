@@ -80,7 +80,7 @@ export function recordConsent(
   return attempt(api.POST('/consents', { body: { kind, version: CONSENT_TEXT_VERSION, granted } }));
 }
 
-/** The separate consent to show the full name beside posts and on the public page (decision 63). */
+/** The separate consent to show the full name beside posts and on the public page (decision 64). */
 export function recordFullNameConsent(granted: boolean): Promise<Result<ConsentEntry>> {
   return attempt(
     api.POST('/consents', {

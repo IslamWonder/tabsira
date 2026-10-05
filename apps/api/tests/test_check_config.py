@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy.engine import make_url
 
 from src.cli import check_config
+from src.features import FeatureFlag
 
 API_DIR = Path(__file__).resolve().parents[1]
 PASSWORD = "s3cr3t-pw"
@@ -36,10 +37,10 @@ def test_a_valid_configuration_is_reported_without_secrets(monkeypatch, capsys):
     assert "test database: not set" in out.out
     assert "ai provider: openai (api key set)" in out.out
     assert (
-        "features on: admin, atlas, camera_discovery, canonical_verify, chat, "
-        "dev_inspector, photo_storage, social, treasure, world"
+        "features on: admin, atlas, atlas_sponsorship, camera_discovery, canonical_verify, "
+        "chat, dev_inspector, photo_storage, social, treasure, world"
     ) in out.out
-    assert "camera_anchor" not in out.out
+    assert "features off: camera_anchor, social_comments" in out.out
     assert out.err == ""
     assert PASSWORD not in out.out + out.err
     assert "openai-secret-key" not in out.out + out.err
@@ -49,9 +50,7 @@ def test_the_report_marks_a_missing_key_and_a_set_test_database(monkeypatch, cap
     monkeypatch.setenv(
         "TEST_DATABASE_URL", "postgresql+asyncpg://tabsira:pw@127.0.0.1/tabsira_test"
     )
-    for name in check_config.Settings.model_fields:
-        if name.startswith("feature_"):
-            monkeypatch.setenv(name.upper(), "false")
+    monkeypatch.setenv("DISABLED_FEATURES", ",".join(flag.value for flag in FeatureFlag))
 
     assert check_config.main([]) == 0
 

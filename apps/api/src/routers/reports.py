@@ -1,4 +1,4 @@
-"""Reports of posts, comments and map entries, with a reason."""
+"""Reports of posts, comments, map entries and sponsors' reflections, with a reason."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from src.deps import (
     limited,
     require_social_or_atlas,
 )
+from src.features import FeatureFlag
 from src.schemas.social import ReportIn, ReportOut
 from src.services import report_service
 from src.services.social_limits import WriteKind
@@ -22,7 +23,7 @@ router = APIRouter(tags=["reports"], dependencies=[Depends(require_social_or_atl
 @router.post(
     "/reports",
     status_code=status.HTTP_201_CREATED,
-    summary="Report a post, a comment or a map entry",
+    summary="Report a post, a comment, a map entry or a sponsor's reflection",
     dependencies=[limited(WriteKind.REPORT)],
 )
 async def report(
@@ -46,8 +47,10 @@ async def report(
         reason=body.reason,
         details=body.details,
         hold_threshold=settings.social_report_hold_threshold,
-        social_on=settings.feature_social,
-        atlas_on=settings.feature_atlas,
+        social_on=settings.is_enabled(FeatureFlag.SOCIAL),
+        atlas_on=settings.is_enabled(FeatureFlag.ATLAS),
+        comments_on=settings.is_enabled(FeatureFlag.SOCIAL_COMMENTS),
+        sponsorship_on=settings.is_enabled(FeatureFlag.ATLAS_SPONSORSHIP),
         photos=photos,
     )
     await db.commit()

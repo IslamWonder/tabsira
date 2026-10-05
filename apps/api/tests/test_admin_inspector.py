@@ -5,7 +5,7 @@ The page shows the scan's status, every stage with its time, the model calls wit
 cost, the entities of the verified scene and the insights by their references. It never
 shows the photo, the owner, the exact point or the answer a person typed; the scripture
 appears by reference only. The audit log names the scan an admin looked at, and the whole
-view is gone when FEATURE_DEV_INSPECTOR is off.
+view is gone when the dev_inspector feature is off.
 """
 
 from __future__ import annotations
@@ -260,7 +260,7 @@ async def test_the_panel_needs_an_admin_session(anon):
 
 async def test_the_panel_is_gone_when_the_feature_is_off(make_admin_app, make_admin):
     await make_admin()
-    app = make_admin_app(feature_dev_inspector=False)
+    app = make_admin_app(disabled_features="dev_inspector")
     async with browser(app) as http:
         assert (await sign_in(http)).status_code == 302
         assert (await http.get(FORM)).status_code == 404

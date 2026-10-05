@@ -19,7 +19,7 @@ export interface GoogleSignInProps {
    * into the link. From the sign-in view: left out (the gate asks afterwards).
    */
   accepted?: LegalVersions | null;
-  /** The full-name box of the sign-up view, carried with the tick (decision 63). */
+  /** The full-name box of the sign-up view, carried with the tick (decision 64). */
   publicFullName?: boolean;
   /** The ornament that separates it from the e-mail form: under it (sign-in) or above it (sign-up). */
   divider: 'after' | 'before';

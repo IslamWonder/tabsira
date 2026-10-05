@@ -83,7 +83,7 @@ export function InsightScreen({
   publishTo = NO_TARGETS,
 }: {
   insightId: string;
-  /** FEATURE_ATLAS and FEATURE_SOCIAL, read by the server: the other ways to publish inside sharing. */
+  /** the atlas and social features, read by the server: the other ways to publish inside sharing. */
   publishTo?: PublishTargets;
 }) {
   const controls = useInsight(insightId);
@@ -125,7 +125,7 @@ export function InsightScreen({
   const backHref = backTo(insight);
   const seen = insight.explanation.find((part) => part.section === 'seen');
   const { chat } = insight;
-  // A guest's own scan has no chat: it asks for an account, and the insight moves into it (decision 63).
+  // A guest's own scan has no chat: it asks for an account, and the insight moves into it (decision 64).
   const discuss = () => {
     if (session.status === 'guest' && insight.engine === 'pipeline') {
       router.push(signUpHref(`/insight/${insight.id}` as Route, 'chat'));

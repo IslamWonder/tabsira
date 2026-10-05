@@ -12,6 +12,7 @@ import importlib.util
 import os
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from types import ModuleType
 
@@ -49,7 +50,7 @@ APP_TABLES = {
     "blocks",
     "insight_publications",
     "posts",
-    "post_likes",
+    "post_reactions",
     "bookmarks",
     "comments",
     "reports",
@@ -67,6 +68,9 @@ APP_TABLES = {
     "evidence_exposures",
     "map_entries",
     "map_capture_points",
+    "map_entry_generalisations",
+    "map_entry_retired_ids",
+    "map_entry_sponsorships",
 }
 # Decision 57: the reference data, filled by the app chain in its own schema.
 CORPUS_TABLES = {
@@ -315,6 +319,111 @@ async def test_the_move_to_corpus_keeps_every_row_and_key_and_its_downgrade_puts
     assert tuple(back) == (1, 0, "app")
 
 
+async def test_the_sponsorship_migration_starts_the_quiet_period_now_and_its_downgrade_withdraws_orphans(
+    migrated,
+):
+    assert alembic(APP_CONFIG, "upgrade", "20261005_160000").returncode == 0
+    insights: list[int] = []
+    async with migrated.begin() as connection:
+        for number in range(3):
+            user = (
+                await connection.execute(
+                    text(
+                        "INSERT INTO app.users (email, display_name) "
+                        "VALUES (:email, 'm') RETURNING id"
+                    ),
+                    {"email": f"m{number}@example.com"},
+                )
+            ).scalar_one()
+            insights.append(
+                (
+                    await connection.execute(
+                        text(
+                            "INSERT INTO app.insights (user_id, origin, tutorial_slug, engine, "
+                            "title, glimpse, relation, explanation, why) VALUES (:user, 'tutorial', "
+                            "'rain', 'pipeline', 't', 'g', 'direct', '[]'::jsonb, '{}'::jsonb) "
+                            "RETURNING id"
+                        ),
+                        {"user": user},
+                    )
+                ).scalar_one()
+            )
+        for entry_id, status, published, updated in (
+            (
+                1,
+                "published",
+                datetime(2026, 8, 1, 10, tzinfo=UTC),
+                datetime(2026, 9, 1, 10, tzinfo=UTC),
+            ),
+            (2, "draft", None, datetime(2026, 9, 2, 10, tzinfo=UTC)),
+        ):
+            await connection.execute(
+                text(
+                    "INSERT INTO app.map_entries (id, user_id, insight_id, cell_m, "
+                    "location_meaning, public_lat, public_lng, status, published_at, updated_at) "
+                    "SELECT :id, user_id, id, 1000, 'capture_point', 1, 1, :status, "
+                    ":published, :updated "
+                    "FROM app.insights WHERE id = :insight"
+                ),
+                {
+                    "id": entry_id,
+                    "status": status,
+                    "published": published,
+                    "updated": updated,
+                    "insight": insights[entry_id - 1],
+                },
+            )
+
+    up = alembic(APP_CONFIG, "upgrade", "head")
+    assert up.returncode == 0, up.stderr
+    async with migrated.begin() as connection:
+        # Every entry that existed starts its quiet period now, not at its old dates.
+        recent = (
+            await connection.execute(
+                text(
+                    "SELECT id, last_active_at > now() - interval '1 minute' "
+                    "FROM app.map_entries ORDER BY id"
+                )
+            )
+        ).all()
+        # An anonymous entry (widened), as the job leaves it.
+        await connection.execute(
+            text(
+                "INSERT INTO app.map_entries (id, user_id, insight_id, cell_m, location_meaning, "
+                "public_lat, public_lng, status, widened_level, published_at, place_label) "
+                "SELECT 3, user_id, id, 500000, 'capture_point', 1, 1, 'orphaned', 'country', "
+                "now(), 'x' FROM app.insights WHERE id = :insight"
+            ),
+            {"insight": insights[2]},
+        )
+    assert [tuple(row) for row in recent] == [(1, True), (2, True)]
+
+    down = alembic(APP_CONFIG, "downgrade", "20261005_160000")
+    assert down.returncode == 0, down.stderr
+    async with migrated.connect() as connection:
+        states = (
+            await connection.execute(text("SELECT id, status FROM app.map_entries ORDER BY id"))
+        ).all()
+        left = (
+            await connection.execute(
+                text(
+                    "SELECT count(*) FROM pg_tables WHERE tablename IN "
+                    "('map_entry_sponsorships', 'map_entry_generalisations')"
+                )
+            )
+        ).scalar_one()
+    assert [tuple(row) for row in states] == [(1, "published"), (2, "draft"), (3, "withdrawn")]
+    async with migrated.connect() as connection:
+        gone = (
+            await connection.execute(
+                text("SELECT public_lat, place_label FROM app.map_entries WHERE id = 3")
+            )
+        ).one()
+    # An anonymous entry is withdrawn on the way back, not shown again as its author's.
+    assert tuple(gone) == (None, None)
+    assert left == 0
+
+
 async def test_the_geodata_chain_downgrades_and_upgrades_again(migrated):
     assert alembic(GEODATA_CONFIG, "upgrade", "head").returncode == 0
 
@@ -527,3 +636,67 @@ async def test_the_social_migration_makes_public_id_tables_and_removes_everythin
     assert not {f"{table}_id_seq" for table in tables} & sequences
     assert defaults == []
     assert triggers == 0
+
+
+async def test_the_reactions_migration_turns_every_like_into_benefited_and_back(migrated):
+    assert alembic(APP_CONFIG, "upgrade", "20261005_150000").returncode == 0
+    async with migrated.begin() as connection:
+        await connection.execute(
+            text(
+                "INSERT INTO app.users (id, email, display_name) VALUES "
+                "('00000000-0000-0000-0000-000000000001', 'a@example.com', 'A'), "
+                "('00000000-0000-0000-0000-000000000002', 'b@example.com', 'B')"
+            )
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO app.posts (author_id) VALUES ('00000000-0000-0000-0000-000000000001')"
+            )
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO app.post_likes (post_id, user_id, created_at) "
+                "SELECT p.id, u.id, '2026-10-01 10:00:00+00' FROM app.posts p, app.users u"
+            )
+        )
+
+    up = alembic(APP_CONFIG, "upgrade", "head")
+    assert up.returncode == 0, up.stderr
+    async with migrated.connect() as connection:
+        rows = (
+            await connection.execute(
+                text(
+                    "SELECT kind, (created_at AT TIME ZONE 'UTC')::text FROM app.post_reactions ORDER BY user_id"
+                )
+            )
+        ).all()
+        likes_left = (
+            await connection.execute(text("SELECT to_regclass('app.post_likes')"))
+        ).scalar_one()
+    assert [tuple(row) for row in rows] == [("benefited", "2026-10-01 10:00:00")] * 2
+    assert likes_left is None
+
+    async with migrated.begin() as connection:
+        await connection.execute(
+            text(
+                "INSERT INTO app.post_reactions (post_id, user_id, kind) "
+                "SELECT post_id, user_id, 'jazak' FROM app.post_reactions"
+            )
+        )
+    down = alembic(APP_CONFIG, "downgrade", "20261005_150000")
+    assert down.returncode == 0, down.stderr
+    async with migrated.connect() as connection:
+        likes = (
+            (
+                await connection.execute(
+                    text("SELECT (created_at AT TIME ZONE 'UTC')::text FROM app.post_likes")
+                )
+            )
+            .scalars()
+            .all()
+        )
+        reactions_left = (
+            await connection.execute(text("SELECT to_regclass('app.post_reactions')"))
+        ).scalar_one()
+    assert likes == ["2026-10-01 10:00:00"] * 2
+    assert reactions_left is None

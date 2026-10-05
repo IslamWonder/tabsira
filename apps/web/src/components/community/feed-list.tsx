@@ -17,6 +17,8 @@ export interface FeedListProps {
   /** Shown instead of the list, for a feed the viewer must sign in for. */
   gate?: ReactNode;
   headingLevel?: 2 | 3;
+  /** The social_comments feature, passed down from the server page. */
+  comments?: boolean;
   /** The viewer blocked a member from one of the cards; the page may have more of them to hide. */
   onAuthorBlocked?: (handle: string) => void;
 }
@@ -32,6 +34,7 @@ export function FeedList({
   emptyText,
   gate,
   headingLevel = 2,
+  comments = false,
   onAuthorBlocked,
 }: FeedListProps) {
   if (gate !== undefined) {
@@ -55,6 +58,7 @@ export function FeedList({
           key={post.id}
           post={post}
           headingLevel={headingLevel}
+          comments={comments}
           onChange={(next) => pages.replace((item) => item.id === post.id, next)}
           onRemoved={(reason) => {
             pages.replace(

@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import pytest
 from sqlalchemy import func, select
 
+from src.features import FeatureFlag
 from src.models import Post, PostStatus, Report, ReportReason, ReportTarget
 from src.services.social_limits import SocialLimits, WriteKind
-from tests.helpers import any_id
+from tests.helpers import any_id, switched
 from tests.support_social import publish_post
+
+
+@pytest.fixture
+def account_settings(account_settings):
+    """These tests write and read comments, which are off until the owners enable them."""
+    return switched(account_settings, on=[FeatureFlag.SOCIAL_COMMENTS])
 
 
 async def report(member, target_type, target_id, reason="abuse", **extra):

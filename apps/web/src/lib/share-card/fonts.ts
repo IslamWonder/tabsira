@@ -38,7 +38,9 @@ export const TEXT_SOURCES: readonly string[] = [
 ];
 
 export function cardFaces(): CardFaces {
-  const at = (source: string) => path.join(process.cwd(), source);
+  // The files are named for the build in next.config.ts (outputFileTracingIncludes): the tracer
+  // must not follow this path, or it copies the whole project into the standalone output.
+  const at = (source: string) => path.join(/* turbopackIgnore: true */ process.cwd(), source);
   return {
     text: TEXT_SOURCES.map((source) => ({ family: TEXT_FAMILY, file: at(source) })),
     quran: { family: QURAN_FAMILY, file: at(QURAN_SOURCE) },

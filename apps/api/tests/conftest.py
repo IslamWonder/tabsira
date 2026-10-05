@@ -56,6 +56,7 @@ pytest_plugins = [
     "tests.support_glitchtip",
     "tests.support_admin",
     "tests.support_social",
+    "tests.support_orphans",
 ]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -362,7 +363,7 @@ async def make_user(db_session: AsyncSession, account_settings: Settings) -> Cal
 
     It has accepted the current terms and privacy policy unless `accepted` is False (an admin
     has not, unless `accepted` is True), and has completed its profile unless `profile_done` is
-    False (decision 63: only then may it scan and chat).
+    False (decision 64: only then may it scan and chat).
     """
     from src import security
     from src.models.user import User

@@ -129,7 +129,7 @@ async def accept_legal(
     `legal_acceptance_required`. Two consent rows are appended; none is ever edited. It also
     takes, for a Google account, the real full name (`display_name`, only while the acceptance
     is pending or the name is empty; an account with no name must give one: 422) and the answer
-    to the `public_full_name` consent (decision 63).
+    to the `public_full_name` consent (decision 64).
     """
     legal_service.require_current(settings, body.terms_version, body.privacy_version)
     pending = await legal_service.acceptance_required(db, settings, user.id)

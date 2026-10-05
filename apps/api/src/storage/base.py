@@ -3,13 +3,17 @@ Photo storage: where consented photos are kept, behind one small interface (deci
 
 A photo is kept as one JPEG object under a key that nobody can guess:
 
-- `private/<32 random hex digits>.jpg` is the owner's copy. It is never public: a reader gets
-  a signed link that expires within minutes (`SIGNED_URL_TTL_SECONDS`).
+- `private/users/<account id>/insights/<32 random hex digits>.jpg` is the owner's copy, under
+  the owner's own folder, so everything one person kept can be listed, exported or deleted
+  together (`owner_prefix`). It is never public: a reader gets a signed link that expires
+  within minutes (`SIGNED_URL_TTL_SECONDS`). Copies kept before this layout are
+  `private/<32 hex>.jpg` and stay readable; the storage probe still writes that shape.
 - `public/<32 random hex digits>.jpg` is a copy made only when its owner publishes, and removed
-  when they withdraw. It has a key of its own, so its address says nothing about the private one.
+  when they withdraw. It never names its owner: anyone can read its address, which must not
+  expose the account id or tie one person's published photos together, nor say anything about
+  the private copy. The database knows which insight each one belongs to.
 
-The 128 random bits come from `secrets`, so the key of one photo reveals nothing about another
-and nothing about its owner. Every implementation checks a key against `KEY` before it touches
+The 128 random bits come from `secrets`, so the key of one photo reveals nothing about another. Every implementation checks a key against `KEY` before it touches
 anything, so a key that is not of this shape cannot reach a path or an object name.
 
 What may be kept at all is decided one level up (`src/storage/photos.py`); this module only
@@ -20,13 +24,18 @@ from __future__ import annotations
 
 import re
 import secrets
+import uuid
 from typing import Protocol
 
 PRIVATE_PREFIX = "private"
 PUBLIC_PREFIX = "public"
 CONTENT_TYPE = "image/jpeg"
 # Images are re-encoded to JPEG before they are kept (`src/services/image_service.py`).
-KEY = re.compile(r"^(?P<prefix>private|public)/(?P<id>[0-9a-f]{32})\.jpg$")
+_UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+KEY = re.compile(
+    rf"^(?P<prefix>private|public)/(?:users/(?P<owner>{_UUID})/insights/)?(?P<id>[0-9a-f]{{32}})\.jpg$"
+)
+OWNER_PREFIX = re.compile(rf"^private/users/{_UUID}/$")
 # The longest a signed link may live, whatever a caller asks for.
 MAX_SIGNED_URL_TTL_SECONDS = 3600
 # The most one object may hold: a re-encoded photo is a few megabytes at most.
@@ -65,9 +74,16 @@ def new_key(prefix: str) -> str:
     return f"{prefix}/{secrets.token_hex(16)}.jpg"
 
 
-def new_private_key() -> str:
-    """Return a new key for an owner's private copy."""
-    return new_key(PRIVATE_PREFIX)
+def new_private_key(owner_id: uuid.UUID | None = None) -> str:
+    """Return a new key for an owner's private copy, in their folder; without one, the probe's shape."""
+    if owner_id is None:
+        return new_key(PRIVATE_PREFIX)
+    return f"{owner_prefix(owner_id)}insights/{secrets.token_hex(16)}.jpg"
+
+
+def owner_prefix(owner_id: uuid.UUID) -> str:
+    """Return the folder that holds every private copy of one account, ending in a slash."""
+    return f"{PRIVATE_PREFIX}/users/{owner_id}/"
 
 
 def new_public_key() -> str:
@@ -78,10 +94,26 @@ def new_public_key() -> str:
 def split_key(key: str) -> tuple[str, str]:
     """Return the prefix and the random id of a key; raise `InvalidKeyError` when it is not one."""
     match = KEY.fullmatch(key)
-    if match is None:
+    # A published copy never names its owner.
+    if match is None or (match["prefix"] == PUBLIC_PREFIX and match["owner"] is not None):
         message = "not a storage key"
         raise InvalidKeyError(message)
     return match["prefix"], match["id"]
+
+
+def in_owner_folder(key: str) -> bool:
+    """Whether `key` is a private copy kept in its owner's folder. The key is checked first."""
+    split_key(key)
+    match = KEY.fullmatch(key)
+    return match is not None and match["owner"] is not None
+
+
+def check_owner_prefix(prefix: str) -> str:
+    """Return `prefix` when it is one account's private folder; raise `InvalidKeyError` otherwise."""
+    if OWNER_PREFIX.fullmatch(prefix) is None:
+        message = "not an account's folder"
+        raise InvalidKeyError(message)
+    return prefix
 
 
 def check_key(key: str) -> str:
@@ -137,6 +169,9 @@ class Storage(Protocol):
 
     async def copy(self, source: str, destination: str) -> None:
         """Copy an object to another key, or raise `ObjectNotFoundError` when there is no source."""
+
+    async def delete_prefix(self, prefix: str) -> int:
+        """Remove every object in one account's folder (`owner_prefix`); return how many."""
 
     def signed_url(self, key: str, *, ttl_seconds: int | None = None) -> str:
         """Return a link that reads the object until it expires (the setting's TTL by default)."""

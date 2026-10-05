@@ -417,7 +417,7 @@ async def test_every_social_route_answers_404_while_the_feature_is_off(
     reader = await make_member("reader")
     # The identity stays open while the atlas is on (next test); here both are off.
     account_app.state.settings = account_settings.model_copy(
-        update={"feature_social": False, "feature_atlas": False}
+        update={"disabled_features": "social,atlas"}
     )
 
     for method, path in (
@@ -435,9 +435,7 @@ async def test_the_atlas_alone_opens_the_public_identity_and_nothing_else_of_the
 ):
     """The atlas publishes under the handle, so a member chooses one while the network is off."""
     reader = await make_member(identity=False)
-    account_app.state.settings = account_settings.model_copy(
-        update={"feature_social": False, "feature_atlas": True}
-    )
+    account_app.state.settings = account_settings.model_copy(update={"disabled_features": "social"})
 
     chosen = await reader.http.put(
         "/me/public-identity", json={"handle": "basira", "public_name": "Basira"}
@@ -457,7 +455,7 @@ async def test_the_atlas_alone_opens_the_public_identity_and_nothing_else_of_the
         assert response.status_code == 404, path
 
     account_app.state.settings = account_settings.model_copy(
-        update={"feature_social": False, "feature_atlas": False}
+        update={"disabled_features": "social,atlas"}
     )
     assert (await reader.http.get("/me/public-identity")).status_code == 404
     assert (await reader.http.put("/me/public-identity", json={})).status_code == 404

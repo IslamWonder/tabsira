@@ -141,7 +141,7 @@ function DraftForm({
  * A refused post becomes a draft again when edited. The insight is named by
  * `?insight=<id>`, which the insight screen's publish action passes.
  */
-export function PublishScreen() {
+export function PublishScreen({ comments = false }: { comments?: boolean }) {
   const params = useSearchParams();
   const insightId = params.get('insight');
   const access = useAccess();
@@ -266,6 +266,7 @@ export function PublishScreen() {
               <PostCard
                 post={post}
                 variant="full"
+                comments={comments}
                 onChange={setPost}
                 onRemoved={() => setWithdrawn(true)}
               />

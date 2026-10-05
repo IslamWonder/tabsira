@@ -30,12 +30,18 @@ import { formatDay } from '@/lib/dates';
 import { messages } from '@/messages';
 import { memberLabel, profilePath } from '@/social/identity';
 import { MapView } from './map-view';
+import { MySponsorships } from './my-sponsorships';
+import { OrphansSection } from './orphans-section';
+import { entryPath, placePath } from './paths';
 
 const A = messages.atlas;
+const S = messages.atlas.sponsor;
 const PERIODS: readonly Period[] = ['all', 'week', 'month', 'year'];
 /** Whose entries the list shows: everyone's inside the window, or the signed-in owner's own. */
-type Scope = 'public' | 'mine';
+type Scope = 'public' | 'mine' | 'sponsored';
 const SCOPES: readonly Scope[] = ['public', 'mine'];
+/** The member's sponsorships join the scopes only while the sponsoring feature is on. */
+const SCOPES_WITH_SPONSORING: readonly Scope[] = ['public', 'mine', 'sponsored'];
 
 type View = AtlasView;
 
@@ -44,13 +50,7 @@ type Load =
   | { kind: 'ready'; truncated: boolean }
   | { kind: 'failed'; message: string };
 
-export function entryPath(id: string): Route {
-  return `/atlas/entries/${id}` as Route;
-}
-
-export function placePath(geonameId: number): Route {
-  return `/atlas/places/${geonameId}` as Route;
-}
+export { entryPath, placePath };
 
 /** The card of one entry: title, glimpse, place, who published it, and the way to the insight. */
 export function EntryCard({ feature, onClose }: { feature: AtlasFeature; onClose?: () => void }) {
@@ -83,17 +83,19 @@ export function EntryCard({ feature, onClose }: { feature: AtlasFeature; onClose
         <div className="flex gap-2">
           <dd className="m-0">{properties.precision_label}</dd>
         </div>
-        <div className="flex gap-2">
-          <dd className="m-0">
-            {A.card.by('')}
-            <Link
-              href={profilePath(properties.author.handle)}
-              className="text-link underline-offset-4 hover:underline"
-            >
-              {memberLabel(properties.author)}
-            </Link>
-          </dd>
-        </div>
+        {properties.author === null ? null : (
+          <div className="flex gap-2">
+            <dd className="m-0">
+              {A.card.by('')}
+              <Link
+                href={profilePath(properties.author.handle)}
+                className="text-link underline-offset-4 hover:underline"
+              >
+                {memberLabel(properties.author)}
+              </Link>
+            </dd>
+          </div>
+        )}
         <div className="flex gap-2">
           <dd className="m-0">
             <time dateTime={properties.published_on}>
@@ -194,6 +196,7 @@ function Filters({
   onChange,
   scope,
   onScope,
+  sponsorship,
 }: {
   filters: AtlasFilters;
   countries: readonly { iso2: string; label: string }[];
@@ -201,6 +204,7 @@ function Filters({
   /** Null for a guest, who has no entries of their own. */
   scope: Scope | null;
   onScope: (scope: Scope) => void;
+  sponsorship: boolean;
 }) {
   const countryId = useId();
   return (
@@ -208,7 +212,10 @@ function Filters({
       {scope === null ? null : (
         <ChoiceGroup
           legend={A.filters.scope}
-          options={SCOPES.map((value) => ({ value, label: A.filters.scopes[value] }))}
+          options={(sponsorship ? SCOPES_WITH_SPONSORING : SCOPES).map((value) => ({
+            value,
+            label: A.filters.scopes[value],
+          }))}
           value={scope}
           onChange={onScope}
         />
@@ -338,9 +345,31 @@ function MyEntries({ onShow }: { onShow: (point: [number, number]) => void }) {
                   <span className="text-[0.8125rem] text-fg-muted">
                     {A.joinLabels([A.publish.status[entry.status], entry.place?.label])}
                   </span>
+                  {entry.sponsor == null ? null : (
+                    <span className="text-[0.8125rem] text-fg-soft">
+                      {S.mine.by(
+                        entry.sponsor.public_name === null
+                          ? `@${entry.sponsor.handle}`
+                          : `${entry.sponsor.public_name} @${entry.sponsor.handle}`
+                      )}
+                    </span>
+                  )}
+                  {entry.widened == null ? null : (
+                    <span className="text-[0.8125rem] text-fg-muted leading-[1.8]">
+                      {S.mine.widened(
+                        entry.widened.label ?? S.mine.levels[entry.widened.level],
+                        formatDay(entry.widened.at)
+                      )}
+                    </span>
+                  )}
+                  {entry.status === 'orphaned' && entry.sponsor == null && entry.widened == null ? (
+                    <span className="text-[0.8125rem] text-fg-muted leading-[1.8]">
+                      {S.mine.orphaned}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {entry.status === 'published' ? (
+                  {entry.status === 'published' || entry.status === 'orphaned' ? (
                     <LinkButton
                       href={entryPath(entry.id)}
                       variant="secondary"
@@ -393,10 +422,13 @@ function viewFromAddress(): View | null {
 export function AtlasScreen({
   initialView = null,
   cameraDiscovery = false,
+  sponsorship = false,
 }: {
   initialView?: View | null;
-  /** FEATURE_CAMERA_DISCOVERY, read by the server: shows the way to the camera discovery. */
+  /** The camera_discovery feature, read by the server: shows the way to the camera discovery. */
   cameraDiscovery?: boolean;
+  /** The atlas_sponsorship feature, read by the server: shows the orphaned entries and the member's sponsorships. */
+  sponsorship?: boolean;
 }) {
   const session = useSession();
   const [features, setFeatures] = useState<AtlasFeature[]>([]);
@@ -411,6 +443,10 @@ export function AtlasScreen({
   // What the map shows after its last move; what the address carries.
   const [shownView, setShownView] = useState<View | null>(view);
   const latest = useRef(0);
+  // The map's centre when it last moved, and the one the orphans were last asked around:
+  // a public map view, never the device's position.
+  const centre = useRef<View['center'] | null>(null);
+  const [orphanPoint, setOrphanPoint] = useState<View['center'] | null>(null);
 
   // The selection and filters of the address, once in the browser; the map's view was read above.
   useEffect(() => {
@@ -436,6 +472,7 @@ export function AtlasScreen({
   const fetchWindow = useCallback(async (window: Window, applied: AtlasFilters) => {
     const mine = ++latest.current;
     setLoad({ kind: 'loading' });
+    setOrphanPoint(centre.current);
     const result = await entriesIn(window, applied);
     if (mine !== latest.current) {
       return;
@@ -454,6 +491,7 @@ export function AtlasScreen({
       const first = window_.current === null;
       window_.current = window;
       setShownView(current);
+      centre.current = current.center;
       if (first) {
         void fetchWindow(window, filters);
       } else {
@@ -557,12 +595,16 @@ export function AtlasScreen({
         onChange={setFilters}
         scope={session.status === 'signed-in' ? scope : null}
         onScope={setScope}
+        sponsorship={sponsorship}
       />
       {selectedFeature === null ? null : (
         <div className="hidden tablet:block">
           <EntryCard feature={selectedFeature} onClose={() => setSelected(null)} />
         </div>
       )}
+      {sponsorship && session.status === 'signed-in' && scope === 'sponsored' ? (
+        <MySponsorships />
+      ) : null}
       {session.status === 'signed-in' && scope === 'mine' ? (
         <MyEntries
           onShow={(point) => {
@@ -575,7 +617,7 @@ export function AtlasScreen({
         aria-label={A.list}
         className={cx(
           'flex flex-col gap-3',
-          session.status === 'signed-in' && scope === 'mine' && 'hidden'
+          session.status === 'signed-in' && scope !== 'public' && 'hidden'
         )}
       >
         <h2 className="m-0 flex items-baseline justify-between font-semibold text-lg text-fg">
@@ -627,6 +669,9 @@ export function AtlasScreen({
           ))}
         </ul>
       </section>
+      {sponsorship && (session.status !== 'signed-in' || scope === 'public') ? (
+        <OrphansSection point={orphanPoint} />
+      ) : null}
     </div>
   );
 

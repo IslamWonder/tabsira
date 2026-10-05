@@ -4,7 +4,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setSignedIn } from '@/account/session';
 import { messages } from '@/messages';
 import { apiError, mockApi, type Reply, type Route } from '@/test/api';
-import { FEATURE, OWNER_ENTRY, PLACE, SECOND_FEATURE } from '@/test/atlas';
+import {
+  FEATURE,
+  ORPHAN_FEATURE,
+  OWNER_ENTRY,
+  PLACE,
+  SECOND_FEATURE,
+  SPONSOR,
+  SPONSORSHIP,
+} from '@/test/atlas';
 import { USER } from '@/test/fixtures';
 import { forgetMaps, loadedMap } from '@/test/maplibre';
 
@@ -83,6 +91,17 @@ describe('AtlasScreen', () => {
       expect(api.requests.filter((r) => r.url.includes('/atlas/entries')).length).toBe(before + 1)
     );
     expect(new URL(api.requests.at(-1)?.url ?? '').searchParams.get('west')).toBe('39');
+  });
+
+  it('names no author beside an entry whose place was widened', async () => {
+    const widened = { ...FEATURE, properties: { ...FEATURE.properties, author: null } };
+    guest({ 'GET /atlas/entries': collection([widened]) });
+    render(<AtlasScreen />);
+    await loadedMap();
+    await userEvent.click(await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ }));
+    const card = screen.getAllByRole('article', { name: /^\[عنوان البصيرة\]/ })[0] as HTMLElement;
+    expect(within(card).queryByRole('link', { name: '[اسم عام]' })).toBeNull();
+    expect(within(card).getByRole('link', { name: 'افتح البصيرة' })).toBeInTheDocument();
   });
 
   it('says when a window is empty or cut short, and when the API fails', async () => {
@@ -448,5 +467,137 @@ describe('AtlasScreen', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByRole('region', { name: 'بصائري على الأطلس' })).toBeNull();
     expect(screen.queryByText('[عنوان البصيرة]', { selector: 'h3' })).toBeNull();
+  });
+});
+
+describe('AtlasScreen with sponsoring', () => {
+  const S = messages.atlas.sponsor;
+  const orphans = (features = [ORPHAN_FEATURE]) => ({
+    body: { type: 'FeatureCollection', features, next_cursor: null },
+  });
+
+  it('offers nothing of it while the feature is off', async () => {
+    setSignedIn(USER);
+    const api = guest();
+    render(<AtlasScreen />);
+    await loadedMap();
+    await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
+    expect(api.requests.some((r) => r.url.includes('/atlas/orphans'))).toBe(false);
+    expect(screen.queryByRole('region', { name: S.orphans.heading })).toBeNull();
+    expect(screen.queryByRole('radio', { name: S.list.heading })).toBeNull();
+  });
+
+  it('suggests the orphaned entries around the map centre, snapped to the grid, without asking the device', async () => {
+    const geolocation = { getCurrentPosition: vi.fn(), watchPosition: vi.fn() };
+    vi.stubGlobal('navigator', { ...navigator, geolocation });
+    const api = guest({ 'GET /atlas/orphans': orphans() });
+    render(<AtlasScreen sponsorship />);
+    await loadedMap();
+    const section = await screen.findByRole('region', { name: S.orphans.heading });
+    const link = within(section).getByRole('link', { name: /\[بصيرة تنتظر\]/ });
+    expect(link).toHaveTextContent('[على مستوى المنطقة]');
+    expect(link.textContent).not.toContain('@');
+    const request = api.requests.find((r) => r.url.includes('/atlas/orphans'));
+    const query = new URL(request?.url ?? '').searchParams;
+    expect([query.get('lng'), query.get('lat')]).toEqual(['10', '36']);
+    expect(geolocation.getCurrentPosition).not.toHaveBeenCalled();
+    expect(geolocation.watchPosition).not.toHaveBeenCalled();
+  });
+
+  it('asks again around the new centre only when the window is searched again', async () => {
+    const api = guest({ 'GET /atlas/orphans': orphans() });
+    render(<AtlasScreen sponsorship />);
+    const map = await loadedMap();
+    await screen.findByRole('region', { name: S.orphans.heading });
+    map.bounds = { west: 39, south: 21, east: 40, north: 22 };
+    map.center = { lng: 39.52, lat: 21.48 };
+    map.emit('moveend', { originalEvent: {} });
+    const asked = () => api.requests.filter((r) => r.url.includes('/atlas/orphans'));
+    expect(asked()).toHaveLength(1);
+    await userEvent.click(screen.getByRole('button', { name: 'ابحث في هذه المنطقة' }));
+    await waitFor(() => expect(asked()).toHaveLength(2));
+    const query = new URL(asked()[1]?.url ?? '').searchParams;
+    expect([query.get('lng'), query.get('lat')]).toEqual(['39.5', '21.5']);
+  });
+
+  it('opens «كفالاتي» from the scopes of a signed-in member, in place of the lists', async () => {
+    setSignedIn(USER);
+    guest({
+      'GET /atlas/orphans': orphans(),
+      'GET /me/sponsorships': { body: [SPONSORSHIP] },
+    });
+    render(<AtlasScreen sponsorship />);
+    await loadedMap();
+    await screen.findByRole('region', { name: S.orphans.heading });
+    await userEvent.click(await screen.findByRole('radio', { name: S.list.heading }));
+    const mine = await screen.findByRole('region', { name: S.list.heading });
+    expect(await within(mine).findByText('[بصيرة تنتظر]')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'قائمة البصائر في المنطقة' })).toHaveClass('hidden');
+    expect(screen.queryByRole('region', { name: S.orphans.heading })).toBeNull();
+    await userEvent.click(screen.getByRole('radio', { name: 'بصائر الناس' }));
+    expect(screen.queryByRole('region', { name: S.list.heading })).toBeNull();
+    expect(await screen.findByRole('region', { name: S.orphans.heading })).toBeInTheDocument();
+  });
+
+  it("shows an orphaned entry of the member's own with its label, and a sponsored one with its sponsor", async () => {
+    setSignedIn(USER);
+    const orphaned = {
+      ...OWNER_ENTRY,
+      id: '7400000000000000004',
+      insight_id: '7000000000000000004',
+      title: '[بصيرتي اليتيمة]',
+      status: 'orphaned' as const,
+      public: { ...(OWNER_ENTRY.public as NonNullable<typeof OWNER_ENTRY.public>), cell: null },
+    };
+    const sponsored = {
+      ...orphaned,
+      id: '7400000000000000005',
+      insight_id: '7000000000000000005',
+      title: '[بصيرتي المكفولة]',
+      status: 'published' as const,
+      sponsor: SPONSOR,
+    };
+    guest({
+      'GET /atlas/orphans': orphans([]),
+      'GET /me/map-entries': { body: [orphaned, sponsored] },
+    });
+    render(<AtlasScreen sponsorship />);
+    await loadedMap();
+    await userEvent.click(await screen.findByRole('radio', { name: 'بصائري المنشورة' }));
+    const mine = await screen.findByRole('region', { name: 'بصائري على الأطلس' });
+    expect(await within(mine).findByText('[بصيرتي اليتيمة]')).toBeInTheDocument();
+    expect(within(mine).getByText(`${S.mine.orphaned}`)).toBeInTheDocument();
+    expect(within(mine).getByText('بصيرة تنتظر من يكفلها، [تونس]')).toBeInTheDocument();
+    expect(within(mine).getByText(S.mine.by('[اسم الكافل] @quiet_keeper'))).toBeInTheDocument();
+    expect(within(mine).getAllByRole('link', { name: 'افتحها على الأطلس' })).toHaveLength(2);
+  });
+
+  it('tells the author, on their own entry, that its place was widened for anonymity', async () => {
+    setSignedIn(USER);
+    const widened = {
+      ...OWNER_ENTRY,
+      title: '[بصيرتي الموسعة]',
+      status: 'published' as const,
+      widened: { level: 'region' as const, label: '[ولاية تونس]', at: '2026-10-05T04:10:00Z' },
+    };
+    const unnamed = {
+      ...widened,
+      id: '7400000000000000006',
+      insight_id: '7000000000000000006',
+      title: '[بلا اسم]',
+      widened: { level: 'country' as const, label: null, at: '2026-10-05T04:10:00Z' },
+    };
+    guest({
+      'GET /atlas/orphans': orphans([]),
+      'GET /me/map-entries': { body: [widened, unnamed] },
+    });
+    render(<AtlasScreen />);
+    await loadedMap();
+    await userEvent.click(await screen.findByRole('radio', { name: 'بصائري المنشورة' }));
+    const mine = await screen.findByRole('region', { name: 'بصائري على الأطلس' });
+    expect(
+      await within(mine).findByText(/اتسع موضعها العام إلى \[ولاية تونس\]/)
+    ).toBeInTheDocument();
+    expect(within(mine).getByText(/اتسع موضعها العام إلى دولتها/)).toBeInTheDocument();
   });
 });

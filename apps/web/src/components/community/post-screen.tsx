@@ -44,7 +44,14 @@ function BackLink() {
  * is asked for again when the session changes, since what the viewer may see
  * depends on who they are.
  */
-export function PostScreen({ postId }: { postId: string }) {
+export function PostScreen({
+  postId,
+  comments = false,
+}: {
+  postId: string;
+  /** The social_comments feature, read by the server: without it the thread is not shown. */
+  comments?: boolean;
+}) {
   const session = useSession();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const sessionStatus = session.status;
@@ -93,12 +100,13 @@ export function PostScreen({ postId }: { postId: string }) {
             post={load.post}
             variant="full"
             headingLevel={1}
+            comments={comments}
             onChange={(post) => setLoad({ kind: 'ready', post })}
             onRemoved={(reason) =>
               setLoad({ kind: reason === 'withdrawn' ? 'withdrawn' : 'missing' })
             }
           />
-          {load.post.status === 'published' ? (
+          {comments && load.post.status === 'published' ? (
             <Comments
               postId={load.post.id}
               authorHandle={load.post.author.handle}

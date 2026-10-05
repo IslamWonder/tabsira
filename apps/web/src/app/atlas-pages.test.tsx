@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { apiError, mockApi } from '@/test/api';
-import { ENTRY, PLACE_PAGE } from '@/test/atlas';
+import { ENTRY, ORPHAN_ENTRY, PLACE_PAGE, SPONSORED_ENTRY } from '@/test/atlas';
 import AtlasCameraPage, { metadata as cameraMetadata } from './atlas/camera/page';
 import AtlasEntryPage, { generateMetadata as entryMetadata } from './atlas/entries/[id]/page';
 import AtlasPage from './atlas/page';
@@ -33,6 +33,18 @@ describe('the atlas entry page metadata', () => {
     expect(JSON.stringify(metadata)).not.toContain('36.80');
   });
 
+  it('keeps an entry whose place was widened out of results, with its words', async () => {
+    const widened = {
+      ...ENTRY,
+      author: null,
+      location: { ...ENTRY.location, widened_level: 'region' as const },
+    };
+    mockApi({ [`GET /atlas/entries/${ENTRY.id}`]: { body: widened } });
+    const metadata = await entryMetadata(params({ id: ENTRY.id }));
+    expect(metadata.robots).toEqual(NOINDEX);
+    expect(metadata.title).toBe('[عنوان البصيرة]');
+  });
+
   it('keeps a gone, missing, unreachable or malformed entry out of results', async () => {
     for (const route of [
       apiError(410, 'GONE'),
@@ -56,6 +68,14 @@ describe('the atlas entry page metadata', () => {
       '"[اسم عام]"'
     );
     expect(screen.getByText('نحمّل البصائر…')).toBeInTheDocument();
+  });
+
+  it('names no author in the article data of an entry whose place was widened', async () => {
+    mockApi({ [`GET /atlas/entries/${ENTRY.id}`]: { body: { ...ENTRY, author: null } } });
+    const { container } = render(await AtlasEntryPage(params({ id: ENTRY.id })));
+    const data = container.querySelector('script[type="application/ld+json"]')?.textContent;
+    expect(data).toContain('"headline"');
+    expect(data).not.toContain('"author"');
   });
 });
 
@@ -99,9 +119,9 @@ describe('the atlas place page metadata', () => {
   });
 });
 
-describe('the camera discovery page (FEATURE_CAMERA_DISCOVERY)', () => {
+describe('the camera discovery page (the camera_discovery feature)', () => {
   it('is a 404 while the flag is off, on the atlas too', () => {
-    vi.stubEnv('FEATURE_CAMERA_DISCOVERY', 'false');
+    vi.stubEnv('DISABLED_FEATURES', 'camera_discovery');
     expect(() => render(<AtlasCameraPage />)).toThrow('NEXT_NOT_FOUND');
     mockApi({});
     render(<AtlasPage />);
@@ -109,7 +129,7 @@ describe('the camera discovery page (FEATURE_CAMERA_DISCOVERY)', () => {
   });
 
   it('opens on its explanation while the flag is on, outside the sitemap', () => {
-    vi.stubEnv('FEATURE_CAMERA_DISCOVERY', 'true');
+    vi.stubEnv('DISABLED_FEATURES', '');
     mockApi({});
     render(<AtlasCameraPage />);
     expect(
@@ -127,16 +147,16 @@ describe('the camera discovery page (FEATURE_CAMERA_DISCOVERY)', () => {
   });
 });
 
-describe('the atlas pages (FEATURE_ATLAS)', () => {
+describe('the atlas pages (the atlas feature)', () => {
   it('do not exist while the flag is off: the map and the placing screen are 404s (decision 1)', () => {
-    vi.stubEnv('FEATURE_ATLAS', 'false');
+    vi.stubEnv('DISABLED_FEATURES', 'atlas');
     mockApi({});
     expect(() => render(<AtlasPage />)).toThrow('NEXT_NOT_FOUND');
     expect(() => render(<AtlasPublishPage />)).toThrow('NEXT_NOT_FOUND');
   });
 
   it('open while the flag is on', () => {
-    vi.stubEnv('FEATURE_ATLAS', 'true');
+    vi.stubEnv('DISABLED_FEATURES', '');
     mockApi({});
     render(<AtlasPage />);
     expect(
@@ -145,5 +165,41 @@ describe('the atlas pages (FEATURE_ATLAS)', () => {
     cleanup();
     render(<AtlasPublishPage />);
     expect(screen.getByRole('heading', { level: 1, name: 'اختر بصيرة أولًا' })).toBeInTheDocument();
+  });
+});
+
+describe('the sponsoring switch (atlas_sponsorship)', () => {
+  const routes = (entry: typeof ORPHAN_ENTRY) => ({
+    'GET /auth/me': apiError(401, 'UNAUTHORIZED'),
+    [`GET /atlas/entries/${entry.id}`]: { body: entry },
+  });
+  const section = { name: 'كفالة البصيرة' };
+
+  it('hides the sponsoring part of an entry while it is off, and shows it while it is on', async () => {
+    vi.stubEnv('DISABLED_FEATURES', 'atlas_sponsorship');
+    mockApi(routes(ORPHAN_ENTRY));
+    render(await AtlasEntryPage(params({ id: ORPHAN_ENTRY.id })));
+    await screen.findByRole('heading', { level: 1 });
+    expect(screen.queryByRole('region', section)).toBeNull();
+    cleanup();
+
+    vi.stubEnv('DISABLED_FEATURES', '');
+    mockApi(routes(ORPHAN_ENTRY));
+    render(await AtlasEntryPage(params({ id: ORPHAN_ENTRY.id })));
+    expect(await screen.findByRole('region', section)).toBeInTheDocument();
+  });
+
+  it('links the sponsor to their profile only while the social network is on', async () => {
+    vi.stubEnv('DISABLED_FEATURES', '');
+    mockApi(routes(SPONSORED_ENTRY));
+    render(await AtlasEntryPage(params({ id: SPONSORED_ENTRY.id })));
+    expect(await screen.findByRole('link', { name: /\[اسم الكافل\]/ })).toBeInTheDocument();
+    cleanup();
+
+    vi.stubEnv('DISABLED_FEATURES', 'social');
+    mockApi(routes(SPONSORED_ENTRY));
+    render(await AtlasEntryPage(params({ id: SPONSORED_ENTRY.id })));
+    expect(await screen.findByText(/@quiet_keeper/)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /\[اسم الكافل\]/ })).toBeNull();
   });
 });

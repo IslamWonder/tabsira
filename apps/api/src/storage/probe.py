@@ -6,8 +6,10 @@ refused or read-only would accept a photo and lose it, so it does not start: the
 pre-flight boot of `deploy/api-roll.sh` fails before any live worker is touched. In
 development and test a failure is only a warning, so `make dev` works offline.
 
-The probe writes one tiny object under a random name and removes it, which proves that the
-configured keys can write and delete, not only read. A failure names the bucket and the host of the endpoint, never a key.
+The probe writes one tiny object in a random account's folder, lists that folder, and
+removes the object one by one and by batch, which proves that the configured keys can do
+everything a deletion needs (`s3:PutObject`, `s3:ListBucket`, `s3:DeleteObject`, the
+multi-object delete), not only read. Without the listing, every account deletion would fail. A failure names the bucket and the host of the endpoint, never a key.
 """
 
 from __future__ import annotations
@@ -16,14 +18,16 @@ import asyncio
 import logging
 import os
 import secrets
+import uuid
 from collections.abc import Callable
 from contextlib import suppress
+from typing import Any
 from urllib.parse import urlsplit
 
 from botocore.exceptions import BotoCoreError, ClientError
 
 from src.config import Environment, Settings
-from src.storage.base import StorageError, new_private_key
+from src.storage.base import StorageError, new_private_key, owner_prefix
 from src.storage.local import make_private_folders
 
 log = logging.getLogger("tabsira.storage")
@@ -60,7 +64,9 @@ def _probe_s3(settings: Settings) -> None:
         )
     except (ValueError, BotoCoreError) as error:
         raise _failure(settings, "client", type(error).__name__) from None
-    key = new_private_key()
+    # A random account that does not exist: its folder is the probe's alone.
+    folder = owner_prefix(uuid.uuid4())
+    key = new_private_key(uuid.UUID(folder.split("/")[2]))
     _step(settings, "HeadBucket", lambda: client.head_bucket(Bucket=settings.s3_bucket))
     try:
         _step(
@@ -68,15 +74,32 @@ def _probe_s3(settings: Settings) -> None:
             "PutObject",
             lambda: client.put_object(Bucket=settings.s3_bucket, Key=key, Body=_PROBE_BODY),
         )
+        _step(
+            settings,
+            "ListObjectsV2",
+            lambda: client.list_objects_v2(Bucket=settings.s3_bucket, Prefix=folder, MaxKeys=1),
+        )
     except StorageProbeError:
-        # The provider may have stored the object before the call failed (a read timeout):
-        # try to remove it, and keep the put's error as the one reported.
+        # The object may be stored (a put that timed out late, or a listing refused after it):
+        # try to remove it, so a service restarted in a loop leaves nothing behind, and keep
+        # the step's own error as the one reported.
         with suppress(Exception):
             client.delete_object(Bucket=settings.s3_bucket, Key=key)
         raise
     _step(
         settings, "DeleteObject", lambda: client.delete_object(Bucket=settings.s3_bucket, Key=key)
     )
+    _step(settings, "DeleteObjects", lambda: _delete_batch(client, settings, key))
+
+
+def _delete_batch(client: Any, settings: Settings, key: str) -> None:
+    """Run the multi-object delete an account's folder needs; an error in its answer fails too."""
+    answer = client.delete_objects(
+        Bucket=settings.s3_bucket, Delete={"Objects": [{"Key": key}], "Quiet": True}
+    )
+    if answer.get("Errors"):
+        code = str(answer["Errors"][0].get("Code") or "refused")
+        raise ClientError({"Error": {"Code": code}}, "DeleteObjects")
 
 
 def _step(settings: Settings, name: str, call: Callable[[], object]) -> None:

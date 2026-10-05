@@ -30,6 +30,7 @@ from src.storage.base import (
     StorageUnavailableError,
     check_key,
     check_object,
+    check_owner_prefix,
     check_ttl,
     is_public_key,
 )
@@ -40,6 +41,8 @@ log = logging.getLogger("tabsira.storage")
 # copy is deleted when it is withdrawn, so it is cached for five minutes at most and is never
 # marked immutable: that is how long a withdrawn photo can linger, as the privacy text says.
 PRIVATE_CACHE_CONTROL = "private, no-store"
+# S3 lists and deletes at most a thousand keys a call.
+DELETE_BATCH = 1000
 PUBLIC_CACHE_CONTROL = "public, max-age=300"
 _NOT_FOUND_CODES = frozenset({"NoSuchKey", "NotFound", "404"})
 
@@ -74,6 +77,11 @@ def build_client(
         aws_secret_access_key=settings.s3_secret_access_key.get_secret_value(),
         config=Config(
             signature_version="s3v4",
+            # Some S3-compatible providers refuse the CRC32 checksums boto3 now adds by default:
+            # send one only where the operation requires it. DeleteObjects still requires one;
+            # a provider that refuses it there fails the start-up probe at that step.
+            request_checksum_calculation="when_required",
+            response_checksum_validation="when_required",
             # Another provider's endpoint rarely serves a bucket under its own host name.
             s3={"addressing_style": "path" if endpoint else "auto"},
             retries={"max_attempts": attempts - 1, "mode": "standard"},
@@ -144,6 +152,35 @@ class S3Storage:
     async def delete(self, key: str) -> None:
         # S3 answers 204 for a key that is not there, so this is idempotent as is.
         await self._call("delete_object", Key=check_key(key))
+
+    async def delete_prefix(self, prefix: str) -> int:
+        check_owner_prefix(prefix)
+        removed = 0
+        token: str | None = None
+        while True:
+            listing = await self._call(
+                "list_objects_v2",
+                Prefix=prefix,
+                MaxKeys=DELETE_BATCH,
+                **({} if token is None else {"ContinuationToken": token}),
+            )
+            keys = [item["Key"] for item in listing.get("Contents", [])]
+            if keys:
+                answer = await self._call(
+                    "delete_objects",
+                    Delete={"Objects": [{"Key": key} for key in keys], "Quiet": True},
+                )
+                if answer.get("Errors"):
+                    message = "some objects of the folder could not be deleted"
+                    raise StorageUnavailableError(message)
+                removed += len(keys)
+            if not listing.get("IsTruncated"):
+                return removed
+            token = listing.get("NextContinuationToken")
+            if not token:
+                # More to list but no way to ask for it: never report the folder empty.
+                message = "the listing of the folder could not be continued"
+                raise StorageUnavailableError(message)
 
     async def copy(self, source: str, destination: str) -> None:
         check_key(source)

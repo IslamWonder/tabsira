@@ -76,6 +76,36 @@
         }
       }
     },
+    "/features": {
+      "get": {
+        "tags": ["features"],
+        "summary": "The features that are switched on",
+        "description": "Name the features that are on, parents applied; a feature not listed answers 404.",
+        "operationId": "list_features_features_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturesOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/signup": {
       "post": {
         "tags": ["auth"],
@@ -213,7 +243,7 @@
       "post": {
         "tags": ["auth"],
         "summary": "Accept the current terms of use and privacy policy",
-        "description": "Record that the signed-in account accepts both texts, for a version that changed.\n\nThe versions must be the current ones (`GET /legal`); anything else is a 422\n`legal_acceptance_required`. Two consent rows are appended; none is ever edited. It also\ntakes, for a Google account, the real full name (`display_name`, only while the acceptance\nis pending or the name is empty; an account with no name must give one: 422) and the answer\nto the `public_full_name` consent (decision 63).",
+        "description": "Record that the signed-in account accepts both texts, for a version that changed.\n\nThe versions must be the current ones (`GET /legal`); anything else is a 422\n`legal_acceptance_required`. Two consent rows are appended; none is ever edited. It also\ntakes, for a Google account, the real full name (`display_name`, only while the acceptance\nis pending or the name is empty; an account with no name must give one: 422) and the answer\nto the `public_full_name` consent (decision 64).",
         "operationId": "accept_legal_auth_legal_accept_post",
         "requestBody": {
           "content": {
@@ -1770,12 +1800,12 @@
         }
       }
     },
-    "/posts/{post_id}/like": {
+    "/posts/{post_id}/reactions/{kind}": {
       "put": {
         "tags": ["reactions"],
-        "summary": "Like a post («أثر»)",
-        "description": "Like a published post the caller may read; liking again changes nothing.",
-        "operationId": "like_post_posts__post_id__like_put",
+        "summary": "React to a post: «انتفعتُ بها» or «جزاك الله خيرًا»",
+        "description": "React to a published post the caller may read; reacting again changes nothing.",
+        "operationId": "react_to_post_posts__post_id__reactions__kind__put",
         "parameters": [
           {
             "name": "post_id",
@@ -1787,6 +1817,14 @@
               "title": "Post Id"
             },
             "description": "The post's public id"
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReactionKind"
+            }
           }
         ],
         "responses": {
@@ -1814,9 +1852,9 @@
       },
       "delete": {
         "tags": ["reactions"],
-        "summary": "Take back a like",
-        "description": "Take back the caller's like; safe to repeat.",
-        "operationId": "unlike_post_posts__post_id__like_delete",
+        "summary": "Take back a reaction",
+        "description": "Take back the caller's reaction of this kind; safe to repeat.",
+        "operationId": "unreact_to_post_posts__post_id__reactions__kind__delete",
         "parameters": [
           {
             "name": "post_id",
@@ -1828,6 +1866,14 @@
               "title": "Post Id"
             },
             "description": "The post's public id"
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReactionKind"
+            }
           }
         ],
         "responses": {
@@ -2156,7 +2202,7 @@
     "/reports": {
       "post": {
         "tags": ["reports"],
-        "summary": "Report a post, a comment or a map entry",
+        "summary": "Report a post, a comment, a map entry or a sponsor's reflection",
         "description": "Tell the moderators about something the caller may read.\n\nThe reasons include a false attribution of a religious claim, a photo published without\npermission, a place that is not right and a location or photo that gives away private\ninformation. 404 for what the caller may not read, and for a target whose feature is switched\noff, 400 for their own words. Reporting the same thing twice answers with the first report. Enough different reporters send a published\nitem back to the moderation queue (`SOCIAL_REPORT_HOLD_THRESHOLD`), and the public copy of a\nphoto it showed is deleted until a moderator approves it.",
         "operationId": "report_reports_post",
         "requestBody": {
@@ -2524,7 +2570,7 @@
       "post": {
         "tags": ["scans"],
         "summary": "Start a scan of a photo or of a photo's address",
-        "description": "Check the photo, keep it for an hour, queue the scan and answer at once.\n\n403 `account_required` for a guest that holds its one scan, 403 `profile_required` for an\naccount that has not completed its profile (decision 63), both before the photo is read.",
+        "description": "Check the photo, keep it for an hour, queue the scan and answer at once.\n\n403 `account_required` for a guest that holds its one scan, 403 `profile_required` for an\naccount that has not completed its profile (decision 64), both before the photo is read.",
         "operationId": "create_scan_scans_post",
         "requestBody": {
           "content": {
@@ -2856,7 +2902,7 @@
       "post": {
         "tags": ["insights"],
         "summary": "Ask one question about the insight (three at most)",
-        "description": "Answer a question classified by its content level, grounded in the insight.\n\nThe same `idempotencyKey` returns the same answer and counts once; the\nfourth successful message answers 409 CHAT_LIMIT_REACHED. A request for\nanother text runs the retrieval and the verification again (v2 §14). 403\n`profile_required` for an account that has not completed its profile (decision 63).",
+        "description": "Answer a question classified by its content level, grounded in the insight.\n\nThe same `idempotencyKey` returns the same answer and counts once; the\nfourth successful message answers 409 CHAT_LIMIT_REACHED. A request for\nanother text runs the retrieval and the verification again (v2 §14). 403\n`profile_required` for an account that has not completed its profile (decision 64).",
         "operationId": "chat_insights__insight_id__chat_post",
         "parameters": [
           {
@@ -3661,7 +3707,7 @@
       "get": {
         "tags": ["atlas"],
         "summary": "One published entry",
-        "description": "Return the entry's page: the insight with its scripture from the store, the public point and its place; 410 once withdrawn.",
+        "description": "Return the entry's page: the insight with its scripture from the store, the public point and its place.\n\n410 once withdrawn, and for the id an entry had before its place was widened.",
         "operationId": "entry_atlas_entries__entry_id__get",
         "parameters": [
           {
@@ -3752,6 +3798,262 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AtlasPlaceOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/atlas/orphans": {
+      "get": {
+        "tags": ["atlas"],
+        "summary": "Orphaned entries near a point, at their widened place",
+        "description": "Entries nobody looks after near the position, newest first.\n\nNear means the entry's public point is within `radius` metres, or the position lies inside the\ncity, region or country the place was widened to. Each is shown at the place it was widened\nto, with no author's name. The position is snapped to a grid of about 0.05 degrees before\nanything is asked, used for this request and kept nowhere; the answer is never cached. A block\nchanges nothing here: the author is anonymous.",
+        "operationId": "orphans_near_atlas_orphans_get",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Lng"
+            }
+          },
+          {
+            "name": "radius",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 500000,
+              "minimum": 10000,
+              "description": "Metres",
+              "default": 150000,
+              "title": "Radius"
+            },
+            "description": "Metres"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlasOrphansOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/atlas/entries/{entry_id}/sponsorship": {
+      "put": {
+        "tags": ["atlas"],
+        "summary": "Sponsor an orphaned entry",
+        "description": "Look after an orphaned entry: it returns to the atlas at its widened place, under the caller's handle.\n\n404 for an entry the caller cannot see (a block against its sponsor; a block against its\nanonymous author changes nothing), 409 for their own entry, one that has a sponsor or one that\nis not orphaned, and\n`UNDER_13_CANNOT_PUBLISH` for an account that declared it is under 13. One sponsor at a time.",
+        "operationId": "sponsor_entry_atlas_entries__entry_id__sponsorship_put",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SponsorshipOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["atlas"],
+        "summary": "End the caller's sponsorship",
+        "description": "Stop looking after the entry; the reflection goes with it and the entry stays on the atlas for now.",
+        "operationId": "end_sponsorship_atlas_entries__entry_id__sponsorship_delete",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/atlas/entries/{entry_id}/sponsorship/reflection": {
+      "put": {
+        "tags": ["atlas"],
+        "summary": "Write or replace the sponsor's reflection",
+        "description": "Put the sponsor's own words under the entry; the guard judges them as it judges a comment.\n\nThe answer says what it decided: `published`, `rejected` with its reason, or `pending_review`\nwhile a person looks, and until it is published only its sponsor sees it. 422 for words that\nread like Quran or hadith, 404 without an open sponsorship of the caller's.",
+        "operationId": "write_reflection_atlas_entries__entry_id__sponsorship_reflection_put",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SponsorshipReflectionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SponsorshipOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/sponsorships": {
+      "get": {
+        "tags": ["atlas"],
+        "summary": "The caller's sponsorships, with the state of their reflections",
+        "operationId": "my_sponsorships_me_sponsorships_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SponsorshipOut"
+                  },
+                  "type": "array",
+                  "title": "Response My Sponsorships Me Sponsorships Get"
                 }
               }
             }
@@ -3973,6 +4275,13 @@
             "type": "array",
             "title": "Map Entries"
           },
+          "sponsorships": {
+            "items": {
+              "$ref": "#/components/schemas/SponsorshipOut"
+            },
+            "type": "array",
+            "title": "Sponsorships"
+          },
           "learning": {
             "$ref": "#/components/schemas/LearningExport"
           }
@@ -3988,6 +4297,7 @@
           "cookie_consents",
           "social",
           "map_entries",
+          "sponsorships",
           "learning"
         ],
         "title": "AccountExport",
@@ -4146,7 +4456,57 @@
             "title": "Concepts"
           },
           "author": {
-            "$ref": "#/components/schemas/MemberOut"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemberOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null once the entry was orphaned, and for good after it: no handle beside a widened place"
+          },
+          "orphaned": {
+            "type": "boolean",
+            "title": "Orphaned",
+            "description": "Nobody looks after it: any verified member may sponsor it",
+            "default": false
+          },
+          "sponsor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemberOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who looks after it; the sponsor chose to be named"
+          },
+          "sponsor_reflection": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sponsor Reflection",
+            "description": "The sponsor's own words, once published; never scripture, never the author's"
+          },
+          "sponsor_reflection_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sponsor Reflection Id",
+            "description": "The id to report the reflection by (`target_type` sponsorship); null without one"
           },
           "location": {
             "$ref": "#/components/schemas/PublicLocationOut"
@@ -4293,7 +4653,15 @@
             "title": "Glimpse"
           },
           "author": {
-            "$ref": "#/components/schemas/MemberOut"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemberOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null once the entry was orphaned: a widened place carries no author's name"
           },
           "place": {
             "anyOf": [
@@ -4318,6 +4686,33 @@
             "format": "date",
             "title": "Published On",
             "description": "The day, never the time: no trail of a person's hours"
+          },
+          "orphaned": {
+            "type": "boolean",
+            "title": "Orphaned",
+            "description": "Nobody looks after it: it can be sponsored (decision 60)",
+            "default": false
+          },
+          "widened_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WidenLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sponsor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemberOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who looks after it; chosen in public by the sponsor"
           }
         },
         "type": "object",
@@ -4333,6 +4728,38 @@
         ],
         "title": "AtlasFeatureProperties",
         "description": "No insight id here: a public id is a timestamp, and the scan time is nobody's business."
+      },
+      "AtlasOrphansOut": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type",
+            "default": "FeatureCollection"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/AtlasFeature"
+            },
+            "type": "array",
+            "title": "Features"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "required": ["features", "next_cursor"],
+        "title": "AtlasOrphansOut",
+        "description": "Orphaned entries near a point, each at its widened place, newest first."
       },
       "AtlasPlaceOut": {
         "properties": {
@@ -6042,6 +6469,40 @@
         ],
         "title": "ExposureExport"
       },
+      "FeatureFlag": {
+        "type": "string",
+        "enum": [
+          "chat",
+          "world",
+          "treasure",
+          "social",
+          "social_comments",
+          "atlas",
+          "atlas_sponsorship",
+          "camera_discovery",
+          "camera_anchor",
+          "photo_storage",
+          "canonical_verify",
+          "admin",
+          "dev_inspector"
+        ],
+        "title": "FeatureFlag",
+        "description": "A switchable feature; the value is the name used in the two lists."
+      },
+      "FeaturesOut": {
+        "properties": {
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureFlag"
+            },
+            "type": "array",
+            "title": "Features"
+          }
+        },
+        "type": "object",
+        "required": ["features"],
+        "title": "FeaturesOut"
+      },
       "FeedPage": {
         "properties": {
           "items": {
@@ -7508,6 +7969,28 @@
             "title": "Photo",
             "description": "The owner chose to show the insight's photo with it"
           },
+          "sponsor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemberOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who looks after the entry now, when it is sponsored (decision 60)"
+          },
+          "widened": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WidenedOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When and to what level the entry's public place was widened, if it was"
+          },
           "published_at": {
             "anyOf": [
               {
@@ -7558,9 +8041,9 @@
       },
       "MapEntryStatus": {
         "type": "string",
-        "enum": ["draft", "published", "pending_review", "removed", "withdrawn"],
+        "enum": ["draft", "published", "pending_review", "removed", "withdrawn", "orphaned"],
         "title": "MapEntryStatus",
-        "description": "Where an entry is in its life.\n\nPlaced but not shown; shown; hidden by reports until a moderator decides; taken down by a\nmoderator (kept for an appeal); or withdrawn by its owner (a tombstone with no location)."
+        "description": "Where an entry is in its life.\n\nPlaced but not shown; shown; hidden by reports until a moderator decides; taken down by a\nmoderator (kept for an appeal); withdrawn by its owner (a tombstone with no location); or\norphaned, which is shown at a widened place without its author's name until someone sponsors it."
       },
       "MemberOut": {
         "properties": {
@@ -8248,7 +8731,7 @@
         "type": "object",
         "required": ["post_id", "at"],
         "title": "PostMarkExport",
-        "description": "A post the account liked or saved."
+        "description": "A post the account saved."
       },
       "PostOut": {
         "properties": {
@@ -8319,9 +8802,8 @@
             "format": "date-time",
             "title": "Created At"
           },
-          "like_count": {
-            "type": "integer",
-            "title": "Like Count"
+          "reactions": {
+            "$ref": "#/components/schemas/ReactionCountsOut"
           },
           "comment_count": {
             "type": "integer",
@@ -8362,7 +8844,7 @@
           "status_message",
           "published_at",
           "created_at",
-          "like_count",
+          "reactions",
           "comment_count",
           "viewer",
           "why"
@@ -8638,7 +9120,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ProfilePatch",
-        "description": "The fields a user may change, any of them, alone.\n\nThe three consent switches are not here: they change only through\n`POST /consents`, which records the answer. A field sent as null is refused;\nto clear an answer, send `unknown` (or `[]` for the goals).\n\nSkipping the optional questions is `questions_asked: true` alone: every\nfield stays `unknown` and the questions are never offered again. Answering\nany of the three question fields records the same.\n\n`complete_profile: true` completes the profile (decision 63) and needs an explicit answer\nto every question in the same body: `goals` (`[]` is «أفضّل عدم الإجابة»),\n`knowledge_level`, `age_range`, `religious_background` and `gender` (`unknown` is that\nanswer). A body that leaves one out is a 422."
+        "description": "The fields a user may change, any of them, alone.\n\nThe three consent switches are not here: they change only through\n`POST /consents`, which records the answer. A field sent as null is refused;\nto clear an answer, send `unknown` (or `[]` for the goals).\n\nSkipping the optional questions is `questions_asked: true` alone: every\nfield stays `unknown` and the questions are never offered again. Answering\nany of the three question fields records the same.\n\n`complete_profile: true` completes the profile (decision 64) and needs an explicit answer\nto every question in the same body: `goals` (`[]` is «أفضّل عدم الإجابة»),\n`knowledge_level`, `age_range`, `religious_background` and `gender` (`unknown` is that\nanswer). A body that leaves one out is a 422."
       },
       "ProgressOut": {
         "properties": {
@@ -8980,6 +9462,17 @@
           "meaning_label": {
             "type": "string",
             "title": "Meaning Label"
+          },
+          "widened_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WidenLevel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set once the place was widened to a city, a region or a country (decision 60): the point is then that area's centre, and it is never narrowed again"
           }
         },
         "type": "object",
@@ -9007,12 +9500,31 @@
             "type": "string",
             "title": "Meaning Label"
           },
+          "widened_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WidenLevel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set once the place was widened to a city, a region or a country (decision 60): the point is then that area's centre, and it is never narrowed again"
+          },
           "cell": {
-            "$ref": "#/components/schemas/GeoJsonPolygon"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeoJsonPolygon"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null once the place was widened: there is no cell any more"
           }
         },
         "type": "object",
-        "required": ["point", "cell_m", "precision_label", "meaning", "meaning_label", "cell"],
+        "required": ["point", "cell_m", "precision_label", "meaning", "meaning_label"],
         "title": "PublicLocationPreview",
         "description": "The owner's preview before publishing: the cell itself, so they can see what is shown."
       },
@@ -9437,18 +9949,21 @@
       },
       "ReactionOut": {
         "properties": {
-          "liked": {
-            "type": "boolean",
-            "title": "Liked"
+          "reactions": {
+            "$ref": "#/components/schemas/ReactionCountsOut"
           },
-          "like_count": {
-            "type": "integer",
-            "title": "Like Count"
+          "mine": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionKind"
+            },
+            "type": "array",
+            "title": "Mine"
           }
         },
         "type": "object",
-        "required": ["liked", "like_count"],
-        "title": "ReactionOut"
+        "required": ["reactions", "mine"],
+        "title": "ReactionOut",
+        "description": "A post's reaction counts and the kinds the caller gave."
       },
       "Readiness": {
         "properties": {
@@ -9719,7 +10234,7 @@
       },
       "ReportTarget": {
         "type": "string",
-        "enum": ["post", "comment", "map_entry"],
+        "enum": ["post", "comment", "map_entry", "sponsorship"],
         "title": "ReportTarget"
       },
       "ResetPasswordIn": {
@@ -10602,12 +11117,12 @@
             "type": "array",
             "title": "Blocked"
           },
-          "likes": {
+          "reactions": {
             "items": {
-              "$ref": "#/components/schemas/PostMarkExport"
+              "$ref": "#/components/schemas/ReactionExport"
             },
             "type": "array",
-            "title": "Likes"
+            "title": "Reactions"
           },
           "bookmarks": {
             "items": {
@@ -10625,7 +11140,15 @@
           }
         },
         "type": "object",
-        "required": ["posts", "comments", "following", "blocked", "likes", "bookmarks", "reports"],
+        "required": [
+          "posts",
+          "comments",
+          "following",
+          "blocked",
+          "reactions",
+          "bookmarks",
+          "reports"
+        ],
         "title": "SocialExport"
       },
       "SpanOut": {
@@ -10650,6 +11173,131 @@
         "type": "string",
         "enum": ["chain", "body", "words", "tail"],
         "title": "SpanRole"
+      },
+      "SponsorshipOut": {
+        "properties": {
+          "entry_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Entry Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlaceRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "widened_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WidenLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id",
+            "description": "The sponsorship's id: what a report of its reflection names"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "description": "Always true: a sponsorship that ends is deleted. Kept for the client."
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At",
+            "description": "Always null, for the same reason"
+          },
+          "reflection": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reflection"
+          },
+          "reflection_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CommentStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reflection_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reflection Message",
+            "description": "What happened to the reflection, in Arabic, for its sponsor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entry_id",
+          "title",
+          "place",
+          "widened_level",
+          "id",
+          "active",
+          "started_at",
+          "ended_at",
+          "reflection",
+          "reflection_status",
+          "reflection_message"
+        ],
+        "title": "SponsorshipOut",
+        "description": "One of the caller's sponsorships, with the state of their own reflection."
+      },
+      "SponsorshipReflectionIn": {
+        "properties": {
+          "reflection": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Reflection"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["reflection"],
+        "title": "SponsorshipReflectionIn",
+        "description": "The sponsor's own words under the entry: one, replaced by the next."
       },
       "StarOut": {
         "properties": {
@@ -11372,9 +12020,13 @@
       },
       "ViewerPostOut": {
         "properties": {
-          "liked": {
-            "type": "boolean",
-            "title": "Liked"
+          "reactions": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionKind"
+            },
+            "type": "array",
+            "title": "Reactions",
+            "description": "The reactions the reader gave"
           },
           "bookmarked": {
             "type": "boolean",
@@ -11386,7 +12038,7 @@
           }
         },
         "type": "object",
-        "required": ["liked", "bookmarked", "is_author"],
+        "required": ["reactions", "bookmarked", "is_author"],
         "title": "ViewerPostOut"
       },
       "ViewerRelationOut": {
@@ -11421,6 +12073,39 @@
         "required": ["code", "text"],
         "title": "WhyOut",
         "description": "«لماذا أرى هذا؟»: the one reason a feed item is where it is."
+      },
+      "WidenLevel": {
+        "type": "string",
+        "enum": ["grid", "city", "region", "country"],
+        "title": "WidenLevel",
+        "description": "How far an orphaned entry's public place was widened; from the finest to the coarsest."
+      },
+      "WidenedOut": {
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/WidenLevel"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "required": ["level", "label", "at"],
+        "title": "WidenedOut",
+        "description": "What the owner is told about the widening of their entry's place (never the earlier cell)."
       },
       "WorldOut": {
         "properties": {
@@ -11560,6 +12245,49 @@
         "required": ["url"],
         "title": "ScanFromUrl",
         "type": "object"
+      },
+      "ReactionKind": {
+        "type": "string",
+        "enum": ["benefited", "jazak"],
+        "title": "ReactionKind",
+        "description": "What a reader says to a post: it benefited them, or thanks to its author."
+      },
+      "ReactionCountsOut": {
+        "properties": {
+          "benefited": {
+            "type": "integer",
+            "title": "Benefited"
+          },
+          "jazak": {
+            "type": "integer",
+            "title": "Jazak"
+          }
+        },
+        "type": "object",
+        "required": ["benefited", "jazak"],
+        "title": "ReactionCountsOut",
+        "description": "How many members said each thing; public, since encouraging good is no harm (61)."
+      },
+      "ReactionExport": {
+        "properties": {
+          "post_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Post Id"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ReactionKind"
+          }
+        },
+        "type": "object",
+        "required": ["post_id", "at", "kind"],
+        "title": "ReactionExport",
+        "description": "A reaction the account gave to a post."
       }
     }
   },
@@ -11591,6 +12319,10 @@
     {
       "name": "atlas",
       "description": "«أطلس بصائر العالم»: insights placed on the map at approximate points."
+    },
+    {
+      "name": "features",
+      "description": "The feature switches in force (decision 63)."
     },
     {
       "name": "scripture",

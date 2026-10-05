@@ -20,6 +20,7 @@ from src.admin.views import BUILT_IN_VIEWS
 from src.admin.views.inspector import ScanInspectorView
 from src.config import Settings
 from src.database import get_engine
+from src.features import FeatureFlag
 
 
 def admin_session_maker() -> async_sessionmaker[AsyncSession]:
@@ -50,7 +51,7 @@ def install_admin(
     )
     for view in BUILT_IN_VIEWS:
         admin.register(view)
-    if settings.feature_dev_inspector:
+    if settings.is_enabled(FeatureFlag.DEV_INSPECTOR):
         admin.register(ScanInspectorView)
     load_extensions()
     for view in registered_views():

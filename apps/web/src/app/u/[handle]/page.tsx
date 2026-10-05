@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { ProfileScreen } from '@/components/community/profile-screen';
+import { featureEnabled } from '@/config/server-env';
 import { pageMetadata } from '@/lib/seo';
 import { messages } from '@/messages';
 import { handleProblem, memberLabel, profilePath } from '@/social/identity';
@@ -42,5 +43,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 export default async function ProfilePage({ params }: Params) {
-  return <ProfileScreen handle={decode((await params).handle)} />;
+  return (
+    <ProfileScreen
+      handle={decode((await params).handle)}
+      comments={featureEnabled('social_comments')}
+    />
+  );
 }

@@ -3,7 +3,7 @@ The public identity of an account: a handle and a name chosen on purpose.
 
 A person who wants to publish picks a handle (their address, `/u/<handle>`). Beside it a public
 page shows the person's real full name (`display_name`) only while the `public_full_name`
-consent is given (decision 63); withdrawn or never given, the handle is all it says. A handle
+consent is given (decision 64); withdrawn or never given, the handle is all it says. A handle
 is unique whatever its case. Nothing here reads, guesses or copies anything from the profile.
 """
 

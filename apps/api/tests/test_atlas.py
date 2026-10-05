@@ -458,7 +458,7 @@ async def test_a_blocked_or_nameless_author_and_a_switched_off_atlas_show_nothin
     author.user.is_active = True
     await db_session.flush()
     settings = account_app.state.settings
-    account_app.state.settings = settings.model_copy(update={"feature_atlas": False})
+    account_app.state.settings = settings.model_copy(update={"disabled_features": "atlas"})
     try:
         off = await guest.http.get("/atlas/entries", params=whole)
         assert (off.status_code, off.json()["error"]) == (404, "FEATURE_DISABLED")
@@ -509,18 +509,18 @@ async def test_a_map_entry_is_reported_while_the_atlas_alone_is_on_and_never_whi
         )
 
     try:
-        account_app.state.settings = settings.model_copy(update={"feature_social": False})
+        account_app.state.settings = settings.model_copy(update={"disabled_features": "social"})
         filed = await report("map_entry", entry_id)
         assert filed.status_code == 201, filed.text
         # The network is off: its posts are not there to be reported, nor said to exist.
         assert (await report("post", post_id)).status_code == 404
 
-        account_app.state.settings = settings.model_copy(update={"feature_atlas": False})
+        account_app.state.settings = settings.model_copy(update={"disabled_features": "atlas"})
         assert (await report("post", post_id)).status_code == 201
         assert (await report("map_entry", entry_id)).status_code == 404
 
         account_app.state.settings = settings.model_copy(
-            update={"feature_social": False, "feature_atlas": False}
+            update={"disabled_features": "social,atlas"}
         )
         assert (await report("map_entry", entry_id)).status_code == 404
     finally:
@@ -571,6 +571,7 @@ def test_public_schemas_have_no_field_for_a_private_location():
         atlas.AtlasFeatureCollection,
         atlas.AtlasEntryOut,
         atlas.AtlasPlaceOut,
+        atlas.AtlasOrphansOut,
         atlas.PublicLocationOut,
         atlas.PlaceRef,
     )

@@ -46,6 +46,7 @@ class ModerationTarget(StrEnum):
     POST = "post"
     COMMENT = "comment"
     MAP_ENTRY = "map_entry"
+    SPONSORSHIP = "sponsorship"
 
 
 class ModerationActionKind(StrEnum):
@@ -57,6 +58,7 @@ class ModerationActionKind(StrEnum):
     REMOVED = "removed"  # taken down after it was published
     RESTORED = "restored"  # a removal or a rejection reversed
     WITHDRAWN = "withdrawn"  # the author took it back
+    SUPERSEDED = "superseded"  # an atlas entry was given a new public id when its place widened
 
 
 class ModerationSource(StrEnum):
@@ -66,6 +68,7 @@ class ModerationSource(StrEnum):
     MODERATOR = "moderator"  # a person in the admin area
     REPORTS = "reports"  # enough reports moved a published item back to the queue
     OWNER = "owner"  # the author
+    JOB = "job"  # a scheduled job (the daily orphan job)
 
 
 class ModerationAction(Base):

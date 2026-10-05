@@ -1,0 +1,30 @@
+# Offer the quiet atlas entries for sponsoring (decision 60). One process, started by tabsira-mark-orphans.timer, never by a worker.
+# Installed by deploy/apply-config.sh.
+[Unit]
+Description=TABSIRA: Orphan the atlas entries nobody looks after and widen their place
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=@APP_USER@
+Group=@APP_GROUP@
+WorkingDirectory=@REPO_DIR@/apps/api
+Environment=ENV_FILE=@ENV_FILE@
+Environment=PYTHONUNBUFFERED=1
+# The clone's own virtual environment, as the API unit runs it: no uv, so nothing is written to a
+# cache under the home directory, which this unit may only read.
+ExecStart=@REPO_DIR@/apps/api/.venv/bin/python -m src.cli.mark_orphans
+TimeoutStartSec=30min
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+# Only for a host that keeps photos on its own disk (the production host uses S3): the job deletes
+# the public copy of a photo there. The dash ignores a folder that does not exist.
+ReadWritePaths=-@REPO_DIR@/data
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX

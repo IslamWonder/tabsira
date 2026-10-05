@@ -4,7 +4,7 @@ What may be kept, and when: the rules of master prompt v2 section 19, in code.
 `Storage` keeps whatever it is given. This module is the only way a photo gets there, and it
 refuses before anything is written when any of these holds (`PhotoRefusal`):
 
-- the feature is switched off (`FEATURE_PHOTO_STORAGE`);
+- the feature is switched off (the `photo_storage` feature);
 - the person is a guest: nothing is kept for someone with no account;
 - the person said they are under 13;
 - the scene is sensitive: it is never kept, never shown back, never published;
@@ -32,6 +32,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from src.config import Settings
+from src.features import FeatureFlag
 from src.models.profile import AgeRange
 from src.services.image_service import ProcessedPhoto
 from src.storage import build_storage
@@ -43,6 +44,7 @@ from src.storage.base import (
     is_public_key,
     new_private_key,
     new_public_key,
+    owner_prefix,
 )
 
 
@@ -95,7 +97,7 @@ class PhotoFacts:
 
     def refusal(self, settings: Settings) -> PhotoRefusal | None:
         """Return the first reason the photo may not be kept, or None when it may."""
-        if not settings.feature_photo_storage:
+        if not settings.is_enabled(FeatureFlag.PHOTO_STORAGE):
             return PhotoRefusal.FEATURE_OFF
         if self.owner_id is None:
             return PhotoRefusal.GUEST
@@ -140,7 +142,8 @@ class PhotoStore:
     async def keep(self, facts: PhotoFacts, photo: ProcessedPhoto) -> StoredPhoto:
         """Store the clean image as the owner's private copy, or raise `PhotoNotAllowedError`."""
         self._require(facts)
-        key = new_private_key()
+        # Kept only for an account (`_require` refuses a guest): in that account's folder.
+        key = new_private_key(facts.owner_id)
         await self.storage.put(key, photo.data, content_type=photo.content_type)
         return StoredPhoto(key=key, width=photo.width, height=photo.height)
 
@@ -160,6 +163,10 @@ class PhotoStore:
             message = "only a published copy can be withdrawn"
             raise InvalidKeyError(message)
         await self.storage.delete(public_key)
+
+    async def remove_owner(self, owner_id: uuid.UUID) -> int:
+        """Delete everything left in one account's private folder; return how many objects."""
+        return await self.storage.delete_prefix(owner_prefix(owner_id))
 
     async def remove(self, private_key: str) -> None:
         """Delete an owner's private copy. The caller withdraws the public copy first."""

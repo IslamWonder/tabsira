@@ -24,6 +24,7 @@ from src.models.social import (
     CommentStatus,
     PostStatus,
     PostVisibility,
+    ReactionKind,
     ReportReason,
     ReportTarget,
 )
@@ -43,7 +44,7 @@ class PublicIdentityIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     handle: Annotated[str, Field(min_length=1, max_length=64)]
-    # Kept so a client written before decision 63 still validates; ignored. The name a public
+    # Kept so a client written before decision 64 still validates; ignored. The name a public
     # page shows is the account's full name, and only with the `public_full_name` consent.
     public_name: Annotated[str | None, Field(max_length=160, deprecated=True)] = None
 
@@ -170,8 +171,15 @@ class ReflectionOut(BaseModel):
     )
 
 
+class ReactionCountsOut(BaseModel):
+    """How many members said each thing; public, since encouraging good is no harm (61)."""
+
+    benefited: int
+    jazak: int
+
+
 class ViewerPostOut(BaseModel):
-    liked: bool
+    reactions: list[ReactionKind] = Field(description="The reactions the reader gave")
     bookmarked: bool
     is_author: bool
 
@@ -195,7 +203,7 @@ class PostOut(BaseModel):
     status_message: str | None = Field(description="What happened to it, in Arabic, for its author")
     published_at: datetime | None
     created_at: datetime
-    like_count: int
+    reactions: ReactionCountsOut
     comment_count: int
     viewer: ViewerPostOut | None = Field(description="Null for a guest")
     why: WhyOut | None = Field(description="Only in the «لك» feed")
@@ -290,8 +298,10 @@ class CommentPage(BaseModel):
 
 
 class ReactionOut(BaseModel):
-    liked: bool
-    like_count: int
+    """A post's reaction counts and the kinds the caller gave."""
+
+    reactions: ReactionCountsOut
+    mine: list[ReactionKind]
 
 
 class ReportIn(BaseModel):

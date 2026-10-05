@@ -61,10 +61,10 @@ class User(Base):
     # derived from the account's own name, which may be a real or a Google name.
     # Both stay empty until the person picks them; nothing is public without them.
     handle: Mapped[str | None] = mapped_column(String(HANDLE_MAX))
-    # Kept for the accounts that chose one before decision 63; no response reads it any more.
+    # Kept for the accounts that chose one before decision 64; no response reads it any more.
     public_name: Mapped[str | None] = mapped_column(String(PUBLIC_NAME_MAX))
     # Mirror of the latest `public_full_name` consent row: while true, `display_name` (the real
-    # full name) is shown beside the handle; otherwise only the handle is (decision 63).
+    # full name) is shown beside the handle; otherwise only the handle is (decision 64).
     public_full_name: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())

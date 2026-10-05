@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
+import pytest
 from sqlalchemy import func, select, text
 
+from src.features import FeatureFlag
 from src.models import Comment, CommentStatus, ModerationAction
 from src.services import comment_service
 from src.services.social_limits import SocialLimits, WriteKind
-from tests.helpers import any_id
+from tests.helpers import any_id, switched
 from tests.support_social import ALLOW, REJECT, REVIEW, draft_post, publish_post
+
+
+@pytest.fixture
+def account_settings(account_settings):
+    """These tests write and read comments, which are off until the owners enable them."""
+    return switched(account_settings, on=[FeatureFlag.SOCIAL_COMMENTS])
 
 
 async def comment(member, post_id, body="تعليق", **extra):

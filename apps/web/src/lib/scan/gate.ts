@@ -2,7 +2,7 @@ import type { Route } from 'next';
 import type { Failure } from '@/lib/api/result';
 
 /*
- * Decision 63: a guest gets the rain tutorial and one scan of their own; then the server answers
+ * Decision 64: a guest gets the rain tutorial and one scan of their own; then the server answers
  * 403 `account_required`, and the way on is sign-up, with the way back kept in `next`.
  */
 

@@ -13,7 +13,7 @@ export interface FullNameConsentProps {
 }
 
 /**
- * «I agree that my full name appears with my posts» (decision 63): its own box, never
+ * «I agree that my full name appears with my posts» (decision 64): its own box, never
  * ticked for the person, never required, and separate from the terms. A native checkbox
  * under a 24 px mark inside a 48 px row, like the terms box.
  */

@@ -31,6 +31,7 @@ from src.services import (
     photo_service,
     profile_service,
     social_export,
+    sponsorship_service,
 )
 from src.services.insight_view import answer_is_shown, shown_evidence, shown_ids
 from src.storage.base import StorageError
@@ -173,10 +174,28 @@ async def export_account(db: AsyncSession, user: User) -> AccountExport:
             ],
             "social": await social_export.collect(db, user),
             "map_entries": await atlas_service.list_mine(db, user),
+            "sponsorships": await sponsorship_service.list_mine(db, user, everything=True),
             "learning": await export_learning(db, user.id),
         },
         from_attributes=True,
     )
+
+
+async def sweep_after_deletion(photos: PhotoStore, user_id: uuid.UUID) -> None:
+    """
+    Empty the deleted account's photo folder once more, after the deletion is committed.
+
+    A «تمّ» in another tab could keep a photo between the first sweep and the commit; its row
+    went with the account, so only the folder still knows it. The account is gone either way:
+    a store that does not answer now is logged, never reported to the person.
+    """
+    try:
+        removed = await photos.remove_owner(user_id)
+    except StorageError:
+        log.warning("a deleted account's photo folder could not be swept again; the store refused")
+        return
+    if removed:
+        log.warning("a deleted account's photo folder held %d copy(ies) kept meanwhile", removed)
 
 
 async def delete_account(db: AsyncSession, user: User, *, redis: Redis, photos: PhotoStore) -> None:

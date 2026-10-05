@@ -37,6 +37,8 @@ def settings_keys() -> set[str]:
     """Every environment variable the settings read, nested blocks flattened."""
     keys = set()
     for name, field in Settings.model_fields.items():
+        if name == "legacy_feature_keys":
+            continue  # filled by the loader from FEATURE_* keys, never configured
         if isinstance(field.default, ProviderSettings):
             keys |= {f"{name}__{sub}".upper() for sub in type(field.default).model_fields}
         else:

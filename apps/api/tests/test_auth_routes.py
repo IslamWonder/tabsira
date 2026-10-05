@@ -15,8 +15,8 @@ SIGNUP = {
     "email": "reader@example.com",
     "password": PASSPHRASE,
     "display_name": "ليلى",
-    "accepted_terms_version": "2026-10-05T12:00Z",
-    "accepted_privacy_version": "2026-10-05T12:00Z",
+    "accepted_terms_version": "2026-10-05T18:00Z",
+    "accepted_privacy_version": "2026-10-05T18:00Z",
 }
 LOGIN = {"email": "reader@example.com", "password": PASSPHRASE}
 
@@ -273,10 +273,10 @@ async def test_signing_up_records_the_acceptance_of_both_texts(web, db_session):
     assert response.status_code == 201
     rows = await consents_of(db_session)
     assert {(row.kind, row.version, row.granted) for row in rows} == {
-        (ConsentKind.TERMS, "2026-10-05T12:00Z", True),
-        (ConsentKind.PRIVACY, "2026-10-05T12:00Z", True),
+        (ConsentKind.TERMS, "2026-10-05T18:00Z", True),
+        (ConsentKind.PRIVACY, "2026-10-05T18:00Z", True),
         # The unticked full-name box is a recorded refusal.
-        (ConsentKind.PUBLIC_FULL_NAME, "2026-10-05T12:00Z", False),
+        (ConsentKind.PUBLIC_FULL_NAME, "2026-10-05T18:00Z", False),
     }
 
 
@@ -285,7 +285,7 @@ async def test_signing_up_records_the_acceptance_of_both_texts(web, db_session):
     [
         {"accepted_terms_version": "2020-01-01"},
         {"accepted_privacy_version": "2020-01-01"},
-        {"accepted_terms_version": "2026-10-05T12:00Z "},
+        {"accepted_terms_version": "2026-10-05T18:00Z "},
     ],
 )
 async def test_an_old_or_wrong_version_is_refused_before_anything_is_created(

@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import clock
 from src.config import Settings
 from src.errors import AppError, ErrorCode
+from src.features import FeatureFlag
 from src.messages import messages_for
 from src.models import (
     Insight,
@@ -425,7 +426,7 @@ async def ready_treasures(
     db: AsyncSession, settings: Settings, owner: Owner, places: list[WorldPlace]
 ) -> dict[int, Treasure]:
     """Return, per place, a hidden treasure the learner may reveal now."""
-    if not settings.feature_treasure or not places:
+    if not settings.is_enabled(FeatureFlag.TREASURE) or not places:
         return {}
     by_id = {place.id: place for place in places}
     hidden = (

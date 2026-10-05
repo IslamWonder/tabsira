@@ -693,7 +693,7 @@ def test_the_learner_payload_sends_the_profile_backgrounds_and_leaves_an_unknown
 
 
 def test_the_composer_payload_sends_every_declared_field_but_the_gender():
-    """Decision 63: each declared field but the gender reaches the composer; `unknown` never."""
+    """Decision 64: each declared field but the gender reaches the composer; `unknown` never."""
     assert {KnowledgeLevel.UNKNOWN, AgeRange.UNKNOWN, Gender.UNKNOWN} == {BACKGROUND_UNKNOWN}
     declared = LearnerContext(
         goals=["discover_islam", "curiosity"],
@@ -779,7 +779,7 @@ def test_the_profile_fitted_prompts_keep_every_scripture_rule_and_never_judge(na
 
 
 def test_the_composer_prompt_writes_one_neutral_text_that_may_be_published():
-    """Decision 63 (5): the explanation never reveals the declared gender, religion or age."""
+    """Decision 64 (5): the explanation never reveals the declared gender, religion or age."""
     prompt = load_prompt(COMPOSER_PROMPT).text
     background = next(
         line for line in prompt.splitlines() if line.startswith("- religious_background:")

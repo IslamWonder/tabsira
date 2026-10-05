@@ -60,3 +60,11 @@ The photo of a scan, kept with its owner's consent, shown to the public only by 
 - **Depends on:** 19.3
 - **Touches:** deploy/apply-config.sh (one line), docs/OPERATIONS.md if the wording changes.
 - **Done when:** a fresh `apply-config.sh` run enables the timer; `systemctl list-timers` on the host shows it.
+
+### 19.5 One private folder per account
+
+- **Status:** ✅ 2026-10-05, owners' request (following the earlier prototype's per-user folders)
+- **Goal:** keep each account's private copies under `private/users/<account id>/insights/`, so one person's photos can be exported or deleted together; published copies keep names that never name the account. Deleting the account or withdrawing the photo consent removes each photo by its row and then empties the folder, and the folder is swept once more after the deletion commits. The start-up probe proves the keys can list and batch-delete a folder.
+- **Touches:** apps/api/src/storage/{base,local,s3,photos,probe}.py, services/{photo_service,account_service}.py, routers/account.py, models/scan.py, one app migration (`20261005_150000`, `photo_key` 64 → 128), the privacy text (version 2026-10-05T15:00Z: the photo provider sees the account id in private copies' names), docs/PRIVACY.md, docs/OPERATIONS.md, their tests.
+- **Done when:** a privacy review passes; deletion and withdrawal leave no object in the folder; the probe fails without `s3:ListBucket`.
+- **Not yet:** the account export lists the kept photos without the images; a download of the folder (signed links, or a zip) is the next step.

@@ -83,6 +83,10 @@ export class FakeMap {
   setLayoutProperty = vi.fn((layer: string, property: string, value: unknown) => {
     this.layout.set(`${layer}:${property}`, value);
   });
+  zoomRanges = new Map<string, [number, number]>();
+  setLayerZoomRange = vi.fn((layer: string, min: number, max: number) => {
+    this.zoomRanges.set(layer, [min, max]);
+  });
 
   addLayer(layer: { id: string }): void {
     this.layers.push(layer.id);
@@ -119,7 +123,16 @@ export class FakeMap {
   }
 }
 
-export class NavigationControl {}
+export class NavigationControl {
+  constructor(readonly options: unknown = {}) {}
+}
+export class ScaleControl {
+  constructor(readonly options: unknown = {}) {}
+}
+export class FullscreenControl {}
+
+/** Where the map was told its worker lives. */
+export const setWorkerUrl = vi.fn();
 
 /** The newest map the page built, once its load event was fired. */
 export async function loadedMap(): Promise<FakeMap> {

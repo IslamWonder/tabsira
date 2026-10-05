@@ -149,7 +149,7 @@ class Profile(Base):
     questions_asked: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     # Set once, when the person has given an explicit answer to every question of the profile
     # (`unknown` is an answer: «أفضّل عدم الإجابة»). Empty until then, and the scan and the
-    # chat answer 403 `profile_required` (decision 63).
+    # chat answer 403 `profile_required` (decision 64).
     profile_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Version of the latest consent text the user answered.
     consent_version: Mapped[str | None] = mapped_column(String(32))

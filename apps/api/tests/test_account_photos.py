@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from sqlalchemy import select
 
 from src.models import Insight, User
 from src.owner import Owner
+from src.services import account_service
 from src.storage.base import StorageUnavailableError, new_private_key, new_public_key
 from src.storage.local import LocalStorage
 from src.storage.photos import PhotoStore
@@ -47,16 +49,30 @@ async def reader(web, make_user):
 
 
 def objects(media: Path) -> list[str]:
-    return sorted(f"{path.parent.parent.name}/{path.name}" for path in media.rglob("*.jpg"))
+    """Every object kept, as its key (an older private copy is sharded on disk)."""
+    keys = []
+    for path in media.rglob("*.jpg"):
+        parts = path.relative_to(media).parts
+        keys.append("/".join(parts) if parts[1] == "users" else f"{parts[0]}/{path.name}")
+    return sorted(keys)
 
 
-async def kept(db, user: User, photos: PhotoStore, *, published: bool) -> Insight:
+async def stray(photos: PhotoStore, user: User) -> str:
+    """A copy in the account's folder that no row knows about (a crash between two writes)."""
+    key = new_private_key(user.id)
+    await photos.storage.put(key, jpeg_of(pixels()))
+    return key
+
+
+async def kept(
+    db, user: User, photos: PhotoStore, *, published: bool, legacy: bool = False
+) -> Insight:
     """An insight of `user` with a kept photo, and a public copy when `published`."""
     owner = Owner(user_id=user.id)
     scan = scan_row(owner, status="done")
     db.add(scan)
     await db.flush()
-    private = new_private_key()
+    private = new_private_key() if legacy else new_private_key(user.id)
     await photos.storage.put(private, jpeg_of(pixels()))
     public = None
     if published:
@@ -96,6 +112,8 @@ async def test_deleting_the_account_deletes_both_copies_of_every_photo_and_nobod
     web, reader, db_session, photos, media, make_user
 ):
     mine = await kept(db_session, reader, photos, published=True)
+    older = await kept(db_session, reader, photos, published=False, legacy=True)
+    lost = await stray(photos, reader)
     other = await make_user("other@example.com")
     theirs = await kept(db_session, other, photos, published=True)
 
@@ -103,8 +121,10 @@ async def test_deleting_the_account_deletes_both_copies_of_every_photo_and_nobod
 
     assert response.status_code == 204
     assert await db_session.scalar(select(User).where(User.id == reader.id)) is None
+    # Each photo by its row, an older key included, then the whole folder: the stray copy too.
     assert objects(media) == sorted([theirs.photo_key, theirs.photo_public_key])
-    assert mine.photo_key not in objects(media)
+    for key in (mine.photo_key, older.photo_key, lost):
+        assert key not in objects(media)
 
 
 async def test_a_store_that_cannot_be_reached_stops_the_deletion_and_deletes_nothing(
@@ -134,6 +154,32 @@ async def test_a_store_that_cannot_be_reached_stops_the_deletion_and_deletes_not
     assert (await web.get("/auth/me")).status_code == 200
 
 
+async def test_a_folder_that_cannot_be_emptied_stops_the_deletion_too(
+    web, reader, db_session, photos, media, account_app
+):
+    class FolderDown(LocalStorage):
+        async def delete_prefix(self, prefix: str) -> int:
+            raise StorageUnavailableError("down")
+
+    await kept(db_session, reader, photos, published=False)
+    lost = await stray(photos, reader)
+    account_app.state.photo_store = PhotoStore(
+        FolderDown(
+            media,
+            base_url="https://api.tabsira.test",
+            signing_key=b"k" * 32,
+            default_ttl_seconds=300,
+        ),
+        photos.settings,
+    )
+
+    response = await web.delete("/account")
+
+    assert (response.status_code, response.json()["error"]) == (503, "STORAGE_UNAVAILABLE")
+    assert await db_session.scalar(select(User).where(User.id == reader.id)) is not None
+    assert lost in objects(media)
+
+
 # ─── Withdrawing the photo consent ───
 
 
@@ -142,6 +188,7 @@ async def test_withdrawing_the_photo_consent_deletes_every_kept_photo(
 ):
     shown = await kept(db_session, reader, photos, published=True)
     private_only = await kept(db_session, reader, photos, published=False)
+    await stray(photos, reader)
     other = await make_user("other@example.com")
     theirs = await kept(db_session, other, photos, published=False)
     await web.post("/consents", json={"kind": "photo_storage", "version": "v1", "granted": True})
@@ -204,3 +251,39 @@ async def test_a_withdrawal_the_store_cannot_honour_is_refused_and_records_nothi
     assert profile["photo_storage_consent"] is True
     consents = (await web.get("/account/export")).json()["consents"]
     assert [c["granted"] for c in consents if c["kind"] == "photo_storage"] == [True]
+
+
+# ─── The sweep after the deletion ───
+
+
+async def test_the_folder_is_swept_again_after_the_deletion_is_committed(photos, media, caplog):
+    owner = uuid.uuid4()
+    late = new_private_key(owner)
+    await photos.storage.put(late, jpeg_of(pixels()))
+
+    await account_service.sweep_after_deletion(photos, owner)
+    await account_service.sweep_after_deletion(photos, owner)
+
+    assert late not in objects(media)
+    assert "kept meanwhile" in caplog.text
+    assert str(owner) not in caplog.text
+
+
+async def test_a_store_down_after_the_deletion_is_only_logged(photos, media, caplog):
+    class FolderDown(LocalStorage):
+        async def delete_prefix(self, prefix: str) -> int:
+            raise StorageUnavailableError("down")
+
+    down = PhotoStore(
+        FolderDown(
+            media,
+            base_url="https://api.tabsira.test",
+            signing_key=b"k" * 32,
+            default_ttl_seconds=300,
+        ),
+        photos.settings,
+    )
+
+    await account_service.sweep_after_deletion(down, uuid.uuid4())
+
+    assert "could not be swept again" in caplog.text

@@ -41,6 +41,7 @@ async def delete_account(
     if user is not None:
         await account_service.delete_account(db, user, redis=redis, photos=photos)
         await db.commit()
+        await account_service.sweep_after_deletion(photos, user.id)
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     session_service.clear_cookie(response, settings)
     return response

@@ -100,7 +100,7 @@ export function forgetLegal(): void {
   cached = null;
 }
 
-/** The answer to the full-name box, sent with the acceptance (decision 63); left out, nothing changes. */
+/** The answer to the full-name box, sent with the acceptance (decision 64); left out, nothing changes. */
 export interface NameChoices {
   public_full_name?: boolean;
 }

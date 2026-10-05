@@ -26,6 +26,7 @@ export type PublicIdentity = Schemas['PublicIdentityOut'];
 export type ReportReason = Schemas['ReportReason'];
 export type ReportTarget = Schemas['ReportTarget'];
 export type Reaction = Schemas['ReactionOut'];
+export type ReactionKind = Schemas['ReactionKind'];
 export type HadithClassification = Schemas['HadithClassification'];
 
 /** The reasons in the order the report sheet offers them; the two place reasons are the atlas's. */

@@ -4,13 +4,19 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Response, status
 
-from src.deps import DbDep, SettingsDep
+from src.deps import DbDep, SettingsDep, requires
+from src.errors import ErrorCode
+from src.features import FeatureFlag
 from src.owner import OptionalOwner
-from src.scans.deps import PublicIdPath, feature
+from src.scans.deps import PublicIdPath
 from src.schemas.world import RevealsShownIn, TreasureOut, WorldOut, WorldPlaceOut
 from src.services import world_service
 
-router = APIRouter(prefix="/world", tags=["world"], dependencies=[Depends(feature("world"))])
+router = APIRouter(
+    prefix="/world",
+    tags=["world"],
+    dependencies=[Depends(requires(FeatureFlag.WORLD, code=ErrorCode.FEATURE_DISABLED))],
+)
 
 
 @router.get("", summary="The map: regions under fog, the places that came out of it, threads")
@@ -51,7 +57,7 @@ async def visit_place(
 @router.post(
     "/treasures/{treasure_id}/reveal",
     summary="Reveal a treasure that is ready",
-    dependencies=[Depends(feature("treasure"))],
+    dependencies=[Depends(requires(FeatureFlag.TREASURE, code=ErrorCode.FEATURE_DISABLED))],
 )
 async def reveal_treasure(
     treasure_id: PublicIdPath, db: DbDep, settings: SettingsDep, owner: OptionalOwner

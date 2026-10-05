@@ -18,9 +18,7 @@ WEB = "https://tabsira.test"
 
 @pytest.fixture
 async def application(make_settings: Any) -> Any:
-    return create_app(
-        make_settings(cors_origins=WEB, api_url=API, admin_url=ADMIN, feature_admin=True)
-    )
+    return create_app(make_settings(cors_origins=WEB, api_url=API, admin_url=ADMIN))
 
 
 @pytest.fixture

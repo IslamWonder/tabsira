@@ -452,7 +452,7 @@ async def test_the_withdrawal_names_an_unversioned_text_when_none_was_ever_answe
     assert (row.kind.value, row.version, row.granted) == ("photo_storage", "unversioned", False)
 
 
-# ─── Completing the profile (decision 63) ─────────────────────────────────────
+# ─── Completing the profile (decision 64) ─────────────────────────────────────
 
 ANSWERS = {
     "goals": [],

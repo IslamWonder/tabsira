@@ -94,7 +94,7 @@ describe('SignUpScreen', () => {
     expect(track).toHaveBeenCalledWith('sign_up_completed', { method: 'email' });
   });
 
-  it('asks for the full name with its own box, unticked, and sends the answer (decision 63)', async () => {
+  it('asks for the full name with its own box, unticked, and sends the answer (decision 64)', async () => {
     const api = mockApi(routes({ 'POST /auth/signup': { status: 201, body: USER } }));
     render(<SignUpScreen next="/world" />);
     await waitFor(() => expect(box()).toBeEnabled());

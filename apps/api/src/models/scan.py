@@ -45,7 +45,9 @@ from src.models.public_id import public_id_pk
 
 GUEST_KEY_LENGTH = 64
 # `private/` or `public/`, 32 hex digits and `.jpg` (src/storage/base.py): 44 characters.
-PHOTO_KEY_LENGTH = 64
+# A private copy sits in its owner's folder (96 characters); a public copy is short (39).
+PHOTO_KEY_LENGTH = 128
+PUBLIC_PHOTO_KEY_LENGTH = 64
 ONE_OWNER = "num_nonnulls(user_id, guest_key) = 1"
 
 
@@ -272,11 +274,12 @@ class Insight(Base):
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The last time the owner took it down; kept for the owner's history, never public.
     withdrawn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    # The owner's private copy in the photo store (`private/<random>.jpg`), kept at «تمّ» under
-    # the rules of v2 §19, and the one public copy made while a post or a map entry shows it.
-    # Random keys, never a path that names the owner; neither is ever in a public response.
+    # The owner's private copy in the photo store, kept at «تمّ» under the rules of v2 §19, in the
+    # owner's folder (`private/users/<account id>/insights/<random>.jpg`; older ones
+    # `private/<random>.jpg`), and the one public copy made while a post or a map entry shows it
+    # (`public/<random>.jpg`, which never names the owner). Neither is ever in a public response.
     photo_key: Mapped[str | None] = mapped_column(String(PHOTO_KEY_LENGTH))
-    photo_public_key: Mapped[str | None] = mapped_column(String(PHOTO_KEY_LENGTH))
+    photo_public_key: Mapped[str | None] = mapped_column(String(PUBLIC_PHOTO_KEY_LENGTH))
     created_at: Mapped[datetime] = created_at_column()
 
 

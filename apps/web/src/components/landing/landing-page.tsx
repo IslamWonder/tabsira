@@ -2,10 +2,11 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useSession } from '@/account/session';
 import { LogoMark } from '@/components/brand/logo';
 import { useCapture } from '@/components/capture/capture-provider';
+import { revealDelay, useReveal } from '@/components/fx/use-reveal';
 import {
   AtlasIcon,
   CameraIcon,
@@ -26,6 +27,7 @@ import {
 } from '@/components/icons';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
+import { HeroAtmosphere, KhatamStar } from './hero-atmosphere';
 import { InsightExample } from './insight-example';
 import {
   type BenefitIcon,
@@ -130,33 +132,78 @@ function PhoneHeader() {
   );
 }
 
+/** Seconds: the title's words rise one after another, then its gold line catches the light. */
+const WORD_STEP = 0.09;
+const TITLE_START = 0.45;
+const GOLD_START = TITLE_START + (L.hero.titleLead.split(' ').length + 1) * WORD_STEP;
+const GLINT_AT = Math.round(
+  (GOLD_START + L.hero.titleGold.split(' ').length * WORD_STEP + 0.6) * 1000
+);
+
+/**
+ * A line whose words rise one by one out of a soft blur, in reading order. The
+ * words stay the element's own text (no copy for screen readers is needed), and
+ * Arabic letters never join across a space, so each word stays whole.
+ */
+function Words({ text, delay }: { text: string; delay: number }) {
+  const words = Array.from(text.matchAll(/\S+/g), (match) => ({ word: match[0], at: match.index }));
+  return words.map(({ word, at }, index) => (
+    <Fragment key={at}>
+      <span className="fx-word" style={{ animationDelay: `${delay + index * WORD_STEP}s` }}>
+        {word}
+      </span>
+      {index < words.length - 1 ? ' ' : null}
+    </Fragment>
+  ));
+}
+
 function Hero() {
   const capture = useCapture();
   return (
     <section aria-labelledby="landing-title" className={CONTAINER}>
-      <div className="grid items-center gap-6 overflow-hidden rounded-[22px] bg-[linear-gradient(135deg,#082e25_0%,#0f4c3a_100%)] px-[25px] py-[29px] text-[#ffffff] tablet:grid-cols-2 tablet:rounded-[24px] tablet:px-9 tablet:py-[38px] desktop:min-h-[566px] desktop:rounded-[28px] desktop:px-16 desktop:py-[46px]">
-        <div className="flex min-w-0 flex-col items-start gap-5">
+      <div className="relative isolate grid items-center gap-6 overflow-hidden rounded-[22px] bg-[linear-gradient(135deg,#082e25_0%,#0f4c3a_100%)] px-[25px] py-[29px] text-[#ffffff] tablet:grid-cols-2 tablet:rounded-[24px] tablet:px-9 tablet:py-[38px] desktop:min-h-[566px] desktop:rounded-[28px] desktop:px-16 desktop:py-[46px]">
+        <HeroAtmosphere />
+        <div className="relative flex min-w-0 flex-col items-start gap-5">
           <p className="m-0 flex items-center gap-3 text-[0.9375rem] text-[rgb(255_255_255/0.85)]">
-            <span aria-hidden="true" className="h-px w-5 bg-[#c6a15b]" />
-            {L.hero.kicker}
+            <span
+              aria-hidden="true"
+              className="fx-thread fx-thread--now h-px w-5 bg-[#c6a15b]"
+              style={revealDelay(0, 0, 150)}
+            />
+            <span className="fx-rise" style={revealDelay(0, 0, 250)}>
+              {L.hero.kicker}
+            </span>
           </p>
           <h1
             id="landing-title"
             className="m-0 font-bold font-display text-[2.125rem] leading-[1.5] tablet:text-[2.75rem] desktop:text-[3.375rem]"
           >
-            <span className="block">{L.hero.titleLead}</span>
-            <span className="block text-[#dfbd77]">{L.hero.titleGold}</span>
+            <span className="block">
+              <Words text={L.hero.titleLead} delay={TITLE_START} />
+            </span>
+            <span className="fx-glint block text-[#dfbd77]" style={revealDelay(0, 0, GLINT_AT)}>
+              <Words text={L.hero.titleGold} delay={GOLD_START} />
+            </span>
           </h1>
-          <p className="m-0 max-w-[34rem] text-[1.0625rem] text-[rgb(255_255_255/0.86)] leading-[1.9]">
+          <p
+            className="fx-rise m-0 max-w-[34rem] text-[1.0625rem] text-[rgb(255_255_255/0.86)] leading-[1.9]"
+            style={revealDelay(0, 0, 1150)}
+          >
             {L.hero.lead}
           </p>
-          <div className="flex w-full flex-wrap gap-3">
+          <div className="fx-rise flex w-full flex-wrap gap-3" style={revealDelay(0, 0, 1400)}>
             <button
               type="button"
               onClick={capture.open}
               aria-haspopup="dialog"
-              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-[14px] bg-[#dfbd77] px-4 font-semibold text-[#202616] text-[1.0625rem] transition-[filter] duration-200 hover:brightness-105 focus-visible:outline-3 focus-visible:outline-[#ffffff] focus-visible:outline-offset-2 tablet:min-h-[52px] tablet:flex-none tablet:px-6"
+              className="relative inline-flex min-h-12 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-[14px] bg-[#dfbd77] px-4 font-semibold text-[#202616] text-[1.0625rem] transition-[filter] duration-200 hover:brightness-105 focus-visible:outline-3 focus-visible:outline-[#ffffff] focus-visible:outline-offset-2 tablet:min-h-[52px] tablet:flex-none tablet:px-6"
             >
+              {/* The call to capture breathes out a ring of light three times, then rests. */}
+              <span
+                aria-hidden="true"
+                className="fx-halo pointer-events-none absolute inset-0 rounded-[14px] border-2 border-[#dfbd77]"
+                style={revealDelay(0, 0, 2300)}
+              />
               <CameraIcon width="20" height="20" />
               {messages.nav.captureScene}
             </button>
@@ -168,12 +215,17 @@ function Hero() {
               {L.hero.tryExample}
             </Link>
           </div>
-          <p className="m-0 flex items-center gap-2 text-[0.875rem] text-[rgb(255_255_255/0.8)]">
+          <p
+            className="fx-rise m-0 flex items-center gap-2 text-[0.875rem] text-[rgb(255_255_255/0.8)]"
+            style={revealDelay(0, 0, 1600)}
+          >
             <ShieldIcon width="16" height="16" />
             {L.hero.noAccount}
           </p>
         </div>
-        <PhonePreview />
+        <div className="relative">
+          <PhonePreview />
+        </div>
       </div>
     </section>
   );
@@ -190,11 +242,22 @@ function SectionHeading({
   title: string;
   aside?: string;
 }) {
+  const reveal = useReveal<HTMLDivElement>();
   return (
-    <div className="flex flex-col gap-2 tablet:flex-row tablet:items-end tablet:justify-between tablet:gap-8">
+    <div
+      {...reveal}
+      className="fx-reveal flex flex-col gap-2 tablet:flex-row tablet:items-end tablet:justify-between tablet:gap-8"
+    >
       <div className="flex flex-col gap-2">
         {eyebrow === undefined ? null : (
-          <p className="m-0 font-semibold text-[0.875rem] text-[var(--landing-gold)]">{eyebrow}</p>
+          <p className="m-0 flex items-center gap-2.5 font-semibold text-[0.875rem] text-[var(--landing-gold)]">
+            <span
+              aria-hidden="true"
+              className="fx-thread h-px w-4 bg-current"
+              style={revealDelay(0, 0, 300)}
+            />
+            {eyebrow}
+          </p>
         )}
         <h2
           id={id}
@@ -213,6 +276,7 @@ function SectionHeading({
 const STEP_ICONS = [CameraIcon, OpenBookIcon, SeedlingIcon] as const;
 
 function Journey() {
+  const reveal = useReveal<HTMLOListElement>();
   return (
     <section
       id="how"
@@ -225,13 +289,27 @@ function Journey() {
         title={L.journey.title}
         aside={L.journey.aside}
       />
-      <ol className="m-0 grid list-none gap-6 p-0 tablet:grid-cols-3">
+      <ol {...reveal} className="m-0 grid list-none gap-6 p-0 tablet:grid-cols-3">
         {L.journey.steps.map((step, index) => {
           const Icon = STEP_ICONS[index] as (typeof STEP_ICONS)[number];
           return (
-            <li key={step.title} className="flex flex-col gap-3 border-line border-t pt-5">
+            <li
+              key={step.title}
+              className="fx-reveal-item relative flex flex-col gap-3 border-line border-t pt-5"
+              style={revealDelay(index, 220)}
+            >
+              <span
+                aria-hidden="true"
+                className="fx-thread absolute inset-x-0 -top-px h-px bg-[var(--landing-gold)]"
+                style={revealDelay(index, 220, 250)}
+              />
               <div className="flex items-center justify-between">
-                <span className="flex size-12 items-center justify-center rounded-[14px] bg-surface text-primary">
+                <span className="relative flex size-12 items-center justify-center rounded-[14px] bg-surface text-primary">
+                  <span
+                    aria-hidden="true"
+                    className="fx-halo fx-halo--on-reveal pointer-events-none absolute inset-0 rounded-[14px] border border-[var(--landing-gold)]"
+                    style={revealDelay(index, 220, 700)}
+                  />
                   <Icon width="22" height="22" />
                 </span>
                 <span aria-hidden="true" className="text-[1.75rem] text-fg-muted">
@@ -248,7 +326,7 @@ function Journey() {
   );
 }
 
-function StoryCard({ story }: { story: Story }) {
+function StoryCard({ story, index }: { story: Story; index: number }) {
   const { action } = story;
   const ActionIcon = action === null ? null : ICONS[action.icon];
   const actionClass =
@@ -256,16 +334,19 @@ function StoryCard({ story }: { story: Story }) {
   return (
     <article
       aria-labelledby={`story-${story.id}`}
-      className="flex min-w-0 flex-col overflow-hidden rounded-[22px] border border-line bg-surface tablet:grid tablet:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] desktop:flex"
+      className="fx-reveal-item flex min-w-0 flex-col overflow-hidden rounded-[22px] border border-line bg-surface tablet:grid tablet:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] desktop:flex"
+      style={revealDelay(index, 180)}
     >
-      <div className="relative h-[220px] w-full shrink-0 tablet:h-full tablet:min-h-[220px] desktop:h-[228px]">
-        <Image
-          src={story.image.src}
-          alt={story.image.alt}
-          fill
-          sizes="(min-width: 1200px) 400px, (min-width: 768px) 40vw, 100vw"
-          className="object-cover"
-        />
+      <div className="relative h-[220px] w-full shrink-0 overflow-hidden tablet:h-full tablet:min-h-[220px] desktop:h-[228px]">
+        <div className="fx-settle absolute inset-0" style={revealDelay(index, 180)}>
+          <Image
+            src={story.image.src}
+            alt={story.image.alt}
+            fill
+            sizes="(min-width: 1200px) 400px, (min-width: 768px) 40vw, 100vw"
+            className="object-cover"
+          />
+        </div>
         <span className="absolute end-3 bottom-3 rounded-full bg-[#f6faf7] px-3 py-1 font-semibold text-[#16302a] text-[0.8125rem] shadow">
           {story.tag}
         </span>
@@ -311,6 +392,7 @@ function StoryCard({ story }: { story: Story }) {
 
 function Stories({ features }: { features: LandingFeatures }) {
   const stories = featureStories(features);
+  const reveal = useReveal<HTMLDivElement>();
   return (
     <section
       id="features"
@@ -323,9 +405,9 @@ function Stories({ features }: { features: LandingFeatures }) {
         title={L.features.title}
         aside={L.features.aside}
       />
-      <div className="grid gap-6 desktop:grid-cols-3">
-        {stories.map((story) => (
-          <StoryCard key={story.id} story={story} />
+      <div {...reveal} className="grid gap-6 desktop:grid-cols-3">
+        {stories.map((story, index) => (
+          <StoryCard key={story.id} story={story} index={index} />
         ))}
       </div>
     </section>
@@ -333,6 +415,7 @@ function Stories({ features }: { features: LandingFeatures }) {
 }
 
 function Example() {
+  const reveal = useReveal<HTMLDivElement>();
   return (
     <section
       id="example"
@@ -340,7 +423,7 @@ function Example() {
       className="bg-[var(--landing-band)] py-10 tablet:py-14"
     >
       <div className={cx(CONTAINER, 'flex flex-col gap-8')}>
-        <div className="flex flex-col gap-2">
+        <div {...reveal} className="fx-reveal flex flex-col gap-2">
           <h2
             id="landing-example"
             className="m-0 font-bold font-display text-[1.625rem] text-fg leading-[1.5] tablet:text-[1.75rem] desktop:text-[2.125rem]"
@@ -358,16 +441,18 @@ function Example() {
 const TRUST_ICONS = [OpenBookIcon, SparkIcon, ShieldIcon] as const;
 
 function Trust() {
+  const reveal = useReveal<HTMLUListElement>();
   return (
     <section aria-labelledby="landing-trust" className={cx(CONTAINER, 'flex flex-col gap-8')}>
       <SectionHeading id="landing-trust" title={L.trust.title} />
-      <ul className="m-0 grid list-none gap-6 p-0 desktop:grid-cols-3">
+      <ul {...reveal} className="m-0 grid list-none gap-6 p-0 desktop:grid-cols-3">
         {L.trust.items.map((item, index) => {
           const Icon = TRUST_ICONS[index] as (typeof TRUST_ICONS)[number];
           return (
             <li
               key={item.title}
-              className="flex flex-col gap-2 rounded-[18px] border border-line bg-surface p-5"
+              className="fx-reveal-item flex flex-col gap-2 rounded-[18px] border border-line bg-surface p-5"
+              style={revealDelay(index, 160)}
             >
               <span className="flex items-center gap-2 font-semibold text-[1.0625rem] text-fg">
                 <span className="text-primary">
@@ -385,14 +470,16 @@ function Trust() {
 }
 
 function Questions() {
+  const reveal = useReveal<HTMLDivElement>();
   return (
     <section aria-labelledby="landing-faq" className={cx(CONTAINER, 'flex flex-col gap-6')}>
       <SectionHeading id="landing-faq" title={L.faq.title} />
-      <div className="flex flex-col gap-3">
-        {L.faq.items.map((item) => (
+      <div {...reveal} className="flex flex-col gap-3">
+        {L.faq.items.map((item, index) => (
           <details
             key={item.question}
-            className="group rounded-[18px] border border-line bg-surface"
+            className="fx-reveal-item group rounded-[18px] border border-line bg-surface"
+            style={revealDelay(index, 90)}
           >
             <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-5 font-semibold text-fg [&::-webkit-details-marker]:hidden">
               {item.question}
@@ -415,9 +502,19 @@ function Questions() {
 
 function Closing() {
   const capture = useCapture();
+  const reveal = useReveal<HTMLDivElement>();
   return (
     <section aria-labelledby="landing-closing" className={CONTAINER}>
-      <div className="flex flex-col items-center gap-5 rounded-[22px] border border-line bg-surface px-6 py-10 text-center tablet:py-12">
+      <div
+        {...reveal}
+        className="fx-reveal relative isolate flex flex-col items-center gap-5 overflow-hidden rounded-[22px] border border-line bg-surface px-6 py-10 text-center tablet:py-12"
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 left-1/2 -z-10 size-[520px] -translate-x-1/2 -translate-y-1/2"
+        >
+          <KhatamStar className="fx-turn-back size-full text-[var(--landing-gold)] opacity-25" />
+        </div>
         <h2
           id="landing-closing"
           className="m-0 font-bold font-display text-[1.625rem] text-fg leading-[1.5] tablet:text-[2rem]"
@@ -428,8 +525,13 @@ function Closing() {
           type="button"
           onClick={capture.open}
           aria-haspopup="dialog"
-          className="fill-primary inline-flex min-h-[52px] items-center gap-2 rounded-[14px] px-7 font-semibold text-[1.0625rem] hover:brightness-110 focus-visible:outline-3 focus-visible:outline-[var(--focus)] focus-visible:outline-offset-2"
+          className="fill-primary relative inline-flex min-h-[52px] items-center gap-2 rounded-[14px] px-7 font-semibold text-[1.0625rem] hover:brightness-110 focus-visible:outline-3 focus-visible:outline-[var(--focus)] focus-visible:outline-offset-2"
         >
+          <span
+            aria-hidden="true"
+            className="fx-halo fx-halo--on-reveal pointer-events-none absolute inset-0 rounded-[14px] border-2 border-[var(--landing-gold)]"
+            style={revealDelay(0, 0, 900)}
+          />
           <CameraIcon width="20" height="20" />
           {L.closing.cta}
         </button>

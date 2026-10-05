@@ -38,8 +38,7 @@ describe('the pages of the journey', () => {
   });
 
   it('offer inside sharing only the surfaces whose feature the server reads as on', async () => {
-    vi.stubEnv('FEATURE_ATLAS', 'true');
-    vi.stubEnv('FEATURE_SOCIAL', 'false');
+    vi.stubEnv('DISABLED_FEATURES', 'social');
     setSignedIn(USER);
     mockApi({
       [`GET /insights/${ID}`]: { body: insightOut() },

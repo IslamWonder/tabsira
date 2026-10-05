@@ -19,7 +19,7 @@ personal matter (content level «د») ends with the referral to a qualified
 scholar (v2 §12, rule 7). Of the engine's stages the learner's profile reaches
 this one only, for the depth, the words and the examples (the brief of
 2026-10-05, §14). The explanation may be published, so it never reveals the
-declared gender, religion or age; the gender is not even sent (decision 63).
+declared gender, religion or age; the gender is not even sent (decision 64).
 """
 
 from __future__ import annotations
@@ -107,7 +107,7 @@ def learner_payload(learner: LearnerContext) -> dict[str, Any]:
     and is left out when unknown, so the composer prompt's rule, which is keyed on these very
     values, fires for a non-Muslim and for a background that was never shared alike. The
     gender is never sent: the explanation may be published, so it is written in one
-    neutral voice whatever the gender (decision 63, 5).
+    neutral voice whatever the gender (decision 64, 5).
     """
     shared = {
         "knowledge_level": learner.knowledge_level,

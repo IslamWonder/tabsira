@@ -21,7 +21,7 @@ PRODUCTION = {
     "hash_secret": "not-a-real-secret-but-long-enough-for-the-rule",
     "ai_ovh": {"api_key": "ovh-key-123"},
     "ai_openai": {"api_key": "openai-key-123"},
-    "feature_admin": False,
+    "disabled_features": "admin",
     "redis_password": "redis-secret",
     "s3_bucket": "tabsira-photos",
     "s3_access_key_id": "AKIAEXAMPLE",

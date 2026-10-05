@@ -88,7 +88,11 @@ assemble() {
 	cp -a "$BUILD_DIR/static" "$release/apps/web/.next/static"
 	[[ -d "$REPO_DIR/apps/web/public" ]] && cp -a "$REPO_DIR/apps/web/public" "$release/apps/web/public"
 	# Never overwrite (a chunk name is a content hash), then mark every file this build uses as recent.
-	cp -R -n "$release/apps/web/.next/static/." "$STATIC_DIR/_next/static/"
+	# GNU cp 9.3+ warns about -n and names --update=none instead; older GNU and BSD cp know
+	# only -n. An unknown value makes cp refuse even --version, so the check copies nothing.
+	local keep=(-n)
+	cp --update=none --version >/dev/null 2>&1 && keep=(--update=none)
+	cp -R "${keep[@]}" "$release/apps/web/.next/static/." "$STATIC_DIR/_next/static/"
 	(cd "$release/apps/web/.next/static" && find . -type f -print0) |
 		(cd "$STATIC_DIR/_next/static" && xargs -0 -r -n 100 touch -c --)
 	chmod -R a+rX "$STATIC_DIR"

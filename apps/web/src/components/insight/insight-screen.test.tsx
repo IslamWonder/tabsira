@@ -324,7 +324,7 @@ describe('InsightScreen: «تمّ»', () => {
     expect(api.requests.filter((request) => request.url.includes('/complete'))).toHaveLength(1);
   });
 
-  it('sends a guest who opens the chat of their own scan to sign-up (decision 63)', async () => {
+  it('sends a guest who opens the chat of their own scan to sign-up (decision 64)', async () => {
     setGuest();
     await open(insightOut({ engine: 'pipeline' }));
     await userEvent.click(screen.getByRole('button', { name: /ناقش البصيرة/ }));

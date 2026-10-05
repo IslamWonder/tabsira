@@ -201,7 +201,7 @@ export function useInsight(insightId: string): InsightControls {
       const result = await askInsight(insightId, message, key);
       if (!result.ok) {
         if (profileRequired(result)) {
-          // The profile form opens before anything else (decision 63).
+          // The profile form opens before anything else (decision 64).
           markProfileRequired();
         }
         return result;

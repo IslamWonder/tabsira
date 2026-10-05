@@ -20,7 +20,7 @@ from src.deps import (
     PublicMember,
     TextGuardDep,
     limited,
-    require_social,
+    require_comments,
 )
 from src.models.social import Comment
 from src.models.user import User
@@ -38,7 +38,7 @@ from src.services.comment_service import Thread
 from src.services.post_view import outcome_message
 from src.services.social_limits import WriteKind
 
-router = APIRouter(tags=["comments"], dependencies=[Depends(require_social)])
+router = APIRouter(tags=["comments"], dependencies=[Depends(require_comments)])
 
 PAGE_DEFAULT = 20
 PAGE_MAX = 50

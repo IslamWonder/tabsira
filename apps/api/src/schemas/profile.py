@@ -58,7 +58,7 @@ class ProfileOut(BaseModel):
     reduced_motion: ReducedMotion
     sound_enabled: bool
     questions_asked: bool
-    # Set once every question was answered, `unknown` included (decision 63); null until then.
+    # Set once every question was answered, `unknown` included (decision 64); null until then.
     profile_completed_at: datetime | None
     consent_version: str | None
     updated_at: datetime
@@ -76,7 +76,7 @@ class ProfilePatch(BaseModel):
     field stays `unknown` and the questions are never offered again. Answering
     any of the three question fields records the same.
 
-    `complete_profile: true` completes the profile (decision 63) and needs an explicit answer
+    `complete_profile: true` completes the profile (decision 64) and needs an explicit answer
     to every question in the same body: `goals` (`[]` is «أفضّل عدم الإجابة»),
     `knowledge_level`, `age_range`, `religious_background` and `gender` (`unknown` is that
     answer). A body that leaves one out is a 422.

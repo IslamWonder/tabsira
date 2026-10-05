@@ -181,7 +181,7 @@ DECLARED = "never by their message: "
 async def test_the_chat_reads_the_declared_profile_and_nothing_once_personalization_is_off(
     browser, store, flow_settings, model
 ):
-    """Decision 63: the declared fields reach the chat as the composer reads them; off, none."""
+    """Decision 64: the declared fields reach the chat as the composer reads them; off, none."""
     user = await make_account(store)
     await sign_in(browser)
     owner = Owner(user_id=user.id)
@@ -217,7 +217,7 @@ async def test_the_chat_reads_the_declared_profile_and_nothing_once_personalizat
         "age_range": "13_17",
         "religious_background": "non_muslim",
         "goals": ["discover_islam"],
-        # The chat alone, private to its owner, gets the declared gender (decision 63, 5).
+        # The chat alone, private to its owner, gets the declared gender (decision 64, 5).
         "gender": "woman",
     }
     without_gender = {key: value for key, value in fields.items() if key != "gender"}
@@ -660,7 +660,7 @@ async def test_the_chat_can_be_switched_off_and_a_key_must_look_like_one(
     insight_id = await an_insight(browser, store, flow_settings)
     for key in ("short", "has spaces in it", "x" * 65):
         assert (await ask(browser, insight_id, key=key)).status_code == 422
-    flow_app.state.settings = make_settings(feature_chat=False)
+    flow_app.state.settings = make_settings(disabled_features="chat")
 
     off = await ask(browser, insight_id)
 

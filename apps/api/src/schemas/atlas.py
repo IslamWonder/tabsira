@@ -14,12 +14,19 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from src.models.atlas import LocationMeaning, LocationSource, MapEntryStatus
+from src.models.atlas import (
+    SPONSOR_REFLECTION_MAX,
+    LocationMeaning,
+    LocationSource,
+    MapEntryStatus,
+    WidenLevel,
+)
+from src.models.social import CommentStatus
 from src.schemas.geo import GeoJsonPoint
 from src.schemas.public_id import PublicId
-from src.schemas.social import HadithEvidenceOut, MemberOut, QuranEvidenceOut
+from src.schemas.social import HadithEvidenceOut, MemberOut, QuranEvidenceOut, clean_text
 
 Latitude = Annotated[float, Field(ge=-90, le=90, description="Degrees; zero is a value")]
 Longitude = Annotated[float, Field(ge=-180, le=180, description="Degrees; zero is a value")]
@@ -81,12 +88,27 @@ class PublicLocationOut(BaseModel):
     precision_label: str
     meaning: LocationMeaning
     meaning_label: str
+    widened_level: WidenLevel | None = Field(
+        default=None,
+        description="Set once the place was widened to a city, a region or a country (decision 60): "
+        "the point is then that area's centre, and it is never narrowed again",
+    )
 
 
 class PublicLocationPreview(PublicLocationOut):
     """The owner's preview before publishing: the cell itself, so they can see what is shown."""
 
-    cell: GeoJsonPolygon
+    cell: GeoJsonPolygon | None = Field(
+        default=None, description="Null once the place was widened: there is no cell any more"
+    )
+
+
+class WidenedOut(BaseModel):
+    """What the owner is told about the widening of their entry's place (never the earlier cell)."""
+
+    level: WidenLevel
+    label: str | None
+    at: datetime
 
 
 class MapEntryOwnerOut(BaseModel):
@@ -101,6 +123,14 @@ class MapEntryOwnerOut(BaseModel):
     public: PublicLocationPreview | None = Field(description="Null once the entry is withdrawn")
     place: PlaceRef | None
     photo: bool = Field(description="The owner chose to show the insight's photo with it")
+    sponsor: MemberOut | None = Field(
+        default=None,
+        description="Who looks after the entry now, when it is sponsored (decision 60)",
+    )
+    widened: WidenedOut | None = Field(
+        default=None,
+        description="When and to what level the entry's public place was widened, if it was",
+    )
     published_at: datetime | None
     withdrawn_at: datetime | None
     created_at: datetime
@@ -115,11 +145,20 @@ class AtlasFeatureProperties(BaseModel):
     id: PublicId
     title: str
     glimpse: str
-    author: MemberOut
+    author: MemberOut | None = Field(
+        description="Null once the entry was orphaned: a widened place carries no author's name"
+    )
     place: PlaceRef | None
     cell_m: int
     precision_label: str
     published_on: date = Field(description="The day, never the time: no trail of a person's hours")
+    orphaned: bool = Field(
+        default=False, description="Nobody looks after it: it can be sponsored (decision 60)"
+    )
+    widened_level: WidenLevel | None = None
+    sponsor: MemberOut | None = Field(
+        default=None, description="Who looks after it; chosen in public by the sponsor"
+    )
 
 
 class AtlasFeature(BaseModel):
@@ -147,7 +186,23 @@ class AtlasEntryOut(BaseModel):
     explanation: str = Field(description="The app's explanation, shortened; written by the app")
     step: str | None
     concepts: list[str]
-    author: MemberOut
+    author: MemberOut | None = Field(
+        description="Null once the entry was orphaned, and for good after it: no handle beside a widened place"
+    )
+    orphaned: bool = Field(
+        default=False, description="Nobody looks after it: any verified member may sponsor it"
+    )
+    sponsor: MemberOut | None = Field(
+        default=None, description="Who looks after it; the sponsor chose to be named"
+    )
+    sponsor_reflection: str | None = Field(
+        default=None,
+        description="The sponsor's own words, once published; never scripture, never the author's",
+    )
+    sponsor_reflection_id: PublicId | None = Field(
+        default=None,
+        description="The id to report the reflection by (`target_type` sponsorship); null without one",
+    )
     location: PublicLocationOut
     place: PlaceRef | None
     quran: list[QuranEvidenceOut]
@@ -169,3 +224,51 @@ class AtlasPlaceOut(BaseModel):
     point: GeoJsonPoint
     entries: list[AtlasFeature]
     next_cursor: str | None
+
+
+class AtlasOrphansOut(BaseModel):
+    """Orphaned entries near a point, each at its widened place, newest first."""
+
+    type: Literal["FeatureCollection"] = "FeatureCollection"
+    features: list[AtlasFeature]
+    next_cursor: str | None
+
+
+# ─── Sponsoring («كفالة بصيرة») ───
+
+
+class SponsorshipReflectionIn(BaseModel):
+    """The sponsor's own words under the entry: one, replaced by the next."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reflection: Annotated[str, Field(max_length=SPONSOR_REFLECTION_MAX * 2)]
+
+    @field_validator("reflection")
+    @classmethod
+    def _reflection(cls, value: str) -> str:
+        cleaned = clean_text(value, SPONSOR_REFLECTION_MAX)
+        if cleaned is None:
+            message = "must not be empty"
+            raise ValueError(message)
+        return cleaned
+
+
+class SponsorshipOut(BaseModel):
+    """One of the caller's sponsorships, with the state of their own reflection."""
+
+    entry_id: PublicId
+    title: str
+    place: PlaceRef | None
+    widened_level: WidenLevel | None
+    id: PublicId = Field(description="The sponsorship's id: what a report of its reflection names")
+    active: bool = Field(
+        description="Always true: a sponsorship that ends is deleted. Kept for the client."
+    )
+    started_at: datetime
+    ended_at: datetime | None = Field(description="Always null, for the same reason")
+    reflection: str | None
+    reflection_status: CommentStatus | None
+    reflection_message: str | None = Field(
+        description="What happened to the reflection, in Arabic, for its sponsor"
+    )

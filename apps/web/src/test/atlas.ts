@@ -1,4 +1,10 @@
-import type { AtlasEntry, AtlasFeature, AtlasPlace, MapEntryOwner } from '@/atlas/types';
+import type {
+  AtlasEntry,
+  AtlasFeature,
+  AtlasPlace,
+  MapEntryOwner,
+  Sponsorship,
+} from '@/atlas/types';
 import { AUTHOR, HADITH_TEXT, QURAN_TEXT, sha256 } from './social';
 
 /* Sample answers of the atlas API for unit tests; placeholders stand for scripture. */
@@ -24,6 +30,7 @@ export const FEATURE: AtlasFeature = {
     cell_m: 1000,
     precision_label: '[موقع تقريبي ضمن نحو 1000 م]',
     published_on: '2026-10-04',
+    orphaned: false,
   },
 };
 
@@ -53,6 +60,7 @@ export const ENTRY: AtlasEntry = {
   step: '[خطوة صغيرة]',
   concepts: ['rain'],
   author: AUTHOR,
+  orphaned: false,
   location: {
     point: { type: 'Point', coordinates: [10.1815, 36.8065] },
     cell_m: 1000,
@@ -135,4 +143,61 @@ export const OWNER_ENTRY: MapEntryOwner = {
   published_at: null,
   withdrawn_at: null,
   created_at: '2026-10-04T08:00:00Z',
+};
+
+/** An orphaned entry as the orphans route gives it: widened place, no author, no handle. */
+export const ORPHAN_FEATURE: AtlasFeature = {
+  ...FEATURE,
+  id: '7400000000000000009',
+  geometry: { type: 'Point', coordinates: [10.1, 36.8] },
+  properties: {
+    ...FEATURE.properties,
+    id: '7400000000000000009',
+    title: '[بصيرة تنتظر]',
+    author: null,
+    cell_m: 50000,
+    precision_label: '[على مستوى المنطقة]',
+    orphaned: true,
+    widened_level: 'region',
+  },
+};
+
+/** The entry page of an orphaned entry: no author, no post, a widened place. */
+export const ORPHAN_ENTRY: AtlasEntry = {
+  ...ENTRY,
+  id: ORPHAN_FEATURE.id,
+  author: null,
+  post_id: null,
+  orphaned: true,
+  location: {
+    ...ENTRY.location,
+    cell_m: 50000,
+    precision_label: '[على مستوى المنطقة]',
+    widened_level: 'region',
+  },
+};
+
+export const SPONSOR = { handle: 'quiet_keeper', public_name: '[اسم الكافل]' };
+
+/** An entry that has a sponsor, with the sponsor's published reflection. */
+export const SPONSORED_ENTRY: AtlasEntry = {
+  ...ORPHAN_ENTRY,
+  orphaned: false,
+  sponsor: SPONSOR,
+  sponsor_reflection: '[تأمل الكافل]',
+  sponsor_reflection_id: '7500000000000000001',
+};
+
+export const SPONSORSHIP: Sponsorship = {
+  id: '7500000000000000001',
+  entry_id: ORPHAN_FEATURE.id,
+  title: '[بصيرة تنتظر]',
+  place: PLACE,
+  widened_level: 'region',
+  active: true,
+  started_at: '2026-10-05T08:00:00Z',
+  ended_at: null,
+  reflection: null,
+  reflection_status: null,
+  reflection_message: null,
 };

@@ -67,7 +67,7 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (accountRequired(result)) {
-        // The guest's one own scan is used: sign up, then come back to where they were (decision 63).
+        // The guest's one own scan is used: sign up, then come back to where they were (decision 64).
         setSending(null);
         router.push(signUpHref(pathname, 'scan'));
         return;

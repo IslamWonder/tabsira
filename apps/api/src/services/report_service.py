@@ -14,8 +14,15 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.errors import AppError, ErrorCode
-from src.models.atlas import MapEntry
-from src.models.social import Comment, Post, Report, ReportReason, ReportTarget
+from src.models.atlas import MapEntry, MapEntrySponsorship
+from src.models.social import (
+    Comment,
+    CommentStatus,
+    Post,
+    Report,
+    ReportReason,
+    ReportTarget,
+)
 from src.models.user import User
 from src.services import atlas_service, comment_service, moderation_service, post_service
 from src.storage.photos import PhotoStore
@@ -29,6 +36,22 @@ def _switched_off() -> AppError:
     return AppError(ErrorCode.NOT_FOUND, "Not found.", status_code=404)
 
 
+async def _reflection(db: AsyncSession, reporter: User, sponsorship_id: int) -> MapEntrySponsorship:
+    """Load a published reflection on an entry the reporter may see, or raise 404."""
+    sponsorship = await db.scalar(
+        select(MapEntrySponsorship).where(
+            MapEntrySponsorship.id == sponsorship_id,
+            MapEntrySponsorship.reflection_status == CommentStatus.PUBLISHED,
+        )
+    )
+    if sponsorship is None:
+        raise _switched_off()
+    await atlas_service.published_entry(db, sponsorship.entry_id, reporter)
+    if sponsorship.user_id == reporter.id:
+        raise _own()
+    return sponsorship
+
+
 async def _target(
     db: AsyncSession,
     reporter: User,
@@ -37,13 +60,19 @@ async def _target(
     *,
     social_on: bool,
     atlas_on: bool,
-) -> Post | Comment | MapEntry:
+    comments_on: bool,
+    sponsorship_on: bool,
+) -> Post | Comment | MapEntry | MapEntrySponsorship:
     """
     Load what is reported, or raise 404 when the reporter may not read it.
 
     A target whose feature is switched off is 404 too: the atlas alone opens map entries to
     reports, the network alone posts and comments, and neither says what the other holds.
     """
+    if target_type is ReportTarget.SPONSORSHIP:
+        if not atlas_on or not sponsorship_on:
+            raise _switched_off()
+        return await _reflection(db, reporter, target_id)
     if target_type is ReportTarget.MAP_ENTRY:
         if not atlas_on:
             raise _switched_off()
@@ -58,6 +87,8 @@ async def _target(
         if row.post.author_id == reporter.id:
             raise _own()
         return row.post
+    if not comments_on:
+        raise _switched_off()
     comment = await db.scalar(
         select(Comment).where(Comment.id == target_id, comment_service.visible_comment(reporter))
     )
@@ -80,6 +111,8 @@ async def file_report(
     hold_threshold: int,
     social_on: bool,
     atlas_on: bool,
+    comments_on: bool,
+    sponsorship_on: bool = False,
     photos: PhotoStore | None = None,
 ) -> int:
     """
@@ -88,7 +121,14 @@ async def file_report(
     With `photos`, an item the reports hold loses the public copy of its photo at once.
     """
     target = await _target(
-        db, reporter, target_type, target_id, social_on=social_on, atlas_on=atlas_on
+        db,
+        reporter,
+        target_type,
+        target_id,
+        social_on=social_on,
+        atlas_on=atlas_on,
+        comments_on=comments_on,
+        sponsorship_on=sponsorship_on,
     )
     created: int | None = await db.scalar(
         insert(Report)

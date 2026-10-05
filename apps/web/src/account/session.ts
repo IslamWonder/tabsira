@@ -81,7 +81,7 @@ export function setSignedIn(user: User): void {
 
 /**
  * The API said 403 `profile_required`: the profile form opens before anything else
- * (decision 63), whatever screen met the refusal.
+ * (decision 64), whatever screen met the refusal.
  */
 export function markProfileRequired(): void {
   if (state.status === 'signed-in' && state.user.profile_completed) {
