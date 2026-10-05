@@ -27,6 +27,7 @@ from typing import cast
 from sqlalchemy import Text, exists, func, literal, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import load_only
 
 from src import clock
 from src.config import Settings
@@ -310,7 +311,20 @@ async def record_relations(db: AsyncSession, owner: Owner, insight: Insight, pla
     """Record the threads this completion, in place `place_id`, makes: same scene, prerequisites."""
     others = (
         await db.scalars(
-            select(Insight).where(
+            select(Insight)
+            # Only the fields the relation checks read (see ready_treasures).
+            .options(
+                load_only(
+                    Insight.id,
+                    Insight.scan_id,
+                    Insight.origin,
+                    Insight.tutorial_scene,
+                    Insight.place_id,
+                    Insight.learning_unit_id,
+                    Insight.learning_path_version,
+                )
+            )
+            .where(
                 owner.where(Insight),
                 Insight.id != insight.id,
                 Insight.completed_at.is_not(None),
@@ -439,7 +453,22 @@ async def ready_treasures(
     ).all()
     completed = (
         await db.scalars(
-            select(Insight).where(owner.where(Insight), Insight.completed_at.is_not(None))
+            select(Insight)
+            # Only the fields the readiness and relation checks read; a
+            # completion carries large text columns this loop never opens.
+            .options(
+                load_only(
+                    Insight.id,
+                    Insight.completed_at,
+                    Insight.why,
+                    Insight.scan_id,
+                    Insight.origin,
+                    Insight.tutorial_scene,
+                    Insight.place_id,
+                    Insight.learning_unit_id,
+                )
+            )
+            .where(owner.where(Insight), Insight.completed_at.is_not(None))
         )
     ).all()
     insights = {insight.id: insight for insight in completed}

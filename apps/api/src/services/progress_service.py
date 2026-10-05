@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import load_only
 
 from src import clock
 from src.messages import messages_for
@@ -58,6 +59,16 @@ async def practice_log(db: AsyncSession, owner: Owner | None) -> PracticeLog:
     completed = (
         await db.scalars(
             select(Insight)
+            # Only the fields the log reads; a completion carries large text
+            # columns the practice page never opens.
+            .options(
+                load_only(
+                    Insight.completed_at,
+                    Insight.why,
+                    Insight.origin,
+                    Insight.tutorial_slug,
+                )
+            )
             .where(owner.where(Insight), Insight.completed_at.is_not(None))
             .order_by(Insight.completed_at)
         )
