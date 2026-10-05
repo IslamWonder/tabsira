@@ -130,6 +130,7 @@ STATIC_PAGES: tuple[StaticPage, ...] = (
     StaticPage("/terms", date(2026, 10, 4)),
     StaticPage("/privacy", date(2026, 10, 4)),
     StaticPage("/support", date(2026, 10, 4)),
+    StaticPage("/sources", date(2026, 10, 5)),
 )
 
 

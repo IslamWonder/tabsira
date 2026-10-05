@@ -244,3 +244,8 @@ Three layers, so a container never outlives its build for long:
 
 - Deployment by default. The pipeline builds and tests. An optional `Deploy` stage (below) runs only when the `DEPLOY` parameter is ticked on `DEPLOY_BRANCH`; nothing deploys on its own.
 - An end-to-end pipeline (a `Jenkinsfile.e2e`). There is no end-to-end suite yet.
+
+## The deploy job and the Actions build
+
+- **`tabsira-deploy`** (TABSIRA - Deploy) runs `jenkins/Jenkinsfile.deploy` from `main` on Gitea. It connects with the shared `jenkins-ssh-deploy-devops` key to the application host over Netbird (`REMOTE_HOST`, default `100.73.99.6`; user and port from the global `SITES_SSH_USER` and `SITES_SSH_PORT`, else `devops` and 22) and runs `cd /opt/tabsira && git pull && ./deploy/deploy.sh <PARTS>`. `PARTS` takes `api`, `worker`, `vision`, `web`, space separated; blank deploys all of them. `DRY_RUN` prints the steps and changes nothing. After a real deploy it waits for `HEALTHCHECK_URLS` to answer 200, then posts to Zulip like the other jobs. `jenkins/apply-jobs.sh` creates or updates the job (`JENKINS_USER` and `JENKINS_TOKEN` in the environment; `--dry-run` to preview).
+- **`.github/workflows/build.yml`** builds every push and pull request on GitHub Actions and on Gitea Actions (Gitea reads `.github/workflows` when there is no `.gitea/workflows`): lint, the web tests and production build, and the API migrations and tests against the containers of `jenkins/ci-services.sh`. The runner needs Docker, and those containers publish on the runner's `127.0.0.1`, so a Gitea runner must run its jobs on the host (a `:host` label) or with that address reachable.

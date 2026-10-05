@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import type { FeatureCollection, Polygon } from 'geojson';
@@ -413,9 +414,26 @@ export function MapView({
           {A.mapUnsupported}
         </p>
       ) : null}
-      <p className="pointer-events-none absolute bottom-1 start-1 m-0 rounded bg-[var(--surface-glass)] px-2 py-0.5 text-[0.6875rem] text-fg-muted">
-        {A.attribution}
-      </p>
+      <nav
+        aria-label={A.attribution.label}
+        className="absolute bottom-1 start-1 flex flex-wrap gap-x-2 rounded bg-[var(--surface-glass)] px-2 py-0.5 text-[0.6875rem] text-fg-muted"
+      >
+        {A.attribution.links.map(([name, href]) => (
+          <a
+            key={href}
+            href={href}
+            dir="ltr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            {name}
+          </a>
+        ))}
+        <Link href="/sources" className="underline">
+          {A.attribution.more}
+        </Link>
+      </nav>
     </div>
   );
 }

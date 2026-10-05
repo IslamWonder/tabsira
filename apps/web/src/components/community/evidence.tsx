@@ -39,7 +39,7 @@ export function PostEvidence({
       reference={M.hadithReference(hadith.collection_name, hadith.number)}
       verifyHref={hadith.verification_url}
       classification={hadith.classification ?? undefined}
-      // «نص موثّق» could read as a grade: a hadith shown before its ruling never carries it.
+      // The verified label (evidence.verified) could read as a grade: a hadith shown before its ruling never carries it.
       verified={hadith.verified && hadith.classification !== null}
     />
   ));

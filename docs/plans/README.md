@@ -2,7 +2,7 @@
 
 One short file per feature: what it is, where it stands, what is waiting on the owners, and how it is checked. Phase 1 is this release (decision 40); phase 2 follows.
 
-**Updated:** 2026-10-04 19:55 (Tunis) · ✅ done · 🔄 in progress · ⬜ not started · ⏸ phase 2
+**Updated:** 2026-10-05 07:56 (Tunis) · ✅ done · 🔄 in progress · ⬜ not started · ⏸ phase 2
 
 | #   | Feature                                                           | Phase | Priority | Status |
 | --- | ----------------------------------------------------------------- | ----- | -------- | ------ |
@@ -25,6 +25,7 @@ One short file per feature: what it is, where it stands, what is waiting on the 
 | 17  | [World atlas «أطلس بصائر العالم»](17_atlas.md)                    | 2     | Medium   | 🔄     |
 | 18  | [Camera discovery «اكتشف البصائر حولك»](18_camera_discovery.md)   | 2     | Low      | 🔄     |
 | 19  | [Consented photos](19_photos.md)                                  | 2     | High     | ✅     |
+| 20  | [Prompts and search: where they live](20_prompts.md)              | 1     | High     | 🔄     |
 
 ## Taking a task
 

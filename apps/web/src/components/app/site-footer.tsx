@@ -19,6 +19,7 @@ const PAGES = [
   ['/support', messages.footer.support],
   ['/terms', messages.footer.terms],
   ['/privacy', messages.footer.privacy],
+  ['/sources', messages.footer.sources],
 ] as const;
 
 function Column({ title, children }: { title: string; children: ReactNode }) {

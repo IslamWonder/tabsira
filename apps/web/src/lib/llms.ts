@@ -8,7 +8,7 @@ import { type LegalDocument, legalMessages } from '@/messages/legal';
  * site's own text only: no insight, no scripture, nothing of a person.
  */
 
-const { terms, privacy, support } = legalMessages();
+const { terms, privacy, support, sources } = legalMessages();
 
 interface PageEntry {
   path: (typeof INDEXED_ROUTES)[number];
@@ -21,6 +21,7 @@ const PAGES: readonly PageEntry[] = [
   { path: '/terms', title: terms.title, description: terms.description },
   { path: '/privacy', title: privacy.title, description: privacy.description },
   { path: '/support', title: support.title, description: support.description },
+  { path: '/sources', title: sources.title, description: sources.description },
 ];
 
 function head(): string[] {
@@ -77,5 +78,6 @@ export function llmsFullTxt(): string {
     '',
     ...documentLines(terms, '/terms'),
     ...documentLines(privacy, '/privacy'),
+    ...documentLines(sources, '/sources'),
   ].join('\n');
 }

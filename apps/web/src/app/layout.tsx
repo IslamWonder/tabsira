@@ -105,7 +105,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       {/* Clarity masks everything under this attribute: no typed text, scripture or user text is recorded. */}
       <body className="antialiased" {...CLARITY_MASK}>
         <PageShell consent={consent}>
-          {/* Every «صوّر مشهدًا», in the bars or on a page, opens the same camera and send. */}
+          {/* Every capture button (nav.captureScene), in the bars or on a page, opens the same camera and send. */}
           <CaptureProvider>
             <SkipLink />
             <StageBackdrop />

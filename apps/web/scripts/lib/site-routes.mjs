@@ -2,7 +2,7 @@
 // PRIVATE_PATHS and AI_AGENTS of apps/web/src/lib (a unit test keeps the two
 // in step), because a plain Node script cannot import TypeScript sources.
 
-export const INDEXED_ROUTES = ['/', '/terms', '/privacy', '/support'];
+export const INDEXED_ROUTES = ['/', '/terms', '/privacy', '/support', '/sources'];
 
 export const UNLISTED_ROUTES = [
   '/world',

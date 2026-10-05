@@ -1,5 +1,5 @@
 /**
- * The terms of use, the privacy policy and the support page, keyed by language
+ * The terms of use, the privacy policy, the support page and the sources page, keyed by language
  * (decision 36). Every promise in this file is behaviour: docs/PRIVACY.md is
  * the inventory behind the privacy text and must be changed in the same commit
  * as any sentence here (AGENTS.md: promises in legal text are code).
@@ -562,6 +562,99 @@ const support = {
   },
 } as const;
 
+const sources: LegalDocument = {
+  version: '2026-10-05',
+  updated: '5 أكتوبر 2026',
+  title: 'المصادر والتراخيص',
+  description:
+    'من أين تأتي نصوص القرآن والحديث وأسماء الأماكن والخريطة في تبصرة، وبأي رخصة نستعملها، ولمن الفضل فيها.',
+  intro:
+    'تقوم تبصرة على عمل غيرنا. نذكر هنا كل مصدر نستعمله، وما نأخذه منه، ورخصته، وننسب الفضل لأهله. نعرض نصوص القرآن والحديث بحروفها كما وردت في مصادرها، ولا يكتب نموذج ذكاء اصطناعي شيئًا منها.',
+  sections: [
+    {
+      id: 'quran',
+      heading: 'نص القرآن الكريم',
+      blocks: [
+        p(
+          'نص المصحف برواية حفص عن عاصم في «مصحف حفص نسخة نصية» من «الموسوعة القرآنية» https://quranpedia.net، من ملفات بياناتها الرسمية (نسخة 2026-10-03)، ونطبق تصحيحاتها كل يوم. القرآن تراث الأمة كلها؛ أما الرقمنة والضبط والتدقيق فعمل فريق الموسوعة، فلهم الشكر.'
+        ),
+      ],
+    },
+    {
+      id: 'hadith',
+      heading: 'الحديث النبوي',
+      blocks: [
+        p(
+          'صحيح البخاري وصحيح مسلم وسنن أبي داود والترمذي والنسائي وابن ماجه وموطأ مالك: من مشروع hadith-api https://github.com/fawazahmed0/hadith-api، وهو مُهدى إلى الملك العام (The Unlicense).'
+        ),
+        p(
+          'مسند أحمد وسنن الدارمي: من مشروع Open-Hadith-Data https://github.com/mhashim6/Open-Hadith-Data، برخصة قاعدة البيانات المفتوحة. نص الإشعار كما يطلبه المشروع:'
+        ),
+        p(
+          'This Open-Hadith-Data project is made available under the Open Database License: http://opendatacommons.org/licenses/odbl/1.0/. Any rights in individual contents of the database are licensed under the Database Contents License: http://opendatacommons.org/licenses/dbcl/1.0/'
+        ),
+        p(
+          'أحكام المحدثين على الأحاديث ينقلها محررونا يدويًا من «الدرر السنية» https://dorar.net مع اسم العالم والكتاب والصفحة، ونضع مع كل حكم رابط صفحته هناك لتتحقق منه بنفسك.'
+        ),
+      ],
+    },
+    {
+      id: 'places',
+      heading: 'أسماء الأماكن',
+      blocks: [
+        p(
+          'أسماء المدن والأماكن في البحث وفي أطلس بصائر العالم من GeoNames https://www.geonames.org، برخصة المشاع الإبداعي، نسب المصنف 4.0 https://creativecommons.org/licenses/by/4.0/. نخزنها عندنا ونختار منها ونفهرسها للبحث، ولا نرسل بحثك إلى GeoNames.'
+        ),
+      ],
+    },
+    {
+      id: 'map',
+      heading: 'الخريطة',
+      blocks: [
+        p(
+          'بيانات الخريطة © مساهمو OpenStreetMap https://www.openstreetmap.org/copyright، برخصة قاعدة البيانات المفتوحة. بلاط الخريطة من OpenFreeMap https://openfreemap.org على مخطط OpenMapTiles https://openmaptiles.org، ويرسمها MapLibre GL JS برخصة BSD.'
+        ),
+      ],
+    },
+    {
+      id: 'vision',
+      heading: 'التعرف على ما في الصورة',
+      blocks: [
+        p(
+          'نحدد الأشياء في صورتك بنموذج YOLOE من Ultralytics https://github.com/ultralytics/ultralytics، برخصة GNU AGPL 3.0. ويصف المشهد ويكتب الشرح نموذج لغوي، ولا يكتب نصًا من القرآن أو الحديث؛ يختار من نصوص مخزنة عندنا بأرقامها فقط.'
+        ),
+      ],
+    },
+    {
+      id: 'fonts',
+      heading: 'الخطوط',
+      blocks: [
+        p(
+          'Readex Pro وReem Kufi وNoto Naskh Arabic، برخصة SIL Open Font License 1.1 https://openfontlicense.org، نقدمها من خادمنا.'
+        ),
+      ],
+    },
+    {
+      id: 'ours',
+      heading: 'ما صنعه فريق تبصرة',
+      blocks: [
+        p(
+          'أنطولوجيا العالم (ألف كيان)، والمسار التعليمي «مسار»، وإشارات البحث التي تساعد على إيجاد الآية والحديث المناسبين: من عمل فريق تبصرة. الإشارات لا تُعرض نصًا شرعيًا أبدًا.'
+        ),
+      ],
+    },
+    {
+      id: 'code',
+      heading: 'الشيفرة المصدرية',
+      blocks: [
+        p(
+          'شيفرة تبصرة مفتوحة برخصة GNU AGPL 3.0، ويمكنك قراءتها ونسخها من https://github.com/IslamWonder/tabsira.'
+        ),
+      ],
+    },
+  ],
+};
+
 const common = {
   version: 'النسخة',
   updated: 'آخر تحديث',
@@ -572,13 +665,14 @@ const common = {
     terms: 'شروط الاستخدام',
     privacy: 'سياسة الخصوصية',
     support: 'الدعم',
+    sources: 'المصادر والتراخيص',
   },
   relatedLabel: 'صفحات ذات صلة',
   breadcrumb: { home: 'الرئيسية' },
 } as const;
 
 export const legal = {
-  ar: { terms, privacy, support, common },
+  ar: { terms, privacy, support, sources, common },
 } as const;
 
 export type LegalMessages = (typeof legal)[LegalLanguage];

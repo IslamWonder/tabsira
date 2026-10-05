@@ -120,7 +120,7 @@ export function LegalPage({ document, seo }: LegalPageProps) {
 
         <nav aria-label={COMMON.relatedLabel} className="mt-8 border-line border-t pt-4">
           <ul className="m-0 flex list-none flex-wrap gap-x-6 gap-y-1 p-0">
-            {(['terms', 'privacy', 'support'] as const)
+            {(['terms', 'privacy', 'support', 'sources'] as const)
               .filter((key) => `/${key}` !== seo.path)
               .map((key) => (
                 <li key={key}>

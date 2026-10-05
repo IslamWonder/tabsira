@@ -27,6 +27,8 @@ from src.services.sitemap_service import (
 from tests.helpers import client_for
 
 STATIC_LASTMOD = "2026-10-04T00:00:00Z"
+# The sources page was added a day after the others.
+SOURCES_LASTMOD = "2026-10-05T00:00:00Z"
 SECTIONS = ["static", "insights", "posts", "places", "profiles"]
 
 
@@ -91,7 +93,7 @@ async def test_the_index_names_every_section_and_only_the_static_one_has_pages(c
     body = response.json()
     assert body["page_size"] == 10_000
     assert list(body["sections"]) == SECTIONS
-    assert body["sections"]["static"] == [{"page": 0, "lastmod": STATIC_LASTMOD}]
+    assert body["sections"]["static"] == [{"page": 0, "lastmod": SOURCES_LASTMOD}]
     # Their features do not list anything yet, so they have no pages to crawl.
     assert {name: pages for name, pages in body["sections"].items() if name != "static"} == {
         name: [] for name in SECTIONS[1:]
@@ -113,13 +115,16 @@ async def test_the_answers_may_be_cached_for_a_few_minutes(client):
 # ─── The static section ───────────────────────────────────────────────────────
 
 
-async def test_the_static_section_lists_the_four_public_pages_in_order(client):
+async def test_the_static_section_lists_the_five_public_pages_in_order(client):
     response = await client.get("/sitemap/static")
 
     assert response.status_code == 200
     assert response.json() == [
-        {"path": path, "lastmod": STATIC_LASTMOD, "images": []}
-        for path in ("/", "/terms", "/privacy", "/support")
+        *(
+            {"path": path, "lastmod": STATIC_LASTMOD, "images": []}
+            for path in ("/", "/terms", "/privacy", "/support")
+        ),
+        {"path": "/sources", "lastmod": SOURCES_LASTMOD, "images": []},
     ]
 
 
@@ -136,7 +141,7 @@ async def test_the_static_dates_are_constants_in_the_code_not_the_clock(client, 
 
     entries = (await client.get("/sitemap/static")).json()
 
-    assert {entry["lastmod"] for entry in entries} == {STATIC_LASTMOD}
+    assert {entry["lastmod"] for entry in entries} == {STATIC_LASTMOD, SOURCES_LASTMOD}
 
 
 async def test_a_smaller_page_size_cuts_the_static_pages(client_with):
@@ -144,12 +149,14 @@ async def test_a_smaller_page_size_cuts_the_static_pages(client_with):
         index = (await http.get("/sitemap")).json()
         first = await paths(http, "static", 0)
         last = await paths(http, "static", 1)
-        past = await paths(http, "static", 2)
+        third = await paths(http, "static", 2)
+        past = await paths(http, "static", 3)
 
     assert index["page_size"] == 2
-    assert [p["page"] for p in index["sections"]["static"]] == [0, 1]
+    assert [p["page"] for p in index["sections"]["static"]] == [0, 1, 2]
     assert first == ["/", "/terms"]
     assert last == ["/privacy", "/support"]
+    assert third == ["/sources"]
     assert past == []
 
 

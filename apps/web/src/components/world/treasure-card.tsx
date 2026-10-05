@@ -50,7 +50,7 @@ function Evidence({ treasure }: { treasure: Treasure }) {
           sourceHref={hadith.hadith.collection.source_url}
           verifyHref={hadith.hadith.links.dorar_verification}
           ruling={hadith.hadith.ruling?.ruling_text}
-          // «نص موثّق» could read as a grade: a hadith shown before its ruling never carries it.
+          // The verified label (evidence.verified) could read as a grade: a hadith shown before its ruling never carries it.
           verified={hadith.hadith.ruling !== null}
         />
       )}
