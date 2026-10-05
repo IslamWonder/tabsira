@@ -41,6 +41,12 @@ HTTP_TIMEOUT_SECONDS = 120.0
 # A store that just failed a request is given this long before it is asked again; the API
 # request that asked has committed its state by then, so the reconcile sees it.
 RECONCILE_DELAY_SECONDS = 30.0
+# The stream read blocks on the server for two seconds at a time; the socket waits far longer
+# than any stretch the event loop is busy (a first scan builds its indexes for seconds). At
+# redis-py's five seconds, a read that timed out meanwhile stopped the worker, and its job came
+# back only after IDLE_TIMEOUT_MS. A Redis that is gone is still noticed by the health check.
+QUEUE_SOCKET_TIMEOUT_SECONDS = 60.0
+QUEUE_HEALTH_CHECK_SECONDS = 30
 
 _settings = get_settings()
 broker = RedisStreamBroker(
@@ -51,6 +57,8 @@ broker = RedisStreamBroker(
     consumer_id="0",
     idle_timeout=IDLE_TIMEOUT_MS,
     maxlen=10_000,
+    socket_timeout=QUEUE_SOCKET_TIMEOUT_SECONDS,
+    health_check_interval=QUEUE_HEALTH_CHECK_SECONDS,
 )
 
 _services: list[ScanServices] = []

@@ -21,6 +21,15 @@ def test_the_worker_reads_one_stream_as_one_group():
     assert worker.broker.idle_timeout == worker.IDLE_TIMEOUT_MS
 
 
+def test_the_queue_read_outlasts_a_busy_event_loop():
+    # The stream read blocks on the server for `block` ms. The socket must wait much longer:
+    # a first scan holds the loop for seconds while it builds its indexes, and a read that
+    # timed out meanwhile stopped the worker (and the job came back only ten minutes later).
+    socket_timeout = worker.broker.connection_pool.connection_kwargs["socket_timeout"]
+    assert socket_timeout >= worker.QUEUE_SOCKET_TIMEOUT_SECONDS
+    assert socket_timeout > 10 * worker.broker.block / 1000
+
+
 async def test_the_worker_builds_its_services_once_and_closes_them(monkeypatch):
     closed: list[str] = []
 
