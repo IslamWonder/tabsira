@@ -2496,6 +2496,46 @@
         }
       }
     },
+    "/community/summary": {
+      "get": {
+        "tags": ["community"],
+        "summary": "Aggregate counts of the public community",
+        "description": "Count members, published insights, atlas entries, countries and reactions; never a person.\n\nThe answer is kept ten minutes per worker. A database that is down or slow answers 503 at\nonce, so the home page that asks can leave the box out and still load.",
+        "operationId": "community_summary_community_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunitySummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/legal": {
       "get": {
         "tags": ["legal"],
@@ -6245,6 +6285,92 @@
         "type": "string",
         "enum": ["pending_review", "published", "rejected", "removed"],
         "title": "CommentStatus"
+      },
+      "CommunitySummary": {
+        "properties": {
+          "members": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Members",
+            "description": "Accounts with at least one published public post or published map entry."
+          },
+          "insights": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insights",
+            "description": "Published public posts; null while the network is off."
+          },
+          "reactions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reactions",
+            "description": "Reactions on published public posts; null while the network is off."
+          },
+          "atlas_entries": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Atlas Entries",
+            "description": "Entries shown on the atlas; null while the atlas is off."
+          },
+          "countries": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Countries",
+            "description": "Distinct countries of the atlas entries; null while the atlas is off."
+          },
+          "sponsorships_open": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sponsorships Open",
+            "description": "Atlas entries waiting for a sponsor («كفالة»); null while sponsoring is off."
+          }
+        },
+        "type": "object",
+        "required": [
+          "members",
+          "insights",
+          "reactions",
+          "atlas_entries",
+          "countries",
+          "sponsorships_open"
+        ],
+        "title": "CommunitySummary",
+        "description": "How large the community looks to a visitor."
       },
       "CompletionOut": {
         "properties": {
@@ -12942,6 +13068,10 @@
     {
       "name": "features",
       "description": "The feature switches in force (decision 63)."
+    },
+    {
+      "name": "community",
+      "description": "Aggregate counts of the public community, no person."
     },
     {
       "name": "scripture",

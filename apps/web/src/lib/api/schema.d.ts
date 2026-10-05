@@ -1158,6 +1158,29 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/community/summary': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Aggregate counts of the public community
+     * @description Count members, published insights, atlas entries, countries and reactions; never a person.
+     *
+     *     The answer is kept ten minutes per worker. A database that is down or slow answers 503 at
+     *     once, so the home page that asks can leave the box out and still load.
+     */
+    get: operations['community_summary_community_summary_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/legal': {
     parameters: {
       query?: never;
@@ -2669,6 +2692,42 @@ export interface components {
      * @enum {string}
      */
     CommentStatus: 'pending_review' | 'published' | 'rejected' | 'removed';
+    /**
+     * CommunitySummary
+     * @description How large the community looks to a visitor.
+     */
+    CommunitySummary: {
+      /**
+       * Members
+       * @description Accounts with at least one published public post or published map entry.
+       */
+      members: number;
+      /**
+       * Insights
+       * @description Published public posts; null while the network is off.
+       */
+      insights: number | null;
+      /**
+       * Reactions
+       * @description Reactions on published public posts; null while the network is off.
+       */
+      reactions: number | null;
+      /**
+       * Atlas Entries
+       * @description Entries shown on the atlas; null while the atlas is off.
+       */
+      atlas_entries: number | null;
+      /**
+       * Countries
+       * @description Distinct countries of the atlas entries; null while the atlas is off.
+       */
+      countries: number | null;
+      /**
+       * Sponsorships Open
+       * @description Atlas entries waiting for a sponsor («كفالة»); null while sponsoring is off.
+       */
+      sponsorships_open: number | null;
+    };
     /** CompletionOut */
     CompletionOut: {
       /** Insight Id */
@@ -7374,6 +7433,44 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['FeedPage'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  community_summary_community_summary_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CommunitySummary'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
         };
       };
       /** @description An error */

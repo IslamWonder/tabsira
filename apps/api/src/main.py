@@ -29,6 +29,7 @@ from src.routers import (
     auth_email,
     client_errors,
     comments,
+    community,
     cookie_consent,
     features,
     feed,
@@ -85,6 +86,7 @@ OPENAPI_TAGS = [
         "description": "«أطلس بصائر العالم»: insights placed on the map at approximate points.",
     },
     {"name": "features", "description": "The feature switches in force (decision 63)."},
+    {"name": "community", "description": "Aggregate counts of the public community, no person."},
     {"name": "scripture", "description": "Quran verses and hadith, read-only, exactly as stored."},
     {"name": "sitemap", "description": "The public pages for the web app's sitemaps."},
     {"name": "support", "description": "The support form: an e-mail to the team, nothing stored."},
@@ -259,6 +261,7 @@ def create_app(
     app.include_router(comments.router)
     app.include_router(reports.router)
     app.include_router(feed.router)
+    app.include_router(community.router)
     app.include_router(legal.router)
     app.include_router(support.router)
     app.include_router(scans.router)
