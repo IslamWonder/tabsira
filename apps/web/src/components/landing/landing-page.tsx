@@ -2,29 +2,15 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { useSession } from '@/account/session';
 import { LogoMark } from '@/components/brand/logo';
 import { useCapture } from '@/components/capture/capture-provider';
 import { revealDelay, useReveal } from '@/components/fx/use-reveal';
-import {
-  AtlasIcon,
-  CameraIcon,
-  CommentIcon,
-  CommunityIcon,
-  CompassIcon,
-  GemIcon,
-  MenuIcon,
-  OnwardIcon,
-  PhotosIcon,
-  PlayIcon,
-  ShieldIcon,
-  VerifyIcon,
-  WorldIcon,
-} from '@/components/icons';
+import { CameraIcon, MenuIcon, OnwardIcon, PlayIcon, ShieldIcon } from '@/components/icons';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
-import { type EmblemName, EmblemTile } from './emblem';
+import { Emblem, type EmblemName, EmblemTile } from './emblem';
 import { HeroAtmosphere, KhatamStar } from './hero-atmosphere';
 import { InsightExample } from './insight-example';
 import {
@@ -37,18 +23,6 @@ import {
 import { PhonePreview } from './phone-preview';
 
 const L = messages.landing;
-
-const ICONS: Record<BenefitIcon, (props: { width: string; height: string }) => ReactNode> = {
-  lens: CameraIcon,
-  chat: CommentIcon,
-  verify: VerifyIcon,
-  world: WorldIcon,
-  atlas: AtlasIcon,
-  around: CompassIcon,
-  treasure: GemIcon,
-  community: CommunityIcon,
-  photos: PhotosIcon,
-};
 
 /** Each benefit's emblem (src/components/landing/emblem-data.ts). */
 const BENEFIT_EMBLEMS: Record<BenefitIcon, EmblemName> = {
@@ -336,7 +310,6 @@ function Journey() {
 
 function StoryCard({ story, index }: { story: Story; index: number }) {
   const { action } = story;
-  const ActionIcon = action === null ? null : ICONS[action.icon];
   const actionClass =
     'inline-flex min-h-12 items-center gap-2 self-start font-semibold text-primary underline-offset-4 hover:underline';
   return (
@@ -377,14 +350,14 @@ function StoryCard({ story, index }: { story: Story; index: number }) {
             </li>
           ))}
         </ul>
-        {action === null || ActionIcon === null ? null : action.kind === 'link' ? (
+        {action === null ? null : action.kind === 'link' ? (
           <Link href={action.href} className={cx(actionClass, 'mt-auto')}>
-            <ActionIcon width="18" height="18" />
+            <Emblem name={BENEFIT_EMBLEMS[action.icon]} width="20" height="20" />
             {action.label}
           </Link>
         ) : (
           <Link href="#example" className={cx(actionClass, 'mt-auto')}>
-            <ActionIcon width="18" height="18" />
+            <Emblem name={BENEFIT_EMBLEMS[action.icon]} width="20" height="20" />
             {action.label}
           </Link>
         )}
