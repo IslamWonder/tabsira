@@ -1842,9 +1842,8 @@ export interface paths {
      * The prepared rain scene and its two insights
      * @description Return the rain scene with «الحياة في قطرة» and «الغرس الذي يتعدّاك».
      *
-     *     The verses come from the store; each hadith shows once an editor has
-     *     recorded its dorar.net ruling, or before it when it counts as one of the
-     *     enriched Sunnah file's (decision 58), and otherwise the insight says it waits.
+     *     The verses and the hadiths come from the store, each hadith as stored with
+     *     no ruling displayed (decision 64).
      */
     get: operations['rain_tutorial_rain_get'];
     put?: never;
@@ -3414,8 +3413,6 @@ export interface components {
       privacy_version: string;
       /** Privacy Email */
       privacy_email: string;
-      /** Support Email */
-      support_email: string;
     };
     /** Liveness */
     Liveness: {

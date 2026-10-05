@@ -27,5 +27,4 @@ async def get_legal(settings: SettingsDep, response: Response) -> LegalOut:
         terms_version=settings.terms_version,
         privacy_version=settings.privacy_version,
         privacy_email=settings.privacy_email,
-        support_email=settings.support_email,
     )
