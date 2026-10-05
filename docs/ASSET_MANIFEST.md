@@ -364,7 +364,7 @@ Twenty-four icons of one premium Magnific family, **Good Ware Lineal** (family 5
 
 ## 14. Sky of meanings background (`apps/web/public/practice/`)
 
-The night picture under «سماء المعاني» on `/me/practice` (DESIGN_DECISION.md «Sky of meanings»). Served by the web app itself through `next/image` (AVIF or WebP at the sizes the browser asks for); decoration only, with no text, star or control in it. Supplied by the owners on 5 October 2026 with the reference picture of the finished scene; where it was made and under which licence is not recorded here, and the owners are to confirm it.
+The night picture under «سماء المعاني» on `/me/practice` (DESIGN_DECISION.md «Sky of meanings»). Served by the web app itself through `next/image` (AVIF or WebP at the sizes the browser asks for); decoration only, with no text, star or control in it. Generated with AI by the owners on 5 October 2026, with the reference picture of the finished scene; the owners hold the rights to both.
 
 | File                                   | Shows                                                         | Made from                                                                                                                                               |
 | -------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
