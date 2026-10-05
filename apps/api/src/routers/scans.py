@@ -24,7 +24,7 @@ from redis.exceptions import RedisError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette import EventSourceResponse
-from starlette.datastructures import UploadFile
+from starlette.datastructures import FormData, UploadFile
 from starlette.formparsers import MultiPartException, MultiPartParser
 
 from src import clock
@@ -129,6 +129,21 @@ async def _photo_bytes(
     )
 
 
+class _UploadParser(MultiPartParser):
+    """A multipart parser that leaves no temporary file open when the body ends inside a part."""
+
+    async def parse(self) -> FormData:
+        form = await super().parse()
+        # A body cut inside the photo (the body limit, a dropped connection) ends without
+        # an error, yet its file was opened: it is in no form field, so `form.close()`
+        # never reaches it.
+        finished = {id(item.file) for _, item in form.multi_items() if isinstance(item, UploadFile)}
+        for file in self._files_to_close_on_error:
+            if id(file) not in finished:
+                file.close()
+        return form
+
+
 async def _uploaded(request: Request, settings: Settings) -> bytes:
     """
     Read the photo of a multipart upload, in memory only.
@@ -137,7 +152,7 @@ async def _uploaded(request: Request, settings: Settings) -> bytes:
     temporary file: the parser keeps up to the size limit in memory, and the
     body limit of the route cuts off anything larger before it arrives.
     """
-    parser = MultiPartParser(request.headers, request.stream(), max_files=1, max_fields=1)
+    parser = _UploadParser(request.headers, request.stream(), max_files=1, max_fields=1)
     parser.spool_max_size = settings.image_max_bytes + ENVELOPE_BYTES
     try:
         form = await parser.parse()

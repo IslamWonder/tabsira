@@ -101,6 +101,17 @@ describe('parseScanEvent', () => {
     expect(
       parseScanEvent(message('stage', { run: 1, stage: 'verifying', state: 'started' }))
     ).toEqual({ kind: 'stage', run: 1, stage: 'verifying', state: 'started' });
+    expect(parseScanEvent(message('sound', { run: 1, url: '/sounds/ontology/E006' }))).toEqual({
+      kind: 'sound',
+      run: 1,
+      url: '/sounds/ontology/E006',
+    });
+  });
+
+  it("plays only a sound of the API's own sound route", () => {
+    for (const url of ['https://elsewhere.example/a.mp3', '/sounds/ontology/../x', 7]) {
+      expect(parseScanEvent(message('sound', { run: 1, url }))).toBeNull();
+    }
   });
 
   it('ignores what it does not know instead of guessing', () => {

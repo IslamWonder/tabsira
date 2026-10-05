@@ -56,7 +56,10 @@ export function StatusScreen({
       {emblem === 'beacon' ? <Beacon>{icon}</Beacon> : null}
       {emblem === 'logo' ? <Logo className="mb-2 h-32" /> : null}
       {badge === undefined ? null : <Chip tone="primary">{badge}</Chip>}
-      <Heading id={titleId} className="m-0 font-bold font-display text-[1.75rem] text-gilded">
+      <Heading
+        id={titleId}
+        className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg"
+      >
         {title}
       </Heading>
       <p className="m-0 text-fg-soft leading-[1.9]">{description}</p>

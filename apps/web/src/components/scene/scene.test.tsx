@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { CaptureCard } from './capture-card';
 import { SceneInsightList } from './scene-insight-list';
 import { SceneIntro } from './scene-intro';
 import { SceneStarter } from './scene-starter';
@@ -39,7 +40,7 @@ describe('SceneStarter', () => {
   function renderStarter() {
     const onFile = vi.fn();
     render(<SceneStarter onFile={onFile} className="extra" />);
-    return { onFile, zone: screen.getByRole('region', { name: /اسحب صورة/ }) };
+    return { onFile, zone: screen.getByRole('region', { name: 'صوّر مشهدك أنت' }) };
   }
 
   it('takes a photo from the file picker and from the camera', async () => {
@@ -65,11 +66,11 @@ describe('SceneStarter', () => {
     expect(onFile).not.toHaveBeenCalled();
   });
 
-  it('accepts a dropped photo and turns the circle while dragging', () => {
+  it('accepts a dropped photo and marks itself while dragging', () => {
     const { onFile, zone } = renderStarter();
     fireEvent.dragOver(zone);
     expect(zone).toHaveTextContent('أفلت الصورة هنا');
-    expect(zone.querySelector('[data-active="true"]')).not.toBeNull();
+    expect(zone).toHaveClass('outline-[var(--focus)]');
     fireEvent.dragLeave(zone);
     expect(zone).toHaveTextContent('اسحب صورة');
     fireEvent.drop(zone, {
@@ -77,5 +78,46 @@ describe('SceneStarter', () => {
     });
     fireEvent.drop(zone, { dataTransfer: { files: [] } });
     expect(onFile).toHaveBeenCalledOnce();
+  });
+});
+
+describe('CaptureCard', () => {
+  function renderCard() {
+    const onFile = vi.fn();
+    const onCamera = vi.fn();
+    render(<CaptureCard onFile={onFile} onCamera={onCamera} className="extra" />);
+    return { onFile, onCamera, card: screen.getByRole('region', { name: 'صوّر مشهدك أنت' }) };
+  }
+
+  it('opens the camera with its one glowing call, and takes a photo from the gallery', async () => {
+    const { onFile, onCamera, card } = renderCard();
+    expect(card).toHaveClass('extra');
+    // Said before anything leaves the device.
+    expect(card).toHaveTextContent('تُرسل صورتك إلى مزوّد الذكاء الاصطناعي');
+    const camera = screen.getByRole('button', { name: 'التقط صورة' });
+    expect(camera).toHaveAttribute('aria-haspopup', 'dialog');
+    await userEvent.click(camera);
+    expect(onCamera).toHaveBeenCalledOnce();
+    await userEvent.upload(
+      screen.getByLabelText('اختر صورة'),
+      new File(['x'], 'scene.jpg', { type: 'image/jpeg' })
+    );
+    expect(onFile).toHaveBeenCalledOnce();
+  });
+
+  it('refuses a file that is not an image, and takes a dropped photo', () => {
+    const { onFile, card } = renderCard();
+    fireEvent.change(screen.getByLabelText('اختر صورة'), {
+      target: { files: [new File(['x'], 'a.pdf', { type: 'application/pdf' })] },
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent('ليس صورة');
+    fireEvent.dragOver(card);
+    expect(card).toHaveTextContent('أفلت الصورة هنا');
+    fireEvent.drop(card, {
+      dataTransfer: { files: [new File(['x'], 'a.png', { type: 'image/png' })] },
+    });
+    expect(card).toHaveTextContent('اسحب صورة');
+    expect(onFile).toHaveBeenCalledOnce();
+    expect(screen.getByRole('alert')).toBeEmptyDOMElement();
   });
 });

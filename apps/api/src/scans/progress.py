@@ -12,8 +12,9 @@ reconnects and is answered from the list or from the database.
 
 Events: `queued` {run}; `stage` {run, stage, state} where stage is one of the
 four honest stages of v2 §4 (understanding, searching, verifying, composing)
-and state is `started`, `done` or `failed`; `done` {run, outcome, insight_ids};
-`failed` {run, code}.
+and state is `started`, `done` or `failed`; `sound` {run, url}, the API path
+of the scene's sound, once the scene is matched to the ontology;
+`done` {run, outcome, insight_ids}; `failed` {run, code}.
 """
 
 from __future__ import annotations

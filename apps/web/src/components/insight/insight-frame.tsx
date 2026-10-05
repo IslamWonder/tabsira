@@ -152,7 +152,7 @@ export function InsightHeader({ backHref, chips, title, glimpse }: InsightHeader
       {chips === undefined ? null : (
         <div className="flex flex-wrap items-center gap-2">{chips}</div>
       )}
-      <h1 className="m-0 font-bold font-display text-[2rem] text-gilded leading-[1.3] desktop:text-[2.5rem]">
+      <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
         {title}
       </h1>
       <p className="m-0 text-[1.0625rem] text-fg-soft leading-[1.85] desktop:text-lg">{glimpse}</p>

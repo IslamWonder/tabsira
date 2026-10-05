@@ -61,7 +61,7 @@ export function Sheet({ open, onClose, title, description, theme, children }: Sh
         <span aria-hidden="true" className="mx-auto mt-2.5 h-1.5 w-11 rounded-full bg-line" />
         <header className="flex shrink-0 items-start justify-between gap-3 px-5 pt-2">
           <div className="flex flex-col gap-1 pt-2">
-            <h2 id={titleId} className="font-semibold text-fg text-xl">
+            <h2 id={titleId} className="font-semibold text-fg text-subheading">
               {title}
             </h2>
             {description === undefined ? null : (

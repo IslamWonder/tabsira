@@ -6,6 +6,7 @@ from geoalchemy2 import Geography
 from sqlalchemy import func, inspect, select, text
 
 from src.models import Base, GeoBase, GeoName
+from src.models.base import APP_SCHEMA
 
 EXTENSIONS = {
     "postgis",
@@ -61,7 +62,10 @@ async def test_the_app_schema_matches_its_models(engine):
     async with engine.connect() as connection:
         tables = await connection.run_sync(lambda c: set(inspect(c).get_table_names("app")))
 
-    assert tables == {table.name for table in Base.metadata.tables.values()}
+    # The scripture, ontology and path tables share the metadata but live in `corpus`.
+    assert tables == {
+        table.name for table in Base.metadata.tables.values() if table.schema == APP_SCHEMA
+    }
 
 
 async def test_a_geoname_keeps_its_point_and_is_found_by_distance_and_by_similar_name(db_session):

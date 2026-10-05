@@ -243,7 +243,7 @@ export function Comments({
 
   return (
     <section id="comments" aria-labelledby={headingId} className="flex scroll-mt-28 flex-col gap-6">
-      <h2 id={headingId} className="m-0 font-semibold text-[1.375rem] text-fg">
+      <h2 id={headingId} className="m-0 font-semibold text-subheading text-fg">
         {K.title}
       </h2>
       <CommentForm postId={postId} onCreated={pages.append} />

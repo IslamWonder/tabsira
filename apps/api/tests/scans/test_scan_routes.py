@@ -452,3 +452,29 @@ async def test_the_default_fetcher_goes_through_the_guarded_client(flow_settings
 
     assert await fetch(URL) == b"photo"
     assert seen == [URL]
+
+
+async def test_an_upload_cut_inside_the_photo_leaves_no_temporary_file_open(browser, monkeypatch):
+    from tempfile import SpooledTemporaryFile
+
+    made: list[SpooledTemporaryFile[bytes]] = []
+
+    class Recording(SpooledTemporaryFile):  # type: ignore[type-arg]
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            made.append(self)
+
+    monkeypatch.setattr("starlette.formparsers.SpooledTemporaryFile", Recording)
+    # The body limit cuts a body that declares no length; the part never reaches its end.
+    cut = (
+        b"--x\r\nContent-Disposition: form-data; name=image; filename=a.jpg\r\n"
+        b"Content-Type: image/jpeg\r\n\r\n" + b"\xff\xd8\xff" * 10
+    )
+
+    response = await browser.post(
+        "/scans", content=cut, headers={"content-type": "multipart/form-data; boundary=x"}
+    )
+
+    assert (response.status_code, response.json()["error"]) == (400, "IMAGE_EMPTY")
+    assert len(made) == 1
+    assert made[0].closed

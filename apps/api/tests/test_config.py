@@ -451,6 +451,19 @@ def test_production_refuses_a_site_key_the_web_app_would_drop(site_key):
     assert "TURNSTILE_SITE_KEY must be 8 to 64 letters, digits, - or _" in message
 
 
+@pytest.mark.parametrize(
+    ("given", "missing"),
+    [
+        ({"turnstile_site_key": "0x4AAAAAAAexample-key_1"}, "TURNSTILE_SECRET_KEY"),
+        ({"turnstile_secret_key": "0x4AAAAAAAsecretvalue"}, "TURNSTILE_SITE_KEY"),
+    ],
+)
+def test_one_turnstile_key_without_the_other_is_refused(given, missing):
+    message = errors_of(**given)
+
+    assert f"{missing} must be set together with the other Turnstile key" in message
+
+
 def test_production_accepts_real_looking_turnstile_keys(make_settings):
     settings = make_settings(
         **PRODUCTION,
@@ -906,7 +919,12 @@ def test_auto_with_a_half_filled_bucket_refuses_instead_of_falling_back_to_disk(
     assert "S3_BUCKET is set, so photos go to S3, which needs S3_ACCESS_KEY_ID" in message
 
 
-def test_the_local_folder_defaults_to_the_checkout_and_follows_the_setting(make_settings, tmp_path):
+def test_the_local_folder_defaults_to_the_checkout_and_follows_the_setting(
+    make_settings, tmp_path, monkeypatch
+):
+    # The suite sends kept photos to a folder of its run; the default is what is tested here.
+    monkeypatch.delenv("LOCAL_MEDIA_DIR", raising=False)
+
     assert make_settings().local_media_path == config.checkout_root() / "data" / "media"
     assert make_settings(local_media_dir=f" {tmp_path} ").local_media_path == tmp_path.resolve()
 
@@ -990,6 +1008,7 @@ def test_the_s3_secret_is_a_secret(make_settings):
         "https://",
         "https://m.example/a?x=1",
         "https://m.example/#a",
+        "https://owner:secret@m.example",
     ],
 )
 def test_an_s3_address_is_an_http_url_without_query_or_fragment(key, value):

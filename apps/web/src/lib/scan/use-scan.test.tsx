@@ -150,12 +150,22 @@ describe('useScan: following a run', () => {
     });
     await tick();
     expect(result.current.stage).toBe('searching');
+    expect(result.current.sound).toBeNull();
 
     await act(async () => {
-      live.push(sseMessage(6, 'done', { run: 1, outcome: 'insights' }));
+      live.push(sseMessage(6, 'sound', { run: 1, url: '/sounds/ontology/E006' }));
+    });
+    await tick();
+    expect(result.current.sound).toBe('/sounds/ontology/E006');
+    expect(result.current.stage).toBe('searching');
+
+    await act(async () => {
+      live.push(sseMessage(7, 'done', { run: 1, outcome: 'insights' }));
     });
     await tick();
     expect(result.current.view.phase).toBe('ready');
+    // The sound stays known while its last loop plays.
+    expect(result.current.sound).toBe('/sounds/ontology/E006');
   });
 
   it('reads the scan again once the scene is understood, to show its photo, without losing the stage', async () => {

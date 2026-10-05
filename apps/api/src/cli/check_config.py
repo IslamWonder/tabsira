@@ -23,7 +23,7 @@ from pathlib import Path
 
 import psycopg
 from dotenv import dotenv_values
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 from sqlalchemy.engine import make_url
 
 from src.cli import production_checks
@@ -39,17 +39,21 @@ from src.storage.notice import storage_notice
 from src.storage.probe import StorageProbeError, probe_storage
 
 
-def _database_label(settings: Settings) -> str:
+def _database_label(source: SecretStr) -> str:
     """Return host, port and name of the database, without its credentials."""
-    url = make_url(settings.database_url.get_secret_value())
+    url = make_url(source.get_secret_value())
     return f"{url.host}:{url.port or 5432}/{url.database}"
+
+
+def _queried_url(settings: Settings) -> SecretStr:
+    """Return the URL the live check queries: the sync one when set."""
+    return settings.sync_database_url or settings.database_url
 
 
 def _psycopg_dsn(settings: Settings) -> str:
     """Return a libpq URL for the database, preferring the sync URL when set."""
-    source = settings.sync_database_url or settings.database_url
     return (
-        make_url(source.get_secret_value())
+        make_url(_queried_url(settings).get_secret_value())
         .set(drivername="postgresql")
         .render_as_string(hide_password=False)
     )
@@ -66,7 +70,7 @@ def _check_database(settings: Settings) -> str | None:
         ):
             cursor.execute("SELECT 1")
     except psycopg.Error as error:
-        return f"cannot query {_database_label(settings)}: {type(error).__name__}"
+        return f"cannot query {_database_label(_queried_url(settings))}: {type(error).__name__}"
     return None
 
 
@@ -79,7 +83,7 @@ def report(settings: Settings) -> list[str]:
         f"environment: {settings.environment.value}",
         f"api: {settings.api_host}:{settings.api_port} (public {settings.api_url})",
         f"site: {settings.site_url}",
-        f"database: {_database_label(settings)}",
+        f"database: {_database_label(settings.database_url)}",
         f"test database: {'set' if settings.test_database_url else 'not set'}",
         f"ai provider: {settings.ai_provider.value} (api key {key_state})",
         f"features on: {', '.join(on) or 'none'}",

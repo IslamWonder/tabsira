@@ -20,10 +20,7 @@ export function StreakCard({ streak }: { streak: Progress['streak'] }) {
   return (
     <GlassPanel as="section" aria-labelledby="practice-streak" className="flex flex-col gap-3">
       <p className="m-0 text-[var(--step-title)] text-sm">{M.label}</p>
-      <h2
-        id="practice-streak"
-        className="m-0 font-bold font-display text-[1.5rem] text-fg leading-[1.3]"
-      >
+      <h2 id="practice-streak" className="m-0 font-bold font-display text-heading text-fg">
         {M.current(streak.current)}
       </h2>
       <p className="m-0 text-fg-muted text-sm">{M.best(streak.best)}</p>

@@ -32,6 +32,7 @@ import httpx
 from PIL import Image
 from redis.asyncio import Redis
 from sqlalchemy import delete, select, update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src import clock
@@ -65,8 +66,10 @@ from src.pipeline.sensitivity import Moderation, moderate, with_moderation
 from src.scans import buffer, progress
 from src.scans.accept import accept
 from src.scans.engines import EngineDeps, EngineFactory
+from src.scans.sound import candidate_entities, first_stored
 from src.scripture.overlap import repeats_store
 from src.services.learner_service import learner_context
+from src.storage.sounds import SoundStore
 
 log = logging.getLogger("tabsira.scans.workflow")
 
@@ -97,6 +100,8 @@ class ScanServices:
     engine_factory: EngineFactory
     detector: Detector
     timer: Callable[[], float] = time.perf_counter
+    # The ontology's sounds; without a store no scan announces one.
+    sounds: SoundStore | None = None
 
 
 class ScanFailedError(Exception):
@@ -283,6 +288,7 @@ async def _analyse_and_propose(job: Run) -> str:
     await job.stage(EngineStage.UNDERSTANDING, "done")
 
     scene, focus_id = apply_focus(scene, focus)
+    await _announce_sound(job, scene, focus_id, clarified=answer is not None)
     async with services.sessionmaker() as db:
         learner = await learner_context(db, job.owner)
     engine = services.engine_factory(
@@ -314,6 +320,24 @@ async def _analyse_and_propose(job: Run) -> str:
             ScanEvent(at=clock.utcnow(), stage=stage.value, status="done", ms=ms)
         )
     return await _conclude(job, scene, result)
+
+
+async def _announce_sound(
+    job: Run, scene: SceneAnalysis, focus_id: str | None, *, clarified: bool
+) -> None:
+    """Publish the scene's sound while the engine works; a sound never stops a scan."""
+    store = job.services.sounds
+    if store is None:
+        return
+    try:
+        async with job.services.sessionmaker() as db:
+            entity_ids = await candidate_entities(db, scene, focus_id=focus_id, clarified=clarified)
+    except SQLAlchemyError:
+        log.warning("scan %s: the scene's sound was not looked up", job.scan_id)
+        return
+    path = await first_stored(store, entity_ids)
+    if path is not None:
+        await job.publish("sound", {"url": path})
 
 
 async def _understand(job: Run, client: ModelClient) -> SceneAnalysis:

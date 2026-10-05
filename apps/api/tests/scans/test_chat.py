@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 from datetime import timedelta
 from typing import Any
 
@@ -86,14 +87,16 @@ def labels(call: dict[str, Any]) -> list[str]:
     return [text["label"] for text in json.loads(call["user"])["texts"]]
 
 
-async def an_insight(browser, store, flow_settings, *, with_scene: bool = False) -> str:
+async def an_insight(
+    browser, store, flow_settings, *, with_scene: bool = False, **values: Any
+) -> str:
     owner = await as_guest(browser, store, flow_settings)
     async with store() as db:
         stored = scene().model_dump(mode="json") if with_scene else None
         scan = scan_row(owner, status="done", scene=stored)
         db.add(scan)
         await db.flush()
-        insight = insight_row(owner, scan_id=scan.id)
+        insight = insight_row(owner, scan_id=scan.id, **values)
         db.add(insight)
         await db.commit()
         return str(insight.id)
@@ -802,3 +805,47 @@ async def test_an_answer_written_while_its_hadith_was_ruled_out_is_refused_unrea
         rows = (await db.scalars(select(ChatMessage))).all()
         assert [row.evidence_ids for row in rows] == [["quran:30:50"]]
         assert len((await db.scalars(select(AiCall))).all()) == 2
+
+
+async def test_a_request_for_a_text_keeps_the_fused_order_when_the_reranker_fails(
+    browser, store, flow_settings, flow_app, make_settings, caplog
+):
+    flow_app.state.settings = make_settings(password_bcrypt_rounds=4, reranker="llm")
+    insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
+    verifier = relevant_where("نبات")
+
+    def answer(call: dict[str, Any]) -> Any:
+        if call["stage"].value == "rerank":
+            return AiCallError(AiErrorCode.TIMEOUT, "slow")
+        return verifier(call)
+
+    model = searching_model(flow_app, wants("either"), *[answer] * 5)
+
+    with caplog.at_level(logging.WARNING, logger="tabsira.chat.retrieval"):
+        body = (await ask(browser, insight_id, "أعطني آية أخرى عن الماء والنبات")).json()
+
+    assert body["message"]["kind"] == "answer"
+    assert "rerank" in [call["stage"].value for call in model.calls]
+    assert "reranker skipped: timeout; fused order kept" in [
+        record.getMessage() for record in caplog.records
+    ]
+
+
+async def test_an_insight_without_a_verse_or_a_hadith_leaves_nothing_out_of_the_search(
+    browser, store, flow_settings, flow_app
+):
+    insight_id = await an_insight(
+        browser,
+        store,
+        flow_settings,
+        with_scene=True,
+        quran_surah=None,
+        quran_ayah=None,
+        hadith_collection=None,
+        hadith_number=None,
+    )
+    searching_model(flow_app, wants("either"), relevant_where("نبات"))
+
+    body = (await ask(browser, insight_id, "أعطني آية أخرى عن الماء والنبات")).json()
+
+    assert body["message"]["kind"] == "answer"

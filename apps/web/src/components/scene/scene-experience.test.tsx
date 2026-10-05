@@ -152,9 +152,11 @@ describe('SceneExperience: a scene of the reader', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it('closes the phone starter without choosing anything', async () => {
+  it('invites the reader to a scene of their own under the example, and opens the camera sheet', async () => {
     render(<SceneExperience />);
-    await userEvent.click(screen.getByRole('button', { name: 'أو صوّر مشهدك أنت' }));
+    const card = screen.getByRole('region', { name: 'صوّر مشهدك أنت' });
+    await userEvent.click(within(card).getByRole('button', { name: 'التقط صورة' }));
+    expect(screen.getByRole('dialog', { name: 'صوّر مشهدًا' })).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
   });

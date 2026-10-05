@@ -181,10 +181,7 @@ export function PostCard({
           </div>
         </div>
         {isAuthor ? <StatusChip post={post} /> : null}
-        <Heading
-          id={titleId}
-          className="m-0 font-bold font-display text-[1.5rem] text-gilded leading-[1.3]"
-        >
+        <Heading id={titleId} className="m-0 font-bold font-display text-heading text-gilded">
           {variant === 'feed' ? (
             <Link href={postPath(post.id)} className="text-gilded no-underline hover:underline">
               {post.insight.title}

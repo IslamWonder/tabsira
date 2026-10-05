@@ -203,7 +203,9 @@ export function MapPublishScreen() {
         {A.entry.back}
       </Link>
       <header className="flex flex-col gap-2">
-        <h1 className="m-0 font-bold font-display text-[2rem] text-gilded">{P.title}</h1>
+        <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
+          {P.title}
+        </h1>
         <p className="m-0 text-fg-soft leading-[1.85]">{P.lead}</p>
       </header>
 
@@ -240,7 +242,7 @@ export function MapPublishScreen() {
           {entry === null || entry.status === 'withdrawn' ? (
             <GlassPanel ornate className="flex flex-col gap-5 tablet:p-7">
               <div className="flex flex-col gap-1">
-                <h2 className="m-0 font-semibold text-[1.25rem] text-fg">{P.where}</h2>
+                <h2 className="m-0 font-semibold text-subheading text-fg">{P.where}</h2>
                 <p className="m-0 text-fg-muted text-sm leading-[1.8]">{P.whereHint}</p>
               </div>
               <div className="flex flex-col gap-2">
@@ -350,7 +352,7 @@ export function MapPublishScreen() {
           ) : (
             <GlassPanel ornate className="flex flex-col gap-5 tablet:p-7">
               <div className="flex flex-col gap-1">
-                <h2 className="m-0 font-semibold text-[1.25rem] text-fg">{P.preview}</h2>
+                <h2 className="m-0 font-semibold text-subheading text-fg">{P.preview}</h2>
                 <p className="m-0 text-fg-muted text-sm leading-[1.8]">{P.previewHint}</p>
               </div>
               <p className="m-0 text-[0.875rem] text-fg-soft">{P.status[entry.status]}</p>

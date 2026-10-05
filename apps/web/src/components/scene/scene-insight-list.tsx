@@ -21,7 +21,7 @@ export function SceneInsightList({ points, selectedId, onSelect }: SceneInsightL
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3">
-      <h2 id={headingId} className="m-0 font-semibold text-[1.1875rem] text-fg">
+      <h2 id={headingId} className="m-0 font-semibold text-subheading text-fg">
         {messages.scene.hint}
       </h2>
       <ul className="m-0 flex list-none flex-col gap-3 p-0">

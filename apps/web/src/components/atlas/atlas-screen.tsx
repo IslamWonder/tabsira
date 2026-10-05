@@ -58,9 +58,7 @@ export function EntryCard({ feature, onClose }: { feature: AtlasFeature; onClose
   return (
     <GlassPanel as="article" ornate className="flex flex-col gap-3" aria-label={properties.title}>
       <div className="flex items-start justify-between gap-3">
-        <h2 className="m-0 font-bold font-display text-[1.5rem] text-gilded leading-[1.3]">
-          {properties.title}
-        </h2>
+        <h2 className="m-0 font-bold font-display text-heading text-gilded">{properties.title}</h2>
         {onClose === undefined ? null : (
           <Button variant="ghost" onClick={onClose} className="min-h-10 px-3 text-[0.875rem]">
             {A.card.close}
@@ -302,7 +300,7 @@ function MyEntries({ onShow }: { onShow: (point: [number, number]) => void }) {
 
   return (
     <section aria-label={A.mine.list} className="flex flex-col gap-3">
-      <h2 className="m-0 flex items-baseline justify-between font-semibold text-[1.125rem] text-fg">
+      <h2 className="m-0 flex items-baseline justify-between font-semibold text-lg text-fg">
         <span>{A.mine.list}</span>
         {load.kind === 'ready' ? (
           <span className="text-[0.875rem] text-fg-muted">{A.count(load.entries.length)}</span>
@@ -519,7 +517,9 @@ export function AtlasScreen({
   const panel = (
     <div className="flex flex-col gap-5 px-4 py-6 tablet:px-5">
       <header className="flex flex-col gap-1.5">
-        <h1 className="m-0 font-bold font-display text-[2rem] text-gilded">{A.title}</h1>
+        <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
+          {A.title}
+        </h1>
         <p className="m-0 text-fg-soft leading-[1.85]">{A.lead}</p>
       </header>
       <PlaceSearch
@@ -578,7 +578,7 @@ export function AtlasScreen({
           session.status === 'signed-in' && scope === 'mine' && 'hidden'
         )}
       >
-        <h2 className="m-0 flex items-baseline justify-between font-semibold text-[1.125rem] text-fg">
+        <h2 className="m-0 flex items-baseline justify-between font-semibold text-lg text-fg">
           <span>{A.inView}</span>
           <span className="text-[0.875rem] text-fg-muted">{A.count(features.length)}</span>
         </h2>

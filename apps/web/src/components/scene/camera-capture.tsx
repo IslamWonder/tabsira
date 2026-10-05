@@ -1,15 +1,24 @@
 'use client';
 
-import { type ChangeEvent, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  type ChangeEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { type CameraFailure, useCameraStream } from '@/components/atlas/camera-sensors';
-import { CameraIcon, SwitchCameraIcon } from '@/components/icons';
+import { SummoningCircle } from '@/components/fx/summoning-circle';
+import { CameraIcon, GalleryIcon, SwitchCameraIcon } from '@/components/icons';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
+import { PhotoPicker } from './photo-picker';
 
 export interface CameraCaptureProps {
   onFile: (file: File) => void;
-  /** Called with a picked file when the live camera is not available (the native picker). */
+  /** A file from the device's gallery, or from the phone's camera app when the live camera is not available. */
   onPick: (event: ChangeEvent<HTMLInputElement>) => void;
   /**
    * Ask for the camera as soon as this shows, once: for a view opened by the reader's own tap
@@ -173,7 +182,6 @@ export function CameraCapture({ onFile, onPick, autoStart = false }: CameraCaptu
   const camera = useCameraStream();
   const [taking, setTaking] = useState(false);
   const [failed, setFailed] = useState(false);
-  const inputId = useId();
   const text = messages.scene.starter;
   const secure = useSyncExternalStore(neverChanges, pageIsSecure, serverIsSecure);
   const { availability, cameras } = useCameraAvailability(secure, camera.state === 'live');
@@ -220,54 +228,49 @@ export function CameraCapture({ onFile, onPick, autoStart = false }: CameraCaptu
     onFile(file);
   };
 
-  // A busy camera may be free a moment later: the live button stays, with the reason under it.
+  const gallery = (
+    <PhotoPicker onPick={onPick} className={buttonClasses('secondary', 'lg')}>
+      <GalleryIcon width="20" height="20" />
+      {text.choose}
+    </PhotoPicker>
+  );
+
+  // No live camera: the phone's own camera app takes over, the reason said once, plainly.
   if (problem !== null && problem !== 'busy') {
     return (
-      <div className="flex flex-col gap-2">
-        <label
-          htmlFor={inputId}
-          className={cx(
-            buttonClasses('secondary'),
-            'cursor-pointer has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-[var(--focus)] has-[:focus-visible]:outline-offset-2'
-          )}
-        >
-          <CameraIcon width="18" height="18" />
-          {text.camera}
-          <input
-            id={inputId}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="sr-only"
-            onChange={onPick}
-          />
-        </label>
-        <p className="m-0 text-fg-muted text-sm leading-relaxed" role="status">
-          {`${PROBLEM_TEXT[problem]} ${text.cameraFallback}`}
-        </p>
-      </div>
+      <Launcher
+        status={`${PROBLEM_TEXT[problem]} ${text.cameraFallback}`}
+        camera={
+          <PhotoPicker onPick={onPick} capture="environment" className={buttonClasses('cta', 'lg')}>
+            <CameraIcon width="20" height="20" />
+            {text.camera}
+          </PhotoPicker>
+        }
+        gallery={gallery}
+      />
     );
   }
 
+  // Closed, or held by another application: a busy camera may be free a moment later.
   if (camera.state !== 'starting' && camera.state !== 'live') {
     return (
-      <div className="flex flex-col gap-2">
-        <Button variant="secondary" onClick={open}>
-          <CameraIcon width="18" height="18" />
-          {text.camera}
-        </Button>
-        {problem === 'busy' ? (
-          <p className="m-0 text-fg-muted text-sm leading-relaxed" role="status">
-            {PROBLEM_TEXT.busy}
-          </p>
-        ) : null}
-      </div>
+      <Launcher
+        status={problem === 'busy' ? PROBLEM_TEXT.busy : null}
+        camera={
+          <Button variant="cta" size="lg" onClick={open}>
+            <CameraIcon width="20" height="20" />
+            {text.camera}
+          </Button>
+        }
+        gallery={gallery}
+      />
     );
   }
 
   return (
-    <div ref={viewRef} className="flex w-full flex-col gap-3">
-      <div className="relative overflow-hidden rounded-[18px] bg-black">
+    <div ref={viewRef} className="flex w-full flex-col gap-4">
+      {/* A camera is drawn on black in either theme (the palette has no black: it is written here). */}
+      <div className="relative mx-auto aspect-[3/4] max-h-[min(58dvh,560px)] w-full overflow-hidden rounded-[24px] bg-[#000] tablet:aspect-[4/3]">
         <video
           ref={camera.videoRef}
           playsInline
@@ -275,49 +278,107 @@ export function CameraCapture({ onFile, onPick, autoStart = false }: CameraCaptu
           autoPlay
           aria-label={text.cameraPreview}
           className={cx(
-            'block aspect-[4/3] max-h-[50dvh] w-full object-cover',
+            'absolute inset-0 size-full object-cover',
             // The front camera shows a mirror, as a phone does; the photo itself is not mirrored.
             camera.facing === 'user' && '-scale-x-100'
           )}
         />
+        <ViewfinderFrame />
         {camera.state === 'starting' ? (
           <p
             role="status"
-            className="absolute inset-0 m-0 flex items-center justify-center bg-black/40 text-sm text-white"
+            className="absolute inset-0 m-0 flex items-center justify-center bg-[rgba(0,0,0,0.4)] text-[#fff] text-sm"
           >
             {text.cameraStarting}
           </p>
-        ) : null}
-        {/* On the preview itself, as on a phone's camera: the shutter row stays one line on a narrow screen. */}
+        ) : (
+          <p className="absolute inset-x-4 bottom-3 m-0 text-center text-[#fff] text-sm [text-shadow:0_1px_6px_rgba(0,0,0,0.7)]">
+            {text.aim}
+          </p>
+        )}
+        <Button variant="ghost" onClick={camera.stop} className="glass absolute start-3 top-3">
+          {text.cameraClose}
+        </Button>
+      </div>
+      {failed ? (
+        <p role="alert" className="m-0 text-center text-danger text-sm">
+          {text.captureFailed}
+        </p>
+      ) : null}
+      {/* As on a phone's camera: the shutter in the middle of the thumb zone, the gallery and the other camera on its sides. */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <PhotoPicker
+          onPick={onPick}
+          className="flex min-h-12 flex-col items-center justify-center gap-0.5 justify-self-start rounded-[var(--radius-card)] px-2 text-fg-soft text-xs transition-colors duration-200 hover:text-fg"
+        >
+          <GalleryIcon width="24" height="24" />
+          {text.choose}
+        </PhotoPicker>
+        <button
+          type="button"
+          onClick={() => void shoot()}
+          disabled={camera.state !== 'live' || taking}
+          aria-label={text.shutter}
+          className="inline-flex size-[76px] items-center justify-center rounded-full border-4 border-[var(--text)] p-1 transition-opacity duration-200 disabled:cursor-not-allowed disabled:opacity-50 motion-safe:active:scale-95"
+        >
+          <span
+            aria-hidden="true"
+            className="capture-orb inline-flex size-full items-center justify-center rounded-full"
+          >
+            <CameraIcon width="26" height="26" />
+          </span>
+        </button>
         {cameras > 1 && camera.state === 'live' ? (
           <Button
             variant="icon"
             label={text.cameraSwitch}
             onClick={() => void camera.start(camera.facing === 'user' ? 'environment' : 'user')}
-            className="absolute end-2 top-2"
+            className="justify-self-end"
           >
             <SwitchCameraIcon />
           </Button>
         ) : null}
       </div>
-      {failed ? (
-        <p role="alert" className="m-0 text-danger text-sm">
-          {text.captureFailed}
+    </div>
+  );
+}
+
+/** The four corners of a frame over the preview, as a camera draws them; decoration only. */
+function ViewfinderFrame() {
+  const corner = 'absolute size-7 border-[rgba(255,255,255,0.8)]';
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-5 top-[4.5rem] bottom-11"
+    >
+      <span className={cx(corner, 'start-0 top-0 rounded-ss-xl border-s-2 border-t-2')} />
+      <span className={cx(corner, 'end-0 top-0 rounded-se-xl border-e-2 border-t-2')} />
+      <span className={cx(corner, 'start-0 bottom-0 rounded-es-xl border-s-2 border-b-2')} />
+      <span className={cx(corner, 'end-0 bottom-0 rounded-ee-xl border-e-2 border-b-2')} />
+    </div>
+  );
+}
+
+interface LauncherProps {
+  /** Why the live camera is not showing, or null when it simply has not been opened. */
+  status: string | null;
+  camera: ReactNode;
+  gallery: ReactNode;
+}
+
+/** Before the camera runs: the two ways in, full width, the camera first. */
+function Launcher({ status, camera, gallery }: LauncherProps) {
+  return (
+    <div className="flex flex-col items-center gap-4 py-2 text-center">
+      <SummoningCircle size={96} />
+      {status === null ? null : (
+        <p className="m-0 max-w-[34ch] text-fg-soft text-sm leading-relaxed" role="status">
+          {status}
         </p>
-      ) : null}
-      <div className="flex flex-wrap items-center justify-center gap-2.5">
-        <Button
-          variant="primary"
-          onClick={() => void shoot()}
-          disabled={camera.state !== 'live' || taking}
-          aria-label={text.shutter}
-        >
-          <CameraIcon width="18" height="18" />
-          {text.shutter}
-        </Button>
-        <Button variant="ghost" onClick={camera.stop} className="border border-line">
-          {text.cameraClose}
-        </Button>
+      )}
+      <div className="grid w-full gap-2.5">
+        {camera}
+        {gallery}
       </div>
     </div>
   );

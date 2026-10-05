@@ -14,6 +14,8 @@ vi.mock('next/navigation', () => ({
 
 let controls: ScanControls;
 vi.mock('@/lib/scan/use-scan', () => ({ useScan: () => controls }));
+const sceneSound = vi.hoisted(() => vi.fn());
+vi.mock('./use-scene-sound', () => ({ useSceneSound: sceneSound }));
 
 const failure = (code: Failure['code'], status = 400): Failure => ({
   ok: false,
@@ -27,6 +29,7 @@ function setControls(view: ScanView, extra: Partial<ScanControls> & { stage?: Ru
   controls = {
     view,
     stage: 'queued',
+    sound: null,
     slow: false,
     acting: false,
     reload: vi.fn(),
@@ -46,6 +49,42 @@ const ready = (overrides = {}) => ({ phase: 'ready', scan: scanOut(overrides) })
 
 beforeEach(() => {
   push.mockClear();
+  sceneSound.mockClear();
+});
+
+describe("ScanScreen: the scene's sound", () => {
+  it('puts a ringed speaker on the photo while the sound loops', () => {
+    setControls(running(), { stage: 'searching', sound: '/sounds/ontology/E006' });
+    render(<ScanScreen scanId="1" />);
+    expect(sceneSound).toHaveBeenLastCalledWith('/sounds/ontology/E006', 'running');
+    expect(screen.getByRole('button', { name: 'المؤثر الصوتي' })).toBeInTheDocument();
+    expect(document.querySelector('.fx-sound-ring')).not.toBeNull();
+  });
+
+  it('keeps the speaker without its ring once the insights are ready', () => {
+    setControls(ready(), { sound: '/sounds/ontology/E006' });
+    render(<ScanScreen scanId="1" />);
+    expect(sceneSound).toHaveBeenLastCalledWith('/sounds/ontology/E006', 'ended');
+    expect(screen.getByRole('button', { name: 'المؤثر الصوتي' })).toBeInTheDocument();
+    expect(document.querySelector('.fx-sound-ring')).toBeNull();
+  });
+
+  it('has no speaker on the photo for a scene without a sound', () => {
+    setControls(running(), { stage: 'searching' });
+    render(<ScanScreen scanId="1" />);
+    expect(sceneSound).toHaveBeenLastCalledWith(null, 'running');
+    expect(screen.queryByRole('button', { name: 'المؤثر الصوتي' })).toBeNull();
+  });
+
+  it('silences the sound when the run fails or the scan cannot be read', () => {
+    setControls({ phase: 'failed', scan: scanOut({ status: 'failed' }), code: null });
+    const { unmount } = render(<ScanScreen scanId="1" />);
+    expect(sceneSound).toHaveBeenLastCalledWith(null, 'failed');
+    unmount();
+    setControls({ phase: 'lost', failure: failure('NETWORK', 0) });
+    render(<ScanScreen scanId="1" />);
+    expect(sceneSound).toHaveBeenLastCalledWith(null, 'failed');
+  });
 });
 
 describe('ScanScreen: reading and failing', () => {
