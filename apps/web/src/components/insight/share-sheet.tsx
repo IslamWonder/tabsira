@@ -8,6 +8,7 @@ import { Sheet } from '@/components/ui/sheet';
 import type { Failure } from '@/lib/api/result';
 import { cardFileName, publicInsightCardPath, publicInsightPath } from '@/lib/public-insight';
 import { journeyFailureMessage } from '@/lib/scan/failure';
+import { shareLink } from '@/lib/share-link';
 import { siteOrigin } from '@/lib/site';
 import { messages } from '@/messages';
 import { publishInsight, withdrawInsight } from './publication';
@@ -52,27 +53,6 @@ function refusal(failure: Failure): string {
   return failure.code === 'INSIGHT_NOT_PUBLISHABLE'
     ? T.notPublishable
     : journeyFailureMessage(failure);
-}
-
-/** The Web Share API where the browser has it, the clipboard where it does not; says what happened. */
-async function shareLink(title: string, url: string): Promise<Said | null> {
-  if (typeof navigator.share === 'function') {
-    try {
-      await navigator.share({ title, url });
-      return null;
-    } catch (error) {
-      // Closing the system's share dialog is a choice, not a failure.
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        return null;
-      }
-    }
-  }
-  try {
-    await navigator.clipboard.writeText(url);
-    return { tone: 'success', text: T.copied };
-  } catch {
-    return { tone: 'info', text: T.copyFailed };
-  }
 }
 
 /**
