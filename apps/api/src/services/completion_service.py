@@ -16,6 +16,8 @@ the scan's photo privately (v2 §19); a guest's photo is never kept.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from redis.asyncio import Redis
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -77,17 +79,18 @@ async def complete(
     reveal_created = False
     treasure_prepared = False
     if first:
-        await _remember(db, owner, insight)
+        await remember(db, owner, insight)
         await photo_service.keep_from_buffer(db, redis, photos, insight)
         if settings.is_enabled(FeatureFlag.WORLD):
-            region = await world_service.region_of(db, insight)
-            place, place_created = await world_service.ensure_place(db, owner, region)
-            insight.place_id = place.id
-            await db.flush()
-            reveal, reveal_created = await world_service.reveal_concept(db, owner, insight, place)
-            await world_service.record_relations(db, owner, insight, place.id)
-            if settings.is_enabled(FeatureFlag.TREASURE):
-                treasure_prepared = await world_service.prepare_treasure(db, owner, insight, place)
+            written = await place_in_world(
+                db, owner, insight, treasure=settings.is_enabled(FeatureFlag.TREASURE)
+            )
+            place_created, reveal, reveal_created, treasure_prepared = (
+                written.place_created,
+                written.reveal,
+                written.reveal_created,
+                written.treasure_prepared,
+            )
         await db.commit()
     else:
         treasure_prepared = (
@@ -117,7 +120,38 @@ async def complete(
     )
 
 
-async def _remember(db: AsyncSession, owner: Owner, insight: Insight) -> None:
+@dataclass(frozen=True)
+class WorldWritten:
+    """What the first completion of an insight wrote into the owner's world."""
+
+    place_created: bool
+    reveal: WorldReveal | None
+    reveal_created: bool
+    treasure_prepared: bool
+
+
+async def place_in_world(
+    db: AsyncSession, owner: Owner, insight: Insight, *, treasure: bool
+) -> WorldWritten:
+    """
+    Put the completed insight in its place of the world and give its concept its reveal.
+
+    Also records the threads it makes and, when `treasure` is on and a verified one exists, hides
+    its treasure. Every time it writes is the insight's own `completed_at`, so the importer of the
+    mock members (decision 66) calls the same function the first «تمّ» does.
+    """
+    region = await world_service.region_of(db, insight)
+    place, place_created = await world_service.ensure_place(db, owner, region)
+    insight.place_id = place.id
+    await db.flush()
+    reveal, reveal_created = await world_service.reveal_concept(db, owner, insight, place)
+    await world_service.record_relations(db, owner, insight, place.id)
+    prepared = treasure and await world_service.prepare_treasure(db, owner, insight, place)
+    return WorldWritten(place_created, reveal, reveal_created, prepared)
+
+
+async def remember(db: AsyncSession, owner: Owner, insight: Insight) -> None:
+    """Count the completion of the insight's unit and record what was shown, unless memory is off."""
     if not await learner_service.memory_enabled(db, owner):
         return
     completed_at = insight.completed_at or clock.utcnow()
