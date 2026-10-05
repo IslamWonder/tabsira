@@ -1693,6 +1693,32 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/atlas/clusters': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The published entries of a map window, grouped
+     * @description Return groups and single entries of the window, whatever the number of entries.
+     *
+     *     Each `properties.kind` is `cluster` (a `count` of visible entries, the `bbox` of their public
+     *     points, a stable `id` of the grid cell, a point at the mean of the public points) or `entry`
+     *     (one entry, as in `/atlas/entries`). A grid cell is about 60 CSS pixels at the zoom; from
+     *     zoom 16 nothing is grouped. At most 500 features come back; `truncated` says there were more.
+     *     Counts leave out the entries a block hides from a signed-in viewer.
+     */
+    get: operations['clusters_in_window_atlas_clusters_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/atlas/entries/{entry_id}': {
     parameters: {
       query?: never;
@@ -2004,6 +2030,87 @@ export interface components {
      */
     AgeRange: 'under_13' | '13_17' | '18_24' | '25_39' | '40_59' | '60_plus' | 'unknown';
     /**
+     * AtlasClusterCollection
+     * @description Groups and single entries of a window, told apart by `properties.kind`; bounded in size.
+     */
+    AtlasClusterCollection: {
+      /**
+       * Type
+       * @default FeatureCollection
+       * @constant
+       */
+      type: 'FeatureCollection';
+      /** Features */
+      features: (
+        | components['schemas']['AtlasClusterFeature']
+        | components['schemas']['AtlasEntryFeature']
+      )[];
+      /**
+       * Truncated
+       * @description More groups lie in the window than were returned
+       */
+      truncated: boolean;
+    };
+    /**
+     * AtlasClusterFeature
+     * @description A group of entries as a GeoJSON Feature; `geometry` is the mean of their public points.
+     */
+    AtlasClusterFeature: {
+      /**
+       * Type
+       * @default Feature
+       * @constant
+       */
+      type: 'Feature';
+      geometry: components['schemas']['GeoJsonPoint'];
+      properties: components['schemas']['AtlasClusterProperties'];
+    };
+    /**
+     * AtlasClusterProperties
+     * @description What a group of entries says: how many, and where they lie. Never an id, an author or a time.
+     *
+     *     The count is of the entries this viewer may see, and the box is the box of their public points.
+     */
+    AtlasClusterProperties: {
+      /**
+       * Kind
+       * @default cluster
+       * @constant
+       */
+      kind: 'cluster';
+      /**
+       * Id
+       * @description Stable for a grid cell at a zoom; not an entry id
+       */
+      id: string;
+      /**
+       * Count
+       * @description Visible entries in the group, after the filters and blocks
+       */
+      count: number;
+      /**
+       * Bbox
+       * @description West, south, east, north of the members' public points, to zoom to the group
+       */
+      bbox: number[];
+    };
+    /**
+     * AtlasEntryFeature
+     * @description A lone entry of the cluster answer, a point on the map like any other.
+     */
+    AtlasEntryFeature: {
+      /**
+       * Type
+       * @default Feature
+       * @constant
+       */
+      type: 'Feature';
+      /** Id */
+      id: string;
+      geometry: components['schemas']['GeoJsonPoint'];
+      properties: components['schemas']['AtlasEntryProperties'];
+    };
+    /**
      * AtlasEntryOut
      * @description A published entry on its own page: the insight by reference, the public point, its place.
      */
@@ -2066,6 +2173,46 @@ export interface components {
        * Format: date
        */
       published_on: string;
+    };
+    /**
+     * AtlasEntryProperties
+     * @description A single entry among clusters: the entry's own properties, told apart by `kind`.
+     */
+    AtlasEntryProperties: {
+      /** Id */
+      id: string;
+      /** Title */
+      title: string;
+      /** Glimpse */
+      glimpse: string;
+      /** @description Null once the entry was orphaned: a widened place carries no author's name */
+      author: components['schemas']['MemberOut'] | null;
+      place: components['schemas']['PlaceRef'] | null;
+      /** Cell M */
+      cell_m: number;
+      /** Precision Label */
+      precision_label: string;
+      /**
+       * Published On
+       * Format: date
+       * @description The day, never the time: no trail of a person's hours
+       */
+      published_on: string;
+      /**
+       * Orphaned
+       * @description Nobody looks after it: it can be sponsored (decision 60)
+       * @default false
+       */
+      orphaned: boolean;
+      widened_level?: components['schemas']['WidenLevel'] | null;
+      /** @description Who looks after it; chosen in public by the sponsor */
+      sponsor?: components['schemas']['MemberOut'] | null;
+      /**
+       * Kind
+       * @default entry
+       * @constant
+       */
+      kind: 'entry';
     };
     /**
      * AtlasFeature
@@ -8053,6 +8200,45 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['AtlasFeatureCollection'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  clusters_in_window_atlas_clusters_get: {
+    parameters: {
+      query: {
+        west: number;
+        south: number;
+        east: number;
+        north: number;
+        /** @description Map zoom level */
+        zoom: number;
+        since?: string | null;
+        country?: string | null;
+        concept?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AtlasClusterCollection'];
         };
       };
       /** @description An error */

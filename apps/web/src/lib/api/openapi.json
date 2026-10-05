@@ -3755,6 +3755,150 @@
         }
       }
     },
+    "/atlas/clusters": {
+      "get": {
+        "tags": ["atlas"],
+        "summary": "The published entries of a map window, grouped",
+        "description": "Return groups and single entries of the window, whatever the number of entries.\n\nEach `properties.kind` is `cluster` (a `count` of visible entries, the `bbox` of their public\npoints, a stable `id` of the grid cell, a point at the mean of the public points) or `entry`\n(one entry, as in `/atlas/entries`). A grid cell is about 60 CSS pixels at the zoom; from\nzoom 16 nothing is grouped. At most 500 features come back; `truncated` says there were more.\nCounts leave out the entries a block hides from a signed-in viewer.",
+        "operationId": "clusters_in_window_atlas_clusters_get",
+        "parameters": [
+          {
+            "name": "west",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "West"
+            }
+          },
+          {
+            "name": "south",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "South"
+            }
+          },
+          {
+            "name": "east",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "East"
+            }
+          },
+          {
+            "name": "north",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "North"
+            }
+          },
+          {
+            "name": "zoom",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 22,
+              "minimum": 0,
+              "description": "Map zoom level",
+              "title": "Zoom"
+            },
+            "description": "Map zoom level"
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 2,
+                  "pattern": "^[A-Za-z]{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Country"
+            }
+          },
+          {
+            "name": "concept",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.:-]+$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Concept"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlasClusterCollection"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/atlas/entries/{entry_id}": {
       "get": {
         "tags": ["atlas"],
@@ -4465,6 +4609,119 @@
         "enum": ["under_13", "13_17", "18_24", "25_39", "40_59", "60_plus", "unknown"],
         "title": "AgeRange"
       },
+      "AtlasClusterCollection": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type",
+            "default": "FeatureCollection"
+          },
+          "features": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AtlasClusterFeature"
+                },
+                {
+                  "$ref": "#/components/schemas/AtlasEntryFeature"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Features"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "description": "More groups lie in the window than were returned"
+          }
+        },
+        "type": "object",
+        "required": ["features", "truncated"],
+        "title": "AtlasClusterCollection",
+        "description": "Groups and single entries of a window, told apart by `properties.kind`; bounded in size."
+      },
+      "AtlasClusterFeature": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Feature",
+            "title": "Type",
+            "default": "Feature"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/GeoJsonPoint"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/AtlasClusterProperties"
+          }
+        },
+        "type": "object",
+        "required": ["geometry", "properties"],
+        "title": "AtlasClusterFeature",
+        "description": "A group of entries as a GeoJSON Feature; `geometry` is the mean of their public points."
+      },
+      "AtlasClusterProperties": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "cluster",
+            "title": "Kind",
+            "default": "cluster"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Stable for a grid cell at a zoom; not an entry id"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 2.0,
+            "title": "Count",
+            "description": "Visible entries in the group, after the filters and blocks"
+          },
+          "bbox": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Bbox",
+            "description": "West, south, east, north of the members' public points, to zoom to the group"
+          }
+        },
+        "type": "object",
+        "required": ["id", "count", "bbox"],
+        "title": "AtlasClusterProperties",
+        "description": "What a group of entries says: how many, and where they lie. Never an id, an author or a time.\n\nThe count is of the entries this viewer may see, and the box is the box of their public points."
+      },
+      "AtlasEntryFeature": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Feature",
+            "title": "Type",
+            "default": "Feature"
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/GeoJsonPoint"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/AtlasEntryProperties"
+          }
+        },
+        "type": "object",
+        "required": ["id", "geometry", "properties"],
+        "title": "AtlasEntryFeature",
+        "description": "A lone entry of the cluster answer, a point on the map like any other."
+      },
       "AtlasEntryOut": {
         "properties": {
           "id": {
@@ -4638,6 +4895,104 @@
         ],
         "title": "AtlasEntryOut",
         "description": "A published entry on its own page: the insight by reference, the public point, its place."
+      },
+      "AtlasEntryProperties": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "glimpse": {
+            "type": "string",
+            "title": "Glimpse"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemberOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null once the entry was orphaned: a widened place carries no author's name"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlaceRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cell_m": {
+            "type": "integer",
+            "title": "Cell M"
+          },
+          "precision_label": {
+            "type": "string",
+            "title": "Precision Label"
+          },
+          "published_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Published On",
+            "description": "The day, never the time: no trail of a person's hours"
+          },
+          "orphaned": {
+            "type": "boolean",
+            "title": "Orphaned",
+            "description": "Nobody looks after it: it can be sponsored (decision 60)",
+            "default": false
+          },
+          "widened_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WidenLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sponsor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemberOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who looks after it; chosen in public by the sponsor"
+          },
+          "kind": {
+            "type": "string",
+            "const": "entry",
+            "title": "Kind",
+            "default": "entry"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "glimpse",
+          "author",
+          "place",
+          "cell_m",
+          "precision_label",
+          "published_on"
+        ],
+        "title": "AtlasEntryProperties",
+        "description": "A single entry among clusters: the entry's own properties, told apart by `kind`."
       },
       "AtlasFeature": {
         "properties": {

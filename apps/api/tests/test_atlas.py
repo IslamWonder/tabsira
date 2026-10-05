@@ -570,6 +570,11 @@ def test_public_schemas_have_no_field_for_a_private_location():
         atlas.AtlasEntryOut,
         atlas.AtlasPlaceOut,
         atlas.AtlasOrphansOut,
+        atlas.AtlasEntryProperties,
+        atlas.AtlasEntryFeature,
+        atlas.AtlasClusterProperties,
+        atlas.AtlasClusterFeature,
+        atlas.AtlasClusterCollection,
         atlas.PublicLocationOut,
         atlas.PlaceRef,
     )
