@@ -10,14 +10,20 @@ an insight of its own, the prepared rain example is no longer offered to it.
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.errors import AppError, ErrorCode
 from src.models import Guest, Insight, InsightOrigin, Scan, ScanStatus
-from src.owner import Owner
 from src.services import profile_service
+
+if TYPE_CHECKING:
+    # Only for the annotations: `src.owner` imports the request dependencies, which
+    # import the services, which import this module. The scan worker enters that
+    # ring from `src.owner` and a runtime import here breaks it.
+    from src.owner import Owner
 
 # Scans a guest key may hold before it must sign up.
 GUEST_SCAN_LIMIT = 1
