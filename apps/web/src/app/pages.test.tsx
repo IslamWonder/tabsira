@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { CaptureProvider } from '@/components/capture/capture-provider';
 import AtlasPage, { metadata as atlasMetadata } from './atlas/page';
 import CommunityPage, { metadata as communityMetadata } from './community/page';
 import CommunityPublishPage from './community/publish/page';
@@ -89,7 +90,8 @@ describe('placeholder routes', () => {
   });
 
   it('opens on the scene', () => {
-    render(<ScenePage />);
+    // The root layout's CaptureProvider holds every page; the scene sends through it.
+    render(<ScenePage />, { wrapper: CaptureProvider });
     expect(
       screen.getByRole('img', { name: 'نبتة زيتون صغيرة تتلقى قطرات المطر' })
     ).toBeInTheDocument();

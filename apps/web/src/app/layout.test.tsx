@@ -10,7 +10,10 @@ import RootLayout, { metadata, viewport } from './layout';
 
 const PUBLIC = path.resolve(__dirname, '../../public');
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/' }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/',
+  useRouter: () => ({ push: vi.fn() }),
+}));
 const connection = vi.hoisted(() => vi.fn(async () => undefined));
 vi.mock('next/server', () => ({ connection }));
 const jar = vi.hoisted(() => ({ values: new Map<string, string>() }));

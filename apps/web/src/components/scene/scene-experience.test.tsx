@@ -1,6 +1,8 @@
-import { act, render, screen, within } from '@testing-library/react';
+import { act, render as renderBare, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { CaptureProvider } from '@/components/capture/capture-provider';
 import { apiError, mockApi, type Route } from '@/test/api';
 import { insightOut, scanOut, tutorialOut } from '@/test/scan';
 import { RAIN_POINTS, SceneExperience } from './scene-experience';
@@ -14,6 +16,9 @@ vi.mock('next/navigation', () => ({
 beforeEach(() => {
   push.mockClear();
 });
+
+// The scene sends through the layout's CaptureProvider, as on the site.
+const render = (ui: ReactElement) => renderBare(ui, { wrapper: CaptureProvider });
 
 const tutorial: Record<string, Route> = { 'GET /tutorial/rain': { body: tutorialOut() } };
 

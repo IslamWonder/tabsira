@@ -11,6 +11,11 @@ export interface CameraCaptureProps {
   onFile: (file: File) => void;
   /** Called with a picked file when the live camera is not available (the native picker). */
   onPick: (event: ChangeEvent<HTMLInputElement>) => void;
+  /**
+   * Ask for the camera as soon as this shows, once: for a view opened by the reader's own tap
+   * on «صوّر مشهدًا», never on a page that merely loads (no permission is asked unprompted).
+   */
+  autoStart?: boolean;
 }
 
 /** The longest side of a captured photo: enough for the scene, small enough to send. */
@@ -164,7 +169,7 @@ const PROBLEM_TEXT: Record<CameraFailure, string> = {
   unsupported: messages.scene.starter.cameraUnavailable,
 };
 
-export function CameraCapture({ onFile, onPick }: CameraCaptureProps) {
+export function CameraCapture({ onFile, onPick, autoStart = false }: CameraCaptureProps) {
   const camera = useCameraStream();
   const [taking, setTaking] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -175,6 +180,15 @@ export function CameraCapture({ onFile, onPick }: CameraCaptureProps) {
   const problem = cameraProblem(secure, camera.failure, availability);
   const viewRef = useRef<HTMLDivElement>(null);
   const starting = camera.state === 'starting';
+  const autoStarted = useRef(false);
+
+  // A page that is not secure has no camera API: its fallback says why instead.
+  useEffect(() => {
+    if (autoStart && secure && !autoStarted.current) {
+      autoStarted.current = true;
+      void camera.start();
+    }
+  }, [autoStart, secure, camera.start]);
 
   // The preview and its shutter come into sight when the camera opens: in a sheet or a
   // panel that scrolls, they would otherwise open below the fold. Instant, never animated.

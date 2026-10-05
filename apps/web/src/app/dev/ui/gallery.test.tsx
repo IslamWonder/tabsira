@@ -1,11 +1,19 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render as renderBare, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { CaptureProvider } from '@/components/capture/capture-provider';
 import { HADITH_SPANS, HADITH_TEXT } from './gallery';
 import DevUiPage, { metadata } from './page.dev';
 import { ViewportPreview } from './viewport-preview';
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/dev/ui' }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/dev/ui',
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+// The gallery is a page: the root layout's CaptureProvider holds it, as every page.
+const render = (ui: ReactElement) => renderBare(ui, { wrapper: CaptureProvider });
 
 function lightHalf() {
   return screen.getByRole('region', { name: 'المظهر الفاتح' });

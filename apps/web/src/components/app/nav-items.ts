@@ -16,7 +16,8 @@ export const SECTIONS: readonly NavItem[] = [
   { href: '/me', label: messages.nav.me, Icon: ProfileIcon },
 ];
 
-export const CAPTURE: NavItem = { href: '/', label: messages.nav.capture, Icon: CameraIcon };
+/** Capture is an action, not a page: it opens the capture sheet wherever the reader is. */
+export const CAPTURE: Omit<NavItem, 'href'> = { label: messages.nav.capture, Icon: CameraIcon };
 
 export function isActive(href: string, pathname: string): boolean {
   if (href === '/') {

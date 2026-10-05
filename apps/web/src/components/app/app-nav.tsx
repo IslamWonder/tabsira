@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useCapture } from '@/components/capture/capture-provider';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 import { CAPTURE, isActive, type NavItem, SECTIONS } from './nav-items';
@@ -46,7 +47,7 @@ function Tab({ item, pathname }: { item: NavItem; pathname: string }) {
  */
 export function AppNav() {
   const pathname = usePathname();
-  const captureActive = isActive(CAPTURE.href, pathname);
+  const capture = useCapture();
 
   return (
     <nav
@@ -58,22 +59,18 @@ export function AppNav() {
           <Tab key={item.href} item={item} pathname={pathname} />
         ))}
         <li className="flex justify-center">
-          <Link
-            href={CAPTURE.href}
-            aria-current={captureActive ? 'page' : undefined}
+          {/* An action, not a page: it opens the camera over whatever is on screen. */}
+          <button
+            type="button"
+            onClick={capture.open}
+            aria-haspopup="dialog"
             className="flex size-16 items-center justify-center rounded-full"
           >
-            <span
-              className={cx(
-                'capture-orb flex size-[54px] items-center justify-center rounded-full',
-                captureActive &&
-                  'ring-2 ring-[var(--nav-active)] ring-offset-2 ring-offset-[var(--nav-glass)]'
-              )}
-            >
+            <span className="capture-orb flex size-[54px] items-center justify-center rounded-full">
               <CAPTURE.Icon width="24" height="24" strokeWidth={2} />
             </span>
             <span className="sr-only">{CAPTURE.label}</span>
-          </Link>
+          </button>
         </li>
         {SIDE_END.map((item) => (
           <Tab key={item.href} item={item} pathname={pathname} />

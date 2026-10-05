@@ -10,6 +10,8 @@ import { isImageFile } from './image-link';
 
 export interface SceneStarterProps {
   onFile: (file: File) => void;
+  /** Start the live camera at once: the sheet holding the starter was opened by the reader's tap. */
+  startCamera?: boolean;
   className?: string;
 }
 
@@ -19,7 +21,7 @@ export interface SceneStarterProps {
  * always has a button equivalent, and nothing is sent from here: the page that
  * owns the analysis decides what happens with the file.
  */
-export function SceneStarter({ onFile, className }: SceneStarterProps) {
+export function SceneStarter({ onFile, startCamera = false, className }: SceneStarterProps) {
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileId = useId();
@@ -83,7 +85,7 @@ export function SceneStarter({ onFile, className }: SceneStarterProps) {
           <input id={fileId} type="file" accept="image/*" className="sr-only" onChange={onPick} />
         </label>
         {/* A live camera in the page, as the earlier prototype had; the phone's camera app otherwise. */}
-        <CameraCapture onFile={take} onPick={onPick} />
+        <CameraCapture onFile={take} onPick={onPick} autoStart={startCamera} />
       </div>
 
       <p className="m-0 text-fg-muted text-sm leading-[1.8]">{messages.sending.privacy}</p>

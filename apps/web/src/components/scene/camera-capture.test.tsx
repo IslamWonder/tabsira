@@ -76,6 +76,23 @@ describe('CameraCapture', () => {
     expect(track.stop).toHaveBeenCalled();
   });
 
+  it('starts at once when the view was opened by a tap, and only once', async () => {
+    const { getUserMedia } = stubCamera('granted');
+    const { rerender } = render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} autoStart />);
+
+    expect(await screen.findByLabelText('معاينة الكاميرا')).toBeInTheDocument();
+    rerender(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} autoStart />);
+    await waitFor(() => expect(getUserMedia).toHaveBeenCalledOnce());
+  });
+
+  it('waits for a tap when nothing asked it to start', async () => {
+    const { getUserMedia } = stubCamera('granted');
+    render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);
+
+    expect(await screen.findByRole('button', { name: /التقط بالكاميرا/ })).toBeInTheDocument();
+    expect(getUserMedia).not.toHaveBeenCalled();
+  });
+
   it('closes the camera without a photo', async () => {
     const { track } = stubCamera('granted');
     render(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} />);

@@ -11,6 +11,7 @@ import { SkipLink } from '@/components/app/skip-link';
 import { StageBackdrop } from '@/components/app/stage-backdrop';
 import { ThemeSync } from '@/components/app/theme-sync';
 import { TopBar } from '@/components/app/top-bar';
+import { CaptureProvider } from '@/components/capture/capture-provider';
 import { AnalyticsTags } from '@/components/consent/analytics-tags';
 import { consentModeDefaults } from '@/components/consent/consent-mode-defaults';
 import { ConsentScreen } from '@/components/consent/consent-screen';
@@ -104,14 +105,17 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       {/* Clarity masks everything under this attribute: no typed text, scripture or user text is recorded. */}
       <body className="antialiased" {...CLARITY_MASK}>
         <PageShell consent={consent}>
-          <SkipLink />
-          <StageBackdrop />
-          <TopBar />
-          <main id="main" tabIndex={-1} className="outline-none">
-            {children}
-          </main>
-          <SiteFooter />
-          <AppNav />
+          {/* Every «صوّر مشهدًا», in the bars or on a page, opens the same camera and send. */}
+          <CaptureProvider>
+            <SkipLink />
+            <StageBackdrop />
+            <TopBar />
+            <main id="main" tabIndex={-1} className="outline-none">
+              {children}
+            </main>
+            <SiteFooter />
+            <AppNav />
+          </CaptureProvider>
         </PageShell>
         {/* In the first paint when a choice is needed: no flash of the page before it. */}
         <ConsentScreen initial={consent} />

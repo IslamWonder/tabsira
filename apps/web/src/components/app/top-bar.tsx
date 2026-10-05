@@ -3,25 +3,27 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from '@/account/session';
+import { useCapture } from '@/components/capture/capture-provider';
 import { CameraIcon } from '@/components/icons';
-import { LinkButton } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { SoundToggle } from '@/components/ui/sound-toggle';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 import { Brand } from './brand';
-import { CAPTURE, isActive, SECTIONS } from './nav-items';
+import { isActive, SECTIONS } from './nav-items';
 
 /**
  * The top bar of tablets and desktops (DESIGN_DECISION.md «Responsive web
  * application»): the brand at the start, the four sections as tabs in the
  * middle, and the capture button as the one primary button at the end (Von
- * Restorff). It is the web's own pattern (Jakob's law); the phone keeps its
+ * Restorff), which opens the camera wherever the reader is. It is the web's own pattern (Jakob's law); the phone keeps its
  * floating bar. Tabs change colour on hover, never size or place.
  */
 export function TopBar() {
   const pathname = usePathname();
   const session = useSession();
+  const capture = useCapture();
   return (
     <header className="topbar-glass sticky top-0 z-40 hidden tablet:block">
       {/* A gold rule under the bar, brightest at its middle: the edge of an RPG window. */}
@@ -72,10 +74,10 @@ export function TopBar() {
               {messages.nav.signIn}
             </Link>
           )}
-          <LinkButton variant="cta" href={CAPTURE.href} current={isActive(CAPTURE.href, pathname)}>
+          <Button variant="cta" onClick={capture.open} aria-haspopup="dialog">
             <CameraIcon width="20" height="20" strokeWidth={2} />
             {messages.nav.captureScene}
-          </LinkButton>
+          </Button>
         </div>
       </div>
     </header>

@@ -1,16 +1,30 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render as renderBare, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReactElement } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CaptureProvider } from '@/components/capture/capture-provider';
 import { mockApi } from '@/test/api';
+import { forgetDevice, stubCamera } from '@/test/camera';
 import { USER } from '@/test/fixtures';
 import { THEME_STORAGE_KEY } from '@/theme/theme';
 import { TopBar } from './top-bar';
 
 const pathname = vi.hoisted(() => ({ value: '/' }));
-vi.mock('next/navigation', () => ({ usePathname: () => pathname.value }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => pathname.value,
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+// The bar lives inside the layout's CaptureProvider; so does every test of it.
+const render = (ui: ReactElement) => renderBare(ui, { wrapper: CaptureProvider });
 
 beforeEach(() => {
   pathname.value = '/';
+});
+
+afterEach(() => {
+  forgetDevice();
+  vi.restoreAllMocks();
 });
 
 describe('TopBar', () => {
@@ -31,9 +45,9 @@ describe('TopBar', () => {
         .getAllByRole('link')
         .map((link) => link.textContent)
     ).toEqual(['عالمي', 'تواصل', 'الأطلس', 'ملفي']);
-    const capture = links.at(-1) as HTMLElement;
-    expect(capture).toHaveTextContent('صوّر مشهدًا');
+    const capture = screen.getByRole('button', { name: 'صوّر مشهدًا' });
     expect(capture.className).toContain('fill-cta');
+    expect(capture).toHaveAttribute('aria-haspopup', 'dialog');
     expect(screen.getByRole('link', { name: 'دخول' })).toHaveAttribute('href', '/signin');
   });
 
@@ -45,14 +59,24 @@ describe('TopBar', () => {
     await waitFor(() => expect(screen.queryByRole('link', { name: 'دخول' })).toBeNull());
   });
 
-  it('marks the capture action current on the scene, and a tab on its section', () => {
-    const { rerender } = render(<TopBar />);
-    expect(screen.getByRole('link', { name: 'صوّر مشهدًا' })).toHaveAttribute('aria-current', 'page');
+  it('marks a tab current on its section', () => {
     pathname.value = '/atlas';
-    rerender(<TopBar />);
-    expect(screen.getByRole('link', { name: 'صوّر مشهدًا' })).not.toHaveAttribute('aria-current');
-    const current = screen.getByRole('link', { current: 'page' });
-    expect(current).toHaveTextContent('الأطلس');
+    render(<TopBar />);
+    expect(screen.getByRole('link', { current: 'page' })).toHaveTextContent('الأطلس');
+  });
+
+  it('opens the live camera from any page with «صوّر مشهدًا»', async () => {
+    const { getUserMedia } = stubCamera('granted');
+    pathname.value = '/atlas';
+    render(<TopBar />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'صوّر مشهدًا' }));
+
+    const sheet = await screen.findByRole('dialog', { name: 'صوّر مشهدًا' });
+    await waitFor(() => expect(getUserMedia).toHaveBeenCalledOnce());
+    expect(await within(sheet).findByLabelText('معاينة الكاميرا')).toBeInTheDocument();
+    // The file picker stays beside the camera.
+    expect(within(sheet).getByLabelText('اختر صورة')).toBeInTheDocument();
   });
 
   it('carries the theme toggle', async () => {
