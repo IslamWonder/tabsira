@@ -24,6 +24,7 @@ guard, with the insight's own texts as a corpus, and carries the disclosure.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from datetime import timedelta
 from typing import Annotated, Literal
@@ -41,6 +42,8 @@ from src.config import AiStage, Settings
 from src.errors import AppError, ErrorCode
 from src.messages import messages_for
 from src.models import ChatMessage, ChatStatus, Hadith, Insight, QuranVerse
+from src.pipeline.engine import LearnerContext
+from src.pipeline.insight.composer import learner_view
 from src.pipeline.insight.engine import SHARED_RESOURCES, ResourceCache
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
 from src.pipeline.prompt import load_prompt
@@ -48,7 +51,7 @@ from src.routers.scripture import HadithOut, QuranVerseOut
 from src.scans.workflow import call_rows
 from src.schemas.insight import ChatReply
 from src.scripture.overlap import repeats_store
-from src.services import chat_retrieval
+from src.services import chat_retrieval, learner_service
 from src.services.chat_retrieval import NewText, TextKind
 from src.services.insight_view import (
     answer_is_shown,
@@ -59,9 +62,11 @@ from src.services.insight_view import (
     step_out,
 )
 
-SYSTEM_PROMPT = "insight_chat_system.v5"
+SYSTEM_PROMPT = "insight_chat_system.v6"
 USER_PROMPT = "insight_chat_user.v2"
 MAX_OUTPUT_TOKENS = 1200
+# What the system prompt says of a learner who declared nothing, or keeps personalization off.
+NOTHING_DECLARED = "none"
 # A pending answer older than this was left by a crash; its slot is given back.
 CHAT_RESERVATION = timedelta(minutes=5)
 
@@ -205,6 +210,12 @@ def _step(verse: QuranVerseOut | None, hadith: HadithOut | None, insight: Insigh
     return f"- {step.label}: {step.text}" if step is not None else "(none)"
 
 
+def _learner(learner: LearnerContext) -> str:
+    """Return the profile fields the learner declared, as the composer reads them (decision 63)."""
+    shared = learner_view(learner)
+    return json.dumps(shared, ensure_ascii=False) if shared else NOTHING_DECLARED
+
+
 def _why(insight: Insight) -> str:
     why = insight.why
     clues = "، ".join(why.get("visible_clues", [])) or "-"
@@ -290,13 +301,16 @@ async def _answer(
         history=await _history(db, insight, shown_ids(verse, hadith)),
         question=row.question,
     )
+    learner = await learner_service.profile_context(db, insight.user_id)
     log = CallLog()
     client = client_factory(log)
     try:
         result = await client.chat_json(
             ChatModelOutput,
             stage=AiStage.CHAT,
-            system=load_prompt(SYSTEM_PROMPT).render(shown_texts=_shown_texts(verse, hadith)),
+            system=load_prompt(SYSTEM_PROMPT).render(
+                shown_texts=_shown_texts(verse, hadith), learner=_learner(learner)
+            ),
             user=user,
             max_output_tokens=MAX_OUTPUT_TOKENS,
         )

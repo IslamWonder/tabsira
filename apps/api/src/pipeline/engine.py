@@ -141,6 +141,7 @@ class LearnerContext(FrozenModel):
     knowledge_level: str = "unknown"
     age_range: str = "unknown"
     religious_background: str = "unknown"
+    gender: str = "unknown"
     personalization_enabled: bool = True
     seen_quran: list[QuranRef] = Field(default_factory=list)
     seen_hadith: list[HadithRef] = Field(default_factory=list)
