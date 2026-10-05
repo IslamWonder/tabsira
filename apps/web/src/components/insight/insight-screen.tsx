@@ -203,8 +203,11 @@ export function InsightScreen({
             share={share}
           />
         )}
-        {finish.completion?.first_time ? (
-          <FirstInsightQuestions max={profileQuestionsMax()} />
+        {finish.completion ? (
+          <FirstInsightQuestions
+            max={profileQuestionsMax()}
+            firstTime={finish.completion.first_time}
+          />
         ) : null}
         {finish.status === 'done' && finish.completion === null ? (
           <div className="flex flex-col items-start gap-2">
