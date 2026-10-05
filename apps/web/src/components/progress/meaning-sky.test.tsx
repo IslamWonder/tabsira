@@ -358,3 +358,16 @@ describe('measuring the sky', () => {
     expect(document.querySelector('.sky-dock strong')).toHaveTextContent('الرحمة');
   });
 });
+
+describe('the count of insights', () => {
+  it('agrees with the number in Arabic', () => {
+    expect([1, 2, 3, 10, 11, 25].map(M.linked)).toEqual([
+      'بصيرة واحدة مرتبطة',
+      'بصيرتان مرتبطتان',
+      '3 بصائر مرتبطة',
+      '10 بصائر مرتبطة',
+      '11 بصيرة مرتبطة',
+      '25 بصيرة مرتبطة',
+    ]);
+  });
+});
