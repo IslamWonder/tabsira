@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { entryOnServer } from '@/atlas/server';
 import { EntryScreen } from '@/components/atlas/entry-screen';
 import { JsonLd } from '@/components/legal/json-ld';
+import { featureEnabled } from '@/config/server-env';
 import { articleJsonLd, pageMetadata } from '@/lib/seo';
 import { messages } from '@/messages';
 
@@ -57,7 +58,11 @@ export default async function AtlasEntryPage({ params }: Params) {
           })}
         />
       ) : null}
-      <EntryScreen entryId={id} />
+      <EntryScreen
+        entryId={id}
+        sponsorship={featureEnabled('atlas_sponsorship')}
+        social={featureEnabled('social')}
+      />
     </>
   );
 }

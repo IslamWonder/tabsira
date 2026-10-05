@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { apiError, mockApi } from '@/test/api';
-import { ENTRY, PLACE_PAGE } from '@/test/atlas';
+import { ENTRY, ORPHAN_ENTRY, PLACE_PAGE, SPONSORED_ENTRY } from '@/test/atlas';
 import AtlasCameraPage, { metadata as cameraMetadata } from './atlas/camera/page';
 import AtlasEntryPage, { generateMetadata as entryMetadata } from './atlas/entries/[id]/page';
 import AtlasPage from './atlas/page';
@@ -165,5 +165,41 @@ describe('the atlas pages (the atlas feature)', () => {
     cleanup();
     render(<AtlasPublishPage />);
     expect(screen.getByRole('heading', { level: 1, name: 'اختر بصيرة أولًا' })).toBeInTheDocument();
+  });
+});
+
+describe('the sponsoring switch (atlas_sponsorship)', () => {
+  const routes = (entry: typeof ORPHAN_ENTRY) => ({
+    'GET /auth/me': apiError(401, 'UNAUTHORIZED'),
+    [`GET /atlas/entries/${entry.id}`]: { body: entry },
+  });
+  const section = { name: 'كفالة البصيرة' };
+
+  it('hides the sponsoring part of an entry while it is off, and shows it while it is on', async () => {
+    vi.stubEnv('DISABLED_FEATURES', 'atlas_sponsorship');
+    mockApi(routes(ORPHAN_ENTRY));
+    render(await AtlasEntryPage(params({ id: ORPHAN_ENTRY.id })));
+    await screen.findByRole('heading', { level: 1 });
+    expect(screen.queryByRole('region', section)).toBeNull();
+    cleanup();
+
+    vi.stubEnv('DISABLED_FEATURES', '');
+    mockApi(routes(ORPHAN_ENTRY));
+    render(await AtlasEntryPage(params({ id: ORPHAN_ENTRY.id })));
+    expect(await screen.findByRole('region', section)).toBeInTheDocument();
+  });
+
+  it('links the sponsor to their profile only while the social network is on', async () => {
+    vi.stubEnv('DISABLED_FEATURES', '');
+    mockApi(routes(SPONSORED_ENTRY));
+    render(await AtlasEntryPage(params({ id: SPONSORED_ENTRY.id })));
+    expect(await screen.findByRole('link', { name: /\[اسم الكافل\]/ })).toBeInTheDocument();
+    cleanup();
+
+    vi.stubEnv('DISABLED_FEATURES', 'social');
+    mockApi(routes(SPONSORED_ENTRY));
+    render(await AtlasEntryPage(params({ id: SPONSORED_ENTRY.id })));
+    expect(await screen.findByText(/@quiet_keeper/)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /\[اسم الكافل\]/ })).toBeNull();
   });
 });

@@ -22,8 +22,9 @@ import type { Failure } from '@/lib/api/result';
 import { formatDay } from '@/lib/dates';
 import { messages } from '@/messages';
 import { postPath, profilePath } from '@/social/identity';
-import { placePath } from './atlas-screen';
 import { MapView } from './map-view';
+import { placePath } from './paths';
+import { SponsorPanel } from './sponsor-panel';
 
 const A = messages.atlas;
 
@@ -39,7 +40,17 @@ type Load =
  * scripture exactly as the API returns it, the approximate point on a small
  * map with the note that it is approximate, the place, and the author.
  */
-export function EntryScreen({ entryId }: { entryId: string }) {
+export function EntryScreen({
+  entryId,
+  sponsorship = false,
+  social = true,
+}: {
+  entryId: string;
+  /** The atlas_sponsorship feature, read by the server: shows the sponsoring parts of the page. */
+  sponsorship?: boolean;
+  /** The social feature: a sponsor's name links to their profile only while it is on. */
+  social?: boolean;
+}) {
   const session = useSession();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -67,6 +78,16 @@ export function EntryScreen({ entryId }: { entryId: string }) {
       current = false;
     };
   }, [entryId, attempt]);
+
+  // Reads the entry again after a sponsoring changed it, without the page going back to loading.
+  const refresh = async (): Promise<AtlasEntry | null> => {
+    const result = await getEntry(entryId);
+    if (!result.ok) {
+      return null;
+    }
+    setLoad({ kind: 'ready', entry: result.data });
+    return result.data;
+  };
 
   return (
     <PageContainer className="flex max-w-[48rem] flex-col gap-6 pt-[max(28px,env(safe-area-inset-top))] pb-6 tablet:pb-10">
@@ -152,6 +173,9 @@ export function EntryScreen({ entryId }: { entryId: string }) {
                 {load.entry.step}
               </p>
             )}
+            {sponsorship ? (
+              <SponsorPanel entry={load.entry} social={social} refresh={refresh} />
+            ) : null}
             <footer className="flex flex-wrap items-center gap-2.5 border-line border-t pt-4">
               {load.entry.concepts[0] === undefined ? null : (
                 <LinkButton

@@ -13,6 +13,7 @@ import {
   ORPHAN_PAGE,
   ORPHAN_RADIUS_M,
   type PlaceHit,
+  type Sponsorship,
   type Window,
 } from './types';
 
@@ -120,5 +121,11 @@ export function orphansNear(
         },
       },
     })
+  );
+}
+
+export function sponsorEntry(entryId: string): Promise<Result<Sponsorship>> {
+  return attempt(
+    api.PUT('/atlas/entries/{entry_id}/sponsorship', { params: { path: { entry_id: entryId } } })
   );
 }

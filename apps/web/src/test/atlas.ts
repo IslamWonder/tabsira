@@ -1,4 +1,10 @@
-import type { AtlasEntry, AtlasFeature, AtlasPlace, MapEntryOwner } from '@/atlas/types';
+import type {
+  AtlasEntry,
+  AtlasFeature,
+  AtlasPlace,
+  MapEntryOwner,
+  Sponsorship,
+} from '@/atlas/types';
 import { AUTHOR, HADITH_TEXT, QURAN_TEXT, sha256 } from './social';
 
 /* Sample answers of the atlas API for unit tests; placeholders stand for scripture. */
@@ -154,4 +160,43 @@ export const ORPHAN_FEATURE: AtlasFeature = {
     orphaned: true,
     widened_level: 'region',
   },
+};
+
+/** The entry page of an orphaned entry: no author, no post, a widened place. */
+export const ORPHAN_ENTRY: AtlasEntry = {
+  ...ENTRY,
+  id: ORPHAN_FEATURE.id,
+  author: null,
+  post_id: null,
+  orphaned: true,
+  location: {
+    ...ENTRY.location,
+    cell_m: 50000,
+    precision_label: '[على مستوى المنطقة]',
+    widened_level: 'region',
+  },
+};
+
+export const SPONSOR = { handle: 'quiet_keeper', public_name: '[اسم الكافل]' };
+
+/** An entry that has a sponsor, with the sponsor's published reflection. */
+export const SPONSORED_ENTRY: AtlasEntry = {
+  ...ORPHAN_ENTRY,
+  orphaned: false,
+  sponsor: SPONSOR,
+  sponsor_reflection: '[تأمل الكافل]',
+};
+
+export const SPONSORSHIP: Sponsorship = {
+  id: '7500000000000000001',
+  entry_id: ORPHAN_FEATURE.id,
+  title: '[بصيرة تنتظر]',
+  place: PLACE,
+  widened_level: 'region',
+  active: true,
+  started_at: '2026-10-05T08:00:00Z',
+  ended_at: null,
+  reflection: null,
+  reflection_status: null,
+  reflection_message: null,
 };

@@ -20,6 +20,7 @@ export type LocationSource = Schemas['LocationSource'];
 export type LocationMeaning = Schemas['LocationMeaning'];
 export type PlaceHit = Schemas['PlaceHit'];
 export type AtlasOrphans = Schemas['AtlasOrphansOut'];
+export type Sponsorship = Schemas['SponsorshipOut'];
 
 /** The two numbers of a GeoJSON point as a pair: [longitude, latitude]. */
 export function lngLatOf(point: { coordinates: number[] }): [number, number] {
