@@ -43,6 +43,7 @@ from src.storage.base import (
     is_public_key,
     new_private_key,
     new_public_key,
+    owner_prefix,
 )
 
 
@@ -140,7 +141,8 @@ class PhotoStore:
     async def keep(self, facts: PhotoFacts, photo: ProcessedPhoto) -> StoredPhoto:
         """Store the clean image as the owner's private copy, or raise `PhotoNotAllowedError`."""
         self._require(facts)
-        key = new_private_key()
+        # Kept only for an account (`_require` refuses a guest): in that account's folder.
+        key = new_private_key(facts.owner_id)
         await self.storage.put(key, photo.data, content_type=photo.content_type)
         return StoredPhoto(key=key, width=photo.width, height=photo.height)
 
@@ -160,6 +162,10 @@ class PhotoStore:
             message = "only a published copy can be withdrawn"
             raise InvalidKeyError(message)
         await self.storage.delete(public_key)
+
+    async def remove_owner(self, owner_id: uuid.UUID) -> int:
+        """Delete everything left in one account's private folder; return how many objects."""
+        return await self.storage.delete_prefix(owner_prefix(owner_id))
 
     async def remove(self, private_key: str) -> None:
         """Delete an owner's private copy. The caller withdraws the public copy first."""

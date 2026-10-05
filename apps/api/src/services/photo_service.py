@@ -238,6 +238,8 @@ async def remove_all(db: AsyncSession, store: PhotoStore, user_id: uuid.UUID) ->
     ).all()
     for insight in kept:
         await remove(store, insight)
+    # The owner's folder is emptied as well: no copy the rows lost track of can outlive them.
+    await store.remove_owner(user_id)
     await db.flush()
     return len(kept)
 

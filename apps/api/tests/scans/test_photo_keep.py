@@ -46,8 +46,12 @@ def photos(media: Path, flow_settings, flow_app) -> PhotoStore:
 
 
 def objects(media: Path) -> list[str]:
-    """Every object kept, as `prefix/<id>.jpg`, in a stable order."""
-    return sorted(f"{path.parent.parent.name}/{path.name}" for path in media.rglob("*.jpg"))
+    """Every object kept, as its key, in a stable order (an older private copy is sharded on disk)."""
+    keys = []
+    for path in media.rglob("*.jpg"):
+        parts = path.relative_to(media).parts
+        keys.append("/".join(parts) if parts[1] == "users" else f"{parts[0]}/{path.name}")
+    return sorted(keys)
 
 
 async def scanned_insight(
