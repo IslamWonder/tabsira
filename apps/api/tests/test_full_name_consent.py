@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
 from sqlalchemy import select
 
+from src.features import FeatureFlag
 from src.models import Consent, User
 from src.models.consent import ConsentKind
 from tests.conftest import PASSPHRASE
+from tests.helpers import switched
 from tests.test_auth_email_routes import request_reset
 from tests.test_auth_routes import LOGIN, SIGNUP
 from tests.test_google_routes import begin, finish, google  # noqa: F401  (the `google` fixture)
@@ -15,6 +18,12 @@ VERSIONS = {
     "terms_version": SIGNUP["accepted_terms_version"],
     "privacy_version": SIGNUP["accepted_privacy_version"],
 }
+
+
+@pytest.fixture
+def account_settings(account_settings):
+    """The comment of the handle-alone test below needs comments, which are off by default."""
+    return switched(account_settings, on=[FeatureFlag.SOCIAL_COMMENTS])
 
 
 async def name_rows(db):
