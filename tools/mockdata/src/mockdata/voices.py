@@ -29,6 +29,9 @@ from src.services.moderation_guard import GuardVerdict, Outcome
 # Characters asked for; the schemas' limits stay the hard ones.
 REFLECTION_CHARS = 280
 COMMENT_CHARS = 160
+SPONSOR_CHARS = 220
+AUTHOR = "author"
+SPONSOR = "sponsor"
 MAX_OUTPUT_TOKENS = 6000
 
 # The Arabic name of each country of the generator, so the model can lend a light local flavour.
@@ -77,6 +80,10 @@ Strict rules:
   the author's own thought after seeing the insight.
 - Each comment: one sentence or two, at most {COMMENT_CHARS} characters. A comment with a
   parent replies to that comment, briefly and naturally.
+- When the request's role is "sponsor", the "reflection" is the note of a person who took care of
+  an insight of the atlas that nobody was looking after («كفالة»): one or two sentences, at most
+  {SPONSOR_CHARS} characters, humble and grateful, about the insight's idea. Never mention its
+  author, never promise or ask for a reward. Answer an empty list of comments.
 
 Answer JSON only: the reflection, and one comment for every slot, with the slot's ref."""
 
@@ -114,6 +121,8 @@ class Brief:
     step: str | None
     country: str
     slots: tuple[Slot, ...]
+    # `sponsor` for the note of a member who looks after an orphaned atlas entry.
+    role: str = AUTHOR
 
 
 @dataclass
@@ -143,7 +152,9 @@ def text_model(settings: Settings) -> str:
     return settings.ai.compose_model
 
 
-def brief_of(post: str, body: dict[str, Any], country: str, slots: list[Slot]) -> Brief:
+def brief_of(
+    post: str, body: dict[str, Any], country: str, slots: list[Slot], role: str = AUTHOR
+) -> Brief:
     """Return the brief of a post from its insight body; the evidence is left out on purpose."""
     step = body.get("small_step")
     return Brief(
@@ -153,6 +164,7 @@ def brief_of(post: str, body: dict[str, Any], country: str, slots: list[Slot]) -
         step=step["text"] if step else None,
         country=country,
         slots=tuple(slots),
+        role=role,
     )
 
 
@@ -163,6 +175,7 @@ def user_prompt(brief: Brief) -> str:
         return COUNTRY_NAMES.get(code, "")
 
     payload = {
+        "role": brief.role,
         "insight": {"title": brief.title, "glimpse": brief.glimpse, "small_step": brief.step},
         "author_country": country(brief.country),
         "comments": [
@@ -189,7 +202,8 @@ async def ask(client: ModelClient, brief: Brief, model: str) -> tuple[Voices, Ca
 async def accept_texts(brief: Brief, voices: Voices, check: Check) -> Written:
     """Keep the texts that pass every check; a reply whose parent was dropped goes too."""
     written = Written()
-    reason = await check(voices.reflection, REFLECTION_MAX)
+    limit = COMMENT_MAX if brief.role == SPONSOR else REFLECTION_MAX
+    reason = await check(voices.reflection, limit)
     if reason is None:
         written.reflection = voices.reflection.strip()
     else:

@@ -1,8 +1,8 @@
 # Mock data generator
 
 Writes `tabsira-mock-v1.json` for plan 23 (decision 66): about 1000 mock members in real cities
-of 22 Arabic-speaking countries, with insights, posts, follows, reactions, comments and atlas
-entries. The file holds references and the pipeline's composed words only (placepix ids,
+of 22 Arabic-speaking countries, with insights, posts, follows, reactions, bookmarks, blocks,
+comments, atlas entries (some orphaned, some sponsored) and ratings. The file holds references and the pipeline's composed words only (placepix ids,
 GeoNames ids, points, times, evidence ids). It never holds a verse or a hadith.
 
 Three steps, in this order:
@@ -33,6 +33,21 @@ make mock-texts      # the posts' reflections and comments -> texts-library.json
 - Every volume is an option: `--insights`, `--posts`, `--follows`, `--reactions`, `--comments`,
   `--map-entries`. The number of insights is capped by the photos (seven uses each).
 - Tests: `cd tools/mockdata && uv run pytest --cov`. No network, no database.
+
+## Members and features (task 23.5)
+
+- Names come from the reviewed lists of `names.py`, by the gender the member declares (a few
+  prefer not to say); handles read like the name. The profile is complete and private, as for
+  every member; the e-mail domain is `mock.tabsira.me`. Gender, names, handles and the profile
+  come from their own seeded streams, so countries, cities, join dates and refs stay the same.
+- The prolific members have streaks (one insight a day on consecutive days, most still alive).
+- Posts: public or followers-only (only without an atlas entry), with or without photo, with or
+  without reflection (`reflect`); followers-only posts take no reaction, save or comment.
+- A tenth of the atlas entries is orphaned (older than 35 days), half of those sponsored by
+  another member; the sponsor's note is written by the texts stage like a comment (brief
+  `sponsor:<insight>`, role `sponsor`).
+- A few blocks join members who never met and are not popular; none contradicts the graph.
+- A third of the insights carry a rating, mostly helpful.
 
 ## The photo and text stages (task 23.4)
 

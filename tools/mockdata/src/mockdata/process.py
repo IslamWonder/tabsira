@@ -52,7 +52,12 @@ from src.ai.client import (
 from src.ai.errors import AiCallError, AiErrorCode
 from src.ai.records import CallLog, CallRecord
 from src.cli import import_mock
-from src.cli.import_mock import MockImportError, check_scripture_guard, parse
+from src.cli.import_mock import (
+    MockImportError,
+    check_member_texts,
+    check_scripture_guard,
+    parse,
+)
 from src.config import (
     AiProvider,
     AiStage,
@@ -74,6 +79,7 @@ from mockdata.library import KEPT, Library, dumps, kept_photos, outcome_of, text
 from mockdata.scan import ScanResult, ScanTools, rolled_back, run_scan
 from mockdata.scenes import describe
 from mockdata.voices import (
+    SPONSOR,
     Brief,
     Check,
     Slot,
@@ -473,7 +479,11 @@ def signature(slots: Sequence[Slot]) -> list[list[str | None]]:
 
 
 def post_briefs(document: dict[str, Any]) -> list[tuple[Brief, int]]:
-    """Every post of an insight whose photo has one, with its comment slots and its photo id."""
+    """
+    Every post of an insight whose photo has one, with its comment slots and its photo id.
+
+    Then the sponsor's note of every sponsored atlas entry, a brief of its own (`sponsor:<insight>`).
+    """
     countries = {member["ref"]: member["country"] for member in document["members"]}
     insights = {item["ref"]: item for item in document["insights"]}
     bodies = {image["placepix_id"]: image["insight"] for image in document["images"]}
@@ -490,6 +500,16 @@ def post_briefs(document: dict[str, Any]) -> list[tuple[Brief, int]]:
             continue
         brief = brief_of(
             post["ref"], body, countries.get(item["member"], ""), slots.get(post["ref"], [])
+        )
+        found.append((brief, item["image"]))
+    for entry in document["map_entries"]:
+        sponsor = entry.get("sponsor")
+        item = insights.get(entry["insight"])
+        body = bodies.get(item["image"]) if item else None
+        if sponsor is None or item is None or body is None:
+            continue
+        brief = brief_of(
+            f"sponsor:{entry['insight']}", body, countries.get(sponsor["member"], ""), [], SPONSOR
         )
         found.append((brief, item["image"]))
     return found
@@ -536,7 +556,13 @@ def assemble(document: dict[str, Any], texts: Library, briefs: Sequence[tuple[Br
         brief.post: texts.entries.get(text_key(brief.post, pid), {}) for brief, pid in briefs
     }
     for post in document["posts"]:
-        post["reflection"] = written.get(post["ref"], {}).get("reflection")
+        # The author may have written none: the library keeps the text, the post leaves it out.
+        text = written.get(post["ref"], {}).get("reflection")
+        post["reflection"] = text if post.get("reflect", True) else None
+    for entry in document["map_entries"]:
+        if entry.get("sponsor") is not None:
+            kept = written.get(f"sponsor:{entry['insight']}", {})
+            entry["sponsor"]["reflection"] = kept.get("reflection")
     for comment in document["comments"]:
         texts_of = written.get(comment["post"], {}).get("comments", {})
         comment["text"] = texts_of.get(comment["ref"])
@@ -661,7 +687,12 @@ def report(
         "insights": len(document["insights"]),
         "posts": {
             "total": len(document["posts"]),
-            "with_insight": len(briefs),
+            "with_insight": sum(1 for b, _ in briefs if b.role != SPONSOR),
+            "sponsor_notes": sum(
+                1
+                for e in document["map_entries"]
+                if e.get("sponsor") and e["sponsor"].get("reflection")
+            ),
             "with_reflection": sum(1 for p in document["posts"] if p["reflection"]),
             "failed_calls": sum(1 for entry in used if entry.get("retry")),
         },
@@ -736,6 +767,7 @@ async def validate_file(engine: AsyncEngine, raw: bytes) -> list[str]:
     async with rolled_back(engine) as sessions, sessions() as db:
         try:
             await check_scripture_guard(db, data)
+            check_member_texts(data)
         except MockImportError as error:
             return [str(error)]
         missing = await import_mock._missing_evidence(db, data)  # noqa: SLF001 - the importer's own check

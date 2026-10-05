@@ -137,7 +137,9 @@ def build(
         posts=activity.posts,
         map_entries=activity.map_entries,
         follows=activity.follows,
+        blocks=activity.blocks,
         reactions=activity.reactions,
+        bookmarks=activity.bookmarks,
         comments=activity.comments,
     )
 
@@ -161,7 +163,8 @@ def main(
         f"{args.out}: {len(file.members)} members, {len(file.images)} images, "
         f"{len(file.insights)} insights, {len(file.posts)} posts, "
         f"{len(file.map_entries)} map entries, {len(file.follows)} follows, "
-        f"{len(file.reactions)} reactions, {len(file.comments)} comments"
+        f"{len(file.reactions)} reactions, {len(file.bookmarks)} bookmarks, "
+        f"{len(file.blocks)} blocks, {len(file.comments)} comments"
     )
     return 0
 

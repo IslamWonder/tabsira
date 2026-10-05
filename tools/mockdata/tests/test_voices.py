@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 from src.config import AiStage
+from src.models.social import COMMENT_MAX
 from src.services.moderation_guard import GuardVerdict, Outcome
 
 from mockdata.scan import body_of
@@ -133,3 +134,18 @@ def test_cleaned_is_the_social_schemas_cleaning() -> None:
     assert cleaned("   ", 10) is None
     assert cleaned("نص\u202e", 10) is None
     assert cleaned("طويل جدا", 3) is None
+
+
+async def test_a_sponsor_note_is_asked_as_one_and_kept_to_a_comment_length() -> None:
+    brief = brief_of("sponsor:i1", {"title": "t", "glimpse": "g"}, "TN", [], "sponsor")
+    assert json.loads(user_prompt(brief))["role"] == "sponsor"
+    seen: list[int] = []
+
+    async def check(text: str, limit: int) -> str | None:
+        seen.append(limit)
+        return None
+
+    written = await accept_texts(brief, Voices(reflection="شكرًا", comments=[]), check)
+
+    assert written.reflection == "شكرًا"
+    assert seen == [COMMENT_MAX]

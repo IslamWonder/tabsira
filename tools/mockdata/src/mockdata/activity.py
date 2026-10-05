@@ -4,17 +4,21 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 
 from mockdata.catalogue import Photo
 from mockdata.output import (
+    Block,
+    Bookmark,
     Comment,
+    Feedback,
     Follow,
     Insight,
     MapEntry,
     Member,
     Post,
     Reaction,
+    Sponsor,
     stamp,
 )
 from mockdata.places import Gazetteer, draw_point
@@ -28,6 +32,24 @@ REPLY_SHARE = 0.3
 # Decision 61: «انتفعتُ بها» and «جزاك الله خيرًا», one of each per member and post.
 REACTION_KINDS = ("benefited", "jazak")
 _LOGNORMAL_SIGMA = 1.0
+# A member with this many insights may have a streak: one insight a day, on consecutive days.
+STREAK_MIN = 3
+STREAK_SHARE = 0.8
+# Of those streaks, the share that is still alive (it ends in the last three days).
+CURRENT_STREAK_SHARE = 0.6
+FEEDBACK_SHARE = 0.35
+HELPFUL_SHARE = 0.8
+FEEDBACK_REASONS = ("wrong_text", "misread_scene", "wrong_explanation", "other")
+# A post of an insight with no atlas entry may be for followers only, or show no photo.
+FOLLOWERS_ONLY_SHARE = 0.5
+NO_PHOTO_SHARE = 0.6
+NO_REFLECTION_SHARE = 0.15
+# «كفالة»: an entry quiet for 30 days is orphaned, so only an entry older than that can be.
+ORPHAN_AFTER = timedelta(days=35)
+ORPHAN_SHARE = 0.10
+SPONSORED_SHARE = 0.5
+SPONSOR_DELAY = timedelta(days=31)
+POPULAR_BLOCK_EXEMPT = 100
 
 
 @dataclass(frozen=True)
@@ -38,6 +60,8 @@ class Knobs:
     reactions: int = 30000
     comments: int = 4000
     map_entries: int = 900
+    bookmarks: int = 6000
+    blocks: int = 40
 
 
 @dataclass(frozen=True)
@@ -46,7 +70,9 @@ class Activity:
     posts: list[Post]
     map_entries: list[MapEntry]
     follows: list[Follow]
+    blocks: list[Block]
     reactions: list[Reaction]
+    bookmarks: list[Bookmark]
     comments: list[Comment]
 
 
@@ -106,8 +132,56 @@ def make_insights(
                 point=draw_point(rng, place),
             )
         )
+    _streaks(rng, members, out, now)
     out.sort(key=lambda i: (i.created_at, i.member, i.image))
     return [i.model_copy(update={"ref": f"i{n:05d}"}) for n, i in enumerate(out, start=1)]
+
+
+def _streaks(rng: random.Random, members: list[Member], out: list[Insight], now: datetime) -> None:
+    """
+    Give the members with several insights a streak: one a day, on consecutive days.
+
+    The newest insight falls on the streak's last day, in the last three days for a streak that
+    is still alive. A day before the member joined ends the streak there; the insights it does not
+    reach keep their times. The photo-month rule of `make_insights` is not kept for these.
+    """
+    joined = {m.ref: parse(m.joined_at) for m in members}
+    last = now - timedelta(minutes=5)
+    by_member: dict[str, list[int]] = {}
+    for position, item in enumerate(out):
+        by_member.setdefault(item.member, []).append(position)
+    for ref in sorted(by_member):
+        positions = sorted(by_member[ref], key=lambda p: out[p].created_at)
+        if len(positions) < STREAK_MIN or rng.random() > STREAK_SHARE:
+            continue
+        ago = rng.randrange(3) if rng.random() < CURRENT_STREAK_SHARE else rng.randrange(3, 60)
+        end = last.date() - timedelta(days=ago)
+        for back, position in enumerate(reversed(positions)):
+            start = datetime.combine(end - timedelta(days=back), time.min)
+            low = max(start + timedelta(hours=6), joined[ref] + timedelta(minutes=1))
+            high = min(start + timedelta(hours=23), last)
+            if low > high:
+                break
+            created = between(rng, low, high)
+            done = created + timedelta(seconds=rng.randrange(15, 90))
+            out[position] = out[position].model_copy(
+                update={"created_at": stamp(created), "completed_at": stamp(done)}
+            )
+
+
+def add_feedback(rng: random.Random, insights: list[Insight], now: datetime) -> list[Insight]:
+    """A third of the members rate their insight: mostly helpful, now and then a reason it was not."""
+    out: list[Insight] = []
+    for item in insights:
+        if rng.random() < FEEDBACK_SHARE:
+            helpful = rng.random() < HELPFUL_SHARE
+            reasons = [] if helpful else sorted(rng.sample(FEEDBACK_REASONS, rng.randint(1, 2)))
+            at = min(parse(item.completed_at) + timedelta(minutes=rng.randrange(1, 40)), now)
+            item = item.model_copy(  # noqa: PLW2901
+                update={"feedback": Feedback(helpful=helpful, reasons=reasons, at=stamp(at))}
+            )
+        out.append(item)
+    return out
 
 
 def _new_month(rng: random.Random, joined: datetime, now: datetime, taken: set[str]) -> datetime:
@@ -157,6 +231,157 @@ def make_map_entries(
         )
         for p in chosen
     ]
+
+
+def shape_posts(rng: random.Random, posts: list[Post], entries: list[MapEntry]) -> list[Post]:
+    """
+    Some posts for followers only, some without a photo, some without a reflection.
+
+    Only the post of an insight with no atlas entry is made private or photo-less: the entry shows
+    the insight's photo to everyone, so the two would contradict each other.
+    """
+    on_atlas = {e.insight for e in entries}
+    free = sorted(p.ref for p in posts if p.insight not in on_atlas)
+    followers = set(rng.sample(free, round(len(free) * FOLLOWERS_ONLY_SHARE)))
+    plain = set(rng.sample(free, round(len(free) * NO_PHOTO_SHARE)))
+    return [
+        p.model_copy(
+            update={
+                "visibility": "followers" if p.ref in followers else "public",
+                "photo": p.ref not in plain,
+                "reflect": rng.random() >= NO_REFLECTION_SHARE,
+            }
+        )
+        for p in posts
+    ]
+
+
+def make_orphans(
+    rng: random.Random,
+    members: list[Member],
+    entries: list[MapEntry],
+    owner: dict[str, str],
+    now: datetime,
+) -> list[MapEntry]:
+    """
+    A tenth of the entries went quiet and were orphaned; half of those found a sponsor.
+
+    Only an entry older than the 30 quiet days can be orphaned. The sponsor is another member who
+    had joined by then; a few members sponsor many, as a few people look after many.
+    """
+    eligible = sorted(e.insight for e in entries if parse(e.published_at) <= now - ORPHAN_AFTER)
+    chosen = rng.sample(eligible, min(round(len(entries) * ORPHAN_SHARE), len(eligible)))
+    sponsored = set(chosen[: round(len(chosen) * SPONSORED_SHARE)])
+    weights = _weights(rng, len(members))
+    joined = {m.ref: parse(m.joined_at) for m in members}
+    by_insight = {e.insight: e for e in entries}
+    for insight in sorted(chosen):
+        entry = by_insight[insight]
+        sponsor = None
+        if insight in sponsored:
+            earliest = parse(entry.published_at) + SPONSOR_DELAY
+            for _ in range(30):
+                pick = rng.choices(members, weights=weights)[0]
+                if pick.ref != owner[insight] and joined[pick.ref] <= earliest <= now:
+                    when = between(rng, max(earliest, joined[pick.ref]), now - timedelta(hours=1))
+                    sponsor = Sponsor(member=pick.ref, at=stamp(when))
+                    break
+        by_insight[insight] = entry.model_copy(update={"orphaned": True, "sponsor": sponsor})
+    return [by_insight[e.insight] for e in entries]
+
+
+def make_bookmarks(
+    rng: random.Random,
+    members: list[Member],
+    posts: list[Post],
+    author_of: dict[str, str],
+    count: int,
+    now: datetime,
+) -> list[Bookmark]:
+    """Saved posts: by active members, towards popular public posts, never one's own."""
+    public = [p for p in posts if p.visibility == "public"]
+    if not public:
+        return []
+    joined = {m.ref: parse(m.joined_at) for m in members}
+    post_weights = _weights(rng, len(public))
+    member_weights = _weights(rng, len(members))
+    seen: set[tuple[str, str]] = set()
+    out: list[Bookmark] = []
+    attempts = 0
+    while len(out) < count and attempts < count * 20:
+        attempts += 1
+        post = rng.choices(public, weights=post_weights)[0]
+        member = rng.choices(members, weights=member_weights)[0]
+        if member.ref == author_of[post.ref] or (post.ref, member.ref) in seen:
+            continue
+        seen.add((post.ref, member.ref))
+        start = max(parse(post.published_at), joined[member.ref])
+        out.append(Bookmark(post=post.ref, member=member.ref, at=stamp(between(rng, start, now))))
+    out.sort(key=lambda b: (b.at, b.post, b.member))
+    return out
+
+
+def interacting_pairs(
+    follows: list[Follow],
+    reactions: list[Reaction],
+    bookmarks: list[Bookmark],
+    comments: list[Comment],
+    entries: list[MapEntry],
+    author_of: dict[str, str],
+    owner: dict[str, str],
+) -> set[frozenset[str]]:
+    """Every two members who did something to each other or to each other's work."""
+    pairs: set[frozenset[str]] = {frozenset((f.from_, f.to)) for f in follows}
+    pairs |= {frozenset((r.member, author_of[r.post])) for r in reactions}
+    pairs |= {frozenset((b.member, author_of[b.post])) for b in bookmarks}
+    by_ref = {c.ref: c for c in comments}
+    for c in comments:
+        pairs.add(frozenset((c.member, author_of[c.post])))
+        if c.parent is not None:
+            pairs.add(frozenset((c.member, by_ref[c.parent].member)))
+    pairs |= {frozenset((e.sponsor.member, owner[e.insight])) for e in entries if e.sponsor}
+    return {pair for pair in pairs if len(pair) == 2}
+
+
+def make_blocks(
+    rng: random.Random,
+    members: list[Member],
+    follows: list[Follow],
+    taken: set[frozenset[str]],
+    count: int,
+    now: datetime,
+) -> list[Block]:
+    """
+    A few blocks between members who never met: none involves a popular author.
+
+    The most followed members are left out, and so is any pair that follows, reacted, saved,
+    commented or sponsored towards the other, so a block never contradicts what the file shows.
+    """
+    followers: dict[str, int] = {}
+    for f in follows:
+        followers[f.to] = followers.get(f.to, 0) + 1
+    popular = {
+        ref
+        for ref, _ in sorted(followers.items(), key=lambda kv: (-kv[1], kv[0]))[
+            :POPULAR_BLOCK_EXEMPT
+        ]
+    }
+    pool = [m for m in members if m.ref not in popular]
+    joined = {m.ref: parse(m.joined_at) for m in members}
+    out: list[Block] = []
+    seen: set[frozenset[str]] = set(taken)
+    attempts = 0
+    while len(out) < count and attempts < count * 50 and len(pool) > 1:
+        attempts += 1
+        a, b = rng.sample(pool, 2)
+        pair = frozenset((a.ref, b.ref))
+        if pair in seen:
+            continue
+        seen.add(pair)
+        at = between(rng, max(joined[a.ref], joined[b.ref]), now)
+        out.append(Block(from_=a.ref, to=b.ref, at=stamp(at)))
+    out.sort(key=lambda x: (x.at, x.from_, x.to))
+    return out
 
 
 def make_follows(
@@ -288,19 +513,35 @@ def make_activity(
     insights = make_insights(
         random.Random(f"{seed}:insights"), members, photos, gazetteer, knobs.insights, now
     )
+    insights = add_feedback(random.Random(f"{seed}:feedback"), insights, now)
     posts = make_posts(random.Random(f"{seed}:posts"), insights, knobs.posts, now)
     entries = make_map_entries(random.Random(f"{seed}:map"), posts, knobs.map_entries, now)
+    posts = shape_posts(random.Random(f"{seed}:shapes"), posts, entries)
     owner = {i.ref: i.member for i in insights}
+    entries = make_orphans(random.Random(f"{seed}:orphans"), members, entries, owner, now)
     author_of = {p.ref: owner[p.insight] for p in posts}
+    # Followers-only posts take no reaction, save or comment from the public.
+    public = [p for p in posts if p.visibility == "public"]
+    follows = make_follows(random.Random(f"{seed}:follows"), members, knobs.follows, now)
+    reactions = make_reactions(
+        random.Random(f"{seed}:reactions"), members, public, author_of, knobs.reactions, now
+    )
+    bookmarks = make_bookmarks(
+        random.Random(f"{seed}:bookmarks"), members, posts, author_of, knobs.bookmarks, now
+    )
+    comments = make_comments(
+        random.Random(f"{seed}:comments"), members, public, knobs.comments, now
+    )
+    taken = interacting_pairs(follows, reactions, bookmarks, comments, entries, author_of, owner)
     return Activity(
         insights=insights,
         posts=posts,
         map_entries=entries,
-        follows=make_follows(random.Random(f"{seed}:follows"), members, knobs.follows, now),
-        reactions=make_reactions(
-            random.Random(f"{seed}:reactions"), members, posts, author_of, knobs.reactions, now
+        follows=follows,
+        blocks=make_blocks(
+            random.Random(f"{seed}:blocks"), members, follows, taken, knobs.blocks, now
         ),
-        comments=make_comments(
-            random.Random(f"{seed}:comments"), members, posts, knobs.comments, now
-        ),
+        reactions=reactions,
+        bookmarks=bookmarks,
+        comments=comments,
     )

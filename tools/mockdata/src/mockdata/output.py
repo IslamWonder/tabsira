@@ -46,6 +46,22 @@ class Member(_Row):
     country: str
     city_geoname_id: int
     joined_at: str
+    # What the person declared in the profile form: private, as for every member.
+    gender: str
+    age_range: str
+    goals: list[str]
+    knowledge_level: str
+    religious_background: str
+    theme: str
+    reduced_motion: str
+    sound: bool
+    public_full_name: bool
+
+
+class Feedback(_Row):
+    helpful: bool
+    reasons: list[str] = []
+    at: str
 
 
 class Insight(_Row):
@@ -56,6 +72,7 @@ class Insight(_Row):
     completed_at: str
     # GeoJSON order: [longitude, latitude].
     point: tuple[float, float]
+    feedback: Feedback | None = None
 
 
 class Post(_Row):
@@ -63,14 +80,38 @@ class Post(_Row):
     insight: str
     published_at: str
     reflection: None = None
+    visibility: str = "public"
+    # Whether the post shows the insight's photo; whether the author wrote a reflection.
+    photo: bool = True
+    reflect: bool = True
+
+
+class Sponsor(_Row):
+    member: str
+    at: str
+    reflection: None = None
 
 
 class MapEntry(_Row):
     insight: str
     published_at: str
+    orphaned: bool = False
+    sponsor: Sponsor | None = None
 
 
 class Follow(_Row):
+    from_: str = Field(alias="from")
+    to: str
+    at: str
+
+
+class Bookmark(_Row):
+    post: str
+    member: str
+    at: str
+
+
+class Block(_Row):
     from_: str = Field(alias="from")
     to: str
     at: str
@@ -102,7 +143,9 @@ class MockFile(_Row):
     posts: list[Post]
     map_entries: list[MapEntry]
     follows: list[Follow]
+    blocks: list[Block]
     reactions: list[Reaction]
+    bookmarks: list[Bookmark]
     comments: list[Comment]
 
 

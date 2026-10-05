@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Put the mock members of plan 23 into the database, or take them out (decision 66).
 #
-# Usage: scripts/mock-data.sh <command> [source] [--allow-production]
+# Usage: scripts/mock-data.sh <command> [source] [--allow-production] [--also-dependent-rows]
 #   import <source>   import the v1 file (a path or s3://bucket/key); a second run adds nothing
-#   clean             delete every @mock.tabsira.invalid account and everything it owns
+#   clean             delete every @mock.tabsira.me account and everything it owns; it stops when
+#                     other members' rows depend on them, unless --also-dependent-rows is given
 #   reset <source>    clean, then import: the way to replace one file by another
 #   status            how many mock members, insights and posts the database holds
 #
@@ -21,7 +22,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$SCRIPT_DIR/lib.sh"
 
 usage() {
-	sed -n '4,9p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+	sed -n '4,11p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 	exit 2
 }
 
@@ -31,9 +32,11 @@ shift
 
 source_file=""
 extra=()
+clean_extra=()
 for arg in "$@"; do
 	case "$arg" in
 	--allow-production) extra+=("$arg") ;;
+	--also-dependent-rows) clean_extra+=("$arg") ;;
 	-*) die "unknown option: $arg" ;;
 	*) source_file="$arg" ;;
 	esac
@@ -60,14 +63,14 @@ QUERIES = {
     "verses": "SELECT count(*) FROM corpus.quran_verses",
     "hadiths": "SELECT count(*) FROM corpus.hadiths",
     "places": "SELECT count(*) FROM geodata.geonames",
-    "mock_members": "SELECT count(*) FROM app.users WHERE email LIKE '%@mock.tabsira.invalid'",
+    "mock_members": "SELECT count(*) FROM app.users WHERE email LIKE '%@mock.tabsira.me'",
     "mock_insights": (
         "SELECT count(*) FROM app.insights i JOIN app.users u ON u.id = i.user_id"
-        " WHERE u.email LIKE '%@mock.tabsira.invalid'"
+        " WHERE u.email LIKE '%@mock.tabsira.me'"
     ),
     "mock_posts": (
         "SELECT count(*) FROM app.posts p JOIN app.users u ON u.id = p.author_id"
-        " WHERE u.email LIKE '%@mock.tabsira.invalid'"
+        " WHERE u.email LIKE '%@mock.tabsira.me'"
     ),
 }
 
@@ -118,7 +121,7 @@ import_file() {
 
 clean() {
 	log "Deleting every mock member and what they own"
-	api -m src.cli.import_mock --clean --i-understand "${extra[@]}"
+	api -m src.cli.import_mock --clean --i-understand "${extra[@]}" "${clean_extra[@]}"
 }
 
 status() {

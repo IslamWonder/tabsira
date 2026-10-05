@@ -434,9 +434,15 @@ def mock_file() -> dict[str, Any]:
         ],
         "posts": [
             {"ref": "p1", "insight": "i1", "reflection": None},
-            {"ref": "p2", "insight": "i2", "reflection": None},
+            {"ref": "p2", "insight": "i2", "reflection": None, "reflect": False},
             {"ref": "p3", "insight": "i9", "reflection": None},
             {"ref": "p4", "insight": "i3", "reflection": None},
+        ],
+        "map_entries": [
+            {"insight": "i1", "sponsor": {"member": "m2", "reflection": None}},
+            {"insight": "i2", "sponsor": None},
+            {"insight": "i3", "sponsor": {"member": "m1", "reflection": None}},
+            {"insight": "i9", "sponsor": {"member": "m1", "reflection": None}},
         ],
         "comments": [
             {"ref": "c1", "post": "p1", "member": "m2", "parent": None, "text": None},
@@ -455,7 +461,14 @@ def write_file(folder: Path) -> Path:
 
 def test_briefs_are_the_posts_of_photos_with_an_insight() -> None:
     found = post_briefs(mock_file())
-    assert [(brief.post, pid) for brief, pid in found] == [("p1", 1), ("p2", 2)]
+    assert [(brief.post, pid) for brief, pid in found] == [
+        ("p1", 1),
+        ("p2", 2),
+        ("sponsor:i1", 1),
+    ]
+    sponsor = found[2][0]
+    assert (sponsor.role, sponsor.country, sponsor.slots) == ("sponsor", "EG", ())
+    assert found[0][0].role == "author"
     assert found[0][0].country == "TN"
     assert found[0][0].slots == (Slot("c1", None, "EG"), Slot("c2", "c1", "TN"))
     assert found[1][0].step is None
@@ -522,20 +535,27 @@ async def test_the_texts_stage_writes_the_file_the_library_and_the_report(folder
     fakes = Fakes()
     assert await process.texts_stage(TextOptions(path), settings(), fakes.services()) == 0
     out = read(path)
-    assert [post["reflection"] for post in out["posts"]] == ["تأمل p1", "تأمل p2", None, None]
+    # The library keeps p2's text; the post leaves it out because its author wrote none.
+    assert [post["reflection"] for post in out["posts"]] == ["تأمل p1", None, None, None]
+    assert out["map_entries"][0]["sponsor"]["reflection"] == "تأمل sponsor:i1"
+    assert out["map_entries"][1]["sponsor"] is None
+    assert out["map_entries"][2]["sponsor"]["reflection"] is None
     assert [c["text"] for c in out["comments"]] == ["تعليق c1", "تعليق c2", None, None]
     assert fakes.validated == [path.read_bytes()]
     texts = read(folder / library.TEXTS_NAME)
-    assert sorted(texts["posts"]) == ["p1:1", "p2:2"]
+    assert sorted(texts["posts"]) == ["p1:1", "p2:2", "sponsor:i1:1"]
+    assert texts["posts"]["p2:2"]["reflection"] == "تأمل p2"
     assert texts["posts"]["p1:1"]["slots"] == [["c1", None], ["c2", "c1"]]
     report = read(folder / process.REPORT_NAME)
     assert report["photos"]["kept"] == 1
     assert report["photos"]["errors"] == {"vision_failed": 1}
-    assert report["posts"]["with_reflection"] == 2
+    assert report["posts"]["with_reflection"] == 1
+    assert report["posts"]["with_insight"] == 2
+    assert report["posts"]["sponsor_notes"] == 1
     assert report["comments"]["with_text"] == 2
     assert report["texts_dropped"] == {"comment_moderation_review": 1}
     assert report["evidence"]["distinct_verses"] == 1
-    assert report["cost_usd"]["texts"] == 0.002
+    assert report["cost_usd"]["texts"] == 0.003
     assert report["models"]["rerank"] == "off"
     assert report["checks"] == "passed"
 
