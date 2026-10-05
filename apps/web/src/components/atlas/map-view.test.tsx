@@ -168,7 +168,9 @@ describe('MapView', () => {
 
     expect(map.paint.get('water:fill-color')).toBe('#123456');
     expect(map.paint.get('background:background-color')).toBeTruthy();
-    expect(map.layout.get('poi_r1:visibility')).toBe('none');
+    // Points of interest stay, from street level only; names are in Arabic first.
+    expect(map.layout.get('poi_r1:visibility')).toBe('visible');
+    expect(map.zoomRanges.get('poi_r1')).toEqual([15, 24]);
     expect(map.paint.get('clusters:circle-color')).toBe('#00aa66');
     // The app's own layers are never repainted as basemap.
     expect(map.paint.has('points:line-color')).toBe(false);

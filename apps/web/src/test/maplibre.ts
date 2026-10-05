@@ -83,6 +83,10 @@ export class FakeMap {
   setLayoutProperty = vi.fn((layer: string, property: string, value: unknown) => {
     this.layout.set(`${layer}:${property}`, value);
   });
+  zoomRanges = new Map<string, [number, number]>();
+  setLayerZoomRange = vi.fn((layer: string, min: number, max: number) => {
+    this.zoomRanges.set(layer, [min, max]);
+  });
 
   addLayer(layer: { id: string }): void {
     this.layers.push(layer.id);
