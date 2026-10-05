@@ -66,20 +66,12 @@ export function TopBar() {
           <ThemeToggle />
           {/* Shown until the API says someone is signed in: most visitors are guests.
               Signing in is a secondary button, never a second glowing fill (Von Restorff);
-              creating an account sits beside it from desktop width, and the sign-in page
-              offers it too, so a tablet loses nothing. */}
+              creating an account is offered inside the sign-in form. */}
           {session.status === 'signed-in' ? null : (
-            <>
-              <LinkButton href="/signin" variant="secondary" current={pathname === '/signin'}>
-                <ProfileIcon width="18" height="18" />
-                {messages.nav.signIn}
-              </LinkButton>
-              <span className="hidden desktop:contents">
-                <LinkButton href="/signup" variant="ghost" current={pathname === '/signup'}>
-                  {messages.nav.signUp}
-                </LinkButton>
-              </span>
-            </>
+            <LinkButton href="/signin" variant="secondary" current={pathname === '/signin'}>
+              <ProfileIcon width="18" height="18" />
+              {messages.nav.signIn}
+            </LinkButton>
           )}
           <Button variant="cta" onClick={capture.open} aria-haspopup="dialog">
             <CameraIcon width="20" height="20" strokeWidth={2} />

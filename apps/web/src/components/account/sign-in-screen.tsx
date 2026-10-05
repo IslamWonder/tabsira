@@ -7,7 +7,7 @@ import { type FormEvent, useRef, useState } from 'react';
 import { setSignedIn, useSession } from '@/account/session';
 import { emailProblem, passwordMissing } from '@/account/validation';
 import { useTurnstile } from '@/components/turnstile/use-turnstile';
-import { Button } from '@/components/ui/button';
+import { Button, LinkButton } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { TextField } from '@/components/ui/text-field';
 import { api } from '@/lib/api/client';
@@ -34,8 +34,9 @@ export interface SignInScreenProps {
 
 /**
  * Sign in (S10): Google when it is available, then the e-mail and the
- * password, one primary button in the thumb zone (Fitts), and the ways out
- * just below: a forgotten password, a new account, back to the scene. The
+ * password, one primary button in the thumb zone (Fitts), a secondary button
+ * to create an account right under it, and the ways out just below: back to
+ * the scene. The
  * account is optional, and the screen says so.
  */
 export function SignInScreen({
@@ -90,15 +91,6 @@ export function SignInScreen({
       lead={T.lead}
       footer={
         <>
-          <p className="m-0">
-            {T.noAccount}{' '}
-            <Link
-              href={`/signup?next=${encodeURIComponent(next)}` as Route}
-              className="inline-flex min-h-12 items-center font-semibold text-link"
-            >
-              {T.createAccount}
-            </Link>
-          </p>
           <p className="m-0 max-w-sm text-fg-muted text-sm">{messages.auth.optional}</p>
           <Link href="/" className="inline-flex min-h-12 items-center text-link">
             {messages.auth.backToScene}
@@ -147,6 +139,17 @@ export function SignInScreen({
             <Button type="submit" size="lg" disabled={sending} className="w-full">
               {sending ? T.submitting : T.submit}
             </Button>
+            {/* The way in for someone without an account sits under the primary button, as a
+                secondary one: the same width, never a second glowing fill (Von Restorff). */}
+            <p className="m-0 mt-2 text-center text-fg-muted text-sm">{T.noAccount}</p>
+            <LinkButton
+              href={`/signup?next=${encodeURIComponent(next)}` as Route}
+              variant="secondary"
+              size="lg"
+              className="w-full"
+            >
+              {T.createAccount}
+            </LinkButton>
           </form>
         </>
       )}

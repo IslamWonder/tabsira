@@ -39,16 +39,20 @@ describe('SignInScreen', () => {
     render(<SignInScreen next="/world" />);
     expect(screen.getByRole('heading', { level: 1, name: 'ادخل إلى تبصرة' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'تبصرة' })).toBeInTheDocument();
+    const create = screen.getByRole('link', { name: 'أنشئ حسابًا' });
+    expect(create).toHaveAttribute('href', '/signup?next=%2Fworld');
+    // Inside the form, under the primary button, and a secondary one.
+    const submit = screen.getByRole('button', { name: 'ادخل' });
+    expect(submit.closest('form')).toContainElement(create);
+    expect(submit.compareDocumentPosition(create) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(create.className).toContain('border-[1.5px]');
+    expect(create.className).not.toContain('fill-');
     await fill('reader@example.com', 'a long password');
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/world'));
     expect(await api.bodies('POST', '/auth/login')).toEqual([
       { email: 'reader@example.com', password: 'a long password' },
     ]);
     expect(readSession()).toEqual({ status: 'signed-in', user: USER });
-    expect(screen.getByRole('link', { name: 'أنشئ حسابًا' })).toHaveAttribute(
-      'href',
-      '/signup?next=%2Fworld'
-    );
   });
 
   it('checks the fields first and puts focus on the first one to fix', async () => {

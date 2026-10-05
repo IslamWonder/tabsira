@@ -51,15 +51,12 @@ describe('TopBar', () => {
     expect(screen.getByRole('link', { name: 'دخول' })).toHaveAttribute('href', '/signin');
   });
 
-  it('offers signing in as a secondary button and creating an account beside it', () => {
+  it('offers signing in as a secondary button, with no second sign-up button', () => {
     render(<TopBar />);
     const signIn = screen.getByRole('link', { name: 'دخول' });
     expect(signIn.className).toContain('border-[1.5px]');
     expect(signIn.className).not.toContain('fill-');
-    const signUp = screen.getByRole('link', { name: 'أنشئ حسابًا' });
-    expect(signUp).toHaveAttribute('href', '/signup');
-    // The wrapper hides it: a hidden class on the link itself loses to its inline-flex.
-    expect(signUp.parentElement).toHaveClass('hidden', 'desktop:contents');
+    expect(screen.queryByRole('link', { name: 'أنشئ حسابًا' })).toBeNull();
   });
 
   it('drops the sign-in link once the API says someone is signed in', async () => {
@@ -68,7 +65,6 @@ describe('TopBar', () => {
     render(<TopBar />);
     expect(screen.getByRole('link', { name: 'دخول' })).toHaveAttribute('aria-current', 'page');
     await waitFor(() => expect(screen.queryByRole('link', { name: 'دخول' })).toBeNull());
-    expect(screen.queryByRole('link', { name: 'أنشئ حسابًا' })).toBeNull();
   });
 
   it('marks a tab current on its section', () => {
