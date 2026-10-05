@@ -41,5 +41,7 @@ def recorder(monkeypatch: pytest.MonkeyPatch) -> Iterator[Recorder]:
     monkeypatch.setattr(error_tracking, "_initialised", False)
     yield record
     sentry_sdk.get_client().close(timeout=0)
-    # A named release: without one the SDK runs `git` to find it.
-    sentry_sdk.init(release="test")
+    # Detach the client rather than call `init` again: a bare `init` would leave the
+    # process with the SDK's default options, which read the body of a failed
+    # multipart request and leave its temporary file open for every later test.
+    sentry_sdk.get_global_scope().set_client(None)
