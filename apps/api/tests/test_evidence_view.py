@@ -6,7 +6,7 @@ from src.models import HadithClassification
 from src.scripture.rulings import RulingInput, find_hadith, record_ruling
 from src.scripture.text import sha256_hex
 from src.services.evidence_view import load_evidence
-from tests.scripture.fixtures import hadith_text, verse_text
+from tests.scripture.fixtures import enrich_hadith, hadith_text, verse_text
 
 
 async def rule(db_session, number, classification):
@@ -67,10 +67,28 @@ async def test_a_hadith_is_read_as_stored_and_carries_its_ruling_and_a_verificat
 
 
 async def test_a_hadith_without_a_ruling_or_with_a_weak_one_is_not_shown(db_session, scripture):
-    # bukhari 8 is ضعيف, muslim 1 has no ruling at all.
-    found = await load_evidence(db_session, [], [("bukhari", "8"), ("muslim", "1")])
+    # bukhari 8 is ضعيف, muslim 113 has no ruling and is not one of the enriched file's hadiths.
+    found = await load_evidence(db_session, [], [("bukhari", "8"), ("muslim", "113")])
 
     assert found.hadith == {}
+
+
+async def test_a_hadith_of_the_enriched_file_shows_without_a_ruling_and_says_so(
+    db_session, scripture
+):
+    # muslim 113 has no ruling; once it is one of the enriched file's hadiths it shows (decision 58),
+    # with no classification, while bukhari 8, ruled ضعيف, stays out even when enriched.
+    for collection, number in (("muslim", "113"), ("bukhari", "8")):
+        stored = await find_hadith(db_session, collection, number)
+        await enrich_hadith(db_session, stored.id, f"{collection}{number}")
+
+    found = await load_evidence(db_session, [], [("bukhari", "8"), ("muslim", "113")])
+
+    assert set(found.hadith) == {("muslim", "113")}
+    hadith = found.hadith[("muslim", "113")]
+    assert hadith.classification is None
+    assert hadith.text == hadith_text("muslim", 113)
+    assert hadith.sha256 == sha256_hex(hadith.text)
 
 
 async def test_the_latest_ruling_decides_in_both_directions(db_session, scripture):

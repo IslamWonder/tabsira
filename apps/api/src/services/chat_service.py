@@ -58,7 +58,7 @@ from src.services.insight_view import (
     step_out,
 )
 
-SYSTEM_PROMPT = "insight_chat_system.v4"
+SYSTEM_PROMPT = "insight_chat_system.v5"
 USER_PROMPT = "insight_chat_user.v2"
 MAX_OUTPUT_TOKENS = 1200
 # A pending answer older than this was left by a crash; its slot is given back.
@@ -154,8 +154,8 @@ async def _cited_texts(db: AsyncSession, insight: Insight) -> list[str]:
     """
     Return the stored texts the insight cites, shown or not, as the leak guard's corpus.
 
-    A hadith hidden for its ruling (none yet, or not صحيح or حسن) is guarded
-    against all the same: the model must not quote it either.
+    A hadith that is not shown (no ruling and not counted under decision 58, or a ruling
+    other than صحيح or حسن) is guarded against all the same: the model must not quote it either.
     """
     texts: list[str | None] = []
     if insight.quran_surah is not None and insight.quran_ayah is not None:

@@ -18,7 +18,7 @@ from sqlalchemy import select
 
 from src.models import AuditAction, HadithClassification, HadithRuling
 from src.scripture.rulings import enqueue_demand, find_hadith, is_eligible
-from tests.scripture.fixtures import store_hadiths
+from tests.scripture.fixtures import enrich_hadith, store_hadiths
 from tests.support_admin import audit_rows, csrf_of
 
 QUEUE = "/admin/rulings-queue"
@@ -106,6 +106,18 @@ async def test_an_empty_queue_says_so(admin, db_session):
 
 
 # ─── A hadith's page ───────────────────────────────────────────────
+
+
+async def test_a_hadith_shown_before_its_ruling_says_why_it_is_eligible(admin, db_session, hadiths):
+    http, _ = admin
+    wanted, _ = hadiths
+    await enrich_hadith(db_session, wanted.id)
+
+    body = (await http.get(page_of(wanted.id))).text
+
+    # Decision 58: the editor sees why an unruled hadith already shows, in the same words as the rule.
+    assert 'Eligible as evidence</dt><dd class="col-8">yes (no ruling yet' in body
+    assert "enriched Sunnah file" in body
 
 
 async def test_a_hadith_page_shows_its_text_whole_with_its_hash_and_never_as_a_field(

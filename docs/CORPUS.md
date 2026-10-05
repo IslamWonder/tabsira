@@ -46,6 +46,13 @@ It refuses a store without the 6,236 verses, reads the state before and after th
 
 With `CORPUS_ARCHIVE_URL` set to empty (and no `CORPUS_ARCHIVE`), `make data` builds the store from its sources as before (quranpedia's dump, the nine hadith files, the two corpus files of `data/corpus/`) and imports the ontology and the learning path from the repository (`scripts/data-learning.sh`). A new learning path release in the repository therefore reaches an archive-installed server with the next archive, or by `scripts/data-learning.sh masar` run by hand.
 
+### The Sunnah signals and decision 58
+
+Since 5 October 2026 the signals import marks each match of a record with `cited` (the record's references cite that book); with the coverage of the record's best match, it decides whether a hadith that has no ruling yet may show (decision 58). An archive made before that carries no `cited` mark, so a host installed from it shows no hadith before its ruling: it fails closed, as decision 18 alone would. Two ways to bring the mark to a host:
+
+- **A new archive, before the first editor ruling there.** On a machine that holds the corpus files, import the signals again (`uv run python -m src.cli.import_scripture signals --corpus-dir ../../data/corpus` from `apps/api`), make the archive (`scripts/corpus/export.sh`), publish it with its `.sha256`, set `CORPUS_ARCHIVE_URL` to it, and install it with `--force`. `--force` is refused once rulings point at the corpus (see step 3), so this way closes when the editors start.
+- **The signals step alone, in place.** On the host, with `sunnah-enriched.json` in `CORPUS_DIR` (its SHA-256 is checked), the same `import_scripture signals` command replaces the signal rows and nothing else; rulings, learners' states and vectors are untouched. Re-importing the signals changes which unruled hadiths may show; an insight already kept follows the rule as it reads now.
+
 ## GeoNames
 
 `scripts/geodata/ensure.sh`, called first by `make data` when `GEODATA_DUMP` or `GEODATA_DUMP_URL` is set (or `--geonames`), and by `deploy/load-data.sh` unless `--no-geonames`. Two sources, chosen with `--geonames-source=dump|geonames` or `GEONAMES_SOURCE`:

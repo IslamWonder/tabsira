@@ -59,7 +59,7 @@ Relation types of the insights: `close_conceptual` 14, `direct` 1, `opposite` 1,
 ## Limits
 
 - Fifteen generated scenes, one run each: a p95 over so few samples is close to the maximum, and real photos may behave differently.
-- No hadith has an editor's ruling yet (decision 18), so every insight carries its verse alone and the hadiths it wanted wait in the verification queue; the hadith half of the pipeline (relevance, queueing) runs, the display of a hadith does not.
+- No hadith had an editor's ruling yet when this ran (decision 18), so every insight carried its verse alone and the hadiths it wanted waited in the verification queue; decision 58 now lets a hadith of the enriched Sunnah file show before its ruling.
 - The checks are rules: they prove that no scripture leaked and that every reference is real, not that an explanation is good Arabic or a wise choice. Read the raw answers before trusting a small difference.
 
 <!-- section:reranker-comparison -->

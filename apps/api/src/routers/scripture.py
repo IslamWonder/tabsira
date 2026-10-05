@@ -4,8 +4,8 @@ Read-only scripture: one verse, one hadith, exactly as stored, with what a reade
 The text is returned byte for byte as stored, with its SHA-256, its source and
 version, and the link where the reader can check it. A hadith also carries its
 display spans (positions in the text, never a cut copy), the dataset's grades
-marked informational, the editor-recorded dorar.net ruling and whether that
-ruling makes it eligible as evidence. Nothing here writes, and no model-written
+marked informational, the editor-recorded dorar.net ruling and whether it is
+eligible as evidence (decisions 18 and 58). Nothing here writes, and no model-written
 field (annotations, Sunnah signals) is ever returned. Public: no account needed.
 """
 
@@ -32,7 +32,7 @@ from src.models import (
 from src.scripture.links import dorar_search_url, quranpedia_verse_url
 from src.scripture.quran import SYNC_SOURCE
 from src.scripture.quranpedia import MUSHAF_ID, SITE_URL
-from src.scripture.rulings import classification_is_eligible, latest_ruling
+from src.scripture.rulings import eligible_given, is_enriched, latest_ruling
 from src.scripture.spans import SpanRole, hadith_spans
 
 router = APIRouter(prefix="/scripture", tags=["scripture"])
@@ -135,7 +135,12 @@ class HadithOut(BaseModel):
         description="The dataset's grades as given; informational only, never decide eligibility"
     )
     ruling: RulingOut | None = Field(description="The editor-recorded dorar.net ruling in force")
-    eligible: bool = Field(description="Whether the ruling in force is صحيح or حسن")
+    eligible: bool = Field(
+        description=(
+            "Whether it may be shown as evidence: the ruling in force is صحيح or حسن, or there is"
+            " no ruling and the hadith belongs to the enriched Sunnah file (decision 58)"
+        )
+    )
     links: HadithLinks
     status: CorpusStatus = "local_corpus"
 
@@ -231,7 +236,9 @@ async def read_hadith(session: AsyncSession, collection: str, number: str) -> Ha
         )
         if ruling
         else None,
-        eligible=classification_is_eligible(ruling.classification if ruling else None),
+        eligible=eligible_given(
+            ruling, enriched=ruling is None and await is_enriched(session, stored.id)
+        ),
         links=HadithLinks(dorar_verification=dorar_search_url(stored.text)),
     )
 

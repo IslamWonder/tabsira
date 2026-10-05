@@ -3,10 +3,12 @@ What the workflow accepts from the engine, checked again on the server before an
 
 The engine is trusted for nothing it can get wrong silently:
 - a verse or a hadith it cites must be in the store; a hadith whose editor
-  ruling is not صحيح or حسن is never kept as evidence, and one without a ruling
-  is kept (shown once ruled) and counted in the verification queue;
-- an insight left with nothing it can show now (no verse, and no hadith with
-  an eligible ruling) is dropped: no source, no scripture (v2 rule 1);
+  ruling is not صحيح or حسن is never kept as evidence; one without a ruling
+  shows at once when it counts as one of the enriched Sunnah file's (decision
+  58), and otherwise is kept (shown once ruled). The demand for a ruling is
+  counted by the evidence gate that chose the texts, never again here;
+- an insight left with nothing it can show now (no verse, and no hadith that
+  is eligible) is dropped: no source, no scripture (v2 rule 1);
 - every text it wrote goes through the leak guard, with the cited texts
   (refused ones included) as a corpus, and is compared with every verse and
   hadith of the store, so a quotation hidden in an explanation refuses the insight;
@@ -31,7 +33,7 @@ from src.pipeline.engine import EvidenceRef, HadithRef, ProposedInsight, QuranRe
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
 from src.pipeline.schemas import SceneAnalysis
 from src.scripture.overlap import repeats_store
-from src.scripture.rulings import classification_is_eligible, enqueue_demand, latest_ruling
+from src.scripture.rulings import eligible_given, is_enriched, latest_ruling
 
 MAX_INSIGHTS = 3
 UNIT_PREFIX = "masar:"
@@ -106,8 +108,6 @@ async def accept(
     db: AsyncSession,
     scene: SceneAnalysis,
     proposed: Iterable[ProposedInsight],
-    *,
-    awaiting_ruling: Iterable[HadithRef] = (),
 ) -> Accepted:
     """Return the insights that pass every check, rewritten to what was verified."""
     refusals: list[str] = []
@@ -135,10 +135,6 @@ async def accept(
                 }
             )
         )
-    for ref in awaiting_ruling:
-        stored = await _hadith(db, ref)
-        if stored is not None:
-            await enqueue_demand(db, stored.id)
     return Accepted(insights=kept, refusals=refusals)
 
 
@@ -161,7 +157,7 @@ async def _checked_quran(
 async def _checked_hadith(
     db: AsyncSession, evidence: EvidenceRef | None, corpus: list[str], refusals: list[str]
 ) -> tuple[EvidenceRef | None, bool]:
-    """Return the hadith kept, and whether its ruling lets it show now."""
+    """Return the hadith kept, and whether it may show now."""
     if evidence is None:
         return None, False
     if not isinstance(evidence.ref, HadithRef):
@@ -174,13 +170,12 @@ async def _checked_hadith(
     # Guarded against even when it is refused: the engine's words may still quote it.
     corpus.append(stored.text)
     ruling = await latest_ruling(db, stored.id)
-    if ruling is None:
-        await enqueue_demand(db, stored.id)
-        return evidence, False
-    if not classification_is_eligible(ruling.classification):
+    if ruling is not None and not eligible_given(ruling, enriched=False):
         refusals.append("hadith_ineligible")
         return None, False
-    return evidence, True
+    return evidence, eligible_given(
+        ruling, enriched=ruling is None and await is_enriched(db, stored.id)
+    )
 
 
 async def _check(

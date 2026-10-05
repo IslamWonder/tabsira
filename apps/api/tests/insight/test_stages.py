@@ -19,6 +19,7 @@ from src.pipeline.engine import (
     RelationType,
     SmallStep,
 )
+from src.pipeline.insight.composer import SYSTEM_PROMPT as COMPOSER_PROMPT
 from src.pipeline.insight.composer import (
     ComposedInsight,
     InsightComposer,
@@ -71,6 +72,7 @@ from src.pipeline.schemas import EvidenceStatus, SceneAction
 from src.retrieval.concepts import ConceptIndex
 from src.retrieval.documents import RetrievalDocument
 from src.scripture.text import without_marks
+from src.services.chat_service import SYSTEM_PROMPT as CHAT_PROMPT
 from tests.fakes import FakeModelClient
 from tests.insight.support import (
     compose_answer,
@@ -434,8 +436,17 @@ def test_the_learner_payload_sends_the_profile_backgrounds_and_leaves_an_unknown
     assert "religious_background" not in learner_payload(LearnerContext())
 
 
+@pytest.mark.parametrize("name", [COMPOSER_PROMPT, CHAT_PROMPT])
+def test_the_writing_prompts_forbid_stating_a_hadiths_grade(name):
+    # Decision 58: a hadith may show before any ruling; a model never says what its grade is.
+    prompt = load_prompt(name).text
+    assert "Never state, imply or weigh the grade or authenticity of a hadith" in prompt
+    assert "verified source" not in prompt
+    assert "verified store" not in prompt
+
+
 def test_the_composer_prompt_rules_on_the_backgrounds_the_payload_sends():
-    prompt = load_prompt("insight_composer_system.v1").text
+    prompt = load_prompt(COMPOSER_PROMPT).text
     rule = next(line for line in prompt.splitlines() if line.startswith("- religious_background"))
     sent = json.loads(
         composer_message(rain_scene(), [], LearnerContext(religious_background="non_muslim"))

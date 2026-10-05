@@ -3,8 +3,8 @@ Making the immutable copy of an insight that a post publishes.
 
 The insight is read through an `InsightSource` and copied once. Every rule that decides what
 may become public is applied here, whatever the source says: the insight must be verified and
-owned by the caller, its evidence must resolve in the scripture store (a hadith only while its
-ruling makes it eligible), none of its platform text may look like scripture, and the photo
+owned by the caller, its evidence must resolve in the scripture store (a hadith only while it
+is eligible, decisions 18 and 58), none of its platform text may look like scripture, and the photo
 is kept only when its owner chose to show it and the scene is not sensitive. Scripture
 itself is never copied: only references are.
 """
@@ -78,7 +78,7 @@ async def _check_evidence(db: AsyncSession, snapshot: InsightSnapshot) -> None:
     if not set(quran) <= set(found.quran):
         _refuse("a verse it cites is not in the store")
     if not set(hadith) <= set(found.hadith):
-        _refuse("a hadith it cites is missing or has no sahih or hasan ruling")
+        _refuse("a hadith it cites is missing or not eligible (decisions 18 and 58)")
 
 
 async def _photo_ref(
@@ -130,8 +130,8 @@ async def check_publishable(db: AsyncSession, snapshot: InsightSnapshot) -> None
 
     The one rule for a post and for an entry of the atlas: the owner did not say they are under
     13 (409 `UNDER_13_CANNOT_PUBLISH`), the insight is verified, every text fits and none reads
-    like scripture, and its evidence resolves in the store, a hadith only with an eligible
-    ruling (decision 18).
+    like scripture, and its evidence resolves in the store, a hadith only while it is eligible
+    (decisions 18 and 58).
     """
     await _refuse_under_13(db, snapshot)
     if not snapshot.verified:

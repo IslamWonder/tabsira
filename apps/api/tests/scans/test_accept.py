@@ -5,18 +5,18 @@ from __future__ import annotations
 from sqlalchemy import select
 
 from src.models import HadithClassification, HadithVerificationQueue
-from src.pipeline.engine import HadithRef
 from src.scans.accept import accept, insight_texts
 from src.scripture.rulings import find_hadith
 from tests.scans.builders import LEAF, entity, hadith, proposed, quran, scene
 from tests.scans.conftest import rule
+from tests.scripture.fixtures import enrich_hadith
 
 
 async def queued(db) -> list[int]:
     return list((await db.scalars(select(HadithVerificationQueue.hadith_id))).all())
 
 
-async def test_a_sound_insight_is_kept_with_its_box_and_its_waiting_hadith_queued(store):
+async def test_a_sound_insight_is_kept_with_its_box_and_its_waiting_hadith(store):
     async with store() as db:
         accepted = await accept(db, scene(), [proposed(entity_ids=["e1", "ghost"])])
 
@@ -25,8 +25,34 @@ async def test_a_sound_insight_is_kept_with_its_box_and_its_waiting_hadith_queue
         assert kept.entity_ids == ["e1"]
         assert kept.anchor == LEAF
         assert kept.hadith is not None
+        # The evidence gate counted the demand when it chose the texts; the check never counts again.
+        assert await queued(db) == []
+
+
+async def test_a_hadith_of_the_enriched_file_shows_at_once(store):
+    async with store() as db:
         stored = await find_hadith(db, "bukhari", "1032")
-        assert await queued(db) == [stored.id]
+        await enrich_hadith(db, stored.id)
+
+        accepted = await accept(db, scene(), [proposed(quran=None)])
+
+        # With no verse, the insight stands on the hadith alone: it is shown now (decision 58).
+        assert accepted.refusals == []
+        assert accepted.insights[0].hadith is not None
+
+
+async def test_an_enriched_hadith_ruled_out_is_dropped_like_any_other(store):
+    async with store() as db:
+        stored = await find_hadith(db, "bukhari", "1032")
+        await enrich_hadith(db, stored.id)
+        await rule(db, "bukhari", "1032", HadithClassification.MAWDU)
+
+        accepted = await accept(db, scene(), [proposed()])
+
+        # A ruling, once recorded, decides alone (decision 58).
+        assert accepted.insights[0].hadith is None
+        assert "hadith_ineligible" in accepted.refusals
+        assert await queued(db) == []
 
 
 async def test_a_ruled_hadith_is_kept_and_a_weak_one_is_dropped(store):
@@ -102,21 +128,6 @@ async def test_a_unit_outside_its_path_version_is_dropped_and_three_insights_at_
     assert accepted.insights[0].learning_path_version is None
     assert accepted.insights[0].anchor is None
     assert accepted.refusals == ["unknown_unit", "unknown_unit"]
-
-
-async def test_the_hadith_the_engine_waits_for_are_counted_in_the_queue(store):
-    async with store() as db:
-        await accept(
-            db,
-            scene(),
-            [],
-            awaiting_ruling=[
-                HadithRef(collection="muslim", number="3"),
-                HadithRef(collection="bukhari", number="999999"),
-            ],
-        )
-        stored = await find_hadith(db, "muslim", "3")
-        assert await queued(db) == [stored.id]
 
 
 def test_every_text_the_engine_wrote_is_looked_at():

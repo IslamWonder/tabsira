@@ -9,9 +9,9 @@ the learner's own words, and goes through the engine's stages as a scan does:
 - the hybrid search of `src.pipeline.insight.search`, with the embedding and
   the reranker the settings name, the insight's own texts left out;
 - the verifier, judging the shortlist against the scan's stored scene;
-- the gate, with its rules unchanged: a hadith without an eligible ruling is
-  queued for an editor (decision 18) and never shown, a remote companion is
-  dropped.
+- the gate, with its rules unchanged: a hadith that is not eligible
+  (decisions 18 and 58) is queued for an editor and never shown, a remote
+  companion is dropped.
 
 The cost is one embedding call and one verifier call. Nothing here writes a
 text: the result is references, read from the store by the view.
@@ -54,7 +54,7 @@ class NewText:
 
     verse: QuranVerseOut | None = None
     hadith: HadithOut | None = None
-    # The hadith the gate wanted that waits for an editor's ruling (decision 18).
+    # The hadith the gate wanted that waits for an editor's ruling (decisions 18 and 58).
     awaiting: list[HadithRef] = field(default_factory=list)
 
     @property

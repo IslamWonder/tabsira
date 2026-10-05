@@ -13,7 +13,9 @@ or footnote), folded like the search copies, and scored against every hadith
 by the IDF-weighted share of its word 3-grams the hadith contains. A hadith
 that covers at least half is a match. Each book keeps its best match; a book
 the compiler cites («[خ 8، م 16]») ranks before one it does not, then the
-higher coverage; the first is the link. The folded
+higher coverage; the first is the link. Each match says whether its book is
+one the compiler cites (`cited`): with its coverage, that decides whether a
+hadith counts as the file's own when it has no ruling yet (decision 58). The folded
 copies serve the matching only. The record's own narration is not stored, and
 its `summary` and `modern_rephrase` are stored under names that say a model
 wrote them; neither is ever shown as hadith text.
@@ -221,6 +223,7 @@ def _best_per_collection(
                 "collection": collection,
                 "number": number,
                 "coverage": round(coverage, 3),
+                "cited": collection in cited,
                 "_order": order,
             }
     ranked = sorted(

@@ -36,5 +36,5 @@ $scene_table
 ## Limits
 
 - Fifteen generated scenes, one run each: a p95 over so few samples is close to the maximum, and real photos may behave differently.
-- No hadith has an editor's ruling yet (decision 18), so every insight carries its verse alone and the hadiths it wanted wait in the verification queue; the hadith half of the pipeline (relevance, queueing) runs, the display of a hadith does not.
+- A hadith shows only once ruled صحيح or حسن (decision 18), or before any ruling when it counts as one of the enriched Sunnah file's (decision 58); the hadiths an insight wanted that are neither wait in the verification queue.
 - The checks are rules: they prove that no scripture leaked and that every reference is real, not that an explanation is good Arabic or a wise choice. Read the raw answers before trusting a small difference.

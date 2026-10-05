@@ -5,7 +5,7 @@ Publishing is the owner's own act and needs a signed-in, verified account (decis
 guest's insight is never public, and neither is anything of an account that declared it is
 under 13 (v2 §5: a declared fact, never an inference). Whether it may be public is decided
 here, whatever the caller says: it must come from the real analysis, not be shaped by the profile, carry at least one
-text shown from the store (a verse, or a hadith whose ruling allows it), none of its platform
+text shown from the store (a verse, or a hadith that is eligible, decisions 18 and 58), none of its platform
 text may look like scripture (the check the analysis applies), and its scene must not be
 sensitive. A public insight names no photo, no scan, no place and no exact point, and says
 about its owner only the handle and public name they chose.

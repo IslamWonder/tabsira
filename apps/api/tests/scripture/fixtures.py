@@ -30,6 +30,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.models import HadithSignal
 from src.scripture.files import bytes_sha256
 from src.scripture.guard import WritePurpose, allow_scripture_writes
 from src.scripture.hadith import COLLECTIONS, CollectionSource, import_collection, parse_source
@@ -123,3 +124,29 @@ async def store_hadiths(session: AsyncSession) -> None:
     for source in fixture_sources():
         data = fixture_path(HADITH_FIXTURES[source.slug]).read_bytes()
         await import_collection(session, source, parse_source(source, data))
+
+
+async def enrich_hadith(
+    session: AsyncSession,
+    hadith_id: int,
+    record: str = "t1",
+    *,
+    coverage: float = 1.0,
+    cited: bool = True,
+) -> None:
+    """Link a record of the enriched Sunnah file to a hadith, as the signals import does."""
+    session.add(
+        HadithSignal(
+            source_record_id=record,
+            hadith_id=hadith_id,
+            match_coverage=coverage,
+            matches=[{"hadith_id": hadith_id, "coverage": coverage, "cited": cited}],
+            semantic_tags=[],
+            key_concepts=[],
+            topics_for_retrieval=[],
+            sciences={},
+            generated_by_model="test",
+            source_sha256="0" * 64,
+        )
+    )
+    await session.flush()

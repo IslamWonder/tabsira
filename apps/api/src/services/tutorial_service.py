@@ -4,9 +4,10 @@ The rain tutorial (v2 §4): a prepared, reviewed example, hydrated from the stor
 The scene is data (`data/tutorial/rain-<version>.json`) with its two insights:
 «الحياة في قطرة» (Ar-Rum 30:50, al-Bukhari 1032) and «الغرس الذي يتعدّاك»
 (al-An'am 6:99, al-Bukhari 2320), cited by reference only. Every text of
-scripture is read from the store as the read API shows it. A hadith shows only
-once an editor has recorded its dorar.net ruling and it reads صحيح or حسن; until
-then the insight shows its verse alone and says the hadith waits for
+scripture is read from the store as the read API shows it. A hadith shows once
+an editor has recorded its dorar.net ruling and it reads صحيح or حسن, or before
+any ruling when it counts as one of the enriched Sunnah file's (decision 58);
+otherwise the insight shows its verse alone and says the hadith waits for
 verification. The whole answer is labelled «مثال موثّق مُعدّ». A learner who
 completes one keeps a copy of it, so «تمّ», the world and the chat work on it
 exactly as on an insight of their own photo.

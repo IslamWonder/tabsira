@@ -4,9 +4,11 @@ An insight as its owner sees it: every text of scripture read from the store by 
 Nothing a model wrote is ever shown as Quran or hadith. The verse and the
 hadith come from the scripture read API's own readers (exact text, hash,
 spans, quranpedia link, «تحقق في الدرر» link, the editor's dorar.net ruling).
-A hadith is shown only when its ruling in force is صحيح or حسن (decision 18);
-without a ruling the insight says it waits for verification and shows the
-verse alone; with any other ruling it is not shown at all. A small step that
+A hadith is shown only when it is eligible: its ruling in force is صحيح or حسن
+(decision 18), or it has none yet and counts as one of the enriched Sunnah
+file's (decision 58); any other hadith without a ruling makes the insight say
+it waits for verification and show the verse alone; with any other ruling it is
+not shown at all. A small step that
 rests on a text that is not shown is not shown either.
 
 Rendering to the owner is recorded: `describe` writes a `shown` exposure the first
@@ -216,7 +218,7 @@ async def found_texts(
     Read the texts an answer found by itself (a request for another text, v2 §14).
 
     They are the evidence ids of the row that the insight does not show, read from the
-    store by id; a hadith shows only while its ruling is eligible. None when any of them
+    store by id; a hadith shows only while it is eligible (decisions 18 and 58). None when any of them
     is not in the store or not eligible: the answer is then no longer shown.
     """
     verse: QuranVerseOut | None = None

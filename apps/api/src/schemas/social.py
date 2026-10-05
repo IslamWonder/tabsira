@@ -113,14 +113,21 @@ class QuranEvidenceOut(BaseModel):
 
 
 class HadithEvidenceOut(BaseModel):
-    """A hadith read from the scripture store, shown only while its ruling is صحيح or حسن."""
+    """
+    A hadith read from the scripture store, shown only while it is eligible.
+
+    Its ruling is صحيح or حسن, or it has no ruling and belongs to the enriched Sunnah file
+    (decision 58).
+    """
 
     collection: str
     collection_name: str
     number: str
     text: str = Field(description="Exactly as stored; never normalised")
     sha256: str = Field(description="SHA-256 of the UTF-8 bytes of `text`")
-    classification: HadithClassification
+    classification: HadithClassification | None = Field(
+        description="The editor's reading of the ruling in force; null when none is recorded yet"
+    )
     verification_url: str = Field(
         description="A dorar.net search the reader opens («تحقق في الدرر»)"
     )

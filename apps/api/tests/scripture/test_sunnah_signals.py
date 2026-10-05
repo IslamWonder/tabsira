@@ -13,6 +13,7 @@ from src.scripture.files import file_sha256
 from src.scripture.sunnah import (
     SunnahImportError,
     TrigramMatcher,
+    _best_per_collection,
     cited_collections,
     import_signals,
     main_narration,
@@ -150,9 +151,24 @@ async def test_records_are_linked_to_the_hadith_their_text_matches(db_session):
     assert numbers[signals["1535"].hadith_id] == "1032"
     assert signals["1"].matches[0]["collection"] == "bukhari"
     assert signals["1"].match_coverage == signals["1"].matches[0]["coverage"] >= 0.5
+    # Each match says whether the compiler cites its book (decision 58); record 1 cites خ and م.
+    assert signals["1"].matches[0]["cited"] is True
+    assert numbers[signals["1535"].hadith_id] == "1032"
+    assert signals["1535"].matches[0]["cited"] is True
     assert signals["3"].hadith_id is None
     assert signals["3"].matches == []
     assert signals["617"].hadith_id is None
+
+
+def test_a_book_the_compiler_does_not_cite_is_marked_so_and_ranks_after_a_cited_one():
+    about = {1: ("muslim", "16", 1), 2: ("abudawud", "40", 2)}
+
+    matches = _best_per_collection([(2, 0.97), (1, 0.81)], about, {"muslim"})
+
+    assert [(m["collection"], m["cited"]) for m in matches] == [
+        ("muslim", True),
+        ("abudawud", False),
+    ]
 
 
 async def test_signals_keep_what_the_model_wrote_under_names_that_say_so(db_session):

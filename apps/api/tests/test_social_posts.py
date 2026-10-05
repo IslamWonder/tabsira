@@ -188,9 +188,9 @@ async def test_publishing_without_an_insight_source_answers_503(account_app, mak
             {"quran_refs": (QuranRef(112, 1), QuranRef(114, 99))},
             "verse it cites is not in the store",
         ),
-        ({"hadith_refs": (HadithRef("bukhari", "9999"),)}, "missing or has no sahih"),
-        ({"hadith_refs": (HadithRef("bukhari", "8"),)}, "missing or has no sahih"),
-        ({"hadith_refs": (HadithRef("muslim", "1"),)}, "missing or has no sahih"),
+        ({"hadith_refs": (HadithRef("bukhari", "9999"),)}, "missing or not eligible"),
+        ({"hadith_refs": (HadithRef("bukhari", "8"),)}, "missing or not eligible"),
+        ({"hadith_refs": (HadithRef("muslim", "1"),)}, "missing or not eligible"),
         ({"glimpse": "قال تعالى: «قل هو الله أحد الله الصمد»"}, "looks like scripture"),
         ({"explanation_excerpt": "﴿قُلْ هُوَ ٱللَّهُ أَحَدٌ﴾"}, "looks like scripture"),  # noqa: RUF001 - the ornate brackets are the point
     ],

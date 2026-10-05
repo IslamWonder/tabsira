@@ -1,32 +1,58 @@
 """
-Editorial grading from dorar.net (decision 18): rulings, eligibility and the verification queue.
+Editorial grading from dorar.net (decisions 18 and 58): rulings, eligibility and the verification queue.
 
 dorar.net is never called from the server. An editor opens it in a browser and
 records the ruling exactly as dorar gives it, with the scholar, the book and
 page, the dorar page address, and the editor's reading of it as one of five
 classifications. Rulings are only ever added (the database refuses to change
-or remove one); the latest is the one in force. A hadith is eligible as
-evidence only when that latest ruling reads صحيح or حسن; a hadith the pipeline
-wanted but that has no ruling yet waits in a queue ordered by demand, and the
-insight shows its verse alone meanwhile. The dataset grades never decide.
+or remove one); the latest is the one in force.
+
+Eligibility as evidence: a hadith with a ruling is eligible when that ruling
+reads صحيح or حسن, and never otherwise. A hadith with no ruling yet is eligible
+when it is one of the hadiths of the enriched Sunnah file (decision 58): a record
+of the owners' 3920 (`hadith_signals`) links to it as its best match, at a
+coverage of at least ENRICHED_MIN_COVERAGE and in a book the record itself cites,
+and no grader of the dataset calls it weak. Any other hadith the pipeline wanted
+waits in a queue ordered by demand, and the insight shows its verse alone
+meanwhile. A dataset grade never makes a hadith eligible; a weak one only keeps
+an unruled hadith waiting (decision 58 amends decision 17).
 """
 
 from __future__ import annotations
 
 import re
 import uuid
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 
 from pydantic import BaseModel, field_validator
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, exists, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import Hadith, HadithClassification, HadithRuling, HadithVerificationQueue
+from src.models import (
+    Hadith,
+    HadithClassification,
+    HadithRuling,
+    HadithSignal,
+    HadithVerificationQueue,
+)
 from src.scripture.errors import ScriptureError
 
 ELIGIBLE = frozenset({HadithClassification.SAHIH, HadithClassification.HASAN})
+# Decision 58: the share of a record's word runs the hadith must hold for the link to count.
+ENRICHED_MIN_COVERAGE = 0.8
+# The dataset grades that call a narration weak: the English transliterations of the
+# imported books (docs/ASSET_MANIFEST.md §3: ضعيف in every spelling, منكر, موضوع, باطل, شاذ,
+# معلول, مرسل), the other usual spellings, and the Arabic words a later import may carry.
+WEAK_GRADE = re.compile(
+    r"da['\u02bf\u2019]?e?if|dhaif|munkar|maw?du|maudu|batil|shaa?dh|malool|ma['\u02bf\u2019]?lul"
+    r"|mursal"
+    r"|matr[ou]+k|munqati|mudtarib"
+    r"|ضعيف|منكر|موضوع|باطل|شاذ|معلول|مرسل|متروك|منقطع|مضطرب",
+    re.IGNORECASE,
+)
 # Written out again as the check constraint of `hadith_rulings.dorar_url`; a test keeps them equal.
 DORAR_PAGE = re.compile(r"https://(www\.)?dorar\.net/\S+")
 
@@ -82,6 +108,50 @@ def classification_is_eligible(classification: HadithClassification | None) -> b
     return classification in ELIGIBLE
 
 
+def eligible_given(ruling: HadithRuling | None, *, enriched: bool) -> bool:
+    """
+    Decide eligibility from what is already read.
+
+    The ruling in force, when there is one, decides alone; without one, a hadith of the
+    enriched Sunnah file is eligible (decision 58).
+    """
+    if ruling is not None:
+        return classification_is_eligible(ruling.classification)
+    return enriched
+
+
+def weak_by_dataset(grades: Iterable[Mapping[str, str]] | None) -> bool:
+    """Tell whether any grader of the dataset calls the narration weak."""
+    return any(WEAK_GRADE.search(str(grade.get("grade", ""))) for grade in grades or ())
+
+
+async def enriched_among(session: AsyncSession, hadith_ids: Iterable[int]) -> set[int]:
+    """
+    Return which of these hadiths count as the enriched Sunnah file's (decision 58), in one query.
+
+    A record's link counts only as its best match (`hadith_id`), at ENRICHED_MIN_COVERAGE or
+    more, into a book the record cites (the import marks that match `cited`); a hadith any
+    dataset grader calls weak does not count, whatever links to it.
+    """
+    wanted = sorted(set(hadith_ids))
+    if not wanted:
+        return set()
+    strong_link = exists().where(
+        HadithSignal.hadith_id == Hadith.id,
+        HadithSignal.match_coverage >= ENRICHED_MIN_COVERAGE,
+        HadithSignal.matches[0]["cited"].as_boolean().is_(True),
+    )
+    rows = await session.execute(
+        select(Hadith.id, Hadith.informational_grades).where(Hadith.id.in_(wanted), strong_link)
+    )
+    return {row.id for row in rows if not weak_by_dataset(row.informational_grades)}
+
+
+async def is_enriched(session: AsyncSession, hadith_id: int) -> bool:
+    """Tell whether the hadith counts as one of the enriched Sunnah file's (decision 58)."""
+    return hadith_id in await enriched_among(session, [hadith_id])
+
+
 async def latest_ruling(session: AsyncSession, hadith_id: int) -> HadithRuling | None:
     """Return the ruling in force for a hadith: the last one recorded, or None."""
     result: HadithRuling | None = await session.scalar(
@@ -94,16 +164,25 @@ async def latest_ruling(session: AsyncSession, hadith_id: int) -> HadithRuling |
 
 
 async def is_eligible(session: AsyncSession, hadith_id: int) -> bool:
-    """Return whether the hadith may be shown as evidence: its latest ruling is صحيح or حسن."""
+    """
+    Return whether the hadith may be shown as evidence.
+
+    Its latest ruling is صحيح or حسن, or it has no ruling and belongs to the enriched Sunnah
+    file (decision 58).
+    """
     ruling = await latest_ruling(session, hadith_id)
-    return classification_is_eligible(ruling.classification if ruling else None)
+    if ruling is not None:
+        return eligible_given(ruling, enriched=False)
+    return await is_enriched(session, hadith_id)
 
 
 async def enqueue_demand(session: AsyncSession, hadith_id: int) -> bool:
     """
     Count one more request for a hadith that has no ruling yet.
 
-    Return False, and queue nothing, when the hadith already has a ruling.
+    A hadith that shows before its ruling (decision 58) is counted too, so editors rule the
+    most shown first; whether the insight waits is the caller's to decide. Return False, and
+    queue nothing, when the hadith already has a ruling.
     """
     if await latest_ruling(session, hadith_id) is not None:
         return False

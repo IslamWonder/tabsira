@@ -437,10 +437,7 @@ async def _conclude(job: Run, scene: SceneAnalysis, result: EngineResult) -> str
     started = job.services.timer()
     async with job.services.sessionmaker() as db:
         accepted = await accept(
-            db,
-            scene,
-            result.insights if result.status is EngineStatus.OK else [],
-            awaiting_ruling=result.awaiting_ruling,
+            db, scene, result.insights if result.status is EngineStatus.OK else []
         )
         question = await _question(db, result)
         if accepted.insights:

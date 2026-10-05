@@ -23,7 +23,7 @@ from tests.insight.support import (
     verdict,
 )
 from tests.insight.test_engine import make_engine, verify_all
-from tests.scripture.fixtures import verse_text
+from tests.scripture.fixtures import enrich_hadith, verse_text
 
 CANDIDATE = PlannedCandidate(
     title="t",
@@ -102,6 +102,18 @@ async def test_a_wanted_hadith_waiting_for_its_ruling_is_never_replaced_by_anoth
     assert [ref.number for ref in result.awaiting] == [
         await store.scalar(select(Hadith.number).where(Hadith.id == wanted))
     ]
+
+
+async def test_a_wanted_hadith_of_the_enriched_file_shows_without_waiting_for_a_ruling(store):
+    verse, wanted, sibling = await _ids(store)
+    await enrich_hadith(store, wanted)
+    await _rule(store, sibling, HadithClassification.SAHIH)
+
+    result = await _gate(store, verse, [wanted, sibling], Q1="strong", H1="strong", H2="strong")
+
+    # Decision 58: no ruling, but one of the enriched file's hadiths: it shows, nothing waits.
+    assert result.hadith.found.key == wanted
+    assert result.awaiting == []
 
 
 async def test_a_wanted_hadith_ruled_weak_gives_way_to_an_equally_strong_sound_one(store):

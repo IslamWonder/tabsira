@@ -6,7 +6,8 @@ occasion: first the other source anchors of the completed insight's own unit
 (another text of the same weight), then the anchors of the units of the same
 domain that name this unit as their prerequisite (a deeper meaning on the same
 road). A candidate is kept only when the store holds its text, a hadith only
-when its editor's ruling is صحيح or حسن, and never a text the insight showed or
+when it is eligible (its editor's ruling is صحيح or حسن, or it has no ruling and
+belongs to the enriched Sunnah file, decision 58), and never a text the insight showed or
 the learner has already met. A range of verses is skipped: a treasure is one
 whole text. An insight with no valid candidate gets no treasure.
 
@@ -28,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import Hadith, LearningUnit, QuranVerse, TreasureKind
 from src.pipeline.engine import HadithRef, QuranRef
-from src.scripture.rulings import classification_is_eligible, latest_ruling
+from src.scripture.rulings import is_eligible
 
 _QURAN_ANCHOR = re.compile(r"^Q:(\d{1,3}):(\d{1,3})$")
 _HADITH_ANCHOR = re.compile(r"^H:([a-z]{2,32}):([0-9A-Za-z.]{1,32})$")
@@ -119,7 +120,7 @@ async def unit_infos(db: AsyncSession, path_version: str) -> list[UnitInfo]:
 
 
 async def verified(db: AsyncSession, ref: Reference) -> bool:
-    """Tell whether the store holds the text, and a hadith's ruling in force makes it evidence."""
+    """Tell whether the store holds the text, and a hadith is eligible as evidence."""
     if isinstance(ref, QuranRef):
         found = await db.scalar(
             select(QuranVerse.id).where(QuranVerse.surah == ref.surah, QuranVerse.ayah == ref.ayah)
@@ -130,8 +131,7 @@ async def verified(db: AsyncSession, ref: Reference) -> bool:
     )
     if hadith_id is None:
         return False
-    ruling = await latest_ruling(db, hadith_id)
-    return ruling is not None and classification_is_eligible(ruling.classification)
+    return await is_eligible(db, hadith_id)
 
 
 async def choose(

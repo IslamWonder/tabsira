@@ -5,11 +5,13 @@ Step one is eligibility and relevance, never traded for anything else (masar
 §10.3, v2 §11):
 
 - a verse is eligible: the store holds it exactly as quranpedia gives it;
-- a hadith is eligible only when its latest dorar.net ruling, recorded by an
-  editor, is صحيح or حسن (decision 18, `rulings.is_eligible`). A hadith the
-  insight wanted that has no ruling yet is queued for an editor, ordered by
-  demand, and listed in `awaiting_ruling`; the insight then carries its verse
-  alone, never a weaker or distant hadith in its place;
+- a hadith is eligible when its latest dorar.net ruling, recorded by an
+  editor, is صحيح or حسن (decision 18), or when it has no ruling yet and counts
+  as one of the enriched Sunnah file's hadiths (decision 58; `rulings.is_eligible`).
+  Any other hadith the insight wanted that has no ruling yet is queued for an
+  editor, ordered by demand, and listed in `awaiting_ruling`; the insight then
+  carries its verse alone, never a weaker or distant hadith in its place. A
+  hadith shown before its ruling is counted in the same queue, waiting for nothing;
 - relevance is judged by the verifier (a chat model, structured output): for
   each text, whether its own meaning carries the concept, how strongly, and
   how it relates to the scene. Texts are labelled Q1, H1 ...: the model never
@@ -318,6 +320,10 @@ async def gate(
         else:
             result.hadith = pick(eligible, seen_hadiths)
     _drop_remote_companion(result)
+    if result.hadith is not None:
+        # Decision 58: shown before any ruling, it still counts as demand for an editor. The gate
+        # is the one place that counts, for a scan and for the chat; a ruled hadith is not counted.
+        await rulings.enqueue_demand(session, result.hadith.found.key)
     if result.quran is not None:
         result.quran_ref = await quran_ref(session, result.quran.found.key)
     if result.hadith is not None:

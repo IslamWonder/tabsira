@@ -9,7 +9,14 @@ from pydantic import ValidationError
 from sqlalchemy import CheckConstraint, select
 
 from src.cli import record_ruling as ruling_command
-from src.models import Hadith, HadithClassification, HadithRuling, HadithVerificationQueue
+from src.models import (
+    Hadith,
+    HadithClassification,
+    HadithRuling,
+    HadithSignal,
+    HadithVerificationQueue,
+)
+from src.scripture.guard import WritePurpose, allow_scripture_writes
 from src.scripture.links import distinctive_words, dorar_search_url, quranpedia_verse_url
 from src.scripture.rulings import (
     DORAR_PAGE as DORAR_RULE,
@@ -17,16 +24,20 @@ from src.scripture.rulings import (
 from src.scripture.rulings import (
     RulingError,
     RulingInput,
+    eligible_given,
     enqueue_demand,
+    enriched_among,
     find_hadith,
     is_eligible,
+    is_enriched,
     latest_ruling,
     record_ruling,
     verification_queue,
+    weak_by_dataset,
 )
 from src.scripture.spans import SpanRole, hadith_spans
 from src.scripture.text import search_copy
-from tests.scripture.fixtures import hadith_text, store_hadiths
+from tests.scripture.fixtures import enrich_hadith, hadith_text, store_hadiths
 
 DORAR_PAGE = "https://dorar.net/h/abc123"
 
@@ -71,6 +82,149 @@ async def test_only_a_latest_ruling_of_sahih_or_hasan_makes_a_hadith_eligible(ha
     latest = await latest_ruling(hadith_session, hadith.id)
     assert latest is not None
     assert latest.classification is HadithClassification.DISPUTED
+
+
+async def test_a_hadith_of_the_enriched_file_shows_without_a_ruling_and_is_still_counted(
+    hadith_session,
+):
+    # Decision 58: no ruling, and a strong link from a record of the file: it shows now, and
+    # still counts as demand so editors rule the most shown first.
+    hadith = await _hadith(hadith_session)
+    other = await _hadith(hadith_session, "muslim", "113")
+    await enrich_hadith(hadith_session, hadith.id)
+
+    assert await is_enriched(hadith_session, hadith.id) is True
+    assert await is_enriched(hadith_session, other.id) is False
+    assert await is_eligible(hadith_session, hadith.id) is True
+    assert await is_eligible(hadith_session, other.id) is False
+    assert await enqueue_demand(hadith_session, hadith.id) is True
+    queued = (await hadith_session.scalars(select(HadithVerificationQueue))).all()
+    assert [(row.hadith_id, row.demand_count) for row in queued] == [(hadith.id, 1)]
+
+
+@pytest.mark.parametrize(
+    ("classification", "eligible"),
+    [
+        (HadithClassification.SAHIH, True),
+        (HadithClassification.HASAN, True),
+        (HadithClassification.DAIF, False),
+        (HadithClassification.MAWDU, False),
+        (HadithClassification.DISPUTED, False),
+    ],
+)
+async def test_once_ruled_an_enriched_hadith_follows_its_ruling_alone(
+    hadith_session, classification, eligible
+):
+    hadith = await _hadith(hadith_session)
+    await enrich_hadith(hadith_session, hadith.id)
+
+    await record_ruling(hadith_session, hadith.id, _ruling(classification))
+
+    assert await is_eligible(hadith_session, hadith.id) is eligible
+    # A ruled hadith is no longer counted: it waits for nothing.
+    assert await enqueue_demand(hadith_session, hadith.id) is False
+
+
+@pytest.mark.parametrize(
+    ("coverage", "cited"),
+    [(0.79, True), (1.0, False)],
+    ids=["a weak link", "a book the record does not cite"],
+)
+async def test_only_a_strong_link_into_a_cited_book_counts(hadith_session, coverage, cited):
+    hadith = await _hadith(hadith_session)
+    await enrich_hadith(hadith_session, hadith.id, coverage=coverage, cited=cited)
+
+    assert await is_enriched(hadith_session, hadith.id) is False
+    assert await is_eligible(hadith_session, hadith.id) is False
+
+
+async def test_a_link_counts_only_from_a_records_best_match(hadith_session):
+    linked = await _hadith(hadith_session)
+    second = await _hadith(hadith_session, "muslim", "113")
+    hadith_session.add(
+        HadithSignal(
+            source_record_id="r9",
+            hadith_id=linked.id,
+            match_coverage=1.0,
+            matches=[
+                {"hadith_id": linked.id, "coverage": 1.0, "cited": True},
+                {"hadith_id": second.id, "coverage": 0.95, "cited": True},
+            ],
+            semantic_tags=[],
+            key_concepts=[],
+            topics_for_retrieval=[],
+            sciences={},
+            generated_by_model="test",
+            source_sha256="0" * 64,
+        )
+    )
+    await hadith_session.flush()
+
+    assert await enriched_among(hadith_session, [linked.id, second.id]) == {linked.id}
+
+
+async def test_a_hadith_a_dataset_grader_calls_weak_waits_for_an_editor(hadith_session):
+    hadith = await _hadith(hadith_session)
+    await enrich_hadith(hadith_session, hadith.id)
+    # The grade only, never the text: what a dataset grader said of this narration.
+    await allow_scripture_writes(hadith_session, WritePurpose.IMPORT)
+    hadith.informational_grades = [
+        {"name": "Al-Albani", "grade": "Hasan Sahih"},
+        {"name": "Zubair Ali Zai", "grade": "Isnaad Daif"},
+    ]
+    await hadith_session.flush()
+
+    assert await is_enriched(hadith_session, hadith.id) is False
+    assert await is_eligible(hadith_session, hadith.id) is False
+
+
+def test_the_weak_grades_of_the_datasets_are_recognised_in_every_spelling():
+    for grade in (
+        "Daif",
+        "Very Daif",
+        "Daif Isnaad",
+        "Sanad Daif",
+        "Mauquf Daif",
+        "Munkar",
+        "Mawdu",
+        "Batil",
+        "Shadh, Sahih",
+        "Isnaad Malool",
+        "Mursal",
+        "Da'if",
+        "Maudu",
+        "Matruk",
+        "Munqati",
+        "Mudtarib",
+        "ضعيف جدا",
+        "موضوع",
+        "منكر",
+    ):
+        assert weak_by_dataset([{"name": "x", "grade": grade}]), grade
+    for grade in ("Sahih", "Hasan Sahih", "Isnaad Hasan", "Mauquf Sahih", "Maqtu Hasan", "-"):
+        assert not weak_by_dataset([{"name": "x", "grade": grade}]), grade
+    assert not weak_by_dataset(None)
+    assert not weak_by_dataset([])
+
+
+async def test_the_enriched_hadiths_are_found_in_one_query(hadith_session):
+    first = await _hadith(hadith_session)
+    second = await _hadith(hadith_session, "muslim", "113")
+    await enrich_hadith(hadith_session, first.id, "r1")
+    await enrich_hadith(hadith_session, first.id, "r2")
+
+    assert await enriched_among(hadith_session, []) == set()
+    assert await enriched_among(hadith_session, [first.id, second.id]) == {first.id}
+
+
+def test_eligibility_from_what_is_already_read():
+    sahih = HadithRuling(classification=HadithClassification.SAHIH)
+    daif = HadithRuling(classification=HadithClassification.DAIF)
+
+    assert eligible_given(None, enriched=True) is True
+    assert eligible_given(None, enriched=False) is False
+    assert eligible_given(sahih, enriched=False) is True
+    assert eligible_given(daif, enriched=True) is False
 
 
 async def test_a_ruling_is_kept_exactly_as_typed(hadith_session):

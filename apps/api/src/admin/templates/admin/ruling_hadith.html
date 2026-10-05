@@ -30,7 +30,7 @@
         {% if hadith.book_name %}<dt class="col-4">Book</dt><dd class="col-8" dir="rtl" lang="ar">{{ hadith.book_name }}</dd>{% endif %}
         <dt class="col-4">In the queue</dt>
         <dd class="col-8">{% if queued %}wanted {{ queued.demand_count }} times, first {{ queued.first_requested_at.strftime('%Y-%m-%d %H:%M') }}{% else %}no{% endif %}</dd>
-        <dt class="col-4">Eligible as evidence</dt><dd class="col-8">{{ 'yes' if eligible else 'no' }}</dd>
+        <dt class="col-4">Eligible as evidence</dt><dd class="col-8">{{ 'yes' if eligible else 'no' }}{% if eligible and not history and enriched %} (no ruling yet: shown as one of the enriched Sunnah file's hadiths, decision 58){% endif %}</dd>
       </dl>
     </div>
   </div>
@@ -55,7 +55,7 @@
       </table>
     </div>
     {% else %}
-    <div class="card-body">None yet. Until one reads صحيح or حسن, insights show the verse alone.</div>
+    <div class="card-body">None yet. Until one reads صحيح or حسن, insights show the verse alone, unless the hadith counts as one of the enriched Sunnah file's (decision 58).</div>
     {% endif %}
   </div>
 </div>

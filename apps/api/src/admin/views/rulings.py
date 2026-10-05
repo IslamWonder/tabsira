@@ -39,6 +39,7 @@ from src.scripture.rulings import (
     QueuedHadith,
     RulingInput,
     is_eligible,
+    is_enriched,
     record_ruling,
     verification_queue,
 )
@@ -183,6 +184,8 @@ class RulingsQueueView(BaseView):
             "history": history,
             # The pipeline's own answer, so this page and an insight never disagree.
             "eligible": await is_eligible(db, hadith.id),
+            # Decision 58: shown before any ruling, as one of the enriched Sunnah file's hadiths.
+            "enriched": await is_enriched(db, hadith.id),
             "classifications": list(HadithClassification),
             "values": values,
             "error": error,

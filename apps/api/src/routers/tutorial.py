@@ -23,7 +23,8 @@ async def rain(db: DbDep) -> TutorialOut:
     Return the rain scene with «الحياة في قطرة» and «الغرس الذي يتعدّاك».
 
     The verses come from the store; each hadith shows once an editor has
-    recorded its dorar.net ruling, and until then the insight says so.
+    recorded its dorar.net ruling, or before it when it counts as one of the
+    enriched Sunnah file's (decision 58), and otherwise the insight says it waits.
     """
     return await tutorial_service.describe(db, load_tutorial())
 

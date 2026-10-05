@@ -7,12 +7,18 @@ from typing import Any
 
 import httpx
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import OperationalError
 
 from src.ai.errors import AiCallError, AiErrorCode
 from src.config import AiProvider
-from src.models import Hadith, HadithClassification, HadithVerificationQueue, QuranVerse
+from src.models import (
+    Hadith,
+    HadithClassification,
+    HadithSignal,
+    HadithVerificationQueue,
+    QuranVerse,
+)
 from src.pipeline.engine import (
     EngineRequest,
     EngineStage,
@@ -101,7 +107,46 @@ def make_engine(
     return engine, client
 
 
+async def _outside_the_enriched_file(maker) -> None:
+    """Unlink every record of the enriched Sunnah file: no hadith is one of its hadiths any more."""
+    async with maker() as session, session.begin():
+        await session.execute(update(HadithSignal).values(hadith_id=None))
+
+
+async def _strongly_linked(maker) -> None:
+    """Make every record's link strong and into a book it cites, as decision 58 asks."""
+    async with maker() as session, session.begin():
+        linked = await session.scalars(
+            select(HadithSignal).where(HadithSignal.hadith_id.is_not(None))
+        )
+        for signal in linked.all():
+            first, *rest = signal.matches
+            signal.match_coverage = 1.0
+            signal.matches = [{**first, "coverage": 1.0, "cited": True}, *rest]
+
+
+async def test_a_rain_scene_hadith_of_the_enriched_file_shows_beside_its_verse(maker):
+    await _strongly_linked(maker)
+    engine, _ = make_engine(
+        maker,
+        [plan_answer(planned()), verify_all(), compose_answer(composed())],
+    )
+
+    result = await engine.propose(EngineRequest(scan_id="s0", scene=rain_scene()))
+
+    assert result.status is EngineStatus.OK
+    (insight,) = result.insights
+    assert isinstance(insight.quran.ref, QuranRef)
+    # Decision 58: no ruling yet, but one of the enriched file's hadiths: it shows now, and is
+    # counted once for an editor while nothing waits for it.
+    assert isinstance(insight.hadith.ref, HadithRef)
+    assert result.awaiting_ruling == []
+    async with maker() as session:
+        assert await session.scalar(select(HadithVerificationQueue.demand_count)) == 1
+
+
 async def test_a_rain_scene_gets_an_insight_backed_by_its_verse_while_the_hadith_waits(maker):
+    await _outside_the_enriched_file(maker)
     engine, client = make_engine(
         maker,
         [plan_answer(planned()), verify_all(), compose_answer(composed())],
@@ -123,7 +168,7 @@ async def test_a_rain_scene_gets_an_insight_backed_by_its_verse_while_the_hadith
     assert set(result.stage_ms) == set(stages)
     (insight,) = result.insights
     assert isinstance(insight.quran.ref, QuranRef)
-    # No hadith has an editor's ruling: the insight carries its verse alone.
+    # No hadith has an editor's ruling or is enriched: the insight carries its verse alone.
     assert insight.hadith is None
     assert [part.section for part in insight.explanation] == ["seen", "value", "quran", "life"]
     assert insight.explanation[0].sources == ["masar:T01_06"]
@@ -342,6 +387,7 @@ async def test_a_model_failure_and_a_store_failure_are_told_apart(maker, monkeyp
 
 
 async def test_a_composer_that_keeps_leaking_leaves_no_insight(maker):
+    await _outside_the_enriched_file(maker)
     leaking = composed(life=f"قال تعالى: «{verse_text(30, 50)}»")
     engine, _ = make_engine(
         maker,

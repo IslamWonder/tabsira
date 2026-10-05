@@ -13,10 +13,11 @@ from src.messages import messages_for
 from src.models import HadithClassification, WorldRelation
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
 from src.scripture.overlap import repeats_store
+from src.scripture.rulings import find_hadith
 from src.services import tutorial_service
 from src.services.content import REGIONS_PATH, Regions, load_regions, load_tutorial
 from tests.scans.conftest import DATA, rule
-from tests.scripture.fixtures import hadith_text, verse_text
+from tests.scripture.fixtures import enrich_hadith, hadith_text, verse_text
 
 EXTRA = json.loads((DATA / "extra-scripture.json").read_text(encoding="utf-8"))
 
@@ -74,6 +75,27 @@ async def test_a_hadith_shows_once_an_editor_records_its_ruling(browser, store):
     assert (drop["pair_complete"], drop["notice"]) == (True, None)
     assert drop["small_step"]["label"] == "من السنة"
     assert (planting["hadith"], planting["hadith_status"]) == (None, "none")
+
+
+async def test_the_rain_hadiths_of_the_enriched_file_show_before_any_ruling(browser, store):
+    texts = {}
+    async with store() as db:
+        for number in ("1032", "2320"):
+            stored = await find_hadith(db, "bukhari", number)
+            await enrich_hadith(db, stored.id, f"rain{number}")
+            texts[number] = stored.text
+        await db.commit()
+
+    drop, planting = (await browser.get("/tutorial/rain")).json()["insights"]
+
+    # Decision 58: shown with no ruling, byte for byte as stored, and nothing waits.
+    for insight, number in ((drop, "1032"), (planting, "2320")):
+        hadith = insight["hadith"]["hadith"]
+        assert hadith["text"] == texts[number]
+        assert hashlib.sha256(hadith["text"].encode()).hexdigest() == hadith["sha256"]
+        assert (hadith["ruling"], hadith["eligible"]) == (None, True)
+        assert (insight["hadith_status"], insight["notice"]) == ("shown", None)
+        assert insight["pair_complete"] is True
 
 
 async def test_a_store_without_the_verses_says_the_asset_is_missing(browser, maker):

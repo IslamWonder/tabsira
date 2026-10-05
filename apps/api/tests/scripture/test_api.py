@@ -15,7 +15,13 @@ from src.scripture.rulings import RulingInput, find_hadith, record_ruling
 from src.scripture.sunnah import import_signals, repair
 from src.scripture.text import sha256_hex
 from tests.helpers import client_for
-from tests.scripture.fixtures import fixture_path, load_json, store_hadiths, store_quran
+from tests.scripture.fixtures import (
+    enrich_hadith,
+    fixture_path,
+    load_json,
+    store_hadiths,
+    store_quran,
+)
 
 RLM = chr(0x200F)
 
@@ -151,6 +157,17 @@ async def test_a_decimal_number_is_found_as_the_dataset_writes_it(api):
 
     assert response.status_code == 200
     assert response.json()["number"] == "402.2"
+
+
+async def test_a_hadith_of_the_enriched_file_is_eligible_with_no_ruling(api, db_session):
+    hadith = await find_hadith(db_session, "bukhari", "1032")
+    assert hadith is not None
+    await enrich_hadith(db_session, hadith.id)
+
+    body = (await api.get("/scripture/hadith/bukhari/1032")).json()
+
+    assert (body["ruling"], body["eligible"]) == (None, True)
+    assert body["links"]["dorar_verification"].startswith("https://dorar.net/hadith/search?q=")
 
 
 async def test_an_editor_ruling_of_sahih_makes_the_hadith_eligible(api, db_session):

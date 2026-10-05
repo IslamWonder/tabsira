@@ -35,6 +35,7 @@ from tests.fakes import FakeModelClient
 from tests.retrieval.support import EmbeddingClient
 from tests.scans.builders import insight_row, scan_row, scene
 from tests.scans.conftest import as_guest, rule
+from tests.scripture.fixtures import enrich_hadith
 
 
 def said(
@@ -409,6 +410,30 @@ async def test_a_found_hadith_with_an_eligible_ruling_is_shown_from_the_store_un
     assert page["answer"] == messages_for().chat_answer_withdrawn
     assert (page["quran"], page["hadith"]) == (None, None)
     assert text not in json.dumps(page, ensure_ascii=False)
+
+
+async def test_a_found_hadith_of_the_enriched_file_shows_before_any_ruling(
+    browser, store, flow_settings, flow_app
+):
+    insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
+    async with store() as db:
+        wanted = await db.scalar(
+            select(Hadith.id).where(Hadith.collection == "bukhari", Hadith.number == "2320")
+        )
+        await enrich_hadith(db, wanted)
+        await db.commit()
+    searching_model(flow_app, wants("hadith"), relevant_where("يغرس"))
+
+    body = (await ask(browser, insight_id, "أعطني حديثًا عن الغرس والزرع")).json()
+
+    # Decision 58: shown from the store with no ruling, and counted for an editor.
+    hadith = body["message"]["hadith"]["hadith"]
+    text = await stored_hadith(store, "bukhari", "2320")
+    assert (hadith["number"], hadith["ruling"], hadith["eligible"]) == ("2320", None, True)
+    assert hadith["sha256"] == hashlib.sha256(text.encode("utf-8")).hexdigest()
+    async with store() as db:
+        queued = (await db.scalars(select(HadithVerificationQueue))).all()
+        assert [q.hadith_id for q in queued] == [wanted]
 
 
 async def test_a_verifier_that_fails_gives_the_slot_back(browser, store, flow_settings, flow_app):
