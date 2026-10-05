@@ -22,7 +22,8 @@ from mockdata.places import Gazetteer, draw_point
 MAX_PHOTO_USES = 3
 SAME_COUNTRY_SHARE = 0.6
 REPLY_SHARE = 0.3
-REACTION_KINDS = ("benefited", "inspiring", "grateful")
+# Decision 61: «انتفعتُ بها» and «جزاك الله خيرًا», one of each per member and post.
+REACTION_KINDS = ("benefited", "jazak")
 _LOGNORMAL_SIGMA = 1.0
 
 
