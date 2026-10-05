@@ -20,6 +20,7 @@ import { memberLabel, profilePath } from '@/social/identity';
 import type { MemberProfile, Post } from '@/social/types';
 import { usePages } from '@/social/use-pages';
 import { FeedList } from './feed-list';
+import { ShareProfile } from './share-profile';
 import { BlockSheet } from './sheets';
 
 const P = messages.community.profile;
@@ -204,8 +205,14 @@ export function ProfileScreen({
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <ShareProfile
+                  handle={load.profile.handle}
+                  label={memberLabel(load.profile)}
+                  own={isSelf}
+                  variant={isSelf ? 'secondary' : 'ghost'}
+                />
                 {isSelf ? (
-                  <LinkButton href="/me#identity" variant="secondary">
+                  <LinkButton href="/me#identity" variant="ghost">
                     {P.edit}
                   </LinkButton>
                 ) : (

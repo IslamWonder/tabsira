@@ -10,6 +10,7 @@ Posts made from verified insights, follows, likes, comments, reports and moderat
 | Screens                                                            | ✅     | Task 16.1, screenshots in docs/screenshots (community, post, profile, publish).                                                                                          |
 | Moderators' queue                                                  | ✅     | Admin queue for posts and comments (task 12.2) and map entries (task 17.2).                                                                                              |
 | Privacy re-review                                                  | ✅     | Passed for social on 2026-10-04 (`../tabsira-artifact/reviews/privacy-re-review-social-atlas-2026-10-04.md`); its atlas findings 2-7 are task 17.3, finding 1 task 17.2. |
+| Share a profile, own page in the top bar                           | ✅     | «شارك صفحتك» on the public profile and in «ملفي» (the phone's share dialog, else the link copied); «صفحتي» in the top bar once a handle is chosen (2026-10-05).          |
 
 **How we check it**
 
