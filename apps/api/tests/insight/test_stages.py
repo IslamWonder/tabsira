@@ -772,7 +772,26 @@ def test_the_profile_fitted_prompts_keep_every_scripture_rule_and_never_judge(na
     assert "never judge it" in prompt
     assert "before any devotional application" in prompt
     assert '"under_13"' in prompt
-    assert '"specialist"' in prompt
+    specialist = next(
+        line for line in prompt.splitlines() if line.startswith(("- level:", "- knowledge_level:"))
+    )
+    assert "never a term that grades a hadith or its chain" in specialist
+    assert all(word in specialist for word in ("صحيح", "حسن", "متواتر"))
+    background = next(
+        line for line in prompt.splitlines() if line.startswith("- religious_background:")
+    )
+    # Only a declared Muslim is offered worship; "before any devotional application" is the
+    # discover_islam goal's alone.
+    assert "before any devotional application" not in background
+    assert background.count("never ask for worship") == 1 + (name == CHAT_PROMPT)
+
+
+def test_the_chat_prompt_stays_inside_what_the_insight_says_of_its_texts():
+    prompt = load_prompt(CHAT_PROMPT).text
+
+    assert "what the insight says each shown text adds" in prompt
+    assert "what the shown texts mean" not in prompt
+    assert "offer no devotional application" in prompt
 
 
 def test_the_chat_prompt_keeps_its_guards_beside_the_profile():
