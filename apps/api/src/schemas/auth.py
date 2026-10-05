@@ -128,6 +128,9 @@ class UserOut(BaseModel):
     profile_completed: bool
     # Whether the full name may be shown beside the handle on public pages.
     public_full_name: bool
+    # True once the account holds an insight of its own scan (decision 64): the web app then
+    # offers no tutorial, and the first screen is the capture.
+    has_own_insight: bool
 
 
 class LegalAcceptIn(BaseModel):

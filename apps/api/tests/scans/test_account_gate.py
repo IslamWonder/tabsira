@@ -141,3 +141,39 @@ async def test_looking_again_needs_the_completed_profile_too(browser, flow_app, 
     assert [(r.status_code, r.json()["error"]) for r in (focus, clarify)] == [
         (403, "profile_required")
     ] * 2
+
+
+async def test_an_account_with_an_own_insight_is_no_longer_offered_the_tutorial(
+    browser, flow_app, store
+):
+    from src.models import Insight, InsightOrigin
+    from tests.scans.jobs import run_queued
+
+    await make_account(store)
+    await sign_in(browser)
+    assert (await browser.get("/auth/me")).json()["has_own_insight"] is False
+    assert (await browser.post("/tutorial/rain/insights/drop")).status_code == 200
+    # A kept tutorial copy is not an insight of its own.
+    assert (await browser.get("/auth/me")).json()["has_own_insight"] is False
+
+    assert (await scan(browser)).status_code == 202
+    await run_queued(flow_app, store)
+    async with store() as db:
+        origins = (await db.scalars(select(Insight.origin))).all()
+    assert InsightOrigin.SCAN in origins
+
+    assert (await browser.get("/auth/me")).json()["has_own_insight"] is True
+    closed = await browser.post("/tutorial/rain/insights/planting")
+    assert closed.status_code == 403
+    assert closed.json()["error"] == "tutorial_closed"
+    # The landing stays public: the visitors' example is not taken away.
+    assert (await browser.get("/tutorial/rain")).status_code == 200
+
+
+async def test_a_guest_keeps_the_tutorial_after_its_own_scan(browser, flow_app, store):
+    from tests.scans.jobs import run_queued
+
+    assert (await scan(browser)).status_code == 202
+    await run_queued(flow_app, store)
+
+    assert (await browser.post("/tutorial/rain/insights/drop")).status_code == 200

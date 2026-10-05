@@ -3,16 +3,19 @@ Who may start a scan and use the chat (decision 64).
 
 A visitor without an account does the rain tutorial and one scan of their own photo; the
 next scan asks for an account. An account must have completed its profile before the scan and
-the chat. The tutorial never counts: it saves insights without a scan row.
+the chat. The tutorial never counts: it saves insights without a scan row. Once an account holds
+an insight of its own, the prepared rain example is no longer offered to it.
 """
 
 from __future__ import annotations
+
+import uuid
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.errors import AppError, ErrorCode
-from src.models import Guest, Scan, ScanStatus
+from src.models import Guest, Insight, InsightOrigin, Scan, ScanStatus
 from src.owner import Owner
 from src.services import profile_service
 
@@ -50,3 +53,23 @@ async def require_profile(db: AsyncSession, owner: Owner | None) -> None:
     """Answer 403 `profile_required` for an account with no completed profile; guests pass."""
     if owner is not None and owner.user_id is not None:
         await profile_service.require_completed(db, owner.user_id)
+
+
+async def has_own_insight(db: AsyncSession, user_id: uuid.UUID) -> bool:
+    """Whether the account holds an insight of its own scan, not a tutorial copy."""
+    found = await db.scalar(
+        select(Insight.id)
+        .where(Insight.user_id == user_id, Insight.origin == InsightOrigin.SCAN)
+        .limit(1)
+    )
+    return found is not None
+
+
+async def require_tutorial_open(db: AsyncSession, owner: Owner) -> None:
+    """Answer 403 `tutorial_closed` for an account that holds an insight of its own."""
+    if owner.user_id is not None and await has_own_insight(db, owner.user_id):
+        raise AppError(
+            ErrorCode.tutorial_closed,
+            "The prepared example is for a first visit; continue with your own photos.",
+            status_code=403,
+        )

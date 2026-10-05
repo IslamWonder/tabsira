@@ -11,7 +11,7 @@ from src.owner import WritingOwner
 from src.scans.deps import KEEP_LIMITS, address_limit
 from src.schemas.insight import InsightDetailOut
 from src.schemas.tutorial import TutorialOut
-from src.services import insight_view, tutorial_service
+from src.services import account_gate, insight_view, tutorial_service
 from src.services.content import load_tutorial
 
 router = APIRouter(prefix="/tutorial", tags=["tutorial"])
@@ -39,6 +39,11 @@ async def keep_rain_insight(
     settings: SettingsDep,
     owner: WritingOwner,
 ) -> InsightDetailOut:
-    """Return the caller's copy of the insight (made once), labelled «مثال موثّق مُعدّ»."""
+    """
+    Return the caller's copy of the insight (made once), labelled «مثال موثّق مُعدّ».
+
+    An account that holds an insight of its own answers 403 `tutorial_closed` (decision 64).
+    """
+    await account_gate.require_tutorial_open(db, owner)
     kept = await tutorial_service.keep(db, owner, load_tutorial(), slug)
     return await insight_view.describe(db, settings, kept, owner)

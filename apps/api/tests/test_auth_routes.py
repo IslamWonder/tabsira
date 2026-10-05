@@ -55,8 +55,10 @@ async def test_signing_up_creates_the_account_signs_it_in_and_answers_with_it(
         "legal_acceptance_required",
         "profile_completed",
         "public_full_name",
+        "has_own_insight",
     }
     assert (body["profile_completed"], body["public_full_name"]) == (False, False)
+    assert body["has_own_insight"] is False
     assert PASSPHRASE not in response.text
     assert response.headers["cache-control"] == "no-store"
     me = await web.get("/auth/me")

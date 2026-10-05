@@ -64,6 +64,8 @@ class ErrorCode(StrEnum):
     # whose profile is not completed must complete it. The web app matches the strings.
     account_required = "account_required"
     profile_required = "profile_required"
+    # HTTP 403: an account that holds an insight of its own is no longer offered the tutorial.
+    tutorial_closed = "tutorial_closed"
     # The bot check (Cloudflare Turnstile, decision 56) was missing or refused: HTTP 403.
     turnstile_failed = "turnstile_failed"
     UNSUPPORTED_MEDIA_TYPE = "UNSUPPORTED_MEDIA_TYPE"

@@ -28,7 +28,13 @@ from src.models.login_attempt import AttemptKind
 from src.models.profile import Profile
 from src.models.user import GOOGLE, OAuthAccount, User
 from src.schemas.auth import DISPLAY_NAME_MAX, UserOut, checked_display_name
-from src.services import legal_service, profile_service, rate_limit, session_service
+from src.services import (
+    account_gate,
+    legal_service,
+    profile_service,
+    rate_limit,
+    session_service,
+)
 from src.services.google_oidc import GoogleIdentity
 
 EMAIL_HASH_PURPOSE = "email"
@@ -82,6 +88,7 @@ async def describe(db: AsyncSession, settings: Settings, user: User) -> UserOut:
         legal_acceptance_required=await legal_service.acceptance_required(db, settings, user.id),
         profile_completed=completed_at is not None,
         public_full_name=user.public_full_name,
+        has_own_insight=await account_gate.has_own_insight(db, user.id),
     )
 
 
