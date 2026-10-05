@@ -692,8 +692,8 @@ def test_the_learner_payload_sends_the_profile_backgrounds_and_leaves_an_unknown
     assert "religious_background" not in learner_payload(LearnerContext())
 
 
-def test_the_learner_payload_sends_every_declared_field_and_leaves_each_unknown_one_out():
-    """Decision 63: each declared field reaches the writing models; `unknown` never does."""
+def test_the_composer_payload_sends_every_declared_field_but_the_gender():
+    """Decision 63: each declared field but the gender reaches the composer; `unknown` never."""
     assert {KnowledgeLevel.UNKNOWN, AgeRange.UNKNOWN, Gender.UNKNOWN} == {BACKGROUND_UNKNOWN}
     declared = LearnerContext(
         goals=["discover_islam", "curiosity"],
@@ -707,10 +707,9 @@ def test_the_learner_payload_sends_every_declared_field_and_leaves_each_unknown_
         "knowledge_level": "specialist",
         "age_range": "under_13",
         "religious_background": "non_muslim",
-        "gender": "woman",
         "goals": ["discover_islam", "curiosity"],
     }
-    assert learner_payload(LearnerContext(gender="man")) == {"gender": "man"}
+    assert learner_payload(LearnerContext(gender="man")) == {}
     assert learner_payload(LearnerContext(knowledge_level="new")) == {"knowledge_level": "new"}
     assert learner_payload(LearnerContext(age_range="60_plus")) == {"age_range": "60_plus"}
     assert learner_payload(LearnerContext()) == {}
@@ -718,7 +717,7 @@ def test_the_learner_payload_sends_every_declared_field_and_leaves_each_unknown_
     assert learner_view(declared) == learner_payload(declared)
 
 
-def test_the_composer_message_of_an_undeclared_profile_is_the_one_sent_before_the_gender():
+def test_the_composer_message_never_carries_the_gender_and_is_unchanged_when_undeclared():
     """Every field unknown, or personalization off: the learner part is exactly the old one."""
     result = GateResult(an_intent(), quran=chosen(1), quran_ref=QuranRef(surah=1, ayah=1))
     item = _composable(result)
@@ -736,21 +735,18 @@ def test_the_composer_message_of_an_undeclared_profile_is_the_one_sent_before_th
             rain_scene(), item, declared.model_copy(update={"personalization_enabled": False})
         )
     )
-    no_gender = json.loads(
-        composer_message(rain_scene(), item, declared.model_copy(update={"gender": "unknown"}))
-    )
+    only_gender = json.loads(composer_message(rain_scene(), item, LearnerContext(gender="woman")))
     sent = json.loads(composer_message(rain_scene(), item, declared))
 
     assert unknown["learner"] == off["learner"] == {"level": "beginner"}
-    assert unknown == off
-    assert no_gender["learner"] == {
+    assert unknown == off == only_gender
+    assert sent["learner"] == {
         "level": "general",
         "knowledge_level": "general",
         "age_range": "25_39",
         "religious_background": "muslim",
         "goals": ["reflection"],
     }
-    assert sent["learner"] == no_gender["learner"] | {"gender": "man"}
 
 
 def test_the_writing_models_use_the_profile_fitted_prompts():
@@ -766,11 +762,8 @@ def test_the_profile_fitted_prompts_keep_every_scripture_rule_and_never_judge(na
 
     assert "Never write, quote" in prompt
     assert "never call a hadith authentic" in prompt
-    assert 'only when it is "man" or "woman" may you address' in prompt
-    assert "without marking gender" in prompt or "never choose a gender" in prompt
     assert "Never state the learner's profile back to them" in prompt
     assert "never judge it" in prompt
-    assert "before any devotional application" in prompt
     assert '"under_13"' in prompt
     specialist = next(
         line for line in prompt.splitlines() if line.startswith(("- level:", "- knowledge_level:"))
@@ -780,10 +773,41 @@ def test_the_profile_fitted_prompts_keep_every_scripture_rule_and_never_judge(na
     background = next(
         line for line in prompt.splitlines() if line.startswith("- religious_background:")
     )
-    # Only a declared Muslim is offered worship; "before any devotional application" is the
-    # discover_islam goal's alone.
+    # Worship is never asked of a non-Muslim or an undeclared background.
     assert "before any devotional application" not in background
     assert background.count("never ask for worship") == 1 + (name == CHAT_PROMPT)
+
+
+def test_the_composer_prompt_writes_one_neutral_text_that_may_be_published():
+    """Decision 63 (5): the explanation never reveals the declared gender, religion or age."""
+    prompt = load_prompt(COMPOSER_PROMPT).text
+    background = next(
+        line for line in prompt.splitlines() if line.startswith("- religious_background:")
+    )
+
+    assert (
+        "The text may be published; it must not let anyone tell the reader's gender, "
+        "religion or age." in prompt
+    )
+    assert "always impersonal and gender-neutral" in prompt
+    assert "may you address" not in prompt
+    assert "masculine" not in prompt and "feminine" not in prompt
+    assert "fellow believer" not in prompt
+    assert "devotional application" not in prompt
+    assert "never address the reader as a believer or as a non-believer" in background
+    assert "gender" not in prompt.split("The learner object holds")[1].split(".")[0]
+    assert "never write anything that marks who the reader is" in prompt
+    assert "addresses a child" in prompt
+
+
+def test_the_chat_prompt_may_address_a_declared_gender_but_never_reveals_the_profile():
+    prompt = load_prompt(CHAT_PROMPT).text
+
+    assert 'only when it is "man" or "woman" may you address' in prompt
+    assert "without marking gender" in prompt
+    assert "Never state or reveal the profile" in prompt
+    assert "before any devotional application" in prompt
+    assert "without ever saying that the learner is a Muslim" in prompt
 
 
 def test_the_chat_prompt_stays_inside_what_the_insight_says_of_its_texts():

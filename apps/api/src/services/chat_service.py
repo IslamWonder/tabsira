@@ -43,7 +43,7 @@ from src.errors import AppError, ErrorCode
 from src.messages import messages_for
 from src.models import ChatMessage, ChatStatus, Hadith, Insight, QuranVerse
 from src.pipeline.engine import LearnerContext
-from src.pipeline.insight.composer import learner_view
+from src.pipeline.insight.composer import BACKGROUND_UNKNOWN, learner_view
 from src.pipeline.insight.engine import SHARED_RESOURCES, ResourceCache
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
 from src.pipeline.prompt import load_prompt
@@ -211,8 +211,14 @@ def _step(verse: QuranVerseOut | None, hadith: HadithOut | None, insight: Insigh
 
 
 def _learner(learner: LearnerContext) -> str:
-    """Return the profile fields the learner declared, as the composer reads them (decision 63)."""
+    """
+    Return the profile fields the learner declared: the composer's, and the declared gender.
+
+    The chat is private to its owner, so it alone may address a declared gender (decision 63).
+    """
     shared = learner_view(learner)
+    if learner.personalization_enabled and learner.gender != BACKGROUND_UNKNOWN:
+        shared["gender"] = learner.gender
     return json.dumps(shared, ensure_ascii=False) if shared else NOTHING_DECLARED
 
 

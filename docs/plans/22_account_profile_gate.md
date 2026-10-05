@@ -32,7 +32,7 @@ Decision 63: a visitor gets the rain tutorial and one own scan; then an account,
 - **Status:** ✅ 2026-10-05
 - **Touches:** apps/api/src/pipeline/{insight/composer.py,prompts/insight_composer_system.v5.txt,prompts/insight_chat_system.v6.txt}, apps/api/src/services/chat_service.py (the learner payload), docs/plans/20_prompts.md.
 - **Reviews:** scripture review before merge (prompts).
-- **Done:** `LearnerContext.gender`; `learner_view()` feeds the composer (`insight_composer_system.v5`) and the chat (`insight_chat_system.v6`, `$learner`); `learner_service.profile_context()` gives the chat the declared fields without the history. Tests in `tests/insight/test_stages.py`, `tests/scans/test_learner.py`, `tests/scans/test_chat.py`. `make eval` not run (no provider key on the machine that built it): the new prompts are not yet measured on the gold scenes and chat cases.
+- **Done:** `LearnerContext.gender`; `learner_view()` feeds the composer (`insight_composer_system.v5`, never the gender, one neutral publishable text) and, with a declared gender, the private chat (`insight_chat_system.v6`, `$learner`); `learner_service.profile_context()` gives the chat the declared fields without the history. Tests in `tests/insight/test_stages.py`, `tests/scans/test_learner.py`, `tests/scans/test_chat.py`. `make eval` not run (no provider key on the machine that built it): the new prompts are not yet measured on the gold scenes and chat cases.
 
 ### 22.3 Screens
 

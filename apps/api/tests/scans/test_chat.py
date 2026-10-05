@@ -216,8 +216,9 @@ async def test_the_chat_reads_the_declared_profile_and_nothing_once_personalizat
         "knowledge_level": "new",
         "age_range": "13_17",
         "religious_background": "non_muslim",
-        "gender": "woman",
         "goals": ["discover_islam"],
+        # The chat alone, private to its owner, gets the declared gender (decision 63, 5).
+        "gender": "woman",
     }
     without_gender = {key: value for key, value in fields.items() if key != "gender"}
     sent = json.dumps(fields, ensure_ascii=False)

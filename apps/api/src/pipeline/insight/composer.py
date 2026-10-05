@@ -17,8 +17,9 @@ hadith exists only when that text was chosen; a step is «من السنة» only
 the chosen hadith grounds it, otherwise it is a practical suggestion; a
 personal matter (content level «د») ends with the referral to a qualified
 scholar (v2 §12, rule 7). Of the engine's stages the learner's profile reaches
-this one only, for the depth, the tone and the wording (the brief of
-2026-10-05, §14); the insight chat reads the same payload (decision 63).
+this one only, for the depth, the words and the examples (the brief of
+2026-10-05, §14). The explanation may be published, so it never reveals the
+declared gender, religion or age; the gender is not even sent (decision 63).
 """
 
 from __future__ import annotations
@@ -105,14 +106,13 @@ def learner_payload(learner: LearnerContext) -> dict[str, Any]:
     The religious background stays as the profile enum writes it (`muslim`, `non_muslim`)
     and is left out when unknown, so the composer prompt's rule, which is keyed on these very
     values, fires for a non-Muslim and for a background that was never shared alike. The
-    gender is left out the same way, so a learner who never declared one is addressed
-    without it, exactly as before it was sent.
+    gender is never sent: the explanation may be published, so it is written in one
+    neutral voice whatever the gender (decision 63, 5).
     """
     shared = {
         "knowledge_level": learner.knowledge_level,
         "age_range": learner.age_range,
         "religious_background": learner.religious_background,
-        "gender": learner.gender,
     }
     payload: dict[str, Any] = {
         key: value for key, value in shared.items() if value != BACKGROUND_UNKNOWN
@@ -123,7 +123,7 @@ def learner_payload(learner: LearnerContext) -> dict[str, Any]:
 
 
 def learner_view(learner: LearnerContext) -> dict[str, Any]:
-    """Return what a writing model may read of the learner: nothing with personalization off."""
+    """Return what the composer may read of the learner: nothing with personalization off."""
     return learner_payload(learner) if learner.personalization_enabled else {}
 
 
