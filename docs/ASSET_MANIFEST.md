@@ -352,3 +352,14 @@ Fifteen icons of one premium Magnific family, **Good Ware Lineal** (family 546, 
 | `choice`    | 3718115     | Safety         | «الاختيار بيدك»               |
 | `reflect`   | 784338      | Eye            | the example's «التأمّل» panel |
 | `quest`     | 3783897     | Steps          | the small step in that panel  |
+
+## 14. Sky of meanings background (`apps/web/public/practice/`)
+
+The night picture under «سماء المعاني» on `/me/practice` (DESIGN_DECISION.md «Sky of meanings»). Served by the web app itself through `next/image` (AVIF or WebP at the sizes the browser asks for); decoration only, with no text, star or control in it. Supplied by the owners on 5 October 2026 with the reference picture of the finished scene; where it was made and under which licence is not recorded here, and the owners are to confirm it.
+
+| File                                   | Shows                                                         | Made from                                                                                                                                               |
+| -------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `meaning-sky-background.webp`          | An emerald nebula over dark clouds with a river of gold light | the owners' 1536×1024 PNG (sha256 `72f8eb566b1a8ac623b8525f392cb0f8be265ae2cd69f6b4e921892a5c9c486a`), `cwebp -q 84 -m 6 -sharp_yuv`, 1536×1024, 195 KB |
+| `meaning-sky-background-portrait.webp` | The same picture, cut to a phone's portrait (x 448–1152)      | the same PNG, `cwebp -q 80 -m 6 -sharp_yuv -crop 448 0 704 1024`, 704×1024, 85 KB                                                                       |
+
+The original PNG and the reference picture (sha256 `7dacd9be7d2503411de0805d571e6a77550ea9aebe7b951823cbe3df48faf7d5`) are kept beside the checkout in `../tabsira-artifact/practice/`, never in the repository.

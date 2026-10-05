@@ -1,0 +1,186 @@
+/*
+ * The sky of meanings (DESIGN_DECISION.md «Sky of meanings»). The scene is
+ * night in both themes, because its picture is; only the page around it
+ * follows the theme. The dock is pearl in both themes for the same reason:
+ * it sits on the picture, not on the page. Nothing moves on hover; focus and
+ * the choice ease in 200 ms, and the global reduced-motion rules cut that.
+ */
+:root {
+  --sky-night: #041915;
+  --sky-emerald: #103d2d;
+  --sky-gold: #e4c77d;
+  --sky-text: #fff0c8;
+  --sky-pearl: #fffaf0;
+  --sky-ink: #173c2d;
+  --sky-ink-soft: #6b5a2e;
+  --sky-button: #103629;
+}
+
+/* What shows until the picture arrives, and if it never does: a plain night, never an empty box. */
+.sky-scene {
+  background-color: var(--sky-night);
+  background-image: radial-gradient(120% 90% at 30% 40%, var(--sky-emerald), var(--sky-night) 70%);
+  color: var(--sky-text);
+}
+
+/* Enough shade behind the heading and over the dock's row to read on any cloud, and no more. */
+.sky-shade {
+  background:
+    radial-gradient(70% 55% at 100% 0%, rgb(4 25 21 / 0.62), transparent 70%),
+    radial-gradient(45% 40% at 0% 0%, rgb(4 25 21 / 0.45), transparent 70%),
+    linear-gradient(to top, rgb(4 25 21 / 0.55), transparent 32%);
+}
+
+.sky-text-shadow {
+  text-shadow: 0 1px 12px rgb(4 25 21 / 0.85), 0 0 2px rgb(4 25 21 / 0.9);
+}
+
+/* A star: a point of light, two thin rays and a soft glow; its name is always shown. */
+.sky-star {
+  color: var(--sky-text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sky-star:focus-visible {
+  outline: none;
+}
+
+.sky-star:focus-visible .sky-light {
+  outline: 3px solid var(--sky-text);
+  outline-offset: 4px;
+  border-radius: 9999px;
+}
+
+.sky-light {
+  position: relative;
+  display: block;
+  width: 44px;
+  height: 44px;
+  /* One soft halo, painted with the light: no extra layer, no blur filter. */
+  background: radial-gradient(circle, rgb(228 199 125 / 0.3), rgb(228 199 125 / 0.08) 45%, transparent 70%);
+  border-radius: 9999px;
+}
+
+.sky-light::before,
+.sky-light::after {
+  content: "";
+  position: absolute;
+  /* Physical sides: a logical start would put the centre on the other side in a right-to-left page. */
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  background: linear-gradient(var(--dir, to right), transparent, rgb(255 244 214 / 0.95), transparent);
+}
+
+/* The horizontal ray, then the vertical one. */
+.sky-light::before {
+  width: 40px;
+  height: 1.5px;
+}
+
+.sky-light::after {
+  --dir: to bottom;
+  width: 1.5px;
+  height: 36px;
+}
+
+.sky-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  translate: -50% -50%;
+  border-radius: 9999px;
+  background: radial-gradient(circle, #fffdf4 0 40%, var(--sky-gold) 75%);
+  box-shadow:
+    0 0 6px 2px rgb(255 244 214 / 0.8),
+    0 0 18px 6px rgb(228 199 125 / 0.4);
+  transition: box-shadow 200ms ease-out, scale 200ms ease-out;
+}
+
+/* The chosen meaning: one thin gold ring and a slightly stronger glow, never a large orb. */
+.sky-ring {
+  position: absolute;
+  inset: -6px;
+  border: 1.5px solid var(--sky-gold);
+  border-radius: 9999px;
+  opacity: 0;
+  scale: 0.85;
+  transition: opacity 200ms ease-out, scale 200ms ease-out;
+}
+
+.sky-star[aria-pressed="true"] .sky-ring {
+  opacity: 0.9;
+  scale: 1;
+}
+
+.sky-star[aria-pressed="true"] .sky-core {
+  scale: 1.1;
+  box-shadow:
+    0 0 8px 3px rgb(255 244 214 / 0.9),
+    0 0 26px 10px rgb(228 199 125 / 0.5);
+}
+
+.sky-name {
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--sky-text);
+}
+
+/* The dock: opaque pearl, so the text never sits on clouds. */
+.sky-dock {
+  background-color: var(--sky-pearl);
+  color: var(--sky-ink);
+  border: 1px solid rgb(228 199 125 / 0.5);
+  box-shadow: 0 18px 40px rgb(4 25 21 / 0.35);
+}
+
+.sky-dock-soft {
+  color: var(--sky-ink-soft);
+}
+
+.sky-dock-rule {
+  background-color: rgb(107 90 46 / 0.3);
+}
+
+.sky-open {
+  background: linear-gradient(180deg, #164634, var(--sky-button));
+  color: var(--sky-pearl);
+  box-shadow: 0 6px 16px rgb(16 54 41 / 0.35);
+  transition: background-color 200ms;
+}
+
+.sky-open:hover {
+  background: var(--sky-button);
+}
+
+.sky-open:focus-visible,
+.sky-plain:focus-visible {
+  outline: 3px solid var(--sky-gold);
+  outline-offset: 3px;
+}
+
+.sky-plain {
+  border: 1px solid rgb(228 199 125 / 0.55);
+  background-color: rgb(4 25 21 / 0.55);
+  color: var(--sky-text);
+}
+
+/* A meaning learned since the page was opened lights once, after it was saved. */
+@keyframes sky-arrive {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+.sky-star[data-new="true"] .sky-light {
+  animation: sky-arrive 900ms ease-out both;
+}
+
+/* A message laid over the bright middle of the picture (loading, empty, failure) gets its own local shade. */
+.sky-veil {
+  background: radial-gradient(closest-side, rgb(4 25 21 / 0.82), rgb(4 25 21 / 0.55) 65%, transparent);
+}

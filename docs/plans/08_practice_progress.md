@@ -1,13 +1,13 @@
 # 08 · Practice progress
 
-**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-05 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** ✅ · **Updated:** 2026-10-05 (Tunis)
 
 Ranks, streak, daily quest, a sky of meanings and badges. Practice, never a score of faith, and never a comparison with others.
 
 | Step             | Status | Notes                       |
 | ---------------- | ------ | --------------------------- |
 | Rules and data   | ✅     | Built; merges after review. |
-| «تمرينك» screens | 🔄     | Sky of meanings redesign.   |
+| «تمرينك» screens | ✅     | Sky of meanings redesigned. |
 
 **How we check it**
 
@@ -25,7 +25,7 @@ Ranks, streak, daily quest, a sky of meanings and badges. Practice, never a scor
 
 ### 08.2 Sky of meanings, the cinematic scene
 
-- **Status:** 🔄 2026-10-05 — each star carries the insights that taught it (`StarOut.insights`).
+- **Status:** ✅ 2026-10-05 — each star carries the insights that taught it (`StarOut.insights`); the scene, its phone layout and its states are built; `/dev/sky` shows it on the reference's sample meanings under `next dev`.
 - **Goal:** The owners' reference: a full-width night scene over the emerald nebula picture, real star buttons with their names, one pearl dock for the chosen meaning that opens its insights.
 - **Depends on:** 08.1
 - **Touches:** `GET /me/progress` (additive field), apps/web progress components, `apps/web/public/practice/`.

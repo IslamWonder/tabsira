@@ -5,25 +5,54 @@ import { loadProgress, type Progress } from './api';
 
 export type ProgressLoad =
   | { status: 'loading' | 'failed' }
-  | { status: 'ready'; progress: Progress };
+  | { status: 'ready'; progress: Progress; refreshing: boolean };
 
 /**
- * The learner's practice, loaded once. «Today» is the device's day, so the
- * time zone is sent with the request; the API falls back to UTC for a name it
- * does not know.
+ * The learner's practice, as the server records it: loaded when the screen
+ * opens, again on request, and again quietly when the page comes back into
+ * view, so a meaning learned in another tab or on another device lights here.
+ * What is on screen stays while a reload runs, and a quiet reload that fails
+ * keeps it: a network failure is never shown as an empty sky. «Today» is the
+ * device's day, so the time zone is sent with the request; the API falls back
+ * to UTC for a name it does not know.
  */
 export function useProgress(): { load: ProgressLoad; reload: () => void } {
   const [load, setLoad] = useState<ProgressLoad>({ status: 'loading' });
 
-  const reload = useCallback(() => {
-    setLoad({ status: 'loading' });
+  const fetchProgress = useCallback((quiet: boolean) => {
+    setLoad((current) => {
+      if (current.status === 'ready') {
+        return { ...current, refreshing: true };
+      }
+      return quiet ? current : { status: 'loading' };
+    });
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     void loadProgress(zone).then((result) => {
-      setLoad(result.ok ? { status: 'ready', progress: result.data } : { status: 'failed' });
+      setLoad((current) => {
+        if (result.ok) {
+          return { status: 'ready', progress: result.data, refreshing: false };
+        }
+        if (current.status === 'ready') {
+          return { ...current, refreshing: false };
+        }
+        return { status: 'failed' };
+      });
     });
   }, []);
 
+  const reload = useCallback(() => fetchProgress(false), [fetchProgress]);
+
   useEffect(reload, [reload]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        fetchProgress(true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [fetchProgress]);
 
   return { load, reload };
 }

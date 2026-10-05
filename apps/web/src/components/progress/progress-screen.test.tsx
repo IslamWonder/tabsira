@@ -1,15 +1,30 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { CaptureProvider } from '@/components/capture/capture-provider';
 import { messages } from '@/messages';
 import { apiError, mockApi } from '@/test/api';
 import { PROGRESS, PROGRESS_COMPLETE, PROGRESS_EMPTY } from '@/test/world';
 import { ProgressScreen } from './progress-screen';
 import { questEntries } from './quest-card';
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
+  usePathname: () => '/me/practice',
+}));
+
+/** The page renders inside the app's shell, whose capture sheet the empty sky opens. */
+function screenInShell() {
+  return render(
+    <CaptureProvider>
+      <ProgressScreen />
+    </CaptureProvider>
+  );
+}
+
 async function open(body = PROGRESS) {
   const api = mockApi({ 'GET /me/progress': { body } });
-  render(<ProgressScreen />);
+  screenInShell();
   await screen.findByRole('heading', { level: 2, name: body.rank.title });
   return api;
 }
@@ -17,8 +32,8 @@ async function open(body = PROGRESS) {
 describe('ProgressScreen states', () => {
   it('says it is loading, and always offers the way back to «ملفي»', () => {
     mockApi({});
-    render(<ProgressScreen />);
-    expect(screen.getByRole('status')).toHaveTextContent('نحمّل تمرينك…');
+    screenInShell();
+    expect(screen.getByRole('status')).toHaveTextContent('نحمّل معانيك…');
     expect(screen.getByRole('heading', { level: 1, name: 'تمرينك' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'ملفي' })).toHaveAttribute('href', '/me');
   });
@@ -31,8 +46,8 @@ describe('ProgressScreen states', () => {
         return calls === 1 ? apiError(500, 'internal_error') : { body: PROGRESS };
       },
     });
-    render(<ProgressScreen />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('تعذّر تحميل تمرينك الآن');
+    screenInShell();
+    expect(await screen.findByRole('alert')).toHaveTextContent('تعذّر تحميل معانيك');
     await userEvent.click(screen.getByRole('button', { name: 'أعد المحاولة' }));
     expect(await screen.findByRole('heading', { level: 2, name: '[مرتبة]' })).toBeInTheDocument();
   });
@@ -124,34 +139,118 @@ describe('questEntries', () => {
   });
 });
 
-describe('the sky of meanings', () => {
-  it('draws a star for each meaning and names it on a press, never on hover', async () => {
+describe('the sky of meanings on the page', () => {
+  it('leads the page, with the page name above its heading', async () => {
     await open();
-    const first = screen.getByRole('button', { name: '[معنى أول]، مرة واحدة' });
-    const second = screen.getByRole('button', { name: '[معنى ثان]، 4 مرات' });
-    expect(screen.getByText('2 معاني أضاءت لك')).toBeInTheDocument();
-    expect(first).toHaveAttribute('aria-pressed', 'false');
-    await userEvent.click(second);
-    expect(second).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('[معنى ثان]، 4 مرات', { selector: 'p' })).toBeInTheDocument();
-    await userEvent.click(first);
-    expect(second).toHaveAttribute('aria-pressed', 'false');
-    await userEvent.click(first);
-    expect(first).toHaveAttribute('aria-pressed', 'false');
+    const h1 = screen.getByRole('heading', { level: 1, name: 'تمرينك' });
+    const sky = screen.getByRole('region', { name: 'سماء المعاني' });
+    expect(sky).toContainElement(h1);
+    expect(screen.getByRole('button', { name: '[معنى ثان]، بصيرتان مرتبطتان' })).toBeVisible();
   });
 
-  it('keeps a star where its name puts it', async () => {
-    await open();
-    const star = screen.getByRole('button', { name: '[معنى أول]، مرة واحدة' });
-    expect(star.style.left).toBe('20%');
-    expect(star.style.top).toBe('30%');
+  it('reads the record again when the page comes back into view, keeping the stars meanwhile', async () => {
+    let calls = 0;
+    let answer: (value: { body: typeof PROGRESS }) => void = () => undefined;
+    mockApi({
+      'GET /me/progress': () => {
+        calls += 1;
+        return calls === 1
+          ? { body: PROGRESS }
+          : new Promise((resolve) => {
+              answer = resolve;
+            });
+      },
+    });
+    screenInShell();
+    await screen.findByRole('button', { name: /^\[معنى ثان\]/ });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await waitFor(() => expect(calls).toBe(2));
+    expect(screen.getByRole('region', { name: 'سماء المعاني' })).toHaveAttribute(
+      'aria-busy',
+      'true'
+    );
+    expect(screen.getByRole('button', { name: /^\[معنى ثان\]/ })).toBeInTheDocument();
+    const learned = {
+      concept: '[معنى ثالث]',
+      count: 1,
+      first_seen: '2026-10-04T08:00:00Z',
+      x: 0.5,
+      y: 0.2,
+      insights: [{ id: '104', title: '[بصيرة رابعة]', completed_at: '2026-10-04T08:00:00Z' }],
+    };
+    act(() => {
+      answer({ body: { ...PROGRESS, sky: { count: 3, stars: [...PROGRESS.sky.stars, learned] } } });
+    });
+    expect(await screen.findByRole('button', { name: /^\[معنى ثالث\]/ })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'سماء المعاني' })).toHaveAttribute(
+      'aria-busy',
+      'false'
+    );
   });
 
-  it('invites to a first scene while the sky is empty', async () => {
-    await open(PROGRESS_EMPTY);
-    expect(screen.getByText(/لم يُضئ معنى بعد/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'ابدأ بأول مشهد' })).toHaveAttribute('href', '/');
-    expect(screen.getByText('لا معنى بعد')).toBeInTheDocument();
+  it('keeps the stars when a quiet reload fails: a network failure is not an empty sky', async () => {
+    let calls = 0;
+    mockApi({
+      'GET /me/progress': () => {
+        calls += 1;
+        return calls === 1 ? { body: PROGRESS } : apiError(500, 'internal_error');
+      },
+    });
+    screenInShell();
+    await screen.findByRole('button', { name: /^\[معنى ثان\]/ });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await waitFor(() => expect(calls).toBe(2));
+    await waitFor(() =>
+      expect(screen.getByRole('region', { name: 'سماء المعاني' })).toHaveAttribute(
+        'aria-busy',
+        'false'
+      )
+    );
+    expect(screen.getByRole('button', { name: /^\[معنى ثان\]/ })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('stays on its failure when a quiet reload fails too, and recovers when one succeeds', async () => {
+    let calls = 0;
+    mockApi({
+      'GET /me/progress': () => {
+        calls += 1;
+        return calls < 3 ? apiError(500, 'internal_error') : { body: PROGRESS };
+      },
+    });
+    screenInShell();
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await waitFor(() => expect(calls).toBe(2));
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(await screen.findByRole('button', { name: /^\[معنى ثان\]/ })).toBeInTheDocument();
+  });
+
+  it('does not read the record again while the page is hidden', async () => {
+    let calls = 0;
+    mockApi({
+      'GET /me/progress': () => {
+        calls += 1;
+        return { body: PROGRESS };
+      },
+    });
+    screenInShell();
+    await screen.findByRole('button', { name: /^\[معنى ثان\]/ });
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(calls).toBe(1);
+    vi.restoreAllMocks();
   });
 
   it('says one meaning in the singular', async () => {
