@@ -39,6 +39,8 @@ from src.config import Settings
 log = logging.getLogger("tabsira.email")
 
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "email"
+# The full logo in deep gold, made from brand/ by the web app's icon script.
+LOGO = TEMPLATE_DIR / "logo.png"
 FAILURE_TEXT_MAX = 300
 
 
@@ -67,9 +69,13 @@ def build_message(
     """Render a template into a message: text part first, HTML as the alternative."""
     catalog = messages.messages_for(language, settings=settings)
     sender_domain = parseaddr(settings.mail_from)[1].rpartition("@")[2] or None
+    # The logo travels inside the mail: a remote image would be blocked, or tell a server
+    # when the mail is opened. The id is the one the HTML part names with `cid:`.
+    logo_cid = make_msgid(idstring="logo", domain=sender_domain)
     page = {
         **context,
         "site_name": catalog.site_name,
+        "logo_cid": logo_cid[1:-1],
         "support_email": settings.mail_reply_to,
     }
     message = EmailMessage()
@@ -86,6 +92,9 @@ def build_message(
     templates = _templates(catalog.language)
     message.set_content(templates.get_template(f"{template}.txt").render(page))
     message.add_alternative(templates.get_template(f"{template}.html").render(page), subtype="html")
+    for part in message.iter_parts():
+        if isinstance(part, EmailMessage) and part.get_content_type() == "text/html":
+            part.add_related(LOGO.read_bytes(), maintype="image", subtype="png", cid=logo_cid)
     return message
 
 

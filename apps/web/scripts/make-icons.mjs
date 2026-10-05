@@ -16,6 +16,8 @@
 //   public/icons/mstile-150.png     Windows tile, with public/browserconfig.xml
 //   public/share/default.jpg        1200x630 share card: the full logo and the tagline
 //   src/components/brand/logo-paths.ts  the outlines, for the inline <Logo> (currentColor)
+//   ../api/src/templates/email/logo.png  the full logo in deep gold for the mails' white card,
+//                                   144 px high (shown at 72), transparent; mail clients show no SVG
 //
 // "Round-safe": the round mark always fits inside the circle a platform may
 // crop the icon to, with a margin.
@@ -226,6 +228,14 @@ await writeFile(
 `
 );
 await writeFile(path.join(PUBLIC, 'share/default.jpg'), await shareCard(logo));
+const MAIL_LOGO = path.resolve(WEB, '../api/src/templates/email/logo.png');
+await writeFile(
+  MAIL_LOGO,
+  await sharp(await readFile(path.join(BRAND, 'tabsira-logo-deep-gold.svg')), { density: 288 })
+    .resize({ height: 144 })
+    .png({ compressionLevel: 9 })
+    .toBuffer()
+);
 await writeFile(PATHS_MODULE, pathsModule(inlineMark, inlineLogo));
 // The generated module is committed: give it the layout the format check expects.
 execFileSync('pnpm', ['exec', 'biome', 'format', '--write', PATHS_MODULE], { stdio: 'ignore' });
