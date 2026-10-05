@@ -54,7 +54,7 @@ from src.scripture.text import search_copy
 
 log = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = "evidence_verifier_system.v3"
+SYSTEM_PROMPT = "evidence_verifier_system.v4"
 MAX_OUTPUT_TOKENS = 4000
 # Characters of folded text shown per candidate: a hadith's chain is already cut.
 TEXT_CHARS = 600
@@ -123,6 +123,8 @@ class Shortlist:
     # Why a corpus list is empty, for the trace: not searched, or nothing found.
     quran_note: str | None = None
     hadith_note: str | None = None
+    # The folded neighbours of each shortlisted verse, by verse id: context for reading only.
+    quran_context: dict[int, dict[str, str]] = field(default_factory=dict)
 
     def labelled(self) -> dict[str, Found]:
         return {f"Q{i}": item for i, item in enumerate(self.quran, start=1)} | {
@@ -229,11 +231,18 @@ def verifier_message(scene: SceneAnalysis, shortlist: Shortlist) -> str:
             "unsupported_assumptions": list(intent.unsupported_assumptions),
         },
         "texts": [
-            {"label": label, "text": found.document.text[:TEXT_CHARS]}
+            _text_view(label, found, shortlist.quran_context)
             for label, found in shortlist.labelled().items()
         ],
     }
     return json.dumps(payload, ensure_ascii=False)
+
+
+def _text_view(label: str, found: Found, context: dict[int, dict[str, str]]) -> dict[str, Any]:
+    view: dict[str, Any] = {"label": label, "text": found.document.text[:TEXT_CHARS]}
+    if label.startswith("Q") and found.key in context:
+        view["context"] = context[found.key]
+    return view
 
 
 def verdict_texts(output: VerifierOutput) -> dict[str, str]:
@@ -484,6 +493,47 @@ async def _choose_hadith(
         # Shown without a ruling: counted so the editors see which hadiths are shown most.
         await rulings.enqueue_demand(session, result.hadith.found.key)
         result.hadith_ref = await hadith_ref(session, result.hadith.found.key)
+
+
+async def widen_hadith(
+    session: AsyncSession,
+    result: GateResult,
+    shortlist: Shortlist,
+    verdict: Verdict | None,
+    *,
+    seen: frozenset[int],
+) -> GateResult:
+    """
+    Complete a gate result with a hadith from the widened search (the whole store).
+
+    The result's verse stays as the first gate chose it; the widened hadiths were judged
+    against the same intent, and the one the verifier named (or the first accepted of the
+    verse's relation tier, else the strongest) goes through the same eligibility rule.
+    """
+    labelled = shortlist.labelled()
+    if verdict is None:
+        result.rejections |= {f"wide:{label}": NO_VERDICT for label in labelled}
+        return result
+    accepted = verdict.accepted()
+    for name, judgement in verdict.judged.items():
+        if name not in accepted:
+            result.rejections[f"wide:{name}"] = judgement.reject_reason or "meaning_not_supported"
+    hadiths = [name for name in labelled if name.startswith("H") and name in accepted]
+    pair = verdict.pair
+    label: str | None = pair.hadith if pair and pair.hadith in hadiths else None
+    if label is None:
+        prefer = result.quran.relation if result.quran is not None else None
+        label = _best_label(hadiths, accepted, prefer) or _best_label(hadiths, accepted, None)
+    if label is None:
+        return result
+    await _choose_hadith(session, result, labelled, accepted, label, seen)
+    if result.hadith is not None:
+        result.rejections = {
+            k: v for k, v in result.rejections.items() if not k.startswith("wide:")
+        }
+        if pair is not None and pair.shared_meaning.strip():
+            result.shared_meaning = pair.shared_meaning.strip()
+    return result
 
 
 def shortlist_of(

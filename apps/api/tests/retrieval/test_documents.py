@@ -98,3 +98,39 @@ async def test_hadith_documents_carry_the_signals_of_every_matched_narration(wor
     assert {doc.key for doc in bukhari} == set(ids.values())
     assert chosen[0].concepts == concepts[ids["1032"]]
     assert hadith_text("bukhari", 1032) not in chosen[0].body
+
+
+async def test_the_enriched_records_name_the_narrations_they_match(world):
+    rows = (await world.execute(select(Hadith.id, Hadith.collection, Hadith.number))).all()
+    by_ref = {(row.collection, row.number): row.id for row in rows}
+
+    records = await documents.hadith_records(world)
+
+    # Record 1 matches two narrations of one hadith; 1535 the rain hadith; 2320 no record.
+    assert records == {
+        by_ref[("bukhari", "8")]: "1",
+        by_ref[("muslim", "113")]: "1",
+        by_ref[("bukhari", "1032")]: "1535",
+    }
+    assert by_ref[("bukhari", "1")] not in records
+
+
+async def test_a_verses_context_is_its_folded_neighbours_in_the_surah(world):
+    ids = {
+        (row.surah, row.ayah): row.id
+        for row in (
+            await world.execute(select(QuranVerse.id, QuranVerse.surah, QuranVerse.ayah))
+        ).all()
+    }
+
+    context = await documents.quran_context(world, [ids[(112, 2)], ids[(112, 1)], ids[(30, 50)]])
+
+    assert context[ids[(112, 2)]] == {
+        "before": search_copy(verse_text(112, 1)),
+        "after": search_copy(verse_text(112, 3)),
+    }
+    # The first verse has no verse before it; 30:50 has no stored neighbour at all.
+    assert context[ids[(112, 1)]] == {"before": "", "after": search_copy(verse_text(112, 2))}
+    assert ids[(30, 50)] not in context
+    assert await documents.quran_context(world, []) == {}
+    assert await documents.quran_context(world, [-1]) == {}

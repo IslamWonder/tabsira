@@ -204,6 +204,19 @@ class ScanEngine(StrEnum):
     DEMO = "demo"
 
 
+class HadithSearchScope(StrEnum):
+    """
+    Where the hadith search looks for candidates (the owners' brief of 2026-10-05, §7 and §12).
+
+    `enriched_first`: the candidate source is the enriched Sunnah file, 3,920 sahih
+    records matched to their narrations in the nine books; the whole store is
+    searched only when no record fits the intent. `all`: the whole store at once.
+    """
+
+    ENRICHED_FIRST = "enriched_first"
+    ALL = "all"
+
+
 class RerankerKind(StrEnum):
     """
     What reorders the head of the fused evidence candidates (decision 41).
@@ -733,6 +746,9 @@ class Settings(BaseSettings):
     # and the fused order is kept.
     # Decision 50: off by default; the verifier judges the fused head itself (docs/EVALUATION.md).
     reranker: RerankerKind = RerankerKind.OFF
+    # Where the hadith search finds its candidates: the enriched Sunnah file first, the whole
+    # store when no record fits (the brief of 2026-10-05, §7 and §12), or the whole store at once.
+    hadith_search_scope: HadithSearchScope = HadithSearchScope.ENRICHED_FIRST
     # The cross-encoder of services/vision (POST /rerank), used when RERANKER=cross_encoder;
     # empty switches it off (docs/BENCHMARK.md: about 19 s per 30 passages on a CPU).
     reranker_url: str = "http://127.0.0.1:8100"

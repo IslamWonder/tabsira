@@ -2,7 +2,10 @@
 Find the evidence a search intent points to: hybrid search over one corpus, then the reranker.
 
 For each corpus (the Quran and the hadiths are searched apart and stay apart
-until the pair is chosen) an intent runs two kinds of lists:
+until the pair is chosen) an intent runs two kinds of lists, over the whole
+corpus or over a pool of it (the narrations of the enriched Sunnah file, the
+brief of 2026-10-05 §7: the file is the candidate source, the store identifies
+and shows the text; one narration per record is kept, the best ranked):
 
 - lexical: each keyword query over the full-text search copies (BM25-weighted
   prefix matching) and over the model-written concepts of the texts;
@@ -22,7 +25,7 @@ channels that found them and the query that ranked them best.
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -65,14 +68,19 @@ class Found:
     # (list name, rank in that list) for every list that held the text.
     channels: tuple[tuple[str, int], ...]
     document: RetrievalDocument
+    # The enriched Sunnah record this narration belongs to, when it is one of the file's.
+    record: str | None = None
 
     def as_trace(self) -> dict[str, Any]:
-        return {
+        traced: dict[str, Any] = {
             "key": self.key,
             "rank": self.retrieval_rank,
             "rerank": self.rerank_score,
             "channels": [f"{name}@{rank}" for name, rank in self.channels],
         }
+        if self.record is not None:
+            traced["record"] = self.record
+        return traced
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,6 +114,20 @@ async def embed_queries(
     except AiCallError as error:
         return {}, error.code.value
     return dict(zip(distinct, result.vectors, strict=True)), None
+
+
+def _one_per_record(fused: Sequence[FusedHit], records: Mapping[int, str]) -> list[FusedHit]:
+    """Keep the best-ranked narration of each enriched record; texts of no record all stay."""
+    seen: set[str] = set()
+    kept: list[FusedHit] = []
+    for hit in fused:
+        record = records.get(hit.key)
+        if record is not None:
+            if record in seen:
+                continue
+            seen.add(record)
+        kept.append(hit)
+    return kept
 
 
 def channel_weights(names: Sequence[str]) -> dict[str, float]:
@@ -155,18 +177,29 @@ class EvidenceSearch:
         corpus: EmbeddedCorpus,
         queries: IntentQueries,
         vectors: Mapping[str, list[float]],
+        *,
+        pool: Collection[int] | None = None,
+        records: Mapping[int, str] | None = None,
+        exclude: Collection[int] = (),
     ) -> list[Found]:
-        """Return the fused candidates of the intent's queries in `corpus`, best first."""
+        """
+        Return the fused candidates of the intent's queries in `corpus`, best first.
+
+        `pool` narrows every list to those texts; `records` names the enriched record of
+        each narration, and the fused list then keeps one narration per record (the best
+        ranked); `exclude` leaves out texts already judged (a widened search).
+        """
         lists: dict[str, Sequence[Hit]] = {}
         texts: dict[str, str] = {}
         for index, query in enumerate(queries.lexical):
             terms = query_terms(query)
             lists[f"{CHANNEL_FTS}:{index}"] = await search_lexical(
-                session, corpus, terms, limit=SEARCH_TOP
+                session, corpus, terms, limit=SEARCH_TOP, ids=pool
             )
-            lists[f"{CHANNEL_CONCEPTS}:{index}"] = self._concepts[corpus].search(
-                query, limit=SEARCH_TOP
-            )
+            concepts = self._concepts[corpus].search(query, limit=SEARCH_TOP)
+            if pool is not None:
+                concepts = [hit for hit in concepts if hit.key in pool]
+            lists[f"{CHANNEL_CONCEPTS}:{index}"] = concepts
             texts[f"{CHANNEL_FTS}:{index}"] = texts[f"{CHANNEL_CONCEPTS}:{index}"] = query
         for index, query in enumerate(queries.semantic):
             if query in vectors and self._embedding is not None:
@@ -177,9 +210,13 @@ class EvidenceSearch:
                     model=self._embedding.model,
                     dimensions=len(vectors[query]),
                     limit=SEARCH_TOP,
+                    ids=pool,
                 )
                 texts[f"{CHANNEL_VECTOR}:{index}"] = query
-        fused = fuse(lists, weights=channel_weights(list(lists)))[: self._fused_top]
+        fused = fuse(lists, weights=channel_weights(list(lists)))
+        fused = _one_per_record([hit for hit in fused if hit.key not in exclude], records or {})[
+            : self._fused_top
+        ]
         if not fused:
             return []
         documents = await _documents(
@@ -195,6 +232,7 @@ class EvidenceSearch:
                 _matched_on(hit, texts),
                 hit.ranks,
                 documents[hit.key],
+                (records or {}).get(hit.key),
             )
             for rank, hit in enumerate(fused, start=1)
             if hit.key in documents
@@ -218,6 +256,7 @@ class EvidenceSearch:
                 item.matched_on,
                 item.channels,
                 item.document,
+                item.record,
             )
             for item, score in zip(head, outcome.scores, strict=True)
         ]

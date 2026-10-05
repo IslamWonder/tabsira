@@ -11,6 +11,12 @@ SEARCHING       per intent and per corpus (the Quran and the hadiths stay
                 apart): lexical lists (full text, concepts) and semantic lists
                 (vectors), fused by RRF with one weight per channel, then the
                 reranker when one is on, reading the intent's own sentence.
+                The hadith candidates come first from the enriched Sunnah file
+                (3,920 sahih records matched to their narrations in the nine
+                books, one narration per record), and only when no record fits
+                the intent does the search widen to the whole store (the brief
+                of 2026-10-05, §7 and §12; `HADITH_SEARCH_SCOPE`). A verse
+                reaches the verifier with its neighbouring verses as context.
 VERIFYING       the relevance verifier tests every shortlisted text against
                 its intent, one call per intent, all at once, and names the
                 pair that serves one meaning; the gate applies eligibility
@@ -46,7 +52,7 @@ import asyncio
 import logging
 import time
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -56,7 +62,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from src.ai.client import ModelClient, client_for
 from src.ai.errors import AiCallError
 from src.ai.records import CallLog
-from src.config import RerankerKind, Settings
+from src.config import HadithSearchScope, RerankerKind, Settings
 from src.models import EmbeddedCorpus
 from src.pipeline.engine import (
     EngineRequest,
@@ -76,6 +82,7 @@ from src.pipeline.insight.evidence import (
     gate,
     seen_ids,
     shortlist_of,
+    widen_hadith,
 )
 from src.pipeline.insight.guard import quran_detector, scripture_guard
 from src.pipeline.insight.intents import (
@@ -105,6 +112,7 @@ from src.pipeline.insight.search import (
 from src.pipeline.leak_guard import LeakDetector
 from src.pipeline.schemas import SceneAnalysis
 from src.retrieval.concepts import ConceptIndex, load_concept_index
+from src.retrieval.documents import hadith_records, quran_context
 from src.retrieval.reranker import LlmReranker, Reranker, RerankerClient
 from src.retrieval.vector import has_vectors
 from src.services.ontology_candidates import (
@@ -129,6 +137,12 @@ class Resources:
     path: LearningPath | None
     # Whether the store holds vectors of the configured embedding model, per corpus.
     vectors: dict[EmbeddedCorpus, bool]
+    # The enriched Sunnah file: the record of every narration it matches (the candidate pool).
+    hadith_records: dict[int, str] = field(default_factory=dict)
+
+    @property
+    def hadith_pool(self) -> frozenset[int]:
+        return frozenset(self.hadith_records)
 
     @property
     def searchable(self) -> bool:
@@ -171,6 +185,7 @@ class ResourceCache:
                     quran=await quran_detector(session),
                     path=await load_path(session),
                     vectors=vectors,
+                    hadith_records=await hadith_records(session),
                 )
             return self._resources
 
@@ -239,11 +254,13 @@ class PipelineInsightEngine:
         refinement_rounds: int = REFINEMENT_ROUNDS,
         resources: ResourceCache | None = None,
         clock: Callable[[], float] = time.perf_counter,
+        hadith_scope: HadithSearchScope = HadithSearchScope.ENRICHED_FIRST,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._client = client
         self._embedding = embedding
         self._reranker = reranker
+        self._hadith_scope = hadith_scope
         self._rounds = refinement_rounds
         self._clock = clock
         self._planner = SemanticIntentPlanner(client)
@@ -405,24 +422,34 @@ class PipelineInsightEngine:
         leaked = False
         while True:
             await clock.enter(EngineStage.SEARCHING)
-            shortlists, searched = await self._shortlists(session, search, pending)
+            shortlists, searched = await self._shortlists(session, search, pending, resources)
             await clock.enter(EngineStage.VERIFYING)
             texts = [found.document.text for item in shortlists for found in item.hadith]
             verdicts = await self._verifier.verify(
                 request.scene, shortlists, scripture_guard(resources.quran, texts, session)
             )
             leaked = leaked or any(verdict is None for verdict in verdicts.values())
+            results: list[GateResult] = []
+            for index, shortlist in enumerate(shortlists):
+                results.append(
+                    await gate(
+                        session,
+                        shortlist,
+                        verdicts.get(index),
+                        seen_verses=seen_verses,
+                        seen_hadiths=seen_hadiths,
+                    )
+                )
+            widened = await self._widen(
+                session, request, search, resources, shortlists, results, seen_hadiths
+            )
             failed: list[FailedIntent] = []
             gated: list[dict[str, Any]] = []
-            for index, shortlist in enumerate(shortlists):
-                result = await gate(
-                    session,
-                    shortlist,
-                    verdicts.get(index),
-                    seen_verses=seen_verses,
-                    seen_hadiths=seen_hadiths,
-                )
-                gated.append({**searched[index], "gate": result.as_trace()})
+            for index, result in enumerate(results):
+                traced = {**searched[index], "gate": result.as_trace()}
+                if index in widened:
+                    traced["hadith_widened"] = widened[index]
+                gated.append(traced)
                 if result.passed:
                     passed.append(result)
                 else:
@@ -452,10 +479,90 @@ class PipelineInsightEngine:
             raise _Stopped(EngineStatus.NO_RELEVANT_EVIDENCE)
         return passed
 
+    async def _widen(
+        self,
+        session: AsyncSession,
+        request: EngineRequest,
+        search: EvidenceSearch,
+        resources: Resources,
+        shortlists: Sequence[Shortlist],
+        results: list[GateResult],
+        seen_hadiths: frozenset[int],
+    ) -> dict[int, dict[str, Any]]:
+        """
+        Search the whole hadith store for the intents no enriched record fitted (§7, §12).
+
+        Only when the file was the pool, the hadith corpus was asked, and the gate kept no
+        hadith: the widened candidates leave out the narrations already judged, the verifier
+        reads them against the intent, and the gate completes the result. Returns the trace
+        of each widened intent by its index.
+        """
+        if self._hadith_scope is not HadithSearchScope.ENRICHED_FIRST or not resources.hadith_pool:
+            return {}
+        widened: dict[int, dict[str, Any]] = {}
+        wide: list[tuple[int, Shortlist]] = []
+        for index, (shortlist, result) in enumerate(zip(shortlists, results, strict=True)):
+            queries = shortlist.intent.queries_of(EmbeddedCorpus.HADITH)
+            if result.hadith is not None or queries.empty or shortlist.hadith_note == NOT_SEARCHED:
+                continue
+            vectors, error = await embed_queries(self._embedding, list(queries.semantic))
+            if error:
+                raise _Stopped(EngineStatus.RETRIEVAL_ERROR)
+            judged_records = {
+                resources.hadith_records[item.key]
+                for item in shortlist.hadith
+                if item.key in resources.hadith_records
+            }
+            found = await search.search(
+                session,
+                EmbeddedCorpus.HADITH,
+                queries,
+                vectors,
+                records=resources.hadith_records,
+                # Every narration of a record already judged is left out, not only the one shown.
+                exclude=[item.key for item in shortlist.hadith]
+                + [
+                    key
+                    for key, record in resources.hadith_records.items()
+                    if record in judged_records
+                ],
+            )
+            reranked = await search.rerank(
+                rerank_query(queries, shortlist.intent.observable_meaning), found
+            )
+            wide.append((index, shortlist_of(shortlist.intent, [], reranked.found)))
+            widened[index] = _searched_trace(
+                reranked, NOTHING_FOUND if not found else None, self._reranker
+            )
+        judged = [(index, item) for index, item in wide if not item.empty]
+        if not judged:
+            return widened
+        texts = [found.document.text for _, item in judged for found in item.hadith]
+        verdicts = await self._verifier.verify(
+            request.scene,
+            [item for _, item in judged],
+            scripture_guard(resources.quran, texts, session),
+        )
+        for position, (index, item) in enumerate(judged):
+            results[index] = await widen_hadith(
+                session, results[index], item, verdicts.get(position), seen=seen_hadiths
+            )
+            widened[index]["gate"] = results[index].as_trace()
+        return widened
+
     async def _shortlists(
-        self, session: AsyncSession, search: EvidenceSearch, intents: Sequence[SearchIntent]
+        self,
+        session: AsyncSession,
+        search: EvidenceSearch,
+        intents: Sequence[SearchIntent],
+        resources: Resources,
     ) -> tuple[list[Shortlist], list[dict[str, Any]]]:
         """Search every intent's corpora, rerank all the lists at once, and say what was found."""
+        pool = (
+            resources.hadith_pool
+            if self._hadith_scope is HadithSearchScope.ENRICHED_FIRST and resources.hadith_pool
+            else None
+        )
         sentences = [
             query
             for intent in intents
@@ -478,7 +585,14 @@ class PipelineInsightEngine:
                 found: list[Found] = []
                 note: str | None = NOT_SEARCHED
                 if not queries.empty:
-                    found = await search.search(session, corpus, queries, vectors)
+                    found = await search.search(
+                        session,
+                        corpus,
+                        queries,
+                        vectors,
+                        pool=pool if corpus is EmbeddedCorpus.HADITH else None,
+                        records=resources.hadith_records,
+                    )
                     note = NOTHING_FOUND if not found else None
                 pending.append((rerank_query(queries, intent.observable_meaning), found))
                 notes.append(note)
@@ -490,15 +604,18 @@ class PipelineInsightEngine:
         for index, intent in enumerate(intents):
             quran, hadith = results[2 * index], results[2 * index + 1]
             quran_note, hadith_note = notes[2 * index], notes[2 * index + 1]
-            shortlists.append(
-                shortlist_of(
-                    intent,
-                    quran.found,
-                    hadith.found,
-                    quran_note=quran_note,
-                    hadith_note=hadith_note,
-                )
+            shortlist = shortlist_of(
+                intent,
+                quran.found,
+                hadith.found,
+                quran_note=quran_note,
+                hadith_note=hadith_note,
             )
+            # §7: a verse is judged with its context at hand, its neighbours kept apart from it.
+            shortlist.quran_context.update(
+                await quran_context(session, [found.key for found in shortlist.quran])
+            )
+            shortlists.append(shortlist)
             traced.append(
                 {
                     "intent_id": intent.intent_id,
@@ -605,6 +722,7 @@ def build_engine(
         embedding=embedding,
         reranker=build_reranker(settings, http, client),
         resources=resources or SHARED_RESOURCES,
+        hadith_scope=settings.hadith_search_scope,
     )
 
 

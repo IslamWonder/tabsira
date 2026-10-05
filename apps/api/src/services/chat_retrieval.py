@@ -32,11 +32,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.ai.client import ModelClient
 from src.ai.errors import AiCallError, AiErrorCode
-from src.config import Settings
+from src.config import HadithSearchScope, Settings
 from src.models import EmbeddedCorpus, Hadith, Insight, QuranVerse, Scan
 from src.pipeline.engine import RelationType
 from src.pipeline.insight.engine import ResourceCache, build_reranker
-from src.pipeline.insight.evidence import EvidenceRelevanceVerifier, gate, shortlist_of
+from src.pipeline.insight.evidence import (
+    EvidenceRelevanceVerifier,
+    GateResult,
+    gate,
+    shortlist_of,
+    widen_hadith,
+)
 from src.pipeline.insight.guard import scripture_guard
 from src.pipeline.insight.intents import IntentQueries, SearchIntent
 from src.pipeline.insight.search import (
@@ -48,6 +54,7 @@ from src.pipeline.insight.search import (
     rerank_query,
 )
 from src.pipeline.schemas import SceneAnalysis
+from src.retrieval.documents import quran_context
 from src.routers.scripture import HadithOut, QuranVerseOut, read_hadith, read_verse
 
 log = logging.getLogger("tabsira.chat.retrieval")
@@ -214,10 +221,27 @@ async def _find(
     if embed_error:
         raise AiCallError(AiErrorCode(embed_error), "the query embedding failed")
     own_verses, own_hadiths = await own_ids(db, insight)
+    # The brief of 2026-10-05 §7: the enriched Sunnah file is the hadith candidate source first.
+    enriched_first = settings.hadith_search_scope is HadithSearchScope.ENRICHED_FIRST and bool(
+        loaded.hadith_pool
+    )
     searched: list[tuple[str, list[Found]]] = []
     for corpus, own in ((EmbeddedCorpus.QURAN, own_verses), (EmbeddedCorpus.HADITH, own_hadiths)):
         queries = intent.queries_of(corpus)
-        found = [] if queries.empty else await search.search(db, corpus, queries, vectors)
+        found = (
+            []
+            if queries.empty
+            else await search.search(
+                db,
+                corpus,
+                queries,
+                vectors,
+                pool=loaded.hadith_pool
+                if enriched_first and corpus is EmbeddedCorpus.HADITH
+                else None,
+                records=loaded.hadith_records,
+            )
+        )
         searched.append((rerank_query(queries, intent.observable_meaning), _without(found, own)))
     results: list[SearchResult] = await asyncio.gather(
         *(search.rerank(q, found) for q, found in searched)
@@ -226,17 +250,47 @@ async def _find(
         if result.rerank_error:
             log.warning("reranker skipped: %s; fused order kept", result.rerank_error)
     shortlist = shortlist_of(intent, results[0].found, results[1].found)
-    if shortlist.empty:
+    verifier = EvidenceRelevanceVerifier(client)
+    gated = GateResult(intent)
+    if not shortlist.empty:
+        shortlist.quran_context.update(
+            await quran_context(db, [found.key for found in shortlist.quran])
+        )
+        texts = [found.document.text for found in shortlist.hadith]
+        verdicts = await verifier.verify(
+            scene, [shortlist], scripture_guard(loaded.quran, texts, db)
+        )
+        verdict = verdicts.get(0)
+        if verdict is None:
+            # The verifier kept writing scripture-like text: a model fault, never «nothing found».
+            raise AiCallError(AiErrorCode.INVALID_OUTPUT, "the verifier kept leaking")
+        gated = await gate(
+            db, shortlist, verdict, seen_verses=frozenset(), seen_hadiths=frozenset()
+        )
+    hadith_queries = intent.queries_of(EmbeddedCorpus.HADITH)
+    if gated.hadith is None and enriched_first and not hadith_queries.empty:
+        # §12: no record fitted; the whole store is searched, the narrations already judged
+        # and the insight's own left out.
+        wide = await search.search(
+            db,
+            EmbeddedCorpus.HADITH,
+            hadith_queries,
+            vectors,
+            records=loaded.hadith_records,
+            exclude=[*own_hadiths, *(found.key for found in shortlist.hadith)],
+        )
+        reranked = await search.rerank(
+            rerank_query(hadith_queries, intent.observable_meaning), wide
+        )
+        widened = shortlist_of(intent, [], reranked.found)
+        if not widened.empty:
+            texts = [found.document.text for found in widened.hadith]
+            wide_verdicts = await verifier.verify(
+                scene, [widened], scripture_guard(loaded.quran, texts, db)
+            )
+            gated = await widen_hadith(db, gated, widened, wide_verdicts.get(0), seen=frozenset())
+    if not gated.passed:
         return NewText()
-    texts = [found.document.text for found in shortlist.hadith]
-    verdicts = await EvidenceRelevanceVerifier(client).verify(
-        scene, [shortlist], scripture_guard(loaded.quran, texts, db)
-    )
-    verdict = verdicts.get(0)
-    if verdict is None:
-        # The verifier kept writing scripture-like text: a model fault, never «nothing found».
-        raise AiCallError(AiErrorCode.INVALID_OUTPUT, "the verifier kept leaking")
-    gated = await gate(db, shortlist, verdict, seen_verses=frozenset(), seen_hadiths=frozenset())
     verse = (
         await read_verse(db, gated.quran_ref.surah, gated.quran_ref.ayah)
         if gated.quran_ref is not None

@@ -11,7 +11,7 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import OperationalError
 
 from src.ai.errors import AiCallError, AiErrorCode
-from src.config import AiProvider
+from src.config import AiProvider, HadithSearchScope
 from src.models import (
     EmbeddedCorpus,
     Hadith,
@@ -64,7 +64,13 @@ from tests.scripture.spelling import standard
 
 
 def make_engine(
-    maker, answers, *, reranker=None, embedding=True, rounds=2
+    maker,
+    answers,
+    *,
+    reranker=None,
+    embedding=True,
+    rounds=2,
+    scope=HadithSearchScope.ENRICHED_FIRST,
 ) -> tuple[PipelineInsightEngine, EmbeddingClient]:
     client = EmbeddingClient()
     client.answers = list(answers)
@@ -75,6 +81,7 @@ def make_engine(
         reranker=reranker,
         refinement_rounds=rounds,
         resources=ResourceCache(),
+        hadith_scope=scope,
     )
     return engine, client
 
@@ -658,3 +665,139 @@ async def test_insights_on_the_focus_come_first(maker, focus):
     )
 
     assert result.status is EngineStatus.OK
+
+
+# ─── The enriched file first, the whole store when no record fits (§7 and §12 of the brief) ───
+
+# Bukhari 1 (deeds by intentions) is outside the enriched file of the fixtures; its words reach
+# it alone, so a search that needs it must widen to the whole store.
+INTENTIONS = queries(["الأعمال بالنيات", "الهجرة والنية"], ["الأعمال بالنيات ولكل امرئ ما نوى"])
+
+
+def _hadith_of(result) -> tuple[str, str] | None:
+    hadith = result.insights[0].hadith
+    return (hadith.ref.collection, hadith.ref.number) if hadith else None
+
+
+async def test_the_hadith_candidates_come_from_the_enriched_file_first(maker):
+    engine, client = make_engine(maker, [plan_answer(intent()), accept_all(), composed()])
+
+    result = await engine.propose(EngineRequest(scan_id="p1", scene=rain_scene()))
+
+    assert result.status is EngineStatus.OK
+    assert _hadith_of(result) == ("bukhari", "1032")
+    traced = result.trace["rounds"][0]["intents"][0]["hadith"]
+    assert traced["shortlist"] and all("record" in item for item in traced["shortlist"])
+    assert "hadith_widened" not in result.trace["rounds"][0]["intents"][0]
+    # The verifier read each verse with its neighbours when the store holds them.
+    payload = json.loads(client.calls[1]["user"])
+    assert all(text["label"].startswith("Q") or "context" not in text for text in payload["texts"])
+
+
+async def test_the_search_widens_to_the_whole_store_when_no_record_fits(maker):
+    engine, client = make_engine(
+        maker, [plan_answer(intent(hadith=INTENTIONS)), accept_all(), accept_all(), composed()]
+    )
+
+    result = await engine.propose(EngineRequest(scan_id="p2", scene=rain_scene()))
+
+    assert result.status is EngineStatus.OK
+    assert _hadith_of(result) == ("bukhari", "1")
+    assert [call["stage"].value for call in client.calls] == [
+        "planner",
+        "verify",
+        "verify",
+        "compose",
+    ]
+    # The second verifier call read hadiths only.
+    assert all(label.startswith("H") for label in shown_labels(client.calls[2]))
+    traced = result.trace["rounds"][0]["intents"][0]
+    assert traced["hadith"]["note"] == "nothing_found"
+    assert traced["hadith_widened"]["gate"]["pair_complete"] is True
+    assert "record" not in traced["hadith_widened"]["shortlist"][0]
+
+
+async def test_a_record_the_verifier_rejects_gives_way_to_the_whole_store(maker):
+    def verse_only(call):
+        return verify_answer(
+            [judged(label, accepted=label.startswith("Q")) for label in shown_labels(call)]
+        )
+
+    # The first query reaches record 1 (two narrations) in the pool; the second only Bukhari 1
+    # outside it.
+    mixed = queries(["بني الإسلام على خمس", "الأعمال بالنيات"], [])
+    engine, client = make_engine(
+        maker, [plan_answer(intent(hadith=mixed)), verse_only, accept_all(), composed()]
+    )
+
+    result = await engine.propose(EngineRequest(scan_id="p3", scene=rain_scene()))
+
+    assert result.status is EngineStatus.OK
+    assert _hadith_of(result) == ("bukhari", "1")
+    traced = result.trace["rounds"][0]["intents"][0]
+    assert traced["gate"]["rejections"]["H1"] == "meaning_not_supported"
+    assert [call["stage"].value for call in client.calls] == [
+        "planner",
+        "verify",
+        "verify",
+        "compose",
+    ]
+    # The widened candidates never repeat a narration of a record already judged.
+    judged_records = {item["record"] for item in traced["hadith"]["shortlist"]}
+    assert "1" in judged_records
+    assert all("record" not in item for item in traced["hadith_widened"]["shortlist"])
+
+
+async def test_the_whole_store_at_once_when_the_scope_says_so(maker):
+    engine, client = make_engine(
+        maker,
+        [plan_answer(intent(hadith=INTENTIONS)), accept_all(), composed()],
+        scope=HadithSearchScope.ALL,
+    )
+
+    result = await engine.propose(EngineRequest(scan_id="p4", scene=rain_scene()))
+
+    assert _hadith_of(result) == ("bukhari", "1")
+    assert [call["stage"].value for call in client.calls] == ["planner", "verify", "compose"]
+    assert "hadith_widened" not in result.trace["rounds"][0]["intents"][0]
+
+
+async def test_a_widening_whose_embedding_fails_is_a_retrieval_error(maker):
+    engine, client = make_engine(maker, [plan_answer(intent(hadith=INTENTIONS)), accept_all()])
+    client.fail_on_call = 2
+
+    result = await engine.propose(EngineRequest(scan_id="p5", scene=rain_scene()))
+
+    assert result.status is EngineStatus.RETRIEVAL_ERROR
+
+
+async def test_a_widened_verifier_that_keeps_leaking_leaves_the_verse_alone(maker):
+    leak = _verify_linked_by(f"قال تعالى: «{verse_text(30, 50)}»")
+    engine, _ = make_engine(
+        maker, [plan_answer(intent(hadith=INTENTIONS)), accept_all(), leak, leak, composed()]
+    )
+
+    result = await engine.propose(EngineRequest(scan_id="p6", scene=rain_scene()))
+
+    assert result.status is EngineStatus.OK
+    assert _hadith_of(result) is None
+    traced = result.trace["rounds"][0]["intents"][0]
+    rejections = traced["hadith_widened"]["gate"]["rejections"]
+    assert rejections and all(
+        value == "no_verdict" for key, value in rejections.items() if key.startswith("wide:")
+    )
+
+
+async def test_a_widening_that_finds_nothing_is_said_without_a_verifier_call(maker):
+    nothing = queries(["زززز"], [])
+    engine, client = make_engine(
+        maker, [plan_answer(intent(hadith=nothing)), accept_all(), composed()]
+    )
+
+    result = await engine.propose(EngineRequest(scan_id="p7", scene=rain_scene()))
+
+    assert result.status is EngineStatus.OK
+    assert _hadith_of(result) is None
+    traced = result.trace["rounds"][0]["intents"][0]
+    assert traced["hadith_widened"]["note"] == "nothing_found"
+    assert [call["stage"].value for call in client.calls] == ["planner", "verify", "compose"]
