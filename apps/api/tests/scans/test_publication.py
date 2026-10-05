@@ -558,3 +558,24 @@ async def test_a_personalised_insight_is_public_with_its_neutral_parts_only(brow
     assert "شرح كُتب لك" not in page.text
     assert "خطوة لك" not in page.text
     assert "أولى بصائرك" not in page.text
+
+
+async def test_the_public_page_shows_the_photo_only_once_its_owner_published_it(
+    browser, other, store
+):
+    user = await verified_account(store, browser)
+    published = await keep(store, user.id, photo_public_key=f"public/{'a' * 32}.jpg")
+    private_only = await keep(store, user.id, photo_key=f"private/{'b' * 32}.jpg")
+    async with store() as db:
+        await rule(db, "bukhari", "1032")
+        await db.commit()
+    for insight_id in (published, private_only):
+        await browser.put(f"/insights/{insight_id}/publication")
+
+    shown = (await other.get(f"/public/insights/{published}")).json()
+    kept = (await other.get(f"/public/insights/{private_only}")).json()
+
+    assert shown["photo_url"].endswith(f"/public/{'a' * 32}.jpg")
+    # A photo kept privately is never made public by publishing the insight.
+    assert kept["photo_url"] is None
+    assert "private/" not in str(kept)

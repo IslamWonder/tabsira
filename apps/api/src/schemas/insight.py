@@ -286,10 +286,11 @@ class PublicInsightOut(BaseModel):
     """
     A published insight for any reader: scripture from the store, nothing of the owner's.
 
-    There is no photo, no scan, no location, no chat, no progress, no «لماذا ظهر هذا؟» (its
+    There is no scan, no location, no chat, no progress, no «لماذا ظهر هذا؟» (its
     clues describe the photo and its reason may be personal), no `why` beside a text and no
     «ما ظهر» part (it describes the photo); the author is
-    present only when the owner chose a public handle and name.
+    present only when the owner chose a public handle and name. The photo is there only when
+    its owner already published it (a public post or map entry made its public copy).
     """
 
     id: PublicId
@@ -308,4 +309,8 @@ class PublicInsightOut(BaseModel):
     small_step: StepOut | None
     author: PublicAuthorOut | None
     published_at: datetime
+    photo_url: str | None = Field(
+        default=None,
+        description="The photo's public copy, only when its owner already published the photo",
+    )
     disclosure: str

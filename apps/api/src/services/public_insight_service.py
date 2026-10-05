@@ -35,8 +35,9 @@ from src.schemas.insight import (
     PublicAuthorOut,
     PublicInsightOut,
 )
-from src.services import insight_view, public_identity
+from src.services import insight_view, photo_service, public_identity
 from src.services.insight_table_source import PUBLISHABLE_ENGINE
+from src.storage.photos import PhotoStore
 
 
 def _refuse(why: str) -> NoReturn:
@@ -122,8 +123,14 @@ async def withdraw(db: AsyncSession, insight: Insight) -> PublicationOut:
     return state(insight)
 
 
-async def read_public(db: AsyncSession, insight_id: int) -> PublicInsightOut:
-    """Return a published insight for a stranger, or the 404 of one that does not exist."""
+async def read_public(db: AsyncSession, insight_id: int, photos: PhotoStore) -> PublicInsightOut:
+    """
+    Return a published insight for a stranger, or the 404 of one that does not exist.
+
+    The photo comes only when its public copy exists: the owner chose to show it in a public
+    post or a published map entry, and the photo rules allowed it (`photo_service`). The page
+    and its link preview then show that same copy; no other photo is ever made public here.
+    """
     row = (
         await db.execute(
             select(Insight, User)
@@ -157,5 +164,6 @@ async def read_public(db: AsyncSession, insight_id: int) -> PublicInsightOut:
         if owner.handle is not None
         else None,
         published_at=insight.published_at,
+        photo_url=photo_service.public_url(photos, insight.photo_public_key),
         disclosure=texts.ai_disclosure,
     )

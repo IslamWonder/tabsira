@@ -9505,6 +9505,18 @@
             "format": "date-time",
             "title": "Published At"
           },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url",
+            "description": "The photo's public copy, only when its owner already published the photo"
+          },
           "disclosure": {
             "type": "string",
             "title": "Disclosure"
@@ -9531,7 +9543,7 @@
           "disclosure"
         ],
         "title": "PublicInsightOut",
-        "description": "A published insight for any reader: scripture from the store, nothing of the owner's.\n\nThere is no photo, no scan, no location, no chat, no progress, no «لماذا ظهر هذا؟» (its\nclues describe the photo and its reason may be personal), no `why` beside a text and no\n«ما ظهر» part (it describes the photo); the author is\npresent only when the owner chose a public handle and name."
+        "description": "A published insight for any reader: scripture from the store, nothing of the owner's.\n\nThere is no scan, no location, no chat, no progress, no «لماذا ظهر هذا؟» (its\nclues describe the photo and its reason may be personal), no `why` beside a text and no\n«ما ظهر» part (it describes the photo); the author is\npresent only when the owner chose a public handle and name. The photo is there only when\nits owner already published it (a public post or map entry made its public copy)."
       },
       "PublicLocationOut": {
         "properties": {
