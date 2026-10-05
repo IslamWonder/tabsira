@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from src.admin.registry import ViewClass
 from src.admin.views.accounts import ConsentAdmin, SessionAdmin, UserAdmin
+from src.admin.views.feedback import InsightFeedbackAdmin
 from src.admin.views.learning import (
     LearningDomainAdmin,
     LearningPathVersionAdmin,
@@ -29,6 +30,7 @@ BUILT_IN_VIEWS: tuple[ViewClass, ...] = (
     ModerationQueueView,
     ReportAdmin,
     ModerationActionAdmin,
+    InsightFeedbackAdmin,
     OntologyCandidateAdmin,
     OntologyEntityAdmin,
     LearningPathVersionAdmin,

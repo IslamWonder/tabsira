@@ -87,6 +87,21 @@ class ActionState(StrEnum):
     LATER = "later"
 
 
+class FeedbackReason(StrEnum):
+    """Why a reader found an insight not good; chosen from a list, never inferred."""
+
+    WRONG_TEXT = "wrong_text"  # the verse or the hadith does not fit the scene
+    MISREAD_SCENE = "misread_scene"  # the photo was not understood
+    WRONG_EXPLANATION = "wrong_explanation"  # the explanation is wrong or unclear
+    OFFENSIVE = "offensive"  # offensive or insensitive content
+    OTHER = "other"
+
+
+class FeedbackState(StrEnum):
+    OPEN = "open"
+    REVIEWED = "reviewed"
+
+
 class ChatStatus(StrEnum):
     # A slot is held while the answer is written; a failed answer gives the slot back.
     PENDING = "pending"
@@ -320,3 +335,35 @@ class ChatMessage(Base):
     evidence_ids: Mapped[list[str] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = created_at_column()
     answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class InsightFeedback(Base):
+    """
+    The owner's own rating of one insight: useful or not, why, and an optional note.
+
+    One row per insight, changed in place when the owner answers again. It goes with the
+    insight (and so with the account); the team reads it in the admin to improve the
+    answers, and marks it reviewed. Nothing here is ever public.
+    """
+
+    __tablename__ = "insight_feedback"
+    __table_args__ = (
+        UniqueConstraint("insight_id", name="uq_insight_feedback_insight_id"),
+        CheckConstraint("note IS NULL OR char_length(note) <= 300", name="note_length"),
+        # Reasons explain a «not useful»; a useful answer carries none.
+        CheckConstraint("NOT helpful OR cardinality(reasons) = 0", name="reasons_when_not_helpful"),
+        Index("ix_insight_feedback_state_updated_at", "state", "updated_at"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    insight_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("insights.id", ondelete="CASCADE")
+    )
+    helpful: Mapped[bool] = mapped_column(Boolean)
+    reasons: Mapped[list[str]] = mapped_column(ARRAY(String(32)), default=list)
+    note: Mapped[str | None] = mapped_column(String(300))
+    state: Mapped[FeedbackState] = mapped_column(
+        string_enum(FeedbackState, "state"), default=FeedbackState.OPEN
+    )
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

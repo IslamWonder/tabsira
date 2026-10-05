@@ -46,7 +46,7 @@ from src.schemas.insight import (
     PublicQuran,
     StepOut,
 )
-from src.services import learner_service
+from src.services import feedback_service, learner_service
 from src.storage.sounds import ENTITY_ID
 
 
@@ -404,6 +404,7 @@ async def describe(
             means=action_means(insight.action_state.value) if insight.action_state else None,
         ),
         chat=await chat_of(db, settings, insight, verse, hadith),
+        feedback=feedback_service.describe(await feedback_service.of_insight(db, insight.id)),
         image=InsightImageOut(
             sensitive=sensitive,
             url=f"/scans/{scan.id}/image" if scan is not None and not sensitive else None,

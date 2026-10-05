@@ -1393,6 +1393,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/insights/{insight_id}/feedback': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Rate the insight: useful or not, and why
+     * @description Record the owner's rating, replacing an earlier one; only the owner and the team read it.
+     */
+    put: operations['rate_insight_insights__insight_id__feedback_put'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/insights/{insight_id}/complete': {
     parameters: {
       query?: never;
@@ -2930,6 +2950,60 @@ export interface components {
       empty_reason: ('follows_nobody' | 'no_posts') | null;
     };
     /**
+     * FeedbackExport
+     * @description The owner's rating of one insight, as they gave it.
+     */
+    FeedbackExport: {
+      /** Insight Id */
+      insight_id: string;
+      /** Helpful */
+      helpful: boolean;
+      /** Reasons */
+      reasons: string[];
+      /** Note */
+      note: string | null;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /**
+     * FeedbackIn
+     * @description The owner's rating of the insight: useful or not, and why not.
+     */
+    FeedbackIn: {
+      /** Helpful */
+      helpful: boolean;
+      /**
+       * Reasons
+       * @description Why it was not useful; empty when it was
+       */
+      reasons?: components['schemas']['FeedbackReason'][];
+      /** Note */
+      note?: string | null;
+    };
+    /** FeedbackOut */
+    FeedbackOut: {
+      /** Helpful */
+      helpful: boolean;
+      /** Reasons */
+      reasons: components['schemas']['FeedbackReason'][];
+      /** Note */
+      note: string | null;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /**
+     * FeedbackReason
+     * @description Why a reader found an insight not good; chosen from a list, never inferred.
+     * @enum {string}
+     */
+    FeedbackReason: 'wrong_text' | 'misread_scene' | 'wrong_explanation' | 'offensive' | 'other';
+    /**
      * FieldError
      * @description One rejected field of a request: where it is and why it was refused.
      */
@@ -3136,6 +3210,8 @@ export interface components {
       action: components['schemas']['ActionOut'];
       chat: components['schemas']['ChatOut'];
       image: components['schemas']['InsightImageOut'];
+      /** @description The owner's own rating, never shown to anyone else */
+      feedback?: components['schemas']['FeedbackOut'] | null;
       /** Completed At */
       completed_at: string | null;
       /** Place Id */
@@ -3376,6 +3452,8 @@ export interface components {
       exposures: components['schemas']['ExposureExport'][];
       /** Photos */
       photos: components['schemas']['PhotoExport'][];
+      /** Feedback */
+      feedback?: components['schemas']['FeedbackExport'][];
     };
     /** LearningUnitOut */
     LearningUnitOut: {
@@ -7458,6 +7536,41 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ActionOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  rate_insight_insights__insight_id__feedback_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FeedbackIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeedbackOut'];
         };
       };
       /** @description An error */

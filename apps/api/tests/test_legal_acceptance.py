@@ -10,7 +10,7 @@ from src.models.consent import ConsentKind
 from src.services import legal_service
 from tests.test_auth_routes import LOGIN, SIGNUP
 
-CURRENT = {"terms_version": "2026-10-05T18:00Z", "privacy_version": "2026-10-05T18:00Z"}
+CURRENT = {"terms_version": "2026-10-05T18:00Z", "privacy_version": "2026-10-05T20:00Z"}
 
 
 async def test_an_account_with_no_acceptance_is_asked_and_accepting_clears_it(web, make_user):
@@ -32,8 +32,8 @@ async def test_the_export_lists_the_terms_and_privacy_rows(web):
 
     assert {(c["kind"], c["version"], c["granted"]) for c in consents} == {
         ("terms", "2026-10-05T18:00Z", True),
-        ("privacy", "2026-10-05T18:00Z", True),
-        ("public_full_name", "2026-10-05T18:00Z", False),
+        ("privacy", "2026-10-05T20:00Z", True),
+        ("public_full_name", "2026-10-05T20:00Z", False),
     }
 
 
@@ -59,7 +59,7 @@ async def test_a_withdrawn_acceptance_asks_again(make_user, db_session, account_
     user = await make_user(accepted=False)
     for kind, version in (
         (ConsentKind.TERMS, "2026-10-05T18:00Z"),
-        (ConsentKind.PRIVACY, "2026-10-05T18:00Z"),
+        (ConsentKind.PRIVACY, "2026-10-05T20:00Z"),
     ):
         db_session.add(Consent(user_id=user.id, kind=kind, version=version, granted=True))
     await db_session.flush()
@@ -76,7 +76,7 @@ async def test_a_withdrawn_acceptance_asks_again(make_user, db_session, account_
 @pytest.mark.parametrize(
     "body",
     [
-        {"terms_version": "old", "privacy_version": "2026-10-05T18:00Z"},
+        {"terms_version": "old", "privacy_version": "2026-10-05T20:00Z"},
         {"terms_version": "2026-10-05T18:00Z", "privacy_version": "old"},
     ],
 )

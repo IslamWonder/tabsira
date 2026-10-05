@@ -59,6 +59,7 @@ APP_TABLES = {
     "scans",
     "insights",
     "insight_chat_messages",
+    "insight_feedback",
     "world_places",
     "world_relations",
     "world_reveals",
@@ -232,7 +233,7 @@ async def test_the_three_chains_build_the_database_and_match_the_models(migrated
     } == tables
     assert set(EXTENSIONS) <= extensions
     assert versions == {
-        "app": "20261005_180000",
+        "app": "20261005_190000",
         "geodata": "20261004_130000",
         "vectors": "20261004_200000",
     }
