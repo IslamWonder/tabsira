@@ -49,6 +49,7 @@ async def report(
         hold_threshold=settings.social_report_hold_threshold,
         social_on=settings.is_enabled(FeatureFlag.SOCIAL),
         atlas_on=settings.is_enabled(FeatureFlag.ATLAS),
+        comments_on=settings.is_enabled(FeatureFlag.SOCIAL_COMMENTS),
         photos=photos,
     )
     await db.commit()

@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import uuid
 
+import pytest
 from sqlalchemy import func, select
 
+from src.features import FeatureFlag
 from src.models import (
     Block,
     Bookmark,
@@ -19,7 +21,14 @@ from src.models import (
     Report,
     User,
 )
+from tests.helpers import switched
 from tests.support_social import draft_post, publish_post
+
+
+@pytest.fixture
+def account_settings(account_settings):
+    """These tests write and read comments, which are off until the owners enable them."""
+    return switched(account_settings, on=[FeatureFlag.SOCIAL_COMMENTS])
 
 
 async def test_the_export_holds_the_posts_comments_and_everything_done_on_the_network(

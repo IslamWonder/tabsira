@@ -37,6 +37,7 @@ async def _target(
     *,
     social_on: bool,
     atlas_on: bool,
+    comments_on: bool,
 ) -> Post | Comment | MapEntry:
     """
     Load what is reported, or raise 404 when the reporter may not read it.
@@ -58,6 +59,8 @@ async def _target(
         if row.post.author_id == reporter.id:
             raise _own()
         return row.post
+    if not comments_on:
+        raise _switched_off()
     comment = await db.scalar(
         select(Comment).where(Comment.id == target_id, comment_service.visible_comment(reporter))
     )
@@ -80,6 +83,7 @@ async def file_report(
     hold_threshold: int,
     social_on: bool,
     atlas_on: bool,
+    comments_on: bool,
     photos: PhotoStore | None = None,
 ) -> int:
     """
@@ -94,6 +98,7 @@ async def file_report(
         target_id,
         social_on=social_on,
         atlas_on=atlas_on,
+        comments_on=comments_on,
     )
     created: int | None = await db.scalar(
         insert(Report)

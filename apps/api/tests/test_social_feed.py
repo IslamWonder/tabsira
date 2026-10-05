@@ -4,8 +4,16 @@ from __future__ import annotations
 
 import pytest
 
+from src.features import FeatureFlag
 from src.services import feed_service
+from tests.helpers import switched
 from tests.support_social import REVIEW, draft_post, publish_post
+
+
+@pytest.fixture
+def account_settings(account_settings):
+    """These tests write and read comments, which are off until the owners enable them."""
+    return switched(account_settings, on=[FeatureFlag.SOCIAL_COMMENTS])
 
 
 async def ids(response):
