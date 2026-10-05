@@ -194,17 +194,6 @@ async def test_another_owners_insight_cannot_be_published_or_withdrawn(browser, 
         ({"glimpse": VERSE}, {}),
         ({"engine": "prepared"}, {}),
         ({"engine": "demo"}, {}),
-        (
-            {
-                "why": {
-                    "visible_clues": [],
-                    "concept": "x",
-                    "limits": [],
-                    "personalised_because": "هدفك",
-                }
-            },
-            {},
-        ),
         ({"explanation": [{"section": "seen", "text": verse_text(30, 50), "sources": []}]}, {}),
         (
             {"small_step": {"text": verse_text(30, 50), "kind": "reflection", "grounded_in": []}},
@@ -219,7 +208,6 @@ async def test_another_owners_insight_cannot_be_published_or_withdrawn(browser, 
         "in glimpse",
         "prepared example",
         "declared simulation",
-        "shaped by the profile",
         "in explanation",
         "in step",
     ],
@@ -534,3 +522,39 @@ async def test_a_verse_alone_can_be_public_with_no_hadith_or_one_the_store_lacks
         assert (await browser.put(f"/insights/{insight_id}/publication")).status_code == 200
         body = (await other.get(f"/public/insights/{insight_id}")).json()
         assert body["quran"]["verse"]["text"] == VERSE
+
+
+PERSONAL_WHY = {
+    "visible_clues": [],
+    "concept": "x",
+    "limits": [],
+    "personalised_because": "اخترنا مدخلًا قريبًا لأن هذه من أولى بصائرك.",
+}
+
+
+async def test_a_personalised_insight_is_public_with_its_neutral_parts_only(browser, other, store):
+    user = await verified_account(store, browser)
+    insight_id = await keep(
+        store,
+        user.id,
+        why=PERSONAL_WHY,
+        explanation=[{"section": "value", "text": "شرح كُتب لك.", "sources": []}],
+        small_step={"text": "خطوة لك.", "kind": "reflection", "grounded_in": []},
+    )
+    async with store() as db:
+        await rule(db, "bukhari", "1032")
+        await db.commit()
+
+    published = await browser.put(f"/insights/{insight_id}/publication")
+    page = await other.get(f"/public/insights/{insight_id}")
+
+    assert published.status_code == 200, published.text
+    body = page.json()
+    # The title, the glimpse and the texts from the store go public; what was written for the
+    # owner from their profile (the explanation and the step) stays theirs.
+    assert body["title"] and body["glimpse"]
+    assert body["quran"] is not None
+    assert (body["explanation"], body["small_step"]) == ([], None)
+    assert "شرح كُتب لك" not in page.text
+    assert "خطوة لك" not in page.text
+    assert "أولى بصائرك" not in page.text

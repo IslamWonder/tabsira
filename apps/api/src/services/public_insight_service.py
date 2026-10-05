@@ -77,9 +77,6 @@ async def _check(db: AsyncSession, insight: Insight) -> None:
     if insight.engine != PUBLISHABLE_ENGINE:
         # The same rule as a post's: a simulation or a shared prepared example is no one's insight.
         _refuse("only an insight made by the real analysis can be public")
-    if (insight.why or {}).get("personalised_because"):
-        # Its words may be shaped by the profile, which is never public.
-        _refuse("it was shaped by the profile")
     if insight.scan_id is not None:
         scan = await db.get(Scan, insight.scan_id)
         if scan is not None and scan.sensitive:

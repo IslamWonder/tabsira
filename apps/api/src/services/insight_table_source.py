@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.scan import Insight, Scan
 from src.models.social import EXPLANATION_MAX
 from src.services.insight_source import HadithRef, InsightSnapshot, QuranRef
+from src.services.insight_view import is_personalised
 
 PUBLISHABLE_ENGINE = "pipeline"
 # Where a shortened excerpt may end: the end of an Arabic or Latin sentence.
@@ -57,7 +58,9 @@ def snapshot_of(insight: Insight, scan: Scan | None) -> InsightSnapshot:
     if insight.user_id is None:
         message = "only an account's insight has a snapshot"
         raise ValueError(message)
-    step = insight.small_step or {}
+    # Written with the owner's profile: its explanation and step stay theirs (`is_personalised`).
+    personal = is_personalised(insight)
+    step = {} if personal else (insight.small_step or {})
     return InsightSnapshot(
         insight_id=insight.id,
         version=insight.run,
@@ -66,7 +69,7 @@ def snapshot_of(insight: Insight, scan: Scan | None) -> InsightSnapshot:
         title=insight.title,
         glimpse=insight.glimpse,
         relation_type=insight.relation,
-        explanation_excerpt=explanation_excerpt(insight.explanation),
+        explanation_excerpt="" if personal else explanation_excerpt(insight.explanation),
         quran_refs=(
             (QuranRef(insight.quran_surah, insight.quran_ayah),)
             if insight.quran_surah is not None and insight.quran_ayah is not None

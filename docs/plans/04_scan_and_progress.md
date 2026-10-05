@@ -148,3 +148,9 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 - **API:** `PUT /insights/{id}/feedback` (the insight's owner, guest or account), the rating in `GET /insights/{id}` (`feedback`), `learning.feedback` in `GET /account/export`, table `app.insight_feedback` (migration `20261005_190000`, deleted with the insight), admin view «Insight ratings» (read-only, «Mark reviewed»).
 - **Privacy:** the privacy page (version 2026-10-05T20:00Z) and `docs/PRIVACY.md` say what is kept and who reads it.
 - **Production `.env`:** no new key. `PRIVACY_VERSION`, if the file sets it, must become `2026-10-05T20:00Z` (or be removed so the code's value applies); the checklist compares it with the example.
+
+### 04.17 Publish an insight written with the profile, without its personal parts
+
+- **Status:** ✅ 2026-10-05, owners' decision.
+- **Why:** with personalisation on (the default), a new learner's insights all carry a «first steps» reason, so `personalised_because` was set on almost every insight and the public page refused them all («لا يمكن نشر هذه البصيرة»).
+- **Now:** such an insight may be public. Strangers get the title, the glimpse, the relation and the texts from the store; its explanation and its step, which may carry the profile, stay the owner's. A post of it copies no explanation excerpt and no step. Tests: `tests/scans/test_publication.py`, `tests/test_insight_table_source.py`.

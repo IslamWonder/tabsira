@@ -292,6 +292,17 @@ def label_of(insight: Insight) -> str | None:
     return None
 
 
+def is_personalised(insight: Insight) -> bool:
+    """
+    Whether the insight was written with the owner's profile (`personalised_because` is set).
+
+    Its explanation and its step may then carry the profile (the level, the goals, the declared
+    faith in the way it is addressed): they stay the owner's. A stranger gets only what does not
+    depend on it: the title, the glimpse, the relation and the texts from the store.
+    """
+    return bool((insight.why or {}).get("personalised_because"))
+
+
 def shown_fields(
     insight: Insight,
     verse: QuranVerseOut | None,
@@ -305,7 +316,8 @@ def shown_fields(
     One place for the hidden-hadith rules (status, the parts and the step that rest on a
     text not shown), so the owner's view and the public view cannot drift apart. A public reader
     gets the texts without «لماذا ظهر هذا؟» (`why`, which can come from the photo or the
-    profile) and without the «ما ظهر» part, which describes the photo.
+    profile) and without the «ما ظهر» part, which describes the photo; of an insight written
+    with the profile (`is_personalised`), without the explanation and the step either.
     """
     texts = messages_for()
     explanation = explanation_out(insight.explanation, verse, hadith)
@@ -333,9 +345,18 @@ def shown_fields(
         "hadith_status": "shown" if hadith else "none",
         "pair_complete": verse is not None and hadith is not None,
         "explanation_tag": texts.explanation_tag,
-        "explanation": [p for p in explanation if p.section != "seen"] if public else explanation,
-        "small_step": step_out(insight.small_step, verse, hadith),
+        "explanation": _public_parts(insight, explanation) if public else explanation,
+        "small_step": None
+        if public and is_personalised(insight)
+        else step_out(insight.small_step, verse, hadith),
     }
+
+
+def _public_parts(insight: Insight, explanation: list[ExplanationOut]) -> list[ExplanationOut]:
+    """Return the parts a stranger reads: never «ما ظهر» (the photo), none if written for the owner."""
+    if is_personalised(insight):
+        return []
+    return [part for part in explanation if part.section != "seen"]
 
 
 async def record_display(

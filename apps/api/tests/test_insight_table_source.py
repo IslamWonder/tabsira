@@ -55,6 +55,28 @@ async def test_the_owner_s_pipeline_insight_is_copied_by_reference(db_session, m
     )
 
 
+async def test_a_post_of_an_insight_written_with_the_profile_copies_no_explanation_or_step(
+    db_session, make_user
+):
+    user = await make_user("author@example.com")
+    insight = await _insight(
+        db_session,
+        Owner(user_id=user.id),
+        why={
+            "visible_clues": [],
+            "concept": "x",
+            "limits": [],
+            "personalised_because": "اخترنا مدخلًا قريبًا لأن هذه من أولى بصائرك.",
+        },
+    )
+
+    snapshot = await InsightTableSource().load_for_publishing(db_session, insight.id, user.id)
+
+    assert snapshot is not None
+    assert (snapshot.explanation_excerpt, snapshot.step_text) == ("", None)
+    assert snapshot.title == "الحياة في قطرة"
+
+
 async def test_a_kept_photo_is_offered_by_its_private_key_and_never_its_public_one(
     db_session, make_user
 ):
