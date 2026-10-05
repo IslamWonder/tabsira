@@ -21,7 +21,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.errors import AppError, ErrorCode
-from src.models.profile import Profile
+from src.models.profile import AgeRange, Profile
 from src.models.user import HANDLE_PATTERN, User
 from src.schemas.geo import PublicCountryOut
 from src.services import geo_service
@@ -103,8 +103,8 @@ async def shown_countries(
     """
     Return the country each of these accounts shows publicly, in one query; absent means none.
 
-    Only a declared country whose `public_country` consent is given, and only one GeoNames still
-    names. The public profile and the author line of a post read it; no other answer does.
+    Only a declared country whose `public_country` consent is given, of an account not declared
+    under 13, and only one GeoNames still names. The public profile and the author line of a post read it; no other answer does.
     """
     if not user_ids:
         return {}
@@ -114,6 +114,8 @@ async def shown_countries(
                 Profile.user_id.in_(set(user_ids)),
                 Profile.show_country.is_(True),
                 Profile.country.is_not(None),
+                # Never for an account declared under 13, whichever path set the age.
+                Profile.age_range != AgeRange.UNDER_13,
             )
         )
     ).all()

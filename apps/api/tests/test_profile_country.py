@@ -8,7 +8,7 @@ from sqlalchemy import select
 from src.features import FeatureFlag
 from src.models import Consent
 from src.models.consent import ConsentKind
-from src.models.profile import Profile
+from src.models.profile import AgeRange, Profile
 from src.services import geo_service, public_identity
 from tests import geo_dataset as world_data
 from tests.helpers import switched
@@ -194,8 +194,23 @@ async def test_with_the_switch_on_only_the_profile_and_the_post_author_show_it(
     assert answers["post"].json()["author"]["country"] == TUNISIA
     assert answers["member_posts"].json()["items"][0]["author"]["country"] == TUNISIA
     assert answers["latest"].json()["items"][0]["author"]["country"] == TUNISIA
+    assert answers["following"].json()["items"][0]["author"]["country"] == TUNISIA
     for name in ("comment", "thread", "blocks"):
         assert '"TN"' not in answers[name].text, name
+        assert "تونس" not in answers[name].text, name
+
+
+async def test_an_account_declared_under_13_never_shows_it_whatever_set_the_age(
+    db_session, make_member, world
+):
+    author = await make_member("author")
+    await _declare(author, shown=True)
+    # A path other than PATCH /profile (an import, an admin fix) leaves the switch on.
+    profile = await db_session.scalar(select(Profile).where(Profile.user_id == author.user.id))
+    profile.age_range = AgeRange.UNDER_13
+    await db_session.flush()
+
+    assert await public_identity.shown_countries(db_session, [author.user.id]) == {}
 
 
 async def test_a_country_geonames_no_longer_names_is_not_shown(db_session, make_member, world):
