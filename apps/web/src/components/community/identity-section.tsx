@@ -20,7 +20,7 @@ import type { Member } from '@/social/types';
 const I = messages.community.identity;
 const B = messages.community.block;
 
-/** Choose or change the handle; the full name is shown only by the consent of «ملفي» (decision 63). */
+/** Choose or change the handle; the full name is shown only by the consent switch below (decision 63). */
 export function IdentityForm() {
   const identity = useIdentity();
   const [handle, setHandle] = useState('');
