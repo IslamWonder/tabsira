@@ -34,6 +34,7 @@ describe('TopBar', () => {
   });
 
   it('puts the brand first, the four sections as tabs, and one primary action last', () => {
+    pathname.value = '/community';
     render(<TopBar />);
     const links = screen.getAllByRole('link');
     expect(links[0]).toHaveAttribute('href', '/');
@@ -65,6 +66,29 @@ describe('TopBar', () => {
     render(<TopBar />);
     expect(screen.getByRole('link', { name: 'دخول' })).toHaveAttribute('aria-current', 'page');
     await waitFor(() => expect(screen.queryByRole('link', { name: 'دخول' })).toBeNull());
+  });
+
+  it('shows a visitor the sections of the landing page on the home page', () => {
+    render(<TopBar />);
+    const nav = screen.getByRole('navigation', { name: 'التنقل الرئيسي' });
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => [link.textContent, link.getAttribute('href')])
+    ).toEqual([
+      ['الرئيسية', '/'],
+      ['كيف تعمل؟', '/#how'],
+      ['عالم تبصرة', '/#features'],
+      ['جرّب بصيرة', '/#example'],
+    ]);
+    expect(within(nav).getByRole('link', { current: 'page' })).toHaveTextContent('الرئيسية');
+  });
+
+  it('keeps the sections of the app on the home page for an account', async () => {
+    mockApi({ 'GET /auth/me': { body: USER } });
+    render(<TopBar />);
+    const nav = screen.getByRole('navigation', { name: 'التنقل الرئيسي' });
+    await waitFor(() => expect(within(nav).getAllByRole('link')[0]).toHaveTextContent('عالمي'));
   });
 
   it('marks a tab current on its section', () => {

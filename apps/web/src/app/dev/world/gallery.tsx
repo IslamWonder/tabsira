@@ -24,28 +24,21 @@ const noop = () => undefined;
 /** The states of the world and practice screens on sample data, for review at 375 and 1440 px. */
 const FRAMES: readonly Frame[] = [
   ...(['phone', 'desktop'] as const).flatMap((viewport) => {
-    const height = viewport === 'phone' ? 1700 : 900;
+    const height = viewport === 'phone' ? 812 : 900;
     return [
       {
         key: `world-${viewport}`,
         label: D.states.world,
         viewport,
         height,
-        node: <WorldView world={WORLD} onVisited={noop} />,
-      },
-      {
-        key: `opened-${viewport}`,
-        label: D.states.opened,
-        viewport,
-        height,
-        node: <WorldView world={WORLD} onVisited={noop} initialSelected="T01" />,
+        node: <WorldView world={WORLD} onVisited={noop} onShown={noop} />,
       },
       {
         key: `newcomer-${viewport}`,
         label: D.states.newcomer,
         viewport,
         height,
-        node: <WorldView world={WORLD_UNDER_FOG} onVisited={noop} />,
+        node: <WorldView world={WORLD_UNDER_FOG} onVisited={noop} onShown={noop} />,
       },
       {
         key: `practice-${viewport}`,

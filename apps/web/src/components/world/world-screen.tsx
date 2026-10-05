@@ -1,144 +1,389 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Button, LinkButton } from '@/components/ui/button';
-import { GlassPanel } from '@/components/ui/glass-panel';
+import { useRouter } from 'next/navigation';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { LogoMark } from '@/components/brand/logo';
+import { useCapture } from '@/components/capture/capture-provider';
+import { BackIcon, CompassIcon, OnwardIcon, OpenBookIcon, SparkIcon } from '@/components/icons';
+import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
-import { type Place, visitPlace, type World } from '@/world/api';
-import { FogMap } from './fog-map';
-import { PlaceDetail } from './place-detail';
-import { PlaceList } from './place-list';
-import { ThreadList } from './thread-list';
+import type { Place, Reveal, World } from '@/world/api';
+import { LandmarkIcon } from './landmark-icons';
 import { useWorld } from './use-world';
-import { openedCount, type RegionView, regionViews, threads as threadsOf } from './world-model';
+import type { Point } from './world-geometry';
+import {
+  announcement,
+  type Landmark,
+  type Learned,
+  landmarkOf,
+  landmarks as landmarksOf,
+  learned as learnedOf,
+  pendingReveals,
+  THEME_COLORS,
+} from './world-model';
+import { WorldPanel } from './world-panel';
+import { HelpContent, MineContent, PlaceContent } from './world-panels';
+import { type Focus, WorldStage } from './world-stage';
 
 const M = messages.world;
+const MIDDLE: Point = { x: 0.5, y: 0.5 };
+// The side panel's width from tablet up (world-panel.tsx), and that breakpoint.
+const PANEL_WIDTH = 460;
+const TABLET_UP = '(min-width: 48rem)';
+// Enough zoom for the picture to move a spot out from under a panel.
+const ASIDE_ZOOM = 1.5;
 
-function Invitation() {
+/** What the world is doing (the kit's states); `saving` happens on the insight's screen, at completion. */
+export type WorldPhase = 'loading' | 'unavailable' | 'ready-empty' | 'ready-progress' | 'revealing';
+
+export type WorldPanelState =
+  | { kind: 'place'; placeId: string; insightId: string | null }
+  | { kind: 'mine' }
+  | { kind: 'help' };
+
+/** The whole screen under the top bar (and its 1 px rule): nothing scrolls below the world. */
+function Frame({ phase, children }: { phase: WorldPhase; children: ReactNode }) {
   return (
-    <GlassPanel
-      as="section"
-      ornate
-      aria-labelledby="world-invitation"
-      className="flex flex-col items-start gap-3"
+    <div
+      data-phase={phase}
+      className="world-root relative h-[var(--app-height)] w-full overflow-hidden tablet:h-[calc(var(--app-height)-var(--topbar-height)-1px)]"
     >
-      <h2 id="world-invitation" className="m-0 font-bold font-display text-heading text-gilded">
-        {M.empty.title}
-      </h2>
-      <p className="m-0 text-fg-soft leading-[1.9]">{M.empty.body}</p>
-      <LinkButton href="/" variant="primary" size="lg">
-        {M.empty.cta}
-      </LinkButton>
-    </GlassPanel>
-  );
-}
-
-function Notice({ text, onRetry }: { text: string | null; onRetry?: () => void }) {
-  return (
-    <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-6 py-16 text-center">
-      <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
-        {messages.pages.world.title}
-      </h1>
-      <p role={onRetry ? 'alert' : 'status'} className="m-0 text-fg-soft leading-[1.9]">
-        {text}
-      </p>
-      {onRetry ? (
-        <Button variant="secondary" onClick={onRetry}>
-          {M.retry}
-        </Button>
-      ) : null}
+      {children}
     </div>
   );
 }
 
-type Visited = (place: Place) => void;
-
-export function WorldView({
-  world,
-  onVisited,
-  initialSelected = null,
+/** A round pearl control; `wide` also writes its name from tablet up (a phone shows the drawing alone, as the kit does). */
+function RoundButton({
+  label,
+  onClick,
+  children,
+  wide = false,
 }: {
-  world: World;
-  onVisited: Visited;
-  /** Opens a region at first, for the gallery's still pictures. */
-  initialSelected?: string | null;
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+  wide?: boolean;
 }) {
-  const [selected, setSelected] = useState<string | null>(initialSelected);
-  const [activeThread, setActiveThread] = useState<string | null>(null);
-  const views = useMemo(() => regionViews(world), [world]);
-  const threads = useMemo(() => threadsOf(views, world.relations), [views, world.relations]);
-  const selectedView = views.find((view) => view.region.id === selected);
-
-  function select(view: RegionView) {
-    setSelected(view.region.id);
-    if (view.place) {
-      void visit(view.place.id, onVisited);
-    }
-  }
-
   return (
-    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 pt-[max(24px,env(safe-area-inset-top))] pb-4 tablet:grid tablet:grid-cols-[20rem_minmax(0,1fr)] tablet:items-start tablet:gap-x-6 tablet:px-6 tablet:py-6 desktop:grid-cols-[26rem_minmax(0,1fr)] desktop:px-10">
-      <header className="flex flex-col gap-1 tablet:col-start-1 tablet:row-start-1">
-        <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
-          {messages.pages.world.title}
-        </h1>
-        <p className="m-0 text-fg-muted text-sm leading-[1.8]">
-          {M.summary(openedCount(views), views.length)}
-        </p>
-      </header>
-      <section
-        aria-label={messages.pages.world.mapLabel}
-        className="relative aspect-[3/4] w-full overflow-hidden rounded-[var(--radius-panel)] border border-line tablet:sticky tablet:top-[calc(var(--topbar-height)+1.5rem)] tablet:col-start-2 tablet:row-span-2 tablet:row-start-1 tablet:aspect-auto tablet:h-[calc(var(--app-height)-var(--topbar-height)-3rem)]"
-      >
-        <FogMap
-          views={views}
-          threads={threads}
-          selected={selected}
-          activeThread={activeThread}
-          onSelect={select}
-        />
-      </section>
-      <div className="flex min-w-0 flex-col gap-5 tablet:col-start-1 tablet:row-start-2">
-        {selectedView ? (
-          <PlaceDetail
-            key={selectedView.region.id}
-            view={selectedView}
-            onClose={() => setSelected(null)}
-          />
-        ) : null}
-        {world.places.length === 0 ? <Invitation /> : null}
-        <PlaceList views={views} selected={selected} onSelect={select} />
-        <ThreadList
-          threads={threads}
-          views={views}
-          active={activeThread}
-          onActive={setActiveThread}
-        />
-      </div>
-    </div>
+    <button
+      type="button"
+      aria-label={label}
+      aria-haspopup={wide ? 'dialog' : undefined}
+      onClick={onClick}
+      className={cx(
+        'world-pearl inline-flex h-12 min-w-12 items-center justify-center gap-2 rounded-full font-semibold text-[0.9375rem] transition-colors duration-200 hover:bg-[#ffffff] focus-visible:outline-3 focus-visible:outline-[var(--focus)] focus-visible:outline-offset-2',
+        wide && 'tablet:px-4'
+      )}
+    >
+      {children}
+      {wide ? (
+        <span aria-hidden="true" className="hidden tablet:inline">
+          {label}
+        </span>
+      ) : null}
+    </button>
   );
-}
-
-/** Opening a place is recorded; what it returns (a treasure now ready) replaces the place. */
-async function visit(placeId: string, onVisited: Visited) {
-  const result = await visitPlace(placeId);
-  if (result.ok) {
-    onVisited(result.data);
-  }
 }
 
 /**
- * The personal world (master prompt v2 §16): a fog map of the learning path's
- * regions with a side list that says the same in text, the threads between
- * places and the places' saved insights. Nothing here is a score.
+ * The few controls the world keeps (the kit's HUD): its name with the brand at
+ * the start; back, help and the learner's list (once something was learned) at the end.
+ * They stay the size of the screen, whatever the zoom.
  */
+function Header({ onMine, onHelp }: { onMine: (() => void) | null; onHelp: (() => void) | null }) {
+  const router = useRouter();
+  const back = () => {
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/');
+    }
+  };
+  return (
+    <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 px-3 pt-[max(12px,env(safe-area-inset-top))] tablet:px-7 tablet:pt-6">
+      <div className="world-pearl pointer-events-auto flex items-center gap-2.5 rounded-[18px] px-3 py-2 tablet:px-4">
+        <LogoMark className="h-9 text-[var(--world-gold)] tablet:hidden" />
+        <div className="flex flex-col">
+          <h1 className="m-0 font-bold font-display text-[1.5rem] leading-[1.3]">{M.title}</h1>
+          <span className="text-[0.75rem] text-[#4a635c] leading-[1.4] tablet:hidden">
+            {M.brand}
+          </span>
+        </div>
+      </div>
+      <div className="pointer-events-auto flex items-center gap-1.5 tablet:gap-2">
+        {onMine === null ? null : (
+          <RoundButton label={M.mine} onClick={onMine} wide>
+            <OpenBookIcon width="20" height="20" />
+          </RoundButton>
+        )}
+        {onHelp === null ? null : (
+          <RoundButton label={M.help} onClick={onHelp}>
+            <CompassIcon width="22" height="22" />
+          </RoundButton>
+        )}
+        <RoundButton label={M.back} onClick={back}>
+          <BackIcon width="22" height="22" />
+        </RoundButton>
+      </div>
+    </header>
+  );
+}
+
+/** The invitation and the one way on: capturing a scene, wherever the reader is. */
+function Discover({ empty }: { empty: boolean }) {
+  const capture = useCapture();
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--nav-clearance)-8px)] z-10 flex flex-col items-center gap-3 pr-3 pl-[76px] tablet:bottom-7 tablet:px-0">
+      {empty ? (
+        <p className="world-invitation m-0 text-center font-bold font-display text-[1.5rem] text-[var(--world-ink)]">
+          {M.invitation}
+        </p>
+      ) : null}
+      <button
+        type="button"
+        onClick={capture.open}
+        aria-haspopup="dialog"
+        className="pointer-events-auto inline-flex h-14 items-center gap-2 whitespace-nowrap rounded-[18px] bg-[var(--world-green)] px-4 font-semibold text-[#ffffff] text-base tablet:gap-3 tablet:px-6 tablet:text-[1.0625rem] shadow-[0_10px_28px_rgb(8_46_37/0.4)] transition-[filter] duration-200 hover:brightness-110 focus-visible:outline-3 focus-visible:outline-[var(--focus)] focus-visible:outline-offset-3"
+      >
+        <SparkIcon width="20" height="20" className="text-[var(--world-gold)]" />
+        <span>{empty ? M.discoverFirst : M.discoverMore}</span>
+        <OnwardIcon width="18" height="18" />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Where a spot shows best while a panel stays open over the picture: left of the side
+ * panel from tablet up (it opens at the start, the right), above the bottom sheet on a phone.
+ */
+function besidePanel(): Point {
+  if (window.matchMedia(TABLET_UP).matches) {
+    return { x: -PANEL_WIDTH / 2, y: 0 };
+  }
+  return { x: 0, y: -window.innerHeight * 0.22 };
+}
+
+function landmarkLabel(landmark: Landmark): string {
+  const insights = landmark.place?.insights ?? [];
+  return M.landmark(
+    landmark.name,
+    Math.max(insights.length, 1),
+    insights.at(-1)?.title ?? landmark.name
+  );
+}
+
+export interface WorldViewProps {
+  world: World;
+  onVisited: (place: Place) => void;
+  onShown: (ids: readonly string[]) => void;
+  /** A panel open from the start, for the gallery's still pictures. */
+  initialPanel?: WorldPanelState | null;
+}
+
+/**
+ * The personal world as one picture under clouds (decision 59, the owners'
+ * world kit). A newcomer sees clouds only, an invitation and the call to
+ * discover a first insight: no ground, no names, no list, no count. Each concept
+ * completed has lifted the clouds from its circle, with a landmark where its
+ * region's first concept was learned; a landmark opens what was learned there,
+ * the learner's list holds all of it. A reveal the world has not shown yet plays here
+ * once, wherever the learning happened, and is announced; the camera goes to
+ * it once, and never moves by itself otherwise.
+ */
+export function WorldView({ world, onVisited, onShown, initialPanel = null }: WorldViewProps) {
+  const landmarks = useMemo(() => landmarksOf(world), [world]);
+  const items = useMemo(() => learnedOf(world), [world]);
+  const pending = useMemo(() => pendingReveals(world), [world]);
+  const [panel, setPanel] = useState<WorldPanelState | null>(initialPanel);
+  const [spoken, setSpoken] = useState('');
+  const latest = pending.at(-1) ?? world.reveals.at(-1) ?? null;
+  const home: Point = latest === null ? MIDDLE : { x: latest.x, y: latest.y };
+  const [focus, setFocus] = useState<Focus>({ point: home, key: 0, fly: false });
+  const worldRef = useRef(world);
+  const seenPending = useRef(pending.map((reveal) => reveal.id).join());
+
+  useLayoutEffect(() => {
+    worldRef.current = world;
+  }, [world]);
+
+  // A reveal that arrives while the world is open (learned in another tab): the camera goes there, once.
+  useEffect(() => {
+    const ids = pending.map((reveal) => reveal.id).join();
+    const newest = pending.at(-1);
+    if (ids === seenPending.current || newest === undefined) {
+      seenPending.current = ids;
+      return;
+    }
+    seenPending.current = ids;
+    setFocus((current) => ({
+      point: { x: newest.x, y: newest.y },
+      key: current.key + 1,
+      fly: true,
+    }));
+  }, [pending]);
+
+  const played = useCallback(
+    (ids: readonly string[]) => {
+      setSpoken(announcement(worldRef.current, ids));
+      onShown(ids);
+    },
+    [onShown]
+  );
+
+  const flyTo = (point: Point, aside?: Point) =>
+    setFocus((current) => ({
+      point,
+      key: current.key + 1,
+      fly: true,
+      ...(aside === undefined ? {} : { shift: aside, minZoom: ASIDE_ZOOM }),
+    }));
+
+  const goTo = (insightId: string) => {
+    setPanel(null);
+    // A reload may have taken the insight away since the panel opened: then it only closes.
+    const item = items.find((entry) => entry.insight.id === insightId && entry.spot !== null);
+    if (item === undefined) {
+      return;
+    }
+    const spot = item.spot as Reveal;
+    flyTo({ x: spot.x, y: spot.y });
+    const landmark = landmarkOf(world, item.place.id);
+    // After the panel has given focus back: to the landmark the camera went to.
+    requestAnimationFrame(() => {
+      if (landmark !== null) {
+        document.querySelector<HTMLElement>(`[data-landmark="${landmark.id}"]`)?.focus();
+      }
+    });
+  };
+
+  const pick = (item: Learned) => {
+    setPanel({ kind: 'place', placeId: item.place.id, insightId: item.insight.id });
+    if (item.spot !== null) {
+      flyTo({ x: item.spot.x, y: item.spot.y }, besidePanel());
+    }
+  };
+
+  const place =
+    panel?.kind === 'place'
+      ? (world.places.find((item) => item.id === panel.placeId) ?? null)
+      : null;
+  const placeLandmark = place === null ? null : landmarkOf(world, place.id);
+  const close = () => setPanel(null);
+  const empty = items.length === 0;
+  let phase: WorldPhase = empty ? 'ready-empty' : 'ready-progress';
+  if (pending.length > 0) {
+    phase = 'revealing';
+  }
+
+  let title: string = M.helpView.title;
+  let description: string = M.helpView.lead;
+  let body: ReactNode = <HelpContent onLeave={close} />;
+  if (panel?.kind === 'mine') {
+    title = M.mineView.title;
+    description = M.mineView.lead;
+    body = <MineContent items={items} onPick={pick} />;
+  } else if (place !== null && panel?.kind === 'place') {
+    title = place.name;
+    description = M.panel.placeLead;
+    body = (
+      <PlaceContent
+        key={place.id}
+        place={place}
+        insightId={panel.insightId}
+        onChoose={(insightId) => setPanel({ kind: 'place', placeId: place.id, insightId })}
+        onGoTo={goTo}
+        onVisited={onVisited}
+      />
+    );
+  }
+
+  return (
+    <Frame phase={phase}>
+      <WorldStage
+        reveals={world.reveals}
+        landmarks={landmarks}
+        pending={pending}
+        onPlayed={played}
+        focus={focus}
+        home={home}
+        label={landmarkLabel}
+        onOpen={(landmark) =>
+          setPanel({ kind: 'place', placeId: landmark.reveal.place_id, insightId: null })
+        }
+      />
+      <Header
+        onMine={empty ? null : () => setPanel({ kind: 'mine' })}
+        onHelp={() => setPanel({ kind: 'help' })}
+      />
+      <Discover empty={empty} />
+      <p role="status" className="sr-only">
+        {spoken}
+      </p>
+      <WorldPanel
+        open={panel !== null && (panel.kind !== 'place' || place !== null)}
+        onClose={close}
+        title={title}
+        description={description}
+        icon={
+          placeLandmark === null || panel?.kind !== 'place' ? undefined : (
+            <LandmarkIcon
+              icon={placeLandmark.icon}
+              style={{ color: THEME_COLORS[placeLandmark.theme] }}
+            />
+          )
+        }
+      >
+        {body}
+      </WorldPanel>
+    </Frame>
+  );
+}
+
+/** Clouds only, the way the world looks before it is read: never an empty world that is not one. */
+function Waiting({ failed, onRetry }: { failed: boolean; onRetry: () => void }) {
+  return (
+    <Frame phase={failed ? 'unavailable' : 'loading'}>
+      <div aria-hidden="true" className="world-clouds absolute inset-0" />
+      <Header onMine={null} onHelp={null} />
+      <div className="absolute inset-0 flex items-center justify-center px-6">
+        {failed ? (
+          <div className="world-pearl flex max-w-sm flex-col items-center gap-3 rounded-[20px] px-5 py-4 text-center">
+            <p role="alert" className="m-0 leading-[1.8]">
+              {M.unavailable}
+            </p>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="inline-flex min-h-12 items-center rounded-full bg-[var(--world-green)] px-6 font-semibold text-[#ffffff] focus-visible:outline-3 focus-visible:outline-[var(--focus)] focus-visible:outline-offset-2"
+            >
+              {M.retry}
+            </button>
+          </div>
+        ) : (
+          <p role="status" className="world-pearl m-0 rounded-full px-5 py-2.5">
+            {M.loading}
+          </p>
+        )}
+      </div>
+    </Frame>
+  );
+}
+
+/** The personal world, loaded for its owner: clouds while it loads, clouds and a retry when it cannot. */
 export function WorldScreen() {
-  const { load, reload, replacePlace } = useWorld();
-  if (load.status === 'loading') {
-    return <Notice text={M.loading} />;
+  const { load, reload, replacePlace, markShown } = useWorld();
+  if (load.status !== 'ready') {
+    return <Waiting failed={load.status === 'failed'} onRetry={reload} />;
   }
-  if (load.status === 'failed') {
-    return <Notice text={M.unavailable} onRetry={reload} />;
-  }
-  return <WorldView world={load.world} onVisited={replacePlace} />;
+  return <WorldView world={load.world} onVisited={replacePlace} onShown={markShown} />;
 }

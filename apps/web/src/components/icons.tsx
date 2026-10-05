@@ -385,3 +385,101 @@ export function PlusIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export function MinusIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M5 12h14" />
+    </Icon>
+  );
+}
+
+/** Back, in a right-to-left page: the arrow points to where the reader came from, the right. */
+export function BackIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </Icon>
+  );
+}
+
+/** Onward, in a right-to-left page: a chevron pointing left. */
+export function OnwardIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m14.5 6-6 6 6 6" />
+    </Icon>
+  );
+}
+
+export function CompassIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m15.5 8.5-2 5-5 2 2-5z" />
+    </Icon>
+  );
+}
+
+export function RecenterIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
+      <path d="M4.5 4.5v3.7h3.7" />
+    </Icon>
+  );
+}
+
+export function OpenBookIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 5.5c2.5-1 5.5-1 8 .5 2.5-1.5 5.5-1.5 8-.5V19c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z" />
+      <path d="M12 6v13.5" />
+    </Icon>
+  );
+}
+
+export function GemIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M6.5 4h11l3.5 5-9 11L3 9z" />
+      <path d="M3 9h18M9.5 4 8 9l4 11 4-11-1.5-5" />
+    </Icon>
+  );
+}
+
+export function PhotosIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="6.5" width="14" height="13" rx="2" />
+      <path d="M7 3.5h11.5a2 2 0 0 1 2 2V16" />
+      <path d="m3.5 16 4-4 3.5 3.5 2.5-2.5 4 4" />
+    </Icon>
+  );
+}
+
+export function PlayIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M8 5.5v13l10-6.5z" />
+    </Icon>
+  );
+}
+
+export function MenuIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </Icon>
+  );
+}
+
+export function VerifyIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8 12.5 2.5 2.5L16 9.5" />
+    </Icon>
+  );
+}

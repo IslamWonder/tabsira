@@ -39,6 +39,9 @@
   --sunnah-border: #efe4cb;
   --link: #0f4c3a;
   --glow-gold: #ffd978;
+  /* the landing page: its gold eyebrows and the example's band */
+  --landing-gold: #8d6e2c;
+  --landing-band: #eaf2ec;
   --glow-emerald: #0f4c3a;
   /* the logo (brand/README.md): deep gold on day, 4.53:1 on the page */
   --brand: #8d6e2c;
@@ -168,6 +171,9 @@
     --sunnah-border: rgba(63, 214, 154, 0.3);
     --link: #7fe3b8;
     --glow-gold: #e6c77f;
+    /* the landing page: its gold eyebrows and the example's band */
+    --landing-gold: #dfbd77;
+    --landing-band: rgba(255, 255, 255, 0.04);
     --glow-emerald: #3fd69a;
     /* the logo (brand/README.md): brand gold on night, 5.99:1 on the page */
     --brand: #b28b38;
@@ -297,6 +303,9 @@
   --sunnah-border: rgba(63, 214, 154, 0.3);
   --link: #7fe3b8;
   --glow-gold: #e6c77f;
+  /* the landing page: its gold eyebrows and the example's band */
+  --landing-gold: #dfbd77;
+  --landing-band: rgba(255, 255, 255, 0.04);
   --glow-emerald: #3fd69a;
   /* the logo (brand/README.md): brand gold on night, 5.99:1 on the page */
   --brand: #b28b38;

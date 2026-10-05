@@ -1,6 +1,7 @@
 'use client';
 
 import type { Route } from 'next';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   createContext,
@@ -13,6 +14,7 @@ import {
   useState,
 } from 'react';
 import { SummoningCircle } from '@/components/fx/summoning-circle';
+import { PlayIcon } from '@/components/icons';
 import { SceneStarter } from '@/components/scene/scene-starter';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -97,6 +99,15 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
       {children}
       <Sheet open={open} onClose={() => setOpen(false)} title={messages.nav.captureScene}>
         <SceneStarter onFile={capture.send} startCamera className="mb-2" />
+        {/* The third way in: the prepared example, with no camera and no photo. */}
+        <Link
+          href={'/#example' as Route}
+          onClick={() => setOpen(false)}
+          className="mb-2 inline-flex min-h-12 items-center gap-2 font-semibold text-link underline-offset-4 hover:underline"
+        >
+          <PlayIcon width="18" height="18" />
+          {messages.landing.hero.tryExample}
+        </Link>
       </Sheet>
       <Sheet open={sending !== null} onClose={leave} title={messages.sending.title}>
         <div className="flex flex-col gap-4 pb-2">

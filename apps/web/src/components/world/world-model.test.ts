@@ -1,55 +1,72 @@
 import { describe, expect, it } from 'vitest';
-import { PLACE_ONE, PLACE_TWO, RELATION, WORLD, WORLD_UNDER_FOG } from '@/test/world';
-import { insightHref, openedCount, regionState, regionViews, threads } from './world-model';
+import { PLACE_ONE, PLACE_TWO, REVEALS, WORLD, WORLD_JUST_LEARNED } from '@/test/world';
+import type { Reveal } from '@/world/api';
+import {
+  announcement,
+  insightHref,
+  landmarkOf,
+  landmarks,
+  learned,
+  pendingReveals,
+  revealName,
+  THEME_COLORS,
+} from './world-model';
 
-describe('regionViews', () => {
-  it('joins each opened region to its place and flags a ready treasure', () => {
-    const views = regionViews(WORLD);
-    expect(views.map((view) => view.place?.id ?? null)).toEqual(['7001', '7002', null, null]);
-    expect(views.map((view) => view.hasTreasure)).toEqual([false, true, false, false]);
-    expect(openedCount(views)).toBe(2);
+describe('the world model', () => {
+  it('draws a landmark only where a region was first learned, named by its place', () => {
+    const marks = landmarks(WORLD);
+
+    expect(marks.map((mark) => [mark.reveal.id, mark.name])).toEqual([
+      ['6001', PLACE_ONE.name],
+      ['6002', PLACE_TWO.name],
+    ]);
+    expect(landmarkOf(WORLD, '7002')?.id).toBe('6002');
+    expect(landmarkOf(WORLD, '7999')).toBeNull();
   });
 
-  it('keeps a whole map under fog for a newcomer', () => {
-    const views = regionViews(WORLD_UNDER_FOG);
-    expect(openedCount(views)).toBe(0);
+  it('names a landmark by its region when its place is not in the answer', () => {
+    const orphan = { ...(REVEALS[0] as Reveal), id: '6009', place_id: '7999', region_id: 'T03' };
+    const world = { ...WORLD, reveals: [orphan] };
+
+    expect(landmarks(world)[0]?.name).toBe('[منطقة رابعة]');
+    expect(landmarks(world)[0]?.place).toBeNull();
+    expect(revealName(world, orphan)).toBe('[منطقة رابعة]');
+    expect(revealName(world, { ...orphan, region_id: 'T42' })).toBe('T42');
   });
 
-  it('treats a place the API did not send as still under fog', () => {
-    const views = regionViews({ ...WORLD, places: [PLACE_ONE] });
-    expect(views[1]?.place).toBeNull();
-  });
-});
+  it('lists every learned insight, the latest first, with where it shows', () => {
+    const items = learned(WORLD);
 
-describe('regionState', () => {
-  it('says each state in words, one source for the map and the list', () => {
-    const views = regionViews(WORLD);
-    expect(regionState(views[3] as (typeof views)[number])).toBe('تحت الضباب');
-    expect(regionState(views[0] as (typeof views)[number])).toBe('بصيرة واحدة محفوظة');
-    expect(regionState(views[1] as (typeof views)[number])).toBe('2 بصائر محفوظة، فيها كنز ينتظر');
-    const empty = regionViews({ ...WORLD, places: [{ ...PLACE_ONE, insights: [] }, PLACE_TWO] });
-    expect(regionState(empty[0] as (typeof views)[number])).toBe('مفتوحة');
-  });
-});
-
-describe('threads', () => {
-  it('keeps a relation whose two places are both on the map', () => {
-    const views = regionViews(WORLD);
-    const found = threads(views, WORLD.relations);
-    expect(found).toHaveLength(1);
-    expect(found[0]?.from.region.id).toBe('T00');
-    expect(found[0]?.to.region.id).toBe('T01');
+    expect(items.map((item) => item.insight.id)).toEqual(['9003', '9002', '9001']);
+    expect(items[0]?.spot?.id).toBe('6003');
+    // An insight whose region had no room shows at its region's landmark.
+    const crowded = {
+      ...WORLD,
+      places: [
+        { ...PLACE_TWO, insights: [{ ...PLACE_TWO.insights[0], reveal_id: null }] },
+      ] as (typeof WORLD)['places'],
+    };
+    expect(learned(crowded)[0]?.spot?.id).toBe('6002');
   });
 
-  it('leaves out a relation to a place that is not shown', () => {
-    const views = regionViews({ ...WORLD, places: [PLACE_ONE] });
-    expect(threads(views, [RELATION])).toEqual([]);
-    expect(threads(views, [{ ...RELATION, place_a_id: '1', place_b_id: '2' }])).toEqual([]);
+  it('keeps for later only the reveals the world has not played', () => {
+    expect(pendingReveals(WORLD)).toEqual([]);
+    expect(pendingReveals(WORLD_JUST_LEARNED).map((reveal) => reveal.id)).toEqual(['6001']);
+    expect(revealName(WORLD, REVEALS[1] as Reveal)).toBe(PLACE_TWO.name);
   });
-});
 
-describe('insightHref', () => {
-  it('leads to the insight screen by the insight id', () => {
+  it('gives each theme its colour and each insight its route', () => {
+    expect(THEME_COLORS.water).toBe('#83e1d5');
     expect(insightHref('9001')).toBe('/insight/9001');
+  });
+});
+
+describe('the announcement after a reveal plays', () => {
+  it('names the landmarks that appeared, or the region that widened, or nothing', () => {
+    expect(announcement(WORLD, ['6001', '6002'])).toBe(
+      `حُفظت بصائرك، وانكشف في عالمك: ${PLACE_ONE.name}، ${PLACE_TWO.name}.`
+    );
+    expect(announcement(WORLD, ['6003'])).toBe(`حُفظت بصيرتك، واتّسع ${PLACE_TWO.name}.`);
+    expect(announcement(WORLD, ['6999'])).toBe('');
   });
 });

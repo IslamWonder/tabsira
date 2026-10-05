@@ -5,6 +5,7 @@ import {
   featureCameraDiscovery,
   featureFlag,
   featureSocial,
+  landingFeatures,
   turnstileSiteKey,
 } from './server-env';
 
@@ -48,6 +49,21 @@ describe('the feature flags the web server reads', () => {
     expect(featureSocial({ FEATURE_SOCIAL: 'false' })).toBe(false);
     expect(featureSocial({ FEATURE_SOCIAL: 'true' })).toBe(true);
     expect(featureSocial()).toBe(true);
+  });
+
+  it('give the landing page its public subset, and nothing administrative', () => {
+    const features = landingFeatures({ FEATURE_CHAT: 'false', FEATURE_ADMIN: 'true' });
+    expect(features).toEqual({
+      chat: false,
+      world: true,
+      treasure: true,
+      social: true,
+      atlas: true,
+      cameraDiscovery: true,
+      photoStorage: true,
+      canonicalVerify: true,
+    });
+    expect(landingFeatures().chat).toBe(true);
   });
 
   it('name the camera discovery flag', () => {

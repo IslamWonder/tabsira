@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useSession } from '@/account/session';
 import { useCapture } from '@/components/capture/capture-provider';
 import { CameraIcon, ProfileIcon } from '@/components/icons';
+import { LANDING_LINKS } from '@/components/landing/landing-model';
 import { Button, LinkButton } from '@/components/ui/button';
 import { SoundToggle } from '@/components/ui/sound-toggle';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -18,12 +19,18 @@ import { isActive, SECTIONS } from './nav-items';
  * application»): the brand at the start, the four sections as tabs in the
  * middle, and the capture button as the one primary button at the end (Von
  * Restorff), which opens the camera wherever the reader is. It is the web's own pattern (Jakob's law); the phone keeps its
- * floating bar. Tabs change colour on hover, never size or place.
+ * floating bar. Tabs change colour on hover, never size or place. On the home
+ * page a visitor sees the page's own sections instead (the owners' landing
+ * prompt); an account keeps the app's sections there too.
  */
 export function TopBar() {
   const pathname = usePathname();
   const session = useSession();
   const capture = useCapture();
+  const landing = pathname === '/' && session.status !== 'signed-in';
+  const links = landing
+    ? LANDING_LINKS.map((item) => ({ ...item, Icon: null }))
+    : SECTIONS.map((item) => ({ href: item.href, label: item.label, Icon: item.Icon }));
   return (
     <header className="topbar-glass sticky top-0 z-40 hidden tablet:block">
       {/* A gold rule under the bar, brightest at its middle: the edge of an RPG window. */}
@@ -39,7 +46,7 @@ export function TopBar() {
         <Brand />
         <nav aria-label={messages.nav.label} className="min-w-0 flex-1">
           <ul className="flex items-center justify-center gap-1">
-            {SECTIONS.map((item) => {
+            {links.map((item) => {
               const active = isActive(item.href, pathname);
               return (
                 <li key={item.href}>
@@ -47,13 +54,15 @@ export function TopBar() {
                     href={item.href}
                     aria-current={active ? 'page' : undefined}
                     className={cx(
-                      'inline-flex min-h-12 items-center gap-2 rounded-full px-4 text-[0.9375rem] transition-colors duration-200',
+                      'inline-flex min-h-12 items-center gap-2 whitespace-nowrap rounded-full px-3 text-[0.9375rem] transition-colors duration-200 desktop:px-4',
                       active
                         ? 'bg-[var(--chip-primary-bg)] font-semibold text-[var(--chip-primary-fg)]'
                         : 'text-glass-fg-soft hover:text-glass-fg'
                     )}
                   >
-                    <item.Icon width="18" height="18" className="hidden desktop:block" />
+                    {item.Icon === null ? null : (
+                      <item.Icon width="18" height="18" className="hidden desktop:block" />
+                    )}
                     {item.label}
                   </Link>
                 </li>

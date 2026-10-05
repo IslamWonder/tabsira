@@ -73,6 +73,12 @@ const PAIRS: readonly Pair[] = [
   { text: 'hadith-words', layers: ['sunnah-surface-from'] },
   { text: 'hadith-words', layers: ['sunnah-surface-from', 'hadith-highlight'] },
   { text: 'hadith-words', layers: ['sunnah-surface-to', 'hadith-highlight'] },
+  // The landing page: gold eyebrows and icons on the page and on cards, text on the example's band.
+  { text: 'landing-gold', layers: [] },
+  { text: 'landing-gold', layers: ['surface'] },
+  { text: 'text', layers: ['landing-band'] },
+  { text: 'text-soft', layers: ['landing-band'] },
+  { text: 'text-soft', layers: ['landing-band', 'surface'] },
   // Large-text tokens: the ornate brackets ﴿ ﴾ are set at 26 px.
   { text: 'quran-accent', layers: ['quran-surface-from'], large: true },
   { text: 'quran-accent', layers: ['quran-surface-to'], large: true },
