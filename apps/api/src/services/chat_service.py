@@ -98,7 +98,11 @@ async def _reserve(
     db: AsyncSession, settings: Settings, insight: Insight, key: str, question: str
 ) -> ChatMessage:
     """Hold a slot for one message, or return the answered message of the same key."""
-    await db.scalar(select(Insight.id).where(Insight.id == insight.id).with_for_update())
+    # The lock also re-reads `completed_at`: a completion committed since the
+    # caller loaded the row must close the insight here, not be missed.
+    completed_at = await db.scalar(
+        select(Insight.completed_at).where(Insight.id == insight.id).with_for_update()
+    )
     stale_before = clock.utcnow() - CHAT_RESERVATION
     await db.execute(
         delete(ChatMessage).where(
@@ -122,7 +126,7 @@ async def _reserve(
         select(func.count()).select_from(ChatMessage).where(ChatMessage.insight_id == insight.id)
     )
     # «تمّ» closes the insight: what was discussed stays readable, nothing new is asked.
-    if insight.completed_at is not None:
+    if completed_at is not None:
         await db.commit()
         raise _refused(ErrorCode.CHAT_CLOSED, messages_for().chat_closed, 409)
     if int(held or 0) >= settings.max_chat_user_messages:
