@@ -412,6 +412,16 @@ export function BackIcon(props: IconProps) {
   );
 }
 
+/** Onward, in a right-to-left page, as an arrow: it points to the left, where the reading goes. */
+export function OnwardArrowIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M19 12H5" />
+      <path d="m11 6-6 6 6 6" />
+    </Icon>
+  );
+}
+
 /** Onward, in a right-to-left page: a chevron pointing left. */
 export function OnwardIcon(props: IconProps) {
   return (

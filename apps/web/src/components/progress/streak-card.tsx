@@ -26,10 +26,11 @@ export function StreakCard({ streak }: { streak: Progress['streak'] }) {
       <p className="m-0 text-fg-muted text-sm">{M.best(streak.best)}</p>
       <ol aria-label={M.week} className="m-0 flex list-none justify-between gap-1 p-0">
         {streak.days.map((entry, index) => (
-          <li key={entry.day} className="flex flex-col items-center gap-1">
+          // Seven equal shares of the row, at most 40 px each, so the week fits a 320 px screen.
+          <li key={entry.day} className="flex min-w-0 flex-1 flex-col items-center gap-1">
             <span
               className={cx(
-                'flex size-10 items-center justify-center rounded-full border',
+                'flex aspect-square w-full max-w-10 items-center justify-center rounded-full border',
                 entry.looked
                   ? 'border-[var(--quran-border)] bg-[var(--chip-primary-bg)] text-primary'
                   : 'border-line text-fg-muted'

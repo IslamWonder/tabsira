@@ -6,6 +6,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
+from src.schemas.public_id import PublicId
+
 
 class NextRankOut(BaseModel):
     id: str
@@ -48,12 +50,23 @@ class QuestOut(BaseModel):
     days_done: int
 
 
+class StarInsightOut(BaseModel):
+    """A completed insight that taught a star's meaning, to open it again."""
+
+    id: PublicId
+    title: str
+    completed_at: datetime
+
+
 class StarOut(BaseModel):
     concept: str
     count: int
     first_seen: datetime
     x: float
     y: float
+    insights: list[StarInsightOut] = Field(
+        description="The completed insights that taught this meaning, the first one first"
+    )
 
 
 class SkyOut(BaseModel):

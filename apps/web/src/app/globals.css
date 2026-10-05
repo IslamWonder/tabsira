@@ -2,6 +2,7 @@
 @import "../theme/tokens.css";
 @import "../components/fx/fx.css";
 @import "../components/world/world.css";
+@import "../components/progress/meaning-sky.css";
 
 /*
  * Components style themes through tokens, never through `dark:`. The variant is

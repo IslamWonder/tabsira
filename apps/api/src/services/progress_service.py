@@ -33,11 +33,12 @@ from src.schemas.progress import (
     QuestStepOut,
     RankOut,
     SkyOut,
+    StarInsightOut,
     StarOut,
     StreakOut,
 )
 from src.services import practice
-from src.services.practice import PracticeLog
+from src.services.practice import Completion, PracticeLog
 
 
 async def practice_log(db: AsyncSession, owner: Owner | None) -> PracticeLog:
@@ -64,6 +65,7 @@ async def practice_log(db: AsyncSession, owner: Owner | None) -> PracticeLog:
             .options(
                 load_only(
                     Insight.completed_at,
+                    Insight.title,
                     Insight.why,
                     Insight.origin,
                     Insight.tutorial_slug,
@@ -106,7 +108,7 @@ async def practice_log(db: AsyncSession, owner: Owner | None) -> PracticeLog:
     return PracticeLog(
         looks=[moment for moment in looks if moment is not None],
         completions=[
-            (row.completed_at, str(row.why.get("concept", "")))
+            Completion(row.completed_at, str(row.why.get("concept", "")), row.id, row.title)
             for row in completed
             if row.completed_at is not None
         ],
@@ -131,7 +133,9 @@ def describe(log: PracticeLog, zone: ZoneInfo) -> ProgressOut:
     rank, following, way = practice.rank_for(looks)
     look_days = set(practice.first_by_day(log.looks, zone))
     current, best, last = practice.streak(look_days, today)
-    completion_days = set(practice.first_by_day([moment for moment, _ in log.completions], zone))
+    completion_days = set(
+        practice.first_by_day([completion.moment for completion in log.completions], zone)
+    )
     looked_today, completed_today = today in look_days, today in completion_days
     stars = practice.sky(log.completions)
     earned = practice.badges(log, zone)
@@ -181,6 +185,14 @@ def describe(log: PracticeLog, zone: ZoneInfo) -> ProgressOut:
                     first_seen=star.first_seen,
                     x=practice.sky_position(star.concept)[0],
                     y=practice.sky_position(star.concept)[1],
+                    insights=[
+                        StarInsightOut(
+                            id=completion.insight_id,
+                            title=completion.title,
+                            completed_at=completion.moment,
+                        )
+                        for completion in star.insights
+                    ],
                 )
                 for star in stars
             ],

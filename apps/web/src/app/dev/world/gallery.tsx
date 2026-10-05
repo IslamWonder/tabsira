@@ -5,7 +5,7 @@ import { PageContainer } from '@/components/layout/layouts';
 import { ProgressFrame, ProgressView } from '@/components/progress/progress-screen';
 import { WorldView } from '@/components/world/world-screen';
 import { messages } from '@/messages';
-import { PROGRESS, PROGRESS_EMPTY, WORLD, WORLD_UNDER_FOG } from '@/test/world';
+import { PROGRESS_EMPTY, PROGRESS_REFERENCE, WORLD, WORLD_UNDER_FOG } from '@/test/world';
 import { type Viewport, ViewportPreview } from '../ui/viewport-preview';
 
 const D = messages.devWorld;
@@ -44,10 +44,10 @@ const FRAMES: readonly Frame[] = [
         key: `practice-${viewport}`,
         label: D.states.practice,
         viewport,
-        height: viewport === 'phone' ? 2700 : 1500,
+        height: viewport === 'phone' ? 3300 : 2000,
         node: (
           <ProgressFrame>
-            <ProgressView progress={PROGRESS} />
+            <ProgressView progress={PROGRESS_REFERENCE} />
           </ProgressFrame>
         ),
       },
@@ -55,7 +55,7 @@ const FRAMES: readonly Frame[] = [
         key: `practice-empty-${viewport}`,
         label: D.states.practiceEmpty,
         viewport,
-        height: viewport === 'phone' ? 2700 : 1500,
+        height: viewport === 'phone' ? 3300 : 2000,
         node: (
           <ProgressFrame>
             <ProgressView progress={PROGRESS_EMPTY} />

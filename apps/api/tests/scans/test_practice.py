@@ -9,7 +9,7 @@ import pytest
 
 from src.messages import messages_for
 from src.services import practice
-from src.services.practice import PracticeLog
+from src.services.practice import Completion, PracticeLog
 
 UTC_ZONE = ZoneInfo("UTC")
 RIYADH = ZoneInfo("Asia/Riyadh")
@@ -74,8 +74,16 @@ def test_the_last_seven_days_today_first():
 
 
 def test_a_star_sits_where_its_name_puts_it_and_grows_with_repeats():
-    stars = practice.sky([(at(2), "الإحياء"), (at(1), "الشكر"), (at(3), "الإحياء"), (at(4), "  ")])
+    stars = practice.sky(
+        [
+            Completion(at(2), "الإحياء", 12, "قطرة"),
+            Completion(at(1), "الشكر", 11, "نعمة"),
+            Completion(at(3), "الإحياء", 13, "غرس"),
+            Completion(at(4), "  ", 14, "بلا معنى"),
+        ]
+    )
 
+    assert [[item.insight_id for item in star.insights] for star in stars] == [[11], [12, 13]]
     assert [(star.concept, star.count, star.first_seen) for star in stars] == [
         ("الشكر", 1, at(1)),
         ("الإحياء", 2, at(2)),
@@ -90,7 +98,7 @@ def test_a_star_sits_where_its_name_puts_it_and_grows_with_repeats():
 def test_the_daily_quest_is_a_look_and_a_completion_on_the_same_day():
     log = PracticeLog(
         looks=[at(4, 9), at(5, 9)],
-        completions=[(at(4, 10), "أ"), (at(6, 10), "ب")],
+        completions=[Completion(at(4, 10), "أ"), Completion(at(6, 10), "ب")],
     )
 
     assert practice.quest_days(log, UTC_ZONE) == {date(2026, 10, 4): at(4, 10)}
@@ -105,7 +113,7 @@ def test_each_badge_records_when_its_rule_first_held():
     looks = [at(1), at(2), at(3), at(3, 18), *[at(10 + n % 9) for n in range(30)]]
     log = PracticeLog(
         looks=looks,
-        completions=[(at(1, 13 + n), f"معنى {n}") for n in range(10)],
+        completions=[Completion(at(1, 13 + n), f"معنى {n}") for n in range(10)],
         tutorial={"drop": at(2), "planting": at(5)},
         actions=[at(6)],
         places=[at(1, 13)],

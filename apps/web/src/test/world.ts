@@ -254,8 +254,25 @@ export const PROGRESS: Progress = {
   sky: {
     count: 2,
     stars: [
-      { concept: '[معنى أول]', count: 1, first_seen: '2026-10-01T08:00:00Z', x: 0.2, y: 0.3 },
-      { concept: '[معنى ثان]', count: 4, first_seen: '2026-10-02T08:00:00Z', x: 0.7, y: 0.6 },
+      {
+        concept: '[معنى أول]',
+        count: 1,
+        first_seen: '2026-10-01T08:00:00Z',
+        x: 0.2,
+        y: 0.3,
+        insights: [{ id: '101', title: '[بصيرة أولى]', completed_at: '2026-10-01T08:00:00Z' }],
+      },
+      {
+        concept: '[معنى ثان]',
+        count: 2,
+        first_seen: '2026-10-02T08:00:00Z',
+        x: 0.7,
+        y: 0.6,
+        insights: [
+          { id: '102', title: '[بصيرة ثانية]', completed_at: '2026-10-02T08:00:00Z' },
+          { id: '103', title: '[بصيرة ثالثة]', completed_at: '2026-10-03T08:00:00Z' },
+        ],
+      },
     ],
   },
   badges: [
@@ -302,4 +319,43 @@ export const PROGRESS_EMPTY: Progress = {
   sky: { count: 0, stars: [] },
   badges: PROGRESS.badges.map((badge) => ({ ...badge, earned: false, earned_at: null })),
   counts: { looks: 0, completed: 0, actions_done: 0, places: 0, treasures: 0, questions: 0 },
+};
+
+/*
+ * The owners' reference picture of the sky (DESIGN_DECISION.md «Sky of meanings»),
+ * for the gallery's comparison only: eight sample meanings placed where the
+ * picture draws them, «الرحمة» learned last so it is the one chosen. Preview
+ * data, never a learner's record; production names come from the API.
+ */
+const REFERENCE_STARS: ReadonlyArray<[string, number, number, number]> = [
+  ['الشكر', 0.131, 0.11, 2],
+  ['التفكر', 0.436, 0.153, 1],
+  ['التوكل', 0.712, 0.068, 2],
+  ['الصبر', 0.966, 0.271, 4],
+  ['الإحسان', 0.106, 0.654, 1],
+  ['الأمانة', 0.38, 0.741, 2],
+  ['الاتزان', 0.9, 0.775, 1],
+  ['الرحمة', 0.677, 0.427, 3],
+];
+
+export const PROGRESS_REFERENCE: Progress = {
+  ...PROGRESS,
+  sky: {
+    count: REFERENCE_STARS.length,
+    stars: REFERENCE_STARS.map(([concept, x, y, count], index) => {
+      const day = `2026-09-${String(10 + index).padStart(2, '0')}T08:00:00Z`;
+      return {
+        concept,
+        count,
+        first_seen: day,
+        x,
+        y,
+        insights: Array.from({ length: count }, (_, n) => ({
+          id: String(200 + index * 10 + n),
+          title: `[بصيرة ${n + 1} عن ${concept}]`,
+          completed_at: day,
+        })),
+      };
+    }),
+  },
 };

@@ -5199,6 +5199,21 @@ export interface components {
       /** Reflection */
       reflection: string;
     };
+    /**
+     * StarInsightOut
+     * @description A completed insight that taught a star's meaning, to open it again.
+     */
+    StarInsightOut: {
+      /** Id */
+      id: string;
+      /** Title */
+      title: string;
+      /**
+       * Completed At
+       * Format: date-time
+       */
+      completed_at: string;
+    };
     /** StarOut */
     StarOut: {
       /** Concept */
@@ -5214,6 +5229,11 @@ export interface components {
       x: number;
       /** Y */
       y: number;
+      /**
+       * Insights
+       * @description The completed insights that taught this meaning, the first one first
+       */
+      insights: components['schemas']['StarInsightOut'][];
     };
     /**
      * StatusOut

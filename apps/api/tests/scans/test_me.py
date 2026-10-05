@@ -106,6 +106,9 @@ async def test_recorded_practice_moves_the_rank_streak_quest_sky_and_badges(
     assert body["daily_quest"]["done"] is True
     assert body["daily_quest"]["days_done"] == 1
     assert [star["concept"] for star in body["sky"]["stars"]] == ["الإحياء", "الغرس"]
+    assert [
+        [(item["id"], item["title"]) for item in star["insights"]] for star in body["sky"]["stars"]
+    ] == [[(str(insight.id), insight.title)], [(str(drop.id), drop.title)]]
     assert body["counts"] == {
         "looks": 3,
         "completed": 2,

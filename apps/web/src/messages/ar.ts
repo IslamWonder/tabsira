@@ -625,6 +625,7 @@ export const ar = {
     },
     sky: {
       title: 'سماء المعاني',
+      lead: 'كل بصيرة تترك ضوءًا',
       count: (count: number) => {
         if (count === 0) {
           return 'لا معنى بعد';
@@ -632,10 +633,31 @@ export const ar = {
         return count === 1 ? 'معنى أضاء لك' : `${count} معاني أضاءت لك`;
       },
       label: 'المعاني التي أتممت بصائرها، نجمًا لكل معنى',
-      star: (concept: string, count: number) =>
-        count === 1 ? `${concept}، مرة واحدة` : `${concept}، ${count} مرات`,
-      empty: 'لم يُضئ معنى بعد. حين تتمّ بصيرة يظهر معناها نجمًا في هذه السماء.',
+      linked: (count: number) => {
+        if (count === 1) {
+          return 'بصيرة واحدة مرتبطة';
+        }
+        if (count === 2) {
+          return 'بصيرتان مرتبطتان';
+        }
+        return count <= 10 ? `${count} بصائر مرتبطة` : `${count} بصيرة مرتبطة`;
+      },
+      star: (concept: string, linked: string) => `${concept}، ${linked}`,
+      loading: 'نحمّل معانيك…',
+      unavailable: 'تعذّر تحميل معانيك',
+      emptyTitle: 'هنا سيضيء أول معنى لك.',
+      empty: 'أتمّ بصيرة من مشهد حولك، ليظهر معناها نجمًا في سمائك.',
       cta: 'ابدأ بأول مشهد',
+      note: 'كل نجمة معنى، لا درجة',
+      chosen: 'المعنى الذي اخترته',
+      about: (day: string) => `معنى ظهر في بصائرك المكتملة، أوّل مرة في ${day}.`,
+      open: 'افتح البصائر',
+      openOne: 'افتح البصيرة',
+      panelTitle: (concept: string) => `بصائر «${concept}»`,
+      panelDescription: 'البصائر المكتملة التي أضاء بها هذا المعنى، الأولى أولًا.',
+      all: (count: number) => `كل المعاني (${count})`,
+      allTitle: 'كل المعاني',
+      allDescription: 'كل معنى أضاء لك، الأقدم أولًا. اختر معنى لتراه في الشريط.',
     },
     badges: {
       title: 'علامات التمرين',
@@ -1640,9 +1662,14 @@ export const ar = {
     states: {
       world: 'عالم انكشف منه موضعان',
       newcomer: 'عالم ضيف جديد تحت الغيوم',
-      practice: 'تمرينك',
+      practice: 'تمرينك على معاني صورة المرجع',
       practiceEmpty: 'تمرينك لضيف جديد',
     },
+  },
+
+  /** The sky of meanings on its own page, on sample data (/dev/sky). Never part of a production build. */
+  devSky: {
+    title: 'سماء المعاني على بيانات المعاينة',
   },
 
   /** The development gallery (/dev/ui). Never part of a production build. */

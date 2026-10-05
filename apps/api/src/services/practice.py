@@ -23,6 +23,7 @@ import hashlib
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from typing import NamedTuple
 from zoneinfo import ZoneInfo
 
 from src.messages import messages_for
@@ -34,13 +35,21 @@ RECENT_DAYS = 7
 SKY_MARGIN = 0.05
 
 
+class Completion(NamedTuple):
+    """A completed insight: when, the concept it taught, and what opens it again."""
+
+    moment: datetime
+    concept: str
+    insight_id: int = 0
+    title: str = ""
+
+
 @dataclass(frozen=True)
 class PracticeLog:
     """The learner's recorded events, each list sorted by time."""
 
     looks: list[datetime] = field(default_factory=list)
-    # (time, concept) of every completed insight.
-    completions: list[tuple[datetime, str]] = field(default_factory=list)
+    completions: list[Completion] = field(default_factory=list)
     # slug -> time a prepared tutorial insight was completed.
     tutorial: dict[str, datetime] = field(default_factory=dict)
     actions: list[datetime] = field(default_factory=list)
@@ -128,24 +137,32 @@ def sky_position(concept: str) -> tuple[float, float]:
 @dataclass(frozen=True)
 class Star:
     concept: str
-    count: int
-    first_seen: datetime
+    # The completed insights that taught it, the first one first.
+    insights: tuple[Completion, ...]
+
+    @property
+    def count(self) -> int:
+        return len(self.insights)
+
+    @property
+    def first_seen(self) -> datetime:
+        return self.insights[0].moment
 
 
-def sky(completions: Sequence[tuple[datetime, str]]) -> list[Star]:
+def sky(completions: Sequence[Completion]) -> list[Star]:
     """Return one star per concept, in the order the concepts were first met."""
-    seen: dict[str, list[datetime]] = {}
-    for moment, concept in sorted(completions):
-        name = concept.strip()
+    seen: dict[str, list[Completion]] = {}
+    for completion in sorted(completions):
+        name = completion.concept.strip()
         if name:
-            seen.setdefault(name, []).append(moment)
-    return [Star(name, len(moments), moments[0]) for name, moments in seen.items()]
+            seen.setdefault(name, []).append(completion)
+    return [Star(name, tuple(found)) for name, found in seen.items()]
 
 
 def quest_days(log: PracticeLog, zone: ZoneInfo) -> dict[date, datetime]:
     """Return the days the daily quest was done, with the moment it was."""
     looks = first_by_day(log.looks, zone)
-    done = first_by_day([moment for moment, _concept in log.completions], zone)
+    done = first_by_day([completion.moment for completion in log.completions], zone)
     return {day: max(looks[day], done[day]) for day in sorted(set(looks) & set(done))}
 
 

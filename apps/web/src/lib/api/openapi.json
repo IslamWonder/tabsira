@@ -12089,6 +12089,28 @@
         "title": "SponsorshipReflectionIn",
         "description": "The sponsor's own words under the entry: one, replaced by the next."
       },
+      "StarInsightOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Completed At"
+          }
+        },
+        "type": "object",
+        "required": ["id", "title", "completed_at"],
+        "title": "StarInsightOut",
+        "description": "A completed insight that taught a star's meaning, to open it again."
+      },
       "StarOut": {
         "properties": {
           "concept": {
@@ -12111,10 +12133,18 @@
           "y": {
             "type": "number",
             "title": "Y"
+          },
+          "insights": {
+            "items": {
+              "$ref": "#/components/schemas/StarInsightOut"
+            },
+            "type": "array",
+            "title": "Insights",
+            "description": "The completed insights that taught this meaning, the first one first"
           }
         },
         "type": "object",
-        "required": ["concept", "count", "first_seen", "x", "y"],
+        "required": ["concept", "count", "first_seen", "x", "y", "insights"],
         "title": "StarOut"
       },
       "StatusOut": {
