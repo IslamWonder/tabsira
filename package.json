@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "TABSIRA: a photo becomes an insight backed by one Quran verse and one hadith",
+  "license": "AGPL-3.0-only",
   "packageManager": "pnpm@12.9.1",
   "scripts": {
     "prepare": "bash scripts/install-git-hooks.sh",
