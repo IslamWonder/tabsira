@@ -183,12 +183,19 @@ describe('EvidenceCard, the ruling', () => {
     expect(within(card).getByText('[المحدّث، الكتاب، الصفحة]')).toBeInTheDocument();
   });
 
-  it('gives the ruling alone when its source is not known, and nothing without a ruling', () => {
+  it('gives the ruling alone when its source is not known, and says so when there is none', () => {
     const alone = renderRuled({ ruling: '[الحكم]' });
     expect(within(alone).queryByText(/المحدّث/)).toBeNull();
+    expect(
+      within(alone).queryByText('لم نسجّل حكم الدرر لهذا الحديث بعد؛ تحقّق منه في الدرر.')
+    ).toBeNull();
     cleanup();
+    // DECISIONS.md 58: a hadith may show before any ruling; the card never invents one.
     const none = renderRuled({});
-    expect(within(none).queryByText(/حكم الدرر/)).toBeNull();
+    expect(within(none).queryByText(/^حكم الدرر:/)).toBeNull();
+    expect(
+      within(none).getByText('لم نسجّل حكم الدرر لهذا الحديث بعد؛ تحقّق منه في الدرر.')
+    ).toBeInTheDocument();
   });
 });
 

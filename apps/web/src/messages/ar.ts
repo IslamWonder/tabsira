@@ -262,6 +262,8 @@ export const ar = {
     ruling: (ruling: string) => `حكم الدرر: ${ruling}`,
     /** The editor's reading of the ruling (decision 18), when dorar's own words are not in the answer. */
     classification: (classification: string) => `تصنيف المحرّر لحكم الدرر: ${classification}`,
+    /** A hadith shown with no recorded ruling (DECISIONS.md 58): said plainly, beside the dorar link. */
+    unruled: 'لم نسجّل حكم الدرر لهذا الحديث بعد؛ تحقّق منه في الدرر.',
     quranOpen: '﴿',
     quranClose: '﴾',
   },
@@ -1349,7 +1351,7 @@ export const ar = {
       hadithWords: '[كلمات النبي ﷺ تأتي من المدونة]',
       hadithTail: ' [تعليق المحدّث يأتي من المدونة]',
       hadithReference: '[الكتاب · رقم الحديث]',
-      ruling: '[يسجّله محرّر من الدرر قبل العرض]',
+      ruling: '[حكم الدرر كما يسجّله محرّر]',
       explanation: '[شرح تبصرة يأتي من الخادم بعد التحقق]',
       map: '[الخريطة]',
       mapPanel: '[قائمة الأماكن]',

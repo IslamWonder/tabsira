@@ -172,7 +172,7 @@ describe('the share card image', () => {
     expect(specs.map((spec) => spec.text)).toContain(HADITH_TEXT);
   });
 
-  it('draws a hadith without a ruling by its reference alone', async () => {
+  it('draws a hadith without a ruling by its reference, saying no ruling is recorded yet', async () => {
     const base = publicInsightOut();
     const hadith = base.hadith;
     if (hadith === null) {
@@ -186,7 +186,10 @@ describe('the share card image', () => {
       hadith.hadith.collection.name_ar,
       hadith.hadith.number
     );
-    expect(specs.map((spec) => spec.text)).toContain(reference);
+    // DECISIONS.md 58: the card leaves the app, so it carries the same line as the page.
+    expect(specs.map((spec) => spec.text)).toContain(
+      messages.shareCard.hadithUnruled(reference, messages.evidence.unruled)
+    );
   });
 
   it('sets a long title smaller before it takes a third line', async () => {

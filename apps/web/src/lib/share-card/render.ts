@@ -103,7 +103,7 @@ function hadithLabels(hadith: NonNullable<PublicInsight['hadith']>, draw: Draw) 
     draw({
       text:
         ruling === null
-          ? reference
+          ? T.hadithUnruled(reference, messages.evidence.unruled)
           : T.hadithWithRuling(
               reference,
               messages.evidence.ruling(ruling.ruling_text),

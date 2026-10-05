@@ -59,7 +59,12 @@ describe('TreasureCard', () => {
     await reveal(hadithOnly);
     expect(document.querySelector('[data-scripture="quran"]')).toBeNull();
     expect(screen.getByText('[اسم الكتاب] · 1032')).toBeInTheDocument();
-    expect(screen.queryByText(/حكم الدرر/)).toBeNull();
+    expect(screen.queryByText(/^حكم الدرر:/)).toBeNull();
+    // DECISIONS.md 58: no «نص موثّق» chip beside a hadith shown before its ruling.
+    expect(screen.queryByText('نص موثّق من مصدره')).toBeNull();
+    expect(
+      screen.getByText('لم نسجّل حكم الدرر لهذا الحديث بعد؛ تحقّق منه في الدرر.')
+    ).toBeInTheDocument();
     expect(screen.queryByText(/وحدة من المسار/)).toBeNull();
   });
 

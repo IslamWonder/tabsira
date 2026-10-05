@@ -2750,7 +2750,10 @@ export interface components {
     HadithClassification: 'صحيح' | 'حسن' | 'ضعيف' | 'موضوع' | 'مختلف_فيه';
     /**
      * HadithEvidenceOut
-     * @description A hadith read from the scripture store, shown only while its ruling is صحيح or حسن.
+     * @description A hadith read from the scripture store, shown only while it is eligible.
+     *
+     *     Its ruling is صحيح or حسن, or it has no ruling and belongs to the enriched Sunnah file
+     *     (decision 58).
      */
     HadithEvidenceOut: {
       /** Collection */
@@ -2769,7 +2772,8 @@ export interface components {
        * @description SHA-256 of the UTF-8 bytes of `text`
        */
       sha256: string;
-      classification: components['schemas']['HadithClassification'];
+      /** @description The editor's reading of the ruling in force; null when none is recorded yet */
+      classification: components['schemas']['HadithClassification'] | null;
       /**
        * Verification Url
        * @description A dorar.net search the reader opens («تحقق في الدرر»)
@@ -2825,7 +2829,7 @@ export interface components {
       ruling: components['schemas']['RulingOut'] | null;
       /**
        * Eligible
-       * @description Whether the ruling in force is صحيح or حسن
+       * @description Whether it may be shown as evidence: the ruling in force is صحيح or حسن, or there is no ruling and the hadith belongs to the enriched Sunnah file (decision 58)
        */
       eligible: boolean;
       links: components['schemas']['HadithLinks'];

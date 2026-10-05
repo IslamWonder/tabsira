@@ -6175,7 +6175,15 @@
             "description": "SHA-256 of the UTF-8 bytes of `text`"
           },
           "classification": {
-            "$ref": "#/components/schemas/HadithClassification"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HadithClassification"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The editor's reading of the ruling in force; null when none is recorded yet"
           },
           "verification_url": {
             "type": "string",
@@ -6200,7 +6208,7 @@
           "verification_url"
         ],
         "title": "HadithEvidenceOut",
-        "description": "A hadith read from the scripture store, shown only while its ruling is صحيح or حسن."
+        "description": "A hadith read from the scripture store, shown only while it is eligible.\n\nIts ruling is صحيح or حسن, or it has no ruling and belongs to the enriched Sunnah file\n(decision 58)."
       },
       "HadithLinks": {
         "properties": {
@@ -6292,7 +6300,7 @@
           "eligible": {
             "type": "boolean",
             "title": "Eligible",
-            "description": "Whether the ruling in force is صحيح or حسن"
+            "description": "Whether it may be shown as evidence: the ruling in force is صحيح or حسن, or there is no ruling and the hadith belongs to the enriched Sunnah file (decision 58)"
           },
           "links": {
             "$ref": "#/components/schemas/HadithLinks"

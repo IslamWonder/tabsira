@@ -46,6 +46,8 @@ export const shareMessages = {
     /** The hadith's reference, then the source's own words on its ruling and who gave it, each on its own line. */
     hadithWithRuling: (reference: string, ruling: string, source: string) =>
       `${reference}\n${ruling}\n${source}`,
+    /** A hadith shown before any ruling (DECISIONS.md 58): the card says so, as the page does. */
+    hadithUnruled: (reference: string, unruled: string) => `${reference}\n${unruled}`,
     /** The author's public name and handle; the handle is isolated so it keeps its own direction in the right-to-left line. */
     author: (name: string, handle: string) => `نشرها ${name} \u2066@${handle}\u2069`,
   },

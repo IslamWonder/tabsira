@@ -39,8 +39,9 @@ export function PostEvidence({
       text={hadith.text}
       reference={M.hadithReference(hadith.collection_name, hadith.number)}
       verifyHref={hadith.verification_url}
-      classification={hadith.classification}
-      verified={hadith.verified}
+      classification={hadith.classification ?? undefined}
+      // «نص موثّق» could read as a grade: a hadith shown before its ruling never carries it.
+      verified={hadith.verified && hadith.classification !== null}
     />
   ));
   const quranBlock = <div className="flex flex-col gap-4">{verses}</div>;

@@ -129,7 +129,7 @@ describe('InsightEvidence', () => {
     expect(screen.getByText('نص موثّق من مصدره')).toBeInTheDocument();
   });
 
-  it('falls back to the search link and shows no ruling when none was recorded', () => {
+  it('falls back to the search link and says no ruling is recorded when none was', () => {
     const base = insightOut();
     const hadith = base.hadith as NonNullable<Insight['hadith']>;
     const insight = insightOut({
@@ -137,7 +137,10 @@ describe('InsightEvidence', () => {
     });
     render(<InsightEvidence insight={insight} />);
     const sunnah = screen.getByRole('article', { name: 'السنة' });
-    expect(within(sunnah).queryByText(/حكم الدرر/)).toBeNull();
+    expect(within(sunnah).queryByText(/^حكم الدرر:/)).toBeNull();
+    expect(
+      within(sunnah).getByText('لم نسجّل حكم الدرر لهذا الحديث بعد؛ تحقّق منه في الدرر.')
+    ).toBeInTheDocument();
     expect(within(sunnah).getByRole('link', { name: /افتح المصدر/ })).toHaveAttribute(
       'href',
       'https://dorar.net/hadith/search?q=test'

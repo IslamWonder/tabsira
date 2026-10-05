@@ -38,7 +38,9 @@ export interface SunnahEvidenceProps extends Omit<EvidenceBase, 'sourceHref'> {
   rulingSource?: string;
   /**
    * The editor's classification of the ruling (sahih or hasan), when the answer carries it
-   * without dorar's own words; shown under its own label, never as the ruling.
+   * without dorar's own words; shown under its own label, never as the ruling. With neither
+   * this nor `ruling`, the hadith shows with no recorded ruling (DECISIONS.md 58), and the
+   * card says so beside the dorar link.
    */
   classification?: string;
 }
@@ -138,7 +140,7 @@ export function EvidenceCard(props: EvidenceCardProps) {
         <footer className="flex flex-wrap items-center justify-between gap-x-4 border-[var(--sunnah-border)] border-t pt-1">
           {props.ruling === undefined ? (
             props.classification === undefined ? (
-              <span />
+              <p className="m-0 text-[0.8125rem] text-fg-muted">{messages.evidence.unruled}</p>
             ) : (
               <p className="m-0 text-[0.8125rem] text-fg-muted">
                 {messages.evidence.classification(props.classification)}
