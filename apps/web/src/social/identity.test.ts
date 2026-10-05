@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  cleanPublicName,
-  handleProblem,
-  postPath,
-  profilePath,
-  publicNameProblem,
-} from './identity';
+import { handleProblem, memberLabel, postPath, profilePath } from './identity';
 
 describe('the public handle', () => {
   it('accepts Latin and Arabic handles and refuses the rest, as the API does', () => {
@@ -27,16 +21,10 @@ describe('the public handle', () => {
   });
 });
 
-describe('the public name', () => {
-  it('collapses spaces and refuses links, addresses and hidden characters', () => {
-    expect(cleanPublicName('  قارئ   المطر ')).toBe('قارئ المطر');
-    expect(publicNameProblem('قارئ المطر')).toBeNull();
-    expect(publicNameProblem('   ')).toBe('اكتب اسمًا عامًا.');
-    expect(publicNameProblem('ا'.repeat(41))).toBe('الاسم العام 40 حرفًا على الأكثر.');
-    expect(publicNameProblem('me@example.com')).toMatch(/بلا رابط ولا بريد/);
-    expect(publicNameProblem('see https://x.y')).toMatch(/بلا رابط ولا بريد/);
-    expect(publicNameProblem('www.x.y')).toMatch(/بلا رابط ولا بريد/);
-    expect(publicNameProblem('a‮b')).toMatch(/بلا رابط ولا بريد/);
+describe('the member label', () => {
+  it('is the full name when the API sent it, else the handle alone', () => {
+    expect(memberLabel({ handle: 'sara_21', public_name: 'سارة' })).toBe('سارة');
+    expect(memberLabel({ handle: 'sara_21', public_name: null })).toBe('@sara_21');
   });
 });
 

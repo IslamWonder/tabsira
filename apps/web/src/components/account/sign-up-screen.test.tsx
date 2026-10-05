@@ -33,12 +33,13 @@ function routes(extra: Record<string, Route> = {}): Record<string, Route> {
 }
 
 async function fill() {
-  await userEvent.type(screen.getByLabelText('الاسم الذي نناديك به'), '  قارئ   جديد ');
+  await userEvent.type(screen.getByLabelText('الاسم الكامل'), '  قارئ   جديد ');
   await userEvent.type(screen.getByLabelText('البريد الإلكتروني'), 'new@example.com');
   await userEvent.type(screen.getByLabelText('كلمة المرور'), 'a long password');
 }
 
 const submit = () => screen.getByRole('button', { name: 'أنشئ الحساب' });
+const nameBox = () => screen.getByRole('checkbox', { name: /أوافق على ظهور اسمي الكامل/ });
 const box = () => screen.getByRole('checkbox', { name: /أوافق على شروط الاستخدام/ });
 
 describe('SignUpScreen', () => {
@@ -83,6 +84,7 @@ describe('SignUpScreen', () => {
         email: 'new@example.com',
         password: 'a long password',
         display_name: 'قارئ جديد',
+        public_full_name: false,
         accepted_terms_version: '2026-10-04',
         accepted_privacy_version: '2026-10-04',
       },
@@ -92,14 +94,43 @@ describe('SignUpScreen', () => {
     expect(track).toHaveBeenCalledWith('sign_up_completed', { method: 'email' });
   });
 
+  it('asks for the full name with its own box, unticked, and sends the answer (decision 63)', async () => {
+    const api = mockApi(routes({ 'POST /auth/signup': { status: 201, body: USER } }));
+    render(<SignUpScreen next="/world" />);
+    await waitFor(() => expect(box()).toBeEnabled());
+    expect(nameBox()).not.toBeChecked();
+    expect(nameBox()).toBeEnabled();
+    expect(nameBox()).toHaveAccessibleDescription(/تغيّر رأيك متى شئت/);
+    await fill();
+    await userEvent.click(nameBox());
+    await userEvent.click(box());
+    await userEvent.click(submit());
+    await screen.findByRole('heading', { name: 'أُنشئ حسابك' });
+    expect(await api.bodies('POST', '/auth/signup')).toMatchObject([{ public_full_name: true }]);
+  });
+
+  it('keeps the full-name box with the tick for the way back from Google', async () => {
+    mockApi(routes());
+    render(<SignUpScreen next="/me" />);
+    await waitFor(() => expect(box()).toBeEnabled());
+    await userEvent.click(nameBox());
+    await userEvent.click(box());
+    const link = screen.getByRole('link', { name: /تابع بحساب\s+Google/ });
+    link.addEventListener('click', (event) => event.preventDefault());
+    await userEvent.click(link);
+    expect(JSON.parse(window.sessionStorage.getItem('tabsira.legal.tick') ?? '{}')).toMatchObject({
+      public_full_name: true,
+    });
+  });
+
   it('checks every field before sending', async () => {
     const api = mockApi(routes());
     render(<SignUpScreen next="/me" />);
     await waitFor(() => expect(box()).toBeEnabled());
     await userEvent.click(box());
     await userEvent.click(submit());
-    expect(screen.getByLabelText('الاسم الذي نناديك به')).toHaveFocus();
-    await userEvent.type(screen.getByLabelText('الاسم الذي نناديك به'), 'قارئ');
+    expect(screen.getByLabelText('الاسم الكامل')).toHaveFocus();
+    await userEvent.type(screen.getByLabelText('الاسم الكامل'), 'قارئ');
     await userEvent.type(screen.getByLabelText('البريد الإلكتروني'), 'new@example.com');
     await userEvent.type(screen.getByLabelText('كلمة المرور'), 'short');
     await userEvent.click(submit());
@@ -109,7 +140,7 @@ describe('SignUpScreen', () => {
   });
 
   it.each([
-    ['display_name', 'الاسم الذي نناديك به'],
+    ['display_name', 'الاسم الكامل'],
     ['email', 'البريد الإلكتروني'],
     ['password', 'كلمة المرور'],
   ])('points at the %s field the API refused', async (field, label) => {

@@ -17,7 +17,9 @@ function signedIn(extra: Record<string, Route> = {}, user = USER): Record<string
     'GET /auth/me': { body: user },
     'GET /profile': { body: PROFILE },
     'GET /consent/policy': { body: POLICY },
-    'GET /me/public-identity': { body: { handle: null, public_name: null } },
+    'GET /me/public-identity': {
+      body: { handle: null, public_name: null, public_full_name: false },
+    },
     'GET /blocks': { body: [] },
     ...extra,
   };

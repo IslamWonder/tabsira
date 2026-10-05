@@ -102,8 +102,8 @@ export const PROFILE: MemberProfile = {
   viewer: null,
 };
 
-export const IDENTITY = { handle: 'reader', public_name: '[قارئ]' };
-export const NO_IDENTITY = { handle: null, public_name: null };
+export const IDENTITY = { handle: 'reader', public_name: '[قارئ]', public_full_name: true };
+export const NO_IDENTITY = { handle: null, public_name: null, public_full_name: false };
 
 export function page<T>(items: T[], next: string | null = null, emptyReason: string | null = null) {
   return { items, next_cursor: next, empty_reason: emptyReason };

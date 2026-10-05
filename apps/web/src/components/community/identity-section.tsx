@@ -9,29 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { TextField } from '@/components/ui/text-field';
 import { failureMessage } from '@/lib/api/failure-message';
-import { fieldRefused } from '@/lib/api/result';
 import { messages } from '@/messages';
 import { listBlocks, putIdentity, setBlock } from '@/social/api';
-import {
-  cleanHandle,
-  cleanPublicName,
-  HANDLE_MAX,
-  handleProblem,
-  PUBLIC_NAME_MAX,
-  profilePath,
-  publicNameProblem,
-} from '@/social/identity';
+import { cleanHandle, HANDLE_MAX, handleProblem, profilePath } from '@/social/identity';
 import { hasIdentity, setIdentity, useIdentity } from '@/social/identity-store';
 import type { Member } from '@/social/types';
 
 const I = messages.community.identity;
 const B = messages.community.block;
 
-/** Choose or change the handle and public name; the account's own name is never offered. */
+/** Choose or change the handle; the full name is shown only by the consent of «ملفي» (decision 63). */
 export function IdentityForm() {
   const identity = useIdentity();
   const [handle, setHandle] = useState('');
-  const [name, setName] = useState('');
   const [touched, setTouched] = useState(false);
   const [taken, setTaken] = useState(false);
   const save = useSaveState();
@@ -40,22 +30,20 @@ export function IdentityForm() {
   useEffect(() => {
     if (current !== null) {
       setHandle(current.handle);
-      setName(current.public_name);
     }
   }, [current]);
 
   const handleError = touched ? handleProblem(handle) : null;
-  const nameError = touched ? publicNameProblem(name) : null;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setTouched(true);
     setTaken(false);
-    if (handleProblem(handle) !== null || publicNameProblem(name) !== null) {
+    if (handleProblem(handle) !== null) {
       return;
     }
     await save.run(async () => {
-      const result = await putIdentity(cleanHandle(handle), cleanPublicName(name));
+      const result = await putIdentity(cleanHandle(handle));
       if (result.ok) {
         setIdentity(result.data);
         return null;
@@ -65,7 +53,7 @@ export function IdentityForm() {
         return I.taken;
       }
       if (result.code === 'VALIDATION_ERROR') {
-        return fieldRefused(result, 'handle') ? I.problems.handleShape : I.problems.nameInvalid;
+        return I.problems.handleShape;
       }
       return failureMessage(result);
     });
@@ -83,15 +71,6 @@ export function IdentityForm() {
         maxLength={HANDLE_MAX + 2}
         autoComplete="off"
         spellCheck={false}
-      />
-      <TextField
-        label={I.name}
-        hint={I.nameHint}
-        value={name}
-        onChange={(event) => setName(event.target.value)}
-        error={nameError}
-        maxLength={PUBLIC_NAME_MAX + 10}
-        autoComplete="off"
       />
       <div className="flex flex-wrap items-center gap-4">
         <Button type="submit" disabled={save.busy}>
@@ -168,7 +147,9 @@ export function BlocksList() {
           {load.members.map((member) => (
             <li key={member.handle} className="flex flex-wrap items-center justify-between gap-2">
               <span className="flex flex-wrap items-baseline gap-x-2">
-                <span className="font-medium text-fg">{member.public_name}</span>
+                {member.public_name === null ? null : (
+                  <span className="font-medium text-fg">{member.public_name}</span>
+                )}
                 <bdi className="text-[0.875rem] text-fg-muted">@{member.handle}</bdi>
               </span>
               <Button variant="ghost" onClick={() => void unblock(member)}>

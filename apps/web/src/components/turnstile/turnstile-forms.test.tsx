@@ -115,7 +115,7 @@ describe('sign up', () => {
   };
 
   async function signUp() {
-    await userEvent.type(screen.getByLabelText('الاسم الذي نناديك به'), 'قارئ جديد');
+    await userEvent.type(screen.getByLabelText('الاسم الكامل'), 'قارئ جديد');
     await userEvent.type(screen.getByLabelText('البريد الإلكتروني'), 'new@example.com');
     await userEvent.type(screen.getByLabelText('كلمة المرور'), 'a long password');
     const box = screen.getByRole('checkbox', { name: /أوافق على شروط الاستخدام/ });

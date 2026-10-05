@@ -100,8 +100,16 @@ export function forgetLegal(): void {
   cached = null;
 }
 
+/** The answer to the full-name box, sent with the acceptance (decision 63); left out, nothing changes. */
+export interface NameChoices {
+  public_full_name?: boolean;
+}
+
 /** Records the acceptance of the current texts for the signed-in account. */
-export function acceptLegal(legal: LegalVersions): Promise<Result<unknown>> {
+export function acceptLegal(
+  legal: LegalVersions,
+  choices: NameChoices = {}
+): Promise<Result<unknown>> {
   return attempt(
     fetch(new URL('/auth/legal/accept', apiOrigin()), {
       method: 'POST',
@@ -110,6 +118,7 @@ export function acceptLegal(legal: LegalVersions): Promise<Result<unknown>> {
       body: JSON.stringify({
         terms_version: legal.terms_version,
         privacy_version: legal.privacy_version,
+        ...choices,
       }),
     }).then(async (response) => ({
       response,

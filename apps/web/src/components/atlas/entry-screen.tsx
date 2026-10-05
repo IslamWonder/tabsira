@@ -21,7 +21,7 @@ import { failureMessage } from '@/lib/api/failure-message';
 import type { Failure } from '@/lib/api/result';
 import { formatDay } from '@/lib/dates';
 import { messages } from '@/messages';
-import { postPath, profilePath } from '@/social/identity';
+import { memberLabel, postPath, profilePath } from '@/social/identity';
 import { placePath } from './atlas-screen';
 import { MapView } from './map-view';
 
@@ -109,7 +109,7 @@ export function EntryScreen({ entryId }: { entryId: string }) {
                   href={profilePath(load.entry.author.handle)}
                   className="text-link underline-offset-4 hover:underline"
                 >
-                  {load.entry.author.public_name}
+                  {memberLabel(load.entry.author)}
                 </Link>
                 {load.entry.place === null ? null : (
                   <>

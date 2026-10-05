@@ -32,9 +32,13 @@ describe('IdentitySection', () => {
     expect(screen.queryByLabelText('المعرّف')).toBeNull();
   });
 
-  it('checks the handle and the name before sending, then saves and links the public page', async () => {
+  it('checks the handle before sending, then saves and links the public page', async () => {
     const api = member(
-      { 'PUT /me/public-identity': { body: { handle: 'rain_reader', public_name: 'قارئ المطر' } } },
+      {
+        'PUT /me/public-identity': {
+          body: { handle: 'rain_reader', public_name: null, public_full_name: false },
+        },
+      },
       NO_IDENTITY
     );
     render(<IdentitySection />);
@@ -42,17 +46,14 @@ describe('IdentitySection', () => {
     await userEvent.type(screen.getByLabelText('المعرّف'), 'admin');
     await userEvent.click(screen.getByRole('button', { name: 'احفظ هويتي' }));
     expect(screen.getByLabelText('المعرّف')).toHaveAccessibleDescription(/محجوز للمنصة/);
-    expect(screen.getByLabelText('الاسم العام')).toHaveAccessibleDescription(/اكتب اسمًا عامًا/);
+    expect(screen.queryByLabelText('الاسم العام')).toBeNull();
     expect(api.requests.filter((r) => r.method === 'PUT')).toHaveLength(0);
 
     await userEvent.clear(screen.getByLabelText('المعرّف'));
     await userEvent.type(screen.getByLabelText('المعرّف'), 'rain_reader');
-    await userEvent.type(screen.getByLabelText('الاسم العام'), 'قارئ  المطر');
     await userEvent.click(screen.getByRole('button', { name: 'احفظ هويتي' }));
     expect(await screen.findByText('حُفظ اختيارك.')).toBeInTheDocument();
-    expect(await api.bodies('PUT', '/me/public-identity')).toEqual([
-      { handle: 'rain_reader', public_name: 'قارئ المطر' },
-    ]);
+    expect(await api.bodies('PUT', '/me/public-identity')).toEqual([{ handle: 'rain_reader' }]);
     expect(screen.getByRole('link', { name: 'صفحتك العامة' })).toHaveAttribute(
       'href',
       '/u/rain_reader'
@@ -63,7 +64,6 @@ describe('IdentitySection', () => {
     member({ 'PUT /me/public-identity': apiError(409, 'HANDLE_TAKEN') }, NO_IDENTITY);
     render(<IdentitySection />);
     await userEvent.type(await screen.findByLabelText('المعرّف'), 'reader');
-    await userEvent.type(screen.getByLabelText('الاسم العام'), 'قارئ');
     await userEvent.click(screen.getByRole('button', { name: 'احفظ هويتي' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/يحمله عضو آخر/);
     expect(screen.getByLabelText('المعرّف')).toBeInvalid();
@@ -83,7 +83,6 @@ describe('IdentitySection', () => {
   async function submitIdentity() {
     render(<IdentitySection />);
     await userEvent.type(await screen.findByLabelText('المعرّف'), 'reader');
-    await userEvent.type(screen.getByLabelText('الاسم العام'), 'قارئ');
     await userEvent.click(screen.getByRole('button', { name: 'احفظ هويتي' }));
   }
 
@@ -98,19 +97,6 @@ describe('IdentitySection', () => {
     );
     await submitIdentity();
     expect(await screen.findByText(/المعرّف/, { selector: '[role="alert"] *' })).toBeInTheDocument();
-  });
-
-  it('falls back to the name message when another field is refused', async () => {
-    member(
-      {
-        'PUT /me/public-identity': apiError(422, 'VALIDATION_ERROR', {
-          fields: [{ loc: ['body', 'public_name'], msg: 'bad' }],
-        }),
-      },
-      NO_IDENTITY
-    );
-    await submitIdentity();
-    expect(await screen.findByRole('alert')).toBeInTheDocument();
   });
 
   it('shows the generic failure for any other refusal', async () => {

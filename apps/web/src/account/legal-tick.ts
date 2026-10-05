@@ -13,6 +13,8 @@ export const TICK_LIFETIME_MS = 10 * 60 * 1000;
 export interface LegalTick {
   terms_version: string;
   privacy_version: string;
+  /** The unticked-by-default full-name box of the sign-up view (decision 63). */
+  public_full_name: boolean;
 }
 
 function storage(): Storage | null {
@@ -23,12 +25,17 @@ function storage(): Storage | null {
   }
 }
 
-export function rememberTick(legal: LegalVersions, now: number = Date.now()): void {
+export function rememberTick(
+  legal: LegalVersions,
+  now: number = Date.now(),
+  publicFullName = false
+): void {
   storage()?.setItem(
     KEY,
     JSON.stringify({
       terms_version: legal.terms_version,
       privacy_version: legal.privacy_version,
+      public_full_name: publicFullName,
       at: now,
     })
   );
@@ -51,7 +58,11 @@ export function takeTick(now: number = Date.now()): LegalTick | null {
       typeof tick.terms_version === 'string' &&
       typeof tick.privacy_version === 'string'
     ) {
-      return { terms_version: tick.terms_version, privacy_version: tick.privacy_version };
+      return {
+        terms_version: tick.terms_version,
+        privacy_version: tick.privacy_version,
+        public_full_name: tick.public_full_name === true,
+      };
     }
   } catch {
     // A garbled value is no tick.

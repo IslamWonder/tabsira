@@ -71,7 +71,14 @@ async function fixedParts(insight: PublicInsight, host: string, faces: Ctx) {
     draw({ text: insight.disclosure, ...small, width: 640 }),
     author === null
       ? null
-      : draw({ text: T.author(author.public_name, author.handle), ...small, width: 380 }),
+      : draw({
+          text:
+            author.public_name === null
+              ? T.authorHandle(author.handle)
+              : T.author(author.public_name, author.handle),
+          ...small,
+          width: 380,
+        }),
   ]);
   return { brand, host: hostImage, label, disclosure, author: authorImage };
 }

@@ -98,6 +98,19 @@ describe('PostCard and the scripture it shows', () => {
 });
 
 describe('PostCard reactions', () => {
+  it('shows only the handle when the author did not agree to show a full name (decision 63)', () => {
+    guest();
+    render(
+      <PostCard
+        post={{ ...POST, author: { handle: 'rain_reader', public_name: null } }}
+        onChange={vi.fn()}
+      />
+    );
+    const link = screen.getByRole('link', { name: 'صفحة @rain_reader' });
+    expect(link).toHaveTextContent(/^@rain_reader$/);
+    expect(screen.queryByText('[اسم عام]')).toBeNull();
+  });
+
   it('asks a guest to sign in instead of liking', async () => {
     guest();
     render(<PostCard post={POST} onChange={vi.fn()} />);

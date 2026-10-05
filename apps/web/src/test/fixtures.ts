@@ -14,6 +14,8 @@ export const USER: User = {
   providers: ['password'],
   created_at: '2026-10-04T08:00:00Z',
   legal_acceptance_required: false,
+  profile_completed: true,
+  public_full_name: false,
 };
 
 export const PROFILE: Profile = {
@@ -31,6 +33,7 @@ export const PROFILE: Profile = {
   sound_enabled: false,
   questions_asked: false,
   consent_version: null,
+  profile_completed_at: '2026-10-04T08:00:00Z',
   updated_at: '2026-10-04T08:00:00Z',
 };
 

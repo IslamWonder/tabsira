@@ -50,5 +50,7 @@ export const shareMessages = {
     hadithUnruled: (reference: string, unruled: string) => `${reference}\n${unruled}`,
     /** The author's public name and handle; the handle is isolated so it keeps its own direction in the right-to-left line. */
     author: (name: string, handle: string) => `نشرها ${name} \u2066@${handle}\u2069`,
+    /** The author who did not agree to show a full name: the handle alone. */
+    authorHandle: (handle: string) => `نشرها \u2066@${handle}\u2069`,
   },
 } as const;

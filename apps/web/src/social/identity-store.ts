@@ -84,14 +84,10 @@ export function useIdentity(): IdentityState {
   return signedIn ? current : UNKNOWN;
 }
 
-/** Whether the person has chosen both a handle and a public name. */
+/** Whether the person has chosen a handle (the full name is shown only by consent). */
 export function hasIdentity(state: IdentityState): state is {
   status: 'ready';
-  identity: { handle: string; public_name: string };
+  identity: PublicIdentity & { handle: string };
 } {
-  return (
-    state.status === 'ready' &&
-    state.identity.handle !== null &&
-    state.identity.public_name !== null
-  );
+  return state.status === 'ready' && state.identity.handle !== null;
 }

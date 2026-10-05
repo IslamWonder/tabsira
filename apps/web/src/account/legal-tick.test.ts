@@ -8,12 +8,21 @@ describe('the tick kept for the way back from Google', () => {
   it('is read once, while fresh, for the versions ticked', () => {
     rememberTick(LEGAL, NOW);
     const tick = takeTick(NOW + 60_000);
-    expect(tick).toEqual({ terms_version: '2026-10-04', privacy_version: '2026-10-04' });
+    expect(tick).toEqual({
+      terms_version: '2026-10-04',
+      privacy_version: '2026-10-04',
+      public_full_name: false,
+    });
     expect(takeTick(NOW + 60_000)).toBeNull();
     expect(tickMatches(tick as NonNullable<typeof tick>, LEGAL)).toBe(true);
     expect(
       tickMatches(tick as NonNullable<typeof tick>, { ...LEGAL, privacy_version: '2027-01-01' })
     ).toBe(false);
+  });
+
+  it('carries the full-name box, false unless it was ticked', () => {
+    rememberTick(LEGAL, NOW, true);
+    expect(takeTick(NOW)).toMatchObject({ public_full_name: true });
   });
 
   it('is worthless after ten minutes, from the future, or garbled', () => {

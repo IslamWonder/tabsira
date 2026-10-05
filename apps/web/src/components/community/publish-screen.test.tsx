@@ -49,7 +49,6 @@ describe('PublishScreen', () => {
     render(<PublishScreen />);
     expect(await screen.findByText('اختر هويتك العامة قبل أن تنشر.')).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText('المعرّف'), 'reader');
-    await userEvent.type(screen.getByLabelText('الاسم العام'), 'قارئ');
     await userEvent.click(screen.getByRole('button', { name: 'احفظ هويتي' }));
     expect(await screen.findByRole('button', { name: 'أنشئ المسودة' })).toBeInTheDocument();
   });

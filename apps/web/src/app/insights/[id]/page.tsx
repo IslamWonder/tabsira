@@ -54,7 +54,7 @@ export default async function PublicInsightRoute({ params }: Props) {
           path,
           headline: insight.title,
           datePublished: insight.published_at,
-          authorName: insight.author?.public_name,
+          authorName: insight.author?.public_name ?? undefined,
         })}
       />
       <JsonLd data={breadcrumbJsonLd([{ name: insight.title, path }])} />

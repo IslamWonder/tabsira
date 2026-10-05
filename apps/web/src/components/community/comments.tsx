@@ -12,7 +12,7 @@ import { formatWhen } from '@/lib/dates';
 import { messages } from '@/messages';
 import { useAccess } from '@/social/access';
 import { commentsPage, createComment, deleteComment } from '@/social/api';
-import { profilePath } from '@/social/identity';
+import { memberLabel, profilePath } from '@/social/identity';
 import { COMMENT_MAX, type Comment } from '@/social/types';
 import { usePages } from '@/social/use-pages';
 import { AccessNote, BlockSheet, ReportSheet } from './sheets';
@@ -57,7 +57,7 @@ function CommentForm({ postId, parent, onCreated, onCancel }: CommentFormProps) 
   return (
     <form onSubmit={send} className="flex flex-col gap-3">
       <TextArea
-        label={parent === undefined ? K.write : K.writeReply(parent.author.public_name)}
+        label={parent === undefined ? K.write : K.writeReply(memberLabel(parent.author))}
         hint={K.limit(COMMENT_MAX)}
         value={body}
         onChange={(event) => setBody(event.target.value)}
@@ -125,7 +125,7 @@ function CommentItem({
           href={profilePath(comment.author.handle)}
           className="font-semibold text-fg underline-offset-4 hover:underline"
         >
-          {comment.author.public_name}
+          {memberLabel(comment.author)}
         </Link>
         <time dateTime={comment.created_at} className="text-fg-muted">
           {formatWhen(comment.created_at)}
@@ -190,7 +190,7 @@ function CommentItem({
         open={open === 'block'}
         onClose={() => setOpen('none')}
         handle={comment.author.handle}
-        publicName={comment.author.public_name}
+        publicName={memberLabel(comment.author)}
         onBlocked={() => onAuthorBlocked(comment.author.handle)}
       />
     </div>

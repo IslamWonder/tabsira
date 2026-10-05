@@ -16,7 +16,7 @@ import { formatWhen } from '@/lib/dates';
 import { messages } from '@/messages';
 import { useAccess } from '@/social/access';
 import { setBookmark, setLike } from '@/social/api';
-import { postPath, profilePath } from '@/social/identity';
+import { memberLabel, postPath, profilePath } from '@/social/identity';
 import type { Post } from '@/social/types';
 import { PostEvidence } from './evidence';
 import { PublicPhoto } from './public-photo';
@@ -169,10 +169,12 @@ export function PostCard({
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <Link
             href={profilePath(post.author.handle)}
-            aria-label={M.authorLink(post.author.public_name)}
+            aria-label={M.authorLink(memberLabel(post.author))}
             className="flex min-h-10 flex-wrap items-center gap-x-2 text-fg underline-offset-4 hover:underline"
           >
-            <span className="font-semibold">{post.author.public_name}</span>
+            {post.author.public_name === null ? null : (
+              <span className="font-semibold">{post.author.public_name}</span>
+            )}
             <bdi className="text-[0.875rem] text-fg-muted">@{post.author.handle}</bdi>
           </Link>
           <div className="flex flex-wrap items-center gap-2 text-[0.8125rem] text-fg-muted">
@@ -345,7 +347,7 @@ export function PostCard({
                     onClick={() => setOpen('block')}
                     className="w-full justify-start"
                   >
-                    {C.block.action} {post.author.public_name}
+                    {C.block.action} {memberLabel(post.author)}
                   </Button>
                 </li>
               )}
@@ -363,7 +365,7 @@ export function PostCard({
         open={open === 'block'}
         onClose={closeSheets}
         handle={post.author.handle}
-        publicName={post.author.public_name}
+        publicName={memberLabel(post.author)}
         onBlocked={() => onRemoved?.('blocked')}
       />
       <WithdrawSheet

@@ -16,6 +16,7 @@ import { Notice } from '@/components/ui/notice';
 import { useConsent } from '@/consent/store';
 import { failureMessage } from '@/lib/api/failure-message';
 import { messages } from '@/messages';
+import { FullNameConsent } from './full-name-consent';
 import { LegalConsent } from './legal-consent';
 
 const L = messages.auth.legal;
@@ -92,16 +93,19 @@ function Window({
   const titleId = useId();
   const bodyId = useId();
   const [accepted, setAccepted] = useState(false);
+  const [fullName, setFullName] = useState(user.public_full_name);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
   const accept = async (versions: LegalVersions) => {
     setBusy(true);
     setFailure(null);
-    const result = await acceptLegal(versions);
+    // Sent only when it changes the answer already given; the box is never ticked for the person.
+    const choices = fullName === user.public_full_name ? {} : { public_full_name: fullName };
+    const result = await acceptLegal(versions, choices);
     setBusy(false);
     if (result.ok) {
-      setSignedIn({ ...user, legal_acceptance_required: false });
+      setSignedIn({ ...user, legal_acceptance_required: false, public_full_name: fullName });
       return;
     }
     if (result.code === LEGAL_REFUSAL) {
@@ -141,6 +145,7 @@ function Window({
           disabled={typeof legal === 'string'}
           inPlace
         />
+        <FullNameConsent checked={fullName} onChange={setFullName} />
         {legal === 'failed' ? (
           <div role="alert" className="flex flex-col items-start gap-1">
             <Notice tone="error">{L.unavailable}</Notice>
@@ -215,7 +220,9 @@ function useTickAccepted(user: User): 'checking' | 'ask' {
     void (async () => {
       const legal = await loadLegal();
       const accepted =
-        legal.ok && tickMatches(tick, legal.data) && (await acceptLegal(legal.data)).ok;
+        legal.ok &&
+        tickMatches(tick, legal.data) &&
+        (await acceptLegal(legal.data, { public_full_name: tick.public_full_name })).ok;
       if (accepted) {
         setSignedIn({ ...user, legal_acceptance_required: false });
       } else {

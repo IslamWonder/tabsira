@@ -50,7 +50,7 @@ export default async function AtlasEntryPage({ params }: Params) {
             path: path(id),
             headline: result.data.title,
             datePublished: result.data.published_on,
-            authorName: result.data.author.public_name,
+            authorName: result.data.author.public_name ?? undefined,
           })}
         />
       ) : null}

@@ -16,7 +16,9 @@ function Author({ author }: { author: NonNullable<PublicInsight['author']> }) {
   return (
     <p className="m-0 flex flex-wrap items-center gap-x-2 text-[0.9375rem] text-fg-soft">
       <span className="sr-only">{T.authorLabel}:</span>
-      <span className="font-medium text-fg">{author.public_name}</span>
+      {author.public_name === null ? null : (
+        <span className="font-medium text-fg">{author.public_name}</span>
+      )}
       <span dir="ltr" className="text-fg-muted">
         @{author.handle}
       </span>

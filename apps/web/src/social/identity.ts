@@ -12,7 +12,6 @@ const P = messages.community.identity.problems;
 
 export const HANDLE_MIN = 3;
 export const HANDLE_MAX = 30;
-export const PUBLIC_NAME_MAX = 40;
 
 // Latin or Arabic letters (no diacritics, no tatweel), digits and underscores, starting with a
 // letter. Written as code points so the file holds no Arabic text (src/test/source-guards).
@@ -20,8 +19,6 @@ const HANDLE = /^[A-Za-z\u0621-\u063A\u0641-\u064A][A-Za-z0-9_\u0621-\u063A\u064
 // The names of the platform and its staff, in both scripts (src/social/reserved-handles.json).
 const RESERVED = new Set<string>(reserved.exact);
 const RESERVED_PREFIXES: readonly string[] = reserved.prefixes;
-// An address or a link would put contact details on a public page; hidden characters would mislead.
-const NAME_FORBIDDEN = /[@<>]|https?:|www\.|[\p{Cc}\p{Cf}\p{Cs}\p{Co}]/iu;
 
 export function cleanHandle(raw: string): string {
   return raw.normalize('NFKC').trim();
@@ -42,19 +39,12 @@ export function handleProblem(raw: string): string | null {
   return null;
 }
 
-export function cleanPublicName(raw: string): string {
-  return raw.normalize('NFKC').split(/\s+/).filter(Boolean).join(' ');
-}
-
-export function publicNameProblem(raw: string): string | null {
-  const name = cleanPublicName(raw);
-  if (name === '') {
-    return P.nameMissing;
-  }
-  if (Array.from(name).length > PUBLIC_NAME_MAX) {
-    return P.nameLong;
-  }
-  return NAME_FORBIDDEN.test(name) ? P.nameInvalid : null;
+/**
+ * What names a member in a sentence or an accessible name: the full name only when the
+ * API sent it (the person consented, decision 63), otherwise the handle alone.
+ */
+export function memberLabel(member: { handle: string; public_name: string | null }): string {
+  return member.public_name ?? `@${member.handle}`;
 }
 
 /** The address of a member's public page, the handle percent-encoded as in the sitemap. */
