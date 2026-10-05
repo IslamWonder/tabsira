@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Generates the mock members file (plan 23): references only, never scripture text"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-  "faker>=40.40.0",
+  "faker>=40.41.0",
   "httpx>=0.28.1",
   "psycopg[binary]>=3.3.6",
   "pydantic>=2.13.5",
