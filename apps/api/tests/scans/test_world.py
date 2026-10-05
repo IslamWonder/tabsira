@@ -6,7 +6,7 @@ import hashlib
 import json
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
 
 from src.models import EvidenceExposure, HadithClassification, Profile, Treasure, WorldPlace
 from src.owner import Owner
@@ -29,6 +29,37 @@ async def kept(store, owner: Owner, **values) -> str:
 
 
 DEEPER = {"learning_unit_id": "T01_01", "quran_surah": 3, "quran_ayah": 190}
+
+
+async def test_the_world_reads_the_hidden_treasures_evidence_in_bulk(
+    browser, store, flow_settings, engine
+):
+    """The evidence of every hidden treasure is read in bulk: one verse query, however many."""
+    owner = await as_guest(browser, store, flow_settings)
+    for unit in ("T01_01", "T01_03", "T01_06"):
+        insight_id = await kept(store, owner, learning_unit_id=unit)
+        await browser.post(f"/insights/{insight_id}/complete")
+    async with store() as db:
+        hidden = len(
+            (await db.scalars(select(Treasure.id).where(Treasure.revealed_at.is_(None)))).all()
+        )
+    assert hidden >= 2
+
+    seen: list[str] = []
+
+    def count_verses(_conn, _cursor, statement, *_rest) -> None:
+        if "quran_verses" in statement:
+            seen.append(statement)
+
+    event.listen(engine.sync_engine, "before_cursor_execute", count_verses)
+    try:
+        body = (await browser.get("/world")).json()
+    finally:
+        event.remove(engine.sync_engine, "before_cursor_execute", count_verses)
+
+    assert len(body["places"]) == 1
+    # One store read for all of them, not one per hidden treasure.
+    assert len(seen) == 1
 
 
 async def test_a_newcomer_sees_the_whole_map_under_fog(browser):
