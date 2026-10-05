@@ -197,8 +197,8 @@ function storeMode(mode: MapMode): void {
 }
 
 /**
- * The real map (decision 9: MapLibre with OpenFreeMap tiles, the one third-party
- * request besides consented analytics). Clusters at far zooms, single points
+ * The real map (decision 9: MapLibre with OpenFreeMap tiles, one of the
+ * third-party requests the privacy page names). Clusters at far zooms, single points
  * near; a point stands for an insight, never for a person. The map itself is
  * decorative to assistive technology: every result is also a list beside it,
  * and a tap on a point selects the same item the list does. Motion only on

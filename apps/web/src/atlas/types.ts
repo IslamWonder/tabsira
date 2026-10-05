@@ -120,8 +120,8 @@ export interface AtlasFilters {
 export const EMPTY_FILTERS: AtlasFilters = { period: 'all', country: null, concept: null };
 
 /**
- * The map tiles (decision 9): OpenFreeMap, the one third-party request a
- * visitor's browser makes besides consented analytics, named on the terms page.
+ * The map tiles (decision 9): OpenFreeMap, one of the third-party requests a
+ * visitor's browser makes, named on the terms and privacy pages.
  */
 export const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 
