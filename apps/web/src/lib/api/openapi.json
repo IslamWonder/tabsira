@@ -3126,7 +3126,7 @@
       "get": {
         "tags": ["world"],
         "summary": "The map: regions under fog, the places that came out of it, threads",
-        "description": "Return every region with its fog, the caller's places, threads and ready treasures.\n\nA newcomer gets the whole map under fog: there is nothing to hide and nothing to make.",
+        "description": "Return every region with its fog, the caller's places, threads and ready treasures.\n\nA newcomer gets the whole map under fog: there is nothing to hide and nothing to make.\nA concept learned without a reveal yet (before reveals existed, or with the world\noff) gets one here first, shown without its effect.",
         "operationId": "get_world_world_get",
         "responses": {
           "200": {
@@ -3138,6 +3138,39 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/world/reveals/shown": {
+      "post": {
+        "tags": ["world"],
+        "summary": "Record that the world played these reveals",
+        "description": "Mark the caller's reveals as shown, so their effect never plays again; asking again changes nothing.\n\nIds of another owner's reveals, or of none, are ignored, never reported.",
+        "operationId": "reveals_shown_world_reveals_shown_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevealsShownIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "default": {
             "description": "An error",
@@ -3778,7 +3811,7 @@
       "get": {
         "tags": ["tutorial"],
         "summary": "The prepared rain scene and its two insights",
-        "description": "Return the rain scene with «الحياة في قطرة» and «الغرس الذي يتعدّاك».\n\nThe verses come from the store; each hadith shows once an editor has\nrecorded its dorar.net ruling, and until then the insight says so.",
+        "description": "Return the rain scene with «الحياة في قطرة» and «الغرس الذي يتعدّاك».\n\nThe verses come from the store; each hadith shows once an editor has\nrecorded its dorar.net ruling, or before it when it counts as one of the\nenriched Sunnah file's (decision 58), and otherwise the insight says it waits.",
         "operationId": "rain_tutorial_rain_get",
         "responses": {
           "200": {
@@ -5193,6 +5226,17 @@
               }
             ]
           },
+          "reveal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompletionRevealOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The reveal of the insight's concept; null with the world off, or when its region had no room left"
+          },
           "treasure_prepared": {
             "type": "boolean",
             "title": "Treasure Prepared",
@@ -5235,6 +5279,7 @@
           "completed_at",
           "first_time",
           "place",
+          "reveal",
           "treasure_prepared",
           "badges_earned",
           "options",
@@ -5242,6 +5287,29 @@
           "disclosure"
         ],
         "title": "CompletionOut"
+      },
+      "CompletionRevealOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "landmark": {
+            "type": "boolean",
+            "title": "Landmark",
+            "description": "The region's landmark: the first concept learned there"
+          },
+          "created": {
+            "type": "boolean",
+            "title": "Created",
+            "description": "Made by this completion; false when the concept was learned before"
+          }
+        },
+        "type": "object",
+        "required": ["id", "landmark", "created"],
+        "title": "CompletionRevealOut",
+        "description": "What the completion lifted from the clouds of the world picture (decision 59)."
       },
       "ConsentCategories": {
         "properties": {
@@ -5728,6 +5796,8 @@
           "NEEDS_CLARIFICATION",
           "NO_RELEVANT_EVIDENCE",
           "SOURCE_UNAVAILABLE",
+          "CORPUS_UNAVAILABLE",
+          "RETRIEVAL_ERROR",
           "PAIR_INCOMPLETE",
           "CHAT_LIMIT_REACHED",
           "CHAT_CLOSED",
@@ -5820,6 +5890,18 @@
           "matched_on": {
             "type": "string",
             "title": "Matched On"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link",
+            "description": "«وجه الصلة»: how the text's own meaning meets the scene, as the checker found it"
           }
         },
         "type": "object",
@@ -7163,6 +7245,13 @@
             "type": "array",
             "title": "Places"
           },
+          "reveals": {
+            "items": {
+              "$ref": "#/components/schemas/RevealExport"
+            },
+            "type": "array",
+            "title": "Reveals"
+          },
           "treasures": {
             "items": {
               "$ref": "#/components/schemas/TreasureExport"
@@ -7198,6 +7287,7 @@
           "insights",
           "chat_messages",
           "places",
+          "reveals",
           "treasures",
           "learner_units",
           "exposures",
@@ -7838,10 +7928,23 @@
             "type": "string",
             "format": "date-time",
             "title": "Completed At"
+          },
+          "reveal_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reveal Id",
+            "description": "The reveal of the insight's concept, made by it or by an earlier insight of the same concept; null when its region had no room left"
           }
         },
         "type": "object",
-        "required": ["id", "title", "completed_at"],
+        "required": ["id", "title", "completed_at", "reveal_id"],
         "title": "PlaceInsightOut"
       },
       "PlaceOut": {
@@ -9547,6 +9650,194 @@
         "required": ["token", "password"],
         "title": "ResetPasswordIn"
       },
+      "RevealExport": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id"
+          },
+          "place_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Place Id"
+          },
+          "concept_key": {
+            "type": "string",
+            "title": "Concept Key"
+          },
+          "region_id": {
+            "type": "string",
+            "title": "Region Id"
+          },
+          "layout_version": {
+            "type": "string",
+            "title": "Layout Version"
+          },
+          "slot": {
+            "type": "integer",
+            "title": "Slot"
+          },
+          "theme": {
+            "type": "string",
+            "title": "Theme"
+          },
+          "x": {
+            "type": "number",
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "title": "Y"
+          },
+          "radius": {
+            "type": "number",
+            "title": "Radius"
+          },
+          "learned_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Learned At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "shown_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shown At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "insight_id",
+          "place_id",
+          "concept_key",
+          "region_id",
+          "layout_version",
+          "slot",
+          "theme",
+          "x",
+          "y",
+          "radius",
+          "learned_at",
+          "created_at",
+          "shown_at"
+        ],
+        "title": "RevealExport"
+      },
+      "RevealOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Id"
+          },
+          "place_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Place Id"
+          },
+          "region_id": {
+            "type": "string",
+            "title": "Region Id"
+          },
+          "insight_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "title": "Insight Id",
+            "description": "The first completed insight of the concept"
+          },
+          "landmark": {
+            "type": "boolean",
+            "title": "Landmark",
+            "description": "The region's landmark (its first reveal), where its marker stands"
+          },
+          "theme": {
+            "$ref": "#/components/schemas/WorldTheme"
+          },
+          "icon": {
+            "type": "string",
+            "title": "Icon",
+            "description": "The landmark's drawing in the web app's icon set"
+          },
+          "x": {
+            "type": "number",
+            "title": "X",
+            "description": "The centre, as a ratio of the picture's width from the left"
+          },
+          "y": {
+            "type": "number",
+            "title": "Y",
+            "description": "The centre, as a ratio of the picture's height from the top"
+          },
+          "radius": {
+            "type": "number",
+            "title": "Radius",
+            "description": "As a ratio of the picture's width"
+          },
+          "learned_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Learned At"
+          },
+          "shown": {
+            "type": "boolean",
+            "title": "Shown",
+            "description": "The world already played this reveal; until then it plays once"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "place_id",
+          "region_id",
+          "insight_id",
+          "landmark",
+          "theme",
+          "icon",
+          "x",
+          "y",
+          "radius",
+          "learned_at",
+          "shown"
+        ],
+        "title": "RevealOut",
+        "description": "A circle of the world picture one learned concept lifted from the clouds (decision 59)."
+      },
+      "RevealsShownIn": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Ids"
+          }
+        },
+        "type": "object",
+        "required": ["ids"],
+        "title": "RevealsShownIn",
+        "description": "The reveals whose effect the world just played, so it never plays them again."
+      },
       "ReverseResult": {
         "properties": {
           "place": {
@@ -9977,7 +10268,12 @@
       },
       "ScanOutcome": {
         "type": "string",
-        "enum": ["insights", "needs_clarification", "no_relevant_evidence"],
+        "enum": [
+          "insights",
+          "needs_clarification",
+          "no_relevant_evidence",
+          "incomplete_evidence_pair"
+        ],
         "title": "ScanOutcome",
         "description": "What a finished scan found (v2 §8 and §26): insights, a question, or no reliable link."
       },
@@ -11026,6 +11322,11 @@
             "type": "string",
             "title": "Path Version"
           },
+          "layout_version": {
+            "type": "string",
+            "title": "Layout Version",
+            "description": "The version of the world picture's layout"
+          },
           "regions": {
             "items": {
               "$ref": "#/components/schemas/RegionOut"
@@ -11046,10 +11347,26 @@
             },
             "type": "array",
             "title": "Relations"
+          },
+          "reveals": {
+            "items": {
+              "$ref": "#/components/schemas/RevealOut"
+            },
+            "type": "array",
+            "title": "Reveals",
+            "description": "The owner's reveals, in the order learned"
           }
         },
         "type": "object",
-        "required": ["version", "path_version", "regions", "places", "relations"],
+        "required": [
+          "version",
+          "path_version",
+          "layout_version",
+          "regions",
+          "places",
+          "relations",
+          "reveals"
+        ],
         "title": "WorldOut"
       },
       "WorldPlaceOut": {
@@ -11113,6 +11430,12 @@
           "treasure"
         ],
         "title": "WorldPlaceOut"
+      },
+      "WorldTheme": {
+        "type": "string",
+        "enum": ["water", "planting", "knowledge", "patience", "kinship", "justice"],
+        "title": "WorldTheme",
+        "description": "How a region's reveal looks: a design symbol for learning, never a ruling or a measure of faith."
       },
       "ScanFromUrl": {
         "description": "A photo given by its public address; the server fetches it (v2 §6).",

@@ -289,6 +289,20 @@ describe('ScanScreen: no reliable link', () => {
     expect(screen.getByRole('link', { name: 'جرّب مشهدًا آخر' })).toBeInTheDocument();
   });
 
+  it('tells apart evidence that waits for its ruling from no evidence at all', () => {
+    setControls(
+      ready({ outcome: 'incomplete_evidence_pair', insights: [], awaiting_verification: 1 })
+    );
+    render(<ScanScreen scanId="1" />);
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'وجدنا دليلًا، ولم تكتمل البصيرة بعد' })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/بانتظار التحقق من حكمه في الدرر/)).toBeInTheDocument();
+    expect(screen.queryByText(/لا نكمل بنص بعيد/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'وضّح ما تقصد' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'جرّب مشهدًا آخر' })).toBeInTheDocument();
+  });
+
   it('treats a finished scan with insights promised but none given as no reliable link', () => {
     setControls(ready({ outcome: 'insights', insights: [] }));
     render(<ScanScreen scanId="1" />);

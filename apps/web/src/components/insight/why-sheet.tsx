@@ -33,8 +33,9 @@ export interface WhySheetProps {
 
 /**
  * the why-this sheet (tajriba S03, LUX-04, LUX-16): the scene first, then the
- * meaning, then the source, in that order, with what each source matched on and
- * how it relates, then the limits of the link and whether a personal choice
+ * meaning, then the source, in that order, with what each source matched on,
+ * how it relates and the checker's own link line when it wrote one, then
+ * the limits of the link and whether a personal choice
  * shaped it. No confidence number is shown as certainty. The title of the
  * insight stays in the sheet's description, so the reader knows which insight
  * it is about (Working memory).
@@ -70,6 +71,11 @@ export function WhySheet({ open, onClose, insight }: WhySheetProps) {
                   {source.why === null ? null : (
                     <p className="m-0 text-[1rem] text-fg leading-[1.85]">
                       {T.sourceLine(source.why.relation_label, source.why.matched_on)}
+                    </p>
+                  )}
+                  {source.why?.link == null ? null : (
+                    <p className="m-0 text-[0.9375rem] text-fg-soft leading-[1.85]">
+                      {T.linkLine(source.why.link)}
                     </p>
                   )}
                 </li>

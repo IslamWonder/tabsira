@@ -103,6 +103,11 @@ describe('WhySheet', () => {
       within(sheet).getByText('صلة مباشرة، وجه الصلة: أثر الماء في الأرض')
     ).toBeInTheDocument();
     expect(within(sheet).getByText('صلة بالفعل، وجه الصلة: رؤية المطر')).toBeInTheDocument();
+    // The checker's own link line shows under the verse, which has one, not under the hadith.
+    expect(
+      within(sheet).getByText('وجه الارتباط: يذكر النص إحياء الأرض بالماء بعد يبسها')
+    ).toBeInTheDocument();
+    expect(within(sheet).getAllByText(/وجه الارتباط/)).toHaveLength(1);
     expect(within(sheet).getByText('لم يُبنَ هذا الاختيار على ملفك.')).toBeInTheDocument();
   });
 
@@ -156,7 +161,7 @@ describe('WhySheet', () => {
         insight={insightOut({
           quran: base.quran && {
             ...base.quran,
-            why: { relation: 'direct', relation_label: 'صلة مباشرة', matched_on: '' },
+            why: { relation: 'direct', relation_label: 'صلة مباشرة', matched_on: '', link: null },
           },
           hadith: null,
         })}

@@ -126,7 +126,12 @@ export function insightOut(overrides: Partial<Insight> = {}): Insight {
         links: { quranpedia: 'https://quranpedia.net/surah/30/ayah/50' },
         status: 'verified_cached',
       },
-      why: { relation: 'direct', relation_label: 'صلة مباشرة', matched_on: 'أثر الماء في الأرض' },
+      why: {
+        relation: 'direct',
+        relation_label: 'صلة مباشرة',
+        matched_on: 'أثر الماء في الأرض',
+        link: 'يذكر النص إحياء الأرض بالماء بعد يبسها',
+      },
     },
     hadith: {
       tag: 'السنة',
@@ -163,6 +168,7 @@ export function insightOut(overrides: Partial<Insight> = {}): Insight {
         relation: 'action_based',
         relation_label: 'صلة بالفعل',
         matched_on: 'رؤية المطر',
+        link: null,
       },
     },
     hadith_status: 'shown',
@@ -202,6 +208,7 @@ export function completionOut(overrides: Partial<Completion> = {}): Completion {
     completed_at: '2026-10-04T08:05:00Z',
     first_time: true,
     place: { id: '110000000000000009', region_id: 'T01', name: 'واحة الغيث', created: true },
+    reveal: null,
     treasure_prepared: false,
     badges_earned: ['first-look'],
     options: [

@@ -37,7 +37,9 @@ export const PLACE_ONE: Place = {
   name: '[موضع أول]',
   created_at: '2026-10-01T08:00:00Z',
   last_visited_at: '2026-10-03T08:00:00Z',
-  insights: [{ id: '9001', title: '[بصيرة أولى]', completed_at: '2026-10-01T08:00:00Z' }],
+  insights: [
+    { id: '9001', title: '[بصيرة أولى]', completed_at: '2026-10-01T08:00:00Z', reveal_id: null },
+  ],
   treasure: null,
 };
 
@@ -48,8 +50,8 @@ export const PLACE_TWO: Place = {
   created_at: '2026-10-02T08:00:00Z',
   last_visited_at: null,
   insights: [
-    { id: '9002', title: '[بصيرة ثانية]', completed_at: '2026-10-02T08:00:00Z' },
-    { id: '9003', title: '[بصيرة ثالثة]', completed_at: '2026-10-02T09:00:00Z' },
+    { id: '9002', title: '[بصيرة ثانية]', completed_at: '2026-10-02T08:00:00Z', reveal_id: null },
+    { id: '9003', title: '[بصيرة ثالثة]', completed_at: '2026-10-02T09:00:00Z', reveal_id: null },
   ],
   treasure: { id: '8001' },
 };
@@ -66,9 +68,11 @@ export const RELATION: Relation = {
 export const WORLD: World = {
   version: '1.0',
   path_version: 'tabsira-masar-1.0',
+  layout_version: '1',
   regions: REGIONS,
   places: [PLACE_ONE, PLACE_TWO],
   relations: [RELATION],
+  reveals: [],
 };
 
 /** A newcomer: the whole map under fog. */
@@ -77,6 +81,7 @@ export const WORLD_UNDER_FOG: World = {
   regions: REGIONS.map((item) => ({ ...item, fog: true, place_id: null })),
   places: [],
   relations: [],
+  reveals: [],
 };
 
 export const QURAN_TEXT = '[نص الآية يأتي من الخادم]';
