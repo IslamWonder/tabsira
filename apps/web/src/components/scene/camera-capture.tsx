@@ -180,12 +180,12 @@ export function CameraCapture({ onFile, onPick, autoStart = false }: CameraCaptu
   const problem = cameraProblem(secure, camera.failure, availability);
   const viewRef = useRef<HTMLDivElement>(null);
   const starting = camera.state === 'starting';
-  const autoStarted = useRef(false);
-
-  // A page that is not secure has no camera API: its fallback says why instead.
+  // Once per mount: the dependencies never change while the view shows. No "already started"
+  // flag: React's development double mount cancels the first request with its cleanup, and
+  // the second must ask again. A page that is not secure has no camera API: its fallback
+  // says why instead.
   useEffect(() => {
-    if (autoStart && secure && !autoStarted.current) {
-      autoStarted.current = true;
+    if (autoStart && secure) {
       void camera.start();
     }
   }, [autoStart, secure, camera.start]);

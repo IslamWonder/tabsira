@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -83,6 +84,19 @@ describe('CameraCapture', () => {
     expect(await screen.findByLabelText('معاينة الكاميرا')).toBeInTheDocument();
     rerender(<CameraCapture onFile={vi.fn()} onPick={vi.fn()} autoStart />);
     await waitFor(() => expect(getUserMedia).toHaveBeenCalledOnce());
+  });
+
+  it('starts under the development double mount too', async () => {
+    const { getUserMedia } = stubCamera('granted');
+    render(
+      <StrictMode>
+        <CameraCapture onFile={vi.fn()} onPick={vi.fn()} autoStart />
+      </StrictMode>
+    );
+
+    const video = (await screen.findByLabelText('معاينة الكاميرا')) as HTMLVideoElement;
+    await waitFor(() => expect(video.srcObject).not.toBeNull());
+    expect(getUserMedia).toHaveBeenCalledTimes(2);
   });
 
   it('waits for a tap when nothing asked it to start', async () => {
