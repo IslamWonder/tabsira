@@ -22,6 +22,20 @@ People can use TABSIRA as a guest, then create an account with e-mail or Google 
 - Sign up, verify, reset and delete on `https://tabsira.test`.
 - 100 % tests; security review passed.
 
+## The mails TABSIRA sends
+
+Three mails, all from `MAIL_FROM` through the `SMTP_*` server, in Arabic, text with an HTML alternative (`apps/api/src/templates/email/ar/`, `apps/api/src/services/email_service.py`). They go out after the answer (a background task), so their timing says nothing; a mail that cannot be sent is logged and never fails the request. Every link carries its one-time token after `#`, so it never reaches a server log.
+
+| Mail                                                         | Subject                            | Sent when                                                                                                                                                                    | Not sent when                                                                                                                 | Link                                                                                                                       |
+| ------------------------------------------------------------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Address verification, the welcome mail («أهلًا بك في تبصرة») | «أكّد بريدك الإلكتروني في تبصرة»   | Sign-up with an e-mail and a password (`POST /auth/signup`), at once; again on «أعد إرسال رابط التأكيد» (`POST /auth/resend-verification`) for an active, unverified account | A Google sign-up (Google has verified the address); an address already verified; no such account (the answer is the same 202) | `/verify-email#token=…`, 24 hours (`EMAIL_VERIFICATION_EXPIRE_HOURS`), once; a new one cancels the old                     |
+| Password reset                                               | «إعادة تعيين كلمة المرور في تبصرة» | «نسيت كلمة المرور» (`POST /auth/forgot-password`) for an active account, Google-only ones included (they then gain a password)                                               | No such account or a closed one (the answer is the same 202)                                                                  | `/reset-password#token=…`, 60 minutes (`PASSWORD_RESET_EXPIRE_MINUTES`), once; resetting ends the account's other sessions |
+| Support message, to the team                                 | «[تبصرة] <الموضوع>»                | The support form (`POST /support`), to `SUPPORT_EMAIL`, replies going to the visitor                                                                                         | —                                                                                                                             | none; plain text, the visitor's lines quoted                                                                               |
+
+Not sent today: no mail when a password is changed, when the address is changed, when the account is deleted, and no newsletter of any kind.
+
+Samples rendered from the templates (not sent) are in `../tabsira-artifact/mail-samples/`. To receive the real ones through production's SMTP: `cd /opt/tabsira/apps/api && UV_NO_SYNC=1 uv run python -m src.cli.mail_test you@example.com --all` (placeholder links).
+
 ## Tasks
 
 ### 01.1 Save theme and motion settings to the account

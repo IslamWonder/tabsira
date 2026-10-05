@@ -13,6 +13,8 @@ from src.models import (
     AgeRange,
     EmbeddedCorpus,
     Gender,
+    Hadith,
+    HadithClassification,
     KnowledgeLevel,
     QuranVerse,
     ReligiousBackground,
@@ -45,6 +47,7 @@ from src.pipeline.insight.composer import (
 from src.pipeline.insight.composer import SYSTEM_PROMPT as COMPOSER_PROMPT
 from src.pipeline.insight.context import build_context
 from src.pipeline.insight.engine import PipelineInsightEngine, unit_texts, visible_clues
+from src.pipeline.insight.evidence import SYSTEM_PROMPT as VERIFIER_PROMPT
 from src.pipeline.insight.evidence import (
     Chosen,
     EvidenceRelevanceVerifier,
@@ -58,6 +61,7 @@ from src.pipeline.insight.evidence import (
     seen_ids,
     verdict_texts,
     verifier_message,
+    widen_hadith,
 )
 from src.pipeline.insight.guard import (
     STORE_FINDING,
@@ -97,8 +101,9 @@ from src.pipeline.insight.search import (
 from src.pipeline.leak_guard import LeakGuard
 from src.pipeline.prompt import load_prompt
 from src.pipeline.schemas import EvidenceStatus, SceneAction
-from src.retrieval.concepts import ConceptIndex
-from src.retrieval.documents import RetrievalDocument
+from src.retrieval.concepts import ConceptIndex, load_concept_index
+from src.retrieval.documents import RetrievalDocument, hadith_records, quran_context
+from src.scripture.rulings import RulingInput, record_ruling
 from src.scripture.text import without_marks
 from src.services.chat_service import SYSTEM_PROMPT as CHAT_PROMPT
 from tests.fakes import FakeModelClient
@@ -1111,3 +1116,160 @@ def test_a_lone_text_is_kept_only_when_no_intent_reached_a_complete_pair():
 
     assert [item.result.quran_ref.ayah for item in kept] == [2]
     assert [item.result.quran_ref.ayah for item in lone] == [4]
+
+
+# ─── The enriched file as the candidate source (the brief of 2026-10-05, §7 and §12) ───
+
+
+async def _pool(store) -> tuple[dict[int, str], dict[str, int]]:
+    """The fixture pool (two narrations of record 1, the rain hadith of 1535) and ids by number."""
+    records = await hadith_records(store)
+    rows = (await store.execute(select(Hadith.id, Hadith.collection, Hadith.number))).all()
+    return records, {f"{row.collection}:{row.number}": row.id for row in rows}
+
+
+async def test_a_pool_narrows_the_search_and_keeps_one_narration_per_record(store):
+    records, ids = await _pool(store)
+    index = await load_concept_index(store, EmbeddedCorpus.HADITH)
+    search = EvidenceSearch(embedding=None, reranker=None, concepts={EmbeddedCorpus.HADITH: index})
+    # «بني الإسلام على خمس» reaches both narrations of record 1 (Bukhari 8, Muslim 113).
+    queries = IntentQueries(("بني الإسلام على خمس", "نزول المطر"), ())
+
+    everywhere = await search.search(store, EmbeddedCorpus.HADITH, queries, {}, records=records)
+    pooled = await search.search(
+        store, EmbeddedCorpus.HADITH, queries, {}, pool=frozenset(records), records=records
+    )
+    without = await search.search(
+        store,
+        EmbeddedCorpus.HADITH,
+        queries,
+        {},
+        pool=frozenset(records),
+        records=records,
+        exclude=[ids["bukhari:1032"]],
+    )
+
+    assert {found.key for found in pooled} <= set(records)
+    assert {ids["bukhari:8"], ids["muslim:113"]} & {found.key for found in pooled}
+    assert ids["bukhari:1"] not in {found.key for found in pooled}
+    # One narration per record: Bukhari 8 and Muslim 113 never both.
+    assert [found.record for found in pooled].count("1") == 1
+    assert all(found.record == records[found.key] for found in pooled)
+    assert ids["bukhari:1032"] not in {found.key for found in without}
+    assert everywhere and any(found.record is None for found in everywhere)
+    # Without a pool the two narrations of record 1 are still one candidate.
+    assert [found.record for found in everywhere].count("1") == 1
+    traced = next(found for found in pooled if found.record == "1").as_trace()
+    assert traced["record"] == "1"
+    assert "record" not in next(f for f in everywhere if f.record is None).as_trace()
+
+
+async def test_the_verifier_reads_a_verse_with_its_neighbours_as_context(store):
+    ids = {
+        (row.surah, row.ayah): row.id
+        for row in (await store.execute(select(QuranVerse.id, QuranVerse.surah, QuranVerse.ayah)))
+    }
+    shortlist = Shortlist(an_intent(), [found(ids[(112, 2)]), found(ids[(30, 50)])], [])
+    shortlist.quran_context.update(await quran_context(store, [ids[(112, 2)], ids[(30, 50)]]))
+
+    payload = json.loads(verifier_message(rain_scene(), shortlist))
+
+    assert set(payload["texts"][0]["context"]) == {"before", "after"}
+    assert payload["texts"][0]["context"]["before"]
+    assert "context" not in payload["texts"][1]
+    assert "context" in load_prompt(VERIFIER_PROMPT).text
+
+
+async def test_widening_completes_a_result_from_the_whole_store_within_the_rules(store):
+    _records, ids = await _pool(store)
+    verse = await store.scalar(select(QuranVerse.id).where(QuranVerse.surah == 30))
+    kept = GateResult(an_intent(), quran=chosen(verse), quran_ref=QuranRef(surah=30, ayah=50))
+    wide = Shortlist(
+        an_intent(),
+        [],
+        [
+            found(ids["bukhari:1"], EmbeddedCorpus.HADITH),
+            found(ids["bukhari:8"], EmbeddedCorpus.HADITH),
+        ],
+    )
+
+    unjudged = await widen_hadith(
+        store, GateResult(an_intent(), quran=kept.quran), wide, None, seen=frozenset()
+    )
+    nothing = await widen_hadith(
+        store,
+        GateResult(an_intent(), quran=kept.quran),
+        wide,
+        _verdict([judged("H1", accepted=False), judged("H2", accepted=False)], None),
+        seen=frozenset(),
+    )
+    named = await widen_hadith(
+        store,
+        GateResult(an_intent(), quran=kept.quran, quran_ref=kept.quran_ref),
+        wide,
+        _verdict(
+            [judged("H1"), judged("H2")],
+            {"quran": None, "hadith": "H2", "shared_meaning": "النية"},
+        ),
+        seen=frozenset(),
+    )
+    by_tier = await widen_hadith(
+        store,
+        GateResult(an_intent(), quran=kept.quran, quran_ref=kept.quran_ref),
+        wide,
+        _verdict(
+            [judged("H1", relation="close_conceptual"), judged("H2", relation="direct")], None
+        ),
+        seen=frozenset(),
+    )
+    strongest = await widen_hadith(
+        store,
+        GateResult(an_intent(), quran=chosen(verse, relation=RelationType.OPPOSITE)),
+        wide,
+        _verdict(
+            [judged("H1", relation="close_conceptual"), judged("H2", relation="direct")], None
+        ),
+        seen=frozenset(),
+    )
+
+    assert unjudged.hadith is None
+    assert unjudged.rejections == {"wide:H1": "no_verdict", "wide:H2": "no_verdict"}
+    assert nothing.hadith is None
+    assert nothing.rejections == {
+        "wide:H1": "meaning_not_supported",
+        "wide:H2": "meaning_not_supported",
+    }
+    assert named.hadith.found.key == ids["bukhari:8"]
+    assert named.shared_meaning == "النية"
+    assert named.rejections == {}
+    assert isinstance(named.hadith_ref, HadithRef)
+    # No pair named: the verse's tier (direct) leads, then the strongest when none shares it.
+    assert by_tier.hadith.found.key == ids["bukhari:8"]
+    assert strongest.hadith.found.key == ids["bukhari:8"]
+    # The widened hadith meets the same eligibility rule: one an editor ruled out is not kept.
+    await _rule_out(store, ids["bukhari:1"])
+    ruled = await widen_hadith(
+        store,
+        GateResult(an_intent(), quran=kept.quran, quran_ref=kept.quran_ref),
+        Shortlist(an_intent(), [], [found(ids["bukhari:1"], EmbeddedCorpus.HADITH)]),
+        _verdict([judged("H1")], None),
+        seen=frozenset(),
+    )
+    assert ruled.hadith is None
+    assert ruled.rejections == {"H1": "ruled_ineligible"}
+
+
+async def _rule_out(session, hadith_id: int) -> None:
+    await record_ruling(
+        session,
+        hadith_id,
+        RulingInput(
+            ruling_text="ضعيف",
+            scholar="محرر",
+            source_book="كتاب",
+            page="1",
+            dorar_url="https://dorar.net/hadith/sharh/1",
+            classification=HadithClassification.DAIF,
+            editor_name="محرر",
+        ),
+    )

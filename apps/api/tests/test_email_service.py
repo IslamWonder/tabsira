@@ -51,12 +51,35 @@ async def test_the_verification_mail_is_arabic_rtl_with_a_text_and_an_html_part(
     assert "https://x.example/#token=t" in html
     assert "https://x.example/#token=t" in text
     assert "24 ساعة" in html
-    assert "help@tabsira.me" in html
-    assert "help@tabsira.me" in text
+    # No support address is ever written in a mail: the support form is the way in.
+    assert "help@tabsira.me" not in html
+    assert "help@tabsira.me" not in text
+    assert f"{settings.mail_link_base}/support" in html
+    assert f"{settings.mail_link_base}/support" in text
     assert [part.get_content_type() for part in message.iter_parts()] == [
         "text/plain",
-        "text/html",
+        "multipart/related",
     ]
+
+
+async def test_the_logo_travels_inside_the_mail_and_the_html_names_it(settings):
+    message = email_service.build_message(
+        settings,
+        to="reader@example.com",
+        subject="s",
+        template="password_reset",
+        context={"name": "n", "reset_url": "u", "expires_minutes": 1},
+    )
+
+    related = list(message.iter_parts())[1]
+    html_part, logo = list(related.iter_parts())
+    cid = logo["Content-ID"]
+    assert logo.get_content_type() == "image/png"
+    assert logo.get_content() == email_service.LOGO.read_bytes()
+    assert cid.endswith("@tabsira.me>")
+    # The HTML names the logo by that id, and loads nothing from the internet.
+    assert f'src="cid:{cid[1:-1]}"' in html_part.get_content()
+    assert "http://" not in html_part.get_content().split("<body")[1].split("<a ")[0]
 
 
 async def test_a_display_name_cannot_inject_markup_into_the_html_part(settings):
@@ -89,7 +112,6 @@ def test_a_reply_to_is_added_only_when_one_is_configured(make_settings):
     )
 
     assert message["Reply-To"] is None
-    assert "للمساعدة اكتب" not in body_of(message, "plain")
 
 
 def test_the_link_keeps_the_token_in_the_fragment_and_escapes_it(settings):

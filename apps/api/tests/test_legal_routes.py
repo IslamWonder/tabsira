@@ -15,8 +15,9 @@ async def test_legal_needs_no_session_and_is_revalidated_every_time(client):
         "terms_version": "2026-10-05T18:00Z",
         "privacy_version": "2026-10-05T18:00Z",
         "privacy_email": "privacy@tabsira.me",
-        "support_email": "support@tabsira.me",
     }
+    # The support address is never shown: the support form is the way in.
+    assert "support" not in response.text
 
 
 async def test_legal_follows_the_settings(make_settings):
@@ -35,5 +36,4 @@ async def test_legal_follows_the_settings(make_settings):
         "terms_version": "2027-01-01",
         "privacy_version": "2027-02-01",
         "privacy_email": "p@example.com",
-        "support_email": "s@example.com",
     }

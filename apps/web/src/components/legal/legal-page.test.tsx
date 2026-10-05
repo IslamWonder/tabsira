@@ -90,7 +90,7 @@ describe('LegalPage', () => {
   it('renders lists as lists and addresses as links', () => {
     render(<LegalPage document={terms} seo={SEO} />);
     expect(screen.getAllByRole('list').length).toBeGreaterThan(3);
-    expect(screen.getAllByRole('link', { name: 'support@tabsira.me' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'privacy@tabsira.me' }).length).toBeGreaterThan(0);
   });
 
   it('turns a web address into a link, the sentence full stop left outside', () => {

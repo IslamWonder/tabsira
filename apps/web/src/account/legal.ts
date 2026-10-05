@@ -21,7 +21,6 @@ export interface LegalVersions {
   terms_version: string;
   privacy_version: string;
   privacy_email: string;
-  support_email: string;
 }
 
 export interface LegalAcceptance {
@@ -36,7 +35,7 @@ function isLegal(value: unknown): value is LegalVersions {
     return false;
   }
   const fields = value as Record<string, unknown>;
-  return ['terms_version', 'privacy_version', 'privacy_email', 'support_email'].every(
+  return ['terms_version', 'privacy_version', 'privacy_email'].every(
     (key) => typeof fields[key] === 'string' && fields[key] !== ''
   );
 }

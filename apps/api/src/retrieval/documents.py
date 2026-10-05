@@ -25,7 +25,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import (
@@ -164,6 +164,64 @@ async def hadith_concepts(
         )
         groups = {hadith_id: lists for hadith_id, lists in groups.items() if hadith_id in kept}
     return {hadith_id: unique_concepts(lists) for hadith_id, lists in groups.items()}
+
+
+# Folded characters of each neighbouring verse given to the verifier as context.
+CONTEXT_MAX_CHARS = 240
+
+
+async def quran_context(
+    session: AsyncSession, verse_ids: Sequence[int]
+) -> dict[int, dict[str, str]]:
+    """
+    Return, for each verse, the folded text of the verse before and after it in its surah.
+
+    The brief of 2026-10-05 §7: a verse is judged with its context at hand, the verse's own
+    words kept apart from its neighbours'. Context is for reading only; it is never shown.
+    """
+    if not verse_ids:
+        return {}
+    wanted = (
+        await session.execute(
+            select(QuranVerse.id, QuranVerse.surah, QuranVerse.ayah).where(
+                QuranVerse.id.in_(list(verse_ids))
+            )
+        )
+    ).all()
+    neighbours = [(row.surah, row.ayah + step) for row in wanted for step in (-1, 1)]
+    if not neighbours:
+        return {}
+    rows = (
+        await session.execute(
+            select(QuranVerse.surah, QuranVerse.ayah, QuranVerseSearch.normalized_text)
+            .join(QuranVerseSearch, QuranVerseSearch.verse_id == QuranVerse.id)
+            .where(tuple_(QuranVerse.surah, QuranVerse.ayah).in_(neighbours))
+        )
+    ).all()
+    folded = {(row.surah, row.ayah): _clip(row.normalized_text, CONTEXT_MAX_CHARS) for row in rows}
+    context: dict[int, dict[str, str]] = {}
+    for row in wanted:
+        before = folded.get((row.surah, row.ayah - 1))
+        after = folded.get((row.surah, row.ayah + 1))
+        if before or after:
+            context[row.id] = {"before": before or "", "after": after or ""}
+    return context
+
+
+async def hadith_records(session: AsyncSession) -> dict[int, str]:
+    """
+    Return the enriched record (`source_record_id`) each stored narration belongs to.
+
+    A record is matched to its narrations in the nine books at import; every match is the
+    same hadith in another book, so the candidates of a search are deduplicated by record and
+    the trace names the record a candidate came from. A narration two records match keeps
+    the first record's id.
+    """
+    records: dict[int, str] = {}
+    for signal in await session.scalars(select(HadithSignal).order_by(HadithSignal.id)):
+        for match in signal.matches:
+            records.setdefault(int(match["hadith_id"]), signal.source_record_id)
+    return records
 
 
 async def hadith_documents(

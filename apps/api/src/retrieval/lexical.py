@@ -19,12 +19,13 @@ copies are never displayed; a hit is an id and a score.
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import Float, and_, case, func, literal, or_, select
+from sqlalchemy import BigInteger, Float, and_, any_, bindparam, case, func, literal, or_, select
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -81,11 +82,20 @@ async def search_lexical(
     method: LexicalMethod = LexicalMethod.FTS,
     limit: int = 30,
     collections: Sequence[str] | None = None,
+    ids: Collection[int] | None = None,
 ) -> list[Hit]:
-    """Return the texts that hold the most informative stems of `terms`, best first."""
+    """
+    Return the texts that hold the most informative stems of `terms`, best first.
+
+    `ids` narrows the search to a pool of texts (the narrations of the enriched Sunnah
+    file); the document frequencies are counted inside the pool, so a stem common in the
+    pool weighs little there whatever its rarity in the whole store.
+    """
     if not terms:
         return []
     key, folded, vector, filters = _scope(corpus, collections)
+    if ids is not None:
+        filters = [*filters, key == any_(bindparam("ids", list(ids), type_=ARRAY(BigInteger)))]
     if method is LexicalMethod.FTS:
         matches = [vector.op("@@")(func.to_tsquery("simple", prefix_query(term))) for term in terms]
     else:

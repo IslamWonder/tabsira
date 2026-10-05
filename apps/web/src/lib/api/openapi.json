@@ -4113,7 +4113,7 @@
       "get": {
         "tags": ["tutorial"],
         "summary": "The prepared rain scene and its two insights",
-        "description": "Return the rain scene with «الحياة في قطرة» and «الغرس الذي يتعدّاك».\n\nThe verses come from the store; each hadith shows once an editor has\nrecorded its dorar.net ruling, or before it when it counts as one of the\nenriched Sunnah file's (decision 58), and otherwise the insight says it waits.",
+        "description": "Return the rain scene with «الحياة في قطرة» and «الغرس الذي يتعدّاك».\n\nThe verses and the hadiths come from the store, each hadith as stored with\nno ruling displayed (decision 64).",
         "operationId": "rain_tutorial_rain_get",
         "responses": {
           "200": {
@@ -7770,14 +7770,10 @@
           "privacy_email": {
             "type": "string",
             "title": "Privacy Email"
-          },
-          "support_email": {
-            "type": "string",
-            "title": "Support Email"
           }
         },
         "type": "object",
-        "required": ["terms_version", "privacy_version", "privacy_email", "support_email"],
+        "required": ["terms_version", "privacy_version", "privacy_email"],
         "title": "LegalOut",
         "description": "What the sign-up page, the terms page and the privacy page need to show and to send back."
       },

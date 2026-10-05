@@ -88,7 +88,9 @@ describe('legal documents', () => {
       expect(ids).toContain(id);
     }
     const text = everyText(terms).join('\n');
-    expect(text).toContain('support@tabsira.me');
+    // The support address is never shown: the support form is the way in.
+    expect(text).not.toContain('support@');
+    expect(text).toContain('https://tabsira.me/support');
     expect(text).toContain('privacy@tabsira.me');
     expect(text).toContain('فتوى');
   });

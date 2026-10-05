@@ -167,3 +167,28 @@ def test_rrf_rewards_texts_found_by_several_lists_and_counts_a_repeat_once():
     assert fused[0] == FusedHit(2, 1 / 62 + 0.5 / 61, (("vector:q1", 2), ("fts:q1", 1)))
     assert fused[1].best_rank() == 1
     assert fuse({}) == []
+
+
+async def test_a_pool_of_ids_narrows_the_lexical_and_the_vector_search(world):
+    rows = (
+        await world.execute(select(Hadith.id, Hadith.number).where(Hadith.collection == "bukhari"))
+    ).all()
+    ids = {row.number: row.id for row in rows}
+
+    everywhere = await search_lexical(world, EmbeddedCorpus.HADITH, ["مطر"])
+    pooled = await search_lexical(world, EmbeddedCorpus.HADITH, ["مطر"], ids=[ids["1032"]])
+    elsewhere = await search_lexical(world, EmbeddedCorpus.HADITH, ["مطر"], ids=[ids["1"]])
+    await _store_vectors(world, HadithEmbedding, "hadith_id", [row.id for row in rows])
+    near = await nearest(
+        world,
+        EmbeddedCorpus.HADITH,
+        fake_vector(str(ids["1032"])),
+        model="m",
+        dimensions=8,
+        ids=[ids["8"], ids["1"]],
+    )
+
+    assert ids["1032"] in [hit.key for hit in everywhere]
+    assert [hit.key for hit in pooled] == [ids["1032"]]
+    assert elsewhere == []
+    assert {hit.key for hit in near} == {ids["8"], ids["1"]}

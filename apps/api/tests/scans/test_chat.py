@@ -40,6 +40,7 @@ from tests.fakes import FakeModelClient
 from tests.retrieval.support import EmbeddingClient
 from tests.scans.builders import insight_row, scan_row, scene
 from tests.scans.conftest import as_guest, make_account, rule, sign_in
+from tests.scripture.fixtures import enrich_hadith
 
 
 def said(
@@ -939,3 +940,48 @@ async def test_an_insight_without_a_verse_or_a_hadith_leaves_nothing_out_of_the_
     body = (await ask(browser, insight_id, "أعطني آية أخرى عن الماء والنبات")).json()
 
     assert body["message"]["kind"] == "answer"
+
+
+async def test_the_chat_searches_the_enriched_file_first_then_the_whole_store(
+    browser, store, flow_settings, flow_app
+):
+    insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
+    async with store() as db:
+        rain = await db.scalar(
+            select(Hadith.id).where(Hadith.collection == "bukhari", Hadith.number == "1032")
+        )
+        await enrich_hadith(db, rain)
+        await db.commit()
+    model = searching_model(
+        flow_app, wants("either"), relevant_where("يغرس"), relevant_where("يغرس")
+    )
+
+    body = (await ask(browser, insight_id, "أعطني حديثًا عن الغرس والزرع والماء والنبات")).json()
+
+    # The pool (the rain hadith's record) and the verses were judged first; no record fitted,
+    # so the whole store was searched and Bukhari 2320 found (the brief of 2026-10-05, §7, §12).
+    message = body["message"]
+    assert message["hadith"]["hadith"]["number"] == "2320"
+    assert message["quran"] is None
+    assert [call["stage"].value for call in model.calls] == ["chat", "verify", "verify"]
+    assert all(label.startswith("Q") for label in labels(model.calls[1]))
+    assert all(label.startswith("H") for label in labels(model.calls[2]))
+
+
+async def test_a_word_no_text_holds_finds_nothing_in_the_pool_nor_in_the_store(
+    browser, store, flow_settings, flow_app
+):
+    insight_id = await an_insight(browser, store, flow_settings, with_scene=True)
+    async with store() as db:
+        rain = await db.scalar(
+            select(Hadith.id).where(Hadith.collection == "bukhari", Hadith.number == "1032")
+        )
+        await enrich_hadith(db, rain)
+        await db.commit()
+    model = searching_model(flow_app, wants("hadith"))
+
+    body = (await ask(browser, insight_id, "xyzzy")).json()
+
+    # The pool finds nothing, the store finds nothing: nobody is asked, nothing is invented.
+    assert body["message"]["kind"] == "new_search"
+    assert [call["stage"].value for call in model.calls] == ["chat"]
