@@ -62,6 +62,7 @@ from src.schemas.world import (
 )
 from src.services import learner_service, treasure
 from src.services.content import Region, load_layout, load_regions
+from src.services.evidence_view import load_evidence
 from src.services.insight_view import evidence
 
 
@@ -443,9 +444,19 @@ async def ready_treasures(
     ).all()
     insights = {insight.id: insight for insight in completed}
     now = clock.utcnow()
+    # What each treasure's references resolve to now, read from the store in
+    # bulk: one query per text kind, not per treasure.
+    refs = {item.id: _refs(item) for item in hidden}
+    shown = await load_evidence(
+        db,
+        {quran for quran, _ in refs.values() if quran is not None},
+        {hadith for _, hadith in refs.values() if hadith is not None},
+    )
     ready: dict[int, Treasure] = {}
     for item in hidden:
-        verse, hadith = await _shown(db, item)
+        quran, hadith_ref = refs[item.id]
+        verse = shown.quran.get(quran) if quran is not None else None
+        hadith = shown.hadith.get(hadith_ref) if hadith_ref is not None else None
         if verse is None and hadith is None:
             continue
         source = insights.get(item.insight_id)
@@ -667,18 +678,24 @@ async def reveal(
     return await treasure_out(db, item, verse, hadith)
 
 
-async def _shown(db: AsyncSession, item: Treasure) -> tuple[QuranVerseOut | None, HadithOut | None]:
-    """Return the treasure's verse or hadith as it shows now: a hadith only while eligible."""
+def _refs(item: Treasure) -> tuple[tuple[int, int] | None, tuple[str, str] | None]:
+    """Return the scripture references a treasure keeps, as `evidence` takes them."""
     quran = (
         (item.quran_surah, item.quran_ayah)
         if item.quran_surah is not None and item.quran_ayah is not None
         else None
     )
-    hadith_ref = (
+    hadith = (
         (item.hadith_collection, item.hadith_number)
         if item.hadith_collection is not None and item.hadith_number is not None
         else None
     )
+    return quran, hadith
+
+
+async def _shown(db: AsyncSession, item: Treasure) -> tuple[QuranVerseOut | None, HadithOut | None]:
+    """Return the treasure's verse or hadith as it shows now: a hadith only while eligible."""
+    quran, hadith_ref = _refs(item)
     verse, hadith, _awaiting = await evidence(db, quran, hadith_ref)
     return verse, hadith
 
