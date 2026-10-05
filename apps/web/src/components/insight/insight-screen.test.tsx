@@ -1,7 +1,8 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { forgetSession, readSession, setGuest, setSignedIn } from '@/account/session';
+import { messages } from '@/messages';
 import { apiError, mockApi, type Route } from '@/test/api';
 import { PROFILE, USER } from '@/test/fixtures';
 import {
@@ -379,5 +380,110 @@ describe('InsightScreen: «تمّ»', () => {
     expect(screen.getByRole('button', { name: 'تمّ' })).toBeDisabled();
     expect(screen.getByText('اكتملت هذه البصيرة')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'افتح عالمي' })).toHaveAttribute('href', '/world');
+  });
+});
+
+describe('InsightScreen: rating the insight', () => {
+  const F = messages.insightPage.feedback;
+  const RATED = {
+    helpful: false,
+    reasons: ['wrong_text' as const],
+    note: 'الآية بعيدة',
+    updated_at: '2026-10-05T10:00:00Z',
+  };
+  const done = insightOut({ completed_at: '2026-10-04T08:05:00Z' });
+
+  it('asks nothing before the end, then saves a yes at once and says thank you', async () => {
+    const api = await open(done, {
+      [`PUT /insights/${ID}/feedback`]: {
+        body: { helpful: true, reasons: [], note: null, updated_at: '2026-10-05T10:00:00Z' },
+      },
+    });
+    expect(screen.getByText(F.question)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: F.yes }));
+    expect(await screen.findByText(F.thanks)).toBeInTheDocument();
+    expect(await api.bodies('PUT', `/insights/${ID}/feedback`)).toEqual([
+      { helpful: true, reasons: [], note: null },
+    ]);
+  });
+
+  it('does not ask on an insight that is not done yet', async () => {
+    await open();
+    expect(screen.queryByText(F.question)).toBeNull();
+  });
+
+  it('opens the sheet on a no, sends the reasons and the note, and refuses an empty choice', async () => {
+    const api = await open(done, { [`PUT /insights/${ID}/feedback`]: { body: RATED } });
+    await userEvent.click(screen.getByRole('button', { name: F.no }));
+    const sheet = await screen.findByRole('dialog', { name: F.title });
+    expect(within(sheet).getByRole('button', { name: F.notHelpful })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    await userEvent.click(within(sheet).getByRole('checkbox', { name: F.reasons.wrong_text }));
+    await userEvent.click(within(sheet).getByRole('checkbox', { name: F.reasons.other }));
+    await userEvent.click(within(sheet).getByRole('checkbox', { name: F.reasons.other }));
+    await userEvent.type(within(sheet).getByLabelText(F.noteLabel), 'الآية بعيدة');
+    await userEvent.click(within(sheet).getByRole('button', { name: F.send }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await api.bodies('PUT', `/insights/${ID}/feedback`)).toEqual([
+      { helpful: false, reasons: ['wrong_text'], note: 'الآية بعيدة' },
+    ]);
+    expect(screen.getByText(F.thanks)).toBeInTheDocument();
+  });
+
+  it('opens from the small menu at any time, and a yes there sends no reason', async () => {
+    const api = await open(insightOut(), {
+      [`PUT /insights/${ID}/feedback`]: {
+        body: { helpful: true, reasons: [], note: null, updated_at: '2026-10-05T10:00:00Z' },
+      },
+    });
+    await userEvent.click(screen.getByRole('button', { name: F.menu }));
+    const sheet = await screen.findByRole('dialog', { name: F.title });
+    expect(within(sheet).getByRole('button', { name: F.send })).toBeDisabled();
+    // Submitting without a choice (Enter in a field) sends nothing.
+    fireEvent.submit(
+      within(sheet).getByRole('button', { name: F.send }).closest('form') as HTMLFormElement
+    );
+    expect(await api.bodies('PUT', `/insights/${ID}/feedback`)).toEqual([]);
+    await userEvent.click(within(sheet).getByRole('button', { name: F.notHelpful }));
+    await userEvent.click(within(sheet).getByRole('checkbox', { name: F.reasons.offensive }));
+    await userEvent.click(within(sheet).getByRole('button', { name: F.helpful }));
+    expect(within(sheet).queryByRole('checkbox')).toBeNull();
+    await userEvent.click(within(sheet).getByRole('button', { name: F.send }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await api.bodies('PUT', `/insights/${ID}/feedback`)).toEqual([
+      { helpful: true, reasons: [], note: null },
+    ]);
+  });
+
+  it('shows an earlier rating with a way to change it, the sheet opening on it', async () => {
+    await open({ ...done, feedback: RATED });
+    expect(screen.getByText(F.ratedNotHelpful)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: F.change }));
+    const sheet = await screen.findByRole('dialog', { name: F.title });
+    expect(within(sheet).getByRole('checkbox', { name: F.reasons.wrong_text })).toBeChecked();
+    expect(within(sheet).getByLabelText(F.noteLabel)).toHaveValue('الآية بعيدة');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('says a useful earlier rating plainly', async () => {
+    await open({ ...done, feedback: { ...RATED, helpful: true, reasons: [], note: null } });
+    expect(screen.getByText(F.ratedHelpful)).toBeInTheDocument();
+  });
+
+  it('says so when the rating could not be saved, and holds a note that is too long', async () => {
+    await open(done, { [`PUT /insights/${ID}/feedback`]: apiError(503, 'SAVE_FAILED') });
+    await userEvent.click(screen.getByRole('button', { name: F.yes }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(F.failed);
+
+    await userEvent.click(screen.getByRole('button', { name: F.no }));
+    const sheet = await screen.findByRole('dialog', { name: F.title });
+    const field = within(sheet).getByLabelText(F.noteLabel);
+    await userEvent.click(field);
+    await userEvent.paste('ن'.repeat(301));
+    expect(within(sheet).getByRole('button', { name: F.send })).toBeDisabled();
   });
 });

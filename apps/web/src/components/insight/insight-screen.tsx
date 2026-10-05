@@ -20,6 +20,7 @@ import { DisclosureLine } from './disclosure-line';
 import { EngineLabel } from './engine-label';
 import { ExplanationSections } from './explanation-sections';
 import { InsightEvidence } from './insight-evidence';
+import { FeedbackLine, FeedbackMenuButton, FeedbackSheet, useFeedback } from './insight-feedback';
 import {
   InsightActions,
   InsightHeader,
@@ -91,6 +92,10 @@ export function InsightScreen({
   const [whyOpen, setWhyOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const feedback = useFeedback(
+    insightId,
+    load.phase === 'ready' ? (load.insight.feedback ?? null) : null
+  );
   const session = useSession();
   const router = useRouter();
 
@@ -169,7 +174,14 @@ export function InsightScreen({
         <EngineLabel engine={insight.engine} label={insight.label} />
         <InsightHeader
           backHref={backHref}
-          chips={<Chip>{insight.relation_label}</Chip>}
+          chips={
+            <>
+              <Chip>{insight.relation_label}</Chip>
+              <span className="ms-auto">
+                <FeedbackMenuButton onOpen={() => feedback.open()} />
+              </span>
+            </>
+          }
           title={insight.title}
           glimpse={insight.glimpse}
         />
@@ -216,6 +228,9 @@ export function InsightScreen({
             </LinkButton>
           </div>
         ) : null}
+        {finish.status === 'done' || insight.completed_at !== null ? (
+          <FeedbackLine controls={feedback} />
+        ) : null}
         <DisclosureLine className="pb-2" />
       </ReadingLayout>
 
@@ -230,6 +245,7 @@ export function InsightScreen({
           publishTo={publishTo}
         />
       ) : null}
+      <FeedbackSheet controls={feedback} />
       <ChatSheet
         open={chatOpen}
         onClose={() => setChatOpen(false)}

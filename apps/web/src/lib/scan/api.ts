@@ -21,6 +21,9 @@ export type Completion = Schemas['CompletionOut'];
 export type ActionChoice = Schemas['ActionIn']['choice'];
 export type ActionResult = Schemas['ActionOut'];
 export type Progress = Schemas['ProgressOut'];
+export type Feedback = Schemas['FeedbackOut'];
+export type FeedbackInput = Schemas['FeedbackIn'];
+export type FeedbackReason = Feedback['reasons'][number];
 
 /** Starts a scan from a photo; the API strips its metadata before it keeps it. */
 export function startScanFromFile(file: File, signal?: AbortSignal): Promise<Result<Scan>> {
@@ -86,6 +89,16 @@ export function declareAction(id: string, choice: ActionChoice): Promise<Result<
     api.POST('/insights/{insight_id}/action', {
       params: { path: { insight_id: id } },
       body: { choice },
+    })
+  );
+}
+
+/** The owner's rating of the insight; a new one replaces the last. */
+export function rateInsight(id: string, body: FeedbackInput): Promise<Result<Feedback>> {
+  return attempt(
+    api.PUT('/insights/{insight_id}/feedback', {
+      params: { path: { insight_id: id } },
+      body,
     })
   );
 }

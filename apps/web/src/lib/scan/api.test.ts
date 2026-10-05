@@ -21,6 +21,7 @@ import {
   getScan,
   keepRainInsight,
   openScanStream,
+  rateInsight,
   startScanFromFile,
   startScanFromLink,
 } from './api';
@@ -75,17 +76,31 @@ describe('the calls of the journey', () => {
       [`POST /insights/${ID}/chat`]: { body: chatReply() },
       [`POST /insights/${ID}/action`]: { body: { state: 'done', at: null, means: 'م' } },
       [`POST /insights/${ID}/complete`]: { body: completionOut() },
+      [`PUT /insights/${ID}/feedback`]: {
+        body: {
+          helpful: false,
+          reasons: ['other'],
+          note: null,
+          updated_at: '2026-10-05T10:00:00Z',
+        },
+      },
       'GET /me/progress': { body: progressOut() },
     });
     expect((await getInsight(ID)).ok).toBe(true);
     expect((await askInsight(ID, 'سؤال', 'key-12345678')).ok).toBe(true);
     expect((await declareAction(ID, 'later')).ok).toBe(true);
     expect((await completeInsight(ID)).ok).toBe(true);
+    expect((await rateInsight(ID, { helpful: false, reasons: ['other'], note: null })).ok).toBe(
+      true
+    );
     expect((await getProgress('Africa/Tunis')).ok).toBe(true);
     expect(await api.bodies('POST', `/insights/${ID}/chat`)).toEqual([
       { message: 'سؤال', idempotencyKey: 'key-12345678' },
     ]);
     expect(await api.bodies('POST', `/insights/${ID}/action`)).toEqual([{ choice: 'later' }]);
+    expect(await api.bodies('PUT', `/insights/${ID}/feedback`)).toEqual([
+      { helpful: false, reasons: ['other'], note: null },
+    ]);
     const progress = api.requests.find((request) => request.url.includes('/me/progress'));
     expect(new URL(progress?.url as string).searchParams.get('tz')).toBe('Africa/Tunis');
   });

@@ -143,7 +143,7 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 
 ### 04.16 Rate an insight: useful or not, why, and a note
 
-- **Status:** 🔄 2026-10-05: the API is on `main`; the web prompt follows.
+- **Status:** ✅ 2026-10-05: the API and the web («هل كانت هذه البصيرة مفيدة؟» under «تمّ», the ⋯ button at the top, the rating sheet).
 - **Goal:** a discreet way for the reader to say whether an insight was useful, at the end of the experience and from a small menu at any time. «Not useful» takes reasons from a fixed list (`wrong_text`, `misread_scene`, `wrong_explanation`, `offensive`, `other`) and an optional note of 300 characters. One rating per insight, changed in place; a changed rating goes back to the team's review queue.
 - **API:** `PUT /insights/{id}/feedback` (the insight's owner, guest or account), the rating in `GET /insights/{id}` (`feedback`), `learning.feedback` in `GET /account/export`, table `app.insight_feedback` (migration `20261005_190000`, deleted with the insight), admin view «Insight ratings» (read-only, «Mark reviewed»).
 - **Privacy:** the privacy page (version 2026-10-05T20:00Z) and `docs/PRIVACY.md` say what is kept and who reads it.
