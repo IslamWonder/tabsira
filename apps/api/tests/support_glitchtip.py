@@ -33,6 +33,19 @@ class Recorder:
         return Capture
 
 
+def leave_sdk_off() -> None:
+    """
+    Close the SDK and start a bare one with no integration and no DSN.
+
+    A plain `init` would switch the FastAPI and Starlette integrations on for every later
+    test, and they read each request body: a multipart upload was parsed a second time and
+    its temporary file never closed, surfacing as an unclosed-file warning in a later test.
+    """
+    sentry_sdk.get_client().close(timeout=0)
+    # A named release: without one the SDK runs `git` to find it.
+    sentry_sdk.init(release="test", default_integrations=False, auto_enabling_integrations=False)
+
+
 @pytest.fixture
 def recorder(monkeypatch: pytest.MonkeyPatch) -> Iterator[Recorder]:
     """Swap the SDK's transport for one that records, and leave the SDK off afterwards."""
@@ -40,8 +53,4 @@ def recorder(monkeypatch: pytest.MonkeyPatch) -> Iterator[Recorder]:
     monkeypatch.setattr(error_tracking, "ShortTimeoutTransport", record.transport())
     monkeypatch.setattr(error_tracking, "_initialised", False)
     yield record
-    sentry_sdk.get_client().close(timeout=0)
-    # Detach the client rather than call `init` again: a bare `init` would leave the
-    # process with the SDK's default options, which read the body of a failed
-    # multipart request and leave its temporary file open for every later test.
-    sentry_sdk.get_global_scope().set_client(None)
+    leave_sdk_off()

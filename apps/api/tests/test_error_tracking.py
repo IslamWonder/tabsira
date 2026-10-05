@@ -839,3 +839,16 @@ def test_a_route_with_path_parameters_is_reported_as_its_pattern(transaction, ur
     event = {"request": {"url": url}, "transaction": transaction}
 
     assert error_tracking.before_send(event)["request"]["url"] == expected
+
+
+def test_the_sdk_left_off_reads_no_request_body(recorder):
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.starlette import StarletteIntegration
+
+    from tests.support_glitchtip import leave_sdk_off
+
+    leave_sdk_off()
+    client = sentry_sdk.get_client()
+
+    assert client.get_integration(FastApiIntegration) is None
+    assert client.get_integration(StarletteIntegration) is None
