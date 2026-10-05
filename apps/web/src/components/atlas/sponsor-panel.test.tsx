@@ -109,7 +109,7 @@ describe('the sponsoring part of an entry page', () => {
       'GET /me/sponsorships': { body: [SPONSORSHIP] },
     });
     await open();
-    await userEvent.click(screen.getByRole('button', { name: S.entry.action }));
+    await userEvent.click(await screen.findByRole('button', { name: S.entry.action }));
     expect(await screen.findByText(S.entry.sponsored)).toBeInTheDocument();
     expect(api.requests.some((r) => r.method === 'PUT' && r.url.endsWith(SPONSORSHIP_PATH))).toBe(
       true
@@ -155,7 +155,7 @@ describe('the sponsoring part of an entry page', () => {
         [`PUT ${SPONSORSHIP_PATH}`]: reply,
       });
       await open();
-      await userEvent.click(screen.getByRole('button', { name: S.entry.action }));
+      await userEvent.click(await screen.findByRole('button', { name: S.entry.action }));
       expect(await screen.findByRole('alert')).toHaveTextContent(message);
       if (message === S.refusal.identity) {
         expect(
@@ -173,7 +173,7 @@ describe('the sponsoring part of an entry page', () => {
       [`PUT ${SPONSORSHIP_PATH}`]: apiError(409, 'CONFLICT'),
     });
     await open();
-    await userEvent.click(screen.getByRole('button', { name: S.entry.action }));
+    await userEvent.click(await screen.findByRole('button', { name: S.entry.action }));
     expect(await screen.findByRole('alert')).toHaveTextContent(S.refusal.unavailable);
   });
 
