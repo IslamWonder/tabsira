@@ -30,14 +30,17 @@ import { formatDay } from '@/lib/dates';
 import { messages } from '@/messages';
 import { profilePath } from '@/social/identity';
 import { MapView } from './map-view';
+import { MySponsorships } from './my-sponsorships';
 import { OrphansSection } from './orphans-section';
 import { entryPath, placePath } from './paths';
 
 const A = messages.atlas;
 const PERIODS: readonly Period[] = ['all', 'week', 'month', 'year'];
 /** Whose entries the list shows: everyone's inside the window, or the signed-in owner's own. */
-type Scope = 'public' | 'mine';
+type Scope = 'public' | 'mine' | 'sponsored';
 const SCOPES: readonly Scope[] = ['public', 'mine'];
+/** The member's sponsorships join the scopes only while the sponsoring feature is on. */
+const SCOPES_WITH_SPONSORING: readonly Scope[] = ['public', 'mine', 'sponsored'];
 
 type View = AtlasView;
 
@@ -192,6 +195,7 @@ function Filters({
   onChange,
   scope,
   onScope,
+  sponsorship,
 }: {
   filters: AtlasFilters;
   countries: readonly { iso2: string; label: string }[];
@@ -199,6 +203,7 @@ function Filters({
   /** Null for a guest, who has no entries of their own. */
   scope: Scope | null;
   onScope: (scope: Scope) => void;
+  sponsorship: boolean;
 }) {
   const countryId = useId();
   return (
@@ -206,7 +211,10 @@ function Filters({
       {scope === null ? null : (
         <ChoiceGroup
           legend={A.filters.scope}
-          options={SCOPES.map((value) => ({ value, label: A.filters.scopes[value] }))}
+          options={(sponsorship ? SCOPES_WITH_SPONSORING : SCOPES).map((value) => ({
+            value,
+            label: A.filters.scopes[value],
+          }))}
           value={scope}
           onChange={onScope}
         />
@@ -396,7 +404,7 @@ export function AtlasScreen({
   initialView?: View | null;
   /** The camera_discovery feature, read by the server: shows the way to the camera discovery. */
   cameraDiscovery?: boolean;
-  /** The atlas_sponsorship feature, read by the server: shows the orphaned entries. */
+  /** The atlas_sponsorship feature, read by the server: shows the orphaned entries and the member's sponsorships. */
   sponsorship?: boolean;
 }) {
   const session = useSession();
@@ -564,12 +572,16 @@ export function AtlasScreen({
         onChange={setFilters}
         scope={session.status === 'signed-in' ? scope : null}
         onScope={setScope}
+        sponsorship={sponsorship}
       />
       {selectedFeature === null ? null : (
         <div className="hidden tablet:block">
           <EntryCard feature={selectedFeature} onClose={() => setSelected(null)} />
         </div>
       )}
+      {sponsorship && session.status === 'signed-in' && scope === 'sponsored' ? (
+        <MySponsorships />
+      ) : null}
       {session.status === 'signed-in' && scope === 'mine' ? (
         <MyEntries
           onShow={(point) => {
@@ -582,7 +594,7 @@ export function AtlasScreen({
         aria-label={A.list}
         className={cx(
           'flex flex-col gap-3',
-          session.status === 'signed-in' && scope === 'mine' && 'hidden'
+          session.status === 'signed-in' && scope !== 'public' && 'hidden'
         )}
       >
         <h2 className="m-0 flex items-baseline justify-between font-semibold text-lg text-fg">

@@ -4,7 +4,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setSignedIn } from '@/account/session';
 import { messages } from '@/messages';
 import { apiError, mockApi, type Reply, type Route } from '@/test/api';
-import { FEATURE, ORPHAN_FEATURE, OWNER_ENTRY, PLACE, SECOND_FEATURE } from '@/test/atlas';
+import {
+  FEATURE,
+  ORPHAN_FEATURE,
+  OWNER_ENTRY,
+  PLACE,
+  SECOND_FEATURE,
+  SPONSORSHIP,
+} from '@/test/atlas';
 import { USER } from '@/test/fixtures';
 import { forgetMaps, loadedMap } from '@/test/maplibre';
 
@@ -476,6 +483,7 @@ describe('AtlasScreen with sponsoring', () => {
     await screen.findByRole('button', { name: /^\[عنوان البصيرة\]/ });
     expect(api.requests.some((r) => r.url.includes('/atlas/orphans'))).toBe(false);
     expect(screen.queryByRole('region', { name: S.orphans.heading })).toBeNull();
+    expect(screen.queryByRole('radio', { name: S.list.heading })).toBeNull();
   });
 
   it('suggests the orphaned entries around the map centre, snapped to the grid, without asking the device', async () => {
@@ -509,5 +517,24 @@ describe('AtlasScreen with sponsoring', () => {
     await waitFor(() => expect(asked()).toHaveLength(2));
     const query = new URL(asked()[1]?.url ?? '').searchParams;
     expect([query.get('lng'), query.get('lat')]).toEqual(['39.5', '21.5']);
+  });
+
+  it('opens «كفالاتي» from the scopes of a signed-in member, in place of the lists', async () => {
+    setSignedIn(USER);
+    guest({
+      'GET /atlas/orphans': orphans(),
+      'GET /me/sponsorships': { body: [SPONSORSHIP] },
+    });
+    render(<AtlasScreen sponsorship />);
+    await loadedMap();
+    await screen.findByRole('region', { name: S.orphans.heading });
+    await userEvent.click(await screen.findByRole('radio', { name: S.list.heading }));
+    const mine = await screen.findByRole('region', { name: S.list.heading });
+    expect(await within(mine).findByText('[بصيرة تنتظر]')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'قائمة البصائر في المنطقة' })).toHaveClass('hidden');
+    expect(screen.queryByRole('region', { name: S.orphans.heading })).toBeNull();
+    await userEvent.click(screen.getByRole('radio', { name: 'بصائر الناس' }));
+    expect(screen.queryByRole('region', { name: S.list.heading })).toBeNull();
+    expect(await screen.findByRole('region', { name: S.orphans.heading })).toBeInTheDocument();
   });
 });

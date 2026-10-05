@@ -995,7 +995,7 @@ export const ar = {
       conceptActive: 'بالمعنى نفسه: بصائر تشترك في معنى البصيرة التي جئت منها.',
       clearConcept: 'امسح المعنى',
       scope: 'ما يُعرض',
-      scopes: { public: 'بصائر الناس', mine: 'بصائري المنشورة' },
+      scopes: { public: 'بصائر الناس', mine: 'بصائري المنشورة', sponsored: 'كفالاتي' },
       clear: 'امسح المرشحات',
     },
     /** The owner's own entries, from every state, beside the public map (extension §4). */
@@ -1169,6 +1169,14 @@ export const ar = {
         },
         scripture:
           'يشبه كلامك نصًّا من القرآن أو الحديث، ولا تقبل تبصرة ذلك من أحد. اكتب بكلماتك أنت.',
+      },
+      list: {
+        heading: 'كفالاتي',
+        loading: 'نحمّل كفالاتك…',
+        empty: 'لم تكفل بصيرة بعد.',
+        emptyHint: 'تظهر هنا البصائر التي تكفلها الآن.',
+        since: (when: string) => `بدأت في ${when}`,
+        open: 'افتح البصيرة',
       },
     },
     /**
