@@ -3,10 +3,10 @@
 import { useSyncExternalStore } from 'react';
 
 /**
- * The sound effect that plays when an insight opens can be switched off, per
- * device, from the top bar, the insight page and the profile page. It is on
- * until the reader says otherwise: it plays only after their own scan, never
- * on arrival. Only the off state is stored, so clearing the device's data
+ * The scene's sound, heard around the photo while an insight is prepared,
+ * can be switched off, per device, from the top bar, the photo and the profile
+ * page. It is on until the reader says otherwise: it plays only during their
+ * own scan, never on arrival. Only the off state is stored, so clearing the device's data
  * brings the sound back.
  */
 
