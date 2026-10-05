@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LogoMark } from '@/components/brand/logo';
 import { useCapture } from '@/components/capture/capture-provider';
-import { OrnamentDivider } from '@/components/fx/ornament-divider';
+import { SparkIcon } from '@/components/icons';
 import { ScenePhoto, type ScenePoint } from '@/components/insight/scene-photo';
 import { StageLayout } from '@/components/layout/layouts';
 import { Chip } from '@/components/ui/chip';
@@ -14,10 +14,10 @@ import { getRainTutorial, keepRainInsight, type Tutorial } from '@/lib/scan/api'
 import { journeyFailureMessage } from '@/lib/scan/failure';
 import { centre } from '@/lib/scan/spans';
 import { messages } from '@/messages';
+import { CaptureCard } from './capture-card';
 import { RAIN_PHOTO } from './rain-scene';
 import { SceneInsightList } from './scene-insight-list';
 import { SceneIntro } from './scene-intro';
-import { SceneStarter } from './scene-starter';
 
 export { RAIN_PHOTO };
 
@@ -96,13 +96,21 @@ export function SceneExperience() {
 
   return (
     <StageLayout
+      stageFirstOnPhone
       stageLabel={alt}
+      // On a phone the photo leaves room for the invitation under it: the example and the
+      // reader's own scene share the first screen, and the page scrolls only to the footer.
+      stageClassName="h-[min(62svh,600px)] min-h-[340px]"
       panel={
-        <div className="hidden flex-col gap-7 pt-2 pb-6 tablet:flex">
-          <SceneIntro chip={<Chip>{label}</Chip>} />
-          <SceneInsightList points={points} selectedId={selected} onSelect={open} />
-          <OrnamentDivider />
-          <SceneStarter onFile={capture.send} />
+        <div className="relative z-10 -mt-14 flex flex-col gap-6 px-4 pb-6 tablet:mt-0 tablet:gap-7 tablet:px-0 tablet:pt-2">
+          {/* On a phone the title is for screen readers; the photo and its state say it to the eye. */}
+          <div className="sr-only tablet:not-sr-only">
+            <SceneIntro chip={<Chip>{label}</Chip>} />
+          </div>
+          <div className="hidden tablet:block">
+            <SceneInsightList points={points} selectedId={selected} onSelect={open} />
+          </div>
+          <CaptureCard onCamera={capture.open} onFile={capture.send} />
         </div>
       }
       stage={
@@ -118,14 +126,15 @@ export function SceneExperience() {
           priority
           className="h-full"
         >
-          {/* The phone mockup: the name and the state on top, the hint and the way to a new scene below. */}
-          <div className="absolute inset-x-0 top-0 flex items-center justify-between px-5 pt-[max(20px,env(safe-area-inset-top))] tablet:hidden">
-            <div className="m-0">
-              <LogoMark title={messages.brand.name} className="h-14" />
-            </div>
+          {/* The phone mockup: the name and the state on top, the hint above the invitation. */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 flex items-center justify-between px-4 pt-[max(16px,env(safe-area-inset-top))] tablet:hidden"
+          >
+            <LogoMark className="h-12" />
             <Chip tone="glass">{label}</Chip>
           </div>
-          <div className="absolute inset-x-4 top-24 z-20 flex flex-col items-center gap-2 tablet:top-6">
+          <div className="absolute inset-x-4 top-20 z-20 flex flex-col items-center gap-2 tablet:top-6">
             <div role="status">
               {opening === null ? null : <Notice tone="info">{messages.sending.opening}</Notice>}
             </div>
@@ -135,17 +144,15 @@ export function SceneExperience() {
               </div>
             )}
           </div>
-          <div className="absolute inset-x-0 bottom-[calc(var(--nav-clearance)+4px)] flex flex-col items-center gap-0.5 px-5 text-center tablet:hidden">
-            <p className="m-0 font-semibold text-[1.3rem] text-fg">{messages.scene.hint}</p>
-            <button
-              type="button"
-              onClick={capture.open}
-              aria-haspopup="dialog"
-              className="flex min-h-12 items-center px-3 text-link"
-            >
-              {messages.scene.captureOwn}
-            </button>
-          </div>
+          {/* The photo melts into the page where the invitation rises from it. */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(to_top,var(--stage-fade)_15%,transparent)] tablet:hidden"
+          />
+          <p className="absolute inset-x-0 bottom-[4.75rem] m-0 flex items-center justify-center gap-2 px-4 text-center font-semibold text-fg text-lg tablet:hidden">
+            <SparkIcon width="18" height="18" className="text-[var(--glow-gold)]" />
+            {messages.scene.hint}
+          </p>
         </ScenePhoto>
       }
     />

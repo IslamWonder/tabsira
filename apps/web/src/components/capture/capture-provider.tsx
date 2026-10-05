@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { SummoningCircle } from '@/components/fx/summoning-circle';
 import { SceneStarter } from '@/components/scene/scene-starter';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -83,7 +84,13 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
       </Sheet>
       <Sheet open={sending !== null} onClose={leave} title={messages.sending.title}>
         <div className="flex flex-col gap-4 pb-2">
-          <p role="status" className="m-0 text-fg leading-[1.9]">
+          {/* No photo is shown back (a sensitive scene never is): the circle turns while it travels. */}
+          {failure === null ? (
+            <div className="flex justify-center pt-1">
+              <SummoningCircle active size={112} />
+            </div>
+          ) : null}
+          <p role="status" className="m-0 text-center text-fg leading-[1.9] empty:hidden">
             {failure === null ? messages.sending.file : null}
           </p>
           {failure === null ? null : (

@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { type ReactNode, useId, useState } from 'react';
 import { LegalConsent } from '@/components/account/legal-consent';
 import { ProfileQuestions } from '@/components/account/profile-questions';
@@ -22,6 +21,7 @@ import {
   InsightTools,
   SeenNote,
 } from '@/components/insight/insight-frame';
+import { PhotoPlaceholder } from '@/components/insight/photo-placeholder';
 import { ProgressStages, STAGES, type StageId } from '@/components/insight/progress-stages';
 import { ScenePhoto, type ScenePoint } from '@/components/insight/scene-photo';
 import { StepCard, type StepStatus } from '@/components/insight/step-card';
@@ -33,9 +33,9 @@ import {
   SettingsLayout,
   StageLayout,
 } from '@/components/layout/layouts';
+import { CaptureCard } from '@/components/scene/capture-card';
 import { SceneInsightList } from '@/components/scene/scene-insight-list';
 import { SceneIntro } from '@/components/scene/scene-intro';
-import { SceneStarter } from '@/components/scene/scene-starter';
 import { Button, LinkButton } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { ChoiceGroup } from '@/components/ui/choice-group';
@@ -56,6 +56,8 @@ type Theme = 'light' | 'dark';
 const S = messages.dev.samples;
 const P = messages.dev.placeholders;
 const THEMES: readonly Theme[] = ['light', 'dark'];
+/** The frames are pictures: their controls answer nothing. */
+const ignore = () => undefined;
 const VIEWPORTS: readonly Viewport[] = ['phone', 'tablet', 'desktop'];
 const SCREEN_HEIGHT: Record<Viewport, number> = { phone: 760, tablet: 900, desktop: 900 };
 
@@ -134,18 +136,22 @@ function SunnahSample() {
 /** The scene page frame of the desktop reference, and the phone mockup below 768 px. */
 function SceneFrame() {
   const [selected, setSelected] = useState<string | undefined>(undefined);
-  const [, setFile] = useState<File | null>(null);
-  const [, _setLink] = useState('');
   return (
     <>
       <TopBar />
       <StageLayout
+        stageFirstOnPhone
         stageLabel={messages.pages.home.stageLabel}
+        stageClassName="h-[min(62svh,600px)] min-h-[340px]"
         panel={
-          <div className="hidden flex-col gap-7 pt-2 tablet:flex">
-            <SceneIntro chip={<Chip>{messages.scene.prepared}</Chip>} />
-            <SceneInsightList points={POINTS} selectedId={selected} onSelect={setSelected} />
-            <SceneStarter onFile={setFile} />
+          <div className="relative z-10 -mt-14 flex flex-col gap-6 px-4 pb-6 tablet:mt-0 tablet:gap-7 tablet:px-0 tablet:pt-2">
+            <div className="sr-only tablet:not-sr-only">
+              <SceneIntro chip={<Chip>{messages.scene.prepared}</Chip>} />
+            </div>
+            <div className="hidden tablet:block">
+              <SceneInsightList points={POINTS} selectedId={selected} onSelect={setSelected} />
+            </div>
+            <CaptureCard onCamera={ignore} onFile={ignore} />
           </div>
         }
         stage={
@@ -161,19 +167,47 @@ function SceneFrame() {
             unoptimized
             className="h-full"
           >
-            {/* The phone mockup's overlays: the name and the state on top, the hint at the bottom. */}
-            <div className="absolute inset-x-0 top-0 flex items-center justify-between px-5 pt-5 tablet:hidden">
-              <LogoMark title={messages.brand.name} className="h-14" />
+            {/* The phone mockup's overlays: the name and the state on top, the hint above the invitation. */}
+            <div className="absolute inset-x-0 top-0 flex items-center justify-between px-4 pt-4 tablet:hidden">
+              <LogoMark title={messages.brand.name} className="h-12" />
               <Chip tone="glass">{messages.scene.prepared}</Chip>
             </div>
-            <div className="absolute inset-x-0 bottom-[110px] flex flex-col items-center gap-0.5 text-center tablet:hidden">
-              <p className="m-0 font-semibold text-[1.3rem] text-fg">{messages.scene.hint}</p>
-              <Link href="/" className="flex min-h-12 items-center text-link">
-                {messages.scene.captureOwn}
-              </Link>
-            </div>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(to_top,var(--stage-fade)_15%,transparent)] tablet:hidden"
+            />
+            <p className="absolute inset-x-0 bottom-[4.75rem] m-0 px-4 text-center font-semibold text-fg text-lg tablet:hidden">
+              {messages.scene.hint}
+            </p>
           </ScenePhoto>
         }
+      />
+      <AppNav />
+    </>
+  );
+}
+
+/** The analysis while it runs: the photo not shown yet, the circle turning, the honest stages in the card. */
+function ScanFrame() {
+  return (
+    <>
+      <TopBar />
+      <StageLayout
+        stageFirstOnPhone
+        stageLabel={messages.scan.photoAlt}
+        stageClassName="h-[50svh] min-h-[300px]"
+        panel={
+          <div className="px-4 pb-8 tablet:p-0">
+            <div className="glass relative z-10 -mt-12 flex flex-col gap-5 rounded-[var(--radius-panel)] p-5 shadow-[var(--panel-shadow)] tablet:mt-0 tablet:gap-6 tablet:rounded-none tablet:border-0 tablet:bg-transparent tablet:p-0 tablet:shadow-none tablet:backdrop-filter-none">
+              <h1 className="m-0 font-bold font-display text-title text-gilded tablet:text-title-lg">
+                {messages.scan.metaTitle}
+              </h1>
+              <ProgressStages current="evidence" onCancel={ignore} />
+              <DisclosureLine />
+            </div>
+          </div>
+        }
+        stage={<PhotoPlaceholder note={messages.scan.photoWaiting} busy fill />}
       />
       <AppNav />
     </>
@@ -433,7 +467,10 @@ function Showcase({ theme }: { theme: Theme }) {
       </Section>
 
       <Section title={messages.dev.sections.starter}>
-        <SceneStarter onFile={(file) => setReceived(`${S.picked} ${file.name}`)} />
+        <CaptureCard
+          onCamera={() => setReceived(messages.nav.captureScene)}
+          onFile={(file) => setReceived(`${S.picked} ${file.name}`)}
+        />
         <p role="status" className="m-0 text-fg-soft text-sm" dir="auto">
           {received}
         </p>
@@ -533,6 +570,27 @@ export function Gallery() {
             </div>
           </div>
         ))}
+      </FrameSection>
+
+      <FrameSection title={messages.dev.frames.scan}>
+        <div className="grid gap-5 desktop:grid-cols-[1fr_3fr]">
+          <ViewportPreview
+            viewport="phone"
+            theme="dark"
+            height={SCREEN_HEIGHT.phone}
+            label={messages.dev.viewports.phone}
+          >
+            <ScanFrame />
+          </ViewportPreview>
+          <ViewportPreview
+            viewport="desktop"
+            theme="light"
+            height={SCREEN_HEIGHT.desktop}
+            label={messages.dev.viewports.desktop}
+          >
+            <ScanFrame />
+          </ViewportPreview>
+        </div>
       </FrameSection>
 
       <FrameSection title={messages.dev.frames.insight}>

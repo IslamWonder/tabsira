@@ -1,6 +1,8 @@
 import type { Route } from 'next';
 import Link from 'next/link';
 import { LogoMark } from '@/components/brand/logo';
+import { ScanSweep } from '@/components/fx/scan-sweep';
+import { SummoningCircle } from '@/components/fx/summoning-circle';
 import { SoundToggle } from '@/components/ui/sound-toggle';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
@@ -12,6 +14,11 @@ export interface PhotoPlaceholderProps {
   backHref?: Route;
   /** Fills the stage it is in (the scan screen) instead of the fixed height of the insight's photo. */
   fill?: boolean;
+  /**
+   * The scan is running: the summoning circle turns where the photo will be, and a band of
+   * light sweeps the stage, so the wait for the verdict reads as work being done, not as a gap.
+   */
+  busy?: boolean;
   className?: string;
 }
 
@@ -25,6 +32,7 @@ export function PhotoPlaceholder({
   note,
   backHref,
   fill = false,
+  busy = false,
   className,
 }: PhotoPlaceholderProps) {
   return (
@@ -49,8 +57,9 @@ export function PhotoPlaceholder({
           <BackArrow />
         </Link>
       )}
-      <LogoMark className="h-16 opacity-80" />
+      {busy ? <SummoningCircle active size={132} /> : <LogoMark className="h-16 opacity-80" />}
       <p className="m-0 max-w-xs text-[0.9375rem] text-fg-soft leading-[1.8]">{note}</p>
+      <ScanSweep active={busy} />
     </div>
   );
 }
