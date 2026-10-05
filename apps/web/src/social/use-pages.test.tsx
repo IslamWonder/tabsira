@@ -95,4 +95,27 @@ describe('usePages', () => {
     act(() => result.current.append('last'));
     expect(result.current.items).toEqual(['first', 'A', 'last']);
   });
+
+  it('replaces from the item the list holds now, not from an earlier render', async () => {
+    const fetchPage = vi.fn(async () => page(['a', 'b']));
+    const { result } = renderHook(() => usePages(fetchPage, 'list'));
+    await waitFor(() => expect(result.current.items).toEqual(['a', 'b']));
+    act(() => result.current.replace((item) => item === 'a', null));
+    expect(result.current.items).toEqual(['b']);
+    // An updater captured before the removal still works on what is in the list.
+    act(() =>
+      result.current.replace(
+        (item) => item === 'b',
+        (current) => `${current}!`
+      )
+    );
+    expect(result.current.items).toEqual(['b!']);
+    act(() =>
+      result.current.replace(
+        (item) => item === 'b!',
+        () => null
+      )
+    );
+    expect(result.current.items).toEqual([]);
+  });
 });

@@ -233,10 +233,15 @@ export function Comments({
   const withoutAuthorReplies = (handle: string) => {
     for (const thread of pages.items) {
       if (thread.replies.some((reply) => reply.author.handle === handle)) {
-        pages.replace((item) => item.id === thread.id, {
-          ...thread,
-          replies: thread.replies.filter((reply) => reply.author.handle !== handle),
-        });
+        pages.replace(
+          (item) => item.id === thread.id,
+          // From the thread the list holds now: an earlier deletion in the same
+          // thread must not be undone by this one.
+          (current) => ({
+            ...current,
+            replies: current.replies.filter((reply) => reply.author.handle !== handle),
+          })
+        );
       }
     }
   };
@@ -288,10 +293,15 @@ export function Comments({
                       comment={reply}
                       canReply={false}
                       onDeleted={() => {
-                        pages.replace((item) => item.id === thread.id, {
-                          ...thread,
-                          replies: thread.replies.filter((item) => item.id !== reply.id),
-                        });
+                        pages.replace(
+                          (item) => item.id === thread.id,
+                          // From the thread the list holds now: a reply deleted
+                          // while another answer was in flight stays gone.
+                          (current) => ({
+                            ...current,
+                            replies: current.replies.filter((item) => item.id !== reply.id),
+                          })
+                        );
                         setDeleted(true);
                       }}
                       onAuthorBlocked={(handle) => {
@@ -308,10 +318,12 @@ export function Comments({
                       parent={thread}
                       onCancel={() => setReplyTo(null)}
                       onCreated={(reply) => {
-                        pages.replace((item) => item.id === thread.id, {
-                          ...thread,
-                          replies: [...thread.replies, reply],
-                        });
+                        pages.replace(
+                          (item) => item.id === thread.id,
+                          // From the thread the list holds now: a reply deleted
+                          // while this one was being sent is not brought back.
+                          (current) => ({ ...current, replies: [...current.replies, reply] })
+                        );
                         setReplyTo(null);
                       }}
                     />

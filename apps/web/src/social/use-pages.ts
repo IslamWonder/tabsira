@@ -29,8 +29,13 @@ export interface Pages<T> {
   status: PagesStatus;
   loadMore: () => void;
   reload: () => void;
-  /** Replaces one item in place (after a like, a save, a submit); `null` removes it. */
-  replace: (match: (item: T) => boolean, next: T | null) => void;
+  /**
+   * Replaces one item in place (after a like, a save, a submit); `null` removes
+   * it. An updater function receives the item the list holds right now, so an
+   * answer that lands after another change never writes over it with what an
+   * earlier render saw.
+   */
+  replace: (match: (item: T) => boolean, next: T | null | ((item: T) => T | null)) => void;
   /** Puts an item at the top (a new comment, a new post). */
   prepend: (item: T) => void;
   append: (item: T) => void;
@@ -86,13 +91,20 @@ export function usePages<T>(
     }
   }, [key, load, enabled]);
 
-  const replace = useCallback((match: (item: T) => boolean, next: T | null) => {
-    setItems((current) =>
-      next === null
-        ? current.filter((item) => !match(item))
-        : current.map((item) => (match(item) ? next : item))
-    );
-  }, []);
+  const replace = useCallback(
+    (match: (item: T) => boolean, next: T | null | ((item: T) => T | null)) => {
+      setItems((current) =>
+        current.flatMap((item) => {
+          if (!match(item)) {
+            return [item];
+          }
+          const updated = typeof next === 'function' ? next(item) : next;
+          return updated === null ? [] : [updated];
+        })
+      );
+    },
+    []
+  );
 
   return {
     items,
