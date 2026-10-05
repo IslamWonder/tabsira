@@ -23,7 +23,7 @@ async def rain(db: DbDep) -> TutorialOut:
     Return the rain scene with «الحياة في قطرة» and «الغرس الذي يتعدّاك».
 
     The verses and the hadiths come from the store, each hadith as stored with
-    no ruling displayed (decision 64).
+    no ruling displayed (decision 65).
     """
     return await tutorial_service.describe(db, load_tutorial())
 

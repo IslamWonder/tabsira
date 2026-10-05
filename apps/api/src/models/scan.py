@@ -69,7 +69,7 @@ class ScanOutcome(StrEnum):
     INSIGHTS = "insights"
     NEEDS_CLARIFICATION = "needs_clarification"
     NO_RELEVANT_EVIDENCE = "no_relevant_evidence"
-    # Reserved: produced between the engine rebuild and decision 64 (nothing waits for a
+    # Reserved: produced between the engine rebuild and decision 65 (nothing waits for a
     # ruling any more); kept so stored rows and the check constraint stay valid.
     INCOMPLETE_EVIDENCE_PAIR = "incomplete_evidence_pair"
 
@@ -176,7 +176,7 @@ class Scan(Base):
     # the scene and the queries), candidate ids with their channels, verdicts, reasons and the
     # choice. Never a stored text, never the learner.
     engine_trace: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
-    # Kept for stored rows; nothing waits for a ruling since decision 64, so it stays empty.
+    # Kept for stored rows; nothing waits for a ruling since decision 65, so it stays empty.
     awaiting_ruling: Mapped[list[dict[str, str]]] = mapped_column(
         JSONB, server_default=text("'[]'::jsonb")
     )

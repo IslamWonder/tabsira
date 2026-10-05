@@ -115,7 +115,7 @@ class QuranEvidenceOut(BaseModel):
 
 
 class HadithEvidenceOut(BaseModel):
-    """A hadith read from the scripture store, as it is; one an editor ruled out is absent (decision 64)."""
+    """A hadith read from the scripture store, as it is; one an editor ruled out is absent (decision 65)."""
 
     collection: str
     collection_name: str

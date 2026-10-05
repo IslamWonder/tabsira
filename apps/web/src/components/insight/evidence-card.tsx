@@ -13,7 +13,7 @@ interface EvidenceBase {
   reference: string;
   /** Level of the card's heading in the page outline. */
   headingLevel?: 2 | 3;
-  /** The API matched the displayed text to its stored hash: say so beside the label. For a verse only: a hadith never carries it (decision 64). */
+  /** The API matched the displayed text to its stored hash: say so beside the label. For a verse only: a hadith never carries it (decision 65). */
   verified?: boolean;
   className?: string;
 }

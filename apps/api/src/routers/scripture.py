@@ -161,7 +161,7 @@ async def read_hadith(session: AsyncSession, collection: str, number: str) -> Ha
     """
     Return a stored hadith as the read API shows it, or None; shared with the insight pages.
 
-    None also for a hadith an editor ruled out (decision 64): it is never shown, and no
+    None also for a hadith an editor ruled out (decision 65): it is never shown, and no
     ruling of any kind is displayed.
     """
     row = (

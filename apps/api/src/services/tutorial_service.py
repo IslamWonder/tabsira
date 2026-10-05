@@ -5,7 +5,7 @@ The scene is data (`data/tutorial/rain-<version>.json`) with its two insights:
 «الحياة في قطرة» (Ar-Rum 30:50, al-Bukhari 1032) and «الغرس الذي يتعدّاك»
 (al-An'am 6:99, al-Bukhari 2320), cited by reference only. Every text of
 scripture is read from the store as the read API shows it: the hadith as stored,
-with no ruling displayed (decision 64); only a hadith an editor ruled out would
+with no ruling displayed (decision 65); only a hadith an editor ruled out would
 leave the insight with its verse alone. The whole answer is labelled «مثال موثّق مُعدّ». A learner who
 completes one keeps a copy of it, so «تمّ», the world and the chat work on it
 exactly as on an insight of their own photo.

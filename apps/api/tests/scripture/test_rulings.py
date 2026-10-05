@@ -89,7 +89,7 @@ async def test_an_unruled_hadith_is_eligible_and_the_latest_ruling_of_sahih_or_h
 async def test_a_hadith_with_no_ruling_shows_whatever_the_enriched_file_says_and_is_counted(
     hadith_session,
 ):
-    # Decision 64: no ruling shows the hadith, linked or not; it still counts as demand.
+    # Decision 65: no ruling shows the hadith, linked or not; it still counts as demand.
     hadith = await _hadith(hadith_session)
     other = await _hadith(hadith_session, "muslim", "113")
     await enrich_hadith(hadith_session, hadith.id)

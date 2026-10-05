@@ -4165,7 +4165,7 @@
       "get": {
         "tags": ["tutorial"],
         "summary": "The prepared rain scene and its two insights",
-        "description": "Return the rain scene with «الحياة في قطرة» and «الغرس الذي يتعدّاك».\n\nThe verses and the hadiths come from the store, each hadith as stored with\nno ruling displayed (decision 64).",
+        "description": "Return the rain scene with «الحياة في قطرة» and «الغرس الذي يتعدّاك».\n\nThe verses and the hadiths come from the store, each hadith as stored with\nno ruling displayed (decision 65).",
         "operationId": "rain_tutorial_rain_get",
         "responses": {
           "200": {
@@ -6903,7 +6903,7 @@
         "type": "object",
         "required": ["collection", "collection_name", "number", "text", "sha256"],
         "title": "HadithEvidenceOut",
-        "description": "A hadith read from the scripture store, as it is; one an editor ruled out is absent (decision 64)."
+        "description": "A hadith read from the scripture store, as it is; one an editor ruled out is absent (decision 65)."
       },
       "HadithOut": {
         "properties": {
@@ -7490,7 +7490,7 @@
           },
           "hadith": {
             "$ref": "#/components/schemas/HadithOut",
-            "description": "The hadith exactly as stored, with its spans; no ruling is shown (decision 64)"
+            "description": "The hadith exactly as stored, with its spans; no ruling is shown (decision 65)"
           },
           "why": {
             "anyOf": [
@@ -9333,7 +9333,7 @@
           },
           "hadith": {
             "$ref": "#/components/schemas/HadithOut",
-            "description": "The hadith exactly as stored, with its spans; no ruling is shown (decision 64)"
+            "description": "The hadith exactly as stored, with its spans; no ruling is shown (decision 65)"
           }
         },
         "type": "object",

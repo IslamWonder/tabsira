@@ -2,7 +2,7 @@
 
 **Phase:** 1 · **Priority:** Critical · **Status:** ✅ · **Updated:** 2026-10-04 14:51 (Tunis)
 
-Every verse and hadith shown comes from a verified store, byte for byte, never from a model. No hadith grade is displayed for now (decision 64); the editors' rulings stay in the database for later.
+Every verse and hadith shown comes from a verified store, byte for byte, never from a model. No hadith grade is displayed for now (decision 65); the editors' rulings stay in the database for later.
 
 | Step                                                      | Status | Notes                                                            |
 | --------------------------------------------------------- | ------ | ---------------------------------------------------------------- |
@@ -26,7 +26,7 @@ Every verse and hadith shown comes from a verified store, byte for byte, never f
 
 ### 03.1 Record the rain-scene hadith rulings
 
-- **Status:** ⏸ superseded by decision 64 (2026-10-05): the tutorial shows both hadith as stored, with no grade; recording rulings is no longer needed for display.
+- **Status:** ⏸ superseded by decision 65 (2026-10-05): the tutorial shows both hadith as stored, with no grade; recording rulings is no longer needed for display.
 - **Goal:** Editors record dorar.net grades for Bukhari 1032 and 2320 so the tutorial can show them.
 - **Depends on:** The owners' rulings.
 - **Touches:** Data only, through `python -m src.cli.record_ruling`.

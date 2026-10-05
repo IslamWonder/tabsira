@@ -90,7 +90,7 @@ async def test_a_wanted_hadith_with_no_ruling_is_simply_chosen_over_a_ruled_one(
         store, verse, [wanted, sibling], pair, Q1="direct", H1="direct", H2="direct"
     )
 
-    # Decision 64: no ruling is shown as it is; nothing waits and nothing stands in.
+    # Decision 65: no ruling is shown as it is; nothing waits and nothing stands in.
     assert result.hadith.found.key == wanted
     assert result.rejections == {}
     assert result.pair_complete

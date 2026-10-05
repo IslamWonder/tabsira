@@ -37,7 +37,7 @@ class InsightQuran(BaseModel):
 class InsightHadith(BaseModel):
     tag: str = Field(description="«السنة»: the fixed tag of quoted Sunnah")
     hadith: HadithOut = Field(
-        description="The hadith exactly as stored, with its spans; no ruling is shown (decision 64)"
+        description="The hadith exactly as stored, with its spans; no ruling is shown (decision 65)"
     )
     why: EvidenceWhy | None
 
@@ -54,7 +54,7 @@ class PublicHadith(BaseModel):
 
     tag: str = Field(description="«السنة»: the fixed tag of quoted Sunnah")
     hadith: HadithOut = Field(
-        description="The hadith exactly as stored, with its spans; no ruling is shown (decision 64)"
+        description="The hadith exactly as stored, with its spans; no ruling is shown (decision 65)"
     )
 
 

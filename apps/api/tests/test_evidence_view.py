@@ -65,7 +65,7 @@ async def test_a_hadith_is_read_as_stored_with_no_ruling_or_link_attached(db_ses
 
 
 async def test_an_unruled_hadith_is_shown_and_a_weak_one_is_not(db_session, scripture):
-    # bukhari 8 is ضعيف; muslim 113 has no ruling, so it is shown as it is (decision 64).
+    # bukhari 8 is ضعيف; muslim 113 has no ruling, so it is shown as it is (decision 65).
     found = await load_evidence(db_session, [], [("bukhari", "8"), ("muslim", "113")])
 
     assert set(found.hadith) == {("muslim", "113")}

@@ -53,7 +53,7 @@ async def test_the_rain_scene_is_a_prepared_example_with_its_verses_from_the_sto
         assert (verse["surah"], verse["ayah"]) == (surah, ayah)
         assert verse["text"] == stored_verse(surah, ayah)
         assert hashlib.sha256(verse["text"].encode()).hexdigest() == verse["sha256"]
-        # Decision 64: no ruling yet, and the hadith is shown byte for byte as stored.
+        # Decision 65: no ruling yet, and the hadith is shown byte for byte as stored.
         hadith = insight["hadith"]["hadith"]
         assert hadith["text"] == stored[number]
         assert hashlib.sha256(hadith["text"].encode()).hexdigest() == hadith["sha256"]

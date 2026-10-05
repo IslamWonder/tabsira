@@ -51,7 +51,7 @@ async def test_an_insight_shows_its_verse_and_its_unruled_hadith_exactly_as_stor
         "matched_on": "إحياء الأرض",
         "link": None,
     }
-    # Decision 64: no ruling, so the hadith is shown as it is, with no notice.
+    # Decision 65: no ruling, so the hadith is shown as it is, with no notice.
     assert body["hadith"]["hadith"]["text"] == hadith_text("bukhari", 1032)
     assert (body["hadith_status"], body["pair_complete"]) == ("shown", True)
     assert "notice" not in body

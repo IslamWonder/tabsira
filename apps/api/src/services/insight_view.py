@@ -4,7 +4,7 @@ An insight as its owner sees it: every text of scripture read from the store by 
 Nothing a model wrote is ever shown as Quran or hadith. The verse and the
 hadith come from the scripture read API's own readers (exact text, hash,
 spans, quranpedia link). A hadith is shown as it is, with no ruling displayed
-(decision 64); only a hadith an editor ruled out is not shown, and then the
+(decision 65); only a hadith an editor ruled out is not shown, and then the
 insight shows its verse alone. A small step that rests on a text that is not
 shown is not shown either.
 
@@ -71,7 +71,7 @@ def evidence_why(evidence: dict[str, Any] | None) -> EvidenceWhy | None:
 async def evidence(
     db: AsyncSession, quran: tuple[int, int] | None, hadith: tuple[str, str] | None
 ) -> tuple[QuranVerseOut | None, HadithOut | None]:
-    """Return the verse and the hadith to show; a ruled-out hadith reads as none (decision 64)."""
+    """Return the verse and the hadith to show; a ruled-out hadith reads as none (decision 65)."""
     verse = await read_verse(db, *quran) if quran is not None else None
     shown = await read_hadith(db, *hadith) if hadith is not None else None
     return verse, shown

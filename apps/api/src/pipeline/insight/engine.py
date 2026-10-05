@@ -20,7 +20,7 @@ SEARCHING       per intent and per corpus (the Quran and the hadiths stay
 VERIFYING       the relevance verifier tests every shortlisted text against
                 its intent, one call per intent, all at once, and names the
                 pair that serves one meaning; the gate applies eligibility
-                (decision 64: a hadith with no ruling is shown as it is, one an
+                (decision 65: a hadith with no ruling is shown as it is, one an
                 editor ruled out is not), pairs on its own only when the
                 verifier named no pair and then within one tier, and prefers a
                 text the learner has not seen. When

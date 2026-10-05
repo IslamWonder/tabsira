@@ -12,7 +12,7 @@ Three things are kept apart and none stands in for another (the brief of
   requires, and the reason of a rejection. Texts are labelled Q1, H1 ...: the
   model never handles a stored id and never writes a text. A text that fits
   only as a general reminder is rejected;
-- eligibility of a hadith, decided by the server alone (decision 64): a hadith
+- eligibility of a hadith, decided by the server alone (decision 65): a hadith
   with no ruling is shown as it is; a hadith an editor ruled out may give way
   to an accepted hadith of the same relation tier, never a weaker one. A verse
   is always eligible: the store holds it exactly as quranpedia gives it;

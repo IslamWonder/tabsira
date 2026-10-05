@@ -59,7 +59,7 @@ describe('TreasureCard', () => {
     await reveal(hadithOnly);
     expect(document.querySelector('[data-scripture="quran"]')).toBeNull();
     expect(screen.getByText('[اسم الكتاب] · 1032')).toBeInTheDocument();
-    // Decision 64: a hadith never carries the «نص موثّق» chip.
+    // Decision 65: a hadith never carries the «نص موثّق» chip.
     expect(screen.queryByText('نص موثّق من مصدره')).toBeNull();
     expect(screen.queryByText(/وحدة من المسار/)).toBeNull();
   });

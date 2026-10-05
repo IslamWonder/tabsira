@@ -17,7 +17,7 @@ export interface EvidenceSource {
 /**
  * The verse and the hadith of an insight, exactly as the API returns them:
  * the stored text is passed through untouched (never trimmed, joined,
- * shortened or normalised), with its reference. No ruling is shown (decision 64).
+ * shortened or normalised), with its reference. No ruling is shown (decision 65).
  */
 export function InsightEvidence({
   insight,

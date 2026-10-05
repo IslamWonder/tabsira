@@ -723,7 +723,7 @@ def _refs(item: Treasure) -> tuple[tuple[int, int] | None, tuple[str, str] | Non
 
 
 async def _shown(db: AsyncSession, item: Treasure) -> tuple[QuranVerseOut | None, HadithOut | None]:
-    """Return the treasure's verse or hadith as it shows now (decision 64)."""
+    """Return the treasure's verse or hadith as it shows now (decision 65)."""
     quran, hadith_ref = _refs(item)
     verse, hadith = await evidence(db, quran, hadith_ref)
     return verse, hadith

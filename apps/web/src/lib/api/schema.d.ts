@@ -1863,7 +1863,7 @@ export interface paths {
      * @description Return the rain scene with «الحياة في قطرة» and «الغرس الذي يتعدّاك».
      *
      *     The verses and the hadiths come from the store, each hadith as stored with
-     *     no ruling displayed (decision 64).
+     *     no ruling displayed (decision 65).
      */
     get: operations['rain_tutorial_rain_get'];
     put?: never;
@@ -3087,7 +3087,7 @@ export interface components {
     };
     /**
      * HadithEvidenceOut
-     * @description A hadith read from the scripture store, as it is; one an editor ruled out is absent (decision 64).
+     * @description A hadith read from the scripture store, as it is; one an editor ruled out is absent (decision 65).
      */
     HadithEvidenceOut: {
       /** Collection */
@@ -3300,7 +3300,7 @@ export interface components {
        * @description «السنة»: the fixed tag of quoted Sunnah
        */
       tag: string;
-      /** @description The hadith exactly as stored, with its spans; no ruling is shown (decision 64) */
+      /** @description The hadith exactly as stored, with its spans; no ruling is shown (decision 65) */
       hadith: components['schemas']['HadithOut'];
       why: components['schemas']['EvidenceWhy'] | null;
     };
@@ -4003,7 +4003,7 @@ export interface components {
        * @description «السنة»: the fixed tag of quoted Sunnah
        */
       tag: string;
-      /** @description The hadith exactly as stored, with its spans; no ruling is shown (decision 64) */
+      /** @description The hadith exactly as stored, with its spans; no ruling is shown (decision 65) */
       hadith: components['schemas']['HadithOut'];
     };
     /**

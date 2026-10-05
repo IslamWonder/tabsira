@@ -7,7 +7,7 @@ page, the dorar page address, and the editor's reading of it as one of five
 classifications. Rulings are only ever added (the database refuses to change
 or remove one); the latest is the one in force.
 
-Eligibility as evidence (decision 64, which abrogates decisions 18 and 58): a
+Eligibility as evidence (decision 65, which abrogates decisions 18 and 58): a
 hadith with no ruling is shown as it is; a hadith an editor explicitly ruled out
 (ضعيف, موضوع, مختلف فيه) is not, so a recorded judgement is never contradicted. No
 ruling is displayed anywhere for now. The queue still counts which unruled hadiths
@@ -161,7 +161,7 @@ async def latest_ruling(session: AsyncSession, hadith_id: int) -> HadithRuling |
 
 
 async def is_eligible(session: AsyncSession, hadith_id: int) -> bool:
-    """Return whether the hadith may be shown: no ruling, or a ruling of صحيح or حسن (decision 64)."""
+    """Return whether the hadith may be shown: no ruling, or a ruling of صحيح or حسن (decision 65)."""
     return eligible_given(await latest_ruling(session, hadith_id))
 
 
@@ -169,7 +169,7 @@ async def enqueue_demand(session: AsyncSession, hadith_id: int) -> bool:
     """
     Count one more showing of a hadith that has no ruling yet.
 
-    Nothing waits for the ruling (decision 64): the count only tells the editors which
+    Nothing waits for the ruling (decision 65): the count only tells the editors which
     hadiths are shown most. Return False, and queue nothing, when the hadith already has
     a ruling.
     """

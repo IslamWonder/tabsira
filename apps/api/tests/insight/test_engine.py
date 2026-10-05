@@ -131,7 +131,7 @@ async def test_a_rain_scene_hadith_of_the_enriched_file_shows_beside_its_verse(m
     assert result.status is EngineStatus.OK
     (insight,) = result.insights
     assert isinstance(insight.quran.ref, QuranRef)
-    # Decision 64: no ruling yet, and it shows; it is counted once for an editor, nothing waits.
+    # Decision 65: no ruling yet, and it shows; it is counted once for an editor, nothing waits.
     assert isinstance(insight.hadith.ref, HadithRef)
     assert insight.quran.link and insight.hadith.link
     assert result.trace["status"] == "ok"
@@ -167,7 +167,7 @@ async def test_a_rain_scene_hadith_with_no_ruling_shows_whether_or_not_the_file_
     assert set(result.stage_ms) == set(stages)
     (insight,) = result.insights
     assert isinstance(insight.quran.ref, QuranRef)
-    # No hadith has an editor's ruling or is enriched: it is shown as it is (decision 64).
+    # No hadith has an editor's ruling or is enriched: it is shown as it is (decision 65).
     assert isinstance(insight.hadith.ref, HadithRef)
     assert [part.section for part in insight.explanation][2:4] == ["quran", "sunnah"]
     # The unit was chosen by the server from the confirmed intent, never by the planner.

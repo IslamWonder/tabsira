@@ -479,7 +479,7 @@ async def test_a_found_hadith_without_a_ruling_is_shown_from_the_store_and_count
 
     body = (await ask(browser, insight_id, "أعطني حديثًا عن الغرس والزرع")).json()
 
-    # Decision 64: no ruling, so it is shown as it is; no ruling or link is part of the answer.
+    # Decision 65: no ruling, so it is shown as it is; no ruling or link is part of the answer.
     hadith = body["message"]["hadith"]["hadith"]
     text = await stored_hadith(store, "bukhari", "2320")
     assert (hadith["collection"]["slug"], hadith["number"]) == ("bukhari", "2320")

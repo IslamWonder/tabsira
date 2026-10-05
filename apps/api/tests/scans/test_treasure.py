@@ -95,7 +95,7 @@ async def test_the_first_verified_candidate_not_already_met_is_chosen(store):
 
         assert await treasure.verified(db, HadithRef(collection="bukhari", number="2320"))
         assert not await treasure.verified(db, HadithRef(collection="bukhari", number="1032"))
-        # Decision 64: a hadith with no ruling is shown, so it is verified.
+        # Decision 65: a hadith with no ruling is shown, so it is verified.
         assert await treasure.verified(db, HadithRef(collection="bukhari", number="8"))
         assert not await treasure.verified(db, HadithRef(collection="bukhari", number="999999"))
         assert not await treasure.verified(db, QuranRef(surah=114, ayah=1))
@@ -114,6 +114,6 @@ async def test_a_hadith_with_no_ruling_is_a_verified_candidate_until_ruled_out(s
     async with store() as db:
         await rule(db, "bukhari", "8", HadithClassification.DAIF)
 
-        # Decision 64: no ruling is enough; a ruling of ضعيف keeps it out.
+        # Decision 65: no ruling is enough; a ruling of ضعيف keeps it out.
         assert await treasure.verified(db, HadithRef(collection="bukhari", number="2320"))
         assert not await treasure.verified(db, HadithRef(collection="bukhari", number="8"))

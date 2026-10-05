@@ -4,7 +4,7 @@ Scripture in a response: always read from the store by reference, never copied.
 A publication holds references only (surah and ayah, collection and number). When a post is
 shown, the text is read from the scripture store here, byte for byte as stored, with its
 stored hash, and goes out as it is: no step normalises, shortens or rewrites it. A hadith is
-shown as stored, with no ruling displayed (decision 64); only one an editor ruled out is left
+shown as stored, with no ruling displayed (decision 65); only one an editor ruled out is left
 out, and the post then shows what is left of its evidence, the verse alone. A reference the
 store no longer holds is left out, never replaced by anything.
 """

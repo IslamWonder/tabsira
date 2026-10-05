@@ -158,7 +158,7 @@ async def _checked_quran(
 async def _checked_hadith(
     db: AsyncSession, evidence: EvidenceRef | None, corpus: list[str], refusals: list[str]
 ) -> EvidenceRef | None:
-    """Return the hadith kept: in the store, and not ruled out by an editor (decision 64)."""
+    """Return the hadith kept: in the store, and not ruled out by an editor (decision 65)."""
     if evidence is None:
         return None
     if not isinstance(evidence.ref, HadithRef):
