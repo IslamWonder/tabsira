@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { setGuest } from '@/account/session';
 import { CaptureProvider } from '@/components/capture/capture-provider';
 import { apiError, mockApi } from '@/test/api';
 import AtlasPage, { metadata as atlasMetadata } from './atlas/page';
@@ -100,6 +101,8 @@ describe('placeholder routes', () => {
       'GET /tutorial/rain': () => new Promise(() => undefined),
     });
     // The root layout's CaptureProvider holds every page; the landing page sends through it.
+    // A guest's page: before the session is known it holds both openings (landing-page.tsx).
+    setGuest();
     render(await HomePage(), { wrapper: CaptureProvider });
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('انظر إلى العالم');
     expect(screen.getAllByRole('button', { name: /صوّر مشهدًا/ }).length).toBeGreaterThan(0);
