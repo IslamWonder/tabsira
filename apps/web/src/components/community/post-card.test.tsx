@@ -108,6 +108,25 @@ describe('PostCard reactions', () => {
     expect(screen.queryByText('[اسم عام]')).toBeNull();
   });
 
+  it('adds the country quietly after the handle when the author chose to show it (decision 67)', () => {
+    guest();
+    render(
+      <PostCard
+        post={{
+          ...POST,
+          author: {
+            handle: 'rain_reader',
+            public_name: null,
+            country: { code: 'TN', name: 'تونس' },
+          },
+        }}
+        onChange={vi.fn()}
+      />
+    );
+    const link = screen.getByRole('link', { name: 'صفحة @rain_reader' });
+    expect(link).toHaveTextContent(/^@rain_reader· تونس$/);
+  });
+
   it('asks a guest to sign in instead of reacting', async () => {
     guest();
     render(<PostCard post={POST} onChange={vi.fn()} />);

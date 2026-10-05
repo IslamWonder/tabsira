@@ -6558,7 +6558,8 @@
           "photo_storage",
           "personalization",
           "memory",
-          "public_full_name"
+          "public_full_name",
+          "public_country"
         ],
         "title": "ConsentKind"
       },
@@ -8882,6 +8883,17 @@
             ],
             "title": "Public Name"
           },
+          "country": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicCountryOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only while the person's `public_country` consent is given"
+          },
           "joined_month": {
             "type": "string",
             "title": "Joined Month",
@@ -9363,6 +9375,40 @@
         "required": ["x", "y"],
         "title": "PositionOut"
       },
+      "PostAuthorOut": {
+        "properties": {
+          "handle": {
+            "type": "string",
+            "title": "Handle"
+          },
+          "public_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Name"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicCountryOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only while the author's `public_country` consent is given"
+          }
+        },
+        "type": "object",
+        "required": ["handle", "public_name"],
+        "title": "PostAuthorOut",
+        "description": "The author line of a post: the handle, the full name and the country, each by consent."
+      },
       "PostCreateIn": {
         "properties": {
           "insight_id": {
@@ -9538,7 +9584,7 @@
             "title": "Id"
           },
           "author": {
-            "$ref": "#/components/schemas/MemberOut"
+            "$ref": "#/components/schemas/PostAuthorOut"
           },
           "insight": {
             "$ref": "#/components/schemas/InsightOut"
@@ -9714,6 +9760,21 @@
             "type": "string",
             "title": "Language"
           },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "show_country": {
+            "type": "boolean",
+            "title": "Show Country"
+          },
           "personalization_enabled": {
             "type": "boolean",
             "title": "Personalization Enabled"
@@ -9777,6 +9838,8 @@
           "religious_background",
           "gender",
           "language",
+          "country",
+          "show_country",
           "personalization_enabled",
           "memory_enabled",
           "photo_storage_consent",
@@ -9859,6 +9922,18 @@
             ],
             "title": "Language"
           },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z]{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
           "theme": {
             "anyOf": [
               {
@@ -9917,7 +9992,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ProfilePatch",
-        "description": "The fields a user may change, any of them, alone.\n\nThe three consent switches are not here: they change only through\n`POST /consents`, which records the answer. A field sent as null is refused;\nto clear an answer, send `unknown` (or `[]` for the goals).\n\nSkipping the optional questions is `questions_asked: true` alone: every\nfield stays `unknown` and the questions are never offered again. Answering\nany of the three question fields records the same.\n\n`complete_profile: true` completes the profile (decision 64) and needs an explicit answer\nto every question in the same body: `goals` (`[]` is «أفضّل عدم الإجابة»),\n`knowledge_level`, `age_range`, `religious_background` and `gender` (`unknown` is that\nanswer). A body that leaves one out is a 422."
+        "description": "The fields a user may change, any of them, alone.\n\nThe three consent switches are not here: they change only through\n`POST /consents`, which records the answer. A field sent as null is refused;\nto clear an answer, send `unknown` (or `[]` for the goals).\n\nSkipping the optional questions is `questions_asked: true` alone: every\nfield stays `unknown` and the questions are never offered again. Answering\nany of the three question fields records the same.\n\n`country` is the ISO2 code of a country `GET /geo/countries` lists, or null to declare none\n(decision 67): the one field that takes a null. Whether it is shown publicly is the\n`public_country` consent of `POST /consents`.\n\n`complete_profile: true` completes the profile (decision 64) and needs an explicit answer\nto every question in the same body: `goals` (`[]` is «أفضّل عدم الإجابة»),\n`knowledge_level`, `age_range`, `religious_background` and `gender` (`unknown` is that\nanswer). A body that leaves one out is a 422."
       },
       "ProgressOut": {
         "properties": {
@@ -10017,6 +10092,24 @@
         "required": ["handle", "public_name"],
         "title": "PublicAuthorOut",
         "description": "The only things a public insight says about its owner: the handle, and the name if consented."
+      },
+      "PublicCountryOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "ISO 3166-1 alpha-2"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Its Arabic name from GeoNames, the label of /geo/countries"
+          }
+        },
+        "type": "object",
+        "required": ["code", "name"],
+        "title": "PublicCountryOut",
+        "description": "A declared country shown by consent (decision 67): public profile and post author only."
       },
       "PublicHadith": {
         "properties": {

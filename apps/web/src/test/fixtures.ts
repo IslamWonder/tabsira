@@ -26,6 +26,8 @@ export const PROFILE: Profile = {
   religious_background: 'unknown',
   gender: 'unknown',
   language: 'ar',
+  country: null,
+  show_country: false,
   personalization_enabled: true,
   memory_enabled: true,
   photo_storage_consent: false,

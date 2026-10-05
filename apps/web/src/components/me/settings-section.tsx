@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useId, useState } from 'react';
+import { type CountryOption, loadCountries } from '@/account/countries';
 import type { ConsentSwitch, Profile } from '@/account/profile';
 import { GENDER_CHOICES, RELIGION_CHOICES } from '@/components/account/profile-options';
 import { ChoiceGroup } from '@/components/ui/choice-group';
@@ -14,6 +16,104 @@ import type { ProfileEditor } from './use-profile';
 
 const S = messages.settings;
 const P = messages.profile;
+
+type CountriesLoad =
+  | { status: 'loading' | 'failed' }
+  | { status: 'ready'; countries: readonly CountryOption[] };
+
+/** The GeoNames country list, read when the settings open; a failure offers a retry. */
+function useCountries(): { load: CountriesLoad; retry: () => void } {
+  const [load, setLoad] = useState<CountriesLoad>({ status: 'loading' });
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    let live = true;
+    setLoad({ status: 'loading' });
+    void loadCountries().then((result) => {
+      if (live) {
+        setLoad(result.ok ? { status: 'ready', countries: result.data } : { status: 'failed' });
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [attempt]);
+  return { load, retry: () => setAttempt((n) => n + 1) };
+}
+
+/**
+ * The optional country (decision 67): a native select, which types ahead to a name, with
+ * the empty answer first; the switch that shows it publicly is separate and off until turned on.
+ */
+function CountrySetting({
+  profile,
+  onCountry,
+  toggle,
+  busy,
+}: {
+  profile: Profile;
+  onCountry: (country: string | null) => void;
+  toggle: (kind: ConsentSwitch, on: boolean) => void;
+  busy: boolean;
+}) {
+  const selectId = useId();
+  const hintId = useId();
+  const { load, retry } = useCountries();
+  const under13 = profile.age_range === 'under_13';
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <label htmlFor={selectId} className="font-semibold text-fg text-lg">
+          {S.country.label}
+        </label>
+        <p id={hintId} className="m-0 text-fg-muted text-sm leading-[1.8]">
+          {S.country.hint}
+        </p>
+        {load.status === 'loading' ? (
+          <p role="status" className="m-0 text-fg-muted">
+            {S.country.loading}
+          </p>
+        ) : null}
+        {load.status === 'failed' ? (
+          <div role="alert" className="flex flex-col items-start gap-2">
+            <p className="m-0 text-danger">{S.country.failed}</p>
+            <button
+              type="button"
+              onClick={retry}
+              className="inline-flex min-h-12 items-center text-link"
+            >
+              {S.country.retry}
+            </button>
+          </div>
+        ) : null}
+        {load.status === 'ready' ? (
+          <select
+            id={selectId}
+            aria-describedby={hintId}
+            value={profile.country ?? ''}
+            onChange={(event) => onCountry(event.target.value || null)}
+            className="min-h-12 w-full rounded-[var(--radius-card)] border border-line bg-surface px-4 text-fg"
+          >
+            <option value="">{S.country.none}</option>
+            {load.countries.map((country) => (
+              <option key={country.code} value={country.code}>
+                {country.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
+      </div>
+      <SwitchRow
+        label={S.showCountry.label}
+        hint={under13 ? `${S.showCountry.hint} ${S.showCountry.under13}` : S.showCountry.hint}
+        checked={profile.show_country}
+        // A declared age under 13 rules it out, as for the full name; the API refuses it too.
+        disabled={under13 && !profile.show_country}
+        onChange={(on) => toggle('public_country', on)}
+        busy={busy}
+      />
+    </div>
+  );
+}
 
 function AccountSettings({
   profile,
@@ -66,6 +166,12 @@ function AccountSettings({
         options={GENDER_CHOICES}
         value={profile.gender}
         onChange={(gender) => run(() => save({ gender }))}
+      />
+      <CountrySetting
+        profile={profile}
+        onCountry={(country) => run(() => save({ country }))}
+        toggle={toggle}
+        busy={busy}
       />
       <SaveStatus state={state} />
     </div>

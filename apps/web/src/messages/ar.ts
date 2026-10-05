@@ -194,6 +194,7 @@ export const ar = {
           personalization: 'التخصيص',
           memory: 'الذاكرة',
           public_full_name: 'إظهار اسمي الكامل',
+          public_country: 'إظهار بلدي',
         },
         textVersion: (version: string) => `نسخة النص ${version}`,
       },
@@ -999,6 +1000,20 @@ export const ar = {
       hint: 'نحفظ صورة كل بصيرة تحفظها، في مخزن خاص بلا بيانات الموقع، وتُحذف مع البصيرة ومع الحساب. لا تُحفظ صورة مشهد حساس.',
       under13: 'لا نحفظ صور من صرّح بأنه دون 13 عامًا.',
     },
+    /** The optional declared country and its separate public switch (decision 67). */
+    country: {
+      label: 'بلدي',
+      hint: 'اختياري. لا نعرف بلدك إلا إن اخترته هنا، ولا نستنتجه من موقعك ولا من أي شيء آخر.',
+      none: 'لا أريد التحديد',
+      loading: 'نحمّل قائمة البلدان…',
+      failed: 'تعذّر تحميل قائمة البلدان الآن.',
+      retry: 'أعد المحاولة',
+    },
+    showCountry: {
+      label: 'أظهر بلدي في ملفي العام',
+      hint: 'يظهر اسم بلدك في ملفك العام وبجانب اسمك في منشوراتك، ولا يظهر ما دام هذا الخيار مطفأً.',
+      under13: 'لا نُظهر بلد من صرّح بأنه دون 13 عامًا.',
+    },
   },
 
   /** Shown wherever a rank, a badge or a streak appears (GAMIFICATION.md §0). */
@@ -1455,6 +1470,8 @@ export const ar = {
       createdAt: (when: string) => `أُنشئ في ${when}`,
       photoAlt: (title: string) => `صورة المشهد الذي وُلدت منه البصيرة «${title}»`,
       authorLink: (name: string) => `صفحة ${name}`,
+      /** The country an author chose to show (decision 67), quiet, after the handle. */
+      authorCountry: (name: string) => `· ${name}`,
       quranReference: (surahName: string, ayah: number) => `سورة ${surahName} · ${ayah}`,
       hadithReference: (collectionName: string, number: string) => `${collectionName} · ${number}`,
     },
@@ -1539,6 +1556,8 @@ export const ar = {
     },
     profile: {
       joined: (month: string) => `انضم في ${month}`,
+      /** The country the member chose to show (decision 67), after the month they joined. */
+      country: (name: string) => `· ${name}`,
       counts: { posts: 'منشورات', followers: 'متابعون', following: 'يتابع' },
       follow: 'تابع',
       following: 'تتابعه',

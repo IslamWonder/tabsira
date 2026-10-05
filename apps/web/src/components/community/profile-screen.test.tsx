@@ -20,6 +20,16 @@ function member(extra: Record<string, Route> = {}) {
 }
 
 describe('ProfileScreen', () => {
+  it('says the country after the month joined when the member chose to show it', async () => {
+    mockApi({
+      'GET /auth/me': apiError(401, 'UNAUTHORIZED'),
+      'GET /u/rain_reader': { body: { ...PROFILE, country: { code: 'TN', name: 'تونس' } } },
+      'GET /u/rain_reader/posts': { body: page([]) },
+    });
+    render(<ProfileScreen handle="rain_reader" />);
+    expect(await screen.findByText(`انضم في ${formatMonth('2026-10')} · تونس`)).toBeInTheDocument();
+  });
+
   it('shows the public name, the handle, the month joined, three counts and the posts', async () => {
     mockApi({
       'GET /auth/me': apiError(401, 'UNAUTHORIZED'),

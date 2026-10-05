@@ -2828,7 +2828,8 @@ export interface components {
       | 'photo_storage'
       | 'personalization'
       | 'memory'
-      | 'public_full_name';
+      | 'public_full_name'
+      | 'public_country';
     /** ConsentOut */
     ConsentOut: {
       kind: components['schemas']['ConsentKind'];
@@ -3840,6 +3841,8 @@ export interface components {
       handle: string;
       /** Public Name */
       public_name: string | null;
+      /** @description Only while the person's `public_country` consent is given */
+      country?: components['schemas']['PublicCountryOut'] | null;
       /**
        * Joined Month
        * @description `YYYY-MM`, in UTC
@@ -4027,6 +4030,18 @@ export interface components {
       y: number;
     };
     /**
+     * PostAuthorOut
+     * @description The author line of a post: the handle, the full name and the country, each by consent.
+     */
+    PostAuthorOut: {
+      /** Handle */
+      handle: string;
+      /** Public Name */
+      public_name: string | null;
+      /** @description Only while the author's `public_country` consent is given */
+      country?: components['schemas']['PublicCountryOut'] | null;
+    };
+    /**
      * PostCreateIn
      * @description Start a draft from a verified insight.
      */
@@ -4085,7 +4100,7 @@ export interface components {
     PostOut: {
       /** Id */
       id: string;
-      author: components['schemas']['MemberOut'];
+      author: components['schemas']['PostAuthorOut'];
       insight: components['schemas']['InsightOut'];
       reflection: components['schemas']['ReflectionOut'] | null;
       visibility: components['schemas']['PostVisibility'];
@@ -4142,6 +4157,10 @@ export interface components {
       gender: components['schemas']['Gender'];
       /** Language */
       language: string;
+      /** Country */
+      country: string | null;
+      /** Show Country */
+      show_country: boolean;
       /** Personalization Enabled */
       personalization_enabled: boolean;
       /** Memory Enabled */
@@ -4176,6 +4195,10 @@ export interface components {
      *     field stays `unknown` and the questions are never offered again. Answering
      *     any of the three question fields records the same.
      *
+     *     `country` is the ISO2 code of a country `GET /geo/countries` lists, or null to declare none
+     *     (decision 67): the one field that takes a null. Whether it is shown publicly is the
+     *     `public_country` consent of `POST /consents`.
+     *
      *     `complete_profile: true` completes the profile (decision 64) and needs an explicit answer
      *     to every question in the same body: `goals` (`[]` is «أفضّل عدم الإجابة»),
      *     `knowledge_level`, `age_range`, `religious_background` and `gender` (`unknown` is that
@@ -4190,6 +4213,8 @@ export interface components {
       gender?: components['schemas']['Gender'] | null;
       /** Language */
       language?: string | null;
+      /** Country */
+      country?: string | null;
       theme?: components['schemas']['Theme'] | null;
       reduced_motion?: components['schemas']['ReducedMotion'] | null;
       /** Sound Enabled */
@@ -4237,6 +4262,22 @@ export interface components {
       handle: string;
       /** Public Name */
       public_name: string | null;
+    };
+    /**
+     * PublicCountryOut
+     * @description A declared country shown by consent (decision 67): public profile and post author only.
+     */
+    PublicCountryOut: {
+      /**
+       * Code
+       * @description ISO 3166-1 alpha-2
+       */
+      code: string;
+      /**
+       * Name
+       * @description Its Arabic name from GeoNames, the label of /geo/countries
+       */
+      name: string;
     };
     /**
      * PublicHadith

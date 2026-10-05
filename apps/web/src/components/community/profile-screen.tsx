@@ -170,6 +170,7 @@ export function ProfileScreen({
                 )}
                 <p className="m-0 text-[0.875rem] text-fg-muted">
                   {P.joined(formatMonth(load.profile.joined_month))}
+                  {load.profile.country ? ` ${P.country(load.profile.country.name)}` : null}
                 </p>
               </div>
               <div className="flex items-center gap-2">

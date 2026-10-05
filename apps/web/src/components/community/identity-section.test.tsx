@@ -35,8 +35,8 @@ describe('IdentitySection', () => {
     await userEvent.click(toggle);
     await waitFor(() => expect(toggle).not.toBeChecked());
     expect(await api.bodies('POST', '/consents')).toEqual([
-      { kind: 'public_full_name', version: '2026-10-05', granted: true },
-      { kind: 'public_full_name', version: '2026-10-05', granted: false },
+      { kind: 'public_full_name', version: '2026-10-05.2', granted: true },
+      { kind: 'public_full_name', version: '2026-10-05.2', granted: false },
     ]);
   });
 

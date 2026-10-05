@@ -50,17 +50,19 @@ export const GENDERS: readonly Gender[] = ['man', 'woman', 'unknown'];
  * The version of the consent texts the settings show (messages.settings: the
  * personalisation, memory and photo hints). It is recorded with every answer,
  * so the history says which words were agreed to: change it in the same
- * commit as those texts. 2026-10-05 added the full-name switch of the public identity.
+ * commit as those texts. 2026-10-05 added the full-name switch of the public identity,
+ * 2026-10-05.2 the switch that shows the declared country (decision 67).
  */
-export const CONSENT_TEXT_VERSION = '2026-10-05';
+export const CONSENT_TEXT_VERSION = '2026-10-05.2';
 
-/** The three switches of the profile that change only by recording a consent. */
-export type ConsentSwitch = 'personalization' | 'memory' | 'photo_storage';
+/** The switches of the profile that change only by recording a consent. */
+export type ConsentSwitch = 'personalization' | 'memory' | 'photo_storage' | 'public_country';
 
 export const SWITCH_FIELD = {
   personalization: 'personalization_enabled',
   memory: 'memory_enabled',
   photo_storage: 'photo_storage_consent',
+  public_country: 'show_country',
 } as const satisfies Record<ConsentSwitch, keyof Profile>;
 
 export function loadProfile(): Promise<Result<Profile>> {

@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CONSENT_TEXT_VERSION } from '@/account/profile';
 import { readSession } from '@/account/session';
 import { writeConsentId } from '@/consent/cookie';
 import { apiError, mockApi, type Route } from '@/test/api';
@@ -21,9 +22,28 @@ function signedIn(extra: Record<string, Route> = {}, user = USER): Record<string
       body: { handle: null, public_name: null, public_full_name: false },
     },
     'GET /blocks': { body: [] },
+    'GET /geo/countries': { body: COUNTRIES },
     ...extra,
   };
 }
+
+const country = (iso2: string, name: string, label: string) => ({
+  iso2,
+  iso3: null,
+  name,
+  name_ar: label === name ? null : label,
+  label,
+  capital: null,
+  continent: null,
+  flag_emoji: null,
+  population: null,
+});
+// In GeoNames' English order; the select lists them by the name shown.
+const COUNTRIES = [
+  country('FR', 'France', 'فرنسا'),
+  country('SA', 'Saudi Arabia', 'السعودية'),
+  country('TN', 'Tunisia', 'تونس'),
+];
 
 const section = (name: string) => screen.getByRole('region', { name });
 
@@ -173,7 +193,7 @@ describe('MeScreen signed in', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'أنثى' }));
     await waitFor(() => expect(screen.getByRole('radio', { name: 'أنثى' })).toBeChecked());
     expect(await api.bodies('POST', '/consents')).toEqual([
-      { kind: 'memory', version: '2026-10-05', granted: false },
+      { kind: 'memory', version: CONSENT_TEXT_VERSION, granted: false },
     ]);
     expect(screen.getByRole('switch', { name: 'التخصيص' })).toBeChecked();
     go('appearance');
@@ -196,6 +216,67 @@ describe('MeScreen signed in', () => {
     await waitFor(() => expect(photos).toBeChecked());
     await userEvent.click(screen.getByRole('radio', { name: 'من غير المسلمين' }));
     expect(await api.bodies('PATCH', '/profile')).toEqual([{ religious_background: 'non_muslim' }]);
+  });
+
+  it('declares a country, clears it, and shows it publicly only by its own switch', async () => {
+    const api = mockApi(
+      signedIn({
+        'PATCH /profile': async (request) => ({
+          body: { ...PROFILE, ...((await request.json()) as object) },
+        }),
+        'POST /consents': {
+          status: 201,
+          body: { kind: 'public_country', version: 'x', granted: true, created_at: 'x' },
+        },
+      })
+    );
+    renderAt('personalization');
+    const select = await screen.findByRole('combobox', { name: 'بلدي' });
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent)
+    ).toEqual(['لا أريد التحديد', 'السعودية', 'تونس', 'فرنسا']);
+    expect(select).toHaveValue('');
+    const shown = screen.getByRole('switch', { name: 'أظهر بلدي في ملفي العام' });
+    expect(shown).not.toBeChecked();
+    await userEvent.selectOptions(select, 'TN');
+    await waitFor(() => expect(select).toHaveValue('TN'));
+    await userEvent.selectOptions(select, '');
+    await waitFor(() => expect(select).toHaveValue(''));
+    await userEvent.click(shown);
+    await waitFor(() => expect(shown).toBeChecked());
+    expect(await api.bodies('PATCH', '/profile')).toEqual([{ country: 'TN' }, { country: null }]);
+    expect(await api.bodies('POST', '/consents')).toEqual([
+      { kind: 'public_country', version: CONSENT_TEXT_VERSION, granted: true },
+    ]);
+  });
+
+  it('offers to read the countries again, and rules out showing one under 13', async () => {
+    let calls = 0;
+    let release: () => void = () => undefined;
+    mockApi(
+      signedIn({
+        'GET /profile': { body: { ...PROFILE, age_range: 'under_13' } },
+        'GET /geo/countries': () =>
+          ++calls === 1
+            ? apiError(500, 'INTERNAL_ERROR')
+            : new Promise((resolve) => {
+                release = () => resolve({ body: COUNTRIES });
+              }),
+      })
+    );
+    renderAt('personalization');
+    expect(await screen.findByText('تعذّر تحميل قائمة البلدان الآن.')).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'أظهر بلدي في ملفي العام' })).toBeDisabled();
+    expect(
+      screen.getByRole('switch', { name: 'أظهر بلدي في ملفي العام' })
+    ).toHaveAccessibleDescription(/لا نُظهر بلد من صرّح بأنه دون 13 عامًا/);
+    await userEvent.click(screen.getByRole('button', { name: 'أعد المحاولة' }));
+    expect(await screen.findByText('نحمّل قائمة البلدان…')).toBeInTheDocument();
+    await waitFor(() => expect(calls).toBe(2));
+    release();
+    expect(await screen.findByRole('combobox', { name: 'بلدي' })).toBeInTheDocument();
   });
 
   it('shows the latest answer when two saves cross', async () => {

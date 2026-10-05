@@ -194,6 +194,11 @@ export function PostCard({
               <span className="font-semibold">{post.author.public_name}</span>
             )}
             <bdi className="text-[0.875rem] text-fg-muted">@{post.author.handle}</bdi>
+            {post.author.country ? (
+              <span className="text-[0.875rem] text-fg-muted">
+                {M.authorCountry(post.author.country.name)}
+              </span>
+            ) : null}
           </Link>
           {post.viewer === null || isAuthor ? null : (
             <FollowToggle
