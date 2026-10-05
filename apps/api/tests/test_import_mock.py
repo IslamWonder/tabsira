@@ -23,14 +23,22 @@ from src.cli import import_mock
 from src.cli.import_mock import MockImportError
 from src.config import Environment, Settings
 from src.models import (
+    Block,
+    Bookmark,
     Comment,
+    CommentStatus,
     Follow,
     Insight,
     MapCapturePoint,
     MapEntry,
+    MapEntrySponsorship,
     Post,
-    PostLike,
+    PostReaction,
     QuranVerse,
+    ReactionKind,
+    Report,
+    ReportReason,
+    ReportTarget,
     Scan,
     User,
 )
@@ -135,6 +143,7 @@ def document() -> dict[str, Any]:
             {"post": "p1", "member": "m2", "kind": "benefited", "at": LATER},
             {"post": "p1", "member": "m3", "kind": "jazak", "at": LATER},
             {"post": "p9", "member": "m3", "kind": "benefited", "at": LATER},
+            {"post": "p1", "member": "m2", "kind": "unknown_kind", "at": LATER},
         ],
         "comments": [
             {
@@ -186,7 +195,7 @@ async def test_the_file_is_written_through_the_services(db_session, settings, wo
     assert report.posts == 2
     assert report.entries == 1
     assert report.follows == 2
-    assert report.likes == 1
+    assert report.likes == 2
     assert report.comments == 2
     assert report.ignored_reactions == 1
     assert report.missing_evidence == ["i3"]
@@ -197,7 +206,7 @@ async def test_the_file_is_written_through_the_services(db_session, settings, wo
     assert len(report.lines()) >= 4
 
     amal = await db_session.scalar(select(User).where(User.handle == "amal_tn"))
-    assert amal.email == "amal_tn@mock.tabsira.invalid"
+    assert amal.email == "amal_tn@mock.tabsira.me"
     assert amal.password_hash is None
     assert amal.email_verified_at is not None
     assert amal.created_at.isoformat() == "2026-08-01T10:00:00+00:00"
@@ -227,7 +236,7 @@ async def test_the_file_is_written_through_the_services(db_session, settings, wo
     point = await db_session.get(MapCapturePoint, entry.id)
     assert (point.latitude, point.longitude) == (EXACT[1], EXACT[0])
     assert await count(db_session, Follow) == 2
-    assert await count(db_session, PostLike) == 1
+    assert await count(db_session, PostReaction) == 2
     assert await count(db_session, Comment) == 2
 
 
@@ -251,10 +260,10 @@ async def test_a_second_run_imports_nothing_and_clean_removes_only_mock_rows(
     )
     assert {m: await count(db_session, m) for m in before} == before
 
-    assert await import_mock.clean(db_session, settings) == 3
-    assert await import_mock.clean(db_session, settings) == 0
+    assert (await import_mock.clean(db_session, settings)).accounts == 3
+    assert (await import_mock.clean(db_session, settings)).accounts == 0
     assert await db_session.scalar(select(func.count()).select_from(User)) == 1
-    for model in (Insight, Post, MapEntry, MapCapturePoint, Follow, PostLike, Comment, Scan):
+    for model in (Insight, Post, MapEntry, MapCapturePoint, Follow, PostReaction, Comment, Scan):
         assert await count(db_session, model) == 0
     assert await db_session.get(User, real.id) is not None
 
@@ -333,6 +342,7 @@ def test_the_command_refuses_without_understanding_the_test_database_and_product
     url = "postgresql+asyncpg://u:p@127.0.0.1:5432/"
     development = make_settings(database_url=url + "tabsira")
     test = make_settings(database_url=url + "tabsira_test")
+    template = make_settings(database_url=url + "tabsira_template")
     production = development.model_copy(update={"environment": Environment.PRODUCTION})
     check = import_mock.check_allowed
 
@@ -340,6 +350,8 @@ def test_the_command_refuses_without_understanding_the_test_database_and_product
         check(development, i_understand=False)
     with pytest.raises(MockImportError, match="test database"):
         check(test, i_understand=True)
+    with pytest.raises(MockImportError, match="test database"):
+        check(template, i_understand=True)
     with pytest.raises(MockImportError, match="--allow-production"):
         check(production, i_understand=True)
     check(development, i_understand=True)
@@ -360,13 +372,13 @@ def test_an_s3_file_is_read_with_the_project_s3_client(monkeypatch, settings):
     asked: list[dict[str, str]] = []
 
     class Body:
-        def read(self) -> bytes:
+        def read(self, _limit: int) -> bytes:
             return b'{"version": 1}'
 
     class Client:
-        def get_object(self, **values: str) -> dict[str, Body]:
+        def get_object(self, **values: str) -> dict[str, Any]:
             asked.append(values)
-            return {"Body": Body()}
+            return {"Body": Body(), "ContentLength": 14}
 
     monkeypatch.setattr("src.storage.s3.build_client", lambda _settings: Client())
 
@@ -524,3 +536,226 @@ def test_the_photo_address_is_the_files_own_placepix_address() -> None:
 def test_an_image_without_a_placepix_address_takes_the_default_size(url: str | None) -> None:
     image = import_mock.ImageIn(placepix_id=6, url=url)
     assert import_mock.photo_address(image) == "https://placepix.net/id/6/1080/1080"
+
+
+# ─── Privacy of --clean: what other members wrote is counted and never removed by surprise ───
+
+
+async def a_real_member_around_the_mock_ones(db_session, settings, make_user):
+    """A file imported, then a real member who comments, replies, reacts, follows and reports."""
+    real = await make_user("real@example.com", verified=True)
+    real.handle = "real_one"
+    await db_session.flush()
+    await run(db_session, settings, document())
+    post = await db_session.scalar(select(Post).where(Post.reflection == "تأمل قصير"))
+    mock_comment = await db_session.scalar(select(Comment).where(Comment.body == "بارك الله"))
+    mock_user = await db_session.scalar(select(User).where(User.handle == "bilal_tn"))
+    db_session.add_all(
+        [
+            Comment(
+                post_id=post.id,
+                author_id=real.id,
+                parent_id=mock_comment.id,
+                body="شكرا لك",
+                status=CommentStatus.PUBLISHED,
+            ),
+            PostReaction(post_id=post.id, user_id=real.id, kind=ReactionKind.JAZAK),
+            Bookmark(post_id=post.id, user_id=real.id),
+            Follow(follower_id=real.id, followee_id=mock_user.id),
+            Block(blocker_id=real.id, blocked_id=mock_user.id),
+            Report(
+                reporter_id=real.id,
+                target_type=ReportTarget.POST,
+                target_id=post.id,
+                reason=ReportReason.OTHER,
+            ),
+        ]
+    )
+    await db_session.flush()
+    return real
+
+
+async def test_clean_refuses_when_other_members_rows_depend_on_mock_accounts(
+    db_session, settings, world, make_user
+):
+    real = await a_real_member_around_the_mock_ones(db_session, settings, make_user)
+    before = await count(db_session, User)
+
+    with pytest.raises(MockImportError, match="--also-dependent-rows") as refused:
+        await import_mock.clean(db_session, settings)
+
+    for kind in ("comments or replies 1", "reactions 1", "bookmarks 1", "follows 1", "blocks 1"):
+        assert kind in str(refused.value)
+    assert "reports 1" in str(refused.value)
+    assert await count(db_session, User) == before
+    assert await db_session.get(User, real.id) is not None
+
+
+async def test_clean_with_the_flag_removes_them_and_says_how_many(
+    db_session, settings, world, make_user
+):
+    real = await a_real_member_around_the_mock_ones(db_session, settings, make_user)
+
+    report = await import_mock.clean(db_session, settings, also_dependent_rows=True)
+
+    assert report.accounts == 3
+    assert report.dependents["comments or replies"] == 1
+    assert await db_session.get(User, real.id) is not None
+    for model in (Comment, PostReaction, Bookmark, Follow, Block, Report):
+        assert await count(db_session, model) == 0
+
+
+async def test_clean_counts_a_real_sponsor_of_a_mock_entry(db_session, settings, world, make_user):
+    real = await make_user("sponsor@example.com", verified=True)
+    await run(db_session, settings, document())
+    entry = await db_session.scalar(select(MapEntry))
+    db_session.add(MapEntrySponsorship(entry_id=entry.id, user_id=real.id))
+    await db_session.flush()
+
+    with pytest.raises(MockImportError, match="sponsorships 1"):
+        await import_mock.clean(db_session, settings)
+
+
+async def test_clean_survives_an_odd_photo_key_and_never_calls_the_storage(
+    db_session, settings, world, monkeypatch
+):
+    await run(db_session, settings, document())
+    for row in await db_session.scalars(select(Insight)):
+        row.photo_key = "weird/../key"
+        row.photo_public_key = "public/not-a-key"
+    await db_session.flush()
+    monkeypatch.setattr(import_mock, "_store", lambda _s: pytest.fail("storage used"))
+
+    assert (await import_mock.clean(db_session, settings)).accounts == 3
+
+
+async def test_an_old_domain_account_is_found_by_clean_and_by_the_next_import(
+    db_session, settings, world
+):
+    await run(db_session, settings, document())
+    for user in await db_session.scalars(select(User)):
+        user.email = user.email.replace("mock.tabsira.me", "mock.tabsira.invalid")
+    await db_session.flush()
+
+    again = await run(db_session, settings, document())
+
+    assert again.members == 0
+    assert (await import_mock.clean(db_session, settings)).accounts == 3
+
+
+def test_clean_flag_goes_with_clean_only():
+    assert args("--clean", "--i-understand", "--also-dependent-rows").also_dependent_rows
+    with pytest.raises(SystemExit):
+        args("f.json", "--also-dependent-rows")
+
+
+async def test_execute_says_what_other_members_rows_it_removed(
+    db_session, settings, world, make_user, capsys
+):
+    await a_real_member_around_the_mock_ones(db_session, settings, make_user)
+    factory = async_sessionmaker(bind=db_session.bind, expire_on_commit=False)
+
+    refused = await import_mock.execute(
+        args("--clean", "--i-understand"), settings, factory, allow_test_database=True
+    )
+    assert refused == 1
+    assert "--also-dependent-rows" in capsys.readouterr().err
+    done = await import_mock.execute(
+        args("--clean", "--i-understand", "--also-dependent-rows"),
+        settings,
+        factory,
+        allow_test_database=True,
+    )
+    assert done == 0
+    assert "removed 1 reactions of other members" in capsys.readouterr().out
+
+
+# ─── The file's names and texts, the photo address and the size ───
+
+
+async def test_a_scripture_look_alike_in_a_name_refuses_the_whole_file(db_session, settings, world):
+    verse = await db_session.scalar(
+        select(QuranVerse.text).where(QuranVerse.surah == 112, QuranVerse.ayah == 1)
+    )
+    data = document()
+    data["members"][0]["display_name"] = verse
+
+    with pytest.raises(MockImportError, match=r"member\.m1"):
+        await run(db_session, settings, data)
+    assert await count(db_session, User) == 0
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "زوروا https://example.com الآن",
+        "راسلني على ali@example.com",
+        "تابعني @someone",
+        "اتصل على +216 20 123 456",
+        "موقعي www.example.org",
+        "x" * 900,
+        "تأمل\x00",
+        "قال تعالى: وما خلقت",
+    ],
+)
+async def test_a_text_with_a_link_an_address_a_number_or_a_defect_refuses_the_file(
+    db_session, settings, world, text
+):
+    data = document()
+    data["comments"][0]["text"] = text
+
+    with pytest.raises(MockImportError, match=r"comment\.c1"):
+        await run(db_session, settings, data)
+    assert await count(db_session, User) == 0
+
+
+def test_text_problem_names_each_reason():
+    check = import_mock.text_problem
+    assert check("تأمل جميل", 50) is None
+    assert check("   ", 50) == "empty"
+    assert check("قال تعالى: وما خلقت", 50) == "reads like scripture"
+    assert check("a\x00b", 50) == "control characters or too long"
+    assert check("ab", 1) == "control characters or too long"
+    assert check("see example.com", 50) == "a link, an address or a number"
+
+
+@pytest.mark.parametrize("bad", [0, -5, 10**9 + 1])
+def test_a_placepix_id_outside_the_bounds_makes_a_wrong_shape(bad):
+    raw = json.dumps({"version": 1, "images": [{"placepix_id": bad}]}).encode()
+    with pytest.raises(MockImportError, match="wrong shape"):
+        import_mock.parse(raw)
+
+
+def test_the_largest_id_gives_an_address_the_photo_rules_accept():
+    from src.storage.base import is_mock_photo_address
+
+    image = import_mock.ImageIn(placepix_id=10**9)
+    assert is_mock_photo_address(import_mock.photo_address(image))
+
+
+def test_a_big_local_file_is_refused_before_it_is_read(tmp_path, settings, monkeypatch):
+    path = tmp_path / "big.json"
+    path.write_bytes(b"{}")
+    monkeypatch.setattr(import_mock, "MAX_FILE_BYTES", 1)
+
+    with pytest.raises(MockImportError, match="larger than"):
+        import_mock.read_source(str(path), settings)
+
+
+@pytest.mark.parametrize("answer", [{"ContentLength": 99}, {}])
+def test_a_big_s3_object_is_refused_by_its_length_or_by_the_capped_read(
+    monkeypatch, settings, answer
+):
+    class Body:
+        def read(self, limit: int) -> bytes:
+            return b"x" * limit
+
+    class Client:
+        def get_object(self, **_: str) -> dict[str, Any]:
+            return {"Body": Body(), **answer}
+
+    monkeypatch.setattr("src.storage.s3.build_client", lambda _settings: Client())
+    monkeypatch.setattr(import_mock, "MAX_FILE_BYTES", 10)
+
+    with pytest.raises(MockImportError, match="larger than"):
+        import_mock.read_source("s3://bucket/key", settings)
