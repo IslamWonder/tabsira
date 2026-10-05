@@ -55,26 +55,39 @@ export function usePages<T>(
   const [status, setStatus] = useState<PagesStatus>({ kind: 'loading' });
   const cursor = useRef<string | null>(null);
   const generation = useRef(0);
+  // The generation a load is running for: a second «load more» for the same
+  // list waits instead of appending the same page twice.
+  const loading = useRef<number | null>(null);
 
   const load = useCallback(
     async (first: boolean) => {
+      if (!first && loading.current === generation.current) {
+        return;
+      }
       const mine = first ? ++generation.current : generation.current;
-      setStatus(first ? { kind: 'loading' } : { kind: 'loading-more' });
-      const result = await fetchPage(first ? null : cursor.current);
-      if (mine !== generation.current) {
-        return;
+      loading.current = mine;
+      try {
+        setStatus(first ? { kind: 'loading' } : { kind: 'loading-more' });
+        const result = await fetchPage(first ? null : cursor.current);
+        if (mine !== generation.current) {
+          return;
+        }
+        if (!result.ok) {
+          setStatus({ kind: 'failed', message: failureMessage(result), failure: result });
+          return;
+        }
+        cursor.current = result.data.next_cursor;
+        setItems((current) => (first ? result.data.items : [...current, ...result.data.items]));
+        setStatus({
+          kind: 'ready',
+          emptyReason: first ? (result.data.empty_reason ?? null) : null,
+          more: result.data.next_cursor !== null,
+        });
+      } finally {
+        if (loading.current === mine) {
+          loading.current = null;
+        }
       }
-      if (!result.ok) {
-        setStatus({ kind: 'failed', message: failureMessage(result), failure: result });
-        return;
-      }
-      cursor.current = result.data.next_cursor;
-      setItems((current) => (first ? result.data.items : [...current, ...result.data.items]));
-      setStatus({
-        kind: 'ready',
-        emptyReason: first ? (result.data.empty_reason ?? null) : null,
-        more: result.data.next_cursor !== null,
-      });
     },
     [fetchPage]
   );

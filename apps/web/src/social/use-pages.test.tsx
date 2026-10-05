@@ -118,4 +118,46 @@ describe('usePages', () => {
     );
     expect(result.current.items).toEqual([]);
   });
+
+  it('appends a requested page once even when «load more» fires twice', async () => {
+    const answers: ((answer: Answer) => void)[] = [];
+    let calls = 0;
+    const fetchPage = vi.fn(() =>
+      ++calls === 1
+        ? Promise.resolve(page(['a'], 'c1'))
+        : new Promise<Answer>((resolve) => {
+            answers.push(resolve);
+          })
+    );
+    const { result } = renderHook(() => usePages(fetchPage, 'list'));
+    await waitFor(() => expect(result.current.status).toMatchObject({ kind: 'ready' }));
+    act(() => result.current.loadMore());
+    act(() => result.current.loadMore());
+    expect(answers).toHaveLength(1);
+    await act(async () => {
+      answers[0]?.(page(['b']));
+    });
+    expect(result.current.items).toEqual(['a', 'b']);
+    // A later «load more» asks again once the first is done.
+    await waitFor(() => expect(result.current.status).toMatchObject({ kind: 'ready' }));
+    act(() => result.current.loadMore());
+    expect(answers).toHaveLength(2);
+  });
+
+  it('asks for the first page once while it is still loading', async () => {
+    const answers: ((answer: Answer) => void)[] = [];
+    const fetchPage = vi.fn(
+      () =>
+        new Promise<Answer>((resolve) => {
+          answers.push(resolve);
+        })
+    );
+    const { result } = renderHook(() => usePages(fetchPage, 'list'));
+    act(() => result.current.loadMore());
+    expect(answers).toHaveLength(1);
+    await act(async () => {
+      answers[0]?.(page(['a'], 'c1'));
+    });
+    expect(result.current.items).toEqual(['a']);
+  });
 });
