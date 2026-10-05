@@ -6,6 +6,7 @@ The social network leans on acts with a meaning in Islam: sponsoring an insight 
 
 | Step                                          | Status | Notes                                            |
 | --------------------------------------------- | ------ | ------------------------------------------------ |
+| One feature switchboard, comments off         | ✅     | Task 21.0. Decision 63.                          |
 | «كفالة بصيرة»: orphaned atlas entries         | ⬜     | Task 21.1 (server), 21.2 (screens). Decision 60. |
 | Reactions «انتفعتُ بها» and «جزاك الله خيرًا» | ⬜     | Task 21.3. Decision 61.                          |
 | «أهدِ بصيرة»: giving an insight               | ⏸      | Task 21.4, a plan only until the owners decide.  |
@@ -18,6 +19,14 @@ The social network leans on acts with a meaning in Islam: sponsoring an insight 
 - Any verse or hadith on these screens comes from the store by id and matches its hash (tested).
 
 ## Tasks
+
+### 21.0 One feature switchboard, comments as their own switch
+
+- **Status:** ✅ done 2026-10-05 09:06 (Tunis)
+- **Goal:** `DISABLED_FEATURES` and `ENABLED_FEATURES` replace the `FEATURE_*` keys for the API and the web; `FeatureFlag` names every feature, `atlas_sponsorship` (decision 60) included for task 21.1; `social_comments` and `camera_anchor` are off by default; a child is off while its parent is; a feature that is off answers 404; the old keys are refused at start; comments are off until the owners enable them.
+- **Touches:** apps/api/src/{features.py,config.py,deps.py,routers,cli}, apps/web/src/config/server-env.ts and the community components, the generated web client, .env.example, deploy/env.production.example, docs.
+- **Done when:** The lists, the parent rule, the legacy-key refusal, `requires` and the 404 of every comment route are tested.
+- **Notes:** Decision 63. In production's `.env`, delete every `FEATURE_*` line and set `DISABLED_FEATURES=social,atlas,camera_discovery,dev_inspector`.
 
 ### 21.1 Orphaned entries and sponsoring, server side
 

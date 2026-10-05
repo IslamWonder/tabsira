@@ -2,7 +2,7 @@
 
 What the API does for the social network, and where each piece plugs in. Scope is decision 2: posts made from verified insights, the feeds «لك» and «أتابع» with cursors, follow, like, comments, bookmark, report, block and moderation states. There are no reposts, polls, mentions, push notifications or direct messages. Code: `apps/api/src/routers/{members,posts,reactions,comments,reports,feed}.py`, services of the same names in `apps/api/src/services`, models in `models/social.py` and `models/moderation.py`. What is stored and why is in `docs/PRIVACY.md`.
 
-The whole network sits behind `FEATURE_SOCIAL`: with it off every route below answers 404 and its sitemap sections are not advertised.
+The whole network sits behind the `social` feature (decision 63): with it off every route below answers 404 and its sitemap sections are not advertised. Comments have their own switch, `social_comments`, off until the owners name it in `ENABLED_FEATURES`: while it is off the comment routes and the report of a comment answer 404 and the web shows no thread, count or comment link (decision 63).
 
 ## Ids and people
 
@@ -107,7 +107,7 @@ Every write has a budget per account and one over all accounts, counted in memor
 
 ## The web screens
 
-`apps/web/src/components/community` and `apps/web/src/social` (task 16.1). The feeds at `/community` («لك», «أتابع», the latest, and for a signed-in person «منشوراتي» in every state and «محفوظاتي»), each with its cursor behind a «اعرض المزيد» button and, in «لك», the item's reason behind «لماذا أرى هذا؟»; a post at `/posts/<id>` with its comments and one level of replies; a public profile at `/u/<handle>` with follow and block; publishing at `/community/publish?insight=<id>` (draft, preview, submit, edit a refused post, withdraw); and in «ملفي» the public handle and name with the list of blocked members. The web never decides a permission: it tells the viewer which step the API will ask for (sign in, a verified address, a public identity) and shows the API's answer. Scripture is shown by the shared evidence card exactly as the API returns it, and the author's reflection is labelled as the author's words. The screens are reached only while `FEATURE_SOCIAL` is on; with it off the API answers 404 and the feeds say they cannot be loaded.
+`apps/web/src/components/community` and `apps/web/src/social` (task 16.1). The feeds at `/community` («لك», «أتابع», the latest, and for a signed-in person «منشوراتي» in every state and «محفوظاتي»), each with its cursor behind a «اعرض المزيد» button and, in «لك», the item's reason behind «لماذا أرى هذا؟»; a post at `/posts/<id>` with its comments and one level of replies; a public profile at `/u/<handle>` with follow and block; publishing at `/community/publish?insight=<id>` (draft, preview, submit, edit a refused post, withdraw); and in «ملفي» the public handle and name with the list of blocked members. The web never decides a permission: it tells the viewer which step the API will ask for (sign in, a verified address, a public identity) and shows the API's answer. Scripture is shown by the shared evidence card exactly as the API returns it, and the author's reflection is labelled as the author's words. The screens are reached only while the `social` feature is on; with it off the API answers 404 and the feeds say they cannot be loaded.
 
 The insights plug in through `services/insight_table_source.py`, the `InsightSource` over `app.insights`: an insight is publishable when it is the caller's own and came out of the real pipeline (`engine = "pipeline"`); a demo insight and a prepared tutorial copy are not.
 
@@ -117,7 +117,7 @@ The insights plug in through `services/insight_table_source.py`, the `InsightSou
 
 ## Settings
 
-`SOCIAL_GUARD_TIMEOUT_SECONDS`, `SOCIAL_GUARD_ALLOW_SCORE`, `SOCIAL_GUARD_REJECT_SCORE`, `SOCIAL_REPORT_HOLD_THRESHOLD`, `MODERATION_LOG_RETENTION_DAYS`, `MODERATION_LOG_COMPRESS_AFTER_DAYS`, and the existing `FEATURE_SOCIAL` and `AI_OPENAI__*`.
+`SOCIAL_GUARD_TIMEOUT_SECONDS`, `SOCIAL_GUARD_ALLOW_SCORE`, `SOCIAL_GUARD_REJECT_SCORE`, `SOCIAL_REPORT_HOLD_THRESHOLD`, `MODERATION_LOG_RETENTION_DAYS`, `MODERATION_LOG_COMPRESS_AFTER_DAYS`, and the existing feature switches (`DISABLED_FEATURES`, `ENABLED_FEATURES`) and `AI_OPENAI__*`.
 
 ## Not built
 
