@@ -545,3 +545,18 @@ def test_no_public_post_means_no_bookmark() -> None:
         )
     ]
     assert activity.make_bookmarks(random.Random(1), [], private, {"p1": "m1"}, 5, NOW) == []
+
+
+def test_a_photo_with_a_verse_and_a_hadith_is_used_most(gazetteer: Gazetteer) -> None:
+    both = Photo(1, "a.jpg", "cat", 1, 1, activity.USES_VERSE_AND_HADITH)
+    verse = Photo(2, "b.jpg", "cat", 1, 1, activity.USES_VERSE_ONLY)
+    hadith = Photo(3, "c.jpg", "cat", 1, 1, activity.USES_HADITH_ONLY)
+    file = generate(gazetteer, [both, verse, hadith])
+    uses = Counter(i.image for i in file.insights)
+    assert uses == {1: 7, 2: 4, 3: 3}
+
+
+def test_the_uses_follow_the_evidence_of_the_insight() -> None:
+    assert cli.max_uses_of({"quran": {"surah": 1}, "hadith": {"number": "1"}}) == 7
+    assert cli.max_uses_of({"quran": {"surah": 1}, "hadith": None}) == 4
+    assert cli.max_uses_of({"quran": None, "hadith": {"number": "1"}}) == 3

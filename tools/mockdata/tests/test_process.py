@@ -922,3 +922,23 @@ def test_main_runs_with_the_settings(tmp_path: Path, monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(process, "load_settings", lambda: "settings")
     assert process.main(["photos", "--folder", str(tmp_path)]) == 0
     assert given == [(PhotoOptions(folder=tmp_path), "settings")]
+
+
+async def test_the_detector_takes_a_few_calls_at_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    running = peak = 0
+
+    async def slow(self: Any, request: Any) -> str:
+        nonlocal running, peak
+        running += 1
+        peak = max(peak, running)
+        await asyncio.sleep(0.01)
+        running -= 1
+        return "done"
+
+    monkeypatch.setattr("src.pipeline.detector.DetectorClient.detect", slow)
+    async with httpx.AsyncClient() as http:
+        detector = process.CappedDetector("http://detector", http, timeout_seconds=1.0, limit=2)
+        results = await asyncio.gather(*(detector.detect(object()) for _ in range(6)))  # type: ignore[arg-type]
+
+    assert list(results) == ["done"] * 6  # type: ignore[comparison-overlap]
+    assert peak == 2

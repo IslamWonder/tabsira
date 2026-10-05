@@ -71,6 +71,8 @@ class Photo:
     category: str
     width: int
     height: int
+    # How many members may share this photo: the more evidence it shows, the more uses.
+    max_uses: int = 7
 
     @property
     def url(self) -> str:

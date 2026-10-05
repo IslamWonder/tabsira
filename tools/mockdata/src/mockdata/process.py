@@ -76,6 +76,7 @@ from src.config import (
 from src.database import dispose_engine, get_engine
 from src.pipeline.detector import DetectorClient
 from src.pipeline.insight.engine import build_engine
+from src.pipeline.schemas import DetectorRequest, DetectorResult
 from src.scans.accept import leaks
 from src.services.moderation_guard import GuardVerdict, OpenAiTextGuard
 
@@ -191,6 +192,21 @@ class Throttled(ModelClient):
     async def moderate_text(self, text: str, *, model: str | None = None) -> ModerationResult:
         async with self._gate:
             return await self._inner.moderate_text(text, model=model)
+
+
+DETECTOR_PARALLEL = 6
+
+
+class CappedDetector(DetectorClient):
+    """The local detector runs on a CPU: it takes fewer calls at once than the model endpoints."""
+
+    def __init__(self, *args: Any, limit: int = DETECTOR_PARALLEL, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._limit = asyncio.Semaphore(limit)
+
+    async def detect(self, request: DetectorRequest) -> DetectorResult:
+        async with self._limit:
+            return await super().detect(request)
 
 
 class AdaptiveGate:
@@ -868,7 +884,7 @@ async def real_services(settings: Settings, parallel: int) -> AsyncIterator[Serv
     gate = asyncio.Semaphore(parallel)
     engine = get_engine()
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_SECONDS) as http:
-        detector = DetectorClient(
+        detector = CappedDetector(
             settings.detector_url, http, timeout_seconds=settings.detector_timeout_seconds
         )
 

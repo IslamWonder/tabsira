@@ -40,6 +40,9 @@ make mock-texts      # the posts' reflections and comments -> texts-library.json
   prefer not to say); handles read like the name. The profile is complete and private, as for
   every member; the e-mail domain is `mock.tabsira.me`. Gender, names, handles and the profile
   come from their own seeded streams, so countries, cities, join dates and refs stay the same.
+- A photo is used by how much evidence its insight shows: up to 7 times with a verse and a hadith,
+  4 with a verse alone, 3 with a hadith alone, and those with both are drawn first.
+- The detector, which runs on a CPU, takes 6 calls at once whatever `--parallel` says.
 - The prolific members have streaks (one insight a day on consecutive days, most still alive).
 - Posts: public or followers-only (only without an atlas entry), with or without photo, with or
   without reflection (`reflect`); followers-only posts take no reaction, save or comment.

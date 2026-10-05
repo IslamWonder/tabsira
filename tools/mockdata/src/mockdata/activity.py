@@ -25,6 +25,9 @@ from mockdata.places import Gazetteer, draw_point
 
 # About seven insights per photo: 150 photos give the 1000 members over a thousand insights.
 MAX_PHOTO_USES = 7
+USES_VERSE_AND_HADITH = MAX_PHOTO_USES
+USES_VERSE_ONLY = 4
+USES_HADITH_ONLY = 3
 # Draws of a time before a photo's use may fall in a month it was already used in.
 MONTH_TRIES = 6
 SAME_COUNTRY_SHARE = 0.6
@@ -99,7 +102,9 @@ def make_insights(
     now: datetime,
 ) -> list[Insight]:
     """
-    Prolific and quiet members; a photo at most `MAX_PHOTO_USES` times.
+    Prolific and quiet members; a photo at most its own `max_uses` times.
+
+    A photo whose insight shows a verse and a hadith is used most, so those are drawn first.
 
     A photo goes to a country it has not been seen in when one is free, and its uses fall in
     different months when the member's months allow it, so the feed does not repeat itself.
@@ -111,11 +116,12 @@ def make_insights(
     ordered = sorted(photos, key=lambda p: p.id)
     out: list[Insight] = []
     for member in rng.choices(members, weights=weights, k=count):
-        free = [p for p in ordered if uses[p.id] < MAX_PHOTO_USES]
+        free = [p for p in ordered if uses[p.id] < p.max_uses]
         if not free:
             continue
         elsewhere = [p for p in free if member.country not in countries[p.id]]
-        photo = rng.choice(elsewhere or free)
+        pool = elsewhere or free
+        photo = rng.choices(pool, weights=[p.max_uses - uses[p.id] for p in pool])[0]
         uses[photo.id] += 1
         countries[photo.id].add(member.country)
         place = rng.choice(gazetteer.places[member.city_geoname_id])

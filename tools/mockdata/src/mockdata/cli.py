@@ -18,7 +18,7 @@ from typing import Any
 import httpx
 import psycopg
 
-from mockdata import catalogue, library, places
+from mockdata import activity, catalogue, library, places
 from mockdata.activity import Knobs, make_activity
 from mockdata.catalogue import Photo
 from mockdata.members import make_members
@@ -56,6 +56,13 @@ def fetch_photos() -> list[Photo]:
         return catalogue.fetch_catalogue(client)
 
 
+def max_uses_of(body: dict[str, Any]) -> int:
+    """A photo whose insight shows a verse and a hadith is used most, one with a hadith alone least."""
+    if body.get("quran") and body.get("hadith"):
+        return activity.USES_VERSE_AND_HADITH
+    return activity.USES_VERSE_ONLY if body.get("quran") else activity.USES_HADITH_ONLY
+
+
 def library_photos(path: Path) -> tuple[list[Photo], dict[int, dict[str, Any]]]:
     """The photos of the photo library that gave an insight, and their library entries."""
     if not path.exists():
@@ -63,7 +70,14 @@ def library_photos(path: Path) -> tuple[list[Photo], dict[int, dict[str, Any]]]:
         raise SystemExit(message)
     kept = library.kept_photos(library.photos(path))
     photos = [
-        Photo(pid, entry["filename"], entry["category"], entry["width"], entry["height"])
+        Photo(
+            pid,
+            entry["filename"],
+            entry["category"],
+            entry["width"],
+            entry["height"],
+            max_uses_of(entry["insight"]),
+        )
         for pid, entry in kept.items()
     ]
     return photos, kept
