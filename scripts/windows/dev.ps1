@@ -64,8 +64,11 @@ function Start-DevService {
     $errorLog = Join-Path $LogDir "$Name.err.log"
     foreach ($f in $log, $errorLog) { if (Test-Path -LiteralPath $f) { Remove-Item -LiteralPath $f -Force } }
     Write-Log "starting $Name"
+    # Each service gets its own hidden console. uvicorn --reload restarts the API on
+    # Windows by sending CTRL_C_EVENT, which reaches every process of the console:
+    # sharing one, every change under apps/api/src also stopped the web app and the worker.
     $process = Start-Process -FilePath $File -ArgumentList (ConvertTo-ArgumentString $Arguments) -WorkingDirectory $WorkingDirectory `
-        -NoNewWindow -PassThru -RedirectStandardOutput $log -RedirectStandardError $errorLog
+        -WindowStyle Hidden -PassThru -RedirectStandardOutput $log -RedirectStandardError $errorLog
     # Without this, ExitCode stays empty once the process has ended.
     $null = $process.Handle
     [void]$services.Add([pscustomobject]@{
