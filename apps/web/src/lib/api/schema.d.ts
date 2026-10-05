@@ -1886,6 +1886,8 @@ export interface paths {
     /**
      * Keep a copy of a tutorial insight, to complete it and ask about it
      * @description Return the caller's copy of the insight (made once), labelled «مثال موثّق مُعدّ».
+     *
+     *     An account that holds an insight of its own answers 403 `tutorial_closed` (decision 64).
      */
     post: operations['keep_rain_insight_tutorial_rain_insights__slug__post'];
     delete?: never;
@@ -2804,6 +2806,7 @@ export interface components {
       | 'mail_unavailable'
       | 'account_required'
       | 'profile_required'
+      | 'tutorial_closed'
       | 'turnstile_failed'
       | 'UNSUPPORTED_MEDIA_TYPE'
       | 'FEATURE_DISABLED'
@@ -5231,6 +5234,8 @@ export interface components {
       profile_completed: boolean;
       /** Public Full Name */
       public_full_name: boolean;
+      /** Has Own Insight */
+      has_own_insight: boolean;
     };
     /** VerifyEmailIn */
     VerifyEmailIn: {
