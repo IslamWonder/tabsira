@@ -11,6 +11,14 @@ describe('PublicPhoto', () => {
     expect(img).toHaveAttribute('decoding', 'async');
   });
 
+  it('sends no referrer, so another host serving the photo never learns the page', () => {
+    render(<PublicPhoto url="https://placepix.net/id/12/1080/1080" alt="[وصف]" />);
+    expect(screen.getByRole('img', { name: '[وصف]' })).toHaveAttribute(
+      'referrerpolicy',
+      'no-referrer'
+    );
+  });
+
   it('renders nothing without an address, and nothing for one that is not http(s)', () => {
     for (const url of [
       null,

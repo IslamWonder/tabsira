@@ -3,7 +3,9 @@
  * show it: a published public post or a published atlas entry (v2 §19). The API
  * gives an absolute address under the configured public base (`photo_url`) or
  * nothing; a plain `<img>` loads it, lazily, from that host alone, and anything
- * that is not an http(s) address is not rendered at all. Hover changes nothing.
+ * that is not an http(s) address is not rendered at all. The request carries no referrer, so a
+ * photo served by another host (decision 66, placepix.net) never learns which page asked for it.
+ * Hover changes nothing.
  */
 export function PublicPhoto({ url, alt }: { url: string | null; alt: string }) {
   if (url === null || !/^https?:\/\//.test(url)) {
@@ -18,6 +20,7 @@ export function PublicPhoto({ url, alt }: { url: string | null; alt: string }) {
         alt={alt}
         loading="lazy"
         decoding="async"
+        referrerPolicy="no-referrer"
         className="block max-h-[70vh] w-full object-contain"
         data-testid="public-photo"
       />
