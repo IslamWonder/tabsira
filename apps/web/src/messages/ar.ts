@@ -1487,6 +1487,10 @@ export const ar = {
       posts: 'بصائر منشورة',
       noPosts: 'لم ينشر بصيرة بعد.',
       edit: 'عدّل هويتك العامة',
+      /** Sharing a public profile: the system's share dialog on a phone, else the link copied. */
+      shareOwn: 'شارك صفحتك',
+      shareOther: 'شارك هذه الصفحة',
+      shareTitle: (label: string) => `${label} على تبصرة`,
     },
     identity: {
       title: 'هويتك العامة',

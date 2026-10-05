@@ -16,6 +16,7 @@ import { listBlocks, putIdentity, setBlock } from '@/social/api';
 import { cleanHandle, HANDLE_MAX, handleProblem, profilePath } from '@/social/identity';
 import { hasIdentity, setIdentity, useIdentity } from '@/social/identity-store';
 import type { Member } from '@/social/types';
+import { ShareProfile } from './share-profile';
 
 const I = messages.community.identity;
 const B = messages.community.block;
@@ -85,6 +86,9 @@ export function IdentityForm() {
           >
             {I.page}
           </Link>
+        )}
+        {current === null ? null : (
+          <ShareProfile handle={current.handle} label={`@${current.handle}`} own variant="ghost" />
         )}
       </div>
       <SaveStatus state={save.state} />
