@@ -303,6 +303,7 @@ async def test_the_file_is_written_through_the_services(db_session, settings, wo
     assert sorted((c.kind.value, c.version, c.granted) for c in rows) == [
         ("photo_storage", settings.privacy_version, True),
         ("privacy", settings.privacy_version, True),
+        ("public_country", settings.privacy_version, False),
         ("public_full_name", settings.privacy_version, True),
         ("terms", settings.terms_version, True),
     ]
@@ -1042,3 +1043,85 @@ async def test_an_entry_that_resolves_to_another_country_is_left_out(
     assert report.entries == 0
     assert report.skipped["atlas entry resolved outside its member's country"] == 1
     assert await count(db_session, MapEntry) == 0
+
+
+# ─── The declared country (decision 67) ───────────────────────────────────────
+
+
+async def country_answers(db: AsyncSession) -> dict[str, tuple[str | None, bool, list[bool]]]:
+    """Each mock member's declared country, its switch, and the `public_country` rows, by handle."""
+    answers = {}
+    for user in await db.scalars(select(User).where(User.email.endswith("@mock.tabsira.me"))):
+        profile = await db.get(Profile, user.id)
+        rows = await db.scalars(
+            select(Consent.granted)
+            .where(Consent.user_id == user.id, Consent.kind == ConsentKind.PUBLIC_COUNTRY)
+            .order_by(Consent.created_at)
+        )
+        answers[user.handle] = (profile.country, profile.show_country, list(rows))
+    return answers
+
+
+def test_about_seven_members_in_ten_show_their_country_and_the_choice_is_stable():
+    shown = sum(import_mock.shows_country(f"member_{n}") for n in range(1000))
+
+    assert 650 <= shown <= 750
+    assert import_mock.shows_country("Carim_tn") is import_mock.shows_country("carim_TN")
+    assert [import_mock.shows_country(h) for h in ("amal_tn", "bilal_tn", "Carim_tn")] == [
+        False,
+        False,
+        True,
+    ]
+
+
+async def test_every_member_declares_the_files_country_and_answers_the_switch_once(
+    db_session, settings, world
+):
+    data = document()
+    data["members"][1]["country"] = "tn"
+
+    await run(db_session, settings, data)
+    await run(db_session, settings, data)
+
+    assert await country_answers(db_session) == {
+        "amal_tn": ("TN", False, [False]),
+        "bilal_tn": ("TN", False, [False]),
+        "Carim_tn": ("TN", True, [True]),
+    }
+    carim = await db_session.scalar(select(User).where(User.handle == "Carim_tn"))
+    row = await db_session.scalar(
+        select(Consent).where(
+            Consent.user_id == carim.id, Consent.kind == ConsentKind.PUBLIC_COUNTRY
+        )
+    )
+    assert (row.version, row.created_at.isoformat()) == (
+        settings.privacy_version,
+        "2026-08-01T10:00:00+00:00",
+    )
+
+
+async def test_members_imported_before_the_country_get_it_on_the_next_run(
+    db_session, settings, world
+):
+    data = document()
+    for item in data["members"]:
+        item["country"] = None
+    await run(db_session, settings, data)
+    assert {answer[0] for answer in (await country_answers(db_session)).values()} == {None}
+
+    again = await run(db_session, settings, document())
+
+    assert again.members == 0
+    assert (await country_answers(db_session))["Carim_tn"] == ("TN", True, [True])
+
+
+async def test_a_country_geonames_does_not_know_is_reported_and_left_empty(
+    db_session, settings, world
+):
+    data = document()
+    data["members"][0]["country"] = "XX"
+
+    report = await run(db_session, settings, data)
+
+    assert report.skipped["member country unknown to GeoNames"] == 1
+    assert (await country_answers(db_session))["amal_tn"] == (None, False, [])

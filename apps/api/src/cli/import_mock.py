@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import re
 import sys
@@ -115,6 +116,7 @@ from src.schemas.social import clean_text
 from src.services import (
     atlas_service,
     completion_service,
+    geo_service,
     legal_service,
     orphan_service,
     photo_service,
@@ -148,6 +150,9 @@ CHUNK = 1000
 MOCK_PASSWORD = "tabsira"  # noqa: S105
 # The profile form is filled a few minutes after the account is made.
 PROFILE_DELAY = timedelta(minutes=3)
+# About seven members in ten show their country (decision 67). The choice is read from the handle,
+# so the same file always gives the same answer and needs no field of its own.
+SHOW_COUNTRY_PERCENT = 70
 TEMPLATE_DATABASE = "tabsira_template"
 SCHEME_S3 = "s3"
 
@@ -671,6 +676,51 @@ async def _add_member(
     return user
 
 
+def shows_country(handle: str) -> bool:
+    """Whether a mock member shows their country: a stable hash of the handle, about 70 %."""
+    digest = hashlib.sha256(handle.lower().encode()).digest()
+    return int.from_bytes(digest[:4], "big") % 100 < SHOW_COUNTRY_PERCENT
+
+
+async def _declare_country(
+    db: AsyncSession, settings: Settings, user: User, member: MemberIn, labels: dict[str, str]
+) -> bool:
+    """
+    Declare the member's country, and answer its public switch, as the profile form does, once.
+
+    A member who already answered the switch is left as they are, so a second run changes nothing
+    and a member imported before decision 67 is completed. False when GeoNames does not know the
+    file's code: the member keeps no country.
+    """
+    if member.country is None:
+        return True
+    answered = await db.scalar(
+        select(Consent.id).where(
+            Consent.user_id == user.id, Consent.kind == ConsentKind.PUBLIC_COUNTRY
+        )
+    )
+    if answered is not None:
+        return True
+    code = member.country.upper()
+    if code not in labels:
+        return False
+    shown = shows_country(member.handle)
+    profile = await profile_service.ensure_profile(db, user.id)
+    profile.country = code
+    profile.show_country = shown
+    db.add(
+        Consent(
+            user_id=user.id,
+            kind=ConsentKind.PUBLIC_COUNTRY,
+            version=settings.privacy_version,
+            granted=shown,
+            created_at=member.joined_at,
+        )
+    )
+    await db.flush()
+    return True
+
+
 async def _add_insight(
     db: AsyncSession, user: User, item: InsightIn, image: ImageIn, body: InsightBodyIn
 ) -> Insight:
@@ -857,6 +907,7 @@ async def _members(run: _Run) -> None:
     password_hash = await asyncio.to_thread(
         security.hash_password, MOCK_PASSWORD, run.settings.password_bcrypt_rounds
     )
+    labels = await geo_service.country_labels(run.db)
     for member in run.data.members:
         name = member.handle.lower()
         if name in existing:
@@ -872,6 +923,11 @@ async def _members(run: _Run) -> None:
             taken.add(name)
             run.created.add(member.ref)
             run.report.members += 1
+        user = run.users.get(member.ref)
+        if user is not None and not await _declare_country(
+            run.db, run.settings, user, member, labels
+        ):
+            run.report.skip("member country unknown to GeoNames")
 
 
 async def _insights(run: _Run) -> None:
