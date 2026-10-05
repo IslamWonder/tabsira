@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.geo.privacy import approximate
 from src.models import HadithClassification, MapCapturePoint, MapEntry
 from src.owner import Owner
+from src.schemas.atlas import CapturePointIn
 from src.scripture.rulings import RulingInput, find_hadith, record_ruling
 from src.scripture.text import sha256_hex
 from src.services import atlas_service, sitemap_service
@@ -778,3 +779,18 @@ async def test_a_place_page_whose_entries_lost_their_label_is_not_found(
 
     assert response.status_code == 404
     assert_public(response)
+
+
+async def test_placing_without_a_photo_store_keeps_the_entry_and_touches_no_copy(
+    db_session, make_member, make_insight, make_settings, world
+):
+    author = await make_member("author")
+    insight_id = await _insight(db_session, author)
+    body = CapturePointIn(latitude=EXACT[0], longitude=EXACT[1], source="device_capture")
+
+    result = await atlas_service.place(
+        db_session, make_settings(), author.user, insight_id, body, photos=None
+    )
+
+    assert result.status.value == "draft"
+    assert (result.capture.latitude, result.capture.longitude) == EXACT

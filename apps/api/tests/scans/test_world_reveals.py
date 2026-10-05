@@ -436,6 +436,7 @@ def test_the_released_layout_lays_out_every_region_and_never_changes():
         (lambda d: d["regions"][0]["slots"].append([0.5, 0.5]), "zip"),
         (lambda d: d["regions"][0].__setitem__("theme", "fire"), "theme"),
         (lambda d: d["regions"][0].__setitem__("slots", []), "at least 1"),
+        (lambda d: d["regions"][0].__setitem__("slots", "none"), "valid list"),
     ],
 )
 def test_a_broken_layout_is_refused(change, reason):
@@ -494,3 +495,95 @@ async def test_an_expired_guest_goes_with_its_reveals(browser, store, flow_setti
         await db.commit()
 
         assert (await db.scalars(select(WorldReveal))).all() == []
+
+
+async def learned_long_ago(
+    store, owner: Owner, insight_ids: list[str], place_id: int | None = None
+):
+    """Mark insights completed with no reveal made, as before reveals existed."""
+    async with store() as db:
+        await db.execute(
+            update(Insight)
+            .where(Insight.id.in_([int(one) for one in insight_ids]))
+            .values(completed_at=clock.utcnow(), place_id=place_id)
+        )
+        await db.commit()
+
+
+async def test_two_old_insights_of_one_concept_reveal_it_once(browser, store, flow_settings):
+    owner = await as_guest(browser, store, flow_settings)
+    first = await kept(store, owner)
+    second = await kept(store, owner)
+    await learned_long_ago(store, owner, [first, second])
+
+    world = (await browser.get("/world")).json()
+
+    assert [item["region_id"] for item in world["reveals"]] == ["T01"]
+    async with store() as db:
+        assert len((await db.scalars(select(WorldReveal))).all()) == 1
+
+
+async def test_an_old_insight_whose_place_was_made_meanwhile_uses_that_place(
+    browser, store, flow_settings, monkeypatch
+):
+    owner = await as_guest(browser, store, flow_settings)
+    old = await kept(store, owner)
+    async with store() as db:
+        place = WorldPlace(**owner.columns(), region_id="T01", regions_version="1.0")
+        db.add(place)
+        await db.commit()
+        place_id = place.id
+    await learned_long_ago(store, owner, [old], place_id)
+
+    # The place is made by another request after this one listed the owner's places.
+    async def no_places(db, owner):
+        return []
+
+    monkeypatch.setattr(world_service, "_places", no_places)
+
+    assert await _ensure(store, owner) is True
+
+    async with store() as db:
+        reveal = (await db.scalars(select(WorldReveal))).one()
+        assert reveal.place_id == place_id
+
+
+async def _ensure(store, owner: Owner) -> bool:
+    async with store() as db:
+        made = await world_service.ensure_reveals(db, owner)
+        await db.commit()
+        return made
+
+
+async def test_a_concept_revealed_by_another_request_meanwhile_counts_as_not_made(
+    browser, store, flow_settings, monkeypatch
+):
+    owner = await as_guest(browser, store, flow_settings)
+    old = await kept(store, owner)
+    await learned_long_ago(store, owner, [old])
+    real = world_service.reveal_concept
+
+    async def after_a_rival(db, owner, insight, place):
+        # Another request commits this concept's reveal between the read and the write.
+        db.add(
+            WorldReveal(
+                **owner.columns(),
+                insight_id=insight.id,
+                place_id=place.id,
+                concept_key=world_service.concept_key(insight),
+                region_id=place.region_id,
+                layout_version=load_layout().version,
+                slot=0,
+                theme="water",
+                x=0.5,
+                y=0.5,
+                radius=0.1,
+                learned_at=clock.utcnow(),
+            )
+        )
+        await db.flush()
+        return await real(db, owner, insight, place)
+
+    monkeypatch.setattr(world_service, "reveal_concept", after_a_rival)
+
+    assert await _ensure(store, owner) is False

@@ -187,3 +187,18 @@ async def test_the_route_says_503_when_the_bucket_does_not_answer(
 
     assert response.status_code == 503
     assert response.json()["error"] == "STORAGE_UNAVAILABLE"
+
+
+async def test_the_store_is_built_once_and_shared_by_the_next_requests(
+    make_settings: Callable[..., Settings], tmp_path: Path
+) -> None:
+    local_file(tmp_path, "E013")
+    app = create_app(make_settings(local_media_dir=str(tmp_path)))
+    transport = ASGITransport(app=app, client=("203.0.113.5", 4000))
+    async with AsyncClient(transport=transport, base_url="https://api.tabsira.test") as http:
+        await http.get("/sounds/ontology/E013")
+        built = app.state.sound_store
+        again = await http.get("/sounds/ontology/E013")
+
+    assert again.content == MP3
+    assert app.state.sound_store is built
