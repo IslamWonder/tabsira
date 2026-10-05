@@ -13,6 +13,7 @@ import {
   stopSound,
   unlockAudio,
   VOLUME,
+  WAKE_WAIT_MS,
 } from './player';
 
 /** A gain parameter that records what was scheduled on it. */
@@ -51,6 +52,8 @@ class FakeSource extends EventTarget {
 class FakeContext {
   static made: FakeContext[] = [];
   static startState: AudioContextState = 'running';
+  /** A browser that leaves a wake without a tap unanswered (iOS after the camera, Chrome with no gesture). */
+  static hold = false;
   state: AudioContextState = FakeContext.startState;
   currentTime = 10;
   destination = {};
@@ -58,6 +61,9 @@ class FakeContext {
   gains: { gain: FakeParam; connect: ReturnType<typeof vi.fn> }[] = [];
   decodeAudioData = vi.fn(async () => ({ duration: 3 }));
   resume = vi.fn(async () => {
+    if (FakeContext.hold) {
+      return new Promise<void>(() => undefined);
+    }
     this.state = 'running';
   });
   constructor() {
@@ -97,6 +103,7 @@ beforeEach(() => {
   resetAudio();
   FakeContext.made = [];
   FakeContext.startState = 'running';
+  FakeContext.hold = false;
   window.localStorage.clear();
   vi.stubGlobal('AudioContext', FakeContext);
 });
@@ -317,6 +324,95 @@ describe('stopping and unlocking', () => {
     unlockAudio();
     await Promise.resolve();
     expect(context().resume).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps a sound the browser holds, and plays it on the next tap', async () => {
+    armAudioUnlock();
+    serve(mp3());
+    FakeContext.startState = 'suspended';
+    FakeContext.hold = true;
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const asked = loopSound('/sounds/a');
+    await vi.advanceTimersByTimeAsync(WAKE_WAIT_MS);
+    await asked;
+    vi.useRealTimers();
+    // Not waited for forever, and nothing played yet.
+    expect(played()).toHaveLength(0);
+
+    FakeContext.hold = false;
+    window.dispatchEvent(new Event('touchend'));
+    await vi.waitFor(() => expect(played()).toHaveLength(1));
+    expect(played()[0]?.loop).toBe(true);
+    // Played once: a later tap does not start it again.
+    window.dispatchEvent(new Event('pointerdown'));
+    await Promise.resolve();
+    expect(played()).toHaveLength(1);
+  });
+
+  it('drops a held sound when the run ends, the sound stops or is turned off before the tap', async () => {
+    armAudioUnlock();
+    serve(mp3());
+    const hold = async (path: string) => {
+      FakeContext.hold = true;
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const asked = loopSound(path);
+      await vi.advanceTimersByTimeAsync(WAKE_WAIT_MS);
+      await asked;
+      vi.useRealTimers();
+      FakeContext.hold = false;
+    };
+    FakeContext.startState = 'suspended';
+
+    await hold('/sounds/a');
+    endLoop();
+    window.dispatchEvent(new Event('pointerdown'));
+    await Promise.resolve();
+    expect(played()).toHaveLength(0);
+
+    context().state = 'suspended';
+    await hold('/sounds/b');
+    stopSound();
+    window.dispatchEvent(new Event('pointerdown'));
+    await Promise.resolve();
+    expect(played()).toHaveLength(0);
+
+    context().state = 'suspended';
+    await hold('/sounds/c');
+    setSoundEnabled(false);
+    window.dispatchEvent(new Event('pointerdown'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(played()).toHaveLength(0);
+  });
+
+  it('holds a sound whose wake the browser refuses, and forgets one stopped while waking', async () => {
+    armAudioUnlock();
+    serve(mp3());
+    FakeContext.startState = 'suspended';
+    await loopSound('/sounds/a').then(
+      () => undefined,
+      () => undefined
+    );
+    // A refused wake: the sound waits for the tap instead of failing.
+    context().state = 'suspended';
+    context().resume.mockRejectedValueOnce(new Error('not allowed'));
+    await loopSound('/sounds/b');
+    expect(played()).toHaveLength(1);
+
+    // Stopped while the context was still asked to wake: nothing waits.
+    context().state = 'suspended';
+    FakeContext.hold = true;
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const asked = loopSound('/sounds/c');
+    stopSound();
+    await vi.advanceTimersByTimeAsync(WAKE_WAIT_MS);
+    await asked;
+    vi.useRealTimers();
+    FakeContext.hold = false;
+    window.dispatchEvent(new Event('pointerdown'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(
+      context().sources.filter((source) => source.started !== null && source.loop)
+    ).toHaveLength(1);
   });
 
   it('fades the sound out when the page is hidden', async () => {

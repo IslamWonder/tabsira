@@ -12,6 +12,13 @@ import { readSoundEnabled, setSoundEnabled } from '@/preferences/sound';
  * end of a loop (`endLoop`), never in the middle of one. It fades in, fades
  * out before it ends, and fades out when stopped or when the page is hidden:
  * nothing starts or ends with a click.
+ *
+ * A phone hides the page while its camera or its photo picker is open, and the
+ * browser then holds the audio (iOS «interrupts» the context) until the next
+ * tap. A sound that arrives while the audio is held is therefore not lost: it
+ * waits, and the next tap or key anywhere on the page starts it, unless the run
+ * ended or the sound was turned off meanwhile. A wake that the browser leaves
+ * unanswered is never awaited for more than WAKE_WAIT_MS.
  */
 
 export const VOLUME = 0.6;
@@ -22,6 +29,8 @@ export const STOP_FADE = 0.25;
 /** Seconds: a loop that would end sooner than this once the scan ends is played once more. */
 export const LAST_LOOP_MIN = 2;
 const KEPT_SOUNDS = 8;
+/** Milliseconds a sleeping context may take to wake before its sound waits for the next tap. */
+export const WAKE_WAIT_MS = 400;
 
 type AudioContextClass = typeof AudioContext;
 
@@ -40,6 +49,8 @@ let current: Playing | null = null;
 let generation = 0;
 let armed = false;
 const decoded = new Map<string, AudioBuffer>();
+/** A sound the browser would not let start yet, and the run it belongs to. */
+let pending: { path: string; generation: number } | null = null;
 
 function contextClass(): AudioContextClass | null {
   const scope = window as unknown as {
@@ -58,20 +69,30 @@ function audioContext(): AudioContext | null {
   return context;
 }
 
-/** Inside a tap or a key press: wakes the audio context so later sounds may play. */
+/**
+ * Inside a tap or a key press: wakes the audio context so later sounds may play,
+ * and starts the sound that was waiting for this tap, if its run still asks for it.
+ */
 export function unlockAudio(): void {
   const audio = audioContext();
-  if (audio === null || audio.state === 'running') {
+  if (audio === null) {
     return;
   }
-  void audio.resume().catch(() => {
-    // Still locked: the next tap tries again.
-  });
-  // Older Safari unlocks only once something has played inside the gesture: one silent sample.
-  const silence = audio.createBufferSource();
-  silence.buffer = audio.createBuffer(1, 1, 22050);
-  silence.connect(audio.destination);
-  silence.start(0);
+  const waiting = pending;
+  pending = null;
+  if (audio.state !== 'running') {
+    void audio.resume().catch(() => {
+      // Still locked: the next tap tries again.
+    });
+    // Older Safari unlocks only once something has played inside the gesture: one silent sample.
+    const silence = audio.createBufferSource();
+    silence.buffer = audio.createBuffer(1, 1, 22050);
+    silence.connect(audio.destination);
+    silence.start(0);
+  }
+  if (waiting !== null && waiting.generation === generation) {
+    void loopSound(waiting.path);
+  }
 }
 
 /** Listens for the first taps and keys of the visit, and fades the sound out when the page is hidden. */
@@ -93,6 +114,7 @@ export function armAudioUnlock(): void {
 /** Fades the playing sound out and stops it; a no-op when nothing plays. */
 export function stopSound(): void {
   generation += 1;
+  pending = null;
   if (current === null || context === null) {
     return;
   }
@@ -107,6 +129,20 @@ export function stopSound(): void {
   } catch {
     // Already stopped.
   }
+}
+
+/** Asks a sleeping context to wake, for WAKE_WAIT_MS at most; true when it runs. */
+async function wake(audio: AudioContext): Promise<boolean> {
+  if (audio.state === 'running') {
+    return true;
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, WAKE_WAIT_MS);
+  });
+  await Promise.race([audio.resume().catch(() => undefined), late]);
+  clearTimeout(timer);
+  return (audio.state as AudioContextState) === 'running';
 }
 
 async function bufferFor(audio: AudioContext, path: string): Promise<AudioBuffer | null> {
@@ -143,8 +179,12 @@ export async function loopSound(path: string): Promise<void> {
     return;
   }
   try {
-    if (audio.state !== 'running') {
-      await audio.resume();
+    if (!(await wake(audio))) {
+      // Held by the browser (the page was hidden by the camera, or no tap yet): the next tap plays it.
+      if (asked === generation) {
+        pending = { path, generation: asked };
+      }
+      return;
     }
     const buffer = await bufferFor(audio, path);
     if (
@@ -186,6 +226,7 @@ export async function loopSound(path: string): Promise<void> {
  */
 export function endLoop(): void {
   generation += 1;
+  pending = null;
   if (current === null || context === null || current.ending) {
     return;
   }
@@ -218,5 +259,6 @@ export function resetAudio(): void {
   current = null;
   generation = 0;
   armed = false;
+  pending = null;
   decoded.clear();
 }
