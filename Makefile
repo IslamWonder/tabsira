@@ -7,8 +7,7 @@
 .PHONY: help install dev migrate data test coverage lint format eval smoke benchmark up security audit stats mock-data mock-import mock-clean
 
 help: ## List the targets
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-12s %s
-", $$1, $$2 }'
+	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-12s %s\n", $$1, $$2 }'
 
 install: ## All dependencies: web, api, vision, git hooks
 	@bash scripts/install.sh
