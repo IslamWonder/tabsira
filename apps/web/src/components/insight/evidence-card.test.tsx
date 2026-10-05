@@ -29,14 +29,7 @@ function utf8(text: string) {
 
 describe('EvidenceCard, Quran', () => {
   function renderQuran() {
-    render(
-      <EvidenceCard
-        variant="quran"
-        text={VERSE}
-        reference="[السورة · الآية]"
-        sourceHref="https://quranpedia.net/"
-      />
-    );
+    render(<EvidenceCard variant="quran" text={VERSE} reference="[السورة · الآية]" />);
     return screen.getByRole('article', { name: 'القرآن' });
   }
 
@@ -60,29 +53,17 @@ describe('EvidenceCard, Quran', () => {
     expect(paragraph).toHaveAttribute('lang', 'ar');
   });
 
-  it('shows its reference and opens the source in a new tab', () => {
+  it('shows its reference and no link', () => {
     const card = renderQuran();
     expect(within(card).getByText('[السورة · الآية]')).toBeInTheDocument();
-    const link = within(card).getByRole('link', { name: /افتح في قرآنبيديا/ });
-    expect(link).toHaveAttribute('href', 'https://quranpedia.net/');
-    expect(link).toHaveAttribute('target', '_blank');
-    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-    expect(within(card).queryByRole('link', { name: /الدرر/ })).toBeNull();
+    expect(within(card).queryByRole('link')).toBeNull();
     expect(within(card).getByRole('heading', { level: 2 })).toHaveTextContent('القرآن');
   });
 });
 
 describe('EvidenceCard, verified', () => {
   it('says the text matched its source only when the API says so', () => {
-    render(
-      <EvidenceCard
-        variant="quran"
-        verified
-        text={VERSE}
-        reference="[السورة · الآية]"
-        sourceHref="https://quranpedia.net/"
-      />
-    );
+    render(<EvidenceCard variant="quran" verified text={VERSE} reference="[السورة · الآية]" />);
     expect(screen.getByText('نص موثّق من مصدره')).toBeInTheDocument();
   });
 });

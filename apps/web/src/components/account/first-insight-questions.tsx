@@ -13,19 +13,22 @@ import { ProfileQuestions } from './profile-questions';
 export interface FirstInsightQuestionsProps {
   /** How many of the three to ask (PROFILE_QUESTIONS_MAX, 0 to 3). */
   max: number;
+  /** Whether this insight is the person's first: a guest is asked on that one only. */
+  firstTime: boolean;
 }
 
 type Keeper = 'account' | 'device';
 
 /**
- * The optional questions, in the journey: after the done step on a first insight only
- * (master prompt v2 §4.7, §5). An account is asked when its profile says the
- * questions were never offered; a guest, when this device has no record of
- * them. Each answer or skip marks them asked, so a returning person finds
+ * The optional questions, in the journey: after the done step (master prompt v2
+ * §4.7, §5). A guest is asked on a first insight only, when this device has no
+ * record of them. An account is asked after any insight while its profile says
+ * the questions were never offered, so one created after its first insights
+ * (a guest's insights moved in, another device) still gets them once. Each answer or skip marks them asked, so a returning person finds
  * nothing to answer (§4.9). Nothing here stops the journey: the panel is
  * silent until it knows whether to ask, and absent when it should not.
  */
-export function FirstInsightQuestions({ max }: FirstInsightQuestionsProps) {
+export function FirstInsightQuestions({ max, firstTime }: FirstInsightQuestionsProps) {
   const session = useSession();
   const [keeper, setKeeper] = useState<Keeper | null>(null);
 
@@ -34,7 +37,7 @@ export function FirstInsightQuestions({ max }: FirstInsightQuestionsProps) {
       return;
     }
     if (session.status === 'guest') {
-      if (!deviceQuestionsAsked()) {
+      if (firstTime && !deviceQuestionsAsked()) {
         setKeeper('device');
       }
       return;
@@ -48,7 +51,7 @@ export function FirstInsightQuestions({ max }: FirstInsightQuestionsProps) {
     return () => {
       cancelled = true;
     };
-  }, [max, session.status]);
+  }, [max, firstTime, session.status]);
 
   if (keeper === null) {
     return null;

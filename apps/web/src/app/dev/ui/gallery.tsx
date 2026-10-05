@@ -112,7 +112,6 @@ function QuranSample() {
       headingLevel={3}
       text={P.quranText}
       reference={P.quranReference}
-      sourceHref="https://quranpedia.net/"
     />
   );
 }

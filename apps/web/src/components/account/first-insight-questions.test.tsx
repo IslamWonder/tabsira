@@ -17,7 +17,7 @@ beforeEach(() => {
 describe('FirstInsightQuestions: a guest', () => {
   it('is asked once, keeps the answers on the device, and is not asked again', async () => {
     setGuest();
-    const { unmount } = render(<FirstInsightQuestions max={3} />);
+    const { unmount } = render(<FirstInsightQuestions max={3} firstTime />);
     expect(await screen.findByRole('heading', { name: TITLE })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('checkbox', { name: 'التفكر' }));
     await userEvent.click(screen.getByRole('button', { name: 'احفظ وتابع' }));
@@ -26,13 +26,13 @@ describe('FirstInsightQuestions: a guest', () => {
     expect(screen.getByRole('status')).toHaveTextContent('شكرًا لك');
     expect(readDeviceAnswers()).toEqual({ goals: ['reflection'] });
     unmount();
-    const { container } = render(<FirstInsightQuestions max={3} />);
+    const { container } = render(<FirstInsightQuestions max={3} firstTime />);
     await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
 
   it('skipping them all keeps every answer unknown and marks them asked', async () => {
     setGuest();
-    render(<FirstInsightQuestions max={3} />);
+    render(<FirstInsightQuestions max={3} firstTime />);
     await userEvent.click(await screen.findByRole('button', { name: 'تخطَّ الأسئلة كلها' }));
     expect(readDeviceAnswers()).toEqual({});
   });
@@ -40,12 +40,18 @@ describe('FirstInsightQuestions: a guest', () => {
   it('asks nothing when the device already says they were asked, or when the setting is zero', () => {
     setGuest();
     markDeviceQuestionsAsked();
-    const first = render(<FirstInsightQuestions max={3} />);
+    const first = render(<FirstInsightQuestions max={3} firstTime />);
     expect(first.container).toBeEmptyDOMElement();
     first.unmount();
     window.localStorage.clear();
-    const second = render(<FirstInsightQuestions max={0} />);
+    const second = render(<FirstInsightQuestions max={0} firstTime />);
     expect(second.container).toBeEmptyDOMElement();
+  });
+
+  it('is not asked on a later insight, even when this device never asked', () => {
+    setGuest();
+    const { container } = render(<FirstInsightQuestions max={3} firstTime={false} />);
+    expect(container).toBeEmptyDOMElement();
   });
 });
 
@@ -56,7 +62,7 @@ describe('FirstInsightQuestions: an account', () => {
       'GET /profile': { body: PROFILE },
       'PATCH /profile': { body: { ...PROFILE, questions_asked: true } },
     });
-    render(<FirstInsightQuestions max={2} />);
+    render(<FirstInsightQuestions max={2} firstTime />);
     expect(await screen.findByRole('heading', { name: TITLE })).toBeInTheDocument();
     expect(screen.getByText('السؤال 1 من 2')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('checkbox', { name: 'البحث' }));
@@ -71,19 +77,26 @@ describe('FirstInsightQuestions: an account', () => {
     expect(readDeviceAnswers()).toBeNull();
   });
 
+  it('is asked on a later insight too while the profile was never asked', async () => {
+    setSignedIn(USER);
+    mockApi({ 'GET /profile': { body: PROFILE } });
+    render(<FirstInsightQuestions max={3} firstTime={false} />);
+    expect(await screen.findByRole('heading', { name: TITLE })).toBeInTheDocument();
+  });
+
   it('asks nothing when the profile says they were asked, or cannot be read', async () => {
     setSignedIn(USER);
     mockApi({ 'GET /profile': { body: { ...PROFILE, questions_asked: true } } });
-    const asked = render(<FirstInsightQuestions max={3} />);
+    const asked = render(<FirstInsightQuestions max={3} firstTime />);
     await waitFor(() => expect(asked.container).toBeEmptyDOMElement());
     asked.unmount();
     mockApi({ 'GET /profile': 'network-error' });
-    const unread = render(<FirstInsightQuestions max={3} />);
+    const unread = render(<FirstInsightQuestions max={3} firstTime />);
     await waitFor(() => expect(unread.container).toBeEmptyDOMElement());
   });
 
   it('stays silent while the session is unknown', () => {
-    const { container } = render(<FirstInsightQuestions max={3} />);
+    const { container } = render(<FirstInsightQuestions max={3} firstTime />);
     expect(container).toBeEmptyDOMElement();
   });
 });

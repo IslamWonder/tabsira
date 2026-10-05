@@ -44,7 +44,6 @@ export function InsightEvidence({
         headingLevel={headingLevel}
         text={verse.text}
         reference={messages.insightPage.verseReference(verse.surah_name, verse.ayah)}
-        sourceHref={verse.links.quranpedia}
         verified={verse.status === 'verified_cached'}
       />
     );

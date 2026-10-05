@@ -256,7 +256,6 @@ export const ar = {
     quran: 'القرآن',
     sunnah: 'السنة',
     openSource: 'افتح المصدر',
-    openQuranpedia: 'افتح في قرآنبيديا',
     verified: 'نص موثّق من مصدره',
     verifyDorar: 'تحقق في الدرر',
     ruling: (ruling: string) => `حكم الدرر: ${ruling}`,
