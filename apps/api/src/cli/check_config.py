@@ -35,6 +35,7 @@ from src.config import (
     format_validation_error,
     load_settings,
 )
+from src.features import FeatureFlag
 from src.storage.notice import storage_notice
 from src.storage.probe import StorageProbeError, probe_storage
 
@@ -76,8 +77,8 @@ def _check_database(settings: Settings) -> str | None:
 
 def report(settings: Settings) -> list[str]:
     """Return the lines that describe a valid configuration."""
-    flags = sorted(name for name in Settings.model_fields if name.startswith("feature_"))
-    on = [name.removeprefix("feature_") for name in flags if getattr(settings, name)]
+    on = sorted(flag.value for flag in settings.features)
+    off = sorted(flag.value for flag in FeatureFlag if flag not in settings.features)
     key_state = "set" if settings.ai.api_key.get_secret_value() else "NOT set"
     lines = [
         f"environment: {settings.environment.value}",
@@ -87,6 +88,7 @@ def report(settings: Settings) -> list[str]:
         f"test database: {'set' if settings.test_database_url else 'not set'}",
         f"ai provider: {settings.ai_provider.value} (api key {key_state})",
         f"features on: {', '.join(on) or 'none'}",
+        f"features off: {', '.join(off) or 'none'}",
         f"photos: {settings.resolved_storage_backend}",
     ]
     notice = storage_notice(settings)

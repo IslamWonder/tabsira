@@ -14,6 +14,7 @@ from src.config import Settings, get_settings
 from src.database import dispose_engine
 from src.error_tracking import WebReporter, init_error_tracking, shutdown_error_tracking
 from src.errors import ErrorResponse, register_error_handlers
+from src.features import FeatureFlag
 from src.middleware.admin_scope import AdminHostMiddleware, NoCorsForAdminMiddleware
 from src.middleware.body_limit import BodyLimitMiddleware
 from src.middleware.no_store import NoStoreMiddleware
@@ -29,6 +30,7 @@ from src.routers import (
     client_errors,
     comments,
     cookie_consent,
+    features,
     feed,
     geo,
     google_auth,
@@ -82,6 +84,7 @@ OPENAPI_TAGS = [
         "name": "atlas",
         "description": "«أطلس بصائر العالم»: insights placed on the map at approximate points.",
     },
+    {"name": "features", "description": "The feature switches in force (decision 63)."},
     {"name": "scripture", "description": "Quran verses and hadith, read-only, exactly as stored."},
     {"name": "sitemap", "description": "The public pages for the web app's sitemaps."},
     {"name": "support", "description": "The support form: an e-mail to the team, nothing stored."},
@@ -239,6 +242,7 @@ def create_app(
     )
 
     app.include_router(health.router)
+    app.include_router(features.router)
     app.include_router(auth.router)
     app.include_router(auth_email.router)
     app.include_router(google_auth.router)
@@ -267,7 +271,7 @@ def create_app(
     app.include_router(tutorial.router)
     app.include_router(sounds.router)
     # The admin area is not mounted at all while its feature flag is off.
-    if settings.feature_admin:
+    if settings.is_enabled(FeatureFlag.ADMIN):
         install_admin(app, settings)
         # Outside everything: a request for /admin on any host but the admin's is a plain 404
         # before any other layer, the admin included, sees it.

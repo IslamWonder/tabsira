@@ -105,7 +105,10 @@ def test_each_reason_alone_refuses(values, reason, make_settings):
 
 
 def test_a_switched_off_feature_refuses_everyone(make_settings):
-    assert facts().refusal(make_settings(feature_photo_storage=False)) is PhotoRefusal.FEATURE_OFF
+    assert (
+        facts().refusal(make_settings(disabled_features="photo_storage"))
+        is PhotoRefusal.FEATURE_OFF
+    )
 
 
 def test_when_several_reasons_hold_the_first_in_order_is_given(make_settings):
@@ -117,7 +120,8 @@ def test_when_several_reasons_hold_the_first_in_order_is_given(make_settings):
     )
 
     assert (
-        everything.refusal(make_settings(feature_photo_storage=False)) is PhotoRefusal.FEATURE_OFF
+        everything.refusal(make_settings(disabled_features="photo_storage"))
+        is PhotoRefusal.FEATURE_OFF
     )
     assert everything.refusal(make_settings()) is PhotoRefusal.GUEST
     assert (
@@ -157,7 +161,7 @@ async def test_a_refused_photo_is_not_kept_and_the_storage_is_never_asked(
 
 
 async def test_a_photo_is_not_kept_while_the_feature_is_off(make_settings):
-    store = PhotoStore(Untouchable(), make_settings(feature_photo_storage=False))  # type: ignore[arg-type]
+    store = PhotoStore(Untouchable(), make_settings(disabled_features="photo_storage"))  # type: ignore[arg-type]
 
     with pytest.raises(PhotoNotAllowedError) as caught:
         await store.keep(facts(), photo())
@@ -330,9 +334,7 @@ def test_the_store_is_built_from_the_settings(make_settings):
 
 
 def test_an_age_range_given_as_a_plain_string_still_refuses_an_under_13_account():
-    refused = facts(age_range="under_13").refusal(
-        Settings(_env_file=None, feature_photo_storage=True)
-    )
+    refused = facts(age_range="under_13").refusal(Settings(_env_file=None))
 
     assert refused is PhotoRefusal.UNDER_13
 

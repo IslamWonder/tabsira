@@ -11,7 +11,7 @@ from tests.helpers import client_for
 
 
 async def test_the_admin_is_not_mounted_while_its_feature_is_off(make_settings):
-    app = create_app(make_settings(feature_admin=False))
+    app = create_app(make_settings(disabled_features="admin"))
 
     async with client_for(app) as http:
         for path in ("/admin", "/admin/", "/admin/login", "/admin/user/list"):

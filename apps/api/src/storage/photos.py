@@ -4,7 +4,7 @@ What may be kept, and when: the rules of master prompt v2 section 19, in code.
 `Storage` keeps whatever it is given. This module is the only way a photo gets there, and it
 refuses before anything is written when any of these holds (`PhotoRefusal`):
 
-- the feature is switched off (`FEATURE_PHOTO_STORAGE`);
+- the feature is switched off (the `photo_storage` feature);
 - the person is a guest: nothing is kept for someone with no account;
 - the person said they are under 13;
 - the scene is sensitive: it is never kept, never shown back, never published;
@@ -32,6 +32,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from src.config import Settings
+from src.features import FeatureFlag
 from src.models.profile import AgeRange
 from src.services.image_service import ProcessedPhoto
 from src.storage import build_storage
@@ -96,7 +97,7 @@ class PhotoFacts:
 
     def refusal(self, settings: Settings) -> PhotoRefusal | None:
         """Return the first reason the photo may not be kept, or None when it may."""
-        if not settings.feature_photo_storage:
+        if not settings.is_enabled(FeatureFlag.PHOTO_STORAGE):
             return PhotoRefusal.FEATURE_OFF
         if self.owner_id is None:
             return PhotoRefusal.GUEST

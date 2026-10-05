@@ -3,7 +3,7 @@
 
 The owner's routes carry the exact point, to the owner alone. The public routes return the
 published point only, computed on the server, and never a capture point, an accuracy or a
-time of capture (extension §10). Everything sits behind FEATURE_ATLAS.
+time of capture (extension §10). Everything sits behind the atlas feature.
 """
 
 from __future__ import annotations
@@ -21,8 +21,11 @@ from src.deps import (
     PublicMember,
     SettingsDep,
     limited,
+    requires,
 )
-from src.scans.deps import PublicIdPath, feature
+from src.errors import ErrorCode
+from src.features import FeatureFlag
+from src.scans.deps import PublicIdPath
 from src.schemas.atlas import (
     AtlasEntryOut,
     AtlasFeatureCollection,
@@ -35,7 +38,10 @@ from src.services import cursor as cursors
 from src.services.atlas_service import Filters, Window
 from src.services.social_limits import WriteKind
 
-router = APIRouter(tags=["atlas"], dependencies=[Depends(feature("atlas"))])
+router = APIRouter(
+    tags=["atlas"],
+    dependencies=[Depends(requires(FeatureFlag.ATLAS, code=ErrorCode.FEATURE_DISABLED))],
+)
 
 Degrees = Annotated[float, Query(ge=-180, le=180)]
 Latitude = Annotated[float, Query(ge=-90, le=90)]

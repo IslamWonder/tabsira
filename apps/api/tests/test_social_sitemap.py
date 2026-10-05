@@ -132,7 +132,7 @@ async def test_nothing_of_the_network_is_listed_while_its_feature_is_off(
     ann = await make_member("ann")
     guest = await make_member(signed_in=False)
     await publish_post(ann, make_insight)
-    account_app.state.settings = account_settings.model_copy(update={"feature_social": False})
+    account_app.state.settings = account_settings.model_copy(update={"disabled_features": "social"})
 
     index = (await guest.http.get("/sitemap")).json()["sections"]
 

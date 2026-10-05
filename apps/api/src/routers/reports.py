@@ -12,6 +12,7 @@ from src.deps import (
     limited,
     require_social_or_atlas,
 )
+from src.features import FeatureFlag
 from src.schemas.social import ReportIn, ReportOut
 from src.services import report_service
 from src.services.social_limits import WriteKind
@@ -46,8 +47,8 @@ async def report(
         reason=body.reason,
         details=body.details,
         hold_threshold=settings.social_report_hold_threshold,
-        social_on=settings.feature_social,
-        atlas_on=settings.feature_atlas,
+        social_on=settings.is_enabled(FeatureFlag.SOCIAL),
+        atlas_on=settings.is_enabled(FeatureFlag.ATLAS),
         photos=photos,
     )
     await db.commit()

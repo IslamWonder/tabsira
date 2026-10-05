@@ -18,10 +18,12 @@ from src.config import (
     RerankerKind,
     ScanEngine,
     Settings,
+    _LegacyFeatureKeys,
     format_validation_error,
     get_settings,
     load_settings,
 )
+from src.features import FeatureFlag, legacy_advice
 
 PASSWORD = "s3cr3t-pw"
 # A Fernet key: 32 bytes as url-safe base64. Only ever used by these tests.
@@ -77,31 +79,105 @@ def test_development_defaults(make_settings, monkeypatch):
     assert not settings.is_production
 
 
-def test_feature_flags_default_and_can_be_switched(make_settings, monkeypatch):
+def test_features_default_to_on_except_the_off_by_default_ones(make_settings):
     settings = make_settings()
-    flags = {name: getattr(settings, name) for name in Settings.model_fields if "feature_" in name}
 
-    assert set(flags) == {
-        "feature_chat",
-        "feature_world",
-        "feature_treasure",
-        "feature_social",
-        "feature_atlas",
-        "feature_camera_discovery",
-        "feature_camera_anchor",
-        "feature_photo_storage",
-        "feature_canonical_verify",
-        "feature_admin",
-        "feature_dev_inspector",
+    assert settings.disabled_features == settings.enabled_features == ""
+    assert set(FeatureFlag) - settings.features == {
+        FeatureFlag.SOCIAL_COMMENTS,
+        FeatureFlag.CAMERA_ANCHOR,
     }
-    # Anchoring stays off until it is proven on devices; everything else is on.
-    assert [name for name, on in flags.items() if not on] == ["feature_camera_anchor"]
+    assert settings.is_enabled(FeatureFlag.CHAT)
+    assert not settings.is_enabled(FeatureFlag.SOCIAL_COMMENTS)
 
-    monkeypatch.setenv("FEATURE_CHAT", "false")
-    monkeypatch.setenv("FEATURE_CAMERA_ANCHOR", "true")
-    switched = make_settings()
-    assert switched.feature_chat is False
-    assert switched.feature_camera_anchor is True
+
+def test_the_lists_are_trimmed_and_switch_features_from_the_environment(make_settings, monkeypatch):
+    monkeypatch.setenv("DISABLED_FEATURES", " chat , ,world,")
+    monkeypatch.setenv("ENABLED_FEATURES", "camera_anchor")
+
+    settings = make_settings()
+
+    assert not settings.is_enabled(FeatureFlag.CHAT)
+    assert not settings.is_enabled(FeatureFlag.WORLD)
+    assert settings.is_enabled(FeatureFlag.CAMERA_ANCHOR)
+
+
+def test_enabled_wins_over_disabled(make_settings):
+    settings = make_settings(
+        disabled_features="social_comments,chat", enabled_features="social_comments,chat"
+    )
+
+    assert settings.is_enabled(FeatureFlag.SOCIAL_COMMENTS)
+    assert settings.is_enabled(FeatureFlag.CHAT)
+
+
+@pytest.mark.parametrize(
+    ("child", "parent"),
+    [
+        (FeatureFlag.SOCIAL_COMMENTS, FeatureFlag.SOCIAL),
+        (FeatureFlag.ATLAS_SPONSORSHIP, FeatureFlag.ATLAS),
+        (FeatureFlag.CAMERA_ANCHOR, FeatureFlag.CAMERA_DISCOVERY),
+        (FeatureFlag.DEV_INSPECTOR, FeatureFlag.ADMIN),
+    ],
+)
+def test_a_child_is_off_while_its_parent_is_off(make_settings, child, parent):
+    settings = make_settings(disabled_features=parent.value, enabled_features=child.value)
+
+    assert not settings.is_enabled(parent)
+    assert not settings.is_enabled(child)
+    assert make_settings(enabled_features=child.value).is_enabled(child)
+
+
+@pytest.mark.parametrize("key", ["disabled_features", "enabled_features"])
+def test_an_unknown_feature_name_stops_startup_and_lists_the_valid_names(key):
+    message = errors_of(**{key: "chat,socail"})
+
+    assert key.upper() in message
+    assert "socail" in message
+    assert "social_comments" in message
+
+
+def test_a_legacy_feature_key_in_the_environment_is_refused(monkeypatch):
+    monkeypatch.setenv("FEATURE_SOCIAL", "false")
+
+    message = errors_of()
+
+    assert "FEATURE_SOCIAL=false: put social in DISABLED_FEATURES" in message
+
+
+def test_the_legacy_key_source_gives_no_field_of_its_own():
+    source = _LegacyFeatureKeys(Settings)
+
+    assert source.get_field_value(Settings.model_fields["api_port"], "api_port") == (
+        None,
+        "api_port",
+        False,
+    )
+
+
+def test_a_legacy_feature_key_in_the_env_file_is_refused(tmp_path: Path):
+    env_file = tmp_path / ".env"
+    env_file.write_text("feature_atlas=false\nFEATURE_CAMERA_ANCHOR=true\nAPI_PORT=8123\n")
+
+    with pytest.raises(ValidationError) as caught:
+        Settings(_env_file=env_file)
+
+    message = format_validation_error(caught.value)
+    assert "FEATURE_ATLAS=false: put atlas in DISABLED_FEATURES" in message
+    assert "FEATURE_CAMERA_ANCHOR=true: put camera_anchor in ENABLED_FEATURES" in message
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "advice"),
+    [
+        ("FEATURE_CHAT", "true", "remove it, chat is on by default"),
+        ("FEATURE_PUBLIC_PAGES", "false", "put social in DISABLED_FEATURES"),
+        ("FEATURE_SOCIAL_COMMENTS", "false", "remove it, social_comments is off by default"),
+        ("FEATURE_MADE_UP", "true", "names no feature: remove it"),
+    ],
+)
+def test_the_advice_for_a_legacy_key_names_its_replacement(key, value, advice):
+    assert advice in legacy_advice(key, value)
 
 
 def test_ai_defaults_are_what_the_benchmark_measured(make_settings):
@@ -295,14 +371,14 @@ def test_secrets_never_appear_in_repr_or_str(make_settings):
 
 
 def test_settings_are_read_from_a_dotenv_file(tmp_path: Path, monkeypatch):
-    for key in ("ENVIRONMENT", "FEATURE_CHAT"):
+    for key in ("ENVIRONMENT", "DISABLED_FEATURES"):
         monkeypatch.delenv(key, raising=False)
     env_file = tmp_path / ".env"
-    env_file.write_text("FEATURE_CHAT=false\nAPI_PORT=8123\nSOME_OTHER_APP_KEY=ignored\n")
+    env_file.write_text("DISABLED_FEATURES=chat\nAPI_PORT=8123\nSOME_OTHER_APP_KEY=ignored\n")
 
     settings = Settings(_env_file=env_file)
 
-    assert settings.feature_chat is False
+    assert not settings.is_enabled(FeatureFlag.CHAT)
     assert settings.api_port == 8123
 
 
@@ -1036,7 +1112,7 @@ def test_production_accepts_a_real_s3_configuration(make_settings):
 def test_the_admin_settings_have_safe_defaults(make_settings):
     settings = make_settings()
 
-    assert settings.feature_admin is True
+    assert settings.is_enabled(FeatureFlag.ADMIN)
     assert settings.admin_require_two_factor is False
     assert settings.admin_audit_retention_days == 400
     assert settings.admin_audit_compress_after_days == 30
@@ -1074,10 +1150,10 @@ def test_production_refuses_the_admin_without_an_encryption_key_but_not_when_it_
 ):
     without_key = {**PRODUCTION, "admin_totp_encryption_key": ""}
 
-    assert "ADMIN_TOTP_ENCRYPTION_KEY is empty while FEATURE_ADMIN is on" in errors_of(
+    assert "ADMIN_TOTP_ENCRYPTION_KEY is empty while the admin feature is on" in errors_of(
         **without_key
     )
-    assert make_settings(**without_key, feature_admin=False).feature_admin is False
+    assert not make_settings(**without_key, disabled_features="admin").is_enabled(FeatureFlag.ADMIN)
 
 
 def test_the_social_guard_defaults_leave_a_band_for_a_person_to_review(make_settings):

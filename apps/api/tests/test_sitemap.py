@@ -12,6 +12,7 @@ import pytest
 from pydantic import ValidationError
 
 from src.config import Settings
+from src.features import FeatureFlag
 from src.main import create_app
 from src.services import sitemap_service
 from src.services.sitemap_service import (
@@ -196,10 +197,10 @@ async def test_an_unknown_section_and_a_negative_page_are_refused(client):
 @pytest.mark.parametrize(
     ("section", "flag"),
     [
-        ("insights", "feature_world"),
-        ("posts", "feature_social"),
-        ("places", "feature_atlas"),
-        ("profiles", "feature_social"),
+        ("insights", "world"),
+        ("posts", "social"),
+        ("places", "atlas"),
+        ("profiles", "social"),
     ],
 )
 async def test_a_section_whose_feature_is_off_is_not_advertised_and_is_a_404(
@@ -209,7 +210,7 @@ async def test_a_section_whose_feature_is_off_is_not_advertised_and_is_a_404(
         Section(section), [Entry("/x", datetime(2026, 1, 1, tzinfo=UTC))]
     )
 
-    async with client_with(**{flag: False}) as http:
+    async with client_with(disabled_features=flag) as http:
         index = (await http.get("/sitemap")).json()
         gone = await http.get(f"/sitemap/{section}")
 
@@ -234,12 +235,11 @@ async def test_a_section_whose_feature_is_on_is_listed_with_its_pages(client_wit
 def test_a_section_flag_names_a_real_setting_and_the_static_section_has_none():
     assert SECTION_FLAGS[Section.STATIC] is None
     assert set(SECTION_FLAGS) == set(Section)
-    for flag in filter(None, SECTION_FLAGS.values()):
-        assert flag in Settings.model_fields
+    assert all(isinstance(flag, FeatureFlag) for flag in SECTION_FLAGS.values() if flag)
 
 
 def test_the_static_section_is_always_advertised(make_settings):
-    off = make_settings(feature_world=False, feature_social=False, feature_atlas=False)
+    off = make_settings(disabled_features="world,social,atlas")
 
     assert sitemap_service.enabled_sections(off) == [Section.STATIC]
     assert sitemap_service.enabled_sections(make_settings()) == list(Section)

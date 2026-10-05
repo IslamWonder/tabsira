@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Annotated, Any
 
 from fastapi import Depends, Request
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import Settings
 from src.database import get_db
 from src.errors import AppError, ErrorCode
+from src.features import FeatureFlag
 from src.messages import messages_for
 from src.models.user import User
 from src.services import auth_service, legal_service, session_service, turnstile_service
@@ -180,22 +182,29 @@ async def public_member(user: VerifiedUser) -> User:
 PublicMember = Annotated[User, Depends(public_member)]
 
 
-def require_social(settings: SettingsDep) -> None:
-    """Answer 404 for every social route while the network is switched off."""
-    if not settings.feature_social:
-        raise AppError(ErrorCode.NOT_FOUND, "Not found.", status_code=404)
-
-
-def require_social_or_atlas(settings: SettingsDep) -> None:
+def requires(
+    *flags: FeatureFlag, code: ErrorCode = ErrorCode.NOT_FOUND
+) -> Callable[[SettingsDep], None]:
     """
-    Answer 404 while both the network and the atlas are switched off.
+    Return a dependency that answers 404 while none of `flags` is on.
 
-    The public identity and the reports serve both: the atlas publishes under the handle too,
-    and a place on the map is reported through the same route as a post. Nothing else of the
-    network opens with the atlas alone.
+    A feature that is off is absent, not hidden: the answer is the one an unregistered path
+    gets. Settings are read at call time, so a test (or a reload) that changes them is heard.
     """
-    if not (settings.feature_social or settings.feature_atlas):
-        raise AppError(ErrorCode.NOT_FOUND, "Not found.", status_code=404)
+
+    def check(settings: SettingsDep) -> None:
+        if not any(settings.is_enabled(flag) for flag in flags):
+            raise AppError(code, "Not found.", status_code=404)
+
+    return check
+
+
+# The network alone opens posts, feeds and follows. The public identity and the reports serve
+# the atlas too: it publishes under the handle, and a place on the map is reported through the
+# same route as a post. Comments have their own switch (decision 63).
+require_social = requires(FeatureFlag.SOCIAL)
+require_social_or_atlas = requires(FeatureFlag.SOCIAL, FeatureFlag.ATLAS)
+require_comments = requires(FeatureFlag.SOCIAL_COMMENTS)
 
 
 def get_insight_source(request: Request) -> InsightSource:

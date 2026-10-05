@@ -88,7 +88,12 @@ async def file_report(
     With `photos`, an item the reports hold loses the public copy of its photo at once.
     """
     target = await _target(
-        db, reporter, target_type, target_id, social_on=social_on, atlas_on=atlas_on
+        db,
+        reporter,
+        target_type,
+        target_id,
+        social_on=social_on,
+        atlas_on=atlas_on,
     )
     created: int | None = await db.scalar(
         insert(Report)

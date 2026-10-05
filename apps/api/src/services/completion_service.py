@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import clock
 from src.config import Settings
+from src.features import FeatureFlag
 from src.messages import messages_for
 from src.models import Insight, Treasure, WorldPlace, WorldReveal
 from src.owner import Owner
@@ -78,14 +79,14 @@ async def complete(
     if first:
         await _remember(db, owner, insight)
         await photo_service.keep_from_buffer(db, redis, photos, insight)
-        if settings.feature_world:
+        if settings.is_enabled(FeatureFlag.WORLD):
             region = await world_service.region_of(db, insight)
             place, place_created = await world_service.ensure_place(db, owner, region)
             insight.place_id = place.id
             await db.flush()
             reveal, reveal_created = await world_service.reveal_concept(db, owner, insight, place)
             await world_service.record_relations(db, owner, insight, place.id)
-            if settings.feature_treasure:
+            if settings.is_enabled(FeatureFlag.TREASURE):
                 treasure_prepared = await world_service.prepare_treasure(db, owner, insight, place)
         await db.commit()
     else:

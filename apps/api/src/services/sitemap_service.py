@@ -40,6 +40,7 @@ from typing import Protocol
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import Settings
+from src.features import FeatureFlag
 
 log = logging.getLogger("tabsira.sitemap")
 
@@ -56,13 +57,13 @@ class Section(StrEnum):
 
 # The feature flag that switches a section on, or None for one that is always on. A switched-off
 # feature answers 404 on its pages, so its section is not advertised either.
-SECTION_FLAGS: dict[Section, str | None] = {
+SECTION_FLAGS: dict[Section, FeatureFlag | None] = {
     Section.STATIC: None,
     # A public insight is a saved one that its owner made public.
-    Section.INSIGHTS: "feature_world",
-    Section.POSTS: "feature_social",
-    Section.PLACES: "feature_atlas",
-    Section.PROFILES: "feature_social",
+    Section.INSIGHTS: FeatureFlag.WORLD,
+    Section.POSTS: FeatureFlag.SOCIAL,
+    Section.PLACES: FeatureFlag.ATLAS,
+    Section.PROFILES: FeatureFlag.SOCIAL,
 }
 
 
@@ -184,7 +185,7 @@ def enabled_sections(settings: Settings) -> list[Section]:
     return [
         section
         for section in Section
-        if (flag := SECTION_FLAGS[section]) is None or bool(getattr(settings, flag))
+        if (flag := SECTION_FLAGS[section]) is None or settings.is_enabled(flag)
     ]
 
 

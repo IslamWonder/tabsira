@@ -201,7 +201,7 @@ async def test_what_was_learned_before_reveals_is_revealed_without_the_effect(
 ):
     owner = await as_guest(browser, store, flow_settings)
     rain = await kept(store, owner)
-    flow_app.state.settings = make_settings(feature_world=False)
+    flow_app.state.settings = make_settings(disabled_features="world")
     without_world = (await browser.post(f"/insights/{rain}/complete")).json()
     flow_app.state.settings = flow_settings
     # A completion recorded before reveals existed: a place, no reveal.

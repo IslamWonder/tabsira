@@ -163,7 +163,9 @@ async def test_a_guest_s_photo_is_never_kept(browser, store, flow_settings, redi
 async def test_nothing_is_kept_while_the_feature_is_off(
     browser, store, flow_settings, redis, photos, media, flow_app
 ):
-    flow_app.state.settings = flow_settings.model_copy(update={"feature_photo_storage": False})
+    flow_app.state.settings = flow_settings.model_copy(
+        update={"disabled_features": "photo_storage"}
+    )
     flow_app.state.photo_store = PhotoStore(photos.storage, flow_app.state.settings)
     owner = await consenting_account(browser, store)
     insight_id = await scanned_insight(store, redis, flow_settings, owner)

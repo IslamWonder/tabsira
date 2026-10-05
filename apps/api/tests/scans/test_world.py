@@ -251,10 +251,10 @@ async def test_the_world_and_its_treasures_can_be_switched_off(
     await browser.post(f"/insights/{insight_id}/complete")
     moving_clock.advance(days=4)
 
-    flow_app.state.settings = make_settings(feature_treasure=False)
+    flow_app.state.settings = make_settings(disabled_features="treasure")
     no_treasure = (await browser.get("/world")).json()
     reveal = await browser.post(f"/world/treasures/{7_314_159_265_358_979_323}/reveal")
-    flow_app.state.settings = make_settings(feature_world=False)
+    flow_app.state.settings = make_settings(disabled_features="world")
     no_world = await browser.get("/world")
 
     assert no_treasure["places"][0]["treasure"] is None

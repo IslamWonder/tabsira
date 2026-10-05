@@ -14,6 +14,7 @@ import binascii
 import hashlib
 import os
 import re
+from collections.abc import Mapping
 from datetime import timedelta
 from email.utils import parseaddr
 from enum import StrEnum
@@ -32,11 +33,18 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+from pydantic.fields import FieldInfo
+from pydantic_settings import (
+    BaseSettings,
+    NoDecode,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
 from sentry_sdk.utils import BadDsn, Dsn
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 
+from src.features import FeatureFlag, active_flags, legacy_advice, parse_flags
 from src.geo.privacy import DEFAULT_CELL_METERS, MAX_CELL_METERS, MIN_CELL_METERS
 
 # Process variable that replaces the .env lookup: a path to read instead, or an
@@ -463,6 +471,33 @@ def _check_redis_url(value: str) -> str:
     return value.strip()
 
 
+class _LegacyFeatureKeys(PydanticBaseSettingsSource):
+    """
+    A settings source that finds the `FEATURE_*` keys of the earlier scheme.
+
+    The environment and the .env files are read with `extra="ignore"` (the root .env also
+    carries the web app's keys), so a key the model does not know vanishes. These ones must
+    not: production's `FEATURE_SOCIAL=false` would otherwise be dropped and the network
+    would switch on.
+    """
+
+    def __init__(self, settings_cls: type[BaseSettings], *sources: PydanticBaseSettingsSource):
+        super().__init__(settings_cls)
+        found: dict[str, str] = {}
+        for source in sources:
+            variables: Mapping[str, str | None] = getattr(source, "env_vars", {})
+            for key, value in variables.items():
+                if key.lower().startswith("feature_"):
+                    found[key.upper()] = value or ""
+        self._found = found
+
+    def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
+        return None, field_name, False
+
+    def __call__(self) -> dict[str, Any]:
+        return {"legacy_feature_keys": self._found} if self._found else {}
+
+
 class Settings(BaseSettings):
     """Every configuration key of the API, with its development default."""
 
@@ -519,7 +554,7 @@ class Settings(BaseSettings):
     # bcrypt work factor. Tests lower it; production may not go under 12.
     password_bcrypt_rounds: Annotated[int, Field(ge=4, le=16)] = 12
 
-    # Admin area (/admin, decision 14), mounted only while FEATURE_ADMIN is on. The
+    # Admin area (/admin, decision 14), mounted only while the admin feature is on. The
     # second-factor secrets are encrypted at rest with these Fernet keys, comma
     # separated: the first encrypts, every one decrypts, so a key is rotated by putting
     # the new one first. Required in production when the admin is on; elsewhere empty
@@ -586,20 +621,16 @@ class Settings(BaseSettings):
     default_language: str = DEFAULT_LANGUAGE
     supported_languages: Annotated[tuple[str, ...], NoDecode] = (DEFAULT_LANGUAGE,)
 
-    # Feature flags. A feature that is off must not break the core journey.
-    feature_chat: bool = True
-    feature_world: bool = True
-    feature_treasure: bool = True
-    feature_social: bool = True
-    feature_atlas: bool = True
-    feature_camera_discovery: bool = True
-    # Level C of the camera view (anchoring) stays off until it is proven on devices.
-    feature_camera_anchor: bool = False
-    feature_photo_storage: bool = True
-    feature_canonical_verify: bool = True
-    feature_admin: bool = True
-    # The developer panel of v2 §23 (the scan inspector in the admin area); off in production.
-    feature_dev_inspector: bool = True
+    # Feature switches (decision 63): comma-separated names of FeatureFlag. Everything is on
+    # unless named in DISABLED_FEATURES, except the OFF_BY_DEFAULT ones, which are on only when
+    # named in ENABLED_FEATURES. A child is off while its parent is (PARENT). Read them through
+    # `features` and `is_enabled`, never directly.
+    disabled_features: str = ""
+    enabled_features: str = ""
+    # Filled by `_LegacyFeatureKeys` from the environment and the .env files, never by a user:
+    # the FEATURE_* keys of the earlier scheme, refused at load because ignoring them would
+    # switch a feature that production turned off back on.
+    legacy_feature_keys: dict[str, str] = Field(default_factory=dict, exclude=True, repr=False)
 
     # Side, in metres, of the grid cell a public location is rounded to (see
     # src/geo/privacy.py). The limits are the ones that function enforces.
@@ -782,6 +813,42 @@ class Settings(BaseSettings):
     moderation_log_compress_after_days: Annotated[int, Field(ge=1, le=365)] = (
         DEFAULT_MODERATION_COMPRESS_AFTER_DAYS
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Add the source that reports FEATURE_* keys, which `extra="ignore"` would drop."""
+        legacy = _LegacyFeatureKeys(settings_cls, env_settings, dotenv_settings)
+        return (init_settings, env_settings, dotenv_settings, file_secret_settings, legacy)
+
+    @field_validator("disabled_features")
+    @classmethod
+    def _check_disabled_features(cls, value: str) -> str:
+        parse_flags(value, "DISABLED_FEATURES")
+        return value
+
+    @field_validator("enabled_features")
+    @classmethod
+    def _check_enabled_features(cls, value: str) -> str:
+        parse_flags(value, "ENABLED_FEATURES")
+        return value
+
+    @model_validator(mode="after")
+    def _refuse_legacy_feature_keys(self) -> Self:
+        if self.legacy_feature_keys:
+            lines = [legacy_advice(key, value) for key, value in self.legacy_feature_keys.items()]
+            message = (
+                "the FEATURE_* keys are gone and would be ignored, which could switch a feature "
+                "back on; use DISABLED_FEATURES and ENABLED_FEATURES instead: " + "; ".join(lines)
+            )
+            raise ValueError(message)
+        return self
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -1164,9 +1231,12 @@ class Settings(BaseSettings):
         ):
             if dsn.get_secret_value() and _host_is_test_domain(dsn.get_secret_value()):
                 problems.append(f"{name} points at a development host")
-        if self.feature_admin and not self.admin_totp_encryption_key.get_secret_value():
+        if (
+            self.is_enabled(FeatureFlag.ADMIN)
+            and not self.admin_totp_encryption_key.get_secret_value()
+        ):
             problems.append(
-                "ADMIN_TOTP_ENCRYPTION_KEY is empty while FEATURE_ADMIN is on "
+                "ADMIN_TOTP_ENCRYPTION_KEY is empty while the admin feature is on "
                 "(set a key, or turn the admin area off)"
             )
         if self.google_configured:
@@ -1218,6 +1288,18 @@ class Settings(BaseSettings):
         if not self.local_media_dir:
             return checkout_root() / "data" / "media"
         return Path(self.local_media_dir).expanduser().resolve()
+
+    @property
+    def features(self) -> frozenset[FeatureFlag]:
+        """The features that are on, by the rule of decision 63; computed at each call."""
+        return active_flags(
+            parse_flags(self.disabled_features, "DISABLED_FEATURES"),
+            parse_flags(self.enabled_features, "ENABLED_FEATURES"),
+        )
+
+    def is_enabled(self, flag: FeatureFlag) -> bool:
+        """Whether `flag` is on."""
+        return flag in self.features
 
     @property
     def is_production(self) -> bool:

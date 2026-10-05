@@ -9,7 +9,6 @@ from fastapi import Depends, Path, Request
 from redis.asyncio import Redis
 
 from src.deps import IpHashDep, SettingsDep
-from src.errors import AppError, ErrorCode
 from src.redis_client import get_redis
 from src.scans.fetch import fetch_client, fetch_image
 from src.scans.queue import ScanQueue, get_scan_queue
@@ -66,17 +65,5 @@ def address_limit(
         retry_after = budget.hit(ip_hash)
         if retry_after is not None:
             raise too_many_requests(retry_after, detail)
-
-    return check
-
-
-def feature(name: str) -> Callable[[SettingsDep], None]:
-    """Return a dependency that answers 404 FEATURE_DISABLED while FEATURE_<NAME> is off."""
-
-    def check(settings: SettingsDep) -> None:
-        if not getattr(settings, f"feature_{name}"):
-            raise AppError(
-                ErrorCode.FEATURE_DISABLED, f"The {name} feature is switched off.", status_code=404
-            )
 
     return check

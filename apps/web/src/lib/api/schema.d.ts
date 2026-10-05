@@ -50,6 +50,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/features': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The features that are switched on
+     * @description Name the features that are on, parents applied; a feature not listed answers 404.
+     */
+    get: operations['list_features_features_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/auth/signup': {
     parameters: {
       query?: never;
@@ -2705,6 +2725,30 @@ export interface components {
       learning_unit_id: string | null;
     };
     /**
+     * FeatureFlag
+     * @description A switchable feature; the value is the name used in the two lists.
+     * @enum {string}
+     */
+    FeatureFlag:
+      | 'chat'
+      | 'world'
+      | 'treasure'
+      | 'social'
+      | 'social_comments'
+      | 'atlas'
+      | 'atlas_sponsorship'
+      | 'camera_discovery'
+      | 'camera_anchor'
+      | 'photo_storage'
+      | 'canonical_verify'
+      | 'admin'
+      | 'dev_inspector';
+    /** FeaturesOut */
+    FeaturesOut: {
+      /** Features */
+      features: components['schemas']['FeatureFlag'][];
+    };
+    /**
      * FeedPage
      * @description A page of a feed, and how to ask for the next one.
      */
@@ -5052,6 +5096,35 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['Readiness'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  list_features_features_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeaturesOut'];
         };
       };
       /** @description An error */

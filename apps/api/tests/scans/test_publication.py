@@ -311,7 +311,7 @@ async def test_a_deleted_account_takes_its_insights_off(browser, other, store):
 async def test_the_public_route_answers_404_while_the_feature_is_off(flow_app, other):
     from src.deps import get_app_settings
 
-    off = flow_app.state.settings.model_copy(update={"feature_world": False})
+    off = flow_app.state.settings.model_copy(update={"disabled_features": "world"})
     flow_app.dependency_overrides[get_app_settings] = lambda: off
 
     response = await other.get("/public/insights/1")
@@ -509,7 +509,7 @@ async def test_withdrawing_needs_neither_the_feature_nor_a_verified_address(
     async with store() as db:
         await db.execute(update(User).where(User.id == user.id).values(email_verified_at=None))
         await db.commit()
-    off = flow_app.state.settings.model_copy(update={"feature_world": False})
+    off = flow_app.state.settings.model_copy(update={"disabled_features": "world"})
     flow_app.dependency_overrides[get_app_settings] = lambda: off
 
     withdrawn = await browser.delete(f"/insights/{insight_id}/publication")

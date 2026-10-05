@@ -306,7 +306,7 @@ async def test_the_photo_rules_are_checked_again_when_the_post_is_made(
         ).json(),
     }
     account_app.state.settings = account_settings.model_copy(
-        update={"feature_photo_storage": False}
+        update={"disabled_features": "photo_storage"}
     )
     results["feature off"] = (
         await create(off_feature, make_insight(off_feature, **offered), photo=True)

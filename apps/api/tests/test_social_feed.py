@@ -387,7 +387,7 @@ async def test_every_feed_answers_404_while_the_feature_is_off(
     make_member, account_app, account_settings
 ):
     reader = await make_member("reader")
-    account_app.state.settings = account_settings.model_copy(update={"feature_social": False})
+    account_app.state.settings = account_settings.model_copy(update={"disabled_features": "social"})
 
     for path in (
         "/feed/latest",

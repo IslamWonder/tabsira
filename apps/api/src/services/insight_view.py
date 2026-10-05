@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import clock
 from src.config import Settings
+from src.features import FeatureFlag
 from src.messages import messages_for
 from src.models import ChatMessage, ChatStatus, Insight, LearningUnit, Scan
 from src.owner import Owner
@@ -256,7 +257,7 @@ async def chat_of(
     ).all()
     limit = settings.max_chat_user_messages
     return ChatOut(
-        enabled=settings.feature_chat,
+        enabled=settings.is_enabled(FeatureFlag.CHAT),
         closed=insight.completed_at is not None,
         used=len(rows),
         limit=limit,

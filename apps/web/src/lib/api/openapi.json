@@ -76,6 +76,36 @@
         }
       }
     },
+    "/features": {
+      "get": {
+        "tags": ["features"],
+        "summary": "The features that are switched on",
+        "description": "Name the features that are on, parents applied; a feature not listed answers 404.",
+        "operationId": "list_features_features_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturesOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/signup": {
       "post": {
         "tags": ["auth"],
@@ -6033,6 +6063,40 @@
         ],
         "title": "ExposureExport"
       },
+      "FeatureFlag": {
+        "type": "string",
+        "enum": [
+          "chat",
+          "world",
+          "treasure",
+          "social",
+          "social_comments",
+          "atlas",
+          "atlas_sponsorship",
+          "camera_discovery",
+          "camera_anchor",
+          "photo_storage",
+          "canonical_verify",
+          "admin",
+          "dev_inspector"
+        ],
+        "title": "FeatureFlag",
+        "description": "A switchable feature; the value is the name used in the two lists."
+      },
+      "FeaturesOut": {
+        "properties": {
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureFlag"
+            },
+            "type": "array",
+            "title": "Features"
+          }
+        },
+        "type": "object",
+        "required": ["features"],
+        "title": "FeaturesOut"
+      },
       "FeedPage": {
         "properties": {
           "items": {
@@ -11481,6 +11545,10 @@
     {
       "name": "atlas",
       "description": "«أطلس بصائر العالم»: insights placed on the map at approximate points."
+    },
+    {
+      "name": "features",
+      "description": "The feature switches in force (decision 63)."
     },
     {
       "name": "scripture",

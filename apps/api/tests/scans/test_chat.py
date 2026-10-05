@@ -594,7 +594,7 @@ async def test_the_chat_can_be_switched_off_and_a_key_must_look_like_one(
     insight_id = await an_insight(browser, store, flow_settings)
     for key in ("short", "has spaces in it", "x" * 65):
         assert (await ask(browser, insight_id, key=key)).status_code == 422
-    flow_app.state.settings = make_settings(feature_chat=False)
+    flow_app.state.settings = make_settings(disabled_features="chat")
 
     off = await ask(browser, insight_id)
 
