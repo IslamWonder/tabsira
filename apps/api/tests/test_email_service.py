@@ -329,3 +329,56 @@ def test_the_built_message_survives_serialization(settings):
     assert parsed["Subject"] == "s"
     assert parsed["From"].addresses[0].display_name == "تبصرة"
     assert parsed["From"].addresses[0].addr_spec == "no-reply@tabsira.me"
+
+
+# ─── Mock members never receive mail (decision 66) ─────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "address",
+    [
+        "amal@mock.tabsira.me",
+        "AMAL@Mock.Tabsira.ME",
+        "Amal <amal@mock.tabsira.me>",
+        "old@mock.tabsira.invalid",
+    ],
+)
+def test_a_message_for_a_mock_member_never_reaches_a_server(settings, smtp, address):
+    message = a_message(settings)
+    del message["To"]
+    message["To"] = address
+
+    with pytest.raises(email_service.MockRecipientError):
+        email_service.deliver(settings, message)
+
+    assert smtp.instances == []
+
+
+@pytest.mark.parametrize("header", ["Cc", "Bcc"])
+def test_a_mock_member_hidden_among_other_recipients_is_refused_too(settings, smtp, header):
+    message = a_message(settings)
+    message[header] = "someone@example.com, amal@mock.tabsira.me"
+
+    with pytest.raises(email_service.MockRecipientError):
+        email_service.deliver(settings, message)
+
+    assert smtp.instances == []
+
+
+async def test_a_mail_to_a_mock_member_is_reported_as_not_sent_and_opens_no_connection(
+    settings, smtp, caplog
+):
+    with caplog.at_level(logging.INFO, logger="tabsira.email"):
+        sent = await email_service.send_password_reset(
+            settings, email="amal@mock.tabsira.me", name="ليلى", token=EXAMPLE_TOKEN
+        )
+
+    assert sent is False
+    assert smtp.instances == []
+    assert "amal@mock.tabsira.me" not in caplog.text
+
+
+def test_a_real_address_is_still_delivered(settings, smtp):
+    email_service.deliver(settings, a_message(settings))
+
+    assert len(smtp.instances) == 1

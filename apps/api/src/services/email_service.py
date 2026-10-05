@@ -25,7 +25,7 @@ import logging
 import smtplib
 import ssl
 from email.message import EmailMessage
-from email.utils import formatdate, make_msgid, parseaddr
+from email.utils import formatdate, getaddresses, make_msgid, parseaddr
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -35,6 +35,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoes
 
 from src import messages
 from src.config import Settings
+from src.mock_accounts import is_mock_address
 
 log = logging.getLogger("tabsira.email")
 
@@ -42,6 +43,18 @@ TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "email"
 # The full logo in deep gold, made from brand/ by the web app's icon script.
 LOGO = TEMPLATE_DIR / "logo.png"
 FAILURE_TEXT_MAX = 300
+
+
+class MockRecipientError(ValueError):
+    """A message was addressed to a mock member, who can never receive mail (decision 66)."""
+
+
+def refuse_mock_recipients(message: EmailMessage) -> None:
+    """Raise when any recipient of the message is on a mock domain; `deliver` calls it first."""
+    for header in ("To", "Cc", "Bcc"):
+        for _name, address in getaddresses(message.get_all(header, [])):
+            if is_mock_address(address):
+                raise MockRecipientError(header)
 
 
 @cache
@@ -103,8 +116,11 @@ def deliver(settings: Settings, message: EmailMessage) -> None:
     Talk to the SMTP server. Blocking: run it in a worker thread.
 
     Always encrypted: implicit TLS for `ssl`, STARTTLS for `starttls`, and a
-    server that does not offer STARTTLS is an error, not a fallback to clear text.
+    server that does not offer STARTTLS is an error, not a fallback to clear text. A message
+    for a mock member's address is refused before any connection is made: this is the one place
+    mail leaves the application, so nothing can reach those addresses by another way.
     """
+    refuse_mock_recipients(message)
     context = ssl.create_default_context(cafile=settings.smtp_ca_file or None)
     timeout = settings.smtp_timeout_seconds
     if settings.smtp_security == "ssl":
