@@ -6,6 +6,7 @@ from pathlib import Path
 
 import psycopg
 import pytest
+from sqlalchemy.engine import make_url
 
 from src.cli import check_config
 
@@ -138,19 +139,22 @@ def test_live_check_prefers_the_sync_database_url(monkeypatch):
 
 @pytest.mark.parametrize("variant", [{"connect_error": True}, {"fail": True}])
 def test_live_check_failure_exits_one_without_leaking_the_error_text(monkeypatch, capsys, variant):
-    # Pin the address: CI runs its database on a port chosen per build.
-    monkeypatch.setenv(
-        "SYNC_DATABASE_URL", f"postgresql+psycopg://tabsira:{PASSWORD}@127.0.0.1:5432/tabsira"
-    )
+    # The message names the database that was queried, the sync one, whatever port the
+    # application's own URL uses (CI runs its database on a port chosen per build).
+    queried = make_url(f"postgresql+psycopg://tabsira:{PASSWORD}@127.0.0.1:6543/checked")
+    monkeypatch.setenv("SYNC_DATABASE_URL", queried.render_as_string(hide_password=False))
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://tabsira:pw@127.0.0.1:7654/other")
     patch_psycopg(monkeypatch, **variant)
 
     code = check_config.main(["--live"])
 
     out = capsys.readouterr()
     assert code == 1
-    assert "Database check failed: cannot query 127.0.0.1:5432/" in out.err
-    assert "OperationalError" in out.err
+    label = f"{queried.host}:{queried.port}/{queried.database}"
+    assert f"Database check failed: cannot query {label}: OperationalError" in out.err
+    assert "7654/other" not in out.err
     assert "hunter2" not in out.out + out.err
+    assert PASSWORD not in out.out + out.err
 
 
 def test_the_connect_timeout_is_at_least_one_second(monkeypatch):
