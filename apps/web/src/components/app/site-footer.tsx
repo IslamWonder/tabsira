@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { LogoMark } from '@/components/brand/logo';
 import { openConsentSettings } from '@/consent/store';
+import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 
 const QUIET =
@@ -44,8 +45,17 @@ export function SiteFooter() {
   if (pathname === '/world') {
     return null;
   }
+  // The analysis is a full-screen view from tablet up, like the world: its photo and its
+  // panel fill the window, and a footer under them would only add a scroll. On a phone the
+  // page scrolls anyway, and the footer stays.
+  const fullScreen = pathname.startsWith('/scan/');
   return (
-    <footer className="mx-auto w-full max-w-[1440px] px-4 pt-4 pb-nav tablet:px-6 tablet:pb-6 desktop:px-10">
+    <footer
+      className={cx(
+        'mx-auto w-full max-w-[1440px] px-4 pt-4 pb-nav tablet:px-6 tablet:pb-6 desktop:px-10',
+        fullScreen && 'tablet:hidden'
+      )}
+    >
       <nav
         aria-label={messages.footer.label}
         className="grid gap-6 border-line border-t pt-6 tablet:grid-cols-3"

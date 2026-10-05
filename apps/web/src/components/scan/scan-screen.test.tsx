@@ -143,7 +143,10 @@ describe('ScanScreen: the stages', () => {
   it('sweeps the photo with light once it may be shown, and lets the reader leave', async () => {
     setControls(running(), { stage: 'verifying' });
     render(<ScanScreen scanId="1" />);
-    expect(screen.getByRole('img', { name: 'صورتك التي أرسلتها' })).toBeInTheDocument();
+    const photo = screen.getByRole('img', { name: 'صورتك التي أرسلتها' });
+    // From tablet up the photo sits whole in a frame of its own proportions, never cropped.
+    const frame = photo.closest('[style*="--photo-ratio"]') as HTMLElement;
+    expect(frame.style.getPropertyValue('--photo-ratio')).toMatch(/^\d+ \/ \d+$/);
     expect(document.querySelector('[data-scan="active"]')).not.toBeNull();
     expect(document.querySelectorAll('[data-point-id]')).toHaveLength(0);
     await userEvent.click(screen.getByRole('button', { name: 'ألغِ' }));

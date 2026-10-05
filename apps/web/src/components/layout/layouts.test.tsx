@@ -37,6 +37,14 @@ describe('layout primitives', () => {
     const stage = screen.getByRole('region', { name: 'المشهد' });
     expect(stage).toHaveTextContent('stage');
     expect(stage).toHaveClass('h-72');
+    // A full-bleed photo melts into the page toward the panel.
+    expect(stage.querySelector('[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it('StageLayout draws no fade around a framed photo', () => {
+    render(<StageLayout panel={<p>panel</p>} stage={<p>stage</p>} stageLabel="المشهد" framed />);
+    const stage = screen.getByRole('region', { name: 'المشهد' });
+    expect(stage.querySelector('[aria-hidden="true"]')).toBeNull();
   });
 
   it('StageLayout can put the stage above the panel on a phone, with the panel still first in the DOM', () => {

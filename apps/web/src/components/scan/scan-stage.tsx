@@ -1,6 +1,7 @@
 'use client';
 
 import type { Route } from 'next';
+import type { CSSProperties, ReactNode } from 'react';
 import { ScanSweep } from '@/components/fx/scan-sweep';
 import { PhotoPlaceholder } from '@/components/insight/photo-placeholder';
 import { ScenePhoto, type ScenePoint } from '@/components/insight/scene-photo';
@@ -75,28 +76,62 @@ export function ScanStage({
   }
   if (focusing) {
     return (
-      <FocusStage
-        {...photo}
-        alt={messages.scan.photoAlt}
-        entities={(scan as Scan).entities}
-        selectedId={selectedEntity}
-        onSelect={onSelectEntity}
-      />
+      <PhotoFrame width={photo.width} height={photo.height}>
+        <FocusStage
+          {...photo}
+          alt={messages.scan.photoAlt}
+          entities={(scan as Scan).entities}
+          selectedId={selectedEntity}
+          onSelect={onSelectEntity}
+        />
+      </PhotoFrame>
     );
   }
   return (
-    <ScenePhoto
-      {...photo}
-      alt={messages.scan.photoAlt}
-      points={running ? [] : points}
-      onSelect={onSelectPoint}
-      unoptimized
-      listInPanel
-      className="h-full"
-    >
-      <ScanSweep active={running} />
-      {sound ? <SceneSoundBadge live={running} /> : null}
-    </ScenePhoto>
+    <PhotoFrame width={photo.width} height={photo.height}>
+      <ScenePhoto
+        {...photo}
+        alt={messages.scan.photoAlt}
+        points={running ? [] : points}
+        onSelect={onSelectPoint}
+        unoptimized
+        listInPanel
+        className="h-full"
+      >
+        <ScanSweep active={running} />
+        {sound ? <SceneSoundBadge live={running} /> : null}
+      </ScenePhoto>
+    </PhotoFrame>
+  );
+}
+
+/**
+ * The reader's photo, whole. On a phone it fills the top of the screen as
+ * before. From tablet up it sits in a frame of its own proportions, as large as
+ * the stage allows and never larger: `min(width, height × ratio)` of the stage,
+ * read through container units, so a tall photo is not cropped and zoomed to
+ * fill a wide column, and the page needs no scroll to see it. Its points keep
+ * their places, because the frame has the photo's own ratio.
+ */
+export function PhotoFrame({
+  width,
+  height,
+  children,
+}: {
+  width: number;
+  height: number;
+  children: ReactNode;
+}) {
+  const ratio = { '--photo-ratio': `${width} / ${height}` } as CSSProperties;
+  return (
+    <div className="h-full w-full tablet:flex tablet:items-center tablet:justify-center tablet:p-8 tablet:[container-type:size]">
+      <div
+        style={ratio}
+        className="relative h-full w-full tablet:aspect-[var(--photo-ratio)] tablet:h-auto tablet:w-[min(100cqw,calc(100cqh*var(--photo-ratio)))] tablet:overflow-hidden tablet:rounded-[24px] tablet:shadow-[var(--stage-shadow)]"
+      >
+        {children}
+      </div>
+    </div>
   );
 }
 

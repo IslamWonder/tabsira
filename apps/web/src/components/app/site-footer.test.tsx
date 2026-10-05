@@ -19,4 +19,15 @@ describe('SiteFooter', () => {
     const { container } = render(<SiteFooter />);
     expect(container).toBeEmptyDOMElement();
   });
+
+  it('stays under the analysis on a phone, and leaves the full-screen analysis alone from tablet up', () => {
+    where.pathname = '/scan/117388953510985201';
+    const { container, unmount } = render(<SiteFooter />);
+    expect(container.querySelector('footer')).toHaveClass('tablet:hidden');
+    unmount();
+
+    where.pathname = '/community';
+    const other = render(<SiteFooter />);
+    expect(other.container.querySelector('footer')).not.toHaveClass('tablet:hidden');
+  });
 });

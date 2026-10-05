@@ -209,6 +209,7 @@ export function ScanScreen({ scanId }: { scanId: string }) {
   return (
     <StageLayout
       stageFirstOnPhone
+      framed
       stageLabel={T.photoAlt}
       stageClassName="h-[50svh] min-h-[300px]"
       panel={

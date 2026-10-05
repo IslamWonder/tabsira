@@ -49,6 +49,8 @@ export interface StageLayoutProps extends Slot {
    * in the DOM so a screen reader hears the state before the photo; from tablet up both orders agree.
    */
   stageFirstOnPhone?: boolean;
+  /** The stage frames its photo (it does not fill the column): no fade toward the panel. */
+  framed?: boolean;
 }
 
 /**
@@ -64,6 +66,7 @@ export function StageLayout({
   stageLabel,
   stageClassName,
   stageFirstOnPhone = false,
+  framed = false,
   className,
 }: StageLayoutProps) {
   return (
@@ -89,15 +92,17 @@ export function StageLayout({
       >
         {stage}
         {/* From tablet up the photo melts into the page on the panel side and at the foot. */}
-        <div
-          aria-hidden="true"
-          className={cx(
-            'pointer-events-none absolute inset-0 hidden tablet:block',
-            // Toward the panel, which sits on the start side in either direction.
-            'bg-[linear-gradient(to_right,var(--stage-fade)_0%,transparent_22%),linear-gradient(to_top,var(--stage-fade)_0%,transparent_14%)]',
-            'rtl:bg-[linear-gradient(to_left,var(--stage-fade)_0%,transparent_22%),linear-gradient(to_top,var(--stage-fade)_0%,transparent_14%)]'
-          )}
-        />
+        {framed ? null : (
+          <div
+            aria-hidden="true"
+            className={cx(
+              'pointer-events-none absolute inset-0 hidden tablet:block',
+              // Toward the panel, which sits on the start side in either direction.
+              'bg-[linear-gradient(to_right,var(--stage-fade)_0%,transparent_22%),linear-gradient(to_top,var(--stage-fade)_0%,transparent_14%)]',
+              'rtl:bg-[linear-gradient(to_left,var(--stage-fade)_0%,transparent_22%),linear-gradient(to_top,var(--stage-fade)_0%,transparent_14%)]'
+            )}
+          />
+        )}
       </section>
     </div>
   );
