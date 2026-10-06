@@ -39,6 +39,8 @@
 
 A clean **Ubuntu 24.04 LTS** machine or virtual machine with `sudo`, internet access, at least **4 CPU cores, 8 GB of memory and 25 GB of free disk** (the database holds about 8 GB once filled; the downloaded archives, about 4 GB, may be deleted afterwards). Count about 30 to 45 minutes, most of it downloads. Every step is safe to run again.
 
+🤖 **Easiest: let an AI coding agent do it.** Open the clone in your agent and ask it to «install TABSIRA by following the README's fresh Ubuntu section». It reads [AGENTS.md](AGENTS.md) for the project's rules, runs each step, checks it, and stops to ask for what only you can give: `sudo`, and the AI keys for `.env`.
+
 1. 🧰 **The code and its tools.** `install-toolchain.sh` installs, in your own home and at the versions the repository pins, nvm with Node 24, pnpm, uv and Python 3.12, plus the few system packages it needs (it asks for `sudo` once).
 
    ```bash
