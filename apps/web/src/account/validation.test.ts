@@ -33,7 +33,7 @@ describe('the account field rules', () => {
   it('cleans a name as the API does and refuses hidden characters', () => {
     expect(cleanDisplayName('  [اسم]   [آخر] ')).toBe('[اسم] [آخر]');
     expect(displayNameProblem('   ')).toBe(V.nameMissing);
-    expect(displayNameProblem('a‮b')).toBe(V.nameInvalid);
+    expect(displayNameProblem('a\u202Eb')).toBe(V.nameInvalid);
     expect(displayNameProblem('x'.repeat(61))).toBe(V.nameLong);
     expect(displayNameProblem('[اسم]')).toBeNull();
   });
