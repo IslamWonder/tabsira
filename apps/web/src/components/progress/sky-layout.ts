@@ -8,6 +8,8 @@
  * and otherwise takes the nearest free place along one fixed spiral. A newer
  * meaning therefore never moves an older one, and nothing here is random.
  * A star with no free place left is not drawn; the sky's list still holds it.
+ * Once a few stars in a row found no place the field is full, and the newer
+ * ones go to the list without a search, so a long record stays cheap to lay out.
  */
 
 export interface Box {
@@ -39,6 +41,8 @@ export const LIGHT_OFFSET = 22;
 const GAP = 6;
 const STEP = 14;
 const RINGS = 40;
+/** Stars in a row with no place after which the field counts as full. */
+const MISSES_WHEN_FULL = 4;
 
 function overlaps(a: Box, b: Box): boolean {
   return (
@@ -87,7 +91,12 @@ export function placeStars(
   const taken: Box[] = [...reserved];
   const placed = new Map<string, { x: number; y: number }>();
   const unplaced: string[] = [];
+  let misses = 0;
   for (const star of stars) {
+    if (misses >= MISSES_WHEN_FULL) {
+      unplaced.push(star.key);
+      continue;
+    }
     let found: [number, number] | null = null;
     for (const [x, y] of spiral(star.x * field.width, star.y * field.height)) {
       const box = boxAt(star, x, y);
@@ -98,8 +107,10 @@ export function placeStars(
       }
     }
     if (found === null) {
+      misses += 1;
       unplaced.push(star.key);
     } else {
+      misses = 0;
       placed.set(star.key, { x: found[0], y: found[1] });
     }
   }
