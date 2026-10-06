@@ -81,6 +81,16 @@ jobs:
       - uses: astral-sh/setup-uv@v10.2.0
         with:
           enable-cache: true
+      # psql: scripts/migrate.sh creates the schemas with it, and the GeoNames
+      # script tests run the seed and update scripts, which load through it.
+      - name: PostgreSQL client
+        run: |
+          command -v psql && exit 0
+          sudo=""
+          [ "$(id -u)" = 0 ] || sudo=sudo
+          $sudo apt-get update -qq
+          $sudo apt-get install -y -qq --no-install-recommends postgresql-client >/dev/null
+          psql --version
       - name: Database and Redis
         env:
           # Names the containers; `down` finds them again through TABSIRA_CI_CONTAINER.
