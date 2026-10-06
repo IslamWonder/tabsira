@@ -59,11 +59,15 @@ describe('drawing text', () => {
   });
 
   it('sets an Arabic paragraph flush right: the last line of two ends at the right edge', async () => {
-    // Neutral filler words, nine of them: more than one line at this width, the last one short.
+    // Neutral filler words. The width is derived from the one-line width of the same words, so the
+    // paragraph wraps whatever face the engine really uses: on macOS the prebuilt engine draws with
+    // the system's CoreText and ignores the font file, so glyph widths differ from Linux.
     const words = Array(9).fill('كلمة').join(' ');
     const face = cardFaces().text[0] as TextSpec['face'];
-    const one = await drawText(await spec({ text: 'كلمة', face, width: 539 }));
-    const drawn = await drawText(await spec({ text: words, face, width: 539 }));
+    const one = await drawText(await spec({ text: 'كلمة', face, width: 2000 }));
+    const whole = await drawText(await spec({ text: words, face, width: 5000 }));
+    const width = Math.ceil(whole.width * 0.6);
+    const drawn = await drawText(await spec({ text: words, face, width }));
     expect(drawn.height).toBeGreaterThan(one.height * 1.5);
     const { data, info } = await sharp(drawn.png).raw().toBuffer({ resolveWithObject: true });
     // The ink of the last line reaches the right edge and leaves the left side empty.
