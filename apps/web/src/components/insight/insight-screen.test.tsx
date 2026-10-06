@@ -525,6 +525,14 @@ describe('InsightScreen: the photo handed over by its scan', () => {
     await screen.findByRole('heading', { level: 1, name: insightOut().title });
   });
 
+  it("keeps the scan's photo once the insight is read, until its own photo is", async () => {
+    handPhoto(ID, HANDED);
+    // The insight's own photo never arrives in this test: the scan it is read from keeps quiet.
+    await open(insightOut(), { [`GET /scans/${SCAN}`]: () => new Promise(() => undefined) });
+    const photo = screen.getByRole('img', { name: messages.insightPage.photoAlt });
+    expect(photo.getAttribute('src')).toContain('scans/1/image');
+  });
+
   it('keeps to the placeholder for any other insight', () => {
     handPhoto('110000000000000009', HANDED);
     serve();
