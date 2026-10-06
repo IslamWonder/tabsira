@@ -56,6 +56,7 @@ describe('the pages where no tool runs', () => {
       '/signin',
       '/signup',
       '/me',
+      '/sky',
       '/reset-password',
       '/verify-email',
       '/forgot-password',

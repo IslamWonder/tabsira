@@ -186,7 +186,7 @@ describe('robots.txt', () => {
     expect(AI_AGENTS).toHaveLength(17);
     expect(rule?.allow).toBe('/');
     expect(rule?.disallow).toEqual([...PRIVATE_PATHS]);
-    for (const path of ['/me', '/admin', '/dev', '/api']) {
+    for (const path of ['/me', '/sky', '/admin', '/dev', '/api']) {
       expect(rule?.disallow).toContain(path);
     }
     expect(sitemap).toBe('https://tabsira.test/sitemap.xml');

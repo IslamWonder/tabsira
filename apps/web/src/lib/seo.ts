@@ -34,7 +34,7 @@ export const UNLISTED_ROUTES = [
 ] as const;
 
 /** Paths robots.txt keeps every crawler out of (and which are `noindex` as well). */
-export const PRIVATE_PATHS = ['/me', '/admin', '/dev', '/api', '/consent'] as const;
+export const PRIVATE_PATHS = ['/me', '/sky', '/admin', '/dev', '/api', '/consent'] as const;
 
 /** The default share card (public/share/default.jpg), drawn from the logo by scripts/make-icons.mjs. */
 export const SHARE_IMAGE = {

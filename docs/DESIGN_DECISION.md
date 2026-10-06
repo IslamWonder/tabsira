@@ -174,7 +174,7 @@ The owners' landing prompt replaces the full-screen rain scene at `/` with a lan
 
 ### Sky of meanings (added 5 October 2026)
 
-The owners' cinematic reference replaces the sky drawn in a glass card beside the practice cards on `/me/practice`. The sky is the head of the page: one full-width night scene under the top bar, then the rank, the streak, the daily quest, the badges, the counts and the disclaimer in the page's own column below it, unchanged in what they say.
+The owners' cinematic reference replaces the sky drawn in a glass card beside the practice cards on `/sky`. The sky is the head of the page: one full-width night scene under the top bar, then the rank, the streak, the daily quest, the badges, the counts and the disclaimer in the page's own column below it, unchanged in what they say.
 
 - **The picture is decoration only.** An emerald nebula over clouds (`apps/web/public/practice/`, ASSET_MANIFEST.md §14): the whole landscape from tablet up, a portrait cut on a phone, both cover-fitted, hidden from assistive technology and never a target. A soft shade sits behind the heading, the dock row and any centred message, never over the whole picture. Until it arrives, or if it never does, the scene is plain night green (`#041915` to `#103d2d`).
 - **Everything on it is a real element.** «سماء المعاني» in Reem Kufi (30 px on a phone, 44, 56 and 64 px up to wide screens) with «كل بصيرة تترك ضوءًا» under it at the start; the count of meanings at the end; «كل نجمة معنى، لا درجة» at the foot. The page name «تمرينك» stays the page's `h1`, in a small trail «ملفي ‹ تمرينك» above the scene's heading, so there is no second header.

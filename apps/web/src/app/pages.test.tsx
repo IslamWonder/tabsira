@@ -12,10 +12,10 @@ import CommunityPublishPage from './community/publish/page';
 import ErrorPage from './error';
 import manifest from './manifest';
 import MePage, { metadata as meMetadata } from './me/page';
-import PracticePage, { metadata as practiceMetadata } from './me/practice/page';
 import NotFound, { metadata as notFoundMetadata } from './not-found';
 import OfflinePage, { metadata as offlineMetadata } from './offline/page';
 import HomePage, { metadata as homeMetadata } from './page';
+import PracticePage, { metadata as practiceMetadata } from './sky/page';
 import WorldPage, { metadata as worldMetadata } from './world/page';
 
 vi.mock('next/navigation', () => ({
@@ -58,7 +58,7 @@ describe('placeholder routes', () => {
 
   it.each<[string, () => ReactElement, Metadata, string, string]>([
     ['/world', WorldPage, worldMetadata, 'عالمي', '/world'],
-    ['/me/practice', PracticePage, practiceMetadata, 'تمرينك', '/me/practice'],
+    ['/sky', PracticePage, practiceMetadata, 'تمرينك', '/sky'],
     ['/me', MePage, meMetadata, 'ملفي', '/me'],
   ])(
     '%s is a real screen with its canonical address',

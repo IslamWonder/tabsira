@@ -67,6 +67,8 @@ export default function nextConfig(phase: string): NextConfig {
         // (docs/AUTH.md); the sign-in page lives at /signin. Temporary, so the
         // API can point at /signin directly later. The query string follows.
         { source: '/login', destination: '/signin', permanent: false },
+        // The practice page's first address, kept for old links and bookmarks.
+        { source: '/me/practice', destination: '/sky', permanent: true },
       ];
     },
     async headers() {
