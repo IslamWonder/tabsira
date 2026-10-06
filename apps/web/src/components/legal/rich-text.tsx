@@ -11,7 +11,7 @@ export interface Token {
 // A web address ends before a space, an Arabic comma or a closing bracket, and
 // leaves out a final full stop or comma, which belong to the sentence.
 const URL_PREFIX = /https?:\/\//y;
-const URL_RUN = /[^\s\u060C)]*/y;
+const URL_STOP = /[\s\u060C)]/;
 // A run of Latin words (a product name).
 const LATIN = /[A-Za-z][A-Za-z0-9]*(?: [A-Za-z][A-Za-z0-9]*)*/y;
 const LOCAL_CHAR = /[A-Za-z0-9._%+-]/;
@@ -24,9 +24,8 @@ function urlEnd(text: string, at: number): number {
     return -1;
   }
   const start = URL_PREFIX.lastIndex;
-  URL_RUN.lastIndex = start;
-  URL_RUN.test(text);
-  let end = URL_RUN.lastIndex;
+  const stop = text.slice(start).search(URL_STOP);
+  let end = stop === -1 ? text.length : start + stop;
   while (end > start && '.,'.includes(text.charAt(end - 1))) {
     end -= 1;
   }
