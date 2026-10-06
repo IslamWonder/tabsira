@@ -32,8 +32,14 @@ export const shareMessages = {
     moreWays: 'طرق نشر أخرى',
     publishMap: 'انشر على الخريطة',
     publishCommunity: 'انشر في تواصل',
+    /** Decision 68: publishing puts the insight in the owner's publications; the map is added on top. */
     publishSeparate:
-      'كلٌّ منهما نشر مستقل تعاينه قبل أن يتم. النشر على الخريطة يجعل البصيرة قابلة للاكتشاف على الأطلس وبالكاميرا في موقعها التقريبي، ولا يفعّل النشر في تواصل.',
+      'النشر هنا يضع البصيرة في منشوراتك في «تبصرة تواصل». «انشر في تواصل» يضيف تأملك وصورتك إن شئت. والنشر على الخريطة إضافة تعاينها قبل أن تتم: يجعلها قابلة للاكتشاف على الأطلس وبالكاميرا في موقعها التقريبي، وينشرها في تواصل أيضًا ما لم تُلغِ ذلك.',
+    /** Said under «انشر وشارك» when the network is on: what else publishing does. */
+    postToo: 'ويصير لها منشور في «تبصرة تواصل» يظهر في منشوراتك وملفك العام وفي موجز من يتابعك.',
+    /** The page was published, but the post needs a public handle first. */
+    needsHandle:
+      'نُشرت صفحة البصيرة. لتظهر في منشوراتك في تواصل اختر اسمك العام: «خيارات النشر» ثم «انشر في تواصل».',
     /** The account said in its profile that it is under 13: nothing of its own is published. */
     notForUnder13:
       'لا يُتاح النشر العام لمن أعلن في ملفه أنه دون 13 سنة. البصيرة تبقى في عالمك، ويمكنك تعديل نطاق العمر في ملفك إن كان خطأ.',

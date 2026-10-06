@@ -22,7 +22,7 @@ export default function PublishPage() {
   }
   return (
     <Suspense fallback={null}>
-      <PublishScreen comments={featureEnabled('social_comments')} />
+      <PublishScreen comments={featureEnabled('social_comments')} atlas={featureEnabled('atlas')} />
     </Suspense>
   );
 }

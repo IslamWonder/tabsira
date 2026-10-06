@@ -104,7 +104,8 @@ export function InsightScreen({
   const quick = useQuickShare(
     insightId,
     load.phase === 'ready' ? load.insight.title : '',
-    load.phase === 'ready' && load.insight.published_at !== null
+    load.phase === 'ready' && load.insight.published_at !== null,
+    publishTo.community
   );
   const feedback = useFeedback(
     insightId,
@@ -168,6 +169,7 @@ export function InsightScreen({
         kind: 'open',
         onShare: quick.run,
         onOptions: () => setShareOpen(true),
+        posts: publishTo.community,
         working: quick.working,
         said: quick.said,
       }

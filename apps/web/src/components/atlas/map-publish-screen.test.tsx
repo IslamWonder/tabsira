@@ -7,7 +7,7 @@ import { OWNER_ENTRY } from '@/test/atlas';
 import { USER } from '@/test/fixtures';
 import { type FakeSource, forgetMaps, loadedMap } from '@/test/maplibre';
 import { insightOut } from '@/test/scan';
-import { IDENTITY, NO_IDENTITY } from '@/test/social';
+import { IDENTITY, NO_IDENTITY, POST } from '@/test/social';
 import { MapPublishScreen } from './map-publish-screen';
 
 vi.mock('maplibre-gl', () => import('@/test/maplibre'));
@@ -103,6 +103,72 @@ describe('MapPublishScreen', () => {
       'href',
       `/atlas/entries/${OWNER_ENTRY.id}`
     );
+  });
+
+  describe('publishing in «تبصرة تواصل» too (decision 68)', () => {
+    const PUBLISHED = { ...OWNER_ENTRY, status: 'published', published_at: '2026-10-04T09:00:00Z' };
+    const draft = (extra: Record<string, Route> = {}) =>
+      member({
+        [`GET /insights/${INSIGHT}/map`]: { body: OWNER_ENTRY },
+        [`POST /insights/${INSIGHT}/map/publish`]: { body: PUBLISHED },
+        ...extra,
+      });
+    const publish = async () => {
+      await userEvent.click(await screen.findByRole('button', { name: 'انشر على الأطلس' }));
+    };
+
+    it('offers it ticked, and publishes the post after the entry with the photo choice of the entry', async () => {
+      const api = draft({ [`PUT /insights/${INSIGHT}/post`]: { body: POST } });
+      render(<MapPublishScreen community />);
+      expect(await screen.findByRole('checkbox', { name: /انشرها أيضًا في تواصل/ })).toBeChecked();
+      await publish();
+      expect(await screen.findByText('نُشرت بصيرتك على الأطلس وفي تواصل.')).toBeInTheDocument();
+      expect(await api.bodies('PUT', `/insights/${INSIGHT}/post`)).toEqual([
+        { photo: OWNER_ENTRY.photo },
+      ]);
+    });
+
+    it('publishes the entry alone when unticked, or when the network is off', async () => {
+      const api = draft();
+      const { unmount } = render(<MapPublishScreen community />);
+      await userEvent.click(await screen.findByRole('checkbox', { name: /انشرها أيضًا في تواصل/ }));
+      await publish();
+      expect(await screen.findByText('نُشرت بصيرتك على الأطلس.')).toBeInTheDocument();
+      unmount();
+      render(<MapPublishScreen />);
+      await screen.findByRole('button', { name: 'انشر على الأطلس' });
+      expect(screen.queryByRole('checkbox', { name: /انشرها أيضًا في تواصل/ })).toBeNull();
+      await publish();
+      expect(await screen.findByText('نُشرت بصيرتك على الأطلس.')).toBeInTheDocument();
+      expect(api.requests.some((request) => request.url.endsWith('/post'))).toBe(false);
+    });
+
+    it('says where to choose a handle, says a refusal, and posts nothing for a held entry', async () => {
+      draft({ [`PUT /insights/${INSIGHT}/post`]: apiError(409, 'PUBLIC_IDENTITY_REQUIRED') });
+      const first = render(<MapPublishScreen community />);
+      await publish();
+      expect(await screen.findByText(/لتظهر في منشوراتك اختر اسمك العام/)).toBeInTheDocument();
+      first.unmount();
+
+      draft({ [`PUT /insights/${INSIGHT}/post`]: apiError(503, 'SERVICE_UNAVAILABLE') });
+      const second = render(<MapPublishScreen community />);
+      await publish();
+      expect(await screen.findByRole('alert')).toBeInTheDocument();
+      expect(screen.getByText('نُشرت بصيرتك على الأطلس.')).toBeInTheDocument();
+      second.unmount();
+
+      const held = draft({
+        [`POST /insights/${INSIGHT}/map/publish`]: {
+          body: { ...OWNER_ENTRY, status: 'pending_review' },
+        },
+      });
+      render(<MapPublishScreen community />);
+      await publish();
+      await waitFor(() =>
+        expect(held.requests.some((request) => request.url.endsWith('/map/publish'))).toBe(true)
+      );
+      expect(held.requests.some((request) => request.url.endsWith('/post'))).toBe(false);
+    });
   });
 
   it('chooses a place by name as a public place, and says why an insight is refused', async () => {

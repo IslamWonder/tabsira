@@ -5,13 +5,13 @@ import { useState } from 'react';
 import { Button, LinkButton } from '@/components/ui/button';
 import { Notice, type NoticeTone } from '@/components/ui/notice';
 import { Sheet } from '@/components/ui/sheet';
-import type { Failure } from '@/lib/api/result';
+import type { Failure, Result } from '@/lib/api/result';
 import { publicInsightPath } from '@/lib/public-insight';
 import { journeyFailureMessage } from '@/lib/scan/failure';
 import { shareLink } from '@/lib/share-link';
 import { siteOrigin } from '@/lib/site';
 import { messages } from '@/messages';
-import { publishInsight, withdrawInsight } from './publication';
+import { type InsightPost, publishInsight, publishPost, withdrawInsight } from './publication';
 
 const T = messages.sharing;
 
@@ -43,6 +43,19 @@ export const NO_TARGETS: PublishTargets = { atlas: false, community: false };
 /** The page's address on this site, from the path the API names or, for an insight already public, the known one. */
 export function addressOf(path: string): string {
   return new URL(path, siteOrigin()).toString();
+}
+
+/** What the owner is told when the post could not be made; nothing when it was, or not asked. */
+export function postNote(
+  post: Result<InsightPost> | null
+): { tone: 'info' | 'error'; text: string } | null {
+  if (post === null || post.ok) {
+    return null;
+  }
+  if (post.code === 'PUBLIC_IDENTITY_REQUIRED') {
+    return { tone: 'info', text: T.needsHandle };
+  }
+  return { tone: 'error', text: refusal(post) };
 }
 
 export function refusal(failure: Failure): string {
@@ -91,6 +104,9 @@ export function ShareSheet({
   const publishAndShare = async () => {
     setWorking(true);
     setSaid(null);
+    // Decision 68: the insight's post is published beside its page, so it is in the owner's
+    // publications; asking again answers the same post.
+    const posting = publishTo.community ? publishPost(insightId) : Promise.resolve(null);
     const result = await publishInsight(insightId);
     if (!result.ok) {
       setSaid({ tone: 'error', text: refusal(result) });
@@ -107,7 +123,8 @@ export function ShareSheet({
     setIsPublic(true);
     onPublishedChange?.(true);
     setLink(address);
-    setSaid(await shareLink(insightTitle, address));
+    const shared = await shareLink(insightTitle, address);
+    setSaid(postNote(await posting) ?? shared);
     setWorking(false);
   };
 
@@ -132,6 +149,7 @@ export function ShareSheet({
       <div className="flex flex-col gap-4 pb-2">
         <p className="m-0 text-[0.9375rem] text-fg-soft leading-[1.9]">
           {isPublic ? T.publicNow : T.whatBecomesPublic}
+          {!isPublic && publishTo.community ? ` ${T.postToo}` : null}
         </p>
         {link === null ? null : (
           <p className="m-0 flex flex-col gap-1 text-sm">

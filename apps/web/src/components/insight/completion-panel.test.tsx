@@ -13,6 +13,7 @@ const OPEN = {
   kind: 'open',
   onShare: vi.fn(),
   onOptions: vi.fn(),
+  posts: false,
   working: false,
   said: null,
 } as const;
@@ -61,6 +62,13 @@ describe('CompletionPanel', () => {
       'href',
       '/'
     );
+  });
+
+  it('says sharing also posts in the network when the network is on (decision 68)', () => {
+    const { region } = renderPanel({ share: { ...OPEN, posts: true } });
+    expect(
+      within(region).getByText(/صفحة عامة ومنشورًا في «تبصرة تواصل» يظهر في منشوراتك/)
+    ).toBeInTheDocument();
   });
 
   it('offers the share button third, with its icon, one tap to share, and the hint with the options link', async () => {

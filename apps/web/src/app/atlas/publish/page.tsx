@@ -22,7 +22,7 @@ export default function AtlasPublishPage() {
   }
   return (
     <Suspense fallback={null}>
-      <MapPublishScreen />
+      <MapPublishScreen community={featureEnabled('social')} />
     </Suspense>
   );
 }

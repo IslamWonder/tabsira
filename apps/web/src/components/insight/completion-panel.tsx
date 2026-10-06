@@ -35,6 +35,8 @@ export type ShareOption =
       onShare: () => void;
       /** The share sheet with the withdraw, card, atlas and community options. */
       onOptions: () => void;
+      /** Whether sharing also publishes the insight's post in the network (decision 68). */
+      posts: boolean;
       working: boolean;
       said: QuickShareSaid | null;
     }
@@ -177,7 +179,7 @@ export function CompletionPanel({
                 ) : null}
               </div>
               <p className="m-0 text-[0.8125rem] text-fg-muted leading-[1.7]">
-                {T.shareHint}{' '}
+                {share.posts ? T.shareHintPost : T.shareHint}{' '}
                 <button
                   type="button"
                   onClick={share.onOptions}

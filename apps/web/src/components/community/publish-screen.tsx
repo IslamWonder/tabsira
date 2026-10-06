@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { type SubmitEvent, useState } from 'react';
@@ -50,6 +51,9 @@ function problemMessage(result: Failure): string {
   }
   if (result.code === 'PUBLIC_IDENTITY_REQUIRED') {
     return P.identityFirst;
+  }
+  if (result.code === 'INSIGHT_ALREADY_POSTED') {
+    return P.alreadyPosted;
   }
   return failureMessage(result);
 }
@@ -137,7 +141,14 @@ function DraftForm({
  * A refused post becomes a draft again when edited. The insight is named by
  * `?insight=<id>`, which the insight screen's publish action passes.
  */
-export function PublishScreen({ comments = false }: Readonly<{ comments?: boolean }>) {
+export function PublishScreen({
+  comments = false,
+  atlas = false,
+}: Readonly<{
+  comments?: boolean;
+  /** The atlas feature, read by the server: placing the published insight on the map is offered. */
+  atlas?: boolean;
+}>) {
   const params = useSearchParams();
   const insightId = params.get('insight');
   const access = useAccess();
@@ -297,6 +308,16 @@ export function PublishScreen({ comments = false }: Readonly<{ comments?: boolea
                     {P.open}
                   </LinkButton>
                 )}
+                {/* Decision 68: the map is added on top of the publications, by its own choice. */}
+                {atlas && post.status === 'published' ? (
+                  <LinkButton
+                    href={`/atlas/publish?insight=${insightId}` as Route}
+                    variant="secondary"
+                    size="lg"
+                  >
+                    {P.alsoMap}
+                  </LinkButton>
+                ) : null}
               </div>
             </>
           )}

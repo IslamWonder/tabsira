@@ -207,6 +207,9 @@ export const scanMessages = {
     /** The completion panel's share button: one tap publishes if needed and opens the system's share sheet. */
     share: 'شارك',
     shareHint: 'المشاركة تنشر للبصيرة صفحة عامة، دون صورتك وموقعك ومحادثتك.',
+    /** Decision 68: sharing also makes the insight's post, in the owner's publications. */
+    shareHintPost:
+      'المشاركة تنشر للبصيرة صفحة عامة ومنشورًا في «تبصرة تواصل» يظهر في منشوراتك، دون صورتك وموقعك ومحادثتك.',
     shareOptions: 'خيارات النشر',
     shareUnavailable: 'المشاركة غير متاحة لهذه البصيرة الآن.',
     progressFailed: 'تعذّر عرض مهمة اليوم وعلاماتك الآن، وبصيرتك محفوظة.',

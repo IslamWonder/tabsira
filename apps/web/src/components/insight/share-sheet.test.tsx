@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiError, mockApi } from '@/test/api';
+import { POST } from '@/test/social';
 import { ShareSheet, type ShareSheetProps } from './share-sheet';
 
 const ID = '110000000000000002';
@@ -84,7 +85,7 @@ describe('ShareSheet', () => {
       'href',
       `/community/publish?insight=${ID}`
     );
-    expect(within(more).getByText(/ولا يفعّل النشر في تواصل/)).toBeInTheDocument();
+    expect(within(more).getByText(/النشر هنا يضع البصيرة في منشوراتك/)).toBeInTheDocument();
   });
 
   it('shows only the surface whose feature is on, and no section when neither is', () => {
@@ -114,6 +115,41 @@ describe('ShareSheet', () => {
     expect(within(sheet).getByText(/هذه البصيرة منشورة الآن/)).toBeInTheDocument();
     expect(within(sheet).getByRole('button', { name: 'اسحب النشر' })).toBeEnabled();
     expect(within(sheet).queryByRole('link', { name: 'نزّل البطاقة' })).toBeNull();
+  });
+
+  it('publishes the post beside the page while the network is on, so it is in the publications', async () => {
+    const api = mockApi({
+      [`PUT /insights/${ID}/publication`]: { body: PUBLISHED },
+      [`PUT /insights/${ID}/post`]: { body: POST },
+    });
+    stubShare(vi.fn().mockResolvedValue(undefined));
+    const sheet = renderSheet({ publishTo: { atlas: false, community: true } });
+    expect(within(sheet).getByText(/يظهر في منشوراتك وملفك العام/)).toBeInTheDocument();
+    await userEvent.click(within(sheet).getByRole('button', { name: 'انشر وشارك' }));
+    await within(sheet).findByRole('button', { name: 'شارك الرابط' });
+    const post = api.requests.find((request) => request.url.endsWith('/post'));
+    expect(post?.method).toBe('PUT');
+    expect(await post?.json()).toEqual({ photo: false });
+  });
+
+  it('tells an owner with no public handle where to choose one, and says a refusal', async () => {
+    mockApi({
+      [`PUT /insights/${ID}/publication`]: { body: PUBLISHED },
+      [`PUT /insights/${ID}/post`]: apiError(409, 'PUBLIC_IDENTITY_REQUIRED'),
+    });
+    stubShare(vi.fn().mockResolvedValue(undefined));
+    const sheet = renderSheet({ publishTo: { atlas: false, community: true } });
+    await userEvent.click(within(sheet).getByRole('button', { name: 'انشر وشارك' }));
+    expect(await within(sheet).findByText(/اختر اسمك العام/)).toBeInTheDocument();
+    sheet.remove();
+
+    mockApi({
+      [`PUT /insights/${ID}/publication`]: { body: PUBLISHED },
+      [`PUT /insights/${ID}/post`]: apiError(409, 'UNDER_13_CANNOT_PUBLISH'),
+    });
+    const refused = renderSheet({ publishTo: { atlas: false, community: true } });
+    await userEvent.click(within(refused).getByRole('button', { name: 'انشر وشارك' }));
+    expect(await within(refused).findByRole('alert')).toHaveTextContent(/دون 13 سنة/);
   });
 
   it('copies the address when the browser has no share dialog, and says so', async () => {

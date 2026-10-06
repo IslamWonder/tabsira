@@ -11,6 +11,7 @@ import { DEFAULT_VIEW, lngLatOf } from '@/atlas/types';
 import { StatusScreen } from '@/components/app/status-screen';
 import { IdentityForm } from '@/components/community/identity-section';
 import { AtlasIcon } from '@/components/icons';
+import { publishPost } from '@/components/insight/publication';
 import { PageContainer } from '@/components/layout/layouts';
 import { Button, LinkButton } from '@/components/ui/button';
 import { CheckboxField } from '@/components/ui/checkbox-field';
@@ -60,7 +61,12 @@ function round(value: number): string {
  * itself), says what the point stands for, reviews the cell the map will show,
  * and publishes. The exact point is kept for the owner alone.
  */
-export function MapPublishScreen() {
+export function MapPublishScreen({
+  community = false,
+}: Readonly<{
+  /** The network's feature, read by the server: without it no post is offered (decision 68). */
+  community?: boolean;
+}>) {
   const params = useSearchParams();
   const insightId = params.get('insight');
   const access = useAccess();
@@ -69,6 +75,8 @@ export function MapPublishScreen() {
   const [meaning, setMeaning] = useState<LocationMeaning>('capture_point');
   // The photo is the owner's choice, off until ticked, and offered only when a photo is kept.
   const [photo, setPhoto] = useState(false);
+  // Decision 68: publishing puts the insight in the owner's publications; the owner may untick it.
+  const [alsoPost, setAlsoPost] = useState(true);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -103,6 +111,32 @@ export function MapPublishScreen() {
     } else {
       setFailure(problemMessage(result));
     }
+  };
+
+  // The entry first; then, when it is shown and the owner kept the tick, the insight's one post.
+  const publish = async (target: MapEntryOwner) => {
+    setBusy(true);
+    setFailure(null);
+    const result = await publishEntry(target.insight_id);
+    if (!result.ok) {
+      setBusy(false);
+      setFailure(problemMessage(result));
+      return;
+    }
+    setExisting(result.data);
+    let done: string = P.published;
+    if (community && alsoPost && result.data.status === 'published') {
+      const post = await publishPost(target.insight_id, target.photo);
+      if (post.ok) {
+        done = P.publishedWithPost;
+      } else if (post.code === 'PUBLIC_IDENTITY_REQUIRED') {
+        done = P.postNeedsHandle;
+      } else {
+        setFailure(failureMessage(post));
+      }
+    }
+    setBusy(false);
+    setNotice(done);
   };
 
   const useDevice = () => {
@@ -404,12 +438,16 @@ export function MapPublishScreen() {
                 </div>
               )}
               <div className="flex flex-wrap gap-2.5">
+                {entry.status === 'draft' && community ? (
+                  <CheckboxField
+                    label={P.alsoPost}
+                    hint={P.alsoPostHint}
+                    checked={alsoPost}
+                    onChange={setAlsoPost}
+                  />
+                ) : null}
                 {entry.status === 'draft' ? (
-                  <Button
-                    size="lg"
-                    disabled={busy}
-                    onClick={() => void run(() => publishEntry(entry.insight_id), P.published)}
-                  >
+                  <Button size="lg" disabled={busy} onClick={() => void publish(entry)}>
                     {busy ? P.publishing : P.publish}
                   </Button>
                 ) : null}

@@ -397,6 +397,30 @@ describe('InsightScreen: sharing', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('puts the shared insight in the publications while the network is on (decision 68)', async () => {
+    setSignedIn(USER);
+    stubShare(vi.fn().mockResolvedValue(undefined));
+    const api = serve(insightOut(), {
+      [`POST /insights/${ID}/complete`]: { body: completionOut() },
+      'GET /me/progress': { body: progressOut() },
+      'GET /profile': { body: { ...PROFILE, questions_asked: true } },
+      [`PUT /insights/${ID}/publication`]: { body: PUBLISHED },
+      [`PUT /insights/${ID}/post`]: apiError(409, 'PUBLIC_IDENTITY_REQUIRED'),
+    });
+    render(<InsightScreen insightId={ID} publishTo={{ atlas: false, community: true }} />);
+    await screen.findByRole('heading', { level: 1, name: insightOut().title });
+    await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
+    const panel = await screen.findByRole('region', { name: 'اكتملت بصيرتك' });
+    expect(within(panel).getByText(/ومنشورًا في «تبصرة تواصل»/)).toBeInTheDocument();
+    await userEvent.click(within(panel).getByRole('button', { name: 'شارك' }));
+    await waitFor(() => expect(puts(api)).toHaveLength(2));
+    expect(puts(api).map((request) => new URL(request.url).pathname)).toEqual([
+      `/insights/${ID}/publication`,
+      `/insights/${ID}/post`,
+    ]);
+    expect(await within(panel).findByText(/اختر اسمك العام/)).toBeInTheDocument();
+  });
+
   it('shows the refusal in the panel when the publication fails, and opens the sheet from the options link', async () => {
     setSignedIn(USER);
     stubShare(vi.fn().mockResolvedValue(undefined));

@@ -1,10 +1,11 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import type { Result } from '@/lib/api/result';
 import { publicInsightPath } from '@/lib/public-insight';
 import { shareLink } from '@/lib/share-link';
-import { publishInsight } from './publication';
-import { addressOf, refusal } from './share-sheet';
+import { type InsightPost, publishInsight, publishPost } from './publication';
+import { addressOf, postNote, refusal } from './share-sheet';
 
 export interface QuickShareSaid {
   tone: 'success' | 'info' | 'error';
@@ -17,7 +18,10 @@ export interface QuickShare {
   setPublished: (published: boolean) => void;
   working: boolean;
   said: QuickShareSaid | null;
-  /** One tap: publish if needed and open the system share dialog with the public address. */
+  /**
+   * One tap: publish if needed, open the system share dialog with the public address, and put
+   * the insight in the owner's publications in the network (decision 68).
+   */
   run: () => void;
 }
 
@@ -27,12 +31,15 @@ export interface QuickShare {
  * at once, inside the tap, while the publication runs beside it: awaiting the
  * network first would spend the tap's permission and iOS would refuse the dialog.
  * If the publication is then refused, the API's reason is said, so the owner knows
- * the link will not open.
+ * the link will not open. Beside it the insight's post is published (decision 68), so a
+ * shared basira is in the owner's publications; without a public handle yet, the owner is
+ * told where to choose one. `community` is whether the network's feature is on.
  */
 export function useQuickShare(
   insightId: string,
   title: string,
-  initiallyPublished: boolean
+  initiallyPublished: boolean,
+  community = false
 ): QuickShare {
   const [publishedHere, setPublishedHere] = useState<boolean | null>(null);
   const published = publishedHere ?? initiallyPublished;
@@ -50,14 +57,18 @@ export function useQuickShare(
     setSaid(null);
     const sharing = shareLink(title, addressOf(publicInsightPath(insightId)), title);
     const publishing = published ? Promise.resolve(null) : publishInsight(insightId);
-    void Promise.all([sharing, publishing]).then(([shared, result]) => {
+    // Only with the page's own publication: a post the owner withdrew is never made again by a
+    // later share of a page that is already public.
+    const posting: Promise<Result<InsightPost> | null> =
+      community && !published ? publishPost(insightId) : Promise.resolve(null);
+    void Promise.all([sharing, publishing, posting]).then(([shared, result, post]) => {
       if (result !== null && !result.ok) {
         setSaid({ tone: 'error', text: refusal(result) });
       } else {
         if (result !== null) {
           setPublishedHere(true);
         }
-        setSaid(shared);
+        setSaid(postNote(post) ?? shared);
       }
       busy.current = false;
       setWorking(false);

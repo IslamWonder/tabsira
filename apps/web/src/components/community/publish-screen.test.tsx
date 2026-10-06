@@ -259,6 +259,34 @@ describe('PublishScreen', () => {
     ).toBeInTheDocument();
   });
 
+  it('offers to place a published post on the map too, only while the atlas is on (decision 68)', async () => {
+    member({
+      'POST /posts': { status: 201, body: DRAFT },
+      [`POST /posts/${DRAFT.id}/submit`]: { body: { ...DRAFT, status: 'published' } },
+    });
+    const { unmount } = render(<PublishScreen atlas />);
+    await userEvent.click(await screen.findByRole('button', { name: 'أنشئ المسودة' }));
+    expect(screen.queryByRole('link', { name: 'ضعها أيضًا على الخريطة' })).toBeNull();
+    await userEvent.click(await screen.findByRole('button', { name: 'انشر' }));
+    expect(await screen.findByRole('link', { name: 'ضعها أيضًا على الخريطة' })).toHaveAttribute(
+      'href',
+      '/atlas/publish?insight=7000000000000000001'
+    );
+    unmount();
+    render(<PublishScreen />);
+    await userEvent.click(await screen.findByRole('button', { name: 'أنشئ المسودة' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'انشر' }));
+    await screen.findByText(messages.community.publish.outcome.published);
+    expect(screen.queryByRole('link', { name: 'ضعها أيضًا على الخريطة' })).toBeNull();
+  });
+
+  it('says the insight is already in the publications when it has its post', async () => {
+    member({ 'POST /posts': apiError(409, 'INSIGHT_ALREADY_POSTED') });
+    render(<PublishScreen />);
+    await userEvent.click(await screen.findByRole('button', { name: 'أنشئ المسودة' }));
+    expect(await screen.findByText(/منشورة في تواصل من قبل/)).toBeInTheDocument();
+  });
+
   it('shows a failed submit under the preview, and leaves an edit unsaved on cancel', async () => {
     member({
       'POST /posts': { status: 201, body: DRAFT },
