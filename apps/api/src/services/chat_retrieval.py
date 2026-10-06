@@ -228,18 +228,12 @@ async def _find(
     searched: list[tuple[str, list[Found]]] = []
     for corpus, own in ((EmbeddedCorpus.QURAN, own_verses), (EmbeddedCorpus.HADITH, own_hadiths)):
         queries = intent.queries_of(corpus)
+        pool = loaded.hadith_pool if enriched_first and corpus is EmbeddedCorpus.HADITH else None
         found = (
             []
             if queries.empty
             else await search.search(
-                db,
-                corpus,
-                queries,
-                vectors,
-                pool=loaded.hadith_pool
-                if enriched_first and corpus is EmbeddedCorpus.HADITH
-                else None,
-                records=loaded.hadith_records,
+                db, corpus, queries, vectors, pool=pool, records=loaded.hadith_records
             )
         )
         searched.append((rerank_query(queries, intent.observable_meaning), _without(found, own)))
