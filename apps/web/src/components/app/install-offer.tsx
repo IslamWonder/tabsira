@@ -1,16 +1,34 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { DownloadIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Sheet } from '@/components/ui/sheet';
 import { messages } from '@/messages';
-import { dismissOffer, listenForInstall, mayOffer, promptInstall } from '@/pwa/install';
+import {
+  dismissOffer,
+  listenForInstall,
+  markEngaged,
+  mayOffer,
+  noteVisit,
+  promptInstall,
+} from '@/pwa/install';
 import { ENGAGED_EVENT, useInstall } from '@/pwa/use-install';
 
 const T = messages.install;
 /** Leaves the completion's own moment (its banner and burst) to finish first. */
 export const OFFER_DELAY_MS = 2500;
+/** Time on the site, in one visit, that shows interest. */
+export const ENGAGE_AFTER_MS = 40_000;
+/** Pages opened in one visit that show interest. */
+export const ENGAGE_PAGES = 3;
+
+/** The reader showed interest: kept for later visits, and told to the offer at once. */
+function engage() {
+  markEngaged();
+  window.dispatchEvent(new Event(ENGAGED_EVENT));
+}
 
 /** The two taps of Safari's share sheet, the only way to install on an iPhone or iPad. */
 export function IosSteps({ open, onClose }: Readonly<{ open: boolean; onClose: () => void }>) {
@@ -29,19 +47,33 @@ export function IosSteps({ open, onClose }: Readonly<{ open: boolean; onClose: (
 }
 
 /**
- * The offer to install, as a quiet card above the phone's navigation: never on
- * a first visit, only once a first insight is done (or on a later visit after
- * one), never again for a while after install.later, and never in the installed
- * app. It is not modal: the page stays usable under it.
+ * The offer to install, as a quiet card above the phone's navigation: never in
+ * the first moments of a first visit, only once the reader showed interest (see
+ * src/pwa/install.ts), never on the analysis it would cover, never again for a
+ * while after install.later, and never in the installed app. It is not modal:
+ * the page stays usable under it.
  */
 export function InstallOffer() {
   const install = useInstall();
   const [due, setDue] = useState(false);
   const [iosOpen, setIosOpen] = useState(false);
 
+  const pathname = usePathname();
+  const pages = useRef(new Set<string>());
+
   useEffect(() => {
     listenForInstall();
+    noteVisit();
+    const timer = setTimeout(engage, ENGAGE_AFTER_MS);
+    return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    pages.current.add(pathname);
+    if (pages.current.size === ENGAGE_PAGES) {
+      engage();
+    }
+  }, [pathname]);
 
   useEffect(() => {
     if (mayOffer(install)) {
@@ -73,7 +105,8 @@ export function InstallOffer() {
     setDue(false);
   };
 
-  const visible = due && !install.installed && install.way !== 'none';
+  const visible =
+    due && !install.installed && install.way !== 'none' && !pathname.startsWith('/scan/');
 
   return (
     <>

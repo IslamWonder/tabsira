@@ -6,9 +6,12 @@
  * browser's own dialog only ever opens on a tap. Safari fires nothing: on an
  * iPhone or iPad the offer explains the two taps of the share sheet instead.
  *
- * The offer waits for the experience (tajriba: the scene first, nothing before
- * it): it is made only after a first insight is done, and a dismissal is kept
- * for DISMISS_DAYS. An app already opened from the home screen is never offered.
+ * The offer waits for real interest, never the first moments of a first visit
+ * (tajriba: the scene first, nothing before it), as well-behaved web apps do:
+ * a finished insight, a third page in a visit, 40 s on the site, or a return
+ * visit. A dismissal is kept for DISMISS_DAYS. An app already opened from the
+ * home screen is never offered. A quiet install button in the footer and in
+ * the profile hub stays within reach whatever the offer was told.
  */
 
 export interface BeforeInstallPromptEvent extends Event {
@@ -36,7 +39,10 @@ export const INSTALL_CAPTURE_SCRIPT = `window.addEventListener("beforeinstallpro
 
 export const ENGAGED_KEY = 'tabsira.install.engaged';
 export const DISMISSED_KEY = 'tabsira.install.dismissed';
+export const FIRST_SEEN_KEY = 'tabsira.install.firstSeen';
 export const DISMISS_DAYS = 30;
+/** A visit this long after the first one is a return visit. */
+export const RETURN_AFTER_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 let deferred: BeforeInstallPromptEvent | null = null;
@@ -159,7 +165,17 @@ function writeTime(key: string, at: number): void {
   }
 }
 
-/** A first insight is done: from now on the app may be offered. */
+/** Keeps the first visit's time; a later visit, RETURN_AFTER_MS on, counts as interest. */
+export function noteVisit(now = Date.now()): void {
+  const first = readTime(FIRST_SEEN_KEY);
+  if (first === null) {
+    writeTime(FIRST_SEEN_KEY, now);
+  } else if (now - first >= RETURN_AFTER_MS) {
+    markEngaged(now);
+  }
+}
+
+/** The reader showed interest (a first insight, pages, time, a return): the app may be offered. */
 export function markEngaged(now = Date.now()): void {
   if (readTime(ENGAGED_KEY) === null) {
     writeTime(ENGAGED_KEY, now);

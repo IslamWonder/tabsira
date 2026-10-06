@@ -9,6 +9,7 @@ import { LogoMark } from '@/components/brand/logo';
 import { openConsentSettings } from '@/consent/store';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
+import { InstallLink } from './install-link';
 
 const QUIET =
   'inline-flex min-h-12 items-center text-fg-soft text-sm underline-offset-4 transition-colors duration-200 hover:text-fg hover:underline';
@@ -36,8 +37,8 @@ function Column({ title, children }: Readonly<{ title: string; children: ReactNo
 
 /**
  * The foot of every page, part of its flow: the mark, the landing page's
- * sections, and support, the terms, the privacy policy and the way back to the
- * cookie choice, as decision 32 and docs/SEO.md §6 ask. On a phone it ends
+ * sections and the way to install the app (where the browser can), and support,
+ * the terms, the privacy policy and the way back to the cookie choice, as decision 32 and docs/SEO.md §6 ask. On a phone it ends
  * above the floating navigation. The cookie choice opens a dialog, so it is a
  * button that says so, styled as a quiet link. The world fills the screen with
  * nothing under it (decision 59): its help panel holds these links instead.
@@ -79,6 +80,7 @@ export function SiteFooter() {
               </li>
             )
           )}
+          <InstallLink className={QUIET} />
         </Column>
         <Column title={messages.footer.help}>
           {PAGES.map(([href, label]) => (

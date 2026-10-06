@@ -5,13 +5,16 @@ import {
   DISMISSED_KEY,
   dismissOffer,
   ENGAGED_KEY,
+  FIRST_SEEN_KEY,
   INSTALL_CAPTURE_SCRIPT,
   installSnapshot,
   isAppleMobile,
   listenForInstall,
   markEngaged,
   mayOffer,
+  noteVisit,
   promptInstall,
+  RETURN_AFTER_MS,
   resetInstall,
   serverInstallSnapshot,
   subscribeInstall,
@@ -121,6 +124,15 @@ describe('when to offer', () => {
     dismissOffer(2000);
     expect(mayOffer(prompt, 2000 + DAY)).toBe(false);
     expect(mayOffer(prompt, 2000 + DISMISS_DAYS * DAY)).toBe(true);
+  });
+
+  it('takes a return visit for interest, but not a second page load soon after the first', () => {
+    noteVisit(1000);
+    expect(window.localStorage.getItem(FIRST_SEEN_KEY)).toBe('1000');
+    noteVisit(1000 + RETURN_AFTER_MS - 1);
+    expect(mayOffer(prompt, 1000 + RETURN_AFTER_MS)).toBe(false);
+    noteVisit(1000 + RETURN_AFTER_MS);
+    expect(mayOffer(prompt, 1000 + RETURN_AFTER_MS)).toBe(true);
   });
 
   it('never offers where it cannot install or where it is installed', () => {

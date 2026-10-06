@@ -169,6 +169,10 @@ When the installed app opens on a phone, the top bar's logo entrance plays full 
 
 A missing page is one of three scenes, chosen at random at each request, each a reminder of the guidance Islam gives, in the platform's own words (never a quoted or paraphrased verse or hadith): a swaying lantern whose flame flickers («ضلّ الرابط طريقه، ولم تضلّ أنت»), a dotted road drawn up to a guiding star among twinkling ones («في الليل يرفع المسافر عينيه»), and a compass on the brand's eight-pointed star whose needle swings and settles («لكل تائه وجهة»). Then «الصفحة ٤٠٤», the words, and one way back. Still a real 404, inline styles and system fonts only (docs/SEO.md §1); the drawings are inline SVG, their motion in the page's own style block, stopped under reduced motion.
 
+### Installing the app (added 6 October 2026)
+
+The owners saw that a new visitor had no way to install the app: the offer waited for a finished insight, which now needs an account, and the browser's own bar is held back so the offer can choose its moment. As well-behaved web apps do, the offer card now comes once the reader shows interest: a finished insight, a third page in one visit, 40 s on the site, or a return visit an hour or more after the first, never over the analysis, and resting 30 days after «ليس الآن». A quiet «ثبّت التطبيق» with the download icon sits in every page's footer from the first visit, wherever the browser can install (the browser's dialog, or the share-sheet steps on an iPhone), beside the same button in «ملفي». Nothing is shown in the installed app.
+
 ### Logo (added 4 October 2026)
 
 The designer's logo (`brand/`) replaces the temporary eight-point star mark and the typed wordmark everywhere: the round calligraphic «تبصرة» is the mark, and «TABSIRA» joins it in the full logo. On night surfaces it is brand gold `#B28B38` (5.99:1); on day surfaces it is deep gold `#8D6E2C` (4.53:1), because brand gold reaches only 3.00:1 on the day background. Favicon, PWA, Apple touch and tile icons carry their own night background with the brand gold mark, so they read on any browser chrome. See `brand/README.md`.

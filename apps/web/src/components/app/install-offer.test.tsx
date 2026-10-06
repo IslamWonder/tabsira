@@ -2,16 +2,26 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { messages } from '@/messages';
-import { DISMISSED_KEY, ENGAGED_KEY, resetInstall } from '@/pwa/install';
+import {
+  DISMISSED_KEY,
+  ENGAGED_KEY,
+  FIRST_SEEN_KEY,
+  RETURN_AFTER_MS,
+  resetInstall,
+} from '@/pwa/install';
 import { ENGAGED_EVENT } from '@/pwa/use-install';
 import { installPrompt } from '@/test/install';
-import { InstallOffer, OFFER_DELAY_MS } from './install-offer';
+import { ENGAGE_AFTER_MS, ENGAGE_PAGES, InstallOffer, OFFER_DELAY_MS } from './install-offer';
+
+const pathname = vi.hoisted(() => ({ value: '/' }));
+vi.mock('next/navigation', () => ({ usePathname: () => pathname.value }));
 
 const T = messages.install;
 
 beforeEach(() => {
   resetInstall();
   window.localStorage.clear();
+  pathname.value = '/';
 });
 
 afterEach(() => {
@@ -85,5 +95,51 @@ describe('InstallOffer', () => {
     render(<InstallOffer />);
     expect(offer()).toBeNull();
     Reflect.deleteProperty(navigator, 'standalone');
+  });
+
+  it('offers the app to a newcomer who opened a third page, after a moment', () => {
+    vi.useFakeTimers();
+    const { rerender } = render(<InstallOffer />);
+    act(() => {
+      window.dispatchEvent(installPrompt());
+    });
+    for (const page of ['/atlas', '/atlas', '/community'].slice(0, ENGAGE_PAGES)) {
+      pathname.value = page;
+      rerender(<InstallOffer />);
+    }
+    expect(offer()).toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(OFFER_DELAY_MS);
+    });
+    expect(offer()).not.toBeNull();
+    expect(window.localStorage.getItem(ENGAGED_KEY)).not.toBeNull();
+  });
+
+  it('offers it after a while on the site, but never over the analysis', () => {
+    vi.useFakeTimers();
+    pathname.value = '/scan/123';
+    render(<InstallOffer />);
+    act(() => {
+      window.dispatchEvent(installPrompt());
+    });
+    act(() => {
+      vi.advanceTimersByTime(ENGAGE_AFTER_MS + OFFER_DELAY_MS);
+    });
+    expect(window.localStorage.getItem(ENGAGED_KEY)).not.toBeNull();
+    expect(offer()).toBeNull();
+  });
+
+  it('keeps the first visit, and takes a visit an hour later for interest', () => {
+    const now = Date.now();
+    render(<InstallOffer />);
+    expect(Number(window.localStorage.getItem(FIRST_SEEN_KEY))).toBeGreaterThanOrEqual(now);
+    expect(window.localStorage.getItem(ENGAGED_KEY)).toBeNull();
+    resetInstall();
+    window.localStorage.setItem(FIRST_SEEN_KEY, String(now - RETURN_AFTER_MS));
+    render(<InstallOffer />);
+    act(() => {
+      window.dispatchEvent(installPrompt());
+    });
+    expect(offer()).not.toBeNull();
   });
 });
