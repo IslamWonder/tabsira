@@ -251,6 +251,19 @@
     caret-color: var(--primary);
   }
 
+  /*
+   * Every control answers a press at once with a tint (the token darkens by day and brightens by
+   * night), so a touch is felt on rows, tabs and chips too. Colour only, so nothing moves; never
+   * on anything that holds Quran or hadith text, which no effect touches.
+   */
+  :where(a[href], button, [role="button"], [role="tab"], summary, label:has(input)):active:not(
+      :disabled,
+      [aria-disabled="true"],
+      :has(.font-quran, .font-hadith)
+    ) {
+    filter: var(--press-filter);
+  }
+
   ::selection {
     background-color: var(--chip-primary-bg);
     color: var(--text);

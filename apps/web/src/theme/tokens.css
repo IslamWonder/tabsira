@@ -117,6 +117,8 @@
   --mote-opacity: 0.55;
   --stage-shadow: 0 30px 60px -30px rgba(15, 76, 58, 0.55), 0 0 0 1px #dce7e1;
   --dropzone-border: rgba(15, 76, 58, 0.3);
+  /* a press answers with a tint, never a movement: darker by day, brighter by night */
+  --press-filter: brightness(0.93);
   /* game feel: the dawn aurora, the gold rules of RPG panels, the focus star */
   --aurora-base: linear-gradient(180deg, #f6faf7 0%, #ffffff 55%, #fbf8f0 100%);
   --aurora-a: rgba(191, 234, 217, 0.95);
@@ -250,6 +252,8 @@
     --mote-opacity: 0.8;
     --stage-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06);
     --dropzone-border: rgba(255, 255, 255, 0.22);
+    /* a press answers with a tint, never a movement: darker by day, brighter by night */
+    --press-filter: brightness(1.22);
     /* game feel: the night aurora, the gold rules of RPG panels, the focus star */
     --aurora-base: linear-gradient(180deg, #0b1210 0%, #0e1a16 55%, #0b1210 100%);
     --aurora-a: rgba(63, 214, 154, 0.2);
@@ -383,6 +387,8 @@
   --mote-opacity: 0.8;
   --stage-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06);
   --dropzone-border: rgba(255, 255, 255, 0.22);
+  /* a press answers with a tint, never a movement: darker by day, brighter by night */
+  --press-filter: brightness(1.22);
   /* game feel: the night aurora, the gold rules of RPG panels, the focus star */
   --aurora-base: linear-gradient(180deg, #0b1210 0%, #0e1a16 55%, #0b1210 100%);
   --aurora-a: rgba(63, 214, 154, 0.2);
