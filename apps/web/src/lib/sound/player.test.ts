@@ -3,6 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setSoundEnabled } from '@/preferences/sound';
 import {
   armAudioUnlock,
+  CHIME_GAP,
+  CHIME_NOTES,
+  CHIME_RING,
+  CHIME_VOLUME,
   chooseSound,
   endLoop,
   FADE_IN,
@@ -10,6 +14,7 @@ import {
   isSoundPlaying,
   LAST_LOOP_MIN,
   loopSound,
+  playChime,
   resetAudio,
   STOP_FADE,
   stopSound,
@@ -80,6 +85,25 @@ class FakeContext {
   }
   createBuffer() {
     return { duration: 0 };
+  }
+  oscillators: { type: string; frequency: { value: number }; started: number; stopped: number }[] =
+    [];
+  createOscillator() {
+    const tone = {
+      type: '',
+      frequency: { value: 0 },
+      started: -1,
+      stopped: -1,
+      connect: vi.fn(),
+      start(at: number) {
+        tone.started = at;
+      },
+      stop(at: number) {
+        tone.stopped = at;
+      },
+    };
+    this.oscillators.push(tone);
+    return tone;
   }
   createGain() {
     const node = { gain: new FakeParam(), connect: vi.fn() };
@@ -468,5 +492,40 @@ describe('stopping and unlocking', () => {
     context().state = 'suspended';
     chooseSound(true);
     expect(context().resume).toHaveBeenCalled();
+  });
+});
+
+describe('playChime', () => {
+  it('rings two soft notes, one after the other, without fetching anything', () => {
+    const fetch = serve(mp3());
+    unlockAudio();
+    playChime();
+
+    expect(fetch).not.toHaveBeenCalled();
+    const tones = context().oscillators;
+    expect(tones.map((tone) => tone.frequency.value)).toEqual([...CHIME_NOTES]);
+    expect(tones.map((tone) => tone.type)).toEqual(['sine', 'sine']);
+    expect(tones[1]?.started).toBeCloseTo(10 + CHIME_GAP);
+    expect(tones[0]?.stopped).toBeCloseTo(10 + CHIME_RING);
+    const steps = context().gains[0]?.gain.steps ?? [];
+    expect(steps[0]).toEqual(['set', 0, 10]);
+    expect(steps[1]?.[1]).toBe(CHIME_VOLUME);
+    expect(steps.at(-1)).toEqual(['ramp', 0, 10 + CHIME_RING]);
+  });
+
+  it('stays silent when the switch is off, the audio is locked, or there is none yet', () => {
+    playChime();
+    expect(FakeContext.made).toHaveLength(0);
+
+    FakeContext.startState = 'suspended';
+    FakeContext.hold = true;
+    unlockAudio();
+    playChime();
+    expect(context().oscillators).toHaveLength(0);
+
+    context().state = 'running';
+    setSoundEnabled(false);
+    playChime();
+    expect(context().oscillators).toHaveLength(0);
   });
 });

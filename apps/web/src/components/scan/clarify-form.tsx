@@ -25,9 +25,12 @@ export interface ClarifyFormProps {
 export function ClarifyForm({ question, onAnswer, acting }: Readonly<ClarifyFormProps>) {
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // The answer button calls until the reader first sends: the scan waits for them.
+  const [calling, setCalling] = useState(true);
 
   const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setCalling(false);
     if (acting) {
       return;
     }
@@ -56,7 +59,18 @@ export function ClarifyForm({ question, onAnswer, acting }: Readonly<ClarifyForm
         onChange={(event) => setAnswer(event.target.value)}
       />
       <div>
-        <Button type="submit" disabled={acting} aria-busy={acting}>
+        <Button
+          type="submit"
+          disabled={acting}
+          aria-busy={acting}
+          className={calling ? 'fx-call relative' : 'relative'}
+        >
+          {calling ? (
+            <span
+              aria-hidden="true"
+              className="fx-halo pointer-events-none absolute inset-0 rounded-full border-2 border-[var(--glow-gold)]"
+            />
+          ) : null}
           {acting ? T.submitting : T.submit}
         </Button>
       </div>

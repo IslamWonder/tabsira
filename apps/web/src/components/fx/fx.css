@@ -952,3 +952,12 @@
     transform: translateX(-100%);
   }
 }
+
+/* ─── The call to act: a button the scan waits on (components/scan/clarify-form.tsx) ── */
+
+/* A still gold ring marks it (colour, so it stays under reduced motion); its halo breathes out three times. */
+.fx-call {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--glow-gold) 60%, transparent),
+    0 0 22px -2px color-mix(in srgb, var(--glow-gold) 70%, transparent);
+}

@@ -279,6 +279,41 @@ export function endLoop(): void {
   source.stop(end);
 }
 
+/** The call to act: a soft rising fifth, drawn on the spot, so no file is fetched. Hz. */
+export const CHIME_NOTES = [659.25, 987.77] as const;
+/** Seconds between the two notes, and how long each rings. */
+export const CHIME_GAP = 0.14;
+export const CHIME_RING = 1.1;
+export const CHIME_VOLUME = 0.22;
+const CHIME_ATTACK = 0.02;
+
+/**
+ * A short call when the scan needs the reader. It is heard only when the
+ * switch is on and the audio already runs; unlike the scene's sound it never
+ * waits for a tap, since a call heard late would point at nothing.
+ */
+export function playChime(): void {
+  const audio = context;
+  if (!readSoundEnabled() || audio === null || audio.state !== 'running') {
+    return;
+  }
+  const now = audio.currentTime;
+  CHIME_NOTES.forEach((frequency, index) => {
+    const start = now + index * CHIME_GAP;
+    const tone = audio.createOscillator();
+    const gain = audio.createGain();
+    tone.type = 'sine';
+    tone.frequency.value = frequency;
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(CHIME_VOLUME, start + CHIME_ATTACK);
+    gain.gain.linearRampToValueAtTime(0, start + CHIME_RING);
+    tone.connect(gain);
+    gain.connect(audio.destination);
+    tone.start(start);
+    tone.stop(start + CHIME_RING);
+  });
+}
+
 /** The reader's choice: remembered on this device, and a sound already playing fades out at once. */
 export function chooseSound(on: boolean): void {
   setSoundEnabled(on);

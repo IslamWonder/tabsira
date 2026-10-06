@@ -282,6 +282,16 @@ describe('ScanScreen: the single question', () => {
     expect(clarify).toHaveBeenCalledWith('أسقي النبتة');
   });
 
+  it('marks the answer button with a gold call until the reader first sends', async () => {
+    renderQuestion();
+    const button = screen.getByRole('button', { name: 'أجب وأكمل' });
+    expect(button.className).toContain('fx-call');
+    expect(button.querySelector('.fx-halo')).toHaveAttribute('aria-hidden', 'true');
+    await userEvent.click(button);
+    expect(button.className).not.toContain('fx-call');
+    expect(button.querySelector('.fx-halo')).toBeNull();
+  });
+
   it('asks for an answer before sending anything', async () => {
     const { clarify } = renderQuestion();
     await userEvent.click(screen.getByRole('button', { name: 'أجب وأكمل' }));
