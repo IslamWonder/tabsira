@@ -169,6 +169,17 @@ describe('MapPublishScreen', () => {
       );
       expect(held.requests.some((request) => request.url.endsWith('/post'))).toBe(false);
     });
+
+    it('says why the entry was refused, keeps the button, and posts nothing', async () => {
+      const api = draft({
+        [`POST /insights/${INSIGHT}/map/publish`]: apiError(503, 'SERVICE_UNAVAILABLE'),
+      });
+      render(<MapPublishScreen community />);
+      await publish();
+      expect(await screen.findByRole('alert')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'انشر على الأطلس' })).toBeEnabled();
+      expect(api.requests.some((request) => request.url.endsWith('/post'))).toBe(false);
+    });
   });
 
   it('chooses a place by name as a public place, and says why an insight is refused', async () => {
