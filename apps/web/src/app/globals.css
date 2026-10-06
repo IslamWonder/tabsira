@@ -203,6 +203,9 @@
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+    /* Native checkboxes, radios, ranges and the text cursor take the theme, not the browser's blue. */
+    accent-color: var(--primary);
+    caret-color: var(--primary);
   }
 
   /* From tablet up the bar is at the top: keep focused elements clear of it instead. */
@@ -243,6 +246,8 @@
   [data-theme] {
     background-color: var(--bg);
     color: var(--text);
+    accent-color: var(--primary);
+    caret-color: var(--primary);
   }
 
   ::selection {
