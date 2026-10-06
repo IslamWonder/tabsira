@@ -1,6 +1,7 @@
 'use client';
 
 import { type ReactNode, type SubmitEvent, useEffect, useId, useRef, useState } from 'react';
+import { hasEmailShape } from '@/account/validation';
 import { useTurnstile } from '@/components/turnstile/use-turnstile';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,14 +20,11 @@ const T = legalMessages().support;
 type Field = 'email' | 'topic' | 'message';
 type FieldErrors = Partial<Record<Field, string>>;
 
-// The same shape check the API does in spirit; the server decides in the end.
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 function validate(email: string, topic: string, message: string): FieldErrors {
   const errors: FieldErrors = {};
   if (email.trim() === '') {
     errors.email = T.errors.emailRequired;
-  } else if (!EMAIL.test(email.trim())) {
+  } else if (!hasEmailShape(email.trim())) {
     errors.email = T.errors.emailInvalid;
   }
   if (topic === '') {

@@ -217,6 +217,20 @@ describe('the contrast helpers', () => {
 
   it('reject what is not a colour', () => {
     expect(() => parseColor('var(--x)')).toThrow('not a colour');
+    for (const text of [
+      'rgb(1,2)',
+      'rgba(1,2,3,)',
+      'rgb(a,2,3)',
+      'rgb(1 2 3)',
+      'rgba(1,2,3,4,5)',
+    ]) {
+      expect(() => parseColor(text), text).toThrow('not a colour');
+    }
+  });
+
+  it('read rgb and rgba with any spacing', () => {
+    expect(parseColor(' RGB( 1 , 2.5,3 ) ')).toEqual({ r: 1, g: 2.5, b: 3, a: 1 });
+    expect(parseColor('rgba(1,2,3, 0.5 )')).toEqual({ r: 1, g: 2, b: 3, a: 0.5 });
   });
 
   it('report a missing token by name', () => {

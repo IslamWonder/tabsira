@@ -15,14 +15,28 @@ export const DISPLAY_NAME_MAX = 60;
 
 // Control, format, surrogate and private-use characters (newlines, bidi tricks).
 const FORBIDDEN_IN_NAME = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}]/u;
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * A local part, one `@`, and a domain with a dot that has a character on each side; no
+ * whitespace anywhere. Written as steps because the single pattern backtracks in quadratic
+ * time on a long run of dots.
+ */
+export function hasEmailShape(value: string): boolean {
+  const at = value.indexOf('@');
+  if (at < 1 || value.indexOf('@', at + 1) !== -1 || /\s/.test(value)) {
+    return false;
+  }
+  const domain = value.slice(at + 1);
+  const dot = domain.indexOf('.', 1);
+  return dot !== -1 && dot <= domain.length - 2;
+}
 
 export function emailProblem(value: string): string | null {
   const email = value.trim();
   if (email === '') {
     return V.emailMissing;
   }
-  return EMAIL_SHAPE.test(email) ? null : V.emailInvalid;
+  return hasEmailShape(email) ? null : V.emailInvalid;
 }
 
 /** For signing in, only presence: a wrong password is wrong, not badly formed. */

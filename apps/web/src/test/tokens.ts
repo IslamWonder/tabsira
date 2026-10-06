@@ -7,7 +7,7 @@ export const TOKENS_PATH = path.resolve(__dirname, '../theme/tokens.css');
 
 function declarations(block: string): TokenSet {
   const tokens: TokenSet = {};
-  for (const match of block.matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+);/g)) {
+  for (const match of block.matchAll(/--([a-z0-9-]+)\s*:([^;]+);/g)) {
     tokens[match[1] as string] = (match[2] as string).replace(/\s+/g, ' ').trim();
   }
   return tokens;

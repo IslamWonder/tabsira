@@ -11,6 +11,8 @@ export interface Rgba {
   a: number;
 }
 
+const NUMBER = /^[\d.]+$/;
+
 export function parseColor(value: string): Rgba {
   const text = value.trim().toLowerCase();
   const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/.exec(text);
@@ -25,15 +27,20 @@ export function parseColor(value: string): Rgba {
     const n = Number.parseInt(digits, 16);
     return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255, a: 1 };
   }
-  const rgba = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/.exec(
-    text
-  );
-  if (rgba !== null) {
+  const args = /^rgba?\(([^)]*)\)$/
+    .exec(text)?.[1]
+    ?.split(',')
+    .map((part) => part.trim());
+  if (
+    args !== undefined &&
+    [3, 4].includes(args.length) &&
+    args.every((part) => NUMBER.test(part))
+  ) {
     return {
-      r: Number(rgba[1]),
-      g: Number(rgba[2]),
-      b: Number(rgba[3]),
-      a: rgba[4] === undefined ? 1 : Number(rgba[4]),
+      r: Number(args[0]),
+      g: Number(args[1]),
+      b: Number(args[2]),
+      a: args[3] === undefined ? 1 : Number(args[3]),
     };
   }
   throw new Error(`not a colour: ${value}`);
