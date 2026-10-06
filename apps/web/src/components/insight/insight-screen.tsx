@@ -28,6 +28,7 @@ import {
   InsightTools,
   SeenNote,
 } from './insight-frame';
+import { type HandedPhoto, handedPhoto } from './photo-handoff';
 import { PhotoPlaceholder } from './photo-placeholder';
 import { NO_TARGETS, type PublishTargets, ShareSheet } from './share-sheet';
 import { StepCard } from './step-card';
@@ -44,13 +45,20 @@ function Photo({
   view,
   insight,
   backHref,
+  handed,
 }: Readonly<{
   view: PhotoView | null;
   insight: Insight;
   backHref: Route;
+  /** The scan's photo, shown until the insight's own is read. */
+  handed: HandedPhoto | null;
 }>) {
   if (view === null) {
-    return <PhotoPlaceholder note={T.loading} backHref={backHref} />;
+    return handed === null ? (
+      <PhotoPlaceholder note={T.loading} backHref={backHref} />
+    ) : (
+      <InsightPhoto {...handed} alt={T.photoAlt} backHref={backHref} unoptimized />
+    );
   }
   if (view.kind === 'photo') {
     return (
@@ -98,12 +106,21 @@ export function InsightScreen({
   );
   const session = useSession();
   const router = useRouter();
+  const handed = handedPhoto(insightId);
 
   if (load.phase === 'loading') {
-    return (
+    const status = (
       <p role="status" className="px-6 py-16 text-center text-fg-soft">
         {T.loading}
       </p>
+    );
+    // Opened from its scan: the scan's photo is on screen at once, so the one turns into the other.
+    return handed === null ? (
+      status
+    ) : (
+      <ReadingLayout media={<InsightPhoto {...handed} alt={T.photoAlt} unoptimized />}>
+        {status}
+      </ReadingLayout>
     );
   }
   if (load.phase === 'lost') {
@@ -153,7 +170,7 @@ export function InsightScreen({
   return (
     <>
       <ReadingLayout
-        media={<Photo view={photo} insight={insight} backHref={backHref} />}
+        media={<Photo view={photo} insight={insight} backHref={backHref} handed={handed} />}
         footer={
           <div className="flex flex-col gap-2">
             {finish.error === undefined ? null : (

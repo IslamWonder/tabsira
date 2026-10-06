@@ -908,6 +908,12 @@
   }
 }
 
+/* The scan's photo turns into the insight's photo (components/insight/photo-handoff.ts). */
+::view-transition-group(.photo-morph) {
+  animation-duration: 450ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* The global reduced-motion rules do not reach these pseudo-elements. */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),

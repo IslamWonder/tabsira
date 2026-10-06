@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { Route as NextRoute } from 'next';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { forgetSession, readSession, setGuest, setSignedIn } from '@/account/session';
 import { messages } from '@/messages';
@@ -15,6 +16,7 @@ import {
   VERSE_TEXT,
 } from '@/test/scan';
 import { InsightScreen } from './insight-screen';
+import { forgetHandedPhoto, handPhoto } from './photo-handoff';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
@@ -27,6 +29,7 @@ beforeEach(() => {
   forgetSession();
   push.mockClear();
   window.localStorage.clear();
+  forgetHandedPhoto();
 });
 
 function serve(insight = insightOut(), extra: Record<string, Route> = {}) {
@@ -497,5 +500,35 @@ describe('InsightScreen: rating the insight', () => {
     await userEvent.click(field);
     await userEvent.paste('ن'.repeat(301));
     expect(within(sheet).getByRole('button', { name: F.send })).toBeDisabled();
+  });
+});
+
+describe('InsightScreen: the photo handed over by its scan', () => {
+  const HANDED = {
+    src: 'http://api.tabsira.test/scans/1/image',
+    width: 800,
+    height: 600,
+    backHref: `/scan/${SCAN}` as NextRoute,
+  };
+
+  it("shows the scan's photo at once, while the insight is still being read", async () => {
+    handPhoto(ID, HANDED);
+    serve();
+    render(<InsightScreen insightId={ID} />);
+    expect(screen.getByRole('status')).toHaveTextContent(messages.insightPage.loading);
+    const photo = screen.getByRole('img', { name: messages.insightPage.photoAlt });
+    expect(photo.getAttribute('src')).toContain('scans/1/image');
+    expect(screen.getByRole('link', { name: messages.insight.back })).toHaveAttribute(
+      'href',
+      `/scan/${SCAN}`
+    );
+    await screen.findByRole('heading', { level: 1, name: insightOut().title });
+  });
+
+  it('keeps to the placeholder for any other insight', () => {
+    handPhoto('110000000000000009', HANDED);
+    serve();
+    render(<InsightScreen insightId={ID} />);
+    expect(screen.queryByRole('img', { name: messages.insightPage.photoAlt })).toBeNull();
   });
 });

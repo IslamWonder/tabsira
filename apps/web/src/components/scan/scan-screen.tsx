@@ -7,6 +7,7 @@ import { markTutorialClosed } from '@/account/session';
 import { DisclosureLine } from '@/components/insight/disclosure-line';
 import { EngineLabel } from '@/components/insight/engine-label';
 import { SeenNote } from '@/components/insight/insight-frame';
+import { handPhoto } from '@/components/insight/photo-handoff';
 import { ProgressStages, type StageId } from '@/components/insight/progress-stages';
 import type { ScenePoint } from '@/components/insight/scene-photo';
 import { StageLayout } from '@/components/layout/layouts';
@@ -21,7 +22,7 @@ import { type ScanView, useScan } from '@/lib/scan/use-scan';
 import { messages } from '@/messages';
 import { ClarifyForm } from './clarify-form';
 import { FocusPanel } from './focus-picker';
-import { ScanStage } from './scan-stage';
+import { ScanStage, shownPhoto } from './scan-stage';
 import { useCallChime } from './use-call-chime';
 import { type SoundMoment, useSceneSound } from './use-scene-sound';
 
@@ -98,7 +99,13 @@ export function ScanScreen({ scanId }: Readonly<{ scanId: string }>) {
       markTutorialClosed();
     }
   }, [gaveInsights]);
-  const openInsight = (id: string) => router.push(`/insight/${id}` as Route);
+  const openInsight = (id: string) => {
+    const shown = shownPhoto(scan);
+    if (shown !== null) {
+      handPhoto(id, { ...shown, backHref: `/scan/${scanId}` as Route });
+    }
+    router.push(`/insight/${id}` as Route);
+  };
 
   const stopFocusing = () => {
     setFocusing(false);

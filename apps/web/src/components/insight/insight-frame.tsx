@@ -3,7 +3,7 @@
 import type { Route } from 'next';
 import Image, { type StaticImageData } from 'next/image';
 import Link from 'next/link';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useState, ViewTransition } from 'react';
 import { ShareIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
@@ -12,6 +12,7 @@ import { cx } from '@/lib/cx';
 import { useBoxSize } from '@/lib/use-box-size';
 import { messages } from '@/messages';
 import { DoneButton, type DoneStatus } from './done-button';
+import { PHOTO_MORPH } from './photo-handoff';
 import { coverPlacement, isRatio } from './scene-geometry';
 
 /*
@@ -74,14 +75,16 @@ export function InsightPhoto({
         ref={setBox}
         className="relative h-[330px] overflow-hidden tablet:h-[420px] desktop:h-[min(720px,calc(var(--app-height)-var(--topbar-height)-6rem))] desktop:rounded-[28px] desktop:shadow-[var(--stage-shadow)]"
       >
-        <Image
-          src={src}
-          alt={alt}
-          fill
-          sizes="(min-width: 75rem) 520px, 100vw"
-          unoptimized={unoptimized}
-          className="object-cover"
-        />
+        <ViewTransition name={PHOTO_MORPH} share="photo-morph" default="none">
+          <Image
+            src={src}
+            alt={alt}
+            fill
+            sizes="(min-width: 75rem) 520px, 100vw"
+            unoptimized={unoptimized}
+            className="object-cover"
+          />
+        </ViewTransition>
         <Link
           href={backHref}
           aria-label={messages.insight.back}

@@ -1,11 +1,12 @@
 'use client';
 
 import Image, { type StaticImageData } from 'next/image';
-import { type ReactNode, useId, useState } from 'react';
+import { type ReactNode, useId, useState, ViewTransition } from 'react';
 import { cx } from '@/lib/cx';
 import { useBoxSize } from '@/lib/use-box-size';
 import { messages } from '@/messages';
 import { InsightPoint, type PointTone } from './insight-point';
+import { PHOTO_MORPH } from './photo-handoff';
 import { coverPlacement, gridCell, isRatio, labelSides } from './scene-geometry';
 
 export interface ScenePoint {
@@ -39,6 +40,8 @@ export interface ScenePhotoProps {
    * without the scrim that melts a full-bleed photo into the page.
    */
   framed?: boolean;
+  /** The scan's photo: it turns into the insight's photo when one of its insights opens. */
+  morph?: boolean;
   className?: string;
   /** Overlays drawn above the photo (a header, a hint). */
   children?: ReactNode;
@@ -62,6 +65,7 @@ export function ScenePhoto({
   unoptimized = false,
   listInPanel = false,
   framed = false,
+  morph = false,
   className,
   children,
 }: Readonly<ScenePhotoProps>) {
@@ -76,17 +80,27 @@ export function ScenePhoto({
     return messages.scene.positions[row][column];
   };
 
+  const image = (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes="100vw"
+      priority={priority}
+      unoptimized={unoptimized}
+      className="object-cover"
+    />
+  );
+
   return (
     <div ref={setBox} className={cx('relative isolate overflow-hidden', className)}>
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        sizes="100vw"
-        priority={priority}
-        unoptimized={unoptimized}
-        className="object-cover"
-      />
+      {morph ? (
+        <ViewTransition name={PHOTO_MORPH} share="photo-morph" default="none">
+          {image}
+        </ViewTransition>
+      ) : (
+        image
+      )}
       <div
         aria-hidden="true"
         className={cx(
