@@ -8,6 +8,7 @@ import { Notice } from '@/components/ui/notice';
 import { TextField } from '@/components/ui/text-field';
 import { failureMessage } from '@/lib/api/failure-message';
 import { fieldRefused, type Result } from '@/lib/api/result';
+import { formText } from '@/lib/form-text';
 import { messages } from '@/messages';
 
 export interface EmailRequestFormProps {
@@ -44,8 +45,7 @@ export function EmailRequestForm({
 
   const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const emailValue = new FormData(event.currentTarget).get('email');
-    const email = (typeof emailValue === 'string' ? emailValue : '').trim();
+    const email = formText(new FormData(event.currentTarget), 'email').trim();
     const problem = emailProblem(email);
     setError(problem);
     setFailure(null);

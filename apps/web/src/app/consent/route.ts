@@ -10,6 +10,7 @@ import {
   validConsentId,
 } from '@/consent/cookie';
 import { postOnServer } from '@/consent/server-api';
+import { formText } from '@/lib/form-text';
 import { siteOrigin } from '@/lib/site';
 
 /*
@@ -55,8 +56,7 @@ export async function POST(request: Request): Promise<Response> {
     return new Response(null, { status: 403 });
   }
   const form = await request.formData();
-  const returnTo = form.get('return');
-  const back = new URL(safeNextPath(typeof returnTo === 'string' ? returnTo : '/'), siteOrigin());
+  const back = new URL(safeNextPath(formText(form, 'return', '/')), siteOrigin());
   const response = NextResponse.redirect(back, 303);
   const secure = back.protocol === 'https:';
   const cookie = { path: '/', sameSite: 'lax' as const, secure };

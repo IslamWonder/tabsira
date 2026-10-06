@@ -10,6 +10,7 @@ import { TextField } from '@/components/ui/text-field';
 import { api } from '@/lib/api/client';
 import { failureMessage } from '@/lib/api/failure-message';
 import { attempt, fieldRefused } from '@/lib/api/result';
+import { formText } from '@/lib/form-text';
 import { messages } from '@/messages';
 import { Gate } from './gate';
 
@@ -32,8 +33,7 @@ export function ResetPasswordScreen() {
 
   const submit = async (event: SubmitEvent<HTMLFormElement>, token: string) => {
     event.preventDefault();
-    const passwordValue = new FormData(event.currentTarget).get('password');
-    const password = typeof passwordValue === 'string' ? passwordValue : '';
+    const password = formText(new FormData(event.currentTarget), 'password');
     const problem = newPasswordProblem(password);
     setError(problem);
     if (problem !== null) {

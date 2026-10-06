@@ -13,6 +13,7 @@ import { TextField } from '@/components/ui/text-field';
 import { api } from '@/lib/api/client';
 import { failureMessage } from '@/lib/api/failure-message';
 import { attempt, fieldRefused } from '@/lib/api/result';
+import { formText } from '@/lib/form-text';
 import { messages } from '@/messages';
 import { Gate } from './gate';
 import { GoogleSignIn } from './google-sign-in';
@@ -58,10 +59,8 @@ export function SignInScreen({
   const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const emailValue = form.get('email');
-    const passwordValue = form.get('password');
-    const email = (typeof emailValue === 'string' ? emailValue : '').trim();
-    const password = typeof passwordValue === 'string' ? passwordValue : '';
+    const email = formText(form, 'email').trim();
+    const password = formText(form, 'password');
     const found = { email: emailProblem(email), password: passwordMissing(password) };
     setErrors(found);
     setFailure(null);
