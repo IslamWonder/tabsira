@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from '@/account/session';
 import { useCapture } from '@/components/capture/capture-provider';
-import { CameraIcon, ProfileIcon } from '@/components/icons';
+import { CameraIcon, MyPageIcon, ProfileIcon } from '@/components/icons';
 import { LANDING_LINKS } from '@/components/landing/landing-model';
 import { Button, LinkButton } from '@/components/ui/button';
 import { SoundToggle } from '@/components/ui/sound-toggle';
@@ -12,7 +12,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 import { Brand } from './brand';
-import { MyPageIcon, ProfileCornerLink, useMyPage } from './my-page-link';
+import { ProfileCornerLink, useMyPage } from './my-page-link';
 import { isActive, SECTIONS } from './nav-items';
 import { ProgressPill } from './progress-pill';
 

@@ -5,7 +5,7 @@ import { forgetIdentity, setIdentity } from '@/social/identity-store';
 import { mockApi } from '@/test/api';
 import { USER } from '@/test/fixtures';
 import { IDENTITY } from '@/test/social';
-import { MyPageIcon, ProfileCornerLink, useMyPage } from './my-page-link';
+import { ProfileCornerLink, useMyPage } from './my-page-link';
 
 const pathname = vi.hoisted(() => ({ value: '/' }));
 vi.mock('next/navigation', () => ({ usePathname: () => pathname.value }));
@@ -32,11 +32,6 @@ describe('one’s own public page', () => {
       href: '/u/reader',
       handle: 'reader',
     });
-  });
-
-  it('has an icon of its own, decorative', () => {
-    const { container } = render(<MyPageIcon width="18" height="18" />);
-    expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
   });
 });
 

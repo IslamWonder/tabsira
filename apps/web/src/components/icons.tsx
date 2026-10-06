@@ -101,6 +101,17 @@ export function ProfileIcon(props: Readonly<IconProps>) {
   );
 }
 
+/** One's public page: a portrait framed on a page, beside the plain person of the profile hub. */
+export function MyPageIcon(props: Readonly<IconProps>) {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="3" width="17" height="18" rx="3" />
+      <circle cx="12" cy="10" r="3" />
+      <path d="M7.5 17.5a4.5 4.5 0 0 1 9 0" />
+    </Icon>
+  );
+}
+
 export function ExternalIcon(props: Readonly<IconProps>) {
   return (
     <Icon width="16" height="16" {...props}>

@@ -342,7 +342,7 @@ Served by the web app itself (no third-party request from the visitor's browser)
 
 ## 13. Emblems (`apps/web/src/components/ui/emblem-data.ts`)
 
-Twenty-seven icons of one premium Magnific family, **Good Ware Lineal** (family 546, author Good Ware), chosen by the owners on 5 October 2026 (the landing page, then the menu of «ملفي»; on 6 October the follow button and «صفحتي») and downloaded as SVG through the owners' Freepik API key on those days. Licence: Magnific (Flaticon) premium licence for the owners' account; no attribution is shown on the page. Each SVG's path data is kept in the module above, rounded to a tenth of a unit and drawn in `currentColor` (the landing's gold), so the visitor's browser fetches nothing from Magnific; the originals are not kept in the repository.
+Twenty-six icons of one premium Magnific family, **Good Ware Lineal** (family 546, author Good Ware), chosen by the owners on 5 October 2026 (the landing page, then the menu of «ملفي»; on 6 October the follow button) and downloaded as SVG through the owners' Freepik API key on those days. Licence: Magnific (Flaticon) premium licence for the owners' account; no attribution is shown on the page. Each SVG's path data is kept in the module above, rounded to a tenth of a unit and drawn in `currentColor` (the landing's gold), so the visitor's browser fetches nothing from Magnific; the originals are not kept in the repository.
 
 | Name                 | Magnific id | Title          | Where                          |
 | -------------------- | ----------- | -------------- | ------------------------------ |
@@ -372,7 +372,6 @@ Twenty-seven icons of one premium Magnific family, **Good Ware Lineal** (family 
 | `me_cookies`         | 766386      | Biscuit        | «ملفي»: ملفات تعريف الارتباط   |
 | `follow`             | 5989255     | Profile        | the follow button              |
 | `following`          | 5989309     | Profile        | the same button, once followed |
-| `my_page`            | 4065278     | Profile        | «صفحتي», one's public page     |
 
 ## 14. Sky of meanings background (`apps/web/public/practice/`)
 

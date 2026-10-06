@@ -143,7 +143,7 @@ The owners found the profile page a long, messy list. It is now organised the wa
 
 ### «صفحتي» and «ملفي» (added 6 October 2026)
 
-The owners found the two confusing: one icon for both, and the public page in the corner while the private hub held a tab. From tablet up, once a member has chosen a handle, the fourth tab is «صفحتي», their public page (its own Magnific icon, a page with a portrait), and «ملفي», the private hub of account, settings and privacy, sits in the top bar's corner with the person icon, where web apps keep the account. Before a handle exists there is no public page, so «ملفي» keeps the tab, where the handle is chosen. The phone bar keeps «ملفي». The practice page, `/sky` since the same day, belongs to «ملفي»: that link is marked current there.
+The owners found the two confusing: one icon for both, and the public page in the corner while the private hub held a tab. From tablet up, once a member has chosen a handle, the fourth tab is «صفحتي», their public page (a line icon drawn like the other tabs': a portrait framed on a page), and «ملفي», the private hub of account, settings and privacy, sits in the top bar's corner with the person icon, where web apps keep the account. Before a handle exists there is no public page, so «ملفي» keeps the tab, where the handle is chosen. The phone bar keeps «ملفي». The practice page, `/sky` since the same day, belongs to «ملفي»: that link is marked current there.
 
 ### Choosing an insight on the scan (added 6 October 2026)
 

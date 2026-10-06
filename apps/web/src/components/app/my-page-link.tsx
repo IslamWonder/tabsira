@@ -3,9 +3,7 @@
 import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { SVGProps } from 'react';
 import { ProfileIcon } from '@/components/icons';
-import { Emblem } from '@/components/ui/emblem';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 import { profilePath } from '@/social/identity';
@@ -20,11 +18,6 @@ export function useMyPage(): { href: Route; handle: string } | null {
   }
   const { handle } = identity.identity;
   return { href: profilePath(handle) as Route, handle };
-}
-
-/** the "my page" link's icon, drawn like the tabs' icons. */
-export function MyPageIcon(props: Readonly<Omit<SVGProps<SVGSVGElement>, 'children' | 'name'>>) {
-  return <Emblem {...props} name="my_page" />;
 }
 
 /**
