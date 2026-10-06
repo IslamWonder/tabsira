@@ -2,7 +2,7 @@
 
 One short file per feature: what it is, where it stands, what is waiting on the owners, and how it is checked. Phase 1 is this release (decision 40); phase 2 follows.
 
-**Updated:** 2026-10-06 09:28 (Tunis) · ✅ done · 🔄 in progress · ⬜ not started · ⏸ phase 2
+**Updated:** 2026-10-06 09:40 (Tunis) · ✅ done · 🔄 in progress · ⬜ not started · ⏸ phase 2
 
 | #   | Feature                                                                  | Phase | Priority | Status |
 | --- | ------------------------------------------------------------------------ | ----- | -------- | ------ |
@@ -30,7 +30,11 @@ One short file per feature: what it is, where it stands, what is waiting on the 
 | 22  | [Account after the first scan, full profile](22_account_profile_gate.md) | 1     | High     | ✅     |
 | 23  | [Mock members to start the platform](23_mock_data.md)                    | 2     | High     | ✅     |
 
-## The contest's reference pack
+## The contest
+
+**Submission closes on 6 October 2026 at 23:59 Riyadh time (21:59 Tunis).** The participant's guide sets the dates, the deliverables (working product, live link, public GitHub repository, sources documentation, presentation, video of two minutes at most) and the judging weights: [docs/spec/contest-guide.md](../spec/contest-guide.md).
+
+### The reference pack
 
 The organisers' «المرجعية والحزمة العلمية والبيانات» sets the approved sources and the standard every output must meet: summary, gaps and the link in [docs/spec/contest-reference.md](../spec/contest-reference.md). On 2026-10-06 the owners kept the hadith behaviour of decision 65 (task 05.11 closed); task 05.10 (the «وجه الصلة» line) is an optional quality change; the Quran guard's copy in today's spelling is our own processing of the approved quranpedia text, not Tanzil (task 05.9).
 
