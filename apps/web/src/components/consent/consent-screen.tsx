@@ -193,7 +193,7 @@ export function ConsentScreen({ initial }: Readonly<{ initial: ServerConsent }>)
           className="fx-dialog-surface flex flex-col gap-5 px-5 pt-8 pb-6 tablet:px-10"
         >
           <header className="flex flex-col items-center gap-3 text-center">
-            <Logo title={messages.brand.name} className="fx-enter mb-1 h-24 tablet:h-28" />
+            <Logo title={messages.brand.name} className="mb-1 h-24 tablet:h-28" entrance />
             <h2
               id={titleId}
               className="fx-enter fx-enter--2 m-0 font-bold font-display text-title text-gilded"

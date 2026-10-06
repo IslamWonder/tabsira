@@ -149,6 +149,10 @@ The owners chose pin «A» of three drawn for TABSIRA: the familiar pin shape, a
 
 One frame for every public photo: a thin gilded mat (a 1 px border at 30 % of the primary colour, 6 px of surface inside), no glow, so the picture stays the subject. A post or atlas entry on its own page shows the whole photo; a feed card (community and profile) shows a medium thumbnail cropped to a strip (176 px on a phone, 224 px from tablet up) under the title and glimpse, which opens the post. A post without a photo shows nothing in its place, and a photo that fails to load leaves no empty frame.
 
+### Logo entrance (added 6 October 2026)
+
+On a page load the top bar's mark and the consent window's logo write themselves in, the owners' Final Fantasy reference: the calligraphic strokes appear one after another from right to left, in the order the hand writes Arabic (each from where its outline starts), a ring of light opens behind the mark and four sparks rise as the last stroke lands, then a gold shine and a brief glow run over the strokes in the same order. About 2.6 s, once; the top bar stays mounted across navigation, so moving between pages does not replay it. Opacity, transform, colour and a drop shadow only (fx.css «logo entrance»); with reduced motion the logo is simply there.
+
 ### Logo (added 4 October 2026)
 
 The designer's logo (`brand/`) replaces the temporary eight-point star mark and the typed wordmark everywhere: the round calligraphic «تبصرة» is the mark, and «TABSIRA» joins it in the full logo. On night surfaces it is brand gold `#B28B38` (5.99:1); on day surfaces it is deep gold `#8D6E2C` (4.53:1), because brand gold reaches only 3.00:1 on the day background. Favicon, PWA, Apple touch and tile icons carry their own night background with the brand gold mark, so they read on any browser chrome. See `brand/README.md`.
