@@ -1,0 +1,122 @@
+# Send main to SonarQube with the coverage of the three suites, the way the
+# Jenkinsfile's SonarQube stage does (jenkins/sonar-scan.sh, sonar-project.properties).
+#
+# The server runs the Community Build, which keeps one branch: analysing a pull
+# request or another branch would replace main's analysis, so only main is
+# scanned, after it is pushed, or by hand (workflow_dispatch).
+#
+# Beside build.yml in .github/workflows, never in .gitea/workflows: Gitea reads
+# .github/workflows only while .gitea/workflows does not exist.
+#
+# Secrets: SONARQUBE_HOST and SONARQUBE_TOKEN (a token allowed to analyse, and on
+# the first run create, the project `tabsira`). They are set on the Gitea
+# organisation and not on GitHub: where either is missing the job says so and
+# ends green without checking anything out, so a mirror without the server
+# stays quiet instead of failing on every push.
+name: sonarqube
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: sonarqube-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CI: 'true'
+  NEXT_TELEMETRY_DISABLED: '1'
+  UV_PYTHON_PREFERENCE: only-managed
+  SONAR_HOST_URL: ${{ secrets.SONARQUBE_HOST }}
+  SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+
+jobs:
+  sonarqube:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      # A job-level `if` cannot read a secret, so the first step decides for the others.
+      - name: Is a SonarQube server configured here?
+        id: server
+        run: |
+          if [ -n "$SONAR_HOST_URL" ] && [ -n "$SONAR_TOKEN" ]; then
+            echo "on=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "SonarQube skipped: SONARQUBE_HOST and SONARQUBE_TOKEN are not set on this forge."
+            echo "on=false" >>"$GITHUB_OUTPUT"
+          fi
+      - if: steps.server.outputs.on == 'true'
+        uses: actions/checkout@v7
+        with:
+          # The whole history, so SonarQube can blame each line and tell new code from old.
+          fetch-depth: 0
+      # No dependency caches in this job: it holds the SonarQube token, and a poisoned
+      # cache would run with it.
+      - if: steps.server.outputs.on == 'true'
+        uses: pnpm/action-setup@v6
+      - if: steps.server.outputs.on == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - if: steps.server.outputs.on == 'true'
+        uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: false
+      - name: Database and Redis
+        if: steps.server.outputs.on == 'true'
+        env:
+          # Names the containers; `down` finds them again through TABSIRA_CI_CONTAINER.
+          JOB_NAME: sonarqube
+          BUILD_NUMBER: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          bash jenkins/ci-services.sh doctor
+          bash jenkins/ci-services.sh up
+          # The generated passwords stay out of the log; the next steps read them from the environment.
+          while IFS='=' read -r key value; do
+            case "$key" in *PASSWORD* | *_URL) echo "::add-mask::$value" ;; esac
+            echo "$key=$value" >>"$GITHUB_ENV"
+          done <.env.ci
+      - name: Install
+        if: steps.server.outputs.on == 'true'
+        run: |
+          pnpm install --frozen-lockfile
+          (cd apps/api && uv sync --locked)
+          (cd services/vision && uv sync --locked)
+      - name: Migrations
+        if: steps.server.outputs.on == 'true'
+        run: bash scripts/migrate.sh
+      # A failing suite must not hide the analysis of the others: each one carries on,
+      # the scan runs on the coverage they wrote, and the last step fails the job.
+      - name: API tests with coverage
+        id: api
+        if: steps.server.outputs.on == 'true'
+        continue-on-error: true
+        env:
+          PYTEST_WORKERS: '2'
+        run: bash scripts/test-coverage.sh
+      - name: Vision tests with coverage
+        id: vision
+        if: steps.server.outputs.on == 'true'
+        continue-on-error: true
+        run: bash jenkins/vision-coverage.sh
+      - name: Web tests with coverage
+        id: web
+        if: steps.server.outputs.on == 'true'
+        continue-on-error: true
+        run: bash scripts/test-web-coverage.sh
+      - name: SonarQube scan
+        if: steps.server.outputs.on == 'true'
+        # Waits for the quality gate and fails the job when the analysis does not pass it.
+        run: bash jenkins/sonar-scan.sh
+      - name: Remove the containers
+        if: always() && steps.server.outputs.on == 'true'
+        run: bash jenkins/ci-services.sh down
+      - name: Fail on test failures
+        if: steps.api.outcome == 'failure' || steps.vision.outcome == 'failure' || steps.web.outcome == 'failure'
+        run: |
+          echo "API: ${{ steps.api.outcome }}, vision: ${{ steps.vision.outcome }}, web: ${{ steps.web.outcome }}"
+          exit 1

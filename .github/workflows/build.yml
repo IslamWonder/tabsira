@@ -5,8 +5,9 @@
 # the actions below the same way. It runs what the Jenkinsfile runs, in three
 # jobs: lint, web (tests and the production build) and api (migrations and
 # tests with coverage, against the per-build PostgreSQL and Redis containers of
-# jenkins/ci-services.sh, so the runner needs Docker). Deploying stays a manual
-# Jenkins job (jenkins/Jenkinsfile.deploy).
+# jenkins/ci-services.sh, so the runner needs Docker). SonarQube is sonarqube.yml
+# beside this file, on main only. Deploying stays a manual Jenkins job
+# (jenkins/Jenkinsfile.deploy).
 name: build
 
 on:
