@@ -69,6 +69,7 @@ export const POST: Post = {
   created_at: '2026-10-04T09:50:00Z',
   reactions: { benefited: 2, jazak: 1 },
   comment_count: 1,
+  views_count: 12,
   viewer: null,
   why: null,
 };

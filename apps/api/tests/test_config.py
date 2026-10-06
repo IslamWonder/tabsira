@@ -1203,7 +1203,7 @@ def test_the_legal_versions_are_never_read_from_the_environment(make_settings, m
     settings = make_settings()
 
     assert settings.terms_version == "2026-10-05T18:00Z"
-    assert settings.privacy_version == "2026-10-05T23:30Z"
+    assert settings.privacy_version == "2026-10-06T00:00Z"
 
 
 def test_contact_addresses_and_legal_versions_default_to_the_published_ones(make_settings):
@@ -1212,7 +1212,7 @@ def test_contact_addresses_and_legal_versions_default_to_the_published_ones(make
     assert settings.support_email == "support@tabsira.me"
     assert settings.privacy_email == "privacy@tabsira.me"
     assert settings.terms_version == "2026-10-05T18:00Z"
-    assert settings.privacy_version == "2026-10-05T23:30Z"
+    assert settings.privacy_version == "2026-10-06T00:00Z"
     assert (
         settings.support_max_per_ip_per_hour,
         settings.support_max_per_address_per_hour,

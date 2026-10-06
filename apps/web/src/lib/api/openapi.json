@@ -1697,6 +1697,42 @@
         }
       }
     },
+    "/posts/{post_id}/view": {
+      "post": {
+        "tags": ["posts"],
+        "summary": "Count one view of an open post",
+        "description": "Count one view: once per viewer a day, never the author's, never a bot's.\n\nSent by the post page once it has opened, so the web server's render, a link preview or a\ncrawler fetching the post is not a view. Answers as `GET /posts/{post_id}` does for a post\nthe caller may not read, and counts nothing then; 429 past the budget of the address or of\nits site, before the session or the post is looked up. Who viewed is never stored (see\n`view_service`).",
+        "operationId": "view_post_posts__post_id__view_post",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Post Id"
+            },
+            "description": "The post's public id"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/posts/{post_id}/submit": {
       "post": {
         "tags": ["posts"],
@@ -9652,6 +9688,11 @@
             "type": "integer",
             "title": "Comment Count"
           },
+          "views_count": {
+            "type": "integer",
+            "title": "Views Count",
+            "description": "Views by others, once per viewer a day"
+          },
           "viewer": {
             "anyOf": [
               {
@@ -9689,6 +9730,7 @@
           "created_at",
           "reactions",
           "comment_count",
+          "views_count",
           "viewer",
           "why"
         ],

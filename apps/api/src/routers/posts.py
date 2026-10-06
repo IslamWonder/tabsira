@@ -12,13 +12,14 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy import select
 
 from src.deps import (
     CurrentUser,
     DbDep,
     InsightSourceDep,
+    IpHashDep,
     OptionalUser,
     PhotoStoreDep,
     PublicMember,
@@ -29,16 +30,46 @@ from src.deps import (
 )
 from src.models.social import InsightPublication, Post
 from src.models.user import User
+from src.scans.deps import RedisDep
 from src.schemas.social import MyPostsPage, PostCreateIn, PostIdPath, PostOut, PostPatch
+from src.services import auth_service, post_service, post_view, publication_service, view_service
 from src.services import cursor as cursors
-from src.services import post_service, post_view, publication_service
 from src.services.post_service import PostRow
 from src.services.social_limits import WriteKind
+from src.services.window_limiter import WindowLimiter, too_many_requests
 from src.storage.photos import PhotoStore
 
 router = APIRouter(tags=["posts"], dependencies=[Depends(require_social)])
 
 PAGE_DEFAULT = 20
+# Views per hour and per worker, from one address (an IPv6 /64) and from one site (an IPv6 /48):
+# far above anyone reading, low enough that inflating a count from a block of addresses takes a
+# while. No budget over all addresses: a flood could then stop every view from counting.
+VIEWS_PER_ADDRESS = 300
+VIEWS_PER_SITE = 3000
+VIEW_WINDOW_SECONDS = 3600
+
+
+class ViewLimits:
+    """The budgets of the view beacon, per address and per site; no overall one."""
+
+    def __init__(
+        self,
+        per_address: int = VIEWS_PER_ADDRESS,
+        per_site: int = VIEWS_PER_SITE,
+        window_seconds: float = VIEW_WINDOW_SECONDS,
+    ) -> None:
+        self.per_address = WindowLimiter(per_address, window_seconds)
+        self.per_site = WindowLimiter(per_site, window_seconds)
+
+    def hit(self, address_hash: str, site_hash: str) -> float | None:
+        """Count one view; None when allowed, else the seconds to wait."""
+        retry_after = self.per_address.hit(address_hash)
+        if retry_after is None:
+            retry_after = self.per_site.hit(site_hash)
+        return retry_after
+
+
 PAGE_MAX = 50
 Limit = Annotated[int, Query(ge=1, le=PAGE_MAX)]
 
@@ -91,6 +122,59 @@ async def get_post(
     """
     row = await post_service.get_readable(db, post_id, viewer)
     return await _one(db, row, viewer, photos)
+
+
+def _view_limits(request: Request) -> ViewLimits:
+    limits: ViewLimits | None = getattr(request.app.state, "view_limits", None)
+    if limits is None:
+        limits = ViewLimits()
+        request.app.state.view_limits = limits
+    return limits
+
+
+def limit_views(request: Request, settings: SettingsDep, ip_hash: IpHashDep) -> None:
+    """Answer 429 past the address's budget, before the session or the post is looked up."""
+    site = auth_service.hash_ip(settings, request.client.host if request.client else None, 48)
+    retry_after = _view_limits(request).hit(ip_hash, site)
+    if retry_after is not None:
+        raise too_many_requests(retry_after, "Too many views. Try again later.")
+
+
+@router.post(
+    "/posts/{post_id}/view",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Count one view of an open post",
+    dependencies=[Depends(limit_views)],
+)
+async def view_post(
+    post_id: PostIdPath,
+    viewer: OptionalUser,
+    db: DbDep,
+    redis: RedisDep,
+    settings: SettingsDep,
+    ip_hash: IpHashDep,
+    request: Request,
+) -> Response:
+    """
+    Count one view: once per viewer a day, never the author's, never a bot's.
+
+    Sent by the post page once it has opened, so the web server's render, a link preview or a
+    crawler fetching the post is not a view. Answers as `GET /posts/{post_id}` does for a post
+    the caller may not read, and counts nothing then; 429 past the budget of the address or of
+    its site, before the session or the post is looked up. Who viewed is never stored (see
+    `view_service`).
+    """
+    row = await post_service.get_readable(db, post_id, viewer)
+    await view_service.record(
+        db,
+        redis,
+        settings.hash_key,
+        row.post,
+        viewer,
+        ip_hash=ip_hash,
+        user_agent=request.headers.get("user-agent"),
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.patch(

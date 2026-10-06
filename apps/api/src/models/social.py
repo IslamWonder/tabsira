@@ -7,8 +7,9 @@ evidence and never the scripture itself; readers' responses put the stored text 
 reference. The author's own words live apart, in `Post.reflection`, and are labelled as
 theirs wherever they are shown.
 
-Nothing here is a counter: reactions, comments and followers are counted from their own
-rows, so a count cannot drift from what it counts. Every foreign key to `users` cascades,
+Reactions, comments and followers are counted from their own rows, so a count cannot drift
+from what it counts. Views are the one counter (`Post.views_count`): a view leaves no row,
+since who saw a post is never kept. Every foreign key to `users` cascades,
 so deleting an account removes its posts, comments, follows, reactions, bookmarks, blocks and
 reports with it.
 """
@@ -241,6 +242,7 @@ class Post(Base):
         CheckConstraint(
             "status <> 'removed' OR removal_source IS NOT NULL", name="removed_has_source"
         ),
+        CheckConstraint("views_count >= 0", name="views_count_not_negative"),
         # The public feed: newest first among what anyone may read.
         Index(
             "ix_posts_public_feed",
@@ -298,6 +300,8 @@ class Post(Base):
     removal_source: Mapped[RemovalSource | None] = mapped_column(
         string_enum(RemovalSource, "removal_source")
     )
+    # Views by others, once per viewer a day (src/services/view_service.py); raised in SQL.
+    views_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

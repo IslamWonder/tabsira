@@ -149,6 +149,7 @@ def _post_out(
         created_at=post.created_at,
         reactions=reactions.get(post.id, reaction_service.counts_of({})),
         comment_count=comments.get(post.id, 0),
+        views_count=post.views_count,
         viewer=(
             None
             if viewer is None

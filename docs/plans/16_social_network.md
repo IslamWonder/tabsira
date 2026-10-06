@@ -34,3 +34,13 @@ Posts made from verified insights, follows, likes, comments, reports and moderat
 - **Depends on:** 16.1, 17 (atlas), 21 (sponsoring).
 - **Touches:** `GET /community/summary` (public, aggregate counts of public things only, `null` for a feature that is off, kept ten minutes per worker, 503 when the database is down); `apps/web/src/components/landing/community-summary.tsx`, rendered by the home page on the server with a ten-minute revalidation, after the steps so it is never on a phone's first screen beside the capture (decision 62).
 - **Done when:** the card is hidden when the API fails or members are under 50; the counts carry no person, place or id (`docs/PRIVACY.md`).
+
+### 16.3 Views of a post
+
+- **Status:** ✅ 2026-10-06 00:45 (Tunis)
+- **Goal:** Show how many people viewed a post, counted the way the earlier prototype counts post views.
+- **Depends on:** 16.1.
+- **Touches:** `apps/api/src/services/view_service.py`, `POST /posts/{id}/view` in `routers/posts.py`, `PostOut.views_count`, `Post.views_count` and migration `20261005_233000`; `apps/web/src/components/community/{post-screen,post-card}.tsx`, `src/social/api.ts`, the messages, the generated client; the privacy page (version 2026-10-06T00:00Z), `docs/PRIVACY.md`, `docs/SOCIAL_NETWORK.md`; the mock data generator and `import_mock` (task 23).
+- **Done when:** a view counts once per viewer a day (account and address, one Redis transaction), never the signed-in author's (their opening marks their address; no session is looked up, so the count never reveals an author's address) nor a bot's, and never from reading alone; who viewed is stored nowhere, the Redis marks are HMAC keys that name nobody and expire after 24 hours; 300 views an hour per address and 3000 per IPv6 /48, checked before anything is looked up, and no overall budget; the count shows on every published post card; tests in the same commits.
+- **Reviews:** privacy review before merge: its two blocking findings (the author-address look-up told a neighbour who wrote a post, and the account id in the Redis keys contradicted the privacy text) and its other findings (rate limit, atomic check, wording and date of the privacy page) are fixed; its re-review passed, and its four low points (the limit ran after the session look-up, an overall budget a flood could exhaust, two sentences of the docs) are fixed too.
+- **Production `.env`:** no new key. `PRIVACY_VERSION`, if the file sets it, must become `2026-10-06T00:00Z` (or be removed so the code's value applies).

@@ -208,6 +208,7 @@ class PostOut(BaseModel):
     created_at: datetime
     reactions: ReactionCountsOut
     comment_count: int
+    views_count: int = Field(description="Views by others, once per viewer a day")
     viewer: ViewerPostOut | None = Field(description="Null for a guest")
     why: WhyOut | None = Field(description="Only in the «لك» feed")
 

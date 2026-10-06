@@ -872,6 +872,32 @@ export interface paths {
     patch: operations['patch_post_posts__post_id__patch'];
     trace?: never;
   };
+  '/posts/{post_id}/view': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Count one view of an open post
+     * @description Count one view: once per viewer a day, never the author's, never a bot's.
+     *
+     *     Sent by the post page once it has opened, so the web server's render, a link preview or a
+     *     crawler fetching the post is not a view. Answers as `GET /posts/{post_id}` does for a post
+     *     the caller may not read, and counts nothing then; 429 past the budget of the address or of
+     *     its site, before the session or the post is looked up. Who viewed is never stored (see
+     *     `view_service`).
+     */
+    post: operations['view_post_posts__post_id__view_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/posts/{post_id}/submit': {
     parameters: {
       query?: never;
@@ -4122,6 +4148,11 @@ export interface components {
       reactions: components['schemas']['ReactionCountsOut'];
       /** Comment Count */
       comment_count: number;
+      /**
+       * Views Count
+       * @description Views by others, once per viewer a day
+       */
+      views_count: number;
       /** @description Null for a guest */
       viewer: components['schemas']['ViewerPostOut'] | null;
       /** @description Only in the «لك» feed */
@@ -7003,6 +7034,36 @@ export interface operations {
         content: {
           'application/json': components['schemas']['PostOut'];
         };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  view_post_posts__post_id__view_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The post's public id */
+        post_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description An error */
       default: {
