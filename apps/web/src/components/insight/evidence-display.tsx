@@ -2,7 +2,7 @@
 
 import { createContext, type ReactNode, useContext } from 'react';
 
-/** What the evidence cards show beside the stored text, from the feature switches (decision 70). */
+/** What the evidence cards show beside the stored text, from the feature switches. */
 export interface EvidenceDisplay {
   /** `hadith_ruling`: the first grader's ruling of the hadith's dataset; on by default. */
   hadithRuling: boolean;

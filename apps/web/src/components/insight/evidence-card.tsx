@@ -20,7 +20,7 @@ interface EvidenceBase {
 
 export interface QuranEvidenceProps extends EvidenceBase {
   variant: 'quran';
-  /** The verse's quranpedia page, linked from the card only when `quran_source_link` is on (decision 70). */
+  /** The verse's quranpedia page, linked from the card only when `quran_source_link` is on. */
   sourceHref?: string;
 }
 

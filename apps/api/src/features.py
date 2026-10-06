@@ -20,7 +20,7 @@ class FeatureFlag(StrEnum):
     WORLD = "world"  # the personal world, completion, public insight pages
     TREASURE = "treasure"  # the treasure found on completion
 
-    # What the evidence cards show beside the stored text (decision 70).
+    # What the evidence cards show beside the stored text.
     HADITH_RULING = "hadith_ruling"  # the first grader's ruling of the hadith's dataset
     QURAN_SOURCE_LINK = "quran_source_link"  # «افتح في قرآنبيديا» on the verse card; off by default
 

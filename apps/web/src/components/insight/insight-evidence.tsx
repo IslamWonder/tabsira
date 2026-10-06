@@ -23,7 +23,7 @@ export interface EvidenceSource {
  * the stored text is passed through untouched (never trimmed, joined,
  * shortened or normalised), with its reference and, for the hadith, the first
  * grader's ruling its dataset carries (decision 69, amending decision 65); the
- * ruling and the verse's source link follow their switches (decision 70).
+ * ruling and the verse's source link follow their switches.
  */
 export function InsightEvidence({
   insight,
