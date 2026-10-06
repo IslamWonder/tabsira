@@ -41,7 +41,8 @@ function pageAddress(): string {
 
 function toReport(error: unknown, handled: boolean): ClientReport {
   const isError = error instanceof Error;
-  const raw = isError ? error.message : typeof error === 'string' ? error : '';
+  const stringOrEmpty = typeof error === 'string' ? error : '';
+  const raw = isError ? error.message : stringOrEmpty;
   const message = (raw || (isError ? error.name : '') || 'Unknown error').slice(0, MAX_MESSAGE);
   const report: ClientReport = {
     kind: 'error',

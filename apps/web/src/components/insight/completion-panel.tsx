@@ -57,8 +57,8 @@ export function CompletionPanel({
   const label = (id: 'open_world' | 'new_scan', fallback: string) =>
     completion.options.find((option) => option.id === id)?.label ?? fallback;
   const shareOption = completion.options.find((option) => option.id === 'share');
-  const shareReason =
-    share.kind === 'blocked' ? share.reason : shareOption === undefined ? T.shareUnavailable : null;
+  const missingShare = shareOption === undefined ? T.shareUnavailable : null;
+  const shareReason = share.kind === 'blocked' ? share.reason : missingShare;
 
   useEffect(() => {
     const element = region.current as HTMLElement;

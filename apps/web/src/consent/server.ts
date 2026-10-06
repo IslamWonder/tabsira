@@ -49,6 +49,7 @@ export const serverConsent = cache(async (): Promise<ServerConsent> => {
   const policy = await policyOrNull();
   const changed =
     record.ok && policy !== null && policy.policy_version !== record.data.policy_version;
-  const reason = !record.ok ? 'first' : changed ? 'version' : 'time';
+  const later = changed ? 'version' : 'time';
+  const reason = record.ok ? later : 'first';
   return { consent: { status: 'asking', reason }, policy, ...shown };
 });

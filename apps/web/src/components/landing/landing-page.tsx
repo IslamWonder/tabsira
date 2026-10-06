@@ -361,13 +361,11 @@ function StoryCard({
             </li>
           ))}
         </ul>
-        {action === null ? null : action.kind === 'link' ? (
-          <Link href={action.href} className={cx(actionClass, 'mt-auto')}>
-            <Emblem name={BENEFIT_EMBLEMS[action.icon]} width="20" height="20" />
-            {action.label}
-          </Link>
-        ) : (
-          <Link href="#example" className={cx(actionClass, 'mt-auto')}>
+        {action === null ? null : (
+          <Link
+            href={action.kind === 'link' ? action.href : '#example'}
+            className={cx(actionClass, 'mt-auto')}
+          >
             <Emblem name={BENEFIT_EMBLEMS[action.icon]} width="20" height="20" />
             {action.label}
           </Link>
@@ -566,39 +564,33 @@ export function LandingPage({
   // The page is the same for everyone and the session is known only in the browser: until it
   // is, both openings are there and the device's mark (own-insight.ts) hides one before paint.
   const known = session.status === 'signed-in' || session.status === 'guest';
+  const knownOpening = tutorial ? <Hero /> : <OwnCapture />;
+  const unknownOpening = (
+    <>
+      <div className="only-without-own-insight">
+        <Hero />
+      </div>
+      <div className="only-with-own-insight">
+        <OwnCapture />
+      </div>
+    </>
+  );
+  const knownExample = tutorial ? <Example /> : null;
+  const unknownExample = (
+    <div className="only-without-own-insight">
+      <Example />
+    </div>
+  );
   return (
     <div className="flex flex-col gap-10 pb-10 tablet:gap-14 tablet:pt-6 desktop:gap-[68px]">
       <div className="flex flex-col">
         <PhoneHeader />
-        {known ? (
-          tutorial ? (
-            <Hero />
-          ) : (
-            <OwnCapture />
-          )
-        ) : (
-          <>
-            <div className="only-without-own-insight">
-              <Hero />
-            </div>
-            <div className="only-with-own-insight">
-              <OwnCapture />
-            </div>
-          </>
-        )}
+        {known ? knownOpening : unknownOpening}
       </div>
       <Journey />
       {community}
       <Stories features={features} tutorial={tutorial} />
-      {known ? (
-        tutorial ? (
-          <Example />
-        ) : null
-      ) : (
-        <div className="only-without-own-insight">
-          <Example />
-        </div>
-      )}
+      {known ? knownExample : unknownExample}
       <Trust />
       <Questions />
       <Closing />

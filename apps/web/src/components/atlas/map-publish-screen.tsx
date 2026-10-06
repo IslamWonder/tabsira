@@ -271,11 +271,12 @@ export function MapPublishScreen() {
                     {A.search}
                   </Button>
                 </div>
-                {hits === null ? null : hits.length === 0 ? (
+                {hits?.length === 0 ? (
                   <p role="status" className="m-0 text-fg-muted text-sm">
                     {A.noPlaces}
                   </p>
-                ) : (
+                ) : null}
+                {hits !== null && hits.length > 0 ? (
                   <ul className="m-0 flex list-none flex-col gap-1 p-0">
                     {hits.map((hit) => (
                       <li key={hit.geoname_id}>
@@ -301,7 +302,7 @@ export function MapPublishScreen() {
                       </li>
                     ))}
                   </ul>
-                )}
+                ) : null}
               </form>
               <p className="m-0 text-fg-muted text-sm">{P.tapMap}</p>
               <div className="h-72 overflow-hidden rounded-[var(--radius-card)] border border-line">
@@ -403,8 +404,7 @@ export function MapPublishScreen() {
                 </div>
               )}
               <div className="flex flex-wrap gap-2.5">
-                {entry.status === 'pending_review' ||
-                entry.status === 'removed' ? null : entry.status === 'draft' ? (
+                {entry.status === 'draft' ? (
                   <Button
                     size="lg"
                     disabled={busy}
@@ -412,7 +412,10 @@ export function MapPublishScreen() {
                   >
                     {busy ? P.publishing : P.publish}
                   </Button>
-                ) : (
+                ) : null}
+                {entry.status === 'pending_review' ||
+                entry.status === 'removed' ||
+                entry.status === 'draft' ? null : (
                   <LinkButton href={entryPath(entry.id)} size="lg">
                     {P.open}
                   </LinkButton>

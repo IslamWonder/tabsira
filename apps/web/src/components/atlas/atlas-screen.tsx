@@ -191,11 +191,12 @@ export function PlaceSearch({ onPick }: Readonly<{ onPick: (hit: PlaceHit) => vo
           <Notice tone="error">{messages.errors.server}</Notice>
         </div>
       ) : null}
-      {hits === null ? null : hits.length === 0 ? (
+      {hits?.length === 0 ? (
         <p role="status" className="m-0 text-fg-muted text-sm">
           {A.noPlaces}
         </p>
-      ) : (
+      ) : null}
+      {hits !== null && hits.length > 0 ? (
         <ul id={listId} className="m-0 flex list-none flex-col gap-1 p-0">
           {hits.map((hit) => (
             <li key={hit.geoname_id}>
@@ -215,7 +216,7 @@ export function PlaceSearch({ onPick }: Readonly<{ onPick: (hit: PlaceHit) => vo
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
     </form>
   );
 }

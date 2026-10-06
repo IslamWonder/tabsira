@@ -22,8 +22,10 @@ import { Button } from './button';
 export function SoundToggle({ className }: Readonly<{ className?: string }>) {
   const on = useSoundEnabled();
   const playing = useSoundPlaying() && on;
-  const Icon = playing ? SoundPlayingIcon : on ? SoundOnIcon : SoundOffIcon;
-  const state = playing ? messages.sound.playing : on ? messages.sound.on : messages.sound.off;
+  const IdleIcon = on ? SoundOnIcon : SoundOffIcon;
+  const Icon = playing ? SoundPlayingIcon : IdleIcon;
+  const idleState = on ? messages.sound.on : messages.sound.off;
+  const state = playing ? messages.sound.playing : idleState;
   return (
     <span className={cx('inline-flex rounded-full', className ?? 'relative')}>
       {playing ? (

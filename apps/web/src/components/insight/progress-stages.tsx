@@ -31,6 +31,13 @@ export function stageState(stage: StageId, current: StageId | 'queued' | 'done')
   return at === now ? 'current' : 'pending';
 }
 
+function waitingLabel(current: StageId | 'queued'): string {
+  if (current === 'queued') {
+    return messages.progress.queued;
+  }
+  return messages.progress.stages[current];
+}
+
 /**
  * The four real stages of preparing an insight, as the server reports them.
  * No percentage and no countdown (tajriba §8): a quarter of the ring lights up
@@ -49,11 +56,7 @@ export function ProgressStages({
   className,
 }: Readonly<ProgressStagesProps>) {
   const done = current === 'done';
-  const label = done
-    ? messages.progress.complete
-    : current === 'queued'
-      ? messages.progress.queued
-      : messages.progress.stages[current];
+  const label = done ? messages.progress.complete : waitingLabel(current);
   const states = STAGES.map((stage) => stageState(stage, current));
 
   return (

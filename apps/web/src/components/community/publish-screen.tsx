@@ -89,6 +89,8 @@ function DraftForm({
     }
     onSubmit(length === 0 ? null : reflection.trim(), visibility, offersPhoto && photo);
   };
+  const creatingLabel = busy ? P.creating : P.createDraft;
+  const savingLabel = busy ? P.saving : P.saveEdit;
   return (
     <form onSubmit={submit} className="flex flex-col gap-5">
       <TextArea
@@ -116,13 +118,7 @@ function DraftForm({
       )}
       <div className="flex flex-wrap gap-2.5">
         <Button type="submit" size="lg" disabled={busy || length > REFLECTION_MAX}>
-          {initial === undefined
-            ? busy
-              ? P.creating
-              : P.createDraft
-            : busy
-              ? P.saving
-              : P.saveEdit}
+          {initial === undefined ? creatingLabel : savingLabel}
         </Button>
         {onCancel === undefined ? null : (
           <Button variant="ghost" size="lg" onClick={onCancel}>

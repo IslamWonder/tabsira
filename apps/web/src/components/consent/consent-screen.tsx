@@ -148,12 +148,33 @@ export function ConsentScreen({ initial }: Readonly<{ initial: ServerConsent }>)
       setView('summary');
       requestAnimationFrame(() => customiseButtonRef.current?.focus());
     } else {
-      void choose(choice === 'accept' ? ACCEPT_ALL : choice === 'reject' ? REJECT_ALL : choices);
+      const other = choice === 'reject' ? REJECT_ALL : choices;
+      void choose(choice === 'accept' ? ACCEPT_ALL : other);
     }
   };
 
   const reask = consent.status === 'asking' ? REASK[consent.reason] : undefined;
   const choice = (value: Choice) => ({ type: 'submit' as const, name: 'choice', value });
+
+  const policyFallback =
+    policy.status === 'failed' ? (
+      <div className="flex flex-col items-start gap-2">
+        <Notice tone="error">{T.policyFailed}</Notice>
+        <Button variant="ghost" onClick={() => void loadPolicy()}>
+          {T.retry}
+        </Button>
+      </div>
+    ) : (
+      <p role="status" className="m-0 text-fg-muted">
+        {T.policyLoading}
+      </p>
+    );
+  const policyBody =
+    policy.status === 'ready' ? (
+      <Categories policy={policy.policy} choices={choices} onToggle={setChoices} />
+    ) : (
+      policyFallback
+    );
 
   return (
     <FullScreenDialog
@@ -220,20 +241,7 @@ export function ConsentScreen({ initial }: Readonly<{ initial: ServerConsent }>)
               >
                 {T.customiseTitle}
               </h3>
-              {policy.status === 'ready' ? (
-                <Categories policy={policy.policy} choices={choices} onToggle={setChoices} />
-              ) : policy.status === 'failed' ? (
-                <div className="flex flex-col items-start gap-2">
-                  <Notice tone="error">{T.policyFailed}</Notice>
-                  <Button variant="ghost" onClick={() => void loadPolicy()}>
-                    {T.retry}
-                  </Button>
-                </div>
-              ) : (
-                <p role="status" className="m-0 text-fg-muted">
-                  {T.policyLoading}
-                </p>
-              )}
+              {policyBody}
               <div className="grid gap-3 tablet:grid-cols-2">
                 <Button
                   {...choice('save')}

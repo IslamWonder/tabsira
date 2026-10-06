@@ -59,7 +59,8 @@ export function labelSides(placement: Placement): {
   horizontal: HorizontalSide;
   vertical: VerticalSide;
 } {
-  const horizontal = placement.left < 22 ? 'toRight' : placement.left > 78 ? 'toLeft' : 'center';
+  const farSide = placement.left > 78 ? 'toLeft' : 'center';
+  const horizontal = placement.left < 22 ? 'toRight' : farSide;
   return { horizontal, vertical: placement.top > 50 ? 'above' : 'below' };
 }
 

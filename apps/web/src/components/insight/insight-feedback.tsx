@@ -90,11 +90,10 @@ export function FeedbackLine({ controls }: Readonly<{ controls: FeedbackControls
   const { state, error, sending, send, open } = controls;
   const saved = state.saved;
   if (saved !== null) {
+    const rated = saved.helpful ? T.ratedHelpful : T.ratedNotHelpful;
     return (
       <p role="status" className="m-0 flex flex-wrap items-center gap-x-3 text-fg-muted text-sm">
-        <span>
-          {state.justSaved ? T.thanks : saved.helpful ? T.ratedHelpful : T.ratedNotHelpful}
-        </span>
+        <span>{state.justSaved ? T.thanks : rated}</span>
         <button
           type="button"
           onClick={() => open(saved.helpful)}

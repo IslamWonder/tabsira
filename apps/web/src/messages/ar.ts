@@ -1125,7 +1125,10 @@ export const ar = {
       if (count === 1) {
         return 'بصيرة واحدة';
       }
-      return count === 2 ? 'بصيرتان' : count <= 10 ? `${count} بصائر` : `${count} بصيرة`;
+      if (count === 2) {
+        return 'بصيرتان';
+      }
+      return count <= 10 ? `${count} بصائر` : `${count} بصيرة`;
     },
     inView: 'في هذه المنطقة',
     loadMore: 'عرض المزيد',
@@ -1469,7 +1472,10 @@ export const ar = {
         if (count === 1) {
           return 'تعليق واحد';
         }
-        return count === 2 ? 'تعليقان' : count <= 10 ? `${count} تعليقات` : `${count} تعليقًا`;
+        if (count === 2) {
+          return 'تعليقان';
+        }
+        return count <= 10 ? `${count} تعليقات` : `${count} تعليقًا`;
       },
       viewCount: (count: number) => {
         if (count === 0) {
@@ -1478,7 +1484,10 @@ export const ar = {
         if (count === 1) {
           return 'مشاهدة واحدة';
         }
-        return count === 2 ? 'مشاهدتان' : count <= 10 ? `${count} مشاهدات` : `${count} مشاهدة`;
+        if (count === 2) {
+          return 'مشاهدتان';
+        }
+        return count <= 10 ? `${count} مشاهدات` : `${count} مشاهدة`;
       },
       save: 'احفظ',
       saved: 'محفوظ',

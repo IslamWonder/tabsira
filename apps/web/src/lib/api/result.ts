@@ -93,10 +93,10 @@ export async function attempt<T>(call: Promise<FetchOutcome<T>>): Promise<Result
   }
   const body = outcome.error;
   // Codes are compared in capitals, whatever case a route answers in.
+  const fallbackCode = response.status >= 500 ? 'INTERNAL_ERROR' : 'HTTP_ERROR';
   const code = isErrorBody(body)
     ? (body.error.toUpperCase() as FailureCode)
-    : (CODE_BY_STATUS[response.status] ??
-      (response.status >= 500 ? 'INTERNAL_ERROR' : 'HTTP_ERROR'));
+    : (CODE_BY_STATUS[response.status] ?? fallbackCode);
   return {
     ok: false,
     code,

@@ -1,4 +1,4 @@
-import { type QuestEntry, QuestLog } from '@/components/fx/quest-log';
+import { type QuestEntry, QuestLog, type QuestState } from '@/components/fx/quest-log';
 import { Chip } from '@/components/ui/chip';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { messages } from '@/messages';
@@ -6,13 +6,20 @@ import type { Progress } from '@/progress/api';
 
 const M = messages.practiceView.quest;
 
+function stepState(done: boolean, isCurrent: boolean): QuestState {
+  if (done) {
+    return 'done';
+  }
+  return isCurrent ? 'current' : 'pending';
+}
+
 /** The first step not done yet is the current one; the rest wait, so the path stays in view. */
 export function questEntries(steps: Progress['daily_quest']['steps']): QuestEntry[] {
   const current = steps.findIndex((step) => !step.done);
   return steps.map((step, index) => ({
     key: step.id,
     label: step.label,
-    state: step.done ? 'done' : index === current ? 'current' : 'pending',
+    state: stepState(step.done, index === current),
   }));
 }
 

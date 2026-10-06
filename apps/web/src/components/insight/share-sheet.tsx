@@ -121,6 +121,7 @@ export function ShareSheet({
     setSaid({ tone: 'success', text: T.withdrawn });
   };
 
+  const idleLabel = isPublic ? T.share : T.publishAndShare;
   return (
     <Sheet open={open} onClose={onClose} title={T.title} description={insightTitle}>
       <div className="flex flex-col gap-4 pb-2">
@@ -154,7 +155,7 @@ export function ShareSheet({
           disabled={working}
           aria-busy={working}
         >
-          {working ? T.working : isPublic ? T.share : T.publishAndShare}
+          {working ? T.working : idleLabel}
         </Button>
         {isPublic ? (
           <Button variant="ghost" onClick={withdraw} disabled={working}>

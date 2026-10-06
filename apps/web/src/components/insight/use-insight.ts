@@ -66,7 +66,8 @@ const NONE: PhotoView = { kind: 'none' };
 
 function stepOf(insight: Insight): StepState {
   const { state, means } = insight.action;
-  const status: StepStatus = state === 'done' ? 'saved' : state === 'later' ? 'deferred' : 'idle';
+  const notDone: StepStatus = state === 'later' ? 'deferred' : 'idle';
+  const status: StepStatus = state === 'done' ? 'saved' : notDone;
   return means === null ? { status } : { status, means };
 }
 

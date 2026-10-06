@@ -76,7 +76,12 @@ export function padWindow(window: Window, ratio: number): Window {
   if (width * (1 + 2 * ratio) >= 360) {
     return { west: -180, south, east: 180, north };
   }
-  const wrap = (value: number) => (value > 180 ? value - 360 : value < -180 ? value + 360 : value);
+  const wrap = (value: number) => {
+    if (value > 180) {
+      return value - 360;
+    }
+    return value < -180 ? value + 360 : value;
+  };
   return {
     west: wrap(window.west - width * ratio),
     south,

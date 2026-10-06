@@ -58,10 +58,11 @@ export function FollowToggle({
       setFailure(failureMessage(result));
     }
   };
+  const idleVariant = compact ? 'ghost' : 'primary';
   return (
     <div className="flex flex-col items-start gap-2">
       <Button
-        variant={follows ? 'secondary' : compact ? 'ghost' : 'primary'}
+        variant={follows ? 'secondary' : idleVariant}
         aria-pressed={follows}
         onClick={toggle}
         disabled={busy || access === 'unknown'}

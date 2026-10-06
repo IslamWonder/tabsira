@@ -138,10 +138,11 @@ export function CommunityScreen({ comments = false }: Readonly<{ comments?: bool
     session.status !== 'unknown' && !gated
   );
 
+  const emptyText = C.empty[tab === 'mine' ? 'mine' : 'saved'];
   const gate = gated ? (
     <GlassPanel className="flex flex-col items-start gap-3">
       <p className="m-0 text-fg-soft leading-[1.85]">
-        {tab === 'following' ? C.signInToFollow : C.empty[tab === 'mine' ? 'mine' : 'saved']}
+        {tab === 'following' ? C.signInToFollow : emptyText}
       </p>
       {session.status === 'guest' ? (
         <LinkButton href={signInHref('/community')} variant="secondary">
