@@ -32,7 +32,7 @@ One short file per feature: what it is, where it stands, what is waiting on the 
 
 ## The contest's reference pack
 
-The organisers' «المرجعية والحزمة العلمية والبيانات» sets the approved sources and the standard every output must meet: summary, gaps and the link in [docs/spec/contest-reference.md](../spec/contest-reference.md). Gap open on 2026-10-06: task 05.11 (no hadith without an approved ruling); task 05.10 (the «وجه الصلة» line) is an optional quality change; the Quran guard's copy in today's spelling is our own processing of the approved quranpedia text, not Tanzil (task 05.9).
+The organisers' «المرجعية والحزمة العلمية والبيانات» sets the approved sources and the standard every output must meet: summary, gaps and the link in [docs/spec/contest-reference.md](../spec/contest-reference.md). On 2026-10-06 the owners kept the hadith behaviour of decision 65 (task 05.11 closed); task 05.10 (the «وجه الصلة» line) is an optional quality change; the Quran guard's copy in today's spelling is our own processing of the approved quranpedia text, not Tanzil (task 05.9).
 
 ## Taking a task
 

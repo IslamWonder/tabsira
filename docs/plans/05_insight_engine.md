@@ -109,7 +109,7 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 
 ### 05.11 No hadith without an approved ruling
 
-- **Status:** ⬜ waiting on the owners (decision 65 says the opposite)
+- **Status:** ✅ closed 2026-10-06, owners' decision: the current behaviour (decision 65) stays unchanged; nothing to build
 - **Goal:** the contest's reference pack asks that no hadith be attributed without a source and an approved ruling: the two Sahihs, or a hadith whose soundness was checked (dorar.net/hadith, shamela.ws). Decision 65 shows a hadith with no ruling yet, `app.hadith_rulings` is empty, and the mock audit found three hadiths that every grader in the corpus calls weak shown as evidence (tirmidhi:3127, ibnmajah:1819, abudawud:3402). At least: never show a hadith that the corpus graders call weak; then decide whether an unruled hadith outside the two Sahihs may show at all.
 - **Touches:** apps/api pipeline/insight evidence gate and services/content (`shown_evidence`), tests; DECISIONS.md once the owners decide.
 - **Reviews:** scripture review.
