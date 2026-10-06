@@ -87,8 +87,10 @@ def test_features_default_to_on_except_the_off_by_default_ones(make_settings):
     assert set(FeatureFlag) - settings.features == {
         FeatureFlag.SOCIAL_COMMENTS,
         FeatureFlag.CAMERA_ANCHOR,
+        FeatureFlag.QURAN_SOURCE_LINK,
     }
     assert settings.is_enabled(FeatureFlag.CHAT)
+    assert settings.is_enabled(FeatureFlag.HADITH_RULING)
     assert not settings.is_enabled(FeatureFlag.SOCIAL_COMMENTS)
 
 
