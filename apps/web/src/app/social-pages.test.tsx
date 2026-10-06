@@ -25,6 +25,10 @@ describe('the post page metadata', () => {
     expect(metadata.alternates?.canonical).toBe(`/posts/${POST.id}`);
     expect(metadata.robots).toMatchObject({ index: true });
     expect(metadata.openGraph).toMatchObject({ type: 'article' });
+    // Its own link preview, with the photo when there is one, not the site's generic card.
+    expect(metadata.openGraph?.images).toEqual([
+      { url: `/posts/${POST.id}/preview`, width: 1200, height: 630, alt: '[عنوان البصيرة]' },
+    ]);
     // Nothing of the viewer is sent: the server reads the post as a stranger would.
     expect(api.requests[0]?.headers.get('cookie')).toBeNull();
     expect(JSON.stringify(metadata)).not.toContain('example.com');

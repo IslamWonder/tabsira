@@ -5,7 +5,6 @@ import { messages } from '@/messages';
 import { cardKey, createPngCache } from './cache';
 import { COLOUR } from './compose';
 import { cardFaces } from './fonts';
-import type { PublicInsight } from './layout';
 import { createLimiter } from './limiter';
 import { PREVIEW_HEIGHT, PREVIEW_WIDTH } from './preview-size';
 import { drawText } from './text-image';
@@ -26,6 +25,14 @@ const MARK_SIZE = 84;
 /** A photo larger than this is not drawn: the preview falls back to the night ground. */
 export const PHOTO_MAX_BYTES = 12 * 1024 * 1024;
 const PHOTO_TIMEOUT_MS = 5000;
+
+/** What a preview draws: a published insight, a public post's insight or a map entry. */
+export interface PreviewSubject {
+  title: string;
+  glimpse: string;
+  /** The public copy of the photo, when its owner already published it. */
+  photo_url?: string | null;
+}
 
 const limiter = createLimiter(2, 4);
 const cache = createPngCache(32);
@@ -92,7 +99,7 @@ async function ground(photo: Buffer | null): Promise<{ image: Buffer; photo: boo
 
 /** The preview, drawn from the insight as the API returned it and the published photo, if any. */
 export async function renderPreview(
-  insight: PublicInsight,
+  insight: PreviewSubject,
   host: string,
   photo: Buffer | null
 ): Promise<Buffer> {
@@ -167,8 +174,9 @@ export async function renderPreview(
 }
 
 /** The preview of an insight: from memory when this very content was just drawn. */
-export async function previewJpeg(insight: PublicInsight, host: string): Promise<Buffer> {
-  const key = `preview:${cardKey(insight, host)}`;
+export async function previewJpeg(insight: PreviewSubject, host: string): Promise<Buffer> {
+  // Only what is drawn makes the key, so the same post and insight share one image.
+  const key = `preview:${cardKey([insight.title, insight.glimpse, insight.photo_url ?? null], host)}`;
   const known = cache.get(key);
   if (known !== undefined) {
     return known;

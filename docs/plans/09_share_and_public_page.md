@@ -55,6 +55,7 @@ A shareable image of an insight with real Arabic fonts, and a public page for it
 
 - **Status:** ✅ 2026-10-05, owners' decision (amends decision 53 for photos the owner already made public).
 - **What:** `/insights/{id}/preview` draws the 1200 x 630 picture that WhatsApp, Facebook, X and Telegram show for a published insight: the photo's public copy when the owner already published it (a public post or map entry made it; the API gives it as `photo_url`), else the night ground, with the title, the glimpse, the mark and the site's name, never the verse or the hadith. The page's `og:image` and `twitter:image` point to it; the title and the glimpse are the preview's text. Drawn by Pango through sharp (`src/lib/share-card/preview.ts`), never kept by a cache.
+- **Extended:** 2026-10-06, owners' request. A public post (`/posts/{id}/preview`) and a published map entry (`/atlas/entries/{id}/preview`) get the same picture instead of the site's generic card, read as a stranger reads them; a post shown to followers only or not published has none. No API or data-flow change: the photo is the public copy the page already shows.
 
 ### 09.6 One-tap sharing
 

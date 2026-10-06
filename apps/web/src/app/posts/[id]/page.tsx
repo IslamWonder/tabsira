@@ -3,6 +3,7 @@ import { PostScreen } from '@/components/community/post-screen';
 import { JsonLd } from '@/components/legal/json-ld';
 import { featureEnabled } from '@/config/server-env';
 import { articleJsonLd, pageMetadata } from '@/lib/seo';
+import { PREVIEW_HEIGHT, PREVIEW_WIDTH } from '@/lib/share-card/preview-size';
 import { messages } from '@/messages';
 import { postPath } from '@/social/identity';
 import { postOnServer } from '@/social/server';
@@ -37,6 +38,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     title: post.insight.title,
     description: post.insight.glimpse,
     type: 'article',
+    // Its own picture in a link preview: the published photo, if any, with the title and the mark.
+    image: {
+      url: `${path}/preview`,
+      width: PREVIEW_WIDTH,
+      height: PREVIEW_HEIGHT,
+      alt: post.insight.title,
+    },
   });
 }
 

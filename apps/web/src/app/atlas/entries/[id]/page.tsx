@@ -4,6 +4,7 @@ import { EntryScreen } from '@/components/atlas/entry-screen';
 import { JsonLd } from '@/components/legal/json-ld';
 import { featureEnabled } from '@/config/server-env';
 import { articleJsonLd, pageMetadata } from '@/lib/seo';
+import { PREVIEW_HEIGHT, PREVIEW_WIDTH } from '@/lib/share-card/preview-size';
 import { messages } from '@/messages';
 
 export const dynamic = 'force-dynamic';
@@ -40,6 +41,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     description: result.data.glimpse,
     type: 'article',
     noindex: result.data.location.widened_level != null,
+    image: {
+      url: `${path(id)}/preview`,
+      width: PREVIEW_WIDTH,
+      height: PREVIEW_HEIGHT,
+      alt: result.data.title,
+    },
   });
 }
 

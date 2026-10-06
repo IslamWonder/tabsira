@@ -28,6 +28,14 @@ describe('the atlas entry page metadata', () => {
     expect(metadata.description).toBe('[لمحة البصيرة]');
     expect(metadata.robots).toMatchObject({ index: true });
     expect(metadata.openGraph).toMatchObject({ type: 'article' });
+    expect(metadata.openGraph?.images).toEqual([
+      {
+        url: `/atlas/entries/${ENTRY.id}/preview`,
+        width: 1200,
+        height: 630,
+        alt: '[عنوان البصيرة]',
+      },
+    ]);
     expect(api.requests[0]?.headers.get('cookie')).toBeNull();
     // The public point is not in the metadata either; only words are.
     expect(JSON.stringify(metadata)).not.toContain('36.80');
