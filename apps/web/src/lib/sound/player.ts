@@ -48,14 +48,15 @@ interface Playing {
 let current: Playing | null = null;
 const listeners = new Set<() => void>();
 
-/** Sets the playing sound and tells the speakers on screen, which show it while it is heard. */
+/**
+ * Sets the playing sound and tells the speakers on screen, which show it
+ * while it is heard. Every call is a change: a sound starts only once the
+ * one before it was stopped.
+ */
 function setCurrent(next: Playing | null): void {
-  const was = current !== null;
   current = next;
-  if (was !== (next !== null)) {
-    for (const listener of listeners) {
-      listener();
-    }
+  for (const listener of listeners) {
+    listener();
   }
 }
 

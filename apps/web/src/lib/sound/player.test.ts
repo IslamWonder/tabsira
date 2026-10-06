@@ -284,7 +284,7 @@ describe('endLoop', () => {
 });
 
 describe('whether a sound is heard', () => {
-  it('tells the listeners when a sound starts and stops, not on every change', async () => {
+  it('tells the listeners when a sound starts and when it stops', async () => {
     serve(mp3());
     const heard = vi.fn();
     const stop = subscribeSoundPlaying(heard);
