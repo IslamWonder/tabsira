@@ -10,7 +10,6 @@ Run it from `services/vision`:
 from __future__ import annotations
 
 import base64
-import binascii
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -71,7 +70,7 @@ def decode_base64(payload: str) -> bytes:
         text = text.split(",", 1)[1]
     try:
         return base64.b64decode("".join(text.split()), validate=True)
-    except (binascii.Error, ValueError) as exc:
+    except ValueError as exc:
         raise VisionError(400, "invalid_base64", "imageBase64 is not valid base64.") from exc
 
 
