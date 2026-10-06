@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { OWN_INSIGHT_KEY } from '@/account/own-insight';
 import { THEME_STORAGE_KEY } from '@/theme/theme';
@@ -56,5 +59,23 @@ describe('the inline preferences script', () => {
       throw new Error('blocked');
     });
     expect(run).not.toThrow();
+  });
+});
+
+describe('the head script module', () => {
+  // It is built on the server, where every export of a 'use client' module is a reference, not
+  // its value: an array there has no .map and a string is not the key (a production build failed
+  // on it while every unit test passed).
+  it('imports no value from a client module', () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const source = readFileSync(resolve(here, 'init-script.ts'), 'utf8');
+    const imported = [...source.matchAll(/from '([^']+)'/g)].map((match) => match[1] ?? '');
+    expect(imported.length).toBeGreaterThan(0);
+    for (const path of imported) {
+      const file = path.startsWith('@/')
+        ? resolve(here, '..', `${path.slice(2)}.ts`)
+        : resolve(here, `${path}.ts`);
+      expect(readFileSync(file, 'utf8').trimStart().startsWith("'use client'"), path).toBe(false);
+    }
   });
 });

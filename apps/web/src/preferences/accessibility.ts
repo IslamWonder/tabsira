@@ -1,6 +1,19 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
+import { READING_AIDS, type ReadingAid } from './reading-aids';
+
+// The definitions live in a module without 'use client', so the server's head script reads the
+// values themselves (a client module's exports are references on the server).
+export {
+  CONTRAST,
+  LINKS,
+  READING_AIDS,
+  type ReadingAid,
+  TEXT_SIZE,
+  TEXT_SIZES,
+  type TextSize,
+} from './reading-aids';
 
 /**
  * Reading aids for this device, chosen in the profile page, for everyone,
@@ -14,42 +27,6 @@ import { useSyncExternalStore } from 'react';
  * whatever is chosen here; this switch adds the same for a device that has
  * no such setting.
  */
-
-export const TEXT_SIZES = ['normal', 'large', 'larger'] as const;
-export type TextSize = (typeof TEXT_SIZES)[number];
-
-export interface ReadingAid<T extends string> {
-  /** The localStorage key. */
-  key: string;
-  /** The data attribute on <html>, without its `data-` prefix; absent at the default. */
-  attribute: string;
-  values: readonly T[];
-  fallback: T;
-}
-
-export const TEXT_SIZE: ReadingAid<TextSize> = {
-  key: 'tabsira.text-size',
-  attribute: 'text-size',
-  values: TEXT_SIZES,
-  fallback: 'normal',
-};
-
-export const CONTRAST: ReadingAid<'normal' | 'more'> = {
-  key: 'tabsira.contrast',
-  attribute: 'contrast',
-  values: ['normal', 'more'],
-  fallback: 'normal',
-};
-
-export const LINKS: ReadingAid<'normal' | 'underline'> = {
-  key: 'tabsira.links',
-  attribute: 'links',
-  values: ['normal', 'underline'],
-  fallback: 'normal',
-};
-
-/** Every reading aid, for the script that applies them before the first paint. */
-export const READING_AIDS = [TEXT_SIZE, CONTRAST, LINKS] as const;
 
 const CHANGE_EVENT = 'tabsira:reading-aid-change';
 
