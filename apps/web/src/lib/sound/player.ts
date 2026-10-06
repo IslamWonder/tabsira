@@ -294,7 +294,7 @@ const CHIME_ATTACK = 0.02;
  */
 export function playChime(): void {
   const audio = context;
-  if (!readSoundEnabled() || audio === null || audio.state !== 'running') {
+  if (!readSoundEnabled() || audio?.state !== 'running') {
     return;
   }
   const now = audio.currentTime;

@@ -34,8 +34,8 @@ export function useQuickShare(
   title: string,
   initiallyPublished: boolean
 ): QuickShare {
-  const [changed, setPublished] = useState<boolean | null>(null);
-  const published = changed ?? initiallyPublished;
+  const [publishedHere, setPublishedHere] = useState<boolean | null>(null);
+  const published = publishedHere ?? initiallyPublished;
   const [working, setWorking] = useState(false);
   const [said, setSaid] = useState<QuickShareSaid | null>(null);
   // A state update lands after a second tap could already have run; a ref closes that gap.
@@ -55,7 +55,7 @@ export function useQuickShare(
         setSaid({ tone: 'error', text: refusal(result) });
       } else {
         if (result !== null) {
-          setPublished(true);
+          setPublishedHere(true);
         }
         setSaid(shared);
       }
@@ -64,5 +64,5 @@ export function useQuickShare(
     });
   };
 
-  return { published, setPublished, working, said, run };
+  return { published, setPublished: setPublishedHere, working, said, run };
 }
