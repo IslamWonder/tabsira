@@ -66,9 +66,9 @@ function client(url) {
   });
   return {
     ready: new Promise((resolve) => socket.addEventListener('open', resolve, { once: true })),
-    send(method, params = {}, sessionId) {
+    send(method, params, sessionId) {
       const id = next++;
-      socket.send(JSON.stringify({ id, method, params, sessionId }));
+      socket.send(JSON.stringify({ id, method, params: params ?? {}, sessionId }));
       return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
     },
     once(method) {

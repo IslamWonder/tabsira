@@ -6,9 +6,10 @@ import { READING_AIDS } from './reading-aids';
 /** Sets a stored reading aid's attribute, only for one of its known values other than the default. */
 const readingAids = READING_AIDS.map((aid) => {
   const values = aid.values.filter((value) => value !== aid.fallback);
+  const attribute = `data-${aid.attribute}`;
   return (
     `var a=s.getItem(${JSON.stringify(aid.key)});` +
-    `if(${JSON.stringify(values)}.indexOf(a)>-1){d.setAttribute(${JSON.stringify(`data-${aid.attribute}`)},a)}`
+    `if(${JSON.stringify(values)}.indexOf(a)>-1){d.setAttribute(${JSON.stringify(attribute)},a)}`
   );
 }).join('');
 

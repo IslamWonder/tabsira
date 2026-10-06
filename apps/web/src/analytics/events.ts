@@ -37,9 +37,9 @@ let queue: Queued[] = [];
 function cleanParams(params: Readonly<Record<string, unknown>>): Parameters {
   const clean: Parameters = {};
   for (const [key, value] of Object.entries(params)) {
-    if (typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value))) {
-      clean[key] = value;
-    } else if (typeof value === 'string' && WORD.test(value)) {
+    const isPlain =
+      typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value));
+    if (isPlain || (typeof value === 'string' && WORD.test(value))) {
       clean[key] = value;
     }
   }
