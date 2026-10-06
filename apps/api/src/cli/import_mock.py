@@ -33,21 +33,24 @@ import hashlib
 import json
 import re
 import sys
+import uuid
+from collections import defaultdict, deque
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from botocore.exceptions import BotoCoreError, ClientError
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError, field_validator
-from sqlalchemy import and_, delete, func, or_, select, tuple_
+from sqlalchemy import and_, delete, func, or_, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src import security
+from src.cli.mock_drop import DependentRowsError, DropReport, drop_insights
 from src.cli.mock_fill_ins import FILL_INS
 from src.config import ConfigError, Settings, load_settings
 from src.database import dispose_engine, get_sessionmaker
@@ -90,6 +93,7 @@ from src.models.social import (
     Comment,
     CommentStatus,
     Follow,
+    InsightPublication,
     Post,
     PostReaction,
     PostStatus,
@@ -100,6 +104,7 @@ from src.models.social import (
 )
 from src.models.timeseries import EvidenceExposure
 from src.models.user import HANDLE_PATTERN, User
+from src.models.world import Treasure, WorldRelation, WorldReveal
 from src.owner import Owner
 from src.pipeline.engine import (
     EvidenceRef,
@@ -1221,6 +1226,225 @@ async def clean(
     return CleanReport(len(ids), dependents)
 
 
+# ─── Refreshing the imported insights from a newer file ───
+
+# The columns of an insight that come from the pipeline's answer; the rest (owner, times, place,
+# photo) are the member's and stay.
+CONTENT_COLUMNS = (
+    "title",
+    "glimpse",
+    "entity_ids",
+    "action_ids",
+    "anchor",
+    "relation",
+    "quran_surah",
+    "quran_ayah",
+    "quran_evidence",
+    "hadith_collection",
+    "hadith_number",
+    "hadith_evidence",
+    "explanation",
+    "why",
+    "small_step",
+    "learning_unit_id",
+    "learning_path_version",
+)
+
+
+@dataclass
+class RefreshReport:
+    """What a refresh rewrote, left alone, could not find, and removed."""
+
+    refreshed: int = 0
+    unchanged: int = 0
+    reflections: int = 0
+    not_imported: int = 0
+    missing_evidence: list[str] = field(default_factory=list)
+    dropped: DropReport = field(default_factory=DropReport)
+
+    def lines(self) -> list[str]:
+        dropped = self.dropped
+        out = [
+            (
+                f"insights rewritten {self.refreshed}, unchanged {self.unchanged}, "
+                f"post reflections rewritten {self.reflections}, "
+                f"not in the database {self.not_imported}"
+            ),
+            (
+                f"removed {dropped.insights} insights whose photo has no insight any more, "
+                f"with {dropped.posts} posts and {dropped.entries} atlas entries"
+            ),
+        ]
+        out += [
+            f"removed {number} {kind} of other members"
+            for kind, number in dropped.dependents.items()
+        ]
+        out += [f"evidence missing from the store, insight left as it was: {self.missing_evidence}"]
+        return out
+
+
+type _Key = tuple[uuid.UUID, datetime, str]
+
+
+async def _imported(db: AsyncSession, users: list[User]) -> dict[_Key, deque[int]]:
+    """
+    Index the mock insights by owner, time and photo, in the order the import made them.
+
+    Two insights of one member may share a time and a photo; the import wrote them in the
+    file's order, so taking them in id order pairs each with its own line of the file.
+    """
+    rows = await db.execute(
+        select(Insight.id, Insight.user_id, Insight.created_at, Insight.photo_key)
+        .where(Insight.user_id.in_([user.id for user in users]))
+        .order_by(Insight.id)
+    )
+    index: dict[_Key, deque[int]] = defaultdict(deque)
+    for insight_id, user_id, created_at, photo_key in rows:
+        # Never None: the query reads members' insights only.
+        index[(cast("uuid.UUID", user_id), created_at, photo_key or "")].append(insight_id)
+    return index
+
+
+async def _rebuild_world(db: AsyncSession, owner: Owner, insight: Insight) -> None:
+    """Write again what a completion derived from the insight's texts, by the same functions."""
+    await db.execute(delete(EvidenceExposure).where(EvidenceExposure.insight_id == insight.id))
+    await db.execute(delete(Treasure).where(Treasure.insight_id == insight.id))
+    await db.execute(
+        delete(WorldRelation).where(
+            or_(WorldRelation.insight_a_id == insight.id, WorldRelation.insight_b_id == insight.id)
+        )
+    )
+    await db.execute(delete(WorldReveal).where(WorldReveal.insight_id == insight.id))
+    if insight.completed_at is not None:
+        await completion_service.remember(db, owner, insight)
+        await completion_service.place_in_world(db, owner, insight, treasure=True)
+
+
+async def _recopy_publications(db: AsyncSession, insight: Insight, owner_id: uuid.UUID) -> None:
+    """
+    Give each post of the insight a publication copied from its new words.
+
+    A publication is never edited (the database refuses it): a new one is made from the
+    insight as it is now, with the same photo reference, the post points at it, and the old
+    one goes, as a withdrawal removes it.
+    """
+    snapshot = await InsightTableSource().load_for_publishing(db, insight.id, owner_id)
+    assert snapshot is not None  # the insight was just read by its owner
+    copied = publication_service.copied_fields(snapshot)
+    old = list(
+        await db.scalars(
+            select(InsightPublication).where(InsightPublication.insight_id == insight.id)
+        )
+    )
+    for publication in old:
+        fresh = InsightPublication(
+            author_id=publication.author_id,
+            insight_id=publication.insight_id,
+            photo_ref=publication.photo_ref,
+            **copied,
+        )
+        db.add(fresh)
+        await db.flush()
+        await db.execute(
+            update(Post)
+            .where(Post.publication_id == publication.id)
+            .values(publication_id=fresh.id, updated_at=Post.updated_at)
+            .execution_options(synchronize_session=False)
+        )
+        await db.delete(publication)
+    await db.flush()
+
+
+async def _rewrite(db: AsyncSession, user: User, insight: Insight, body: InsightBodyIn) -> bool:
+    """Put the file's answer on the insight when it differs; say whether it did."""
+    scan = await db.get(Scan, insight.scan_id)
+    assert scan is not None  # an imported insight always has its scan
+    owner = Owner(user_id=user.id)
+    fresh = insight_row(owner, _proposed(body), scan=scan, position=insight.position)
+    changed = {
+        c: getattr(fresh, c) for c in CONTENT_COLUMNS if getattr(fresh, c) != getattr(insight, c)
+    }
+    if not changed:
+        return False
+    for column, value in changed.items():
+        setattr(insight, column, value)
+    await db.flush()
+    await _rebuild_world(db, owner, insight)
+    await _recopy_publications(db, insight, user.id)
+    await db.flush()
+    return True
+
+
+async def _rewrite_reflection(db: AsyncSession, insight: Insight, item: PostIn | None) -> bool:
+    """Give the insight's post the file's reflection when it differs; say whether it did."""
+    if item is None:
+        return False
+    post = await db.scalar(
+        select(Post)
+        .join(InsightPublication, InsightPublication.id == Post.publication_id)
+        .where(InsightPublication.insight_id == insight.id)
+    )
+    if post is None or post.reflection == item.reflection:
+        return False
+    post.reflection = item.reflection
+    post.reflection_looks_like_scripture = looks_like_scripture(item.reflection)
+    return True
+
+
+async def refresh(
+    db: AsyncSession, data: MockFile, *, also_dependent_rows: bool = False
+) -> RefreshReport:
+    """
+    Rewrite the mock insights already imported where the file's insight for their photo changed.
+
+    The file is checked as for an import. Each insight is found by its member, its time and its
+    photo; its pipeline columns, the world its completion wrote, its posts' publications and its
+    post's reflection take the file's values, and its ids, post, entry and what members left on
+    them stay. An insight whose photo has no insight in the file is removed first
+    (`drop_insights`, which refuses before anything is written when real members' rows hang on
+    it); one whose evidence is missing from the store is left as it was. One transaction.
+    """
+    check_member_texts(data)
+    await check_scripture_guard(db, data)
+    missing = await _missing_evidence(db, data)
+    images = {image.placepix_id: image for image in data.images}
+    mock = await _mock_users(db)
+    users = {user.email.split("@")[0]: user for user in mock}
+    handles = {member.ref: member.handle.lower() for member in data.members}
+    posts = {post.insight: post for post in data.posts}
+    index = await _imported(db, mock)
+    report = RefreshReport()
+    gone: list[int] = []
+    kept: list[tuple[InsightIn, User, int, InsightBodyIn]] = []
+    for item in data.insights:
+        user = users.get(handles.get(item.member, ""))
+        image = images.get(item.image)
+        found = (
+            index.get((user.id, item.created_at, photo_address(image)))
+            if user is not None and image is not None
+            else None
+        )
+        if not found or user is None or image is None:
+            report.not_imported += 1
+        elif image.insight is None:
+            gone.append(found.popleft())
+        elif item.image in missing:
+            found.popleft()
+            report.missing_evidence.append(item.ref)
+        else:
+            kept.append((item, user, found.popleft(), image.insight))
+    report.dropped = await drop_insights(db, gone, also_dependent_rows=also_dependent_rows)
+    for item, user, insight_id, body in kept:
+        insight = await db.get(Insight, insight_id)
+        assert insight is not None  # indexed in this transaction
+        if await _rewrite(db, user, insight, body):
+            report.refreshed += 1
+        else:
+            report.unchanged += 1
+        report.reflections += await _rewrite_reflection(db, insight, posts.get(item.ref))
+    return report
+
+
 # ─── The command ───
 
 
@@ -1245,8 +1469,17 @@ def _arguments(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--also-dependent-rows",
         action="store_true",
-        help="with --clean: also remove other members' comments, reactions, follows and reports "
-        "that hang on mock accounts (they are counted and refused otherwise)",
+        help="with --clean or --refresh-insights: also remove other members' comments, "
+        "reactions, follows and reports that hang on the mock rows removed (they are counted and "
+        "refused otherwise)",
+    )
+    parser.add_argument(
+        "--refresh-insights",
+        action="store_true",
+        dest="refresh",
+        help="with a file: rewrite the mock insights already imported where the file's insight "
+        "for their photo changed, keeping their posts and what members left on them; remove "
+        "those whose photo has no insight any more",
     )
     parser.add_argument(
         "--fill-in",
@@ -1260,9 +1493,22 @@ def _arguments(argv: Sequence[str] | None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if [args.source is not None, args.clean, bool(args.fill_ins)].count(True) != 1:
         parser.error("give a file to import, --clean, or --fill-in, one of them alone")
-    if args.also_dependent_rows and not args.clean:
-        parser.error("--also-dependent-rows goes with --clean")
+    if args.refresh and args.source is None:
+        parser.error("--refresh-insights takes the newer file")
+    if args.also_dependent_rows and not (args.clean or args.refresh):
+        parser.error("--also-dependent-rows goes with --clean or --refresh-insights")
     return args
+
+
+async def _refresh(db: AsyncSession, data: MockFile, *, also_dependent_rows: bool) -> int:
+    try:
+        report = await refresh(db, data, also_dependent_rows=also_dependent_rows)
+    except DependentRowsError as error:
+        return _refuse(str(error))
+    await db.commit()
+    for line in report.lines():
+        _say(line)
+    return 0
 
 
 async def execute(
@@ -1280,9 +1526,11 @@ async def execute(
             allow_production=args.allow_production,
             allow_test_database=allow_test_database,
         )
-        data = None if args.clean or args.fill_ins else parse(read_source(args.source, settings))
+        data = None if args.source is None else parse(read_source(args.source, settings))
         factory = session_factory or get_sessionmaker()
         async with factory() as db:
+            if data is not None and args.refresh:
+                return await _refresh(db, data, also_dependent_rows=args.also_dependent_rows)
             if args.fill_ins:
                 # One transaction: every fill-in asked for lands, or none.
                 done = [

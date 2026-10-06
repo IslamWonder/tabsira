@@ -156,5 +156,19 @@ make mock-texts                               # 3. write again the texts of thei
   library, set by step 1 and again by step 2 for the photos that changed), so only the posts and
   sponsor notes of the patched photos are written again; every other text is reused. Do not skip
   step 2 before step 3: the texts would be written from the old insight.
-- Production then rewrites the imported insights in place from the patched file (task 23.10,
-  `apps/api`).
+- Upload the patched file to the bucket, then rewrite the insights already imported in place:
+
+  ```bash
+  scripts/mock-data.sh refresh --allow-production   # on production: the published file
+  scripts/mock-data.sh refresh                      # a development machine: the local file
+  ```
+
+  Each mock insight is found by its member, its time and its photo. Where the file's insight for
+  the photo changed, the insight takes the new title, glimpse, evidence, explanation and step; the
+  world its completion wrote is written again by the same functions; its post gets a new
+  publication copied from it (a publication is never edited) and the file's reflection; its id,
+  post, atlas entry and what members left on them stay. An insight whose photo became `null` is
+  removed with its post and entry, as a new import would leave it out; when a real member's
+  comment, reaction, bookmark, sponsorship or report hangs on one, nothing is changed unless
+  `--also-dependent-rows` is given. One transaction, the app schema backed up first, safe to run
+  again.

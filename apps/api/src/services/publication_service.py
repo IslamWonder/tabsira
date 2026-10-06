@@ -12,7 +12,7 @@ itself is never copied: only references are.
 from __future__ import annotations
 
 import uuid
-from typing import NoReturn
+from typing import Any, NoReturn
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -145,6 +145,25 @@ async def check_publishable(db: AsyncSession, snapshot: InsightSnapshot) -> None
     await _check_evidence(db, snapshot)
 
 
+def copied_fields(snapshot: InsightSnapshot) -> dict[str, Any]:
+    """Return what a publication copies of its insight: the platform's words and the references."""
+    return {
+        "insight_version": snapshot.version,
+        "title": snapshot.title.strip(),
+        "glimpse": snapshot.glimpse.strip(),
+        "relation_type": snapshot.relation_type,
+        "concepts": [c.strip()[:CONCEPT_MAX] for c in snapshot.concepts if c.strip()][
+            :MAX_CONCEPTS
+        ],
+        "quran_refs": [{"surah": r.surah, "ayah": r.ayah} for r in snapshot.quran_refs],
+        "hadith_refs": [
+            {"collection": r.collection, "number": r.number} for r in snapshot.hadith_refs
+        ],
+        "explanation_excerpt": snapshot.explanation_excerpt.strip(),
+        "step_text": (snapshot.step_text or "").strip() or None,
+    }
+
+
 async def create_publication(
     db: AsyncSession,
     source: InsightSource,
@@ -167,17 +186,7 @@ async def create_publication(
     publication = InsightPublication(
         author_id=author.id,
         insight_id=snapshot.insight_id,
-        insight_version=snapshot.version,
-        title=snapshot.title.strip(),
-        glimpse=snapshot.glimpse.strip(),
-        relation_type=snapshot.relation_type,
-        concepts=[c.strip()[:CONCEPT_MAX] for c in snapshot.concepts if c.strip()][:MAX_CONCEPTS],
-        quran_refs=[{"surah": r.surah, "ayah": r.ayah} for r in snapshot.quran_refs],
-        hadith_refs=[
-            {"collection": r.collection, "number": r.number} for r in snapshot.hadith_refs
-        ],
-        explanation_excerpt=snapshot.explanation_excerpt.strip(),
-        step_text=(snapshot.step_text or "").strip() or None,
+        **copied_fields(snapshot),
         photo_ref=await _photo_ref(db, snapshot, author, settings, publish_photo=publish_photo),
     )
     db.add(publication)
