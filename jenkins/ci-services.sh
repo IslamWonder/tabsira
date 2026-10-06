@@ -12,6 +12,12 @@
 # with the containers, which listen on 127.0.0.1 only, on ports the kernel
 # picks (a host port cannot be known until the container runs).
 #
+# Inside a container (a Gitea Actions job talks to the host's daemon), the host's
+# 127.0.0.1 is out of reach: the servers join the job container's network
+# instead, publish nothing, and are reached by name on their own ports.
+# CI_SERVICES_NETWORK names that network; when unset it is read from the job
+# container itself.
+#
 # The database image (CI_PG_IMAGE, default in jenkins/jenkins.env) bundles
 # PostgreSQL 18 with PostGIS, pgvector and the TimescaleDB Community build, the
 # same three that scripts/install-postgres.sh installs on a host. The role, the
@@ -49,6 +55,42 @@ default_project() {
 }
 CONTAINER="${TABSIRA_CI_CONTAINER:-$(default_project)}"
 REDIS_CONTAINER="${CONTAINER}-redis"
+
+# The network the job container is on, or nothing when this runs on a host.
+# Docker names a container's host after its short id, so the job container
+# finds itself with `docker inspect "$(hostname)"`.
+job_network() {
+	if [[ -n "${CI_SERVICES_NETWORK:-}" ]]; then
+		printf '%s' "$CI_SERVICES_NETWORK"
+	elif [[ -f /.dockerenv ]]; then
+		docker inspect -f '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' "$(hostname)" 2>/dev/null | head -n 1 || true
+	fi
+}
+
+# How the build reaches a server: by name on the job's network, or on a port
+# published on the host's loopback.
+network_args() {
+	local network="$1" port="$2"
+	if [[ -n "$network" ]]; then
+		printf '%s\n' --network "$network"
+	else
+		printf '%s\n' --publish "127.0.0.1::$port"
+	fi
+}
+
+# "host port" of a server for the build: its name and own port on the job's
+# network, or 127.0.0.1 and the host port Docker picked.
+server_address() {
+	local network="$1" container="$2" port="$3" published
+	if [[ -n "$network" ]]; then
+		printf '%s %s' "$container" "$port"
+		return 0
+	fi
+	published="$(docker port "$container" "$port/tcp" | head -n 1)"
+	published="${published##*:}"
+	[[ -n "$published" ]] || die "Could not discover the host port of $container."
+	printf '127.0.0.1 %s' "$published"
+}
 
 require_docker() {
 	have docker || die "docker is not installed on this agent."
@@ -100,7 +142,9 @@ wait_for_postgres() {
 # is read by the shell inside the container, so it is not on the command line of
 # a process anybody can list. No persistence: nothing in a build survives it.
 start_redis() {
-	local image="$1" password="$2"
+	local image="$1" password="$2" network="$3"
+	local reach
+	mapfile -t reach < <(network_args "$network" 6379)
 	if ! docker image inspect "$image" >/dev/null 2>&1; then
 		log "Pulling $image (a cold agent does this once)"
 		docker pull --quiet "$image" >/dev/null || die "Could not pull $image."
@@ -110,7 +154,7 @@ start_redis() {
 	docker run -d --name "$REDIS_CONTAINER" \
 		--label "$LABEL" \
 		--label "tabsira.ci.build_url=${BUILD_URL:-local}" \
-		--publish 127.0.0.1::6379 \
+		"${reach[@]}" \
 		--env REDIS_PASSWORD \
 		"$image" sh -c 'exec redis-server --save "" --appendonly no --requirepass "$REDIS_PASSWORD"' >/dev/null ||
 		die "docker could not start $image."
@@ -150,10 +194,15 @@ cmd_up() {
 	# A retry of the same build starts from nothing.
 	docker rm -fv "$CONTAINER" "$REDIS_CONTAINER" >/dev/null 2>&1 || true
 
+	local network reach
+	network="$(job_network)"
+	[[ -z "$network" ]] || log "Inside a container: the servers join its network $network"
+	mapfile -t reach < <(network_args "$network" 5432)
+
 	local app_password redis_password
 	app_password="$(openssl rand -hex 24)"
 	redis_password="$(openssl rand -hex 24)"
-	start_redis "$redis_image" "$redis_password"
+	start_redis "$redis_image" "$redis_password" "$network"
 	POSTGRES_PASSWORD="$(openssl rand -hex 24)"
 	export POSTGRES_PASSWORD
 
@@ -169,7 +218,7 @@ cmd_up() {
 		--label "$LABEL" \
 		--label "tabsira.ci.build_url=${BUILD_URL:-local}" \
 		--shm-size 1g \
-		--publish 127.0.0.1::5432 \
+		"${reach[@]}" \
 		--env POSTGRES_PASSWORD \
 		--env POSTGRES_USER=postgres \
 		--env POSTGRES_DB=postgres \
@@ -208,10 +257,9 @@ cmd_up() {
 	psql_admin postgres -c "ALTER DATABASE tabsira_template WITH IS_TEMPLATE true ALLOW_CONNECTIONS false;"
 	close_template_sessions
 
-	local port
-	port="$(docker port "$CONTAINER" 5432/tcp | head -n 1)"
-	port="${port##*:}"
-	[[ -n "$port" ]] || die "Could not discover the host port of $CONTAINER."
+	local address host port
+	address="$(server_address "$network" "$CONTAINER" 5432)"
+	read -r host port <<<"$address"
 
 	verify_as_application_role "$app_password"
 
@@ -220,13 +268,12 @@ cmd_up() {
 		docker logs --tail 100 "$REDIS_CONTAINER" 2>&1 || true
 		die "Aborting: the build has no Redis to run against."
 	fi
-	local redis_port
-	redis_port="$(docker port "$REDIS_CONTAINER" 6379/tcp | head -n 1)"
-	redis_port="${redis_port##*:}"
-	[[ -n "$redis_port" ]] || die "Could not discover the host port of $REDIS_CONTAINER."
+	local redis_host redis_port
+	address="$(server_address "$network" "$REDIS_CONTAINER" 6379)"
+	read -r redis_host redis_port <<<"$address"
 
-	write_env_file "$app_password" "$port" "$image" "$redis_password" "$redis_port" "$redis_image"
-	ok "CI services are up (database 127.0.0.1:$port, Redis 127.0.0.1:$redis_port)"
+	write_env_file "$app_password" "$host" "$port" "$image" "$redis_password" "$redis_host" "$redis_port" "$redis_image"
+	ok "CI services are up (database $host:$port, Redis $redis_host:$redis_port)"
 }
 
 # Closing a database to connections does not end the session the TimescaleDB
@@ -261,31 +308,31 @@ verify_as_application_role() {
 }
 
 write_env_file() {
-	local password="$1" port="$2" image="$3" redis_password="$4" redis_port="$5" redis_image="$6" tmp
+	local password="$1" host="$2" port="$3" image="$4" redis_password="$5" redis_host="$6" redis_port="$7" redis_image="$8" tmp
 	tmp="$(mktemp "${ENV_FILE}.XXXXXX")"
 	chmod 600 "$tmp"
 	{
 		echo "TABSIRA_CI_CONTAINER=$CONTAINER"
 		echo "TABSIRA_CI_PG_IMAGE=$image"
 		echo "TABSIRA_CI_PG_PORT=$port"
-		echo "DATABASE_URL=postgresql+asyncpg://tabsira:${password}@127.0.0.1:${port}/tabsira"
-		echo "SYNC_DATABASE_URL=postgresql+psycopg://tabsira:${password}@127.0.0.1:${port}/tabsira"
-		echo "TEST_DATABASE_URL=postgresql+asyncpg://tabsira:${password}@127.0.0.1:${port}/tabsira_test"
+		echo "DATABASE_URL=postgresql+asyncpg://tabsira:${password}@${host}:${port}/tabsira"
+		echo "SYNC_DATABASE_URL=postgresql+psycopg://tabsira:${password}@${host}:${port}/tabsira"
+		echo "TEST_DATABASE_URL=postgresql+asyncpg://tabsira:${password}@${host}:${port}/tabsira_test"
 		echo "TABSIRA_CI_REDIS_IMAGE=$redis_image"
 		echo "TABSIRA_CI_REDIS_PORT=$redis_port"
-		echo "REDIS_HOST=127.0.0.1"
+		echo "REDIS_HOST=$redis_host"
 		echo "REDIS_PORT=$redis_port"
 		echo "REDIS_PASSWORD=$redis_password"
 		echo "REDIS_DB=0"
 		# The API refuses a Redis address that carries a password (it reads REDIS_PASSWORD
 		# above and keeps the address printable), so neither URL names it.
-		echo "REDIS_URL=redis://127.0.0.1:${redis_port}/0"
+		echo "REDIS_URL=redis://${redis_host}:${redis_port}/0"
 		# Database 1 for tests, the way tabsira_test is the database for tests:
 		# a suite that flushes it can never reach what the application keeps in 0.
-		echo "TEST_REDIS_URL=redis://127.0.0.1:${redis_port}/1"
+		echo "TEST_REDIS_URL=redis://${redis_host}:${redis_port}/1"
 	} >"$tmp"
 	mv "$tmp" "$ENV_FILE"
-	log "Wrote $ENV_FILE (database 127.0.0.1:$port, Redis 127.0.0.1:$redis_port)"
+	log "Wrote $ENV_FILE (database $host:$port, Redis $redis_host:$redis_port)"
 }
 
 cmd_down() {
