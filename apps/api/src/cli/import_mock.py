@@ -147,9 +147,14 @@ MAX_FILE_BYTES = 64 * 1024 * 1024
 MAX_PLACEPIX_ID = 10**9
 NAME_MAX = 60
 # What a member's text may not hold whatever the guards say: an address, a link, a number to call.
-_UNSAFE_TEXT = re.compile(
-    r"(https?://|www\.|\b[\w-]+\.(?:com|net|org|me|io|info|app|co|tv|ly|xyz|ru|cn)\b|\S@\S|@\w|\+?\d[\d\s().-]{7,}\d)",
-    re.IGNORECASE,
+_UNSAFE_PATTERNS = tuple(
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"https?://|www\.",
+        r"\b[\w-]+\.(?:com|net|org|me|io|info|app|co|tv|ly|xyz|ru|cn)\b",
+        r"\S@\S|@\w",
+        r"\+?\d[\d\s().-]{7,}\d",
+    )
 )
 CHUNK = 1000
 # The one password of every mock member, an owners' decision for the contest's judges; hashed
@@ -515,7 +520,7 @@ def text_problem(text: str, limit: int) -> str | None:
         return "empty"
     if looks_like_scripture(cleaned):
         return "reads like scripture"
-    if _UNSAFE_TEXT.search(cleaned):
+    if any(pattern.search(cleaned) for pattern in _UNSAFE_PATTERNS):
         return "a link, an address or a number"
     return None
 

@@ -554,3 +554,36 @@ async def test_a_client_without_a_log_still_returns_its_record():
         result = await client.chat_json(Colours, stage=AiStage.VISION, system="s", user="u")
 
     assert result.record.ok
+
+
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        ('{"a": 1}', '{"a": 1}'),
+        ('```json\n{"a": 1}\n```', '{"a": 1}'),
+        ('```\n{"a": 1}\n```', '{"a": 1}'),
+        ('  ```json   {"a": 1}   ```  ', '{"a": 1}'),
+        ("```json```", ""),
+        ("``````", ""),
+        ("```json\n{}\n``", "```json\n{}\n``"),
+        ('<think>x</think>```json\n{"a": 1}\n```', '{"a": 1}'),
+        ("```a``` b ```", "a``` b"),
+    ],
+)
+def test_a_code_fence_around_json_is_removed(content, expected):
+    from src.ai.client import _json_text
+
+    assert _json_text(content) == expected
+
+
+def test_a_long_run_of_spaces_in_a_fence_is_read_in_linear_time():
+    import time
+
+    from src.ai.client import _json_text
+
+    content = "```json" + " " * 200_000 + "x" + " " * 200_000 + "``"
+    started = time.monotonic()
+    assert _json_text(content) == content.strip()
+    assert time.monotonic() - started < 1
+    fenced = "```" + " " * 200_000 + "```"
+    assert _json_text(fenced) == ""

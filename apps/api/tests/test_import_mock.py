@@ -987,6 +987,18 @@ def test_text_problem_names_each_reason():
     assert check("a\x00b", 50) == "control characters or too long"
     assert check("ab", 1) == "control characters or too long"
     assert check("see example.com", 50) == "a link, an address or a number"
+    for unsafe in (
+        "a@b",
+        "x @y",
+        "WWW.example",
+        "HTTP://x",
+        "a.XYZ",
+        "+1 (555) 123-4567",
+        "123456789",
+    ):
+        assert check(unsafe, 50) == "a link, an address or a number", unsafe
+    for safe in ("تأمل 2026", "a@", "1234567", "example.comx", "1 2 3 4"):
+        assert check(safe, 50) is None, safe
 
 
 @pytest.mark.parametrize("bad", [0, -5, 10**9 + 1])

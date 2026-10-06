@@ -41,7 +41,9 @@ CONNECT_TIMEOUT_SECONDS = 10.0
 ERROR_DETAIL_CHARS = 200
 
 _THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL)
-_CODE_FENCE = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.DOTALL)
+# The padding inside the fence is stripped in `_json_text`: a pattern with `\s*` on both sides of a
+# lazy `.*?` backtracks in quadratic time on a long run of spaces.
+_CODE_FENCE = re.compile(r"^```(?:json)?(.*)```$", re.DOTALL)
 
 _STATUS_CODES: dict[int, AiErrorCode] = {
     400: AiErrorCode.BAD_REQUEST,
@@ -459,7 +461,7 @@ def _json_text(content: str) -> str:
     """Remove what some models wrap around JSON even in structured mode."""
     text = _THINK_BLOCK.sub("", content).strip()
     fenced = _CODE_FENCE.match(text)
-    return fenced.group(1) if fenced else text
+    return fenced.group(1).strip() if fenced else text
 
 
 def _parse_embeddings(payload: Mapping[str, Any], expected: int) -> list[list[float]]:

@@ -274,7 +274,8 @@ def _scrub_headers(headers: Mapping[str, Any]) -> dict[str, Any]:
     return kept
 
 
-_ROUTE_PATTERN = re.compile(r"^(?:[A-Z]+ )?(?P<pattern>/\S*\{\S*)$")
+# The `{` is looked for in code: `\S*\{\S*` in one pattern backtracks in quadratic time.
+_ROUTE_PATTERN = re.compile(r"^(?:[A-Z]+ )?(?P<pattern>/\S*)$")
 
 
 def _route_url(event: Any, url: str) -> str:
@@ -285,7 +286,7 @@ def _route_url(event: Any, url: str) -> str:
     bearer of a consent record), so a report names the route, never the id.
     """
     matched = _ROUTE_PATTERN.match(str(event.get("transaction") or ""))
-    if matched is None:
+    if matched is None or "{" not in matched["pattern"][1:]:
         return url
     origin = _ORIGIN.match(url)
     return (origin.group(0) if origin else "") + matched["pattern"]

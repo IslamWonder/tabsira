@@ -852,3 +852,38 @@ def test_the_sdk_left_off_reads_no_request_body(recorder):
 
     assert client.get_integration(FastApiIntegration) is None
     assert client.get_integration(StarletteIntegration) is None
+
+
+@pytest.mark.parametrize(
+    ("transaction", "route"),
+    [
+        ("GET /consent/{consent_id}", "/consent/{consent_id}"),
+        ("/consent/{consent_id}", "/consent/{consent_id}"),
+        ("POST /a/{b}/c/{d}", "/a/{b}/c/{d}"),
+        ("GET /health", None),
+        ("/", None),
+        ("{", None),
+        ("GET {x}", None),
+        ("get /a/{b}", None),
+        ("GET /a/{b} c", None),
+        ("GET /a b/{c}", None),
+        ("", None),
+    ],
+)
+def test_a_route_with_parameters_replaces_the_path(transaction, route):
+    event = {"transaction": transaction}
+    url = "https://api.example.org/consent/123?x=1"
+
+    scrubbed = error_tracking._route_url(event, url)
+
+    if route is None:
+        assert scrubbed == url
+    else:
+        assert scrubbed == "https://api.example.org" + route
+
+
+def test_a_long_adversarial_transaction_is_matched_in_linear_time():
+    event = {"transaction": "/" + "{" * 200_000 + " x"}
+    started = time.monotonic()
+    assert error_tracking._route_url(event, "u") == "u"
+    assert time.monotonic() - started < 1

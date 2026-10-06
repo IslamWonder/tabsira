@@ -435,3 +435,52 @@ def test_a_mention_is_an_anchor_only_when_the_whole_reference_is_the_known_one()
     assert _anchors_in(["مسلم 80"], labels) == []
     assert _anchors_in(["الروم 50", "الروم 50"], labels) == ["Q:30:50"]
     assert _anchors_in(["الروم 50"], {}) == []
+
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        ("# Title", [(1, "Title")]),
+        ("###### Deep  title \t ", [(6, "Deep  title")]),
+        ("##   ", [(2, "")]),
+        ("#\N{NO-BREAK SPACE}T05 اسم\N{NO-BREAK SPACE}", [(1, "T05 اسم")]),
+        ("####### seven", []),
+        ("#nospace", []),
+        ("text # not a heading", []),
+        ("", []),
+    ],
+)
+def test_a_heading_gives_its_level_and_its_trimmed_title(line, expected):
+    from src.services.masar_parser import _sections
+
+    sections = _sections(["# H", line])
+
+    assert [(s.level, s.title) for s in sections[1:]] == expected
+
+
+def test_a_heading_followed_by_a_long_run_of_spaces_is_read_in_linear_time():
+    import time
+
+    from src.services.masar_parser import _sections
+
+    started = time.monotonic()
+    sections = _sections(["# " + " " * 200_000 + "x" + " " * 200_000, "#" + " " * 200_000])
+    assert [s.title for s in sections] == ["x", ""]
+    assert time.monotonic() - started < 1
+
+
+def test_the_stated_counts_are_found_after_other_digits_and_in_linear_time():
+    import time
+
+    from src.services.masar_parser import _STATED_COUNTS
+
+    found = _STATED_COUNTS.search("x 16 مجالًا و96 وحدة")
+    assert found is not None
+    assert found.groups() == ("16", "96")
+    whole = _STATED_COUNTS.search("2016 مجالًا و96 وحدة")
+    assert whole is not None
+    assert whole.groups() == ("2016", "96")
+    assert _STATED_COUNTS.search("16 مجالًا و وحدة") is None
+    started = time.monotonic()
+    assert _STATED_COUNTS.search("1" * 200_000) is None
+    assert time.monotonic() - started < 1
