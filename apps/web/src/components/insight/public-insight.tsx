@@ -1,4 +1,5 @@
 import { FollowAuthor } from '@/components/community/follow-author';
+import { PublicPhoto } from '@/components/community/public-photo';
 import { SparkIcon } from '@/components/icons';
 import { LinkButton } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
@@ -66,8 +67,9 @@ function Invitation() {
  * One published insight for any reader (task 09.2): the title and glimpse, the
  * verse and the hadith exactly as the API returns them, the platform's
  * explanation and step, and the AI disclosure. It shows only what the public
- * answer holds: no photo, place, chat or progress, and the author only when the
- * owner chose a public handle and name.
+ * answer holds: no place, chat or progress, the author only when the owner chose a
+ * public handle and name, and the photo only when its public copy exists (the owner
+ * already showed it in a public post or a published map entry).
  */
 export function PublicInsightPage({ insight }: Readonly<{ insight: PublicInsight }>) {
   return (
@@ -91,6 +93,7 @@ export function PublicInsightPage({ insight }: Readonly<{ insight: PublicInsight
             </time>
           </p>
         </header>
+        <PublicPhoto url={insight.photo_url ?? null} alt={T.photoAlt(insight.title)} />
         <InsightEvidence insight={insight} />
         <ExplanationSections tag={insight.explanation_tag} parts={insight.explanation} />
         {insight.small_step === null ? null : <SmallStep step={insight.small_step} />}

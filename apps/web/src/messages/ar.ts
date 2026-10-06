@@ -433,6 +433,7 @@ export const ar = {
   publicInsight: {
     unavailableTitle: 'تعذّر عرض البصيرة الآن',
     publishedOn: (day: string) => `نُشرت في ${day}`,
+    photoAlt: (title: string) => `صورة المشهد الذي وُلدت منه البصيرة «${title}»`,
     authorLabel: 'صاحب البصيرة',
     stepTitle: 'خطوة صغيرة',
     callTitle: 'ابدأ بصيرتك أنت',
