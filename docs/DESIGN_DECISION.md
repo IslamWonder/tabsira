@@ -183,3 +183,14 @@ The owners' cinematic reference replaces the sky drawn in a glass card beside th
 - **Reading aids** sit under «سهولة القراءة» in «المظهر والصوت», on this device only, and apply before the first paint: the text size (عادي، كبير 112.5 %، أكبر 125 %, every size and space grows with it, as with zoom), «تباين أعلى» (soft and muted text take the full text colour, hairlines take the field edge; the device's «increase contrast» setting does the same by itself) and «تمييز الروابط» (every link underlined, so a link is not told by colour alone). Quran and hadith text grow with the page and are otherwise untouched.
 - **Field edges.** Text fields, selects, switch tracks and answer chips draw their edge in `field-border` (`#788c84` by day, white at 40 % by night), 3:1 on every ground they sit on (WCAG 1.4.11); the hairline `border` stays for separators and cards.
 - **The speaker while the sound is heard.** The switch shows three bars rising and falling in place of the waves and a gold ring breathing around it, only while the sound is actually heard (not while the browser holds it), and its title says «يُسمع الآن». Under reduced motion the bars and the ring stand still.
+
+### Finish (added 6 October 2026)
+
+Small polish within the direction above, chosen by the implementer.
+
+- **Native controls follow the theme.** Checkboxes, radios, ranges and the text caret take `--primary` instead of the browser's blue.
+- **The landing's fixed kit is named.** The hero band (emerald night in both themes) and the phone preview (the app by day) draw their colours from `--hero-*` and `--preview-*` in `components/landing/landing.css`, as the world does, not from literals.
+- **Route change.** Where the browser has view transitions the page left behind fades out while the new one fades in; elsewhere only the fade-in plays. Nothing moves, and it stops under reduced motion.
+- **A glint round menu windows.** On an ornate menu window a gold glint runs once round the outer rule as it appears, then the rule rests. Never on a Quran or Sunnah panel.
+- **A press is felt.** Every link, button, tab and chip takes a brief tint while pressed (`--press-filter`: darker by day, brighter by night). Colour only, nothing moves; never on anything that holds Quran or hadith text.
+- **Honest placeholders.** While the community feed or the atlas results load their first page, empty shapes of the rows to come carry a slow gold shine; screen readers hear the loading line. The shapes hold no text or picture, so no content is implied.
