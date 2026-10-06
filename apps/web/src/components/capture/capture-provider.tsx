@@ -15,7 +15,7 @@ import {
 } from 'react';
 import { markProfileRequired, tutorialOffered, useSession } from '@/account/session';
 import { SummoningCircle } from '@/components/fx/summoning-circle';
-import { PlayIcon } from '@/components/icons';
+import { OnwardArrowIcon } from '@/components/icons';
 import { SceneStarter } from '@/components/scene/scene-starter';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -120,8 +120,8 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
             onClick={() => setOpen(false)}
             className="mb-2 inline-flex min-h-12 items-center gap-2 font-semibold text-link underline-offset-4 hover:underline"
           >
-            <PlayIcon width="18" height="18" />
             {messages.landing.hero.tryExample}
+            <OnwardArrowIcon width="18" height="18" />
           </Link>
         ) : null}
       </Sheet>

@@ -7,7 +7,7 @@ import { tutorialOffered, useSession } from '@/account/session';
 import { LogoMark } from '@/components/brand/logo';
 import { useCapture } from '@/components/capture/capture-provider';
 import { revealDelay, useReveal } from '@/components/fx/use-reveal';
-import { CameraIcon, MenuIcon, OnwardIcon, PlayIcon, ShieldIcon } from '@/components/icons';
+import { CameraIcon, MenuIcon, OnwardArrowIcon, OnwardIcon, ShieldIcon } from '@/components/icons';
 import { CaptureCard } from '@/components/scene/capture-card';
 import { Emblem, type EmblemName, EmblemTile } from '@/components/ui/emblem';
 import { cx } from '@/lib/cx';
@@ -202,8 +202,9 @@ function Hero() {
               href="#example"
               className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-[14px] border border-[rgb(255_255_255/0.45)] px-4 font-semibold text-[#ffffff] text-[1.0625rem] transition-colors duration-200 hover:bg-[rgb(255_255_255/0.08)] focus-visible:outline-3 focus-visible:outline-[#ffffff] focus-visible:outline-offset-2 tablet:min-h-[52px] tablet:flex-none tablet:px-6"
             >
-              <PlayIcon width="18" height="18" />
               {L.hero.tryExample}
+              {/* Onward, where Arabic reads: at the end of the label, pointing left. */}
+              <OnwardArrowIcon width="18" height="18" />
             </Link>
           </div>
           <p

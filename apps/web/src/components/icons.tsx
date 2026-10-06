@@ -493,14 +493,6 @@ export function PhotosIcon(props: IconProps) {
   );
 }
 
-export function PlayIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <path d="M8 5.5v13l10-6.5z" />
-    </Icon>
-  );
-}
-
 export function MenuIcon(props: IconProps) {
   return (
     <Icon {...props}>
