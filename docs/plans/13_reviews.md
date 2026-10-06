@@ -1,6 +1,6 @@
 # 13 · Scripture, privacy and security reviews
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-04 14:51 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-06 15:13 (Tunis)
 
 Independent reviews before each important merge; findings are fixed before release.
 
@@ -8,7 +8,7 @@ Independent reviews before each important merge; findings are fixed before relea
 | ---------------------------------------------------------- | ------ | ------------------- |
 | Accounts, admin, error reports, photos: reviewed and fixed | ✅     |                     |
 | Legal acceptance and support form                          | ✅     | Fixes being merged. |
-| Scan workflow: scripture                                   | 🔄     |                     |
+| Scan workflow: scripture                                   | ✅     | 04.1, 05.8, 05.9.   |
 | Final pass before release                                  | ⬜     |                     |
 
 **How we check it**
