@@ -1537,9 +1537,10 @@ async def execute(
             if data is not None and args.refresh:
                 return await _refresh(db, data, also_dependent_rows=args.also_dependent_rows)
             if args.fill_ins:
-                # One transaction: every fill-in asked for lands, or none.
+                # Run in the order given; one that publishes posts commits each as it goes.
                 done = [
-                    (name, await FILL_INS[name].run(db)) for name in dict.fromkeys(args.fill_ins)
+                    (name, await FILL_INS[name].run(db, settings))
+                    for name in dict.fromkeys(args.fill_ins)
                 ]
                 await db.commit()
                 for name, changed in done:

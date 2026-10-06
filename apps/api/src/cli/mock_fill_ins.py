@@ -24,9 +24,12 @@ from dataclasses import dataclass
 from sqlalchemy import Select, func, or_, select, union, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.cli.publish_missing_posts import publish_missing
+from src.config import Settings
 from src.mock_accounts import MOCK_DOMAINS
 from src.models.social import Bookmark, Comment, Post, PostReaction, PostStatus, PostVisibility
 from src.models.user import User
+from src.storage.photos import build_photo_store
 
 # The numbers of `add_views` in tools/mockdata/src/mockdata/activity.py, so a post filled in here
 # reads like one the generator wrote: readers per member who reacted, saved or commented, the
@@ -44,7 +47,7 @@ class FillIn:
 
     name: str
     summary: str
-    run: Callable[[AsyncSession], Awaitable[int]]
+    run: Callable[[AsyncSession, Settings], Awaitable[int]]
 
 
 def _mock_authors() -> Select[uuid.UUID]:
@@ -61,7 +64,7 @@ def plausible_views(post_id: int, engaged: int, *, public: bool) -> int:
     return max(engaged, round(reach))
 
 
-async def fill_views(db: AsyncSession) -> int:
+async def fill_views(db: AsyncSession, settings: Settings) -> int:
     """Give every published mock post a plausible view count (task 16.3); return how many changed."""
     people = union(
         select(PostReaction.post_id, PostReaction.user_id),
@@ -105,9 +108,16 @@ async def fill_views(db: AsyncSession) -> int:
     return changed
 
 
+async def fill_posts(db: AsyncSession, settings: Settings) -> int:
+    """Give every mock basira that is public or on the atlas its post (decision 68)."""
+    report = await publish_missing(db, settings, build_photo_store(settings), only_mock=True)
+    return report.published
+
+
 FILL_INS: dict[str, FillIn] = {
     fill_in.name: fill_in
     for fill_in in (
         FillIn("views", "a plausible view count on every published mock post", fill_views),
+        FillIn("posts", "the post of every mock basira that is public or on the atlas", fill_posts),
     )
 }

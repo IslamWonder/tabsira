@@ -64,6 +64,13 @@ that for a followers-only post. The same numbers as the generator's `add_views`;
 seeded by the post's id. Run once after deploying task 16.3 on a database whose mock posts were
 imported before it.
 
+### `posts` (decision 68)
+
+Gives every mock basira that is a public page or a published atlas entry the post it now gets by
+default, through the same command as real accounts (`src/cli/publish_missing_posts.py`, limited to
+mock accounts). The generator already makes every atlas entry from a post, so on a file imported
+whole it finds nothing to do.
+
 ## Members and features (task 23.5)
 
 - Names come from the reviewed lists of `names.py`, by the gender the member declares (a few

@@ -1,3 +1,4 @@
+# ruff: noqa: F811
 """Fill-ins: a feature added after the mock import, written onto the mock rows that are there."""
 
 from __future__ import annotations
@@ -10,7 +11,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from src.cli import import_mock, mock_fill_ins
 from src.models import Post, PostStatus, PostVisibility, User
-from tests.support_social import new_post
+from tests.support_social import new_post, scripture  # noqa: F401
 from tests.test_import_mock import document, run, settings, world  # noqa: F401  (fixtures)
 
 
@@ -21,7 +22,7 @@ async def views_by_post(db) -> dict[int, tuple[int, PostVisibility]]:
     return {post_id: (views, visibility) for post_id, views, visibility in rows}
 
 
-async def imported_without_views(db, settings) -> None:  # noqa: F811
+async def imported_without_views(db, settings) -> None:
     await run(db, settings, document())
     # As a file written before task 16.3 leaves them.
     await db.execute(update(Post).values(views_count=0))
@@ -29,14 +30,14 @@ async def imported_without_views(db, settings) -> None:  # noqa: F811
 
 async def test_views_fill_every_mock_post_plausibly_and_a_second_run_changes_nothing(
     db_session,
-    settings,  # noqa: F811
-    world,  # noqa: F811
+    settings,
+    world,
 ):
     await imported_without_views(db_session, settings)
     posts = (await db_session.scalars(select(Post))).all()
     assert posts
 
-    changed = await mock_fill_ins.fill_views(db_session)
+    changed = await mock_fill_ins.fill_views(db_session, settings)
 
     filled = await views_by_post(db_session)
     assert changed == len(posts)
@@ -47,14 +48,14 @@ async def test_views_fill_every_mock_post_plausibly_and_a_second_run_changes_not
     # amal's first post: two members reacted, saved or commented, so at least two views.
     assert by_author is not None
     assert filled[by_author.id][0] >= 2
-    assert await mock_fill_ins.fill_views(db_session) == 0
+    assert await mock_fill_ins.fill_views(db_session, settings) == 0
     assert await views_by_post(db_session) == filled
 
 
 async def test_views_never_lower_a_count_and_never_touch_a_real_members_post(
     db_session,
-    settings,  # noqa: F811
-    world,  # noqa: F811
+    settings,
+    world,
     make_user,
 ):
     await imported_without_views(db_session, settings)
@@ -64,7 +65,7 @@ async def test_views_never_lower_a_count_and_never_touch_a_real_members_post(
     assert busy is not None
     await db_session.execute(update(Post).where(Post.id == busy.id).values(views_count=10**6))
 
-    await mock_fill_ins.fill_views(db_session)
+    await mock_fill_ins.fill_views(db_session, settings)
 
     after = await views_by_post(db_session)
     assert after[theirs.id][0] == 0
@@ -96,8 +97,8 @@ def test_fill_in_is_given_alone_and_by_a_known_name():
 
 async def test_execute_fills_in_once_per_name_and_says_how_many(
     db_session,
-    settings,  # noqa: F811
-    world,  # noqa: F811
+    settings,
+    world,
     capsys,
 ):
     await imported_without_views(db_session, settings)
@@ -117,3 +118,21 @@ async def test_execute_fills_in_once_per_name_and_says_how_many(
     out = capsys.readouterr().out
     assert out.count("views:") == 1
     assert "mock rows filled in" in out
+
+
+async def test_posts_fill_in_publishes_only_mock_basiras_and_says_how_many(
+    db_session, settings, make_user, scripture
+):
+    from tests.support_orphans import entry_row
+    from tests.support_social import Member
+
+    mock = await make_user("mocked@mock.tabsira.me", verified=True, handle="mocked")
+    real = await make_user("real@example.com", verified=True, handle="real")
+    await entry_row(db_session, Member(mock, None, "mocked"))  # type: ignore[arg-type]
+    await entry_row(db_session, Member(real, None, "real"))  # type: ignore[arg-type]
+
+    changed = await mock_fill_ins.fill_posts(db_session, settings)
+
+    assert changed == 1
+    assert [post.author_id for post in (await db_session.scalars(select(Post))).all()] == [mock.id]
+    assert mock_fill_ins.FILL_INS["posts"].run is mock_fill_ins.fill_posts

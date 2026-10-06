@@ -189,6 +189,15 @@ Decision 44. Production keeps consented photos in a private S3-compatible bucket
 - **Serving.** No route serves stored photos yet, so nginx has no location for them. Published copies are served from `S3_PUBLIC_BASE_URL` with `Cache-Control: public, max-age=300`; private photos only through signed links. The web pages' Content-Security-Policy must allow that origin in `img-src`, or the browser refuses every published photo: `deploy/apply-config.sh` reads `S3_PUBLIC_BASE_URL` from the production `.env` and writes its origin into `tabsira-headers-web.conf`, so after setting or changing it run `sudo deploy/apply-config.sh`.
 - **Sound effects.** The 1,000 MP3 files of the ontology (one per entity, `E001.mp3` to `E1000.mp3`) are static files, not photos. Upload them once to the same bucket under `static/ontology/audio/`, for example `aws s3 sync out/ontology/audio/ s3://<bucket>/static/ontology/audio/ --content-type audio/mpeg`. The API reads them with the bucket's own keys and serves them at `GET /sounds/ontology/<id>` with `Cache-Control: public, max-age=86400`, so the bucket stays private and the browser talks to the API only. Nothing under `static/` is ever a photo. With no bucket, the same path under `LOCAL_MEDIA_DIR` is read (`data/media/static/ontology/audio/` by default). A missing file is a 404 and the page plays nothing.
 
+## Basiras published before decision 68
+
+Once, after the deploy that brings decision 68: every basira that is a public page or a published atlas entry and has no post gets its post, public and with no reflection, with the photo only where its owner chose to show it. It skips orphaned entries, withdrawals, accounts that are closed, unverified or without a handle, and counts what it skipped. Safe to run again.
+
+```bash
+cd apps/api && uv run python -m src.cli.publish_missing_posts --dry-run --i-understand --allow-production   # count
+cd apps/api && uv run python -m src.cli.publish_missing_posts --i-understand --allow-production             # publish
+```
+
 ## Mock members
 
 The platform starts with about 1000 mock members (decision 66, plan 23). `tools/mockdata` writes `tabsira-mock-v1.json` to `../tabsira-data/mock/`; the owners upload it to their bucket (never committed). The importer reads it from a path or from `s3://bucket/key` with the same `S3_*` keys as the photos (no new setting).
