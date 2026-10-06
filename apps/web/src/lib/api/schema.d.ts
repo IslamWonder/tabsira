@@ -1413,7 +1413,8 @@ export interface paths {
      *     The same `idempotencyKey` returns the same answer and counts once; the
      *     fourth successful message answers 409 CHAT_LIMIT_REACHED. A request for
      *     another text runs the retrieval and the verification again (v2 §14). 403
-     *     `profile_required` for an account that has not completed its profile (decision 64).
+     *     `profile_required` for an account that has not completed its profile, and 403
+     *     `account_required` for a guest on the insight of its own scan (decision 64).
      */
     post: operations['chat_insights__insight_id__chat_post'];
     delete?: never;

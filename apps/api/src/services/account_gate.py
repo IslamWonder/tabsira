@@ -61,6 +61,16 @@ async def require_profile(db: AsyncSession, owner: Owner | None) -> None:
         await profile_service.require_completed(db, owner.user_id)
 
 
+def require_account_for_chat(owner: Owner | None, insight: Insight) -> None:
+    """Answer 403 `account_required` for a guest opening the chat of an insight of its own scan."""
+    if owner is not None and owner.user_id is None and insight.origin is InsightOrigin.SCAN:
+        raise AppError(
+            ErrorCode.account_required,
+            "Create an account to talk about your own scan.",
+            status_code=403,
+        )
+
+
 async def has_own_insight(db: AsyncSession, user_id: uuid.UUID) -> bool:
     """Whether the account holds an insight of its own scan, not a tutorial copy."""
     found = await db.scalar(
