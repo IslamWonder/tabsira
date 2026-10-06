@@ -263,10 +263,14 @@ class ModelPrice(BaseModel):
     cached_input: Annotated[float, Field(ge=0)] | None = None
 
 
+OVH_DEFAULT_MODEL = "Qwen3.8-27B"
+OPENAI_DEFAULT_MODEL = "gpt-5.4-mini-2026-03-17"
+
+
 # Prices as of 4 October 2026 (docs/research/ai-providers.md): OVH from its
 # /v1/models endpoint, OpenAI from its pricing page.
 OVH_PRICES = {
-    "Qwen3.8-27B": ModelPrice(input=0.47, output=3.19),
+    OVH_DEFAULT_MODEL: ModelPrice(input=0.47, output=3.19),
     "Qwen3.6-27B": ModelPrice(input=0.47, output=3.19),
     "Qwen3.5-397B-A17B": ModelPrice(input=0.71, output=4.25),
     "Qwen3.5-9B": ModelPrice(input=0.12, output=0.18),
@@ -277,7 +281,7 @@ OVH_PRICES = {
     "Qwen3Guard-Gen-0.6B": ModelPrice(input=0.0),
 }
 OPENAI_PRICES = {
-    "gpt-5.4-mini-2026-03-17": ModelPrice(input=0.75, output=4.5, cached_input=0.075),
+    OPENAI_DEFAULT_MODEL: ModelPrice(input=0.75, output=4.5, cached_input=0.075),
     "gpt-5.4-nano-2026-03-17": ModelPrice(input=0.2, output=1.25, cached_input=0.02),
     "text-embedding-3-small": ModelPrice(input=0.02),
     "text-embedding-3-large": ModelPrice(input=0.13),
@@ -353,14 +357,14 @@ class OvhSettings(ProviderSettings):
     base_url: str = OVH_BASE_URL
     # Measured by docs/BENCHMARK.md (4 October 2026): Qwen3.8-27B without thinking
     # (thinking added 36 s at p50 for no gain), boxes on its native 0-1000 grid.
-    vision_model: str = "Qwen3.8-27B"
+    vision_model: str = OVH_DEFAULT_MODEL
     # Decision 46: the chat answers with the provider's insight-stage model.
-    chat_model: str = "Qwen3.8-27B"
+    chat_model: str = OVH_DEFAULT_MODEL
     # The text stages use the vision stage's model, without thinking: not measured
     # apart; docs/EVALUATION.md measures them on the OpenAI defaults.
-    planner_model: str = "Qwen3.8-27B"
-    verify_model: str = "Qwen3.8-27B"
-    compose_model: str = "Qwen3.8-27B"
+    planner_model: str = OVH_DEFAULT_MODEL
+    verify_model: str = OVH_DEFAULT_MODEL
+    compose_model: str = OVH_DEFAULT_MODEL
     # No rerank model: OVH's smallest text model (Qwen3.5-9B) was measured on the
     # vision stage only, so with RERANKER=llm an OVH scan keeps the fused order.
     # docs/BENCHMARK.md, retrieval: bge-m3 is OVH's best embedding for Arabic queries.
@@ -376,13 +380,13 @@ class OpenAISettings(ProviderSettings):
     base_url: str = OPENAI_BASE_URL
     # Measured by docs/BENCHMARK.md (4 October 2026): gpt-5.4-mini without
     # reasoning, pixel boxes, and the free image moderation as the guard.
-    vision_model: str = "gpt-5.4-mini-2026-03-17"
+    vision_model: str = OPENAI_DEFAULT_MODEL
     # Decision 46: the chat answers with gpt-5.4-mini, the insight stages' model.
-    chat_model: str = "gpt-5.4-mini-2026-03-17"
+    chat_model: str = OPENAI_DEFAULT_MODEL
     # The text stages use the vision stage's model (docs/EVALUATION.md measures them).
-    planner_model: str = "gpt-5.4-mini-2026-03-17"
-    verify_model: str = "gpt-5.4-mini-2026-03-17"
-    compose_model: str = "gpt-5.4-mini-2026-03-17"
+    planner_model: str = OPENAI_DEFAULT_MODEL
+    verify_model: str = OPENAI_DEFAULT_MODEL
+    compose_model: str = OPENAI_DEFAULT_MODEL
     # docs/BENCHMARK.md, retrieval: the best reranker measured (MRR 0.770, about 3 s).
     rerank_model: str = "gpt-5.4-nano-2026-03-17"
     # docs/BENCHMARK.md, retrieval: the best recall and MRR of the three measured,

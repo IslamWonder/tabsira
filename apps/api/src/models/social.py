@@ -49,6 +49,9 @@ GLIMPSE_MAX = 600
 EXPLANATION_MAX = 1200
 STEP_MAX = 400
 REFLECTION_MAX = 800
+# Foreign-key targets repeated across the tables below.
+USERS_ID = "users.id"
+POSTS_ID = "posts.id"
 COMMENT_MAX = 500
 REPORT_DETAILS_MAX = 500
 
@@ -127,8 +130,8 @@ class Follow(Base):
         Index("ix_follows_followee_id", "followee_id"),
     )
 
-    follower_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    followee_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    follower_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(USERS_ID, ondelete="CASCADE"))
+    followee_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(USERS_ID, ondelete="CASCADE"))
     created_at: Mapped[datetime] = created_at_column()
 
 
@@ -142,8 +145,8 @@ class Block(Base):
         Index("ix_blocks_blocked_id", "blocked_id"),
     )
 
-    blocker_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    blocked_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    blocker_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(USERS_ID, ondelete="CASCADE"))
+    blocked_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(USERS_ID, ondelete="CASCADE"))
     created_at: Mapped[datetime] = created_at_column()
 
 
@@ -173,7 +176,7 @@ class InsightPublication(Base):
     )
 
     id: Mapped[int] = public_id_pk("insight_publications")
-    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(USERS_ID, ondelete="CASCADE"))
     # The insight this was copied from. No foreign key: the insight may be deleted, and the
     # publication, being a copy, does not depend on it.
     insight_id: Mapped[int] = mapped_column(BigInteger)
@@ -268,7 +271,7 @@ class Post(Base):
     )
 
     id: Mapped[int] = public_id_pk("posts")
-    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(USERS_ID, ondelete="CASCADE"))
     publication_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("insight_publications.id", ondelete="SET NULL"), unique=True
     )
@@ -317,8 +320,8 @@ class PostReaction(Base):
         Index("ix_post_reactions_user_id", "user_id"),
     )
 
-    post_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("posts.id", ondelete="CASCADE"))
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    post_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(POSTS_ID, ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(USERS_ID, ondelete="CASCADE"))
     kind: Mapped[ReactionKind] = mapped_column(string_enum(ReactionKind, "kind"))
     created_at: Mapped[datetime] = created_at_column()
 
@@ -333,8 +336,8 @@ class Bookmark(Base):
         Index("ix_bookmarks_user_id_created_at", "user_id", text("created_at DESC")),
     )
 
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    post_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("posts.id", ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(USERS_ID, ondelete="CASCADE"))
+    post_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(POSTS_ID, ondelete="CASCADE"))
     created_at: Mapped[datetime] = created_at_column()
 
 
@@ -354,8 +357,8 @@ class Comment(Base):
     )
 
     id: Mapped[int] = public_id_pk("comments")
-    post_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("posts.id", ondelete="CASCADE"))
-    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    post_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(POSTS_ID, ondelete="CASCADE"))
+    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(USERS_ID, ondelete="CASCADE"))
     # Set on a reply, to a comment that has none itself.
     parent_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("comments.id", ondelete="CASCADE")
@@ -389,7 +392,7 @@ class Report(Base):
     )
 
     id: Mapped[int] = public_id_pk("reports")
-    reporter_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    reporter_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(USERS_ID, ondelete="CASCADE"))
     target_type: Mapped[ReportTarget] = mapped_column(string_enum(ReportTarget, "target_type"))
     target_id: Mapped[int] = mapped_column(BigInteger)
     reason: Mapped[ReportReason] = mapped_column(string_enum(ReportReason, "reason"))

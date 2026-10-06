@@ -57,6 +57,9 @@ from src.models.social import COMMENT_MAX, CommentStatus
 PLACE_LABEL_MAX = 200
 # A sponsor's reflection is as long as a comment, and judged the same way.
 SPONSOR_REFLECTION_MAX = COMMENT_MAX
+# A published entry only: the condition of the partial indexes, and the key they point at.
+PUBLISHED_ONLY = "status = 'published'"
+MAP_ENTRIES_ID = "map_entries.id"
 
 
 class MapEntryStatus(StrEnum):
@@ -118,18 +121,18 @@ class MapEntry(Base):
             "ix_map_entries_public_geom",
             "public_geom",
             postgresql_using="gist",
-            postgresql_where=text("status = 'published'"),
+            postgresql_where=text(PUBLISHED_ONLY),
         ),
         Index(
             "ix_map_entries_published",
             text("published_at DESC"),
             text("id DESC"),
-            postgresql_where=text("status = 'published'"),
+            postgresql_where=text(PUBLISHED_ONLY),
         ),
         Index(
             "ix_map_entries_place",
             "place_geoname_id",
-            postgresql_where=text("status = 'published'"),
+            postgresql_where=text(PUBLISHED_ONLY),
         ),
         # The orphans near a point, and the daily job's scan for entries gone quiet.
         Index(
@@ -141,7 +144,7 @@ class MapEntry(Base):
         Index(
             "ix_map_entries_last_active",
             "last_active_at",
-            postgresql_where=text("status = 'published'"),
+            postgresql_where=text(PUBLISHED_ONLY),
         ),
         Index("ix_map_entries_user_id", "user_id"),
         # One live entry per insight; a withdrawn tombstone stays beside the next one, so an
@@ -225,7 +228,7 @@ class MapCapturePoint(Base):
 
     entry_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("map_entries.id", ondelete="CASCADE", onupdate="CASCADE"),
+        ForeignKey(MAP_ENTRIES_ID, ondelete="CASCADE", onupdate="CASCADE"),
         primary_key=True,
     )
     latitude: Mapped[float] = mapped_column(Float)
@@ -266,7 +269,7 @@ class MapEntryGeneralisation(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     entry_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("map_entries.id", ondelete="CASCADE", onupdate="CASCADE")
+        BigInteger, ForeignKey(MAP_ENTRIES_ID, ondelete="CASCADE", onupdate="CASCADE")
     )
     previous_cell_m: Mapped[int] = mapped_column(Integer)
     previous_public_lat: Mapped[float | None] = mapped_column(Float)
@@ -307,7 +310,7 @@ class MapEntrySponsorship(Base):
 
     id: Mapped[int] = public_id_pk("map_entry_sponsorships")
     entry_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("map_entries.id", ondelete="CASCADE", onupdate="CASCADE")
+        BigInteger, ForeignKey(MAP_ENTRIES_ID, ondelete="CASCADE", onupdate="CASCADE")
     )
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     reflection: Mapped[str | None] = mapped_column(String(SPONSOR_REFLECTION_MAX))

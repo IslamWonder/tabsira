@@ -63,6 +63,10 @@ HASH_MATCHES_TEXT = "text_sha256 = encode(sha256(convert_to(text, 'UTF8')), 'hex
 # How many words a guard skeleton has, kept by the database beside it (written as
 # PostgreSQL prints it back, so the migration check sees no difference).
 GUARD_WORDS_SQL = "cardinality(string_to_array(guard_text, ' '::text))"
+# Foreign-key targets and the guard trigger event, repeated below.
+QURAN_VERSES_ID = "corpus.quran_verses.id"
+HADITHS_ID = "corpus.hadiths.id"
+ALL_WRITES = "INSERT OR UPDATE OR DELETE"
 
 
 class HadithClassification(StrEnum):
@@ -139,7 +143,7 @@ class QuranVerseHistory(Base):
     )
 
     id: Mapped[int] = _identity_pk()
-    verse_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("corpus.quran_verses.id"))
+    verse_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(QURAN_VERSES_ID))
     surah: Mapped[int] = mapped_column(SmallInteger)
     ayah: Mapped[int] = mapped_column(SmallInteger)
     text: Mapped[str] = mapped_column(Text)
@@ -173,7 +177,7 @@ class QuranVerseSearch(Base):
     )
 
     verse_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("corpus.quran_verses.id", ondelete="CASCADE"), primary_key=True
+        BigInteger, ForeignKey(QURAN_VERSES_ID, ondelete="CASCADE"), primary_key=True
     )
     normalized_text: Mapped[str] = mapped_column(Text)
     # The leak guard's skeleton of the text (`src.scripture.guard_fold`), for no other use.
@@ -262,7 +266,7 @@ class QuranVerseStandardGuard(Base):
     )
 
     verse_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("corpus.quran_verses.id", ondelete="CASCADE"), primary_key=True
+        BigInteger, ForeignKey(QURAN_VERSES_ID, ondelete="CASCADE"), primary_key=True
     )
     guard_text: Mapped[str] = mapped_column(Text)
     guard_words: Mapped[int] = mapped_column(Integer, Computed(GUARD_WORDS_SQL, persisted=True))
@@ -425,7 +429,7 @@ class HadithSearch(Base):
     )
 
     hadith_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("corpus.hadiths.id", ondelete="CASCADE"), primary_key=True
+        BigInteger, ForeignKey(HADITHS_ID, ondelete="CASCADE"), primary_key=True
     )
     normalized_text: Mapped[str] = mapped_column(Text)
     # The leak guard's skeleton of the text (`src.scripture.guard_fold`), for no other use.
@@ -451,9 +455,7 @@ class HadithSignal(Base):
 
     id: Mapped[int] = _identity_pk()
     source_record_id: Mapped[str] = mapped_column(String(16), unique=True)
-    hadith_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("corpus.hadiths.id"), nullable=True
-    )
+    hadith_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey(HADITHS_ID), nullable=True)
     match_coverage: Mapped[float | None] = mapped_column(Float, nullable=True)
     # Every hadith that matched above the threshold, best first: [{hadith_id, coverage}].
     matches: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
@@ -489,7 +491,7 @@ class HadithRuling(Base):
     )
 
     id: Mapped[int] = _identity_pk()
-    hadith_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("corpus.hadiths.id"))
+    hadith_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(HADITHS_ID))
     ruling_text: Mapped[str] = mapped_column(Text)
     scholar: Mapped[str] = mapped_column(Text)
     source_book: Mapped[str] = mapped_column(Text)
@@ -519,7 +521,7 @@ class HadithVerificationQueue(Base):
     __table_args__ = (Index("ix_hadith_verification_queue_demand_count", "demand_count"),)
 
     hadith_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("corpus.hadiths.id", ondelete="CASCADE"), primary_key=True
+        BigInteger, ForeignKey(HADITHS_ID, ondelete="CASCADE"), primary_key=True
     )
     demand_count: Mapped[int] = mapped_column(Integer)
     first_requested_at: Mapped[datetime] = _now()
@@ -579,9 +581,9 @@ $$
 
 # Scripture tables refuse every write; the append-only ones refuse changes and removals.
 GUARDED_TABLES = {
-    "quran_verses": "INSERT OR UPDATE OR DELETE",
-    "quran_verse_history": "INSERT OR UPDATE OR DELETE",
-    "hadiths": "INSERT OR UPDATE OR DELETE",
+    "quran_verses": ALL_WRITES,
+    "quran_verse_history": ALL_WRITES,
+    "hadiths": ALL_WRITES,
     "hadith_rulings": "UPDATE OR DELETE",
     "scripture_audit": "UPDATE OR DELETE",
 }

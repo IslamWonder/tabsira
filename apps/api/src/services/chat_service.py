@@ -69,6 +69,8 @@ USER_PROMPT = "insight_chat_user.v2"
 MAX_OUTPUT_TOKENS = 1200
 # What the system prompt says of a learner who declared nothing, or keeps personalization off.
 NOTHING_DECLARED = "none"
+# What a prompt section shows when it has nothing to say.
+NO_TEXT = "(none)"
 # A pending answer older than this was left by a crash; its slot is given back.
 CHAT_RESERVATION = timedelta(minutes=5)
 
@@ -172,7 +174,7 @@ async def _history(db: AsyncSession, insight: Insight, shown: set[str]) -> str:
     ).all()
     kept = [row for row in rows if answer_is_shown(row, shown)]
     if not kept:
-        return "(none)"
+        return NO_TEXT
     return "\n".join(f"- Q: {row.question}\n  A: {row.answer}" for row in kept)
 
 
@@ -217,12 +219,12 @@ def _shown_texts(verse: QuranVerseOut | None, hadith: HadithOut | None) -> str:
 def _explanation(verse: QuranVerseOut | None, hadith: HadithOut | None, insight: Insight) -> str:
     """Return the explanation the learner sees: nothing said about a text not shown."""
     parts = explanation_out(insight.explanation, verse, hadith)
-    return "\n".join(f"- {part.section}: {part.text}" for part in parts) or "(none)"
+    return "\n".join(f"- {part.section}: {part.text}" for part in parts) or NO_TEXT
 
 
 def _step(verse: QuranVerseOut | None, hadith: HadithOut | None, insight: Insight) -> str:
     step = step_out(insight.small_step, verse, hadith)
-    return f"- {step.label}: {step.text}" if step is not None else "(none)"
+    return f"- {step.label}: {step.text}" if step is not None else NO_TEXT
 
 
 def _learner(learner: LearnerContext) -> str:
@@ -315,7 +317,7 @@ async def _answer(
         title=insight.title,
         glimpse=insight.glimpse,
         relation=insight.relation,
-        references="; ".join(references) or "(none)",
+        references="; ".join(references) or NO_TEXT,
         explanation=_explanation(verse, hadith, insight),
         why=_why(insight),
         step=_step(verse, hadith, insight),

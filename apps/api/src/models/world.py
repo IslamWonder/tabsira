@@ -71,6 +71,11 @@ class WorldTheme(StrEnum):
 
 # The largest reveal a layout may give, as a ratio of the picture's width.
 MAX_REVEAL_RADIUS = 0.25
+# Foreign-key targets and partial-index conditions repeated across the tables below.
+WORLD_PLACES_ID = "world_places.id"
+INSIGHTS_ID = "insights.id"
+OWNED_BY_USER = "user_id IS NOT NULL"
+OWNED_BY_GUEST = "guest_key IS NOT NULL"
 
 
 class WorldPlace(Base):
@@ -84,14 +89,14 @@ class WorldPlace(Base):
             "user_id",
             "region_id",
             unique=True,
-            postgresql_where=text("user_id IS NOT NULL"),
+            postgresql_where=text(OWNED_BY_USER),
         ),
         Index(
             "uq_world_places_guest_region",
             "guest_key",
             "region_id",
             unique=True,
-            postgresql_where=text("guest_key IS NOT NULL"),
+            postgresql_where=text(OWNED_BY_GUEST),
         ),
     )
 
@@ -122,18 +127,18 @@ class WorldRelation(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     place_a_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("world_places.id", ondelete="CASCADE")
+        BigInteger, ForeignKey(WORLD_PLACES_ID, ondelete="CASCADE")
     )
     place_b_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("world_places.id", ondelete="CASCADE")
+        BigInteger, ForeignKey(WORLD_PLACES_ID, ondelete="CASCADE")
     )
     reason: Mapped[RelationReason] = mapped_column(string_enum(RelationReason, "reason"))
     # The two completed insights that recorded the relation.
     insight_a_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("insights.id", ondelete="CASCADE")
+        BigInteger, ForeignKey(INSIGHTS_ID, ondelete="CASCADE")
     )
     insight_b_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("insights.id", ondelete="CASCADE")
+        BigInteger, ForeignKey(INSIGHTS_ID, ondelete="CASCADE")
     )
     created_at: Mapped[datetime] = created_at_column()
 
@@ -158,11 +163,9 @@ class Treasure(Base):
     )
 
     id: Mapped[int] = public_id_pk("treasures")
-    insight_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("insights.id", ondelete="CASCADE")
-    )
+    insight_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(INSIGHTS_ID, ondelete="CASCADE"))
     place_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("world_places.id", ondelete="CASCADE")
+        BigInteger, ForeignKey(WORLD_PLACES_ID, ondelete="CASCADE")
     )
     kind: Mapped[TreasureKind] = mapped_column(string_enum(TreasureKind, "kind"))
     quran_surah: Mapped[int | None] = mapped_column(SmallInteger)
@@ -200,14 +203,14 @@ class WorldReveal(Base):
             "user_id",
             "concept_key",
             unique=True,
-            postgresql_where=text("user_id IS NOT NULL"),
+            postgresql_where=text(OWNED_BY_USER),
         ),
         Index(
             "uq_world_reveals_guest_concept",
             "guest_key",
             "concept_key",
             unique=True,
-            postgresql_where=text("guest_key IS NOT NULL"),
+            postgresql_where=text(OWNED_BY_GUEST),
         ),
         Index(
             "uq_world_reveals_user_slot",
@@ -216,7 +219,7 @@ class WorldReveal(Base):
             "region_id",
             "slot",
             unique=True,
-            postgresql_where=text("user_id IS NOT NULL"),
+            postgresql_where=text(OWNED_BY_USER),
         ),
         Index(
             "uq_world_reveals_guest_slot",
@@ -225,7 +228,7 @@ class WorldReveal(Base):
             "region_id",
             "slot",
             unique=True,
-            postgresql_where=text("guest_key IS NOT NULL"),
+            postgresql_where=text(OWNED_BY_GUEST),
         ),
         Index("ix_world_reveals_place_id", "place_id"),
     )
@@ -236,11 +239,9 @@ class WorldReveal(Base):
         String(GUEST_KEY_LENGTH), ForeignKey("guests.key", ondelete="CASCADE")
     )
     # The first completed insight of the concept: the record the reveal belongs to.
-    insight_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("insights.id", ondelete="CASCADE")
-    )
+    insight_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(INSIGHTS_ID, ondelete="CASCADE"))
     place_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("world_places.id", ondelete="CASCADE")
+        BigInteger, ForeignKey(WORLD_PLACES_ID, ondelete="CASCADE")
     )
     # `unit:<learning unit id>`, or `insight:<id>` for an insight with no unit.
     concept_key: Mapped[str] = mapped_column(String(64))
