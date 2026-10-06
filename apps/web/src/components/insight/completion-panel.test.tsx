@@ -70,7 +70,9 @@ describe('CompletionPanel', () => {
     const buttons = within(region).getAllByRole('button');
     expect(buttons.map((button) => button.textContent)).toEqual(['شارك', 'خيارات النشر']);
     expect(buttons[0]?.querySelector('svg')).not.toBeNull();
-    expect(within(region).getByText(/المشاركة تنشر للبصيرة صفحة عامة، دون صورتك وموقعك ومحادثتك/));
+    expect(
+      within(region).getByText(/المشاركة تنشر للبصيرة صفحة عامة، دون صورتك وموقعك ومحادثتك/)
+    ).toBeInTheDocument();
     await userEvent.click(buttons[0] as HTMLElement);
     expect(onShare).toHaveBeenCalledOnce();
     await userEvent.click(buttons[1] as HTMLElement);
