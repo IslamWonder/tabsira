@@ -1,3 +1,4 @@
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setSoundEnabled } from '@/preferences/sound';
 import {
@@ -6,12 +7,15 @@ import {
   endLoop,
   FADE_IN,
   FADE_OUT,
+  isSoundPlaying,
   LAST_LOOP_MIN,
   loopSound,
   resetAudio,
   STOP_FADE,
   stopSound,
+  subscribeSoundPlaying,
   unlockAudio,
+  useSoundPlaying,
   VOLUME,
   WAKE_WAIT_MS,
 } from './player';
@@ -276,6 +280,35 @@ describe('endLoop', () => {
     endLoop();
     stopSound();
     expect(context().gains[0]?.gain.steps.at(-1)).toEqual(['ramp', 0, 10 + STOP_FADE]);
+  });
+});
+
+describe('whether a sound is heard', () => {
+  it('tells the listeners when a sound starts and when it stops', async () => {
+    serve(mp3());
+    const heard = vi.fn();
+    const stop = subscribeSoundPlaying(heard);
+    expect(isSoundPlaying()).toBe(false);
+    await loopSound('/sounds/a');
+    expect(isSoundPlaying()).toBe(true);
+    // A new sound replacing the one heard is still heard: one stop and one start.
+    await loopSound('/sounds/a');
+    expect(heard).toHaveBeenCalledTimes(3);
+    played()[1]?.dispatchEvent(new Event('ended'));
+    expect(isSoundPlaying()).toBe(false);
+    stop();
+    await loopSound('/sounds/a');
+    expect(heard).toHaveBeenCalledTimes(4);
+  });
+
+  it('gives the speaker the state as a hook', async () => {
+    serve(mp3());
+    const { result } = renderHook(() => useSoundPlaying());
+    expect(result.current).toBe(false);
+    await act(() => loopSound('/sounds/a'));
+    expect(result.current).toBe(true);
+    act(() => stopSound());
+    expect(result.current).toBe(false);
   });
 });
 

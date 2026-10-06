@@ -52,12 +52,14 @@ function SkyArtwork() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 select-none">
       <picture>
-        <source media="(width >= 48rem)" srcSet={wide} />
+        <source media="(width >= 48rem)" srcSet={wide} sizes={common.sizes} />
+        {/* The head of the page: fetched at once, never left to the image service's lazy default. */}
         <img
           {...image}
           srcSet={tall}
           alt=""
           draggable={false}
+          loading="eager"
           fetchPriority="high"
           className="absolute inset-0 block size-full object-cover"
         />
@@ -315,13 +317,18 @@ function usePlacement(
         live = false;
       };
     }
+    // The heading and the dock are watched too: a longer chosen meaning can make the dock taller.
     const observer = new ResizeObserver(() => layout());
     observer.observe(field);
+    for (const ref of reservedRefs) {
+      /* v8 ignore next: narrows the type; the heading, the count, the dock and the note are drawn with the stars */
+      if (ref.current) observer.observe(ref.current);
+    }
     return () => {
       live = false;
       observer.disconnect();
     };
-  }, [layout, fieldRef]);
+  }, [layout, fieldRef, reservedRefs]);
 
   const register = useCallback(
     (concept: string) => (element: HTMLButtonElement | null) => {
@@ -548,7 +555,8 @@ export function MeaningSkyScene({ state, trail }: { state: SkyState; trail?: Rea
   return (
     <section
       aria-labelledby="practice-sky"
-      aria-busy={state.status === 'loading' || (ready && state.refreshing === true)}
+      // Busy only while a reload keeps the stars on screen; the first load says so in its own status line.
+      aria-busy={ready && state.refreshing === true}
       className="sky-scene relative isolate min-h-[420px] overflow-hidden tablet:h-[clamp(680px,calc(var(--app-height)-var(--topbar-height)),900px)]"
     >
       <SkyArtwork />

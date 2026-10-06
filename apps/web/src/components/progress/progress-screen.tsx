@@ -59,7 +59,7 @@ function Trail() {
   return (
     <div className="sky-text-shadow flex items-center gap-2 text-[14px]">
       <Link
-        href="/me"
+        href="/me#practice"
         className="inline-flex min-h-11 items-center text-[var(--sky-gold)] underline-offset-4 hover:underline"
       >
         {M.back}

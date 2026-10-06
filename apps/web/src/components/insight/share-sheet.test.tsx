@@ -64,12 +64,10 @@ describe('ShareSheet', () => {
     expect(within(sheet).queryByRole('link', { name: 'نزّل البطاقة' })).toBeNull();
   });
 
-  it('offers the card as a download once the insight is public, and not after a withdrawal', async () => {
+  it('does not offer the card download for now, public or not, and still lets one withdraw', async () => {
     mockApi({ [`DELETE /insights/${ID}/publication`]: { body: WITHDRAWN } });
     const sheet = renderSheet({ published: true });
-    const download = within(sheet).getByRole('link', { name: 'نزّل البطاقة' });
-    expect(download).toHaveAttribute('href', `${PATH}/card`);
-    expect(download).toHaveAttribute('download', `tabsira-${ID}.png`);
+    expect(within(sheet).queryByRole('link', { name: 'نزّل البطاقة' })).toBeNull();
     await userEvent.click(within(sheet).getByRole('button', { name: 'اسحب النشر' }));
     await within(sheet).findByText(/سُحبت البصيرة/);
     expect(within(sheet).queryByRole('link', { name: 'نزّل البطاقة' })).toBeNull();
@@ -115,10 +113,7 @@ describe('ShareSheet', () => {
     expect(within(sheet).getByText(URL_OF_PAGE)).toHaveAttribute('dir', 'ltr');
     expect(within(sheet).getByText(/هذه البصيرة منشورة الآن/)).toBeInTheDocument();
     expect(within(sheet).getByRole('button', { name: 'اسحب النشر' })).toBeEnabled();
-    expect(within(sheet).getByRole('link', { name: 'نزّل البطاقة' })).toHaveAttribute(
-      'href',
-      `${PATH}/card`
-    );
+    expect(within(sheet).queryByRole('link', { name: 'نزّل البطاقة' })).toBeNull();
   });
 
   it('copies the address when the browser has no share dialog, and says so', async () => {

@@ -66,6 +66,7 @@
   --color-surface: var(--surface);
   --color-glass: var(--surface-glass);
   --color-line: var(--border);
+  --color-field: var(--field-border);
   --color-fg: var(--text);
   --color-fg-soft: var(--text-soft);
   --color-fg-muted: var(--text-muted);
@@ -378,6 +379,46 @@
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
+}
+
+/* ─── Reading aids: chosen in the profile page (src/preferences/accessibility.ts) ── */
+
+/* A larger text: every size and space is in rem, so the whole page grows with it, as with zoom. */
+:root[data-text-size="large"] {
+  font-size: 112.5%;
+}
+
+:root[data-text-size="larger"] {
+  font-size: 125%;
+}
+
+/*
+ * A stronger contrast: the soft and muted texts take the full text colour, hairlines become as
+ * visible as a field's edge, and glass labels on photos lose their translucent second tone. The
+ * device's own «increase contrast» setting does the same; `[lang]` only lifts that rule to the
+ * weight of the theme blocks in tokens.css, which it follows.
+ */
+@media (prefers-contrast: more) {
+  :root[lang] {
+    --text-soft: var(--text);
+    --text-muted: var(--text);
+    --border: var(--field-border);
+    --glass-text-soft: var(--glass-text);
+  }
+}
+
+:root[data-contrast="more"] {
+  --text-soft: var(--text);
+  --text-muted: var(--text);
+  --border: var(--field-border);
+  --glass-text-soft: var(--glass-text);
+}
+
+/* Underlined links: a link is told by its line too, not by its colour alone. */
+:root[data-links="underline"] a {
+  text-decoration-line: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.35em;
 }
 
 /*

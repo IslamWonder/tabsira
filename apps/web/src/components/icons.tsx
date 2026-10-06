@@ -187,6 +187,22 @@ export function SoundOnIcon(props: IconProps) {
   );
 }
 
+/**
+ * The speaker while its sound is heard: three bars in place of the waves.
+ * They rise and fall through `.fx-eq-bar` (fx.css), and stand still at
+ * different heights when motion is reduced.
+ */
+export function SoundPlayingIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+      <path className="fx-eq-bar" d="M15 10v4" />
+      <path className="fx-eq-bar" d="M18 7v10" />
+      <path className="fx-eq-bar" d="M21 9v6" />
+    </Icon>
+  );
+}
+
 /** The same speaker with a cross: the sound effect is off. */
 export function SoundOffIcon(props: IconProps) {
   return (

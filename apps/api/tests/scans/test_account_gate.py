@@ -87,6 +87,27 @@ async def test_a_guest_is_not_held_by_the_profile_gate_on_the_chat(browser, mode
     assert answered.status_code == 200
 
 
+async def test_a_guest_cannot_use_the_chat_of_its_own_scan(browser, store, flow_settings):
+    from tests.scans.builders import insight_row, scan_row
+    from tests.scans.conftest import as_guest
+
+    owner = await as_guest(browser, store, flow_settings)
+    async with store() as db:
+        row = scan_row(owner, status="done")
+        db.add(row)
+        await db.flush()
+        insight = insight_row(owner, scan_id=row.id)
+        db.add(insight)
+        await db.commit()
+
+    refused = await browser.post(
+        f"/insights/{insight.id}/chat", json={"message": "ما المطر؟", "idempotencyKey": "key-0001"}
+    )
+
+    assert refused.status_code == 403
+    assert refused.json()["error"] == "account_required"
+
+
 async def test_the_gate_does_not_tell_whether_an_insight_exists(browser, store):
     await make_account(store, profile_done=False)
     await sign_in(browser)

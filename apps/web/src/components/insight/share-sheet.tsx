@@ -2,11 +2,11 @@
 
 import type { Route } from 'next';
 import { useState } from 'react';
-import { Button, buttonClasses, LinkButton } from '@/components/ui/button';
+import { Button, LinkButton } from '@/components/ui/button';
 import { Notice, type NoticeTone } from '@/components/ui/notice';
 import { Sheet } from '@/components/ui/sheet';
 import type { Failure } from '@/lib/api/result';
-import { cardFileName, publicInsightCardPath, publicInsightPath } from '@/lib/public-insight';
+import { publicInsightPath } from '@/lib/public-insight';
 import { journeyFailureMessage } from '@/lib/scan/failure';
 import { shareLink } from '@/lib/share-link';
 import { siteOrigin } from '@/lib/site';
@@ -156,15 +156,6 @@ export function ShareSheet({
         >
           {working ? T.working : isPublic ? T.share : T.publishAndShare}
         </Button>
-        {isPublic ? (
-          <a
-            href={publicInsightCardPath(insightId)}
-            download={cardFileName(insightId)}
-            className={buttonClasses('secondary')}
-          >
-            {T.download}
-          </a>
-        ) : null}
         {isPublic ? (
           <Button variant="ghost" onClick={withdraw} disabled={working}>
             {T.withdraw}

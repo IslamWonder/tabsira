@@ -11,6 +11,7 @@ import { SwitchRow } from '@/components/ui/switch-row';
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { messages } from '@/messages';
 import { MeSection } from './me-section';
+import { ReadingAids } from './reading-aids';
 import { SaveStatus, useSaveState } from './save-status';
 import type { ProfileEditor } from './use-profile';
 
@@ -95,7 +96,7 @@ function CountrySetting({
             aria-describedby={hintId}
             value={profile.country ?? ''}
             onChange={(event) => onCountry(event.target.value || null)}
-            className="min-h-12 w-full rounded-[var(--radius-card)] border border-line bg-surface px-4 text-fg"
+            className="min-h-12 w-full rounded-[var(--radius-card)] border border-field bg-surface px-4 text-fg"
           >
             <option value="">{S.country.none}</option>
             {load.countries.map((country) => (
@@ -184,7 +185,8 @@ function AccountSettings({
 
 /**
  * What this device shows, for everyone, signed in or not (tajriba S13): the
- * theme, the decorative motion and the sound effect. Kept on the device only.
+ * theme, the decorative motion, the sound effect and the reading aids. Kept on
+ * the device only.
  */
 export function AppearanceSection() {
   return (
@@ -196,6 +198,7 @@ export function AppearanceSection() {
       <ThemeSwitcher />
       <MotionSwitch />
       <SoundSwitch />
+      <ReadingAids />
     </MeSection>
   );
 }

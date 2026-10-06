@@ -66,7 +66,7 @@ export function SwitchRow({
             'flex h-8 w-14 items-center rounded-full border p-1 transition-colors duration-200',
             checked
               ? 'fill-primary justify-end border-transparent'
-              : 'justify-start border-line bg-surface'
+              : 'justify-start border-field bg-surface'
           )}
         >
           <span

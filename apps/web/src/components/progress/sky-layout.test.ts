@@ -59,6 +59,40 @@ describe('placeStars', () => {
   });
 });
 
+describe('a full field', () => {
+  it('stops searching after a few stars in a row found no place, sending the rest to the list', () => {
+    const tiny = { width: 90, height: 80 };
+    const stars = Array.from({ length: 8 }, (_, index) => star(String(index), 0.5, 0.5));
+    const { placed, unplaced } = placeStars(stars, tiny, []);
+    expect([...placed.keys()]).toEqual(['0']);
+    expect(unplaced).toEqual(['1', '2', '3', '4', '5', '6', '7']);
+  });
+
+  it('counts the misses afresh after a star that fits', () => {
+    const field = { width: 400, height: 80 };
+    const narrow = (key: string, x: number) => star(key, x, 0.5, 60, 70);
+    const wide = (key: string) => star(key, 0.5, 0.5, 390, 70);
+    const { placed, unplaced } = placeStars(
+      [
+        narrow('1', 0.1),
+        wide('w1'),
+        wide('w2'),
+        wide('w3'),
+        narrow('2', 0.5),
+        wide('w4'),
+        wide('w5'),
+        wide('w6'),
+        // Six misses in all, but never four in a row: this star is still searched for, and fits.
+        narrow('3', 0.9),
+      ],
+      field,
+      []
+    );
+    expect([...placed.keys()]).toEqual(['1', '2', '3']);
+    expect(unplaced).toEqual(['w1', 'w2', 'w3', 'w4', 'w5', 'w6']);
+  });
+});
+
 describe('spiral', () => {
   it('tries the place itself first, then rings around it', () => {
     const points = spiral(10, 20);

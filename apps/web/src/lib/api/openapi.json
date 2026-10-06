@@ -2978,7 +2978,7 @@
       "post": {
         "tags": ["insights"],
         "summary": "Ask one question about the insight (three at most)",
-        "description": "Answer a question classified by its content level, grounded in the insight.\n\nThe same `idempotencyKey` returns the same answer and counts once; the\nfourth successful message answers 409 CHAT_LIMIT_REACHED. A request for\nanother text runs the retrieval and the verification again (v2 §14). 403\n`profile_required` for an account that has not completed its profile (decision 64).",
+        "description": "Answer a question classified by its content level, grounded in the insight.\n\nThe same `idempotencyKey` returns the same answer and counts once; the\nfourth successful message answers 409 CHAT_LIMIT_REACHED. A request for\nanother text runs the retrieval and the verification again (v2 §14). 403\n`profile_required` for an account that has not completed its profile, and 403\n`account_required` for a guest on the insight of its own scan (decision 64).",
         "operationId": "chat_insights__insight_id__chat_post",
         "parameters": [
           {

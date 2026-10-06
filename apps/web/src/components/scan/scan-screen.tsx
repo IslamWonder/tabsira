@@ -2,7 +2,8 @@
 
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
+import { markTutorialClosed } from '@/account/session';
 import { DisclosureLine } from '@/components/insight/disclosure-line';
 import { EngineLabel } from '@/components/insight/engine-label';
 import { SeenNote } from '@/components/insight/insight-frame';
@@ -83,6 +84,15 @@ export function ScanScreen({ scanId }: { scanId: string }) {
   const scan = 'scan' in view ? view.scan : null;
   const running = view.phase === 'running';
   const points = scan === null ? { onPhoto: [], inList: [] } : pointsOf(scan);
+  // The account's first own insight: the session learns it now, so the landing gives the capture
+  // instead of the prepared example without a reload.
+  const gaveInsights =
+    view.phase === 'ready' && view.scan.outcome === 'insights' && view.scan.insights.length > 0;
+  useEffect(() => {
+    if (gaveInsights) {
+      markTutorialClosed();
+    }
+  }, [gaveInsights]);
   const openInsight = (id: string) => router.push(`/insight/${id}` as Route);
 
   const stopFocusing = () => {

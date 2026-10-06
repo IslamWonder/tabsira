@@ -39,7 +39,7 @@ from src.services.chat_retrieval import intent_for, own_ids, query_for
 from tests.fakes import FakeModelClient
 from tests.retrieval.support import EmbeddingClient
 from tests.scans.builders import insight_row, scan_row, scene
-from tests.scans.conftest import as_guest, make_account, rule, sign_in
+from tests.scans.conftest import make_account, rule, sign_in
 from tests.scripture.fixtures import enrich_hadith
 
 
@@ -89,10 +89,18 @@ def labels(call: dict[str, Any]) -> list[str]:
     return [text["label"] for text in json.loads(call["user"])["texts"]]
 
 
+async def signed_in_owner(browser, store) -> Owner:
+    """The owner of an account the browser signed in to: a guest has no chat on an own scan."""
+    user = await make_account(store)
+    await sign_in(browser)
+    return Owner(user_id=user.id)
+
+
 async def an_insight(
     browser, store, flow_settings, *, with_scene: bool = False, **values: Any
 ) -> str:
-    owner = await as_guest(browser, store, flow_settings)
+    """An insight of an own scan, held by a signed-in account: a guest has no chat on it."""
+    owner = await signed_in_owner(browser, store)
     async with store() as db:
         stored = scene().model_dump(mode="json") if with_scene else None
         scan = scan_row(owner, status="done", scene=stored)
@@ -233,7 +241,8 @@ async def test_the_chat_reads_the_declared_profile_and_nothing_once_personalizat
 
 
 async def test_a_guests_chat_reads_no_profile(browser, store, flow_settings, model):
-    insight_id = await an_insight(browser, store, flow_settings)
+    # A guest's chat is the kept tutorial insight; its own scan asks for an account.
+    insight_id = str((await browser.post("/tutorial/rain/insights/drop")).json()["id"])
     model.answers.append(said())
 
     await ask(browser, insight_id)

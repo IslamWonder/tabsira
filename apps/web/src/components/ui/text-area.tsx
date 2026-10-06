@@ -71,7 +71,7 @@ export function TextArea({
           'w-full resize-y rounded-[14px] border bg-surface px-4 py-3 text-base text-fg leading-[1.8]',
           'transition-[border-color] duration-200 placeholder:text-fg-muted',
           'focus-visible:border-[var(--focus)]',
-          invalid || over ? 'border-danger' : 'border-line'
+          invalid || over ? 'border-danger' : 'border-field'
         )}
       />
       {maxChars === undefined ? null : (

@@ -35,7 +35,8 @@ describe('ProgressScreen states', () => {
     screenInShell();
     expect(screen.getByRole('status')).toHaveTextContent('نحمّل معانيك…');
     expect(screen.getByRole('heading', { level: 1, name: 'تمرينك' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'ملفي' })).toHaveAttribute('href', '/me');
+    // Back to the practice section of «ملفي», where the reader came from.
+    expect(screen.getByRole('link', { name: 'ملفي' })).toHaveAttribute('href', '/me#practice');
   });
 
   it('offers to try again when the practice could not be loaded', async () => {
@@ -256,6 +257,33 @@ describe('the sky of meanings on the page', () => {
   it('says one meaning in the singular', async () => {
     await open({ ...PROGRESS, sky: { count: 1, stars: PROGRESS.sky.stars.slice(0, 1) } });
     expect(screen.getByText('معنى أضاء لك')).toBeInTheDocument();
+  });
+});
+
+describe('reloads that overlap', () => {
+  it('keeps the newest answer when an older one arrives after it', async () => {
+    const answers: Array<(value: { body: typeof PROGRESS }) => void> = [];
+    mockApi({
+      'GET /me/progress': () =>
+        new Promise((resolve) => {
+          answers.push(resolve);
+        }),
+    });
+    screenInShell();
+    await waitFor(() => expect(answers).toHaveLength(1));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await waitFor(() => expect(answers).toHaveLength(2));
+    const newer = { ...PROGRESS, sky: { count: 1, stars: PROGRESS.sky.stars.slice(0, 1) } };
+    act(() => answers[1]?.({ body: newer }));
+    expect(await screen.findByText('معنى أضاء لك')).toBeInTheDocument();
+    act(() => answers[0]?.({ body: PROGRESS }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText('معنى أضاء لك')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^\[معنى ثان\]/ })).toBeNull();
   });
 });
 

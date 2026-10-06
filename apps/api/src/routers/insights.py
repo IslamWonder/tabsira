@@ -141,10 +141,12 @@ async def chat(
     The same `idempotencyKey` returns the same answer and counts once; the
     fourth successful message answers 409 CHAT_LIMIT_REACHED. A request for
     another text runs the retrieval and the verification again (v2 §14). 403
-    `profile_required` for an account that has not completed its profile (decision 64).
+    `profile_required` for an account that has not completed its profile, and 403
+    `account_required` for a guest on the insight of its own scan (decision 64).
     """
     held_by, insight = await owned_insight(db, owner, insight_id)
     await account_gate.require_profile(db, held_by)
+    account_gate.require_account_for_chat(held_by, insight)
     return await chat_service.answer(
         db,
         settings,

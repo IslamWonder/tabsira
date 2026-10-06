@@ -98,7 +98,7 @@ The page is not trusted to ask. `deps.CurrentUser` and `deps.OptionalUser`, whic
 Two checks sit on top of the session, on the scan workflow only:
 
 - `POST /scans`: a guest key that holds one own scan gets `403 account_required`; an account whose `profiles.profile_completed_at` is empty gets `403 profile_required`. Both are answered before the photo is read.
-- `POST /insights/{id}/chat`: an account with no completed profile gets `403 profile_required`, after the ownership check, so a missing or another owner's insight is still a 404. A guest is not gated here (the web app asks for the account; the limit that the server enforces is the scan).
+- `POST /insights/{id}/chat`: an account with no completed profile gets `403 profile_required`, after the ownership check, so a missing or another owner's insight is still a 404. A guest on the insight of its own scan gets `403 account_required` (the check follows the ownership check, so another owner's insight is still a 404); a guest's kept tutorial insight keeps its chat. The server enforces it, the web app only asks first.
 
 `profile_required` is not applied to authentication, the legal routes, `GET`/`PATCH /profile`, `/consents`, the account export and deletion, or any read, so an account can always complete its profile, accept the texts, leave with its data or delete itself. It is not backfilled: every account that exists today has an empty `profile_completed_at` and is asked once, because none of them answered the religious background and the gender through a form that offered «أفضّل عدم الإجابة». `/auth/me` carries `profile_completed` so the web app knows to show the profile form first.
 

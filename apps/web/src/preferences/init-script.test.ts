@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { OWN_INSIGHT_KEY } from '@/account/own-insight';
 import { THEME_STORAGE_KEY } from '@/theme/theme';
+import { CONTRAST, LINKS, TEXT_SIZE } from './accessibility';
 import { PREFERENCES_INIT_SCRIPT } from './init-script';
 import { MOTION_STORAGE_KEY } from './motion';
 
@@ -16,6 +17,22 @@ describe('the inline preferences script', () => {
     run();
     expect(document.documentElement.dataset.theme).toBe('dark');
     expect(document.documentElement.dataset.motion).toBe('reduce');
+  });
+
+  it('applies the stored reading aids, and none it does not know', () => {
+    window.localStorage.setItem(TEXT_SIZE.key, 'large');
+    window.localStorage.setItem(CONTRAST.key, 'more');
+    window.localStorage.setItem(LINKS.key, 'normal');
+    run();
+    const root = document.documentElement;
+    expect(root.dataset.textSize).toBe('large');
+    expect(root.dataset.contrast).toBe('more');
+    expect(root.hasAttribute('data-links')).toBe(false);
+    window.localStorage.setItem(TEXT_SIZE.key, 'huge');
+    root.removeAttribute('data-text-size');
+    run();
+    expect(root.hasAttribute('data-text-size')).toBe(false);
+    root.removeAttribute('data-contrast');
   });
 
   it('marks the page for the home capture when the account last seen held its own insight', () => {

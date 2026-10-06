@@ -43,6 +43,10 @@ describe('the scene around the stars', () => {
     expect(picture?.parentElement).toHaveAttribute('aria-hidden', 'true');
     expect(picture?.parentElement?.className).toContain('pointer-events-none');
     expect(picture?.querySelector('img')).toHaveAttribute('alt', '');
+    // The head of the page loads at once, at the size of the screen whichever cut is used.
+    expect(picture?.querySelector('img')).toHaveAttribute('loading', 'eager');
+    expect(picture?.querySelector('img')).toHaveAttribute('fetchpriority', 'high');
+    expect(picture?.querySelector('source')).toHaveAttribute('sizes', '100vw');
     expect(picture?.querySelector('source')?.getAttribute('srcset')).toContain(
       encodeURIComponent(SKY_WIDE_SRC)
     );
@@ -56,7 +60,8 @@ describe('the scene around the stars', () => {
     expect(screen.getByRole('status')).toHaveTextContent(M.loading);
     expect(stars()).toHaveLength(0);
     expect(screen.queryByText(M.count(0))).toBeNull();
-    expect(screen.getByRole('region', { name: M.title })).toHaveAttribute('aria-busy', 'true');
+    // Not busy: a busy region may keep its own status line from being read.
+    expect(screen.getByRole('region', { name: M.title })).toHaveAttribute('aria-busy', 'false');
   });
 
   it('tells a failure apart from an empty sky and offers to try again', async () => {
@@ -273,16 +278,19 @@ describe('measuring the sky', () => {
     expect(left + 40 <= 400 || top >= 200).toBe(true);
   });
 
-  it('lays the stars out again once the font is in, and when the field changes size', async () => {
+  it('lays the stars out again once the font is in, and when the field, heading or dock changes size', async () => {
     let resized: () => void = () => undefined;
     const disconnect = vi.fn();
+    const watched: Element[] = [];
     vi.stubGlobal(
       'ResizeObserver',
       class {
         constructor(callback: () => void) {
           resized = callback;
         }
-        observe() {}
+        observe(element: Element) {
+          watched.push(element);
+        }
         disconnect = disconnect;
       }
     );
@@ -297,6 +305,9 @@ describe('measuring the sky', () => {
     const { unmount } = scene(ready());
     const star = screen.getByRole('button', { name: /^\[معنى أول\]/ });
     expect(star.style.left).toBe('200px');
+    expect(watched).toContain(document.querySelector('fieldset'));
+    expect(watched).toContain(document.querySelector('.sky-dock'));
+    expect(watched).toContain(screen.getByRole('heading', { level: 2 }).parentElement);
     // The font arrived: names are measured again (here wider), the stars stay where they fit.
     width.mockReturnValue(120);
     await act(async () => {

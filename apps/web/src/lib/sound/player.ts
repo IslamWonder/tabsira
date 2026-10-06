@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react';
 import { apiUrl } from '@/lib/scan/api';
 import { readSoundEnabled, setSoundEnabled } from '@/preferences/sound';
 
@@ -45,6 +46,41 @@ interface Playing {
 }
 
 let current: Playing | null = null;
+const listeners = new Set<() => void>();
+
+/**
+ * Sets the playing sound and tells the speakers on screen, which show it
+ * while it is heard. Every call is a change: a sound starts only once the
+ * one before it was stopped.
+ */
+function setCurrent(next: Playing | null): void {
+  current = next;
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
+/** True while a sound is heard, fade out included until its stop is asked. */
+export function isSoundPlaying(): boolean {
+  return current !== null;
+}
+
+/** Calls `onChange` when a sound starts or stops being heard. */
+export function subscribeSoundPlaying(onChange: () => void): () => void {
+  listeners.add(onChange);
+  return () => {
+    listeners.delete(onChange);
+  };
+}
+
+function notPlaying(): boolean {
+  return false;
+}
+
+/** Whether the scene's sound is heard now, for the speaker that shows it. */
+export function useSoundPlaying(): boolean {
+  return useSyncExternalStore(subscribeSoundPlaying, isSoundPlaying, notPlaying);
+}
 // Grows with every stop: a sound still downloading when it was stopped never starts.
 let generation = 0;
 let armed = false;
@@ -119,7 +155,7 @@ export function stopSound(): void {
     return;
   }
   const { source, gain } = current;
-  current = null;
+  setCurrent(null);
   const now = context.currentTime;
   gain.gain.cancelScheduledValues(now);
   gain.gain.setValueAtTime(gain.gain.value, now);
@@ -207,10 +243,10 @@ export async function loopSound(path: string): Promise<void> {
     gain.gain.linearRampToValueAtTime(VOLUME, start + Math.min(FADE_IN, buffer.duration / 3));
 
     const playing: Playing = { source, gain, start, duration: buffer.duration, ending: false };
-    current = playing;
+    setCurrent(playing);
     source.addEventListener('ended', () => {
       if (current === playing) {
-        current = null;
+        setCurrent(null);
       }
     });
     source.start(start);

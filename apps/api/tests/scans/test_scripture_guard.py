@@ -18,8 +18,8 @@ from src.scripture import overlap
 from src.scripture.guard_fold import guard_fold
 from src.scripture.text import search_copy
 from tests.scans.builders import hadith, insight_row, proposed, scan_row, scene
-from tests.scans.conftest import DATA, as_guest, rule
-from tests.scans.test_chat import an_insight, ask, said
+from tests.scans.conftest import DATA, rule
+from tests.scans.test_chat import an_insight, ask, said, signed_in_owner
 from tests.scripture.fixtures import hadith_text, load_json, store_quran, verse_text
 from tests.scripture.spelling import standard
 
@@ -284,7 +284,7 @@ NO_HADITH = {"hadith_collection": None, "hadith_number": None, "hadith_evidence"
 async def test_the_chat_model_is_told_only_what_the_learner_is_shown(
     browser, store, flow_settings, model, ruled_out, with_verse
 ):
-    owner = await as_guest(browser, store, flow_settings)
+    owner = await signed_in_owner(browser, store)
     async with store() as db:
         if ruled_out:
             await rule(db, "bukhari", "1032", HadithClassification.DAIF)
@@ -314,7 +314,7 @@ async def test_the_chat_model_is_told_only_what_the_learner_is_shown(
 
 
 async def an_insight_with(browser, store, flow_settings, **values) -> str:
-    owner = await as_guest(browser, store, flow_settings)
+    owner = await signed_in_owner(browser, store)
     async with store() as db:
         scan = scan_row(owner, status="done")
         db.add(scan)
