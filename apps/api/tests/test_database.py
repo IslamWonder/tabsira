@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import func, select, text
+from sqlalchemy import func, make_url, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from src import database
@@ -15,7 +15,8 @@ def test_the_engine_is_cached_and_built_without_connecting():
     assert isinstance(engine, AsyncEngine)
     assert database.get_engine() is engine
     assert engine.url.drivername == "postgresql+asyncpg"
-    assert engine.url.host == "127.0.0.1"
+    # The configured host, whatever it is: 127.0.0.1 on a machine, a container name in CI.
+    assert engine.url.host == make_url(get_settings().database_url.get_secret_value()).host
 
 
 def test_the_engine_is_configured_with_a_short_timeout_and_the_search_path(monkeypatch):
