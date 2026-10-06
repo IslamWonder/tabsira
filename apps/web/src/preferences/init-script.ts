@@ -1,7 +1,7 @@
 import { OWN_INSIGHT_ATTRIBUTE, OWN_INSIGHT_KEY } from '@/account/own-insight';
 import { THEME_STORAGE_KEY } from '@/theme/theme';
-import { READING_AIDS } from './accessibility';
-import { MOTION_STORAGE_KEY } from './motion';
+import { MOTION_STORAGE_KEY } from './motion-key';
+import { READING_AIDS } from './reading-aids';
 
 /** Sets a stored reading aid's attribute, only for one of its known values other than the default. */
 const readingAids = READING_AIDS.map((aid) => {

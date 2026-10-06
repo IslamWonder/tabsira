@@ -1,6 +1,9 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
+import { MOTION_STORAGE_KEY } from './motion-key';
+
+export { MOTION_STORAGE_KEY } from './motion-key';
 
 /**
  * Decorative motion (the light motes behind every page and the burst on
@@ -11,7 +14,6 @@ import { useSyncExternalStore } from 'react';
  * keep moving for longer than five seconds.
  */
 
-export const MOTION_STORAGE_KEY = 'tabsira.motion';
 const CHANGE_EVENT = 'tabsira:motion-change';
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 
