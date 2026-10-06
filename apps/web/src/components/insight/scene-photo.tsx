@@ -34,6 +34,11 @@ export interface ScenePhotoProps {
   unoptimized?: boolean;
   /** The page also shows the points as a visible list from tablet up (the scene panel). */
   listInPanel?: boolean;
+  /**
+   * From tablet up the photo sits in a frame of its own (the analysis): it is shown clean,
+   * without the scrim that melts a full-bleed photo into the page.
+   */
+  framed?: boolean;
   className?: string;
   /** Overlays drawn above the photo (a header, a hint). */
   children?: ReactNode;
@@ -56,6 +61,7 @@ export function ScenePhoto({
   priority = false,
   unoptimized = false,
   listInPanel = false,
+  framed = false,
   className,
   children,
 }: ScenePhotoProps) {
@@ -81,7 +87,13 @@ export function ScenePhoto({
         unoptimized={unoptimized}
         className="object-cover"
       />
-      <div aria-hidden="true" className="photo-scrim pointer-events-none absolute inset-0" />
+      <div
+        aria-hidden="true"
+        className={cx(
+          'photo-scrim pointer-events-none absolute inset-0',
+          framed && 'tablet:hidden'
+        )}
+      />
 
       {valid.map((point, index) => {
         const placement = coverPlacement(point, { width, height }, size);

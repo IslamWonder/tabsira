@@ -96,6 +96,7 @@ export function ScanStage({
         onSelect={onSelectPoint}
         unoptimized
         listInPanel
+        framed
         className="h-full"
       >
         <ScanSweep active={running} />

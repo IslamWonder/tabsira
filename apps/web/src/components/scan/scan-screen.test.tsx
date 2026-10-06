@@ -147,6 +147,8 @@ describe('ScanScreen: the stages', () => {
     // From tablet up the photo sits whole in a frame of its own proportions, never cropped.
     const frame = photo.closest('[style*="--photo-ratio"]') as HTMLElement;
     expect(frame.style.getPropertyValue('--photo-ratio')).toMatch(/^\d+ \/ \d+$/);
+    // Framed, the photo is shown clean: the scrim that melts a full-bleed photo is phone-only.
+    expect(frame.querySelector('.photo-scrim')).toHaveClass('tablet:hidden');
     expect(document.querySelector('[data-scan="active"]')).not.toBeNull();
     expect(document.querySelectorAll('[data-point-id]')).toHaveLength(0);
     await userEvent.click(screen.getByRole('button', { name: 'ألغِ' }));
