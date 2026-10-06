@@ -430,6 +430,36 @@ describe('InsightScreen: sharing', () => {
     // Withdrawn, so the tap publishes again.
     await waitFor(() => expect(puts(api)).toHaveLength(2));
   });
+
+  it('keeps the publishing options one tap away on an insight finished and published before', async () => {
+    setSignedIn(USER);
+    const api = await open(
+      insightOut({ completed_at: '2026-10-05T08:00:00Z', published_at: '2026-10-05T09:00:00Z' }),
+      {
+        [`DELETE /insights/${ID}/publication`]: {
+          body: { insight_id: ID, published: false, published_at: null, path: null },
+        },
+      }
+    );
+    expect(screen.queryByRole('region', { name: 'اكتملت بصيرتك' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'خيارات النشر' }));
+    const sheet = screen.getByRole('dialog', { name: 'شارك البصيرة' });
+    await userEvent.click(within(sheet).getByRole('button', { name: 'اسحب النشر' }));
+    await waitFor(() =>
+      expect(api.requests.some((request) => request.method === 'DELETE')).toBe(true)
+    );
+  });
+
+  it('offers no publishing options to whoever cannot share', async () => {
+    await open();
+    expect(screen.queryByRole('button', { name: 'خيارات النشر' })).toBeNull();
+  });
+
+  it('shows the options link once, in the panel, while the finished panel is open', async () => {
+    setSignedIn(USER);
+    await finished();
+    expect(screen.getAllByRole('button', { name: 'خيارات النشر' })).toHaveLength(1);
+  });
 });
 
 describe('InsightScreen: «تمّ»', () => {

@@ -59,3 +59,4 @@ A shareable image of an insight with real Arabic fonts, and a public page for it
 ### 09.6 One-tap sharing
 
 - **Status:** ✅ 2026-10-06, owners' request. The completion panel's «شارك» button (with the share icon) and the insight footer's share button publish when needed and open the system share dialog in the same tap (the call is made before the publication is awaited, which iOS requires); desktop copies the link; «خيارات النشر» opens the sheet. No API or data-flow change.
+- **Fix:** 2026-10-06. «خيارات النشر» also sits under the footer's share button whenever the insight can be shared and the completion panel is not on screen, so an insight finished and published on an earlier visit can still be withdrawn (the privacy text promises it stops showing once withdrawn).

@@ -202,6 +202,18 @@ export function InsightScreen({
               }}
               onShare={canShare ? quick.run : undefined}
             />
+            {/* The share button publishes and shares in one tap; withdrawing, the card and the
+                other surfaces stay one tap away here, on every visit, not only once it is done. */}
+            {canShare && finish.completion === null ? (
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                onClick={() => setShareOpen(true)}
+                className="min-h-11 self-start text-[0.8125rem] text-link underline underline-offset-2"
+              >
+                {messages.completion.shareOptions}
+              </button>
+            ) : null}
           </div>
         }
       >
