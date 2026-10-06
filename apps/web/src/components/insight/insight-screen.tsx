@@ -11,7 +11,7 @@ import { Chip } from '@/components/ui/chip';
 import { Notice } from '@/components/ui/notice';
 import type { Insight } from '@/lib/scan/api';
 import { journeyFailureMessage } from '@/lib/scan/failure';
-import { signUpHref } from '@/lib/scan/gate';
+import { accountRequired, signUpHref } from '@/lib/scan/gate';
 import { centre } from '@/lib/scan/spans';
 import { messages } from '@/messages';
 import { ChatSheet } from './chat-sheet';
@@ -252,7 +252,14 @@ export function InsightScreen({
         insightTitle={insight.title}
         // Completing the insight closes the discussion at once; the server says the same on the next load.
         chat={finish.status === 'done' ? { ...chat, closed: true } : chat}
-        onAsk={controls.ask}
+        onAsk={async (message, key) => {
+          const failure = await controls.ask(message, key);
+          // The server asks a guest for an account on its own scan's chat (decision 64).
+          if (failure !== null && accountRequired(failure)) {
+            router.push(signUpHref(`/insight/${insight.id}` as Route, 'chat'));
+          }
+          return failure;
+        }}
       />
     </>
   );

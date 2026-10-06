@@ -207,6 +207,18 @@ describe('InsightScreen: why, the chat and the step', () => {
     );
   });
 
+  it('sends to sign-up when the chat says an account is required', async () => {
+    setSignedIn(USER);
+    await open(insightOut(), { [`POST /insights/${ID}/chat`]: apiError(403, 'account_required') });
+    await userEvent.click(screen.getByRole('button', { name: /ناقش البصيرة/ }));
+    const sheet = screen.getByRole('dialog', { name: 'ناقش البصيرة' });
+    await userEvent.type(within(sheet).getByLabelText('سؤالك'), 'ما معنى هذا؟');
+    await userEvent.click(within(sheet).getByRole('button', { name: 'اسأل' }));
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith(`/signup?next=%2Finsight%2F${ID}&reason=chat`)
+    );
+  });
+
   it('labels the step as the API does, and records «done» with what the API says it means', async () => {
     await open(insightOut(), {
       [`POST /insights/${ID}/action`]: { body: { state: 'done', at: null, means: '[ما يعنيه]' } },
