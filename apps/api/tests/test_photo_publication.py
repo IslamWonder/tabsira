@@ -708,9 +708,12 @@ async def test_the_export_states_the_photo_of_a_post_as_facts_and_never_as_a_key
     )
     followers_post = str(followers.json()["id"])
     assert (await author.http.post(f"/posts/{followers_post}/submit")).status_code == 200
-    bare_post = await post_with_photo(author, chosen_no_copy, photo=False)
+    # One post per insight (decision 68): the bare and the withdrawn posts have their own.
+    bare_post = await post_with_photo(
+        author, await kept_insight(db_session, author, photos), photo=False
+    )
     # A withdrawn post keeps no publication at all.
-    withdrawn_post = await post_with_photo(author, shown)
+    withdrawn_post = await post_with_photo(author, await kept_insight(db_session, author, photos))
     assert (await author.http.post(f"/posts/{withdrawn_post}/submit")).status_code == 200
     assert (await author.http.delete(f"/posts/{withdrawn_post}")).status_code == 204
     _, public = await keys_of(db_session, shown)
