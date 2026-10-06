@@ -28,14 +28,14 @@
 
 ## 🛠️ Two ways to run it
 
-| Where                  | How                                                                                                                                                                                                                                                                                                             | Read                                     |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| 💻 A laptop            | `make install`, `make migrate`, `make data` (once; it skips what is already imported), then `make dev` and open `http://tabsira.test` (plain HTTP on port 80, decision 49). Linux, macOS, or Linux in a virtual machine on Windows. From a fresh Ubuntu: [the steps below](#-install-on-a-fresh-ubuntu-judges). | [docs/SETUP.md](docs/SETUP.md)           |
-| 🖥️ A production server | Directly on Ubuntu with systemd, gunicorn, pm2 and nginx, two hosts (application and data) joined by a VPN, deployed by `deploy/deploy.sh` with a pre-flight boot, rolling restarts and rollback. No Docker in production (decision 20); `make up` is not the path.                                             | [docs/OPERATIONS.md](docs/OPERATIONS.md) |
+| Where                  | How                                                                                                                                                                                                                                                                                                                       | Read                                     |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| 💻 A laptop            | `make install`, `make migrate`, `make data` (once; it skips what is already imported), then `make dev` and open `http://tabsira.test` (plain HTTP on port 80, decision 49). Linux, macOS, or Linux in a virtual machine on Windows. From a fresh Ubuntu: [the steps below](#-install-on-a-fresh-ubuntu-development-team). | [docs/SETUP.md](docs/SETUP.md)           |
+| 🖥️ A production server | Directly on Ubuntu with systemd, gunicorn, pm2 and nginx, two hosts (application and data) joined by a VPN, deployed by `deploy/deploy.sh` with a pre-flight boot, rolling restarts and rollback. No Docker in production (decision 20); `make up` is not the path.                                                       | [docs/OPERATIONS.md](docs/OPERATIONS.md) |
 
 🧱 The stack: `apps/web` (Next.js, React, TypeScript, Tailwind), `apps/api` (Python 3.12, FastAPI, SQLAlchemy, Alembic, managed with uv), `services/vision` (the object detector), PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, Redis, and an S3-compatible bucket for consented photos.
 
-## 🐧 Install on a fresh Ubuntu (judges)
+## 🐧 Install on a fresh Ubuntu (development team)
 
 A clean **Ubuntu 24.04 LTS** machine or virtual machine with `sudo`, internet access, at least **4 CPU cores, 8 GB of memory and 25 GB of free disk** (the database holds about 8 GB once filled; the downloaded archives, about 4 GB, may be deleted afterwards). Count about 30 to 45 minutes, most of it downloads. Every step is safe to run again.
 
