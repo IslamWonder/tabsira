@@ -30,7 +30,7 @@ function utf8(text: string) {
 describe('EvidenceCard, Quran', () => {
   function renderQuran() {
     render(<EvidenceCard variant="quran" text={VERSE} reference="[السورة · الآية]" />);
-    return screen.getByRole('article', { name: 'القرآن' });
+    return screen.getByRole('article', { name: 'القرآن الكريم' });
   }
 
   it('renders the verse byte for byte', () => {
@@ -57,7 +57,7 @@ describe('EvidenceCard, Quran', () => {
     const card = renderQuran();
     expect(within(card).getByText('[السورة · الآية]')).toBeInTheDocument();
     expect(within(card).queryByRole('link')).toBeNull();
-    expect(within(card).getByRole('heading', { level: 2 })).toHaveTextContent('القرآن');
+    expect(within(card).getByRole('heading', { level: 2 })).toHaveTextContent('القرآن الكريم');
   });
 });
 
@@ -80,7 +80,7 @@ describe('EvidenceCard, Sunnah', () => {
         className="extra"
       />
     );
-    return Object.assign(screen.getByRole('article', { name: 'السنة' }), { unmount });
+    return Object.assign(screen.getByRole('article', { name: 'السنة النبوية' }), { unmount });
   }
 
   it('renders the whole hadith byte for byte, cut only by position', () => {
@@ -130,7 +130,7 @@ describe('EvidenceCard, Sunnah', () => {
   it('shows its heading and class, and no link, ruling or verified chip', () => {
     const card = renderSunnah(SPANS);
     expect(card).toHaveClass('extra');
-    expect(within(card).getByRole('heading', { level: 3 })).toHaveTextContent('السنة');
+    expect(within(card).getByRole('heading', { level: 3 })).toHaveTextContent('السنة النبوية');
     expect(within(card).queryByRole('link')).toBeNull();
     expect(within(card).queryByText(/الدرر|حكم|تصنيف/)).toBeNull();
     expect(within(card).queryByText('نص موثّق من مصدره')).toBeNull();

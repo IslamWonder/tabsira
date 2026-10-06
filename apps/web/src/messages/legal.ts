@@ -627,7 +627,7 @@ const sources: LegalDocument = {
           'This Open-Hadith-Data project is made available under the Open Database License: http://opendatacommons.org/licenses/odbl/1.0/. Any rights in individual contents of the database are licensed under the Database Contents License: http://opendatacommons.org/licenses/dbcl/1.0/'
         ),
         p(
-          'نصوص الأحاديث تُعرض من الكتب التسعة كما هي مخزنة عندنا، مع اسم الكتاب ورقم الحديث. ولا نعرض حكمًا على الحديث في هذه المرحلة، إلى أن نختار طريقة أفضل لعرضه.'
+          'نصوص الأحاديث تُعرض من الكتب التسعة كما هي مخزنة عندنا، مع اسم الكتاب ورقم الحديث. وإذا كان في بيانات الكتاب حكم على الحديث نعرض حكم أول عالِم تذكره، باسمه، مثل «حكم الألباني: صحيح»، كما ورد في تلك البيانات ونقلناه إلى مصطلحه العربي. ولا أحكام في بيانات صحيحي البخاري ومسلم ومسند أحمد وسنن الدارمي.'
         ),
       ],
     },

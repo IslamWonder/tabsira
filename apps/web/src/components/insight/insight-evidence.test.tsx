@@ -35,14 +35,36 @@ describe('InsightEvidence', () => {
 
   it('shows the references, with no link, ruling or dorar mention', () => {
     render(<InsightEvidence insight={insightOut()} />);
-    const quran = screen.getByRole('article', { name: 'القرآن' });
+    const quran = screen.getByRole('article', { name: 'القرآن الكريم' });
     expect(within(quran).getByText('سورة اختبار، الآية 50')).toBeInTheDocument();
     expect(within(quran).queryByRole('link')).toBeNull();
-    const sunnah = screen.getByRole('article', { name: 'السنة' });
+    const sunnah = screen.getByRole('article', { name: 'السنة النبوية' });
     expect(within(sunnah).getByText('صحيح اختبار، رقم 1032')).toBeInTheDocument();
     expect(within(sunnah).queryByRole('link')).toBeNull();
     expect(within(sunnah).queryByText(/الدرر|حكم/)).toBeNull();
     expect(within(sunnah).queryByText('نص موثّق من مصدره')).toBeNull();
+  });
+
+  it("shows the first grader's ruling the dataset carries, with no dorar mention", () => {
+    const base = insightOut();
+    const hadith = base.hadith as NonNullable<Insight['hadith']>;
+    const graded = {
+      ...base,
+      hadith: {
+        ...hadith,
+        hadith: {
+          ...hadith.hadith,
+          informational_grades: [
+            { name: 'Al-Albani', grade: 'Sahih' },
+            { name: 'Zubair Ali Zai', grade: 'Daif' },
+          ],
+        },
+      },
+    };
+    render(<InsightEvidence insight={graded} />);
+    const sunnah = screen.getByRole('article', { name: 'السنة النبوية' });
+    expect(within(sunnah).getByText('حكم الألباني: صحيح')).toBeInTheDocument();
+    expect(within(sunnah).queryByText(/زبير|ضعيف|الدرر/)).toBeNull();
   });
 
   it('applies the display spans without cutting or changing the text', () => {
@@ -83,15 +105,15 @@ describe('InsightEvidence', () => {
   it('shows the verse alone when no hadith was kept', () => {
     const insight = insightOut({ hadith: null, hadith_status: 'none', pair_complete: false });
     render(<InsightEvidence insight={insight} />);
-    expect(screen.getByRole('article', { name: 'القرآن' })).toBeInTheDocument();
-    expect(screen.queryByRole('article', { name: 'السنة' })).toBeNull();
+    expect(screen.getByRole('article', { name: 'القرآن الكريم' })).toBeInTheDocument();
+    expect(screen.queryByRole('article', { name: 'السنة النبوية' })).toBeNull();
     expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('shows a hadith without its verse, with no thread between', () => {
     render(<InsightEvidence insight={insightOut({ quran: null, pair_complete: false })} />);
-    expect(screen.queryByRole('article', { name: 'القرآن' })).toBeNull();
-    expect(screen.getByRole('article', { name: 'السنة' })).toBeInTheDocument();
+    expect(screen.queryByRole('article', { name: 'القرآن الكريم' })).toBeNull();
+    expect(screen.getByRole('article', { name: 'السنة النبوية' })).toBeInTheDocument();
   });
 
   it('gives both cards the heading level it is told, and h2 by default', () => {

@@ -117,7 +117,7 @@ describe('the public page of an insight', () => {
 
   it('shows no notice and no hadith card when no hadith was kept', async () => {
     await open({ hadith: null, hadith_status: 'none' });
-    expect(screen.queryByRole('article', { name: 'السنة' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('article', { name: 'السنة النبوية' })).not.toBeInTheDocument();
     expect(screen.queryByRole('note')).not.toBeInTheDocument();
   });
 });

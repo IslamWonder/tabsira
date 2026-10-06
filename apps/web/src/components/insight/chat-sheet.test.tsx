@@ -61,8 +61,8 @@ describe('ChatSheet', () => {
     const reply = replyWithTexts();
     const { sheet } = renderChat(chatWith({ used: 1, remaining: 2, messages: [reply] }));
     const item = within(sheet).getByText('جواب الاختبار.').closest('li') as HTMLElement;
-    const quran = within(item).getByRole('article', { name: 'القرآن' });
-    const sunnah = within(item).getByRole('article', { name: 'السنة' });
+    const quran = within(item).getByRole('article', { name: 'القرآن الكريم' });
+    const sunnah = within(item).getByRole('article', { name: 'السنة النبوية' });
     const verse = quran.querySelector('[data-scripture="quran"]')?.textContent as string;
     const hadith = sunnah.querySelector('[data-scripture="hadith"]')?.textContent as string;
     expect(bytes(verse)).toEqual(bytes(VERSE_TEXT));
@@ -72,22 +72,22 @@ describe('ChatSheet', () => {
     expect(within(quran).getByText('سورة اختبار، الآية 50')).toBeInTheDocument();
     expect(within(sunnah).queryByRole('link')).toBeNull();
     // The cards sit under the sheet's own h2 title.
-    expect(within(quran).getByRole('heading', { level: 3 })).toHaveTextContent('القرآن');
-    expect(within(sunnah).getByRole('heading', { level: 3 })).toHaveTextContent('السنة');
+    expect(within(quran).getByRole('heading', { level: 3 })).toHaveTextContent('القرآن الكريم');
+    expect(within(sunnah).getByRole('heading', { level: 3 })).toHaveTextContent('السنة النبوية');
   });
 
   it('shows a found verse alone, with no hadith card', () => {
     const reply = { ...replyWithTexts(), hadith: null };
     const { sheet } = renderChat(chatWith({ used: 1, remaining: 2, messages: [reply] }));
-    expect(within(sheet).getByRole('article', { name: 'القرآن' })).toBeInTheDocument();
-    expect(within(sheet).queryByRole('article', { name: 'السنة' })).toBeNull();
+    expect(within(sheet).getByRole('article', { name: 'القرآن الكريم' })).toBeInTheDocument();
+    expect(within(sheet).queryByRole('article', { name: 'السنة النبوية' })).toBeNull();
   });
 
   it('shows a found hadith alone', () => {
     const reply = { ...replyWithTexts(), quran: null };
     const { sheet } = renderChat(chatWith({ used: 1, remaining: 2, messages: [reply] }));
-    expect(within(sheet).queryByRole('article', { name: 'القرآن' })).toBeNull();
-    expect(within(sheet).getByRole('article', { name: 'السنة' })).toBeInTheDocument();
+    expect(within(sheet).queryByRole('article', { name: 'القرآن الكريم' })).toBeNull();
+    expect(within(sheet).getByRole('article', { name: 'السنة النبوية' })).toBeInTheDocument();
   });
 
   it('sends one question with a key, and clears the field once it is answered', async () => {

@@ -46,7 +46,7 @@ describe('the development gallery', () => {
       'dark'
     );
     const half = within(lightHalf());
-    expect(half.getByRole('article', { name: 'القرآن' })).toBeInTheDocument();
+    expect(half.getByRole('article', { name: 'القرآن الكريم' })).toBeInTheDocument();
     expect(half.getByRole('switch', { name: 'الحركة الزخرفية' })).toBeInTheDocument();
     expect(half.getByRole('button', { name: /المظهر:/ })).toBeInTheDocument();
   });

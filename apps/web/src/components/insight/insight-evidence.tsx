@@ -1,4 +1,5 @@
 import type { Insight } from '@/lib/scan/api';
+import { hadithGradeLine } from '@/lib/scan/hadith-grade';
 import { spansInUtf16 } from '@/lib/scan/spans';
 import { messages } from '@/messages';
 import { EvidenceCard } from './evidence-card';
@@ -17,7 +18,8 @@ export interface EvidenceSource {
 /**
  * The verse and the hadith of an insight, exactly as the API returns them:
  * the stored text is passed through untouched (never trimmed, joined,
- * shortened or normalised), with its reference. No ruling is shown (decision 65).
+ * shortened or normalised), with its reference and, for the hadith, the first
+ * grader's ruling its dataset carries (decision 69, amending decision 65).
  */
 export function InsightEvidence({
   insight,
@@ -47,6 +49,7 @@ export function InsightEvidence({
         headingLevel={headingLevel}
         text={narration.text}
         spans={spansInUtf16(narration.text, narration.spans)}
+        grade={hadithGradeLine(narration.informational_grades)}
         reference={messages.insightPage.hadithReference(
           narration.collection.name_ar,
           narration.number

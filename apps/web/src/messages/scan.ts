@@ -150,8 +150,8 @@ export const scanMessages = {
       clues: 'ما ظهر في المشهد',
       concept: 'المعنى',
       sources: 'المصادر',
-      sourceQuran: 'القرآن',
-      sourceSunnah: 'السنة',
+      sourceQuran: 'القرآن الكريم',
+      sourceSunnah: 'السنة النبوية',
       sourceLine: (relation: string, matched: string) =>
         matched === '' ? relation : `${relation}، وجه الصلة: ${matched}`,
       /** The checker's own words on how the text's meaning meets the scene. */

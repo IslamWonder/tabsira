@@ -143,7 +143,7 @@ describe('WhySheet', () => {
     expect(within(sheet).queryByText('ما ظهر في المشهد')).toBeNull();
     expect(within(sheet).queryByText('حدود هذه الصلة')).toBeNull();
     expect(within(sheet).queryByText(/وجه الصلة/)).toBeNull();
-    expect(within(sheet).getByText('السنة')).toBeInTheDocument();
+    expect(within(sheet).getByText('السنة النبوية')).toBeInTheDocument();
     await userEvent.click(within(sheet).getByRole('button', { name: 'أغلق' }));
     expect(onClose).toHaveBeenCalledOnce();
   });

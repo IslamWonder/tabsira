@@ -56,8 +56,8 @@ describe('InsightScreen: the page', () => {
     expect(screen.getByText('لمحة البصيرة الأولى')).toBeInTheDocument();
     expect(screen.getByText('صلة مباشرة')).toBeInTheDocument();
     expect(screen.getByText('نبتة صغيرة وماء.')).toBeInTheDocument();
-    const quran = screen.getByRole('article', { name: 'القرآن' });
-    const sunnah = screen.getByRole('article', { name: 'السنة' });
+    const quran = screen.getByRole('article', { name: 'القرآن الكريم' });
+    const sunnah = screen.getByRole('article', { name: 'السنة النبوية' });
     const explanation = screen.getByRole('region', { name: 'شرح تبصرة' });
     const why = screen.getByRole('button', { name: 'لماذا ظهر هذا؟' });
     const step = screen.getByRole('region', { name: /خطوة صغيرة/ });
@@ -150,8 +150,8 @@ describe('InsightScreen: the page', () => {
     );
     expect(screen.queryByRole('region', { name: /خطوة صغيرة/ })).toBeNull();
     expect(screen.queryByRole('region', { name: 'شرح تبصرة' })).toBeNull();
-    expect(screen.queryByRole('article', { name: 'القرآن' })).toBeNull();
-    expect(screen.queryByRole('article', { name: 'السنة' })).toBeNull();
+    expect(screen.queryByRole('article', { name: 'القرآن الكريم' })).toBeNull();
+    expect(screen.queryByRole('article', { name: 'السنة النبوية' })).toBeNull();
   });
 
   it('says why it cannot open the insight, and tries again', async () => {
