@@ -100,7 +100,8 @@ sed "s/@QURANPEDIA_VERSION@/$quranpedia_version/" "$HERE/NOTICE.txt" >"$DIR/NOTI
 cat >"$DIR/README.txt" <<'TXT'
 TABSIRA reference data (the `corpus` schema)
 
-The Quran text of quranpedia's mushaf 2 with its history and search copies, the
+The Quran text of quranpedia's mushaf 2 with its history and search copies (and
+the leak guard's skeletons of each verse in today's spelling, derived from it), the
 annotated corpus used for retrieval, the nine hadith books with their search copies
 and signals, the world ontology and the learning path, exactly as the database of
 the installation that exported them holds them. Every verse and hadith carries the

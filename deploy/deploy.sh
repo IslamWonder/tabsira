@@ -10,7 +10,8 @@
 #      runs again from the updated copy, so the steps below are always the latest.
 #   5. Install the API and vision dependencies (uv sync) and the workspace (pnpm).
 #   6. check_config --live, then the migrations: geodata chain, app chain, vectors
-#      chain (scripts/migrate.sh). Migrations are not undone by a rollback; each
+#      chain (scripts/migrate.sh), then the leak guard's skeletons of the Quran in
+#      today's spelling (src.cli.import_scripture standard, idempotent). Migrations are not undone by a rollback; each
 #      must work with the code still serving while it runs (add before you drop).
 #   7. Build the web app.
 #   8. Replace the processes one at a time: the API's gunicorn workers (TTIN, health,
@@ -238,6 +239,9 @@ check_and_migrate() {
 	run_in "$REPO_DIR/apps/api" env UV_NO_SYNC=1 uv run python -m src.cli.check_config --live
 	step "Migrations: geodata chain, app chain, vectors chain"
 	run_in "$REPO_DIR" env UV_NO_SYNC=1 bash scripts/migrate.sh
+	# Derived from the stored text: writes only what a new converter changed (task 05.9).
+	step "The leak guard's skeletons of the Quran in today's spelling (idempotent)"
+	run_in "$REPO_DIR/apps/api" env UV_NO_SYNC=1 uv run python -m src.cli.import_scripture standard
 	step "Re-apply the admin audit retention policy (idempotent)"
 	run_in "$REPO_DIR/apps/api" env UV_NO_SYNC=1 uv run python -m src.cli.audit_policy
 }

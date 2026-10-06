@@ -14,7 +14,8 @@
 #      checks every verse, past verse and hadith against its stored hash
 #      (encode(sha256(convert_to(text, 'UTF8')), 'hex') = text_sha256, the hash
 #      src/scripture/text.py computes), checks the count and the fingerprint of
-#      every table against the manifest, and rebuilds the verse spans. A failed
+#      every table against the manifest, and rebuilds the verse spans (of both
+#      spellings, task 05.9). A failed
 #      check rolls everything back: the database is as it was;
 #   4. prints what the corpus holds.
 #
@@ -38,6 +39,11 @@ TABLES=(
 	hadith_collections hadiths hadith_search hadith_signals
 	ontology_entities learning_path_versions learning_domains learning_units
 )
+# Tables an archive may or may not hold: restored when it does, emptied with --force
+# either way. The leak guard's skeletons in today's spelling (task 05.9) came after
+# the archive of 2026-10-04; make data derives them from the restored text when the
+# archive lacks them (src.cli.import_scripture standard).
+OPTIONAL_TABLES=(quran_verse_standard_guard)
 
 FORCE=false
 source_path=""
@@ -127,10 +133,16 @@ for table in "${TABLES[@]}"; do
 	grep -E "^[0-9]+; [0-9]+ [0-9]+ TABLE DATA corpus $table( |$)" "$toc" >>"$toc.list" ||
 		die "corpus.dump holds no data for $table"
 done
+known=${#TABLES[@]}
+for table in "${OPTIONAL_TABLES[@]}"; do
+	if grep -E "^[0-9]+; [0-9]+ [0-9]+ TABLE DATA corpus $table( |$)" "$toc" >>"$toc.list"; then
+		known=$((known + 1))
+	fi
+done
 grep -E "^[0-9]+; [0-9]+ [0-9]+ SEQUENCE SET corpus " "$toc" >>"$toc.list" || true
 data_entries="$(grep -cE "^[0-9]+; [0-9]+ [0-9]+ TABLE DATA corpus " "$toc")"
-[[ "$data_entries" == "${#TABLES[@]}" ]] ||
-	die "corpus.dump holds data for $data_entries tables, this script knows ${#TABLES[@]}: use the import.sh of a newer checkout"
+[[ "$data_entries" == "$known" ]] ||
+	die "corpus.dump holds data for $data_entries tables, this script knows $known of them: use the import.sh of a newer checkout"
 
 {
 	echo "BEGIN;"
@@ -138,6 +150,9 @@ data_entries="$(grep -cE "^[0-9]+; [0-9]+ [0-9]+ TABLE DATA corpus " "$toc")"
 	echo "SET LOCAL tabsira.scripture_write = 'import';"
 	if [[ "$FORCE" == "true" ]]; then
 		echo "\\ir force-guard.sql"
+		for table in "${OPTIONAL_TABLES[@]}"; do
+			echo "DO \$\$ BEGIN IF to_regclass('corpus.$table') IS NOT NULL THEN DELETE FROM corpus.$table; END IF; END \$\$;"
+		done
 		for ((index = ${#TABLES[@]} - 1; index >= 0; index--)); do
 			echo "DELETE FROM corpus.${TABLES[index]};"
 		done
@@ -145,6 +160,8 @@ data_entries="$(grep -cE "^[0-9]+; [0-9]+ [0-9]+ TABLE DATA corpus " "$toc")"
 	pg_restore --data-only -L "$toc.list" -f - corpus.dump
 	echo "SELECT set_config('tabsira.corpus_manifest', :'manifest', true);"
 	echo "\\ir verify.sql"
+	# An archive's own verify.sql may predate the spans over today's spelling.
+	echo "DO \$\$ BEGIN IF to_regclass('corpus.quran_verse_standard_spans') IS NOT NULL THEN REFRESH MATERIALIZED VIEW corpus.quran_verse_standard_spans; END IF; END \$\$;"
 	echo "COMMIT;"
 } | "${PSQL[@]}" -v manifest="$manifest" >/dev/null
 

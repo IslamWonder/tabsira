@@ -106,6 +106,7 @@ Write-Banner 'Loaded'
 $verses = Get-Count 'corpus.quran_verses'
 $hadiths = Get-Count 'corpus.hadiths'
 $annotations = Get-Count 'corpus.quran_annotations'
+$standard = Get-Count 'corpus.quran_verse_standard_guard'
 $signals = Get-Count 'corpus.hadith_signals'
 $ontology = Get-Count 'corpus.ontology_entities'
 $quranVectors = Get-Count 'vectors.quran_verse_embeddings'
@@ -115,6 +116,7 @@ $learning = Get-Scalar "SELECT CASE WHEN to_regclass('corpus.learning_path_versi
 Write-Log "Quran verses          $verses (6236 expected)"
 Write-Log "hadiths               $hadiths"
 Write-Log "Quran annotations     $annotations"
+Write-Log "Quran guard, today's  $standard (derived skeletons)"
 Write-Log "hadith signals        $signals"
 Write-Log "ontology entities     $ontology"
 Write-Log "Quran vectors         $quranVectors (all models)"
@@ -124,6 +126,7 @@ Write-Log "GeoNames places       $places$(if ($NoGeonames) { ' (-NoGeonames)' })
 if ($verses -ne 6236) { Add-Problem "The Quran store holds $verses verses, not 6236." }
 if ($hadiths -eq 0) { Add-Problem 'No hadith is stored.' }
 if ($annotations -eq 0 -or $signals -eq 0) { Add-Problem 'The annotations or hadith signals are missing.' }
+if ($standard -ne $verses) { Add-Problem "The guard skeletons in today's spelling cover $standard of $verses verses: run scripts\data.ps1 again." }
 if ($ontology -eq 0) { Add-Problem 'The world ontology is not loaded.' }
 if (-not $learning) { Add-Problem 'No learning path version is active.' }
 if ($quranVectors -lt $verses -or $hadithVectors -lt $hadiths) { Add-Problem "The vectors do not cover the store: import them (VECTORS_ARCHIVE_URL in $EnvFile)." }

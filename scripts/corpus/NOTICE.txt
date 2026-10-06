@@ -13,6 +13,9 @@ Quran text (tables quran_*)
   https://quranpedia.net/api/v1/changes?since=<version> (TABSIRA applies it daily,
   src.cli.sync_quran). Provided as is, without warranty; verification remains the
   user's duty.
+  Derived from it by TABSIRA, never displayed: the folded search copies, and the
+  leak guard's skeletons of each verse converted into today's spelling with their
+  span view (table quran_verse_standard_guard), which hold no readable text.
 
 Hadith: al-Bukhari, Muslim, Abu Dawud, al-Tirmidhi, al-Nasa'i, Ibn Majah, Malik
   Source: fawazahmed0/hadith-api, https://github.com/fawazahmed0/hadith-api

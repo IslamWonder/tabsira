@@ -21,6 +21,9 @@
 #              CORPUS_DIR (default data/corpus; docs/ASSET_MANIFEST.md names them),
 #              then the ontology and the learning path from the repository
 #              (scripts/data-learning.sh).
+#   standard   the leak guard's skeletons of the Quran in today's spelling, derived
+#              from the stored text (src.cli.import_scripture standard, task 05.9):
+#              written where missing or stale, nothing otherwise, every time.
 #   vectors    scripts/vectors/ensure.sh imports the published archive
 #              (docs/EMBEDDINGS.md); src.cli.embed_corpus then computes only what
 #              is missing, with the active provider's embedding model.
@@ -115,6 +118,12 @@ else
 	import_ontology
 	import_masar
 fi
+
+# The guard skeletons of the Quran in today's spelling (task 05.9), derived from the
+# stored text: written where missing (an archive that predates them) or stale (a new
+# converter), nothing otherwise. A few seconds, so it runs every time.
+banner "The Quran in today's spelling, for the leak guard (derived skeletons)"
+(cd "$REPO_ROOT/apps/api" && uv run --quiet python -m src.cli.import_scripture standard)
 
 # Vectors for semantic search, with the active provider's embedding model. Only
 # new or changed documents are sent, so a second run costs nothing; without an

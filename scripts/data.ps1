@@ -17,6 +17,9 @@ DATA_FORCE=true in .env, installs everything again):
   corpus     the scripture store, the world ontology and the learning path, from the
              verified archive (CORPUS_ARCHIVE, CORPUS_ARCHIVE_URL; docs/CORPUS.md).
              Building the store from its sources is in scripts/data.sh only.
+  standard   the leak guard's skeletons of the Quran in today's spelling, derived from
+             the stored text (src.cli.import_scripture standard, task 05.9): written
+             where missing or stale, nothing otherwise, every time.
   vectors    the published archive (VECTORS_ARCHIVE, VECTORS_ARCHIVE_URL;
              docs/EMBEDDINGS.md), then src.cli.embed_corpus for what is missing.
 
@@ -48,6 +51,9 @@ $CorpusTables = @(
     'hadith_collections', 'hadiths', 'hadith_search', 'hadith_signals',
     'ontology_entities', 'learning_path_versions', 'learning_domains', 'learning_units'
 )
+# Tables an archive may or may not hold (scripts/corpus/import.sh): the derived skeletons
+# of task 05.9 came after the archive of 2026-10-04; the standard step writes them.
+$OptionalCorpusTables = @('quran_verse_standard_guard')
 $GeodataTables = @('geonames', 'geonames_alternate_names', 'geonames_hierarchy', 'geonames_country_info', 'geonames_postal_codes')
 $DefaultCorpusUrl = 'https://s3-v2.riastorage.com/tabsira/corpus/tabsira-corpus-2026-10-04.tar.gz'
 $DefaultGeodataUrl = 'https://s3-v2.riastorage.com/tabsira/geodata/tabsira-geodata-2026-10-04.dump'
@@ -176,9 +182,10 @@ function Get-ArchiveUrl {
     return $Default
 }
 
-# pg_restore's list of the data of TABLES (parents first) and the sequences of SCHEMA.
+# pg_restore's list of the data of TABLES (parents first), of the OPTIONAL tables the dump
+# holds, and the sequences of SCHEMA.
 function Write-RestoreList {
-    param([string]$Dump, [string]$Schema, [string[]]$Tables, [string]$ListFile)
+    param([string]$Dump, [string]$Schema, [string[]]$Tables, [string]$ListFile, [string[]]$Optional = @())
     $toc = Invoke-Capture 'pg_restore' @('-l', $Dump)
     if ($toc.ExitCode -ne 0) { Fail "$Dump is not a pg_dump archive." }
     $list = @()
@@ -186,6 +193,9 @@ function Write-RestoreList {
         $entry = @($toc.Lines | Where-Object { $_ -match "^\d+; \d+ \d+ TABLE DATA $Schema $table( |$)" })
         if ($entry.Count -eq 0) { Fail "$Dump holds no data for $Schema.$table." }
         $list += $entry
+    }
+    foreach ($table in $Optional) {
+        $list += @($toc.Lines | Where-Object { $_ -match "^\d+; \d+ \d+ TABLE DATA $Schema $table( |$)" })
     }
     $list += @($toc.Lines | Where-Object { $_ -match "^\d+; \d+ \d+ SEQUENCE SET $Schema " })
     Write-Utf8File -Path $ListFile -Content (($list -join "`n") + "`n")
@@ -290,13 +300,17 @@ try {
 
         $listFile = Join-Path $WorkDir 'corpus.list'
         $dataFile = Join-Path $WorkDir 'corpus.sql'
-        $entries = Write-RestoreList $dumpFile 'corpus' $CorpusTables $listFile
-        if ($entries -ne $CorpusTables.Count) { Fail "corpus.dump holds data for $entries tables, this script knows $($CorpusTables.Count): use a newer checkout." }
+        $entries = Write-RestoreList $dumpFile 'corpus' $CorpusTables $listFile $OptionalCorpusTables
+        $known = $CorpusTables.Count + @($OptionalCorpusTables | Where-Object { $archiveTables -contains $_ }).Count
+        if ($entries -ne $known) { Fail "corpus.dump holds data for $entries tables, this script knows $known of them: use a newer checkout." }
         Invoke-Native 'pg_restore' @('--data-only', '-L', $listFile, '-f', $dataFile, $dumpFile)
 
         $begin = @('BEGIN;', "SET LOCAL tabsira.scripture_write = 'import';")
         if ($Force) {
             $begin += "\i $(ConvertTo-PsqlPath (Join-Path $folder 'force-guard.sql'))"
+            foreach ($table in $OptionalCorpusTables) {
+                $begin += "DO `$`$ BEGIN IF to_regclass('corpus.$table') IS NOT NULL THEN DELETE FROM corpus.$table; END IF; END `$`$;"
+            }
             for ($index = $CorpusTables.Count - 1; $index -ge 0; $index--) { $begin += "DELETE FROM corpus.$($CorpusTables[$index]);" }
         }
         $beginFile = Join-Path $WorkDir 'corpus-begin.sql'
@@ -304,7 +318,9 @@ try {
         $endFile = Join-Path $WorkDir 'corpus-end.sql'
         Write-Utf8File -Path $endFile -Content (
             "SELECT set_config('tabsira.corpus_manifest', `$manifest`$$manifestText`$manifest`$, true);`n" +
-            "\i $(ConvertTo-PsqlPath (Join-Path $folder 'verify.sql'))`nCOMMIT;`n")
+            "\i $(ConvertTo-PsqlPath (Join-Path $folder 'verify.sql'))`n" +
+            "DO `$`$ BEGIN IF to_regclass('corpus.quran_verse_standard_spans') IS NOT NULL THEN " +
+            "REFRESH MATERIALIZED VIEW corpus.quran_verse_standard_spans; END IF; END `$`$;`nCOMMIT;`n")
 
         Write-Log 'Restoring (one transaction; a failed check leaves the database as it was)'
         Invoke-SqlFiles @($beginFile, $dataFile, $endFile)
@@ -314,6 +330,11 @@ try {
             Write-Log ('{0,-24} {1}' -f $table, (Invoke-Query "SELECT count(*) FROM corpus.$table"))
         }
     }
+
+    # --- The Quran in today's spelling, for the leak guard (derived skeletons) ------
+    # Written where missing or stale, nothing otherwise; a few seconds, so every time.
+    Write-Banner "The Quran in today's spelling, for the leak guard (derived skeletons)"
+    Invoke-Native 'uv' @('run', '--quiet', 'python', '-m', 'src.cli.import_scripture', 'standard') -WorkingDirectory (Join-Path $RepoRoot 'apps\api')
 
     # --- Scripture vectors --------------------------------------------------------
     Write-Banner 'Scripture vectors'
