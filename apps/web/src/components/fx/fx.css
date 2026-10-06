@@ -470,6 +470,46 @@
   transform: none;
 }
 
+/* ─── A list that asks to be chosen ────────────────────────────────── */
+
+/* A band of gold light crosses the entry, from where reading starts, twice. */
+.fx-sheen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.fx-sheen::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: -45%;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--glow-gold) 30%, transparent),
+    transparent
+  );
+  transform: translateX(0);
+  opacity: 0;
+  animation: fx-sheen 1.7s cubic-bezier(0.45, 0.02, 0.55, 0.98) var(--fx-delay, 0ms) 2;
+}
+
+.fx-sheen:dir(rtl)::after {
+  left: auto;
+  right: -45%;
+  animation-name: fx-sheen-rtl;
+}
+
+/* A ring that leaves the entry's dot, twice. */
+.fx-dot-ring {
+  opacity: 0;
+  animation: fx-dot-ring 1.7s cubic-bezier(0.22, 1, 0.36, 1) var(--fx-delay, 0ms) 2;
+}
+
 /* ─── Keyframes ────────────────────────────────────────────────────── */
 
 @keyframes fx-sound-breath {
@@ -772,5 +812,41 @@
     text-shadow:
       0 0 18px rgb(255 226 160 / 0.75),
       0 0 42px rgb(223 189 119 / 0.45);
+  }
+}
+
+@keyframes fx-sheen {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(375%);
+  }
+}
+
+@keyframes fx-sheen-rtl {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-375%);
+  }
+}
+
+@keyframes fx-dot-ring {
+  0% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  20% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
   }
 }

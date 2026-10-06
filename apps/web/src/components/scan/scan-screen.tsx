@@ -194,7 +194,12 @@ export function ScanScreen({ scanId }: { scanId: string }) {
     announcement = messages.progress.complete;
     body = (
       <>
-        <SceneInsightList points={points.inList} selectedId={undefined} onSelect={openInsight} />
+        <SceneInsightList
+          points={points.inList}
+          selectedId={undefined}
+          onSelect={openInsight}
+          invite
+        />
         {view.scan.description === null ? null : <SeenNote text={view.scan.description} />}
         <div className="flex flex-wrap gap-2.5">
           {chooseFocus}

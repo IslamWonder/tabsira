@@ -284,6 +284,8 @@ export const ar = {
   scene: {
     prepared: 'مثال موثّق مُعدّ',
     hint: 'المس البصيرة التي لفتتك',
+    /** Shown a moment, to a reader who has not chosen yet: the insights wait for a tap. */
+    chooseHint: 'اختر بصيرة لتفتحها كاملة',
     /** The invitation to a scene of one's own, under the example on a phone and in the panel beside it. */
     capture: {
       heading: 'صوّر مشهدك أنت',
