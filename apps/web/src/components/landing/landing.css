@@ -1,0 +1,28 @@
+/*
+ * The landing's own kit. The hero band is the emerald night in both themes and
+ * the phone preview draws the app as it looks by day, so neither follows the
+ * theme; their colours are named here so a palette change reaches them with
+ * the rest, as world.css does for the world picture.
+ */
+:root {
+  --hero-deep: #082e25;
+  --hero-green: #0f4c3a;
+  --hero-gold: #dfbd77;
+  --hero-gold-line: #c6a15b;
+  --hero-on-gold: #202616;
+  --hero-ink: #ffffff;
+  --hero-ink-soft: rgb(255 255 255 / 0.85);
+  --hero-line: rgb(255 255 255 / 0.45);
+  --hero-wash: rgb(255 255 255 / 0.08);
+  --preview-bezel: #1d2b26;
+  --preview-screen: #0b1210;
+  --preview-notch: #000000;
+  --preview-glass: rgb(0 0 0 / 0.25);
+  --preview-paper: #f6faf7;
+  --preview-paper-glass: rgb(246 250 247 / 0.96);
+  --preview-ink: #16302a;
+  --preview-ink-soft: #4a635c;
+  --preview-line: #dce7e1;
+  --preview-gold-ink: #8d6e2c;
+  --preview-gold-wash: #faf3e2;
+}

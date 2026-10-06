@@ -183,3 +183,20 @@ The owners' cinematic reference replaces the sky drawn in a glass card beside th
 - **Reading aids** sit under «سهولة القراءة» in «المظهر والصوت», on this device only, and apply before the first paint: the text size (عادي، كبير 112.5 %، أكبر 125 %, every size and space grows with it, as with zoom), «تباين أعلى» (soft and muted text take the full text colour, hairlines take the field edge; the device's «increase contrast» setting does the same by itself) and «تمييز الروابط» (every link underlined, so a link is not told by colour alone). Quran and hadith text grow with the page and are otherwise untouched.
 - **Field edges.** Text fields, selects, switch tracks and answer chips draw their edge in `field-border` (`#788c84` by day, white at 40 % by night), 3:1 on every ground they sit on (WCAG 1.4.11); the hairline `border` stays for separators and cards.
 - **The speaker while the sound is heard.** The switch shows three bars rising and falling in place of the waves and a gold ring breathing around it, only while the sound is actually heard (not while the browser holds it), and its title says «يُسمع الآن». Under reduced motion the bars and the ring stand still.
+
+### One-tap sharing (added 6 October 2026)
+
+After «تمّ» the share action is a button with the share icon and «شارك», third after the world and a new scan. One tap makes the system share dialog open at once with the public link (the page address is known before publishing, so the call stays inside the tap); the publication runs beside it when the insight is not public yet, and its refusal is said in the panel. Without a system dialog the link is copied. Under it one muted line says what sharing publishes, with «خيارات النشر», which opens the sheet (withdraw, atlas, community). The insight footer's share button does the same.
+
+### Finish (added 6 October 2026)
+
+Small polish within the direction above, chosen by the implementer.
+
+- **Native controls follow the theme.** Checkboxes, radios, ranges and the text caret take `--primary` instead of the browser's blue.
+- **The landing's fixed kit is named.** The hero band (emerald night in both themes) and the phone preview (the app by day) draw their colours from `--hero-*` and `--preview-*` in `components/landing/landing.css`, as the world does, not from literals.
+- **Route change.** Where the browser has view transitions the page left behind fades out while the new one fades in; elsewhere only the fade-in plays. Nothing moves, and it stops under reduced motion.
+- **The scan's photo becomes the insight's.** Opening an insight from its scan hands the photo on screen to the insight page, which shows it at once and lets the browser morph one into the other (450 ms); the insight's own photo replaces it when read. Only a photo the scan was allowed to show is handed, and only in memory.
+- **The scan calls when it waits.** When a run the reader watched stops to ask its one question, a short soft chime (two notes drawn in the browser, no file, only with the sound switch on) plays once, and the answer button carries a still gold ring with three breaths of light until the reader first sends. After the answer the second run plays the scene's sound again from the start (owner, 6 October 2026).
+- **A glint round menu windows.** On an ornate menu window a gold glint runs once round the outer rule as it appears, then the rule rests. Never on a Quran or Sunnah panel.
+- **A press is felt.** Every link, button, tab and chip takes a brief tint while pressed (`--press-filter`: darker by day, brighter by night). Colour only, nothing moves; never on anything that holds Quran or hadith text.
+- **Honest placeholders.** While the community feed or the atlas results load their first page, empty shapes of the rows to come carry a slow gold shine; screen readers hear the loading line. The shapes hold no text or picture, so no content is implied.

@@ -22,6 +22,7 @@ import { MapLayout } from '@/components/layout/layouts';
 import { Button, LinkButton } from '@/components/ui/button';
 import { ChoiceGroup } from '@/components/ui/choice-group';
 import { GlassPanel } from '@/components/ui/glass-panel';
+import { LoadingRows } from '@/components/ui/loading-rows';
 import { Notice } from '@/components/ui/notice';
 import { Sheet } from '@/components/ui/sheet';
 import { TextField } from '@/components/ui/text-field';
@@ -611,9 +612,7 @@ export function AtlasScreen({
           <span className="text-[0.875rem] text-fg-muted">{A.count(list.total)}</span>
         </h2>
         {list.status === 'loading' && list.items.length === 0 ? (
-          <p role="status" className="m-0 text-fg-muted">
-            {A.loading}
-          </p>
+          <LoadingRows label={A.loading} rowClassName="h-16" />
         ) : null}
         {list.status === 'failed' || map.status === 'failed' ? (
           <div role="alert" className="flex flex-col items-start gap-3">

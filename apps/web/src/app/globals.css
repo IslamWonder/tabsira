@@ -2,6 +2,7 @@
 @import "../theme/tokens.css";
 @import "../components/fx/fx.css";
 @import "../components/world/world.css";
+@import "../components/landing/landing.css";
 @import "../components/progress/meaning-sky.css";
 
 /*
@@ -203,6 +204,9 @@
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+    /* Native checkboxes, radios, ranges and the text cursor take the theme, not the browser's blue. */
+    accent-color: var(--primary);
+    caret-color: var(--primary);
   }
 
   /* From tablet up the bar is at the top: keep focused elements clear of it instead. */
@@ -243,6 +247,21 @@
   [data-theme] {
     background-color: var(--bg);
     color: var(--text);
+    accent-color: var(--primary);
+    caret-color: var(--primary);
+  }
+
+  /*
+   * Every control answers a press at once with a tint (the token darkens by day and brightens by
+   * night), so a touch is felt on rows, tabs and chips too. Colour only, so nothing moves; never
+   * on anything that holds Quran or hadith text, which no effect touches.
+   */
+  :where(a[href], button, [role="button"], [role="tab"], summary, label:has(input)):active:not(
+      :disabled,
+      [aria-disabled="true"],
+      :has(.font-quran, .font-hadith)
+    ) {
+    filter: var(--press-filter);
   }
 
   ::selection {

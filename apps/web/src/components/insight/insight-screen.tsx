@@ -28,10 +28,12 @@ import {
   InsightTools,
   SeenNote,
 } from './insight-frame';
+import { type HandedPhoto, handedPhoto } from './photo-handoff';
 import { PhotoPlaceholder } from './photo-placeholder';
 import { NO_TARGETS, type PublishTargets, ShareSheet } from './share-sheet';
 import { StepCard } from './step-card';
 import { type PhotoView, useInsight } from './use-insight';
+import { useQuickShare } from './use-quick-share';
 import { WhySheet } from './why-sheet';
 
 const T = messages.insightPage;
@@ -44,13 +46,20 @@ function Photo({
   view,
   insight,
   backHref,
+  handed,
 }: Readonly<{
   view: PhotoView | null;
   insight: Insight;
   backHref: Route;
+  /** The scan's photo, shown until the insight's own is read. */
+  handed: HandedPhoto | null;
 }>) {
   if (view === null) {
-    return <PhotoPlaceholder note={T.loading} backHref={backHref} />;
+    return handed === null ? (
+      <PhotoPlaceholder note={T.loading} backHref={backHref} />
+    ) : (
+      <InsightPhoto {...handed} alt={T.photoAlt} backHref={backHref} unoptimized />
+    );
   }
   if (view.kind === 'photo') {
     return (
@@ -92,18 +101,32 @@ export function InsightScreen({
   const [whyOpen, setWhyOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const quick = useQuickShare(
+    insightId,
+    load.phase === 'ready' ? load.insight.title : '',
+    load.phase === 'ready' && load.insight.published_at !== null
+  );
   const feedback = useFeedback(
     insightId,
     load.phase === 'ready' ? (load.insight.feedback ?? null) : null
   );
   const session = useSession();
   const router = useRouter();
+  const handed = handedPhoto(insightId);
 
   if (load.phase === 'loading') {
-    return (
+    const status = (
       <p role="status" className="px-6 py-16 text-center text-fg-soft">
         {T.loading}
       </p>
+    );
+    // Opened from its scan: the scan's photo is on screen at once, so the one turns into the other.
+    return handed === null ? (
+      status
+    ) : (
+      <ReadingLayout media={<InsightPhoto {...handed} alt={T.photoAlt} unoptimized />}>
+        {status}
+      </ReadingLayout>
     );
   }
   if (load.phase === 'lost') {
@@ -141,7 +164,13 @@ export function InsightScreen({
   // The API publishes only a signed-in owner's insight from the real analysis; offer sharing only then.
   const canShare = session.status === 'signed-in' && insight.engine === 'pipeline';
   const share: ShareOption = canShare
-    ? { kind: 'open', onOpen: () => setShareOpen(true) }
+    ? {
+        kind: 'open',
+        onShare: quick.run,
+        onOptions: () => setShareOpen(true),
+        working: quick.working,
+        said: quick.said,
+      }
     : {
         kind: 'blocked',
         reason:
@@ -153,7 +182,7 @@ export function InsightScreen({
   return (
     <>
       <ReadingLayout
-        media={<Photo view={photo} insight={insight} backHref={backHref} />}
+        media={<Photo view={photo} insight={insight} backHref={backHref} handed={handed} />}
         footer={
           <div className="flex flex-col gap-2">
             {finish.error === undefined ? null : (
@@ -161,12 +190,17 @@ export function InsightScreen({
                 <Notice tone="error">{finish.error}</Notice>
               </div>
             )}
+            {quick.said === null || finish.completion !== null ? null : (
+              <div role={quick.said.tone === 'error' ? 'alert' : 'status'}>
+                <Notice tone={quick.said.tone}>{quick.said.text}</Notice>
+              </div>
+            )}
             <InsightActions
               status={finish.status}
               onDone={() => {
                 void controls.complete();
               }}
-              onShare={canShare ? () => setShareOpen(true) : undefined}
+              onShare={canShare ? quick.run : undefined}
             />
           </div>
         }
@@ -241,7 +275,8 @@ export function InsightScreen({
           onClose={() => setShareOpen(false)}
           insightId={insight.id}
           insightTitle={insight.title}
-          published={insight.published_at !== null}
+          published={quick.published}
+          onPublishedChange={quick.setPublished}
           publishTo={publishTo}
         />
       ) : null}

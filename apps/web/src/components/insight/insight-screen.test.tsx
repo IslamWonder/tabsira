@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Route as NextRoute } from 'next';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { forgetSession, readSession, setGuest, setSignedIn } from '@/account/session';
 import { messages } from '@/messages';
 import { apiError, mockApi, type Route } from '@/test/api';
@@ -15,6 +16,7 @@ import {
   VERSE_TEXT,
 } from '@/test/scan';
 import { InsightScreen } from './insight-screen';
+import { forgetHandedPhoto, handPhoto } from './photo-handoff';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
@@ -27,6 +29,7 @@ beforeEach(() => {
   forgetSession();
   push.mockClear();
   window.localStorage.clear();
+  forgetHandedPhoto();
 });
 
 function serve(insight = insightOut(), extra: Record<string, Route> = {}) {
@@ -251,35 +254,101 @@ describe('InsightScreen: why, the chat and the step', () => {
   });
 });
 
+const PAGE = `https://tabsira.test/insights/${ID}`;
+const PUBLISHED = {
+  insight_id: ID,
+  published: true,
+  published_at: '2026-10-06T09:00:00Z',
+  path: `/insights/${ID}`,
+};
+
+function stubShare(share: unknown, clipboard?: unknown) {
+  vi.stubGlobal('navigator', { ...navigator, share, clipboard });
+}
+
+async function finished(extra: Record<string, Route> = {}, insight = insightOut()) {
+  const api = await open(insight, {
+    [`POST /insights/${ID}/complete`]: { body: completionOut() },
+    'GET /me/progress': { body: progressOut() },
+    'GET /profile': { body: { ...PROFILE, questions_asked: true } },
+    ...extra,
+  });
+  await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
+  const panel = await screen.findByRole('region', { name: 'اكتملت بصيرتك' });
+  return { api, panel };
+}
+
+const puts = (api: { requests: Request[] }) =>
+  api.requests.filter((request) => request.method === 'PUT');
+
 describe('InsightScreen: sharing', () => {
-  it('opens the share sheet from the share button, for a signed-in owner of a real analysis', async () => {
-    setSignedIn(USER);
-    const api = serve();
-    render(<InsightScreen insightId={ID} publishTo={{ atlas: true, community: true }} />);
-    await screen.findByRole('heading', { level: 1, name: insightOut().title });
-    await userEvent.click(screen.getByRole('button', { name: 'شارك' }));
-    const sheet = screen.getByRole('dialog', { name: 'شارك البصيرة' });
-    expect(within(sheet).getByRole('button', { name: 'انشر وشارك' })).toBeInTheDocument();
-    // The other surfaces the server said are on, each leading to its own preview with this insight.
-    expect(within(sheet).getByRole('link', { name: 'انشر على الخريطة' })).toHaveAttribute(
-      'href',
-      `/atlas/publish?insight=${ID}`
-    );
-    expect(within(sheet).getByRole('link', { name: 'انشر في تواصل' })).toHaveAttribute(
-      'href',
-      `/community/publish?insight=${ID}`
-    );
-    expect(api.requests.some((request) => request.url.includes('/publication'))).toBe(false);
-    await userEvent.click(within(sheet).getByRole('button', { name: 'أغلق' }));
-    expect(screen.queryByRole('dialog')).toBeNull();
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
-  it('opens it already public for an insight the owner published', async () => {
+  it('shares in one tap from the footer button: the system dialog opens inside the tap, then the publication lands', async () => {
     setSignedIn(USER);
-    await open(insightOut({ published_at: '2026-10-04T09:00:00Z' }));
+    const order: string[] = [];
+    const share = vi.fn(async () => {
+      order.push('share');
+    });
+    stubShare(share);
+    const api = serve(insightOut(), {
+      [`PUT /insights/${ID}/publication`]: () => {
+        order.push('publish');
+        return { body: PUBLISHED };
+      },
+    });
+    render(<InsightScreen insightId={ID} />);
+    await screen.findByRole('heading', { level: 1, name: insightOut().title });
+    const button = screen.getByRole('button', { name: 'شارك' });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    // Called synchronously, before any await of the network.
+    expect(share).toHaveBeenCalledOnce();
+    expect(share).toHaveBeenCalledWith({
+      title: insightOut().title,
+      text: insightOut().title,
+      url: PAGE,
+    });
+    await waitFor(() => expect(puts(api)).toHaveLength(1));
+    expect(order).toEqual(['share', 'publish']);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // Already public now: a later tap shares without publishing again.
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
+    expect(share).toHaveBeenCalledTimes(2);
+    expect(puts(api)).toHaveLength(1);
+  });
+
+  it('shares an insight already public without publishing it', async () => {
+    setSignedIn(USER);
+    const share = vi.fn().mockResolvedValue(undefined);
+    stubShare(share);
+    const api = await open(insightOut({ published_at: '2026-10-04T09:00:00Z' }));
     await userEvent.click(screen.getByRole('button', { name: 'شارك' }));
-    const sheet = screen.getByRole('dialog', { name: 'شارك البصيرة' });
-    expect(within(sheet).getByRole('button', { name: 'اسحب النشر' })).toBeInTheDocument();
+    expect(share).toHaveBeenCalledOnce();
+    expect(puts(api)).toHaveLength(0);
+  });
+
+  it('says the API refusal when the publication fails, so the owner knows the link will not open', async () => {
+    setSignedIn(USER);
+    stubShare(vi.fn().mockResolvedValue(undefined));
+    await open(insightOut(), {
+      [`PUT /insights/${ID}/publication`]: apiError(409, 'INSIGHT_NOT_PUBLISHABLE'),
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'شارك' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('لا يمكن نشر هذه البصيرة');
+  });
+
+  it('copies the link and says so when the browser has no share dialog', async () => {
+    setSignedIn(USER);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubShare(undefined, { writeText });
+    await open(insightOut(), { [`PUT /insights/${ID}/publication`]: { body: PUBLISHED } });
+    await userEvent.click(screen.getByRole('button', { name: 'شارك' }));
+    expect(await screen.findByText('نُسخ الرابط.')).toBeInTheDocument();
+    expect(writeText).toHaveBeenCalledWith(PAGE);
   });
 
   it('offers no sharing to a guest, whom the API refuses, and says so after «تمّ»', async () => {
@@ -291,7 +360,7 @@ describe('InsightScreen: sharing', () => {
     expect(screen.queryByRole('button', { name: 'شارك' })).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
     const panel = await screen.findByRole('region', { name: 'اكتملت بصيرتك' });
-    expect(within(panel).queryByRole('button', { name: 'شارك البصيرة' })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: 'شارك' })).toBeNull();
     expect(within(panel).getByText(/سجّل الدخول لتشارك البصيرة/)).toBeInTheDocument();
   });
 
@@ -308,17 +377,58 @@ describe('InsightScreen: sharing', () => {
     expect(within(panel).getByText(/المثال المُعدّ لا يُشارك/)).toBeInTheDocument();
   });
 
-  it('opens the share sheet from the third option after «تمّ», for an owner who may publish', async () => {
+  it('shows the share button with its icon and the hint after «تمّ», and shares in one tap', async () => {
     setSignedIn(USER);
-    await open(insightOut(), {
-      [`POST /insights/${ID}/complete`]: { body: completionOut() },
-      'GET /me/progress': { body: progressOut() },
-      'GET /profile': { body: { ...PROFILE, questions_asked: true } },
+    const share = vi.fn().mockResolvedValue(undefined);
+    stubShare(share);
+    const { api, panel } = await finished({
+      [`PUT /insights/${ID}/publication`]: { body: PUBLISHED },
     });
-    await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
-    const panel = await screen.findByRole('region', { name: 'اكتملت بصيرتك' });
-    await userEvent.click(within(panel).getByRole('button', { name: 'شارك البصيرة' }));
+    expect(within(panel).getByText(/المشاركة تنشر للبصيرة صفحة عامة/)).toBeInTheDocument();
+    const button = within(panel).getByRole('button', { name: 'شارك' });
+    expect(button.querySelector('svg')).not.toBeNull();
+    await userEvent.click(button);
+    expect(share).toHaveBeenCalledWith({
+      title: insightOut().title,
+      text: insightOut().title,
+      url: PAGE,
+    });
+    await waitFor(() => expect(puts(api)).toHaveLength(1));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('shows the refusal in the panel when the publication fails, and opens the sheet from the options link', async () => {
+    setSignedIn(USER);
+    stubShare(vi.fn().mockResolvedValue(undefined));
+    const { panel } = await finished({
+      [`PUT /insights/${ID}/publication`]: apiError(409, 'INSIGHT_NOT_PUBLISHABLE'),
+    });
+    await userEvent.click(within(panel).getByRole('button', { name: 'شارك' }));
+    expect(await within(panel).findByRole('alert')).toHaveTextContent('لا يمكن نشر هذه البصيرة');
+    await userEvent.click(within(panel).getByRole('button', { name: 'خيارات النشر' }));
     expect(screen.getByRole('dialog', { name: 'شارك البصيرة' })).toBeInTheDocument();
+  });
+
+  it('publishes from the sheet and the screen then shares without publishing again', async () => {
+    setSignedIn(USER);
+    const share = vi.fn().mockResolvedValue(undefined);
+    stubShare(share);
+    const { api, panel } = await finished({
+      [`PUT /insights/${ID}/publication`]: { body: PUBLISHED },
+      [`DELETE /insights/${ID}/publication`]: {
+        body: { insight_id: ID, published: false, published_at: null, path: null },
+      },
+    });
+    await userEvent.click(within(panel).getByRole('button', { name: 'خيارات النشر' }));
+    const sheet = screen.getByRole('dialog', { name: 'شارك البصيرة' });
+    await userEvent.click(within(sheet).getByRole('button', { name: 'انشر وشارك' }));
+    await within(sheet).findByRole('button', { name: 'اسحب النشر' });
+    await userEvent.click(within(sheet).getByRole('button', { name: 'اسحب النشر' }));
+    await within(sheet).findByText(/سُحبت البصيرة/);
+    await userEvent.click(within(sheet).getByRole('button', { name: 'أغلق' }));
+    await userEvent.click(within(panel).getByRole('button', { name: 'شارك' }));
+    // Withdrawn, so the tap publishes again.
+    await waitFor(() => expect(puts(api)).toHaveLength(2));
   });
 });
 
@@ -497,5 +607,43 @@ describe('InsightScreen: rating the insight', () => {
     await userEvent.click(field);
     await userEvent.paste('ن'.repeat(301));
     expect(within(sheet).getByRole('button', { name: F.send })).toBeDisabled();
+  });
+});
+
+describe('InsightScreen: the photo handed over by its scan', () => {
+  const HANDED = {
+    src: 'http://api.tabsira.test/scans/1/image',
+    width: 800,
+    height: 600,
+    backHref: `/scan/${SCAN}` as NextRoute,
+  };
+
+  it("shows the scan's photo at once, while the insight is still being read", async () => {
+    handPhoto(ID, HANDED);
+    serve();
+    render(<InsightScreen insightId={ID} />);
+    expect(screen.getByRole('status')).toHaveTextContent(messages.insightPage.loading);
+    const photo = screen.getByRole('img', { name: messages.insightPage.photoAlt });
+    expect(photo.getAttribute('src')).toContain('scans/1/image');
+    expect(screen.getByRole('link', { name: messages.insight.back })).toHaveAttribute(
+      'href',
+      `/scan/${SCAN}`
+    );
+    await screen.findByRole('heading', { level: 1, name: insightOut().title });
+  });
+
+  it("keeps the scan's photo once the insight is read, until its own photo is", async () => {
+    handPhoto(ID, HANDED);
+    // The insight's own photo never arrives in this test: the scan it is read from keeps quiet.
+    await open(insightOut(), { [`GET /scans/${SCAN}`]: () => new Promise(() => undefined) });
+    const photo = screen.getByRole('img', { name: messages.insightPage.photoAlt });
+    expect(photo.getAttribute('src')).toContain('scans/1/image');
+  });
+
+  it('keeps to the placeholder for any other insight', () => {
+    handPhoto('110000000000000009', HANDED);
+    serve();
+    render(<InsightScreen insightId={ID} />);
+    expect(screen.queryByRole('img', { name: messages.insightPage.photoAlt })).toBeNull();
   });
 });

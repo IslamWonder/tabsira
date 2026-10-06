@@ -97,6 +97,51 @@
   pointer-events: none;
 }
 
+/*
+ * On a menu window (never a scripture panel) a glint of gold runs once round
+ * the outer rule when the window appears, then fades and leaves the rule still.
+ * The angle and its strength are registered so they interpolate; a browser
+ * without @property simply shows the still rule.
+ */
+@property --fx-glint-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@property --fx-glint-strength {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+.fx-ornate-glow::before {
+  background:
+    conic-gradient(
+      from var(--fx-glint-angle),
+      transparent 0deg 300deg,
+      color-mix(in srgb, var(--glow-gold) var(--fx-glint-strength), transparent) 340deg,
+      transparent 360deg
+    ),
+    var(--rule-gradient);
+  animation: fx-glint-round 1.8s cubic-bezier(0.45, 0.02, 0.55, 0.98) 0.35s both;
+}
+
+@keyframes fx-glint-round {
+  0% {
+    --fx-glint-angle: 0deg;
+    --fx-glint-strength: 0%;
+  }
+  20%,
+  75% {
+    --fx-glint-strength: 95%;
+  }
+  100% {
+    --fx-glint-angle: 360deg;
+    --fx-glint-strength: 0%;
+  }
+}
+
 /* The inner rule, 5 px in: the double line of an illuminated frame. */
 .fx-ornate::after {
   content: "";
@@ -849,4 +894,76 @@
     opacity: 0;
     transform: scale(2.6);
   }
+}
+
+/* ─── Route change: the page left behind fades out (app/template.tsx) ── */
+
+::view-transition-old(.page-leave) {
+  animation: 200ms cubic-bezier(0.4, 0, 1, 1) both fx-page-leave;
+}
+
+@keyframes fx-page-leave {
+  to {
+    opacity: 0;
+  }
+}
+
+/* The scan's photo turns into the insight's photo (components/insight/photo-handoff.ts). */
+::view-transition-group(.photo-morph) {
+  animation-duration: 450ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The global reduced-motion rules do not reach these pseudo-elements. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+:root[data-motion="reduce"]::view-transition-group(*),
+:root[data-motion="reduce"]::view-transition-old(*),
+:root[data-motion="reduce"]::view-transition-new(*) {
+  animation: none !important;
+}
+
+/* ─── Loading placeholders (components/ui/loading-rows.tsx) ─────────── */
+
+.fx-placeholder {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+}
+
+/* A slow gold shine crosses each shape in reading order, right to left. */
+.fx-placeholder::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in srgb, var(--glow-gold) 18%, transparent) 50%,
+    transparent 70%
+  );
+  transform: translateX(100%);
+  animation: fx-placeholder-shine 1.8s ease-in-out infinite;
+}
+
+@keyframes fx-placeholder-shine {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+/* ─── The call to act: a button the scan waits on (components/scan/clarify-form.tsx) ── */
+
+/* A still gold ring marks it (colour, so it stays under reduced motion); its halo breathes out three times. */
+.fx-call {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--glow-gold) 60%, transparent),
+    0 0 22px -2px color-mix(in srgb, var(--glow-gold) 70%, transparent);
 }

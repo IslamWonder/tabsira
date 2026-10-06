@@ -1,16 +1,16 @@
 # 14 · Deployment and operations
 
-**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-04 20:38 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-06 15:13 (Tunis)
 
 Production at tabsira.me without Docker, with no downtime on deploy and data reachable only over the VPN.
 
 | Step                                                  | Status | Notes                                                                                 |
 | ----------------------------------------------------- | ------ | ------------------------------------------------------------------------------------- |
-| Deploy scripts with rollback and no downtime          | ✅     | Ready; never run on a server yet.                                                     |
+| Deploy scripts with rollback and no downtime          | ✅     | Run on production.                                                                    |
 | Database and Redis host over the VPN, nightly backups | ✅     |                                                                                       |
 | Scheduled jobs, UTC everywhere                        | ✅     |                                                                                       |
-| Rehearsal on a scratch server                         | 🔄     | Rehearsed in local containers on 2026-10-04 18:04, real servers pending.              |
-| First production deploy                               | ⬜     |                                                                                       |
+| Rehearsal on a scratch server                         | ✅     | Rehearsed in local containers on 2026-10-04 18:04, then the real deploy.              |
+| First production deploy                               | ✅     | Live: `https://tabsira.me` answers 200 and `api.tabsira.me/health` ok (2026-10-06).   |
 | Delivery documents and the smoke scan checks          | ✅     | README, challenge log, operations section, rain scene and trial scan in `make smoke`. |
 
 **Waiting on the owners**
@@ -25,7 +25,7 @@ Production at tabsira.me without Docker, with no downtime on deploy and data rea
 
 ### 14.1 Rehearse the deploy on a scratch server
 
-- **Status:** 🔄 rehearsed in local containers on 2026-10-04 18:04, real servers pending; review before the first real deploy added the boot-order guard for the VPN address, the shared corpus folder and the full production template
+- **Status:** ✅ 2026-10-06: superseded by the real production deploy (`https://tabsira.me` answers 200, `https://api.tabsira.me/health` answers ok, checked from a development machine); rehearsed in local containers on 2026-10-04 18:04 before it.
 - **Goal:** Provision a scratch app host and data host, deploy, roll back, restore a backup.
 - **Depends on:** A scratch VM pair.
 - **Touches:** deploy/ fixes only, docs/OPERATIONS.md.

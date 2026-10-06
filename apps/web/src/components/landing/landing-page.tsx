@@ -152,13 +152,13 @@ function Hero() {
   const capture = useCapture();
   return (
     <section aria-labelledby="landing-title" className={CONTAINER}>
-      <div className="relative isolate grid items-center gap-6 overflow-hidden rounded-[22px] bg-[linear-gradient(135deg,#082e25_0%,#0f4c3a_100%)] px-[25px] py-[29px] text-[#ffffff] tablet:grid-cols-2 tablet:rounded-[24px] tablet:px-9 tablet:py-[38px] desktop:min-h-[566px] desktop:rounded-[28px] desktop:px-16 desktop:py-[46px]">
+      <div className="relative isolate grid items-center gap-6 overflow-hidden rounded-[22px] bg-[linear-gradient(135deg,var(--hero-deep)_0%,var(--hero-green)_100%)] px-[25px] py-[29px] text-[var(--hero-ink)] tablet:grid-cols-2 tablet:rounded-[24px] tablet:px-9 tablet:py-[38px] desktop:min-h-[566px] desktop:rounded-[28px] desktop:px-16 desktop:py-[46px]">
         <HeroAtmosphere />
         <div className="relative flex min-w-0 flex-col items-start gap-5">
-          <p className="m-0 flex items-center gap-3 text-[0.9375rem] text-[rgb(255_255_255/0.85)]">
+          <p className="m-0 flex items-center gap-3 text-[0.9375rem] text-[var(--hero-ink-soft)]">
             <span
               aria-hidden="true"
-              className="fx-thread fx-thread--now h-px w-5 bg-[#c6a15b]"
+              className="fx-thread fx-thread--now h-px w-5 bg-[var(--hero-gold-line)]"
               style={revealDelay(0, 0, 150)}
             />
             <span className="fx-rise" style={revealDelay(0, 0, 250)}>
@@ -172,12 +172,15 @@ function Hero() {
             <span className="block">
               <Words text={L.hero.titleLead} delay={TITLE_START} />
             </span>
-            <span className="fx-glint block text-[#dfbd77]" style={revealDelay(0, 0, GLINT_AT)}>
+            <span
+              className="fx-glint block text-[var(--hero-gold)]"
+              style={revealDelay(0, 0, GLINT_AT)}
+            >
               <Words text={L.hero.titleGold} delay={GOLD_START} />
             </span>
           </h1>
           <p
-            className="fx-rise m-0 max-w-[34rem] text-[1.0625rem] text-[rgb(255_255_255/0.86)] leading-[1.9]"
+            className="fx-rise m-0 max-w-[34rem] text-[1.0625rem] text-[var(--hero-ink-soft)] leading-[1.9]"
             style={revealDelay(0, 0, 1150)}
           >
             {L.hero.lead}
@@ -187,12 +190,12 @@ function Hero() {
               type="button"
               onClick={capture.open}
               aria-haspopup="dialog"
-              className="relative inline-flex min-h-12 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-[14px] bg-[#dfbd77] px-4 font-semibold text-[#202616] text-[1.0625rem] transition-[filter] duration-200 hover:brightness-105 focus-visible:outline-3 focus-visible:outline-[#ffffff] focus-visible:outline-offset-2 tablet:min-h-[52px] tablet:flex-none tablet:px-6"
+              className="relative inline-flex min-h-12 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-[14px] bg-[var(--hero-gold)] px-4 font-semibold text-[var(--hero-on-gold)] text-[1.0625rem] transition-[filter] duration-200 hover:brightness-105 focus-visible:outline-3 focus-visible:outline-[var(--hero-ink)] focus-visible:outline-offset-2 tablet:min-h-[52px] tablet:flex-none tablet:px-6"
             >
               {/* The call to capture breathes out a ring of light three times, then rests. */}
               <span
                 aria-hidden="true"
-                className="fx-halo pointer-events-none absolute inset-0 rounded-[14px] border-2 border-[#dfbd77]"
+                className="fx-halo pointer-events-none absolute inset-0 rounded-[14px] border-2 border-[var(--hero-gold)]"
                 style={revealDelay(0, 0, 2300)}
               />
               <CameraIcon width="20" height="20" />
@@ -200,7 +203,7 @@ function Hero() {
             </button>
             <Link
               href="#example"
-              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-[14px] border border-[rgb(255_255_255/0.45)] px-4 font-semibold text-[#ffffff] text-[1.0625rem] transition-colors duration-200 hover:bg-[rgb(255_255_255/0.08)] focus-visible:outline-3 focus-visible:outline-[#ffffff] focus-visible:outline-offset-2 tablet:min-h-[52px] tablet:flex-none tablet:px-6"
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-[14px] border border-[var(--hero-line)] px-4 font-semibold text-[var(--hero-ink)] text-[1.0625rem] transition-colors duration-200 hover:bg-[var(--hero-wash)] focus-visible:outline-3 focus-visible:outline-[var(--hero-ink)] focus-visible:outline-offset-2 tablet:min-h-[52px] tablet:flex-none tablet:px-6"
             >
               {L.hero.tryExample}
               {/* Onward, where Arabic reads: at the end of the label, pointing left. */}
@@ -208,7 +211,7 @@ function Hero() {
             </Link>
           </div>
           <p
-            className="fx-rise m-0 flex items-center gap-2 text-[0.875rem] text-[rgb(255_255_255/0.8)]"
+            className="fx-rise m-0 flex items-center gap-2 text-[0.875rem] text-[var(--hero-ink-soft)]"
             style={revealDelay(0, 0, 1600)}
           >
             <ShieldIcon width="16" height="16" />
@@ -339,7 +342,7 @@ function StoryCard({
             className="object-cover"
           />
         </div>
-        <span className="absolute end-3 bottom-3 rounded-full bg-[#f6faf7] px-3 py-1 font-semibold text-[#16302a] text-[0.8125rem] shadow">
+        <span className="absolute end-3 bottom-3 rounded-full bg-[var(--preview-paper)] px-3 py-1 font-semibold text-[var(--preview-ink)] text-[0.8125rem] shadow">
           {story.tag}
         </span>
       </div>

@@ -28,7 +28,7 @@ export interface ScanStageProps {
 }
 
 /** The photo, only when the API says it may be shown: after the sensitivity verdict, and while it is kept. */
-function shownPhoto(scan: Scan | null) {
+export function shownPhoto(scan: Scan | null) {
   if (scan === null || scan.sensitive || !scan.image.available || scan.image.url === null) {
     return null;
   }
@@ -97,6 +97,7 @@ export function ScanStage({
         unoptimized
         listInPanel
         framed
+        morph
         className="h-full"
       >
         <ScanSweep active={running} />

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readSession, setGuest, setSignedIn } from '@/account/session';
+import { forgetHandedPhoto, handedPhoto } from '@/components/insight/photo-handoff';
 import type { Failure } from '@/lib/api/result';
 import type { RunStage, ScanControls, ScanView } from '@/lib/scan/use-scan';
 import { USER } from '@/test/fixtures';
@@ -52,6 +53,7 @@ const ready = (overrides = {}) => ({ phase: 'ready', scan: scanOut(overrides) })
 beforeEach(() => {
   push.mockClear();
   sceneSound.mockClear();
+  forgetHandedPhoto();
 });
 
 describe("ScanScreen: the scene's sound", () => {
@@ -231,6 +233,17 @@ describe('ScanScreen: the insights', () => {
       document.querySelector('[data-point-id="110000000000000002"]') as HTMLElement
     );
     expect(push).toHaveBeenCalledWith('/insight/110000000000000002');
+    // The photo on screen goes with it, so it can turn into the insight's photo.
+    expect(handedPhoto('110000000000000002')).toMatchObject({ backHref: '/scan/1' });
+  });
+
+  it('hands no photo over when none may be shown', async () => {
+    setControls(ready({ image: { available: false, width: 800, height: 600, url: null } }));
+    render(<ScanScreen scanId="1" />);
+    const list = screen.getByRole('region', { name: 'المس البصيرة التي لفتتك' });
+    await userEvent.click(within(list).getAllByRole('button')[0] as HTMLElement);
+    expect(push).toHaveBeenCalled();
+    expect(handedPhoto('110000000000000002')).toBeNull();
   });
 
   it('has no scene description and no waiting note when the scan gave none', () => {
@@ -280,6 +293,16 @@ describe('ScanScreen: the single question', () => {
     await userEvent.type(screen.getByLabelText('جوابك'), '  أسقي النبتة ');
     await userEvent.click(screen.getByRole('button', { name: 'أجب وأكمل' }));
     expect(clarify).toHaveBeenCalledWith('أسقي النبتة');
+  });
+
+  it('marks the answer button with a gold call until the reader first sends', async () => {
+    renderQuestion();
+    const button = screen.getByRole('button', { name: 'أجب وأكمل' });
+    expect(button.className).toContain('fx-call');
+    expect(button.querySelector('.fx-halo')).toHaveAttribute('aria-hidden', 'true');
+    await userEvent.click(button);
+    expect(button.className).not.toContain('fx-call');
+    expect(button.querySelector('.fx-halo')).toBeNull();
   });
 
   it('asks for an answer before sending anything', async () => {

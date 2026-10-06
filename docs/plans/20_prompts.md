@@ -2,7 +2,7 @@
 
 A map of every model prompt in the code, and of how search finds the texts behind an insight, so the owners can review and change them in one place. Read-only inventory: it describes the code, it does not replace it. Keep it in step whenever a prompt file or a prompt constant changes.
 
-**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-05 (Tunis)
+**Phase:** 1 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-06 15:13 (Tunis)
 
 ## How prompts work
 
@@ -139,7 +139,7 @@ Each lever says what to change and what to measure. Measure with `make benchmark
 | Move `LLM_RERANK_SYSTEM` to a versioned prompt file                                       | ⬜     | Needs the owners' yes; small change.              |
 | Decide on old prompt versions (planner v1-v2, verifier v1-v2, composer v1-v3, chat v2-v4) | ⬜     | Keep as history or prune.                         |
 | Decide whether unhashed user-message builders matter                                      | ⬜     | Planner, verifier and composer messages are code. |
-| Measure the rebuilt path with `make eval`                                                 | ⬜     | Task 05.8: needs a machine with the provider key. |
+| Measure the rebuilt path with `make eval`                                                 | ✅     | 2026-10-06: 13/15 and 12/15, no leak (05.8).      |
 | Profile-fitted composer v5 and chat v6                                                    | ✅     | 2026-10-05, task 22.2, decision 64.               |
 
 **How we keep it current:** whenever a prompt file, a prompt constant or a search constant changes, update the tables above and the **Updated** time in the same commit (time from `date`, shown in Tunis time).

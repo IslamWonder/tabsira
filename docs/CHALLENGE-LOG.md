@@ -1,10 +1,17 @@
 # Challenge log
 
-The day's work on TABSIRA, built from `git log --date=format:'%H:%M' --format='%ad %s' main` for 4 October 2026 (times are Tunis time, the committers' clock, UTC+1). The log held 634 entries; 568 distinct subjects remain once the commits that two merged branches carried twice are counted once. Every line of the log is one commit, one logical change; the subjects are the detail, this file is the shape of the day and what it did not finish.
+The work of the challenge days on TABSIRA. The 4 October section is built from `git log --date=format:'%H:%M' --format='%ad %s' main` for 4 October 2026 (times are Tunis time, the committers' clock, UTC+1). The log held 634 entries; 568 distinct subjects remain once the commits that two merged branches carried twice are counted once. Every line of the log is one commit, one logical change; the subjects are the detail, this file is the shape of the day and what it did not finish.
 
 Two sources say where things stand: `docs/plans/README.md` (the features and their tasks, with the time each one was marked done) and `docs/spec/DECISIONS.md` (54 decisions, 51 to 54 taken today). Nothing here is a claim beyond those two files.
 
-## The day, hour by hour
+## Starting point
+
+The participant's guide (`docs/spec/contest-guide.md`) allows a project started before the challenge when its starting version is documented; only the work of 4 to 6 October is judged. This repository's first commit is `docs: add rules for AI coding agents`, on 4 October 2026 at 07:44 Tunis time: every line of code, test, script and document here was written during the challenge days (769 commits on 4 October, 273 on 5 October, and those of 6 October). What came from before, and is named where it is used:
+
+- **The earlier prototype** of this product (the owners' own): its look (the eight-point star mark, the aurora backdrop, the light motes, StageOrbit and QuestLog, `docs/DESIGN_DECISION.md`), its gamification rules (decision 27), the Turnstile choice (decision 56) and one test photo (`child-cat.jpg`, provenance in `apps/api/tests/evaluation/scenes/gold.json`). No code was copied from it.
+- **Data prepared before the challenge by the authors:** the annotated Quran corpus (`final_complete_verses_20251202_194512.json`, 2 December 2025), the enriched Sunnah file, the world ontology and the learning path «مسار» (`docs/SOURCES-AND-LICENSES.md`, «Retrieval aids»).
+
+## 4 October, hour by hour
 
 | Hour  | api | web | docs | admin | data | vision | tooling | Total |
 | ----- | --- | --- | ---- | ----- | ---- | ------ | ------- | ----- |
@@ -50,9 +57,31 @@ Areas are the commit prefixes: `data` gathers `scripture`, `ontology`, `learning
 
 **19:00–20:00 — atlas fixes, camera discovery, the capture flow, the audit.** The atlas after its reviews: no cached atlas answers, publication dated to the day, tombstones kept, 204 on blocking an unheld handle. Camera discovery over the atlas by place and direction, with a note instead of a crash when WebGL2 is missing. The scan started from a live camera or a photo, never a pasted link (decision 51). `make data` importing the store, the vectors and GeoNames once. Stale branches closed. The production template listing every API setting, the corpus read from a shared folder, nginx, PostgreSQL and Redis allowed to start before the VPN address exists. The compliance audit of the day recorded decisions 52 to 54 (guest insights on the server, the card without a photo, `FEATURE_PUBLIC_PAGES` realised by `FEATURE_SOCIAL`).
 
+## 5 October, by theme
+
+273 commits (`git log --since=2026-10-05 --until=2026-10-06 main`), the same rules: one commit, one change.
+
+- **The search path rebuilt (task 05.8).** Intents planned from the scene, the enriched Sunnah file searched first and the store after, a relevance verifier that tests rather than justifies, verses judged with their neighbours, prompts with no worked examples and no scripture; the prompt inventory in plan 20.
+- **Hadith display (decisions 64 and 65).** A hadith the gate accepts is shown as stored, with no ruling displayed; a hadith an editor ruled out stays hidden.
+- **Accounts and profile (decision 63, plan 22).** An account after the first scan, a mandatory profile, the real full name shown only by its own consent, under-13 rules; the composer and the chat fit the declared profile without revealing it.
+- **Photos.** A private folder per account, emptied with the account; the published photo on a public insight.
+- **The social network and the atlas switched on.** One feature switchboard (`DISABLED_FEATURES`, `ENABLED_FEATURES`), comments off by default, the two reactions «انتفعت بها» and «جزاك الله خيرًا», orphaned atlas entries and their sponsoring (decision 60), clusters and a paged list on the atlas, following from a post, a country by consent, profile sharing.
+- **Mock members (decision 66, plan 23).** A generator, the real pipeline run over placepix photos, an importer and its clean, complete members with every feature.
+- **Interface.** The landing page with its opening scene, the world under clouds, the sky of meanings, the sources page, insight sounds, ratings of an insight, map controls, the type scale.
+- **Delivery.** The AGPL-3.0 licence, GitHub Actions and the Jenkins deploy job, macOS and Windows setup scripts, a production check that refuses a file missing a key, the fourth coverage pass (task 15.3).
+
+## 6 October, by theme
+
+- **Contest documents.** The reference pack and the participant's guide summarised with their open points (`docs/spec/contest-reference.md`, `docs/spec/contest-guide.md`); the tools used registered beside the sources.
+- **The leak guard in today's spelling (task 05.9).** Our own converter writes the stored quranpedia verses in today's spelling for the guard only; the 18 short verses with a joined «يا» that escaped are now refused, and 5-word quotations in today's spelling missed fell from 1,231 runs to 125 (measured against an outside text kept out of the repository). Two scripture reviews passed.
+- **A campfire is not violence.** The scene prompt v4 names what is not violence; two campfire photos measured before and after, the gold sensitive scene still caught.
+- **Mock data audited and corrected.** A scripture review of every mock photo's hadith link, the wrong ones run again through the pipeline, re-audited, and the rest withdrawn; the file patched without regenerating it, and a command that rewrites the imported rows in place (`import_mock --refresh-insights`), rehearsed on a copy of the production state.
+- **Post views, reading aids, the speaker while a sound plays**, fixes to the practice page, the sky, the chat's account prompt; a static-analysis pass (SonarQube) over the API and the web.
+- **Evaluation.** `make eval` with the new guard: 13 of 15 gold scenes as expected (10 of 15 that morning), no leak, every reference resolved, the twelve chat cases 12 of 12.
+
 ## Done and open
 
-From `docs/plans/README.md` at the time of writing.
+From `docs/plans/README.md` on the evening of 4 October; the plans index holds the current state.
 
 | Feature                                    | Status       | What is open                                                                                                                                                                                        |
 | ------------------------------------------ | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -70,6 +99,8 @@ From `docs/plans/README.md` at the time of writing.
 Not built, from the audit of 4 October: the developer panel `/dev/inspect/{scanId}` (the trace is stored, no route renders it), a skip path that keeps a profile answer `unknown` without re-asking, a Docker compose file (decision 20 ruled Docker out of deployment; `make up` fails on purpose).
 
 ## Delivery table (v2 §30)
+
+As written on 4 October; the contest's own list and where each item stands now are in `docs/spec/contest-guide.md`.
 
 | Deliverable                    | Where                                                                                                                                                                     | Standing                                                                                        |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
