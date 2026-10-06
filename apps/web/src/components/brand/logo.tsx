@@ -11,6 +11,11 @@ export interface LogoProps {
   className?: string;
   /** Write the mark in on its first paint (fx.css «logo entrance»): the top bar's, once a page load. */
   entrance?: boolean;
+  /**
+   * With `entrance`: how many times the shine has been asked again since (an idle top bar).
+   * Each new count replays the shine and the glow, never the writing.
+   */
+  shine?: number;
 }
 
 /**
@@ -31,6 +36,7 @@ function Outlines({
   title,
   className,
   entrance = false,
+  shine = 0,
 }: LogoProps & { shape: typeof MARK | typeof LOGO }) {
   const order = entrance ? writingOrder(shape) : null;
   const outlines = shape.paths.map((d, index) =>
@@ -52,6 +58,8 @@ function Outlines({
     // The width follows the height the caller sets, at the drawing's own proportions.
     style: { aspectRatio: shape.viewBox.split(' ').slice(2).join(' / ') },
     className: cx('block w-auto text-brand', entrance && 'fx-logo-glow', className),
+    // Two names in turn, so that each new count starts the CSS animation again.
+    'data-shine': entrance && shine > 0 ? (shine % 2 === 1 ? 'a' : 'b') : undefined,
   };
   if (title === undefined) {
     return (

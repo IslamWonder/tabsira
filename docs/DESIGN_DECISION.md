@@ -151,7 +151,7 @@ One frame for every public photo: a thin gilded mat (a 1 px border at 30 % of th
 
 ### Logo entrance (added 6 October 2026)
 
-On a page load the top bar's mark and the consent window's logo write themselves in, the owners' Final Fantasy reference: the calligraphic strokes appear one after another from right to left, in the order the hand writes Arabic (each from where its outline starts), a ring of light opens behind the mark and four sparks rise as the last stroke lands, then a gold shine and a brief glow run over the strokes in the same order. About 2.6 s, once; the top bar stays mounted across navigation, so moving between pages does not replay it. Opacity, transform, colour and a drop shadow only (fx.css «logo entrance»); with reduced motion the logo is simply there.
+On a page load the top bar's mark and the consent window's logo write themselves in, the owners' Final Fantasy reference: the calligraphic strokes appear one after another from right to left, in the order the hand writes Arabic (each from where its outline starts), a ring of light opens behind the mark and four sparks rise as the last stroke lands, then a gold shine and a brief glow run over the strokes in the same order. About 2.6 s, once; the top bar stays mounted across navigation, so moving between pages does not replay it. Afterwards the top bar's mark only breathes, as a game's title logo does: after 45 s with no tap, key or scroll, the gold shine and glow alone run again (never the writing), three times at most a page load, and never while the reader is acting. Opacity, transform, colour and a drop shadow only (fx.css «logo entrance»); with reduced motion the logo is simply there.
 
 ### Logo (added 4 October 2026)
 
