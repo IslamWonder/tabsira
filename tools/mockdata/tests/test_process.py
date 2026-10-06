@@ -887,6 +887,10 @@ def test_options_from_the_command_line(tmp_path: Path) -> None:
         process.parser().parse_args(["patch", "--photos", "2", "--file", str(tmp_path / "f.json")])
     )
     assert patched == PatchOptions(file=tmp_path / "f.json", photos=frozenset({2}))
+    withdrawn = process.options_of(
+        process.parser().parse_args(["patch", "--photos", "2", "--withdraw", "unrelated"])
+    )
+    assert withdrawn.withdraw == "unrelated"
     with pytest.raises(SystemExit):
         process.parser().parse_args(["photos", "--only", "1", "--add-hadith"])
     default = process.options_of(process.parser().parse_args(["photos"]))
@@ -1088,6 +1092,29 @@ async def test_the_patch_changes_the_listed_photos_and_nothing_else(folder: Path
         "unchanged": 3,
     }
     assert read(folder / library.PHOTOS_NAME)["photos"] == stamped
+
+
+async def test_a_withdrawn_photo_is_emptied_and_kept_out_of_the_library(folder: Path) -> None:
+    path = folder / "tabsira-mock-v1.json"
+    path.write_text(library.dumps(mock_file()) + "\n", encoding="utf-8")
+    photos = library.photos(folder / library.PHOTOS_NAME)
+    kept = body_of(insight())
+    await photos.put("1", library_entry(kept))
+    await photos.put("2", library_entry(None, "people"))
+    options = PatchOptions(path, frozenset({1, 2}), withdraw="review: unrelated pairing")
+    assert await process.patch_stage(options, settings(), Fakes().services()) == 0
+    first, second, _ = read(path)["images"]
+    assert (first["insight"], second["insight"]) == (None, None)
+    entries = read(folder / library.PHOTOS_NAME)["photos"]
+    assert entries["1"]["outcome"] == library.WITHDRAWN
+    assert entries["1"]["insight"] is None
+    assert entries["1"]["withdrawn_insight"] == kept
+    assert entries["1"]["withdrawn_reason"] == "review: unrelated pairing"
+    # A photo with no kept insight is left as the library has it.
+    assert entries["2"]["outcome"] == "people"
+    assert "withdrawn_reason" not in entries["2"]
+    report = read(folder / patch_module.PATCH_REPORT_NAME)
+    assert {c["photo"]: c["outcome"] for c in report["photos"]} == {1: "withdrawn", 2: "people"}
 
 
 async def test_a_patch_that_changes_nothing_keeps_every_byte(folder: Path) -> None:

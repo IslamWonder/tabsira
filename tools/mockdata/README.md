@@ -150,6 +150,7 @@ make mock-texts                               # 3. write again the texts of thei
   (`replaced`, `filled`, `emptied`, `unchanged`, or `not_in_file` when the file does not use the
   photo), the library's outcome, and the verse and hadith (`2:164`, `bukhari:1`) before and after.
   It is safe to run again: a photo already patched is `unchanged`.
+- A review may take a photo's new insight out too: `make mock-patch MOCK_PHOTOS=<ids> MOCK_ARGS='--withdraw "<reason>"'` marks the kept insights of those photos `withdrawn` in the photo library (the insight moves to `withdrawn_insight`, with the reason and the time), so neither the generator nor `--add-hadith` uses them again, and empties them in the file. Running the photo again (`--only`) replaces the entry as for any photo.
 - A photo that became `null` keeps its insights and posts in the file; its posts lose their
   reflection and its comments their text at step 3, as for any photo without an insight.
 - Step 3 reuses a text only if it was written after the photo's insight (`insight_at` in the

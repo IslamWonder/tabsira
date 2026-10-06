@@ -599,6 +599,26 @@ class PatchOptions:
     file: Path = DATA_DIR / OUT_NAME
     photos: frozenset[int] = frozenset()
     parallel: int = 1
+    # Why a review took these photos' insights out; None patches from the library as it is.
+    withdraw: str | None = None
+
+
+def withdraw_entries(entries: dict[str, dict[str, Any]], ids: frozenset[int], reason: str) -> None:
+    """
+    Mark the kept insights of `ids` as withdrawn by a review, so the patch empties them.
+
+    The insight moves to `withdrawn_insight` with the reason and the time: the generator and
+    `--add-hadith` read kept photos only, so a later file never brings it back, and running
+    the photo again (`--only`) replaces the entry as for any photo.
+    """
+    stamp = now_text()
+    for pid in sorted(ids):
+        entry = entries[str(pid)]
+        if entry["outcome"] != library.KEPT:
+            continue
+        entry["withdrawn_insight"], entry["insight"] = entry["insight"], None
+        entry["outcome"] = library.WITHDRAWN
+        entry["withdrawn_reason"], entry["withdrawn_at"] = reason, stamp
 
 
 async def patch_stage(options: PatchOptions, settings: Settings, services: Services) -> int:
@@ -609,6 +629,8 @@ async def patch_stage(options: PatchOptions, settings: Settings, services: Servi
     if unknown:
         _say(f"not in the photo library, nothing patched: {', '.join(map(str, unknown))}")
         return 2
+    if options.withdraw is not None:
+        withdraw_entries(photos.entries, options.photos, options.withdraw)
     document = json.loads(options.file.read_text(encoding="utf-8"))
     changes = patch.patch_images(document, photos.entries, options.photos)
     text = dumps(document) + "\n"
@@ -1058,6 +1080,12 @@ def parser() -> argparse.ArgumentParser:
     patched.add_argument(
         "--photos", type=patch.parse_ids, required=True, help="placepix ids, 1,2,3"
     )
+    patched.add_argument(
+        "--withdraw",
+        metavar="REASON",
+        help="a review took these photos' insights out: mark them withdrawn in the library "
+        "(kept for the record, never used again) and empty them in the file",
+    )
     texts = stages.add_parser("texts", help="the posts' texts -> texts-library.json and the file")
     texts.add_argument("--file", type=Path, default=DATA_DIR / OUT_NAME)
     texts.add_argument("--parallel", type=int, default=PARALLEL)
@@ -1067,7 +1095,7 @@ def parser() -> argparse.ArgumentParser:
 
 def options_of(args: argparse.Namespace) -> PhotoOptions | TextOptions | PatchOptions:
     if args.stage == "patch":
-        return PatchOptions(file=args.file, photos=args.photos)
+        return PatchOptions(file=args.file, photos=args.photos, withdraw=args.withdraw)
     if args.stage == "texts":
         return TextOptions(file=args.file, parallel=args.parallel, limit=args.limit)
     return PhotoOptions(

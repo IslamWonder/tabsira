@@ -24,8 +24,12 @@ PHOTOS_NAME = "photo-library.json"
 TEXTS_NAME = "texts-library.json"
 LIBRARY_VERSION = 1
 KEPT = "insights"
+# A kept insight a review took out (`patch --withdraw`): never used again, kept for the record.
+WITHDRAWN = "withdrawn"
 # The outcomes a photo keeps in the library; anything else that ends a photo is an error.
-OUTCOMES = frozenset({KEPT, "needs_clarification", "no_relevant_evidence", "people", "sensitive"})
+OUTCOMES = frozenset(
+    {KEPT, WITHDRAWN, "needs_clarification", "no_relevant_evidence", "people", "sensitive"}
+)
 ERROR = "error"
 
 
