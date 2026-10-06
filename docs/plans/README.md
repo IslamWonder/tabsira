@@ -2,7 +2,7 @@
 
 One short file per feature: what it is, where it stands, what is waiting on the owners, and how it is checked. Phase 1 is this release (decision 40); phase 2 follows.
 
-**Updated:** 2026-10-06 08:03 (Tunis) · ✅ done · 🔄 in progress · ⬜ not started · ⏸ phase 2
+**Updated:** 2026-10-06 09:28 (Tunis) · ✅ done · 🔄 in progress · ⬜ not started · ⏸ phase 2
 
 | #   | Feature                                                                  | Phase | Priority | Status |
 | --- | ------------------------------------------------------------------------ | ----- | -------- | ------ |
@@ -29,6 +29,10 @@ One short file per feature: what it is, where it stands, what is waiting on the 
 | 21  | [An Islamic spirit for «تبصرة تواصل»](21_social_spirit.md)               | 2     | Medium   | 🔄     |
 | 22  | [Account after the first scan, full profile](22_account_profile_gate.md) | 1     | High     | ✅     |
 | 23  | [Mock members to start the platform](23_mock_data.md)                    | 2     | High     | ✅     |
+
+## The contest's reference pack
+
+The organisers' «المرجعية والحزمة العلمية والبيانات» sets the approved sources and the standard every output must meet: summary, gaps and the link in [docs/spec/contest-reference.md](../spec/contest-reference.md). Gaps open on 2026-10-06: tasks 05.10 (the «وجه الصلة» line) and 05.11 (no hadith without an approved ruling); the Quran guard's copy in today's spelling is our own processing of the approved quranpedia text, not Tanzil (task 05.9).
 
 ## Taking a task
 

@@ -1,6 +1,6 @@
 # 05 · Insight engine
 
-**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-05 10:55 (Tunis)
+**Phase:** 1 · **Priority:** Critical · **Status:** 🔄 · **Updated:** 2026-10-06 09:28 (Tunis)
 
 Finds the verse and hadith that truly fit the scene, checks them, and writes the explanation. It cites texts by reference only.
 
@@ -99,3 +99,17 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 - **Depends on:** 05.3.
 - **Touches:** apps/api pipeline/insight (intents, search, evidence, composer, engine, learning), retrieval (fusion weights, reranker wording, vector check), prompts (four new versions), scans/workflow, models/scan + migration `20261005_110000`, services/chat_retrieval, schemas/insight (`link`), errors; apps/web scan messages, scan screen, why-sheet, generated API types; docs/plans/20_prompts.md.
 - **Done when:** `make eval` on the rebuilt path shows no leak, every reference resolved, and the per-scene choices read as fitting by a human; the scripture review passes.
+
+### 05.10 «وجه الصلة» says what the text says, or nothing
+
+- **Status:** ⬜ waiting on the owners (they kept the line on 2026-10-06, before the contest's reference pack was read)
+- **Goal:** the contest's reference pack (`docs/spec/contest-reference.md`, rule 1) forbids attributing to a reference a saying it does not contain. The «وجه الصلة» line of «لماذا ظهر هذا؟» shows `matched_on`, the search query that ranked the text (`pipeline/insight/search.py` `_matched_on`), and the audit of 2026-10-06 found lines that describe the photo or a hoped-for topic instead of the text (a cat in a hadith about a dog). Either the sheet shows only the verifier's checked «وجه الارتباط», or `matched_on` is labelled as what was searched for, never as what the text says.
+- **Touches:** apps/web components/insight/why-sheet.tsx and messages/scan.ts; nothing in the API (the field stays for the trace).
+- **Reviews:** scripture review (what is shown about a text).
+
+### 05.11 No hadith without an approved ruling
+
+- **Status:** ⬜ waiting on the owners (decision 65 says the opposite)
+- **Goal:** the contest's reference pack asks that no hadith be attributed without a source and an approved ruling: the two Sahihs, or a hadith whose soundness was checked (dorar.net/hadith, shamela.ws). Decision 65 shows a hadith with no ruling yet, `app.hadith_rulings` is empty, and the mock audit found three hadiths that every grader in the corpus calls weak shown as evidence (tirmidhi:3127, ibnmajah:1819, abudawud:3402). At least: never show a hadith that the corpus graders call weak; then decide whether an unruled hadith outside the two Sahihs may show at all.
+- **Touches:** apps/api pipeline/insight evidence gate and services/content (`shown_evidence`), tests; DECISIONS.md once the owners decide.
+- **Reviews:** scripture review.
