@@ -145,6 +145,10 @@ The owners found the profile page a long, messy list. It is now organised the wa
 
 The owners found the two confusing: one icon for both, and the public page in the corner while the private hub held a tab. From tablet up, once a member has chosen a handle, the fourth tab is «صفحتي», their public page (its own Magnific icon, a page with a portrait), and «ملفي», the private hub of account, settings and privacy, sits in the top bar's corner with the person icon, where web apps keep the account. Before a handle exists there is no public page, so «ملفي» keeps the tab, where the handle is chosen. The phone bar keeps «ملفي». The practice page, `/sky` since the same day, belongs to «ملفي»: that link is marked current there.
 
+### Choosing an insight on the scan (added 6 October 2026)
+
+When the analysed photo asks the reader to choose, its points call with the list: two rings leave each orb and a gold light runs over each label, point after point; after 7 s with no tap, key or scroll both call again, with the list's hint, twice at most. The chosen point stays quiet. Under the pointer the label's title turns gold and the hand shows; nothing moves. Every enabled button shows the hand, as links do (Tailwind 4 gives buttons the arrow).
+
 ### Atlas pin (added 5 October 2026)
 
 The owners chose pin «A» of three drawn for TABSIRA: the familiar pin shape, an emerald drop in a gold rim with the eight-point khatam inside and a small shadow on the ground. Every published insight on the map stands on its tip as this pin; the chosen one is the same pin a third larger with a gold glow at its foot; the point a reader places when publishing uses it too. Clusters stay emerald discs in a gold ring. The pin keeps its own emerald and gold in both themes. It is drawn in code on a canvas (`apps/web/src/components/atlas/map-pin.ts`) at twice its size and handed to MapLibre as an image, so no file or third-party asset is fetched; where no canvas can draw, the map keeps its circles.

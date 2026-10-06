@@ -98,6 +98,7 @@ export function ScanStage({
         listInPanel
         framed
         morph
+        invite
         className="h-full"
       >
         <ScanSweep active={running} />

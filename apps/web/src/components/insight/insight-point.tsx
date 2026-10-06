@@ -22,6 +22,12 @@ export interface InsightPointProps {
   selected?: boolean;
   /** Seconds before the glow starts breathing, so two points do not pulse in step. */
   delay?: number;
+  /**
+   * The scan asks the reader to choose (fx.css «sheen»): a gold light runs over the label
+   * with the rings, and both play again each time `calls` grows (an idle reader).
+   */
+  invite?: boolean;
+  calls?: number;
   onSelect: (id: string) => void;
 }
 
@@ -46,6 +52,9 @@ const TONES: Record<PointTone, { core: string; halo: string }> = {
  * twice when the scene appears, then everything rests: under five seconds, so
  * no pause control is needed (WCAG 2.2.2), and nothing moves under reduced
  * motion. Selective attention: two calm lights, nothing else on the photo moves.
+ * When the scan asks the reader to choose, a gold light also runs over the label,
+ * and the call comes back after a long stillness (see `invite`). The title turns
+ * gold under the pointer, which shows the hand: colour only, nothing moves.
  */
 export function InsightPoint({
   id,
@@ -59,6 +68,8 @@ export function InsightPoint({
   positionLabel,
   selected = false,
   delay = 0,
+  invite = false,
+  calls = 0,
   onSelect,
 }: Readonly<InsightPointProps>) {
   const colours = TONES[tone];
@@ -104,13 +115,16 @@ export function InsightPoint({
         />
         {selected ? null : (
           <>
+            {/* Keyed by the calls, so an idle reader sees them leave the orb again. */}
             <span
+              key={`first-${calls}`}
               className="absolute inset-0 rounded-full border-2 opacity-0 motion-safe:animate-[fx-ring_2.4s_cubic-bezier(0.22,1,0.36,1)_2]"
-              style={ring}
+              style={{ ...ring, animationDelay: `${calls > 0 ? 0 : delay}s` }}
             />
             <span
+              key={`second-${calls}`}
               className="absolute inset-0 rounded-full border-2 opacity-0 motion-safe:animate-[fx-ring_2.4s_cubic-bezier(0.22,1,0.36,1)_2]"
-              style={{ ...ring, animationDelay: `${delay + 0.8}s` }}
+              style={{ ...ring, animationDelay: `${(calls > 0 ? 0 : delay) + 0.8}s` }}
             />
           </>
         )}
@@ -135,8 +149,19 @@ export function InsightPoint({
           />
         </span>
       </span>
-      <span className="glass flex flex-col items-center rounded-[14px] px-3.5 py-1.5 text-center">
-        <span id={titleId} className="font-semibold text-[1.0625rem] text-glass-fg leading-snug">
+      <span className="glass relative flex flex-col items-center rounded-[14px] px-3.5 py-1.5 text-center">
+        {invite && !selected ? (
+          <span
+            key={calls}
+            aria-hidden="true"
+            className="fx-sheen"
+            style={{ '--fx-delay': `${(calls > 0 ? 0 : delay) * 1000 + 300}ms` } as CSSProperties}
+          />
+        ) : null}
+        <span
+          id={titleId}
+          className="font-semibold text-[1.0625rem] text-glass-fg leading-snug transition-colors duration-200 group-hover:text-[var(--glow-gold)]"
+        >
           {title}
         </span>
         {/* Real spaces between the lines: a text extractor ignores the block layout and would weld the words. */}
