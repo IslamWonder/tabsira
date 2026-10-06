@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { BURST_EVENT } from '@/components/fx/burst';
 import { messages } from '@/messages';
 import { apiError, mockApi } from '@/test/api';
 import { USER } from '@/test/fixtures';
@@ -8,6 +9,13 @@ import { HADITH_TEXT, IDENTITY, MY_POST, POST, QURAN_TEXT, sha256 } from '@/test
 import { PostCard, revealLabel } from './post-card';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/community' }));
+
+/** Counts the bursts the card asks for, from now on. */
+function bursts() {
+  const seen = vi.fn();
+  window.addEventListener(BURST_EVENT, seen);
+  return seen;
+}
 
 const guest = () => mockApi({ 'GET /auth/me': apiError(401, 'UNAUTHORIZED') });
 const member = (extra = {}) =>
@@ -173,6 +181,41 @@ describe('PostCard reactions', () => {
     });
     await userEvent.click(screen.getByRole('button', { name: 'احفظ' }));
     await waitFor(() => expect(onChange.mock.lastCall?.[0].viewer.bookmarked).toBe(true));
+  });
+
+  it('bursts gold from a reaction or a save once the API kept it, never when taken back', async () => {
+    const seen = bursts();
+    member({
+      'PUT /posts/7345678901234567890/reactions/jazak': {
+        body: { reactions: { benefited: 0, jazak: 1 }, mine: ['jazak'] },
+      },
+      'DELETE /posts/7345678901234567890/reactions/benefited': {
+        body: { reactions: { benefited: 0, jazak: 1 }, mine: ['jazak'] },
+      },
+      'DELETE /posts/7345678901234567890/bookmark': { status: 204 },
+    });
+    const onChange = vi.fn();
+    render(
+      <PostCard
+        post={{
+          ...POST,
+          viewer: {
+            reactions: ['benefited'],
+            bookmarked: true,
+            is_author: false,
+            follows_author: false,
+          },
+        }}
+        onChange={onChange}
+      />
+    );
+    await userEvent.click(await screen.findByRole('button', { name: /^جزاك الله خيرًا/ }));
+    await waitFor(() => expect(seen).toHaveBeenCalledOnce());
+    await userEvent.click(screen.getByRole('button', { name: /^انتفعتُ بها/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'محفوظ' }));
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].viewer.bookmarked).toBe(false));
+    expect(seen).toHaveBeenCalledOnce();
+    window.removeEventListener(BURST_EVENT, seen);
   });
 
   it('shows both reactions with their public counts and presses the ones the reader gave', async () => {

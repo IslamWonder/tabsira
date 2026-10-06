@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useId, useState } from 'react';
 import { signInHref } from '@/account/links';
+import { burstFrom } from '@/components/fx/burst';
 import {
   BookmarkIcon,
   CommentIcon,
@@ -141,7 +142,8 @@ export function PostCard({
 
   const given = post.viewer?.reactions ?? [];
 
-  const react = async (kind: ReactionKind | 'bookmark') => {
+  // `from` is the button tapped: a reaction or a save that is switched on bursts from it once kept.
+  const react = async (kind: ReactionKind | 'bookmark', from: Element) => {
     if (access === 'guest' || access === 'unverified') {
       setNote(access === 'guest' ? C.reactions.signIn : C.reactions.verify);
       return;
@@ -149,8 +151,12 @@ export function PostCard({
     setNote(null);
     setFailure(null);
     if (kind !== 'bookmark') {
-      const result = await setReaction(post.id, kind, !given.includes(kind));
+      const on = !given.includes(kind);
+      const result = await setReaction(post.id, kind, on);
       if (result.ok) {
+        if (on) {
+          burstFrom(from);
+        }
         onChange({
           ...post,
           reactions: result.data.reactions,
@@ -169,6 +175,9 @@ export function PostCard({
     const saved = post.viewer?.bookmarked !== true;
     const result = await setBookmark(post.id, saved);
     if (result.ok) {
+      if (saved) {
+        burstFrom(from);
+      }
       onChange({
         ...post,
         viewer: {
@@ -293,7 +302,7 @@ export function PostCard({
                 key={kind}
                 type="button"
                 aria-pressed={pressed}
-                onClick={() => void react(kind)}
+                onClick={(event) => void react(kind, event.currentTarget)}
                 className={cx(
                   'inline-flex min-h-12 items-center gap-2 rounded-full px-3 text-[0.9375rem] transition-colors duration-200',
                   pressed
@@ -336,7 +345,7 @@ export function PostCard({
           <button
             type="button"
             aria-pressed={post.viewer?.bookmarked === true}
-            onClick={() => void react('bookmark')}
+            onClick={(event) => void react('bookmark', event.currentTarget)}
             className={cx(
               'inline-flex min-h-12 items-center gap-2 rounded-full px-3 text-[0.9375rem] transition-colors duration-200',
               post.viewer?.bookmarked ? 'text-primary' : 'text-fg-soft hover:text-fg'
