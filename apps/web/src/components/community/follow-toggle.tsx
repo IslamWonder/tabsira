@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { signInHref } from '@/account/links';
-import { FollowIcon, FollowingIcon } from '@/components/icons';
 import { Button, LinkButton } from '@/components/ui/button';
+import { Emblem } from '@/components/ui/emblem';
 import { Notice } from '@/components/ui/notice';
 import { failureMessage } from '@/lib/api/failure-message';
 import { messages } from '@/messages';
@@ -71,11 +71,11 @@ export function FollowToggle({
         disabled={busy || access === 'unknown'}
         className={compact ? '!min-h-10 !px-3.5 !gap-1.5 text-sm' : undefined}
       >
-        {follows ? (
-          <FollowingIcon width={compact ? 18 : 20} height={compact ? 18 : 20} />
-        ) : (
-          <FollowIcon width={compact ? 18 : 20} height={compact ? 18 : 20} />
-        )}
+        <Emblem
+          name={follows ? 'following' : 'follow'}
+          width={compact ? 20 : 22}
+          height={compact ? 20 : 22}
+        />
         {follows ? P.following : P.follow}
       </Button>
       {failure === null ? null : (

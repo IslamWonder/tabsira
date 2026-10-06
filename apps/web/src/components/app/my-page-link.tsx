@@ -3,7 +3,7 @@
 import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ProfileIcon } from '@/components/icons';
+import { Emblem } from '@/components/ui/emblem';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 import { profilePath } from '@/social/identity';
@@ -34,7 +34,7 @@ export function MyPageLink() {
           : 'text-glass-fg-soft hover:text-glass-fg'
       )}
     >
-      <ProfileIcon width="18" height="18" aria-hidden="true" />
+      <Emblem name="my_page" width="20" height="20" />
       {messages.nav.myPage}
     </Link>
   );
