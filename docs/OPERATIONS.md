@@ -202,6 +202,7 @@ scripts/mock-data.sh import --allow-production    # on production: downloads the
 scripts/mock-data.sh import                       # a development machine: ../tabsira-data/mock/tabsira-mock-v1.json if present
 scripts/mock-data.sh reset --allow-production     # clean, then import again
 scripts/mock-data.sh clean --allow-production     # remove every mock row (stops if real members depend on them; --also-dependent-rows removes those too)
+scripts/mock-data.sh fill-in views --allow-production # a later feature onto the mock rows already imported (tools/mockdata/README.md)
 scripts/mock-data.sh backup                       # dump the app schema only
 scripts/mock-data.sh status                       # how many mock members, insights, posts
 ```
@@ -216,6 +217,7 @@ scripts/mock-data.sh status                       # how many mock members, insig
 make mock-import MOCK_FILE=../tabsira-data/mock/tabsira-mock-v1.json
 make mock-import MOCK_FILE=s3://<bucket>/mock/tabsira-mock-v1.json MOCK_ARGS=--allow-production   # on production
 make mock-clean MOCK_ARGS=--allow-production                                                      # remove every mock row
+make mock-fill-in MOCK_FILL_IN=views MOCK_ARGS=--allow-production                                     # fill in a later feature, no backup
 ```
 
 - Both commands pass `--i-understand`; the importer refuses without it, refuses a database named `tabsira_template` or ending in `_test`, and refuses `ENVIRONMENT=production` unless `--allow-production` is also given. The file is read from a path or from S3 up to 64 MB; a larger one is refused before it is read.

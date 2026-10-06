@@ -48,7 +48,8 @@ FOLLOWERS_ONLY_SHARE = 0.5
 NO_PHOTO_SHARE = 0.6
 NO_REFLECTION_SHARE = 0.15
 # Readers per member who reacted, saved or commented, the median of the tail every post gets
-# (e^3, about 20), and the share of that reach a followers-only post keeps.
+# (e^3, about 20), and the share of that reach a followers-only post keeps. The `views` fill-in
+# (apps/api/src/cli/mock_fill_ins.py) uses the same numbers: change both together.
 VIEWS_PER_ENGAGED = 8
 VIEWS_LOG_MEAN = 3.0
 FOLLOWERS_ONLY_REACH = 0.3
