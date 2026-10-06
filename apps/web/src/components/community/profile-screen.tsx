@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useSession } from '@/account/session';
 import { StatusScreen } from '@/components/app/status-screen';
-import { CommunityIcon, MoreIcon } from '@/components/icons';
+import { MoreIcon } from '@/components/icons';
 import { PageContainer } from '@/components/layout/layouts';
 import { Button, LinkButton } from '@/components/ui/button';
 import { GlassPanel } from '@/components/ui/glass-panel';
+import { GuideScene } from '@/components/ui/guide-scene';
 import { Notice } from '@/components/ui/notice';
 import { Sheet } from '@/components/ui/sheet';
 import { failureMessage } from '@/lib/api/failure-message';
@@ -188,15 +189,11 @@ export function ProfileScreen({
                   <LinkButton href="/me#identity" variant="ghost">
                     {P.edit}
                   </LinkButton>
-                ) : (
-                  <>
-                    {session.status === 'signed-in' ? (
-                      <Button variant="icon" label={C.post.more} onClick={() => setOpen('more')}>
-                        <MoreIcon />
-                      </Button>
-                    ) : null}
-                  </>
-                )}
+                ) : session.status === 'signed-in' ? (
+                  <Button variant="icon" label={C.post.more} onClick={() => setOpen('more')}>
+                    <MoreIcon />
+                  </Button>
+                ) : null}
               </div>
             </div>
             <Counts profile={load.profile} />
@@ -248,7 +245,7 @@ export function ProfileScreen({
       ) : null}
       {load.kind === 'missing' ? (
         <StatusScreen
-          icon={<CommunityIcon width="28" height="28" />}
+          scene="qibla"
           title={P.notFound.title}
           description={P.notFound.description}
           className="py-10"
@@ -259,7 +256,8 @@ export function ProfileScreen({
         </StatusScreen>
       ) : null}
       {load.kind === 'failed' ? (
-        <div role="alert" className="flex flex-col items-start gap-3">
+        <div role="alert" className="flex flex-col items-center gap-3 py-6 text-center">
+          <GuideScene scene="lantern" size={112} />
           <Notice tone="error">{failureMessage(load.failure)}</Notice>
           <Button variant="ghost" onClick={() => setAttempt((count) => count + 1)}>
             {C.retry}

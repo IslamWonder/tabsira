@@ -11,11 +11,11 @@ import { StatusScreen } from '@/components/app/status-screen';
 import { PostEvidence } from '@/components/community/evidence';
 import { PublicPhoto } from '@/components/community/public-photo';
 import { ReportSheet } from '@/components/community/sheets';
-import { AtlasIcon } from '@/components/icons';
 import { PageContainer } from '@/components/layout/layouts';
 import { Button, LinkButton } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { GlassPanel } from '@/components/ui/glass-panel';
+import { GuideScene } from '@/components/ui/guide-scene';
 import { Notice } from '@/components/ui/notice';
 import { failureMessage } from '@/lib/api/failure-message';
 import type { Failure } from '@/lib/api/result';
@@ -211,7 +211,7 @@ export function EntryScreen({
       ) : null}
       {load.kind === 'gone' || load.kind === 'missing' ? (
         <StatusScreen
-          icon={<AtlasIcon width="28" height="28" />}
+          scene="star"
           title={load.kind === 'gone' ? A.entry.gone.title : A.entry.notFound.title}
           description={
             load.kind === 'gone' ? A.entry.gone.description : A.entry.notFound.description
@@ -224,7 +224,8 @@ export function EntryScreen({
         </StatusScreen>
       ) : null}
       {load.kind === 'failed' ? (
-        <div role="alert" className="flex flex-col items-start gap-3">
+        <div role="alert" className="flex flex-col items-center gap-3 py-6 text-center">
+          <GuideScene scene="lantern" size={112} />
           <Notice tone="error">{failureMessage(load.failure)}</Notice>
           <Button variant="ghost" onClick={() => setAttempt((count) => count + 1)}>
             {A.retry}

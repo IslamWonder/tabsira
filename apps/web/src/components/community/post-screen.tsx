@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useSession } from '@/account/session';
 import { StatusScreen } from '@/components/app/status-screen';
-import { CommunityIcon } from '@/components/icons';
 import { PageContainer } from '@/components/layout/layouts';
 import { Button, LinkButton } from '@/components/ui/button';
+import { GuideScene } from '@/components/ui/guide-scene';
 import { Notice } from '@/components/ui/notice';
 import { failureMessage } from '@/lib/api/failure-message';
 import type { Failure } from '@/lib/api/result';
@@ -139,7 +139,7 @@ export function PostScreen({
       ) : null}
       {load.kind === 'gone' || load.kind === 'missing' ? (
         <StatusScreen
-          icon={<CommunityIcon width="28" height="28" />}
+          scene="lantern"
           title={load.kind === 'gone' ? C.gone.title : C.notFound.title}
           description={load.kind === 'gone' ? C.gone.description : C.notFound.description}
           className="py-10"
@@ -150,7 +150,8 @@ export function PostScreen({
         </StatusScreen>
       ) : null}
       {load.kind === 'failed' ? (
-        <div role="alert" className="flex flex-col items-start gap-3">
+        <div role="alert" className="flex flex-col items-center gap-3 py-6 text-center">
+          <GuideScene scene="lantern" size={112} />
           <Notice tone="error">{failureMessage(load.failure)}</Notice>
           <Button variant="ghost" onClick={() => setAttempt((count) => count + 1)}>
             {C.retry}

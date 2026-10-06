@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
+import { GuideScene } from '@/components/ui/guide-scene';
 import { LoadingRows } from '@/components/ui/loading-rows';
 import { Notice } from '@/components/ui/notice';
 import { messages } from '@/messages';
@@ -48,9 +49,12 @@ export function FeedList({
         <LoadingRows label={C.loading} rowClassName="h-56" />
       ) : null}
       {items.length === 0 && status.kind === 'ready' ? (
-        <p role="status" className="m-0 py-8 text-center text-fg-soft leading-[1.85]">
-          {emptyText(status.emptyReason)}
-        </p>
+        <div role="status" className="flex flex-col items-center gap-3 py-8 text-center">
+          <GuideScene scene="star" size={112} />
+          <p className="m-0 max-w-md text-fg-soft leading-[1.85]">
+            {emptyText(status.emptyReason)}
+          </p>
+        </div>
       ) : null}
       {items.map((post) => (
         <PostCard

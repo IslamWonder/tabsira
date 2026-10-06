@@ -1,6 +1,7 @@
 import { type ReactNode, useId } from 'react';
 import { Logo } from '@/components/brand/logo';
 import { Chip } from '@/components/ui/chip';
+import { GuideScene, type GuideSceneName } from '@/components/ui/guide-scene';
 import { cx } from '@/lib/cx';
 import { Beacon } from './beacon';
 
@@ -21,6 +22,8 @@ export interface StatusScreenProps {
    * the page draws its own beside it.
    */
   emblem?: 'beacon' | 'logo' | 'none';
+  /** One of the scenes of guidance instead of the emblem: for what is missing or failed. */
+  scene?: GuideSceneName;
   className?: string;
   /** Actions or a follow-up line. */
   children?: ReactNode;
@@ -39,6 +42,7 @@ export function StatusScreen({
   headingLevel = 1,
   align = 'center',
   emblem = 'beacon',
+  scene,
   className,
   children,
 }: Readonly<StatusScreenProps>) {
@@ -53,8 +57,9 @@ export function StatusScreen({
         className
       )}
     >
-      {emblem === 'beacon' ? <Beacon>{icon}</Beacon> : null}
-      {emblem === 'logo' ? <Logo className="mb-2 h-32" /> : null}
+      {scene === undefined ? null : <GuideScene scene={scene} size={128} />}
+      {scene === undefined && emblem === 'beacon' ? <Beacon>{icon}</Beacon> : null}
+      {scene === undefined && emblem === 'logo' ? <Logo className="mb-2 h-32" /> : null}
       {badge === undefined ? null : <Chip tone="primary">{badge}</Chip>}
       <Heading
         id={titleId}
