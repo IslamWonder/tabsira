@@ -3,6 +3,7 @@ Import the mock members that start the platform, or remove them (decision 66, pl
 
     uv run python -m src.cli.import_mock <file-or-s3://bucket/key> --i-understand
     uv run python -m src.cli.import_mock --clean --i-understand
+    uv run python -m src.cli.import_mock --fill-in views --i-understand
 
 The file (`tabsira-mock-v1.json`, made by `tools/mockdata`) holds references only: placepix
 ids, GeoNames ids, exact points, times, evidence ids and the composed insight text, never a
@@ -47,6 +48,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src import security
+from src.cli.mock_fill_ins import FILL_INS
 from src.config import ConfigError, Settings, load_settings
 from src.database import dispose_engine, get_sessionmaker
 from src.errors import AppError
@@ -409,7 +411,7 @@ def check_allowed(
         message = f"refusing the test database {name!r}"
         raise MockImportError(message)
     if settings.is_production and not allow_production:
-        message = "APP_ENV is production: pass --allow-production to import or clean there"
+        message = "APP_ENV is production: pass --allow-production to import, clean or fill in there"
         raise MockImportError(message)
 
 
@@ -1246,9 +1248,18 @@ def _arguments(argv: Sequence[str] | None) -> argparse.Namespace:
         help="with --clean: also remove other members' comments, reactions, follows and reports "
         "that hang on mock accounts (they are counted and refused otherwise)",
     )
+    parser.add_argument(
+        "--fill-in",
+        action="append",
+        choices=sorted(FILL_INS),
+        dest="fill_ins",
+        metavar="NAME",
+        help="bring the mock rows already imported up to a later feature; may be repeated: "
+        + "; ".join(f"{name}: {fill_in.summary}" for name, fill_in in sorted(FILL_INS.items())),
+    )
     args = parser.parse_args(argv)
-    if args.clean == (args.source is not None):
-        parser.error("give a file to import, or --clean alone")
+    if [args.source is not None, args.clean, bool(args.fill_ins)].count(True) != 1:
+        parser.error("give a file to import, --clean, or --fill-in, one of them alone")
     if args.also_dependent_rows and not args.clean:
         parser.error("--also-dependent-rows goes with --clean")
     return args
@@ -1269,9 +1280,18 @@ async def execute(
             allow_production=args.allow_production,
             allow_test_database=allow_test_database,
         )
-        data = None if args.clean else parse(read_source(args.source, settings))
+        data = None if args.clean or args.fill_ins else parse(read_source(args.source, settings))
         factory = session_factory or get_sessionmaker()
         async with factory() as db:
+            if args.fill_ins:
+                # One transaction: every fill-in asked for lands, or none.
+                done = [
+                    (name, await FILL_INS[name].run(db)) for name in dict.fromkeys(args.fill_ins)
+                ]
+                await db.commit()
+                for name, changed in done:
+                    _say(f"{name}: {changed} mock rows filled in")
+                return 0
             if data is None:
                 removed = await clean(db, settings, also_dependent_rows=args.also_dependent_rows)
                 await db.commit()

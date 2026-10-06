@@ -4,7 +4,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev migrate data test coverage lint format eval smoke benchmark up security audit stats mock-photos mock-data mock-texts mock-import mock-clean
+.PHONY: help install dev migrate data test coverage lint format eval smoke benchmark up security audit stats mock-photos mock-data mock-texts mock-import mock-fill-in mock-clean
 
 help: ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-12s %s\n", $$1, $$2 }'
@@ -67,6 +67,10 @@ mock-texts: ## Write the mock posts' reflections and comments into the mock file
 mock-import: ## Import the mock members of MOCK_FILE (a path or s3://bucket/key); MOCK_ARGS=--allow-production on production
 	@test -n "$(MOCK_FILE)" || { echo "usage: make mock-import MOCK_FILE=<path or s3://bucket/key>"; exit 2; }
 	@cd apps/api && uv run python -m src.cli.import_mock "$(MOCK_FILE)" --i-understand $(MOCK_ARGS)
+
+mock-fill-in: ## Bring the mock rows already imported up to a later feature: MOCK_FILL_IN=views (names in tools/mockdata/README.md)
+	@test -n "$(MOCK_FILL_IN)" || { echo "usage: make mock-fill-in MOCK_FILL_IN=<name>, e.g. views"; exit 2; }
+	@cd apps/api && uv run python -m src.cli.import_mock $(foreach name,$(MOCK_FILL_IN),--fill-in $(name)) --i-understand $(MOCK_ARGS)
 
 mock-clean: ## Delete every mock member (@mock.tabsira.me) and what they own; MOCK_ARGS=--allow-production on production
 	@cd apps/api && uv run python -m src.cli.import_mock --clean --i-understand $(MOCK_ARGS)

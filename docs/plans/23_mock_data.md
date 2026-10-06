@@ -168,4 +168,13 @@ Two programs, two libraries and one file:
 - **Done:** every post of the file carries `views`, from its own seeded stream (`<seed>:views`), so the rest of the file stays byte for byte the same and the texts library is reused as is: at least every member who reacted, saved or commented, eight readers for each of them plus a long tail (median about 20), and a followers-only post keeps three tenths of that reach. `import_mock` writes it into `posts.views_count`; a file without it gives zero.
 - **Touches:** tools/mockdata/src/mockdata/{activity,output}.py and their tests, apps/api/src/cli/import_mock.py and `tests/test_import_mock.py`.
 - **Production `.env`:** no new key.
-- **To apply:** `make mock-data` (and `make mock-texts`, which reuses its library), then the import with `--clean` as task 23 describes; posts already imported keep zero until then.
+- **To apply:** a new file gets the views from the generator; on mock posts already imported, the `views` fill-in of task 23.9.
+
+### 23.9 Fill-ins for mock data already imported
+
+- **Status:** ✅ done 2026-10-06 (Tunis)
+- **Goal:** a feature added after the mock import shows on the mock rows already there, without a `--clean` that renumbers every post and drops what real members left on them.
+- **Done:** `import_mock --fill-in <name>` (repeatable, one transaction, `--i-understand` and `--allow-production` as for the import) runs named fill-ins from `apps/api/src/cli/mock_fill_ins.py` (`FILL_INS`); `scripts/mock-data.sh fill-in <name>...` backs up the app schema first, and `make mock-fill-in MOCK_FILL_IN=<name>` calls the importer directly. The first fill-in, `views`, gives every published mock post the generator's kind of view count, seeded by the post's id, never lower than what it has. A rule in `AGENTS.md` and a section of `tools/mockdata/README.md`: every feature the mock data should show comes with its generator change, its import and its fill-in.
+- **Touches:** apps/api/src/cli/{import_mock,mock_fill_ins}.py, apps/api/tests/test_mock_fill_ins.py, scripts/mock-data.sh, Makefile, tools/mockdata/README.md, tools/mockdata/src/mockdata/activity.py (a comment), docs/OPERATIONS.md, AGENTS.md.
+- **Production `.env`:** no new key.
+- **To apply:** after deploying, `scripts/mock-data.sh fill-in views --allow-production` on production and `scripts/mock-data.sh fill-in views` on a development machine.

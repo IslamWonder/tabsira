@@ -3,6 +3,8 @@
 #
 # Usage: scripts/mock-data.sh <command> [source] [--allow-production] [--also-dependent-rows] [--no-backup]
 #   import <source>   import the v1 file (a path, an https URL or s3://bucket/key); a second run adds nothing
+#   fill-in <name>... bring the mock rows already imported up to a later feature (views, ...), without
+#                     a clean: safe to run again, never touches a real member's rows
 #   clean             delete every @mock.tabsira.me account and everything it owns; it stops when
 #                     other members' rows depend on them, unless --also-dependent-rows is given
 #   reset <source>    clean, then import: the way to replace one file by another
@@ -13,8 +15,8 @@
 # host); TABSIRA_DATA_DIR overrides it. Without a source, MOCK_FILE is read, then
 # <data>/mock/tabsira-mock-v1.json when it exists, else the published file in the owners'
 # bucket (MOCK_DEFAULT_URL below).
-# import, reset and clean first dump the app schema (not corpus, geodata or vectors, which are
-# large and reinstalled from their archives), unless --no-backup is given.
+# import, fill-in, reset and clean first dump the app schema (not corpus, geodata or vectors,
+# which are large and reinstalled from their archives), unless --no-backup is given.
 # It never resets the database and never touches a real member's rows. Before importing it
 # checks that the migrations ran and that the scripture store and GeoNames are installed,
 # since an insight whose verse or hadith is not in the store is skipped and an atlas entry
@@ -28,7 +30,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$SCRIPT_DIR/lib.sh"
 
 usage() {
-	sed -n '4,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+	sed -n '4,19p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 	exit 2
 }
 
@@ -55,13 +57,20 @@ source_file=""
 backup=true
 extra=()
 clean_extra=()
+fill_ins=()
 for arg in "$@"; do
 	case "$arg" in
 	--allow-production) extra+=("$arg") ;;
 	--also-dependent-rows) clean_extra+=("$arg") ;;
 	--no-backup) backup=false ;;
 	-*) die "unknown option: $arg" ;;
-	*) source_file="$arg" ;;
+	*)
+		if [[ "$command" == "fill-in" ]]; then
+			fill_ins+=(--fill-in "$arg")
+		else
+			source_file="$arg"
+		fi
+		;;
 	esac
 done
 if [[ -z "$source_file" ]]; then
@@ -197,6 +206,11 @@ clean() {
 	api -m src.cli.import_mock --clean --i-understand "${extra[@]}" "${clean_extra[@]}"
 }
 
+fill_in() {
+	log "Filling in the mock rows already imported"
+	api -m src.cli.import_mock "${fill_ins[@]}" --i-understand "${extra[@]}"
+}
+
 status() {
 	local found
 	found="$(counts)"
@@ -215,6 +229,11 @@ clean)
 	maybe_backup
 	clean
 	status
+	;;
+fill-in)
+	[[ ${#fill_ins[@]} -gt 0 ]] || die "name a fill-in: scripts/mock-data.sh fill-in views"
+	maybe_backup
+	fill_in
 	;;
 reset)
 	check_source
