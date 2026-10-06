@@ -55,6 +55,17 @@ describe('useSceneSound', () => {
     expect(player.loopSound).toHaveBeenCalledOnce();
   });
 
+  it('plays the scene again on a second run, after the reader answered a question', () => {
+    const { rerender } = follow(URL, 'running');
+    rerender({ url: URL, moment: 'ended' });
+    // The answer starts a new run: the hook forgets the sound until the run names it again.
+    rerender({ url: URL, moment: 'running' });
+    rerender({ url: null, moment: 'running' });
+    rerender({ url: URL, moment: 'running' });
+    expect(player.loopSound).toHaveBeenCalledTimes(2);
+    expect(player.loopSound).toHaveBeenLastCalledWith(URL);
+  });
+
   it('plays nothing for a finished scan opened later', () => {
     follow(URL, 'ended');
     expect(player.loopSound).not.toHaveBeenCalled();
