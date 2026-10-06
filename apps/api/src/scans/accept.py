@@ -31,6 +31,7 @@ from src.models import Hadith, LearningUnit, QuranVerse
 from src.pipeline.engine import EvidenceRef, HadithRef, ProposedInsight, QuranRef
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
 from src.pipeline.schemas import SceneAnalysis
+from src.scripture.guard_fold import guard_fold
 from src.scripture.overlap import repeats_store
 from src.scripture.rulings import eligible_given, latest_ruling
 from src.scripture.standard_spelling import standard_skeleton
@@ -65,35 +66,40 @@ def insight_texts(insight: ProposedInsight) -> dict[str, str]:
     return texts
 
 
-async def leaks(db: AsyncSession, texts: list[str], corpus: list[str]) -> bool:
+async def leaks(db: AsyncSession, texts: list[str], skeletons: list[str]) -> bool:
     """
     Tell whether any text looks like scripture.
 
-    The pattern rules, a run of words of the cited texts (`corpus`) or a run of words of any
-    verse or hadith of the store.
+    The pattern rules, a run of words of the cited texts (their guard `skeletons`) or a run
+    of words of any verse or hadith of the store.
 
     One check for what the engine writes (here) and for what an owner makes public.
     """
-    guard = LeakGuard([PatternLeakDetector(), ShingleOverlapDetector(corpus)])
+    guard = LeakGuard([PatternLeakDetector(), ShingleOverlapDetector(skeletons=skeletons)])
     return any(guard.check(text).leaked for text in texts) or await repeats_store(db, texts)
 
 
-async def cited_texts(
+def verse_skeletons(text: str) -> list[str]:
+    """Return the guard skeletons of a stored verse: the mushaf's spelling and today's (05.9)."""
+    return [guard_fold(text), standard_skeleton(text)]
+
+
+async def cited_skeletons(
     db: AsyncSession, quran: tuple[int, int] | None, hadith: tuple[str, str] | None
 ) -> list[str]:
     """
-    Return the stored text of the cited verse and hadith, whatever the hadith's ruling.
+    Return the guard skeletons of the cited verse and hadith, whatever the hadith's ruling.
 
-    The verse also in today's spelling (its converted skeleton, task 05.9), for the guard only.
+    The verse in both spellings (task 05.9); for the guard only, never shown.
     """
-    corpus: list[str] = []
+    skeletons: list[str] = []
     if quran is not None and (verse := await _verse_text(db, *quran)) is not None:
-        corpus.extend([verse, standard_skeleton(verse)])
+        skeletons.extend(verse_skeletons(verse))
     if hadith is not None:
         stored = await _hadith(db, HadithRef(collection=hadith[0], number=hadith[1]))
         if stored is not None:
-            corpus.append(stored.text)
-    return corpus
+            skeletons.append(guard_fold(stored.text))
+    return skeletons
 
 
 async def _verse_text(db: AsyncSession, surah: int, ayah: int) -> str | None:
@@ -156,7 +162,7 @@ async def _checked_quran(
     if text is None:
         refusals.append("quran_missing")
         return None
-    corpus.extend([text, standard_skeleton(text)])
+    corpus.extend(verse_skeletons(text))
     return evidence
 
 
@@ -174,7 +180,7 @@ async def _checked_hadith(
         refusals.append("hadith_missing")
         return None
     # Guarded against even when it is refused: the engine's words may still quote it.
-    corpus.append(stored.text)
+    corpus.append(guard_fold(stored.text))
     if not eligible_given(await latest_ruling(db, stored.id)):
         refusals.append("hadith_ineligible")
         return None

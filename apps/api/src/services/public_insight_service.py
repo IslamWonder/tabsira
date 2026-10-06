@@ -99,8 +99,8 @@ async def _check(db: AsyncSession, insight: Insight) -> None:
         if insight.hadith_collection is not None and insight.hadith_number is not None
         else None
     )
-    corpus = await accept.cited_texts(db, quran_ref, hadith_ref)
-    if await accept.leaks(db, list(texts.values()), corpus):
+    skeletons = await accept.cited_skeletons(db, quran_ref, hadith_ref)
+    if await accept.leaks(db, list(texts.values()), skeletons):
         _refuse("its text looks like scripture, which only the store may supply")
 
 

@@ -20,6 +20,7 @@ from src.pipeline.leak_guard import (
     arabic_word_count,
     normalize_arabic,
 )
+from src.scripture.guard_fold import guard_fold
 
 SMALL_HIGH_LIGATURE = chr(0x06D6)
 END_OF_AYAH = chr(0x06DD)
@@ -177,6 +178,17 @@ def test_corpus_overlap_finds_a_shared_run_of_words_whatever_the_spelling():
     ]
     assert detector.find("الولد يكتب درسه في المدرسة") == []
     assert detector.find("كلمتان") == []
+
+
+def test_corpus_skeletons_are_taken_as_they_are_and_never_folded_again():
+    marked = "الوَلَدُ يكتب درسَهُ في البيت"
+    skeleton = guard_fold(marked)
+
+    # A text of the corpus is folded once; a skeleton is not folded at all.
+    assert ShingleOverlapDetector([marked]).find(marked)
+    assert ShingleOverlapDetector(skeletons=[skeleton]).find(marked)
+    assert ShingleOverlapDetector(skeletons=[marked]).find(marked) == []
+    assert ShingleOverlapDetector().find(marked) == []
 
 
 def test_the_guard_runs_the_pattern_rules_by_default_and_accepts_more_detectors():

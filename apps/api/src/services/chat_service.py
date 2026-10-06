@@ -48,10 +48,11 @@ from src.pipeline.insight.engine import SHARED_RESOURCES, ResourceCache
 from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverlapDetector
 from src.pipeline.prompt import load_prompt
 from src.routers.scripture import HadithOut, QuranVerseOut
+from src.scans.accept import verse_skeletons
 from src.scans.workflow import call_rows
 from src.schemas.insight import ChatReply
+from src.scripture.guard_fold import guard_fold
 from src.scripture.overlap import repeats_store
-from src.scripture.standard_spelling import standard_skeleton
 from src.services import chat_retrieval, learner_service
 from src.services.chat_retrieval import NewText, TextKind
 from src.services.insight_view import (
@@ -175,9 +176,9 @@ async def _history(db: AsyncSession, insight: Insight, shown: set[str]) -> str:
     return "\n".join(f"- Q: {row.question}\n  A: {row.answer}" for row in kept)
 
 
-async def _cited_texts(db: AsyncSession, insight: Insight) -> list[str]:
+async def _cited_skeletons(db: AsyncSession, insight: Insight) -> list[str]:
     """
-    Return the stored texts the insight cites, shown or not, as the leak guard's corpus.
+    Return the guard skeletons of the texts the insight cites, shown or not, for the leak guard.
 
     A hadith that is not shown (an editor ruled it out, decision 65) is guarded against all
     the same: the model must not quote it either. The verse is guarded in today's spelling
@@ -190,16 +191,15 @@ async def _cited_texts(db: AsyncSession, insight: Insight) -> list[str]:
                 QuranVerse.surah == insight.quran_surah, QuranVerse.ayah == insight.quran_ayah
             )
         )
-        texts.extend([verse, standard_skeleton(verse)] if verse is not None else [])
+        texts.extend(verse_skeletons(verse) if verse is not None else [])
     if insight.hadith_collection is not None and insight.hadith_number is not None:
-        texts.append(
-            await db.scalar(
-                select(Hadith.text).where(
-                    Hadith.collection == insight.hadith_collection,
-                    Hadith.number == insight.hadith_number,
-                )
+        hadith: str | None = await db.scalar(
+            select(Hadith.text).where(
+                Hadith.collection == insight.hadith_collection,
+                Hadith.number == insight.hadith_number,
             )
         )
+        texts.append(guard_fold(hadith) if hadith is not None else None)
     return [text for text in texts if text is not None]
 
 
@@ -306,7 +306,7 @@ async def _answer(
 ) -> None:
     verse, hadith = await shown_evidence(db, insight)
     references: list[str] = []
-    corpus = await _cited_texts(db, insight)
+    corpus = await _cited_skeletons(db, insight)
     if verse is not None:
         references.append(f"{verse.surah_name} {verse.surah}:{verse.ayah}")
     if hadith is not None:
@@ -360,7 +360,7 @@ async def _answer(
     text, kind = _compose(output, found)
     # Every text shown meets the guard, the app's own words included: patterns, the
     # insight's texts, then the whole store.
-    guard = LeakGuard([PatternLeakDetector(), ShingleOverlapDetector(corpus)])
+    guard = LeakGuard([PatternLeakDetector(), ShingleOverlapDetector(skeletons=corpus)])
     leaked = guard.check(text).leaked or await repeats_store(db, [text])
     if not text.strip() or leaked:
         await _give_back(db, row, log, insight.id)

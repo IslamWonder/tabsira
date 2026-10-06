@@ -190,12 +190,27 @@ def _longest_vocalised_run(text: str) -> int:
 
 
 class ShingleOverlapDetector(LeakDetector):
-    """Reports text that shares a run of words with a corpus (the scripture store, later)."""
+    """
+    Reports text that shares a run of words with a corpus (the scripture store, later).
 
-    def __init__(self, corpus: Iterable[str], *, window: int = SHINGLE_WORDS) -> None:
+    `corpus` holds texts, folded here; `skeletons` holds guard skeletons already folded
+    (the stored `guard_text` columns), taken as they are. The fold is applied once to
+    each side, as it is to model text: it is not idempotent on every text (a final
+    waw-heh is undone before doubled letters merge), so folding a stored skeleton
+    again could leave it apart from model text folded once.
+    """
+
+    def __init__(
+        self,
+        corpus: Iterable[str] = (),
+        *,
+        skeletons: Iterable[str] = (),
+        window: int = SHINGLE_WORDS,
+    ) -> None:
         self._window = window
+        folded = [guard_fold(text) for text in corpus]
         self._shingles = {
-            shingle for text in corpus for shingle in _shingles(guard_fold(text), window)
+            shingle for text in (*folded, *skeletons) for shingle in _shingles(text, window)
         }
 
     def find(self, text: str) -> list[LeakFinding]:

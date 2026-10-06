@@ -31,7 +31,7 @@ from src.models.scripture import quran_verse_standard_spans
 from src.pipeline.engine import EngineResult, EngineStatus
 from src.pipeline.insight.guard import quran_detector, scripture_guard
 from src.pipeline.leak_guard import SHINGLE_WORDS, ShingleOverlapDetector, _shingles
-from src.scans.accept import accept, cited_texts
+from src.scans.accept import accept, cited_skeletons
 from src.scans.workflow import run_scan
 from src.scripture import overlap
 from src.scripture.guard_fold import guard_fold
@@ -306,12 +306,12 @@ async def test_a_chat_answer_quoting_five_words_of_its_verse_as_today_is_refused
     assert (refused.status_code, refused.json()["error"]) == (502, "CHAT_ANSWER_REJECTED")
 
 
-async def test_the_cited_texts_hold_the_verse_and_its_skeleton_in_todays_spelling(vocatives):
+async def test_the_cited_skeletons_hold_the_verse_in_both_spellings(vocatives):
     async with vocatives() as db:
         stored = (await stored_verse(db, 71, 2)).text
-        cited = await cited_texts(db, (71, 2), None)
+        cited = await cited_skeletons(db, (71, 2), None)
 
-    assert cited == [stored, standard_skeleton(stored)]
+    assert cited == [guard_fold(stored), standard_skeleton(stored)]
 
 
 @pytest_asyncio.fixture
@@ -350,3 +350,85 @@ async def test_the_displayed_verse_stays_the_stored_uthmani_text_with_its_hash(
     }
     assert kept.guard_text not in str(body)
     assert standard(verse.text) not in str(body)
+
+
+# 33:27: the one verse of the store whose skeletons the guard fold changes when folded again
+# (a final waw-heh undone before a doubled letter merges). Stored skeletons are folded once,
+# like model text, and enter the five-word detectors as they are.
+FOLDED_ONCE = (33, 27)
+
+
+@pytest_asyncio.fixture
+async def folded_once(store):
+    """The scan store with 33:27, imported with its derived skeleton."""
+    async with store() as db:
+        await store_extra(db, "fold-once-verses.json")
+        await db.commit()
+    return store
+
+
+async def five_word_runs(store) -> tuple[str, list[str]]:
+    """The verse as stored, and every run of five of its words in today's spelling."""
+    async with store() as db:
+        stored = (await stored_verse(db, *FOLDED_ONCE)).text
+    words = standard(stored).split()
+    runs = [
+        " ".join(words[start : start + SHINGLE_WORDS])
+        for start in range(len(words) - SHINGLE_WORDS + 1)
+    ]
+    return stored, runs
+
+
+async def test_a_skeleton_folded_again_would_lose_runs_of_this_verse(folded_once):
+    stored, runs = await five_word_runs(folded_once)
+    skeletons = [guard_fold(stored), standard_skeleton(stored)]
+
+    # Why the detectors take the stored skeletons as they are.
+    assert guard_fold(standard_skeleton(stored)) != standard_skeleton(stored)
+    assert [run for run in runs if not ShingleOverlapDetector(skeletons).find(run)]
+    assert [run for run in runs if not ShingleOverlapDetector(skeletons=skeletons).find(run)] == []
+
+
+async def test_every_five_words_of_the_verse_as_today_are_refused_by_the_insight_stages(
+    folded_once,
+):
+    _, runs = await five_word_runs(folded_once)
+    async with folded_once() as db:
+        detector = await quran_detector(db)
+        guard = scripture_guard(detector, session=db)
+        refused = [await guard.leaks([f"وفي ذلك {run}"]) for run in runs]
+
+    assert [run for run in runs if not detector.find(run)] == []
+    assert all(refused)
+
+
+async def test_every_five_words_of_the_verse_as_today_are_refused_in_an_insight(folded_once):
+    _, runs = await five_word_runs(folded_once)
+    async with folded_once() as db:
+        refusals = [
+            (
+                await accept(
+                    db,
+                    scene(),
+                    [proposed(quran=quran(*FOLDED_ONCE), explanation=explained(f"وفي ذلك {run}."))],
+                )
+            ).refusals
+            for run in runs
+        ]
+
+    assert refusals == [["leak"]] * len(runs)
+
+
+@pytest.mark.parametrize("start", range(2, 7))
+async def test_a_chat_answer_quoting_five_words_of_the_verse_as_today_is_refused(
+    browser, folded_once, flow_settings, model, start
+):
+    _, runs = await five_word_runs(folded_once)
+    insight_id = await an_insight(
+        browser, folded_once, flow_settings, quran_surah=FOLDED_ONCE[0], quran_ayah=FOLDED_ONCE[1]
+    )
+    model.answers.append(said(answer=f"يقول النص {runs[start]}"))
+
+    refused = await ask(browser, insight_id)
+
+    assert (refused.status_code, refused.json()["error"]) == (502, "CHAT_ANSWER_REJECTED")

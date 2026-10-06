@@ -1,0 +1,27 @@
+{
+  "description": "Rows copied by a script from the development store (quranpedia dump 2026-10-03): verse 33:27, the one verse whose guard skeletons the guard fold changes when folded a second time, with its surah. Never typed by hand; the database checks the hash.",
+  "surahs": [
+    {
+      "number": 33,
+      "name_ar": "سورة الأحزاب",
+      "revelation_place": "مدنية",
+      "revelation_order": 90,
+      "ayah_count": 73,
+      "words_count": 1303,
+      "source_version": "dump:2026-10-03"
+    }
+  ],
+  "verses": [
+    {
+      "surah": 33,
+      "ayah": 27,
+      "quranpedia_ayah_id": 65810,
+      "mushaf_id": 2,
+      "page": 421,
+      "juz": 21,
+      "text": "وَأَوۡرَثَكُمۡ أَرۡضَهُمۡ وَدِيَٰرَهُمۡ وَأَمۡوَٰلَهُمۡ وَأَرۡضٗا لَّمۡ تَطَــُٔوهَاۚ وَكَانَ ٱللَّهُ عَلَىٰ كُلِّ شَيۡءٖ قَدِيرٗا",
+      "text_sha256": "5b1f4e719c970ed649f678f7ef2e781481f04e1e336815bfd03a42496b59364c",
+      "source_version": "dump:2026-10-03"
+    }
+  ]
+}

@@ -49,11 +49,11 @@ those rows only, once per spelling.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any
 
 from sqlalchemy import Select, Text, bindparam, func, literal, or_, select
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
 
 from src.models import HadithSearch, QuranVerseSearch, QuranVerseStandardGuard
 from src.models.scripture import quran_verse_spans, quran_verse_standard_spans
@@ -75,9 +75,12 @@ COLUMNS = (
     HadithSearch.guard_text,
 )
 # The verse skeletons held whole against a text, with their word counts: both spellings.
-WHOLE_VERSES = (
-    (QuranVerseSearch.guard_text, QuranVerseSearch.guard_words),
-    (QuranVerseStandardGuard.guard_text, QuranVerseStandardGuard.guard_words),
+WHOLE_VERSES: tuple[tuple[ColumnElement[str], ColumnElement[int]], ...] = (
+    (QuranVerseSearch.guard_text.expression, QuranVerseSearch.guard_words.expression),
+    (
+        QuranVerseStandardGuard.guard_text.expression,
+        QuranVerseStandardGuard.guard_words.expression,
+    ),
 )
 
 
@@ -120,7 +123,7 @@ def short_verse_statements(wanted: list[str], window: int = WINDOW) -> list[Sele
 
 
 def _short_verse_statement(
-    wanted: list[str], skeleton: Any, words: Any, window: int
+    wanted: list[str], skeleton: ColumnElement[str], words: ColumnElement[int], window: int
 ) -> Select[int]:
     written = (
         func.unnest(bindparam("texts", wanted, type_=ARRAY(Text)))

@@ -66,7 +66,7 @@ async def quran_detector(session: AsyncSession) -> ShingleOverlapDetector:
         )
     )
     # Seconds of pure Python: in a thread, so the event loop keeps serving meanwhile.
-    return await asyncio.to_thread(ShingleOverlapDetector, texts)
+    return await asyncio.to_thread(lambda: ShingleOverlapDetector(skeletons=texts))
 
 
 class EngineGuard:
@@ -114,5 +114,5 @@ def scripture_guard(
         detectors.append(quran)
     shown: Sequence[str] = [without_honorific(text) for text in hadith_texts]
     if shown:
-        detectors.append(ShingleOverlapDetector(shown))
+        detectors.append(ShingleOverlapDetector(skeletons=shown))
     return EngineGuard(LeakGuard(detectors), session)
