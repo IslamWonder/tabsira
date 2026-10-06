@@ -890,7 +890,7 @@ def test_options_from_the_command_line(tmp_path: Path) -> None:
     withdrawn = process.options_of(
         process.parser().parse_args(["patch", "--photos", "2", "--withdraw", "unrelated"])
     )
-    assert withdrawn.withdraw == "unrelated"
+    assert withdrawn == PatchOptions(photos=frozenset({2}), withdraw="unrelated")
     with pytest.raises(SystemExit):
         process.parser().parse_args(["photos", "--only", "1", "--add-hadith"])
     default = process.options_of(process.parser().parse_args(["photos"]))
