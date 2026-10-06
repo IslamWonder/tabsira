@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { LogoMark } from '@/components/brand/logo';
+import { LogoLight } from '@/components/brand/logo-light';
 import { useIdleHint } from '@/components/scene/use-idle-hint';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
@@ -13,14 +14,6 @@ import { messages } from '@/messages';
  * screen keeps its logo alive without replaying its intro.
  */
 export const SHINE_TIMING = { idleMs: 45_000, hintMs: 2_000, max: 3 } as const;
-
-/** Where the sparks rise from around the mark, and when (fx.css «logo entrance»). */
-const SPARKS = [
-  { left: '18%', top: '30%', delay: '1150ms' },
-  { left: '78%', top: '22%', delay: '1250ms' },
-  { left: '64%', top: '82%', delay: '1350ms' },
-  { left: '30%', top: '76%', delay: '1450ms' },
-] as const;
 
 /**
  * The designer's mark, leading home; its accessible name is the product's name.
@@ -44,17 +37,7 @@ export function Brand({ className }: Readonly<{ className?: string }>) {
         className
       )}
     >
-      <span aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <span className="fx-logo-flare absolute inset-[-30%] rounded-full" />
-        <span className="fx-logo-ring absolute inset-[-6%] rounded-full border border-[var(--glow-gold)]" />
-        {SPARKS.map((spark) => (
-          <span
-            key={spark.delay}
-            className="fx-logo-spark absolute size-1 rounded-full bg-[var(--glow-gold)]"
-            style={{ left: spark.left, top: spark.top, animationDelay: spark.delay }}
-          />
-        ))}
-      </span>
+      <LogoLight />
       <LogoMark title={messages.brand.name} className="relative h-12" entrance shine={shine} />
     </Link>
   );

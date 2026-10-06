@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CONSENT_MODE_DEFAULTS } from '@/consent/consent-mode';
 import { PREFERENCES_INIT_SCRIPT } from '@/preferences/init-script';
 import { INSTALL_CAPTURE_SCRIPT } from '@/pwa/install';
+import { LAUNCH_SCRIPT } from '@/pwa/launch';
 import { mockApi } from '@/test/api';
 import { POLICY, RECORD } from '@/test/fixtures';
 import RootLayout, { metadata, viewport } from './layout';
@@ -65,10 +66,12 @@ describe('RootLayout', () => {
   it('applies a stored theme and motion choice in <head>, before anything paints', async () => {
     const document = await renderLayout();
     const scripts = document.head.querySelectorAll('script');
-    expect(scripts).toHaveLength(2);
+    expect(scripts).toHaveLength(3);
     expect(scripts[0]?.textContent).toBe(PREFERENCES_INIT_SCRIPT);
     // Then the install prompt is kept, should the browser fire it before hydration.
     expect(scripts[1]?.textContent).toBe(INSTALL_CAPTURE_SCRIPT);
+    // Last, the launch splash, which reads the motion choice the first script set.
+    expect(scripts[2]?.textContent).toBe(LAUNCH_SCRIPT);
   });
 
   it('puts the Consent Mode defaults first in <head> only when GA_MEASUREMENT_ID is set, read per request', async () => {
