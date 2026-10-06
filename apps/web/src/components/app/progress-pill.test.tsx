@@ -51,7 +51,7 @@ describe('ProgressPill', () => {
   it('is absent before the first insight and when the API does not answer', async () => {
     const api = mockApi({ 'GET /me/progress': { body: progress(0, 0) } });
     const { container, unmount } = render(<ProgressPill />);
-    await waitFor(() => expect(api.requests.length).toBe(1));
+    await waitFor(() => expect(api.requests).toHaveLength(1));
     expect(container).toBeEmptyDOMElement();
     unmount();
     mockApi({ 'GET /me/progress': apiError(503, 'SERVICE_UNAVAILABLE') });
@@ -73,12 +73,12 @@ describe('ProgressPill', () => {
     );
     pathname.value = '/world';
     rerender(<ProgressPill />);
-    await waitFor(() => expect(api.requests.length).toBe(2));
+    await waitFor(() => expect(api.requests).toHaveLength(2));
     expect(new URL(api.requests[1]?.url as string).searchParams.get('tz')).toBe('UTC');
     pathname.value = '/me';
     rerender(<ProgressPill />);
     unmount();
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(api.requests.length).toBe(3);
+    expect(api.requests).toHaveLength(3);
   });
 });

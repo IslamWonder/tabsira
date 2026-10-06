@@ -72,9 +72,7 @@ describe('CameraCapture', () => {
     const shutter = await screen.findByRole('button', { name: 'التقط' });
     await waitFor(() => expect(shutter).toBeEnabled());
 
-    await act(async () => {
-      fireEvent.click(shutter);
-    });
+    fireEvent.click(shutter);
 
     await waitFor(() => expect(onFile).toHaveBeenCalledOnce());
     const file = onFile.mock.calls[0]?.[0] as File;
@@ -137,9 +135,7 @@ describe('CameraCapture', () => {
     withFrame(video as HTMLVideoElement, 640, 480);
     const shutter = await screen.findByRole('button', { name: 'التقط' });
     await waitFor(() => expect(shutter).toBeEnabled());
-    await act(async () => {
-      fireEvent.click(shutter);
-    });
+    fireEvent.click(shutter);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('لم تُلتقط الصورة');
     expect(onFile).not.toHaveBeenCalled();
@@ -327,9 +323,7 @@ describe('CameraCapture', () => {
       video: { facingMode: { ideal: 'environment' } },
       audio: false,
     });
-    await act(async () => {
-      fireEvent.click(flip);
-    });
+    fireEvent.click(flip);
 
     expect(track.stop).toHaveBeenCalled();
     expect(getUserMedia).toHaveBeenLastCalledWith({
@@ -340,9 +334,7 @@ describe('CameraCapture', () => {
     await waitFor(() =>
       expect(screen.getByLabelText('معاينة الكاميرا')).toHaveClass('-scale-x-100')
     );
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'بدّل الكاميرا' }));
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'بدّل الكاميرا' }));
     expect(getUserMedia).toHaveBeenLastCalledWith({
       video: { facingMode: { ideal: 'environment' } },
       audio: false,
@@ -356,16 +348,12 @@ describe('CameraCapture', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /التقط بالكاميرا/ }));
     const flip = await screen.findByRole('button', { name: 'بدّل الكاميرا' });
-    await act(async () => {
-      fireEvent.click(flip);
-    });
+    fireEvent.click(flip);
     await waitFor(() =>
       expect(screen.getByLabelText('معاينة الكاميرا')).toHaveClass('-scale-x-100')
     );
     fireEvent.click(screen.getByRole('button', { name: 'أغلق الكاميرا' }));
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /التقط بالكاميرا/ }));
-    });
+    fireEvent.click(screen.getByRole('button', { name: /التقط بالكاميرا/ }));
     expect(getUserMedia).toHaveBeenLastCalledWith({
       video: { facingMode: { ideal: 'user' } },
       audio: false,

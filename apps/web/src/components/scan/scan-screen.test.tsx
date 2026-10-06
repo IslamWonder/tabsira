@@ -174,7 +174,7 @@ describe('ScanScreen: the stages', () => {
     );
     render(<ScanScreen scanId="1" />);
     expect(screen.queryByRole('img', { name: 'صورتك التي أرسلتها' })).toBeNull();
-    expect(screen.getAllByText('لن نعرض هذه الصورة ولن نحفظها. نعرض لك المعنى وحده.').length).toBe(
+    expect(screen.getAllByText('لن نعرض هذه الصورة ولن نحفظها. نعرض لك المعنى وحده.')).toHaveLength(
       2
     );
   });

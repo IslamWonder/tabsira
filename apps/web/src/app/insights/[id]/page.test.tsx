@@ -39,7 +39,7 @@ describe('the public page of an insight', () => {
     const api = mockApi({ [`GET ${API_PATH}`]: { body: publicInsightOut() } });
     render(await PublicInsightRoute(params(ID)));
     // Besides the session every page reads (the top bar's, shared), nothing but the public route.
-    await waitFor(() => expect(api.requests.length).toBe(2));
+    await waitFor(() => expect(api.requests).toHaveLength(2));
     expect(api.requests.map((request) => new URL(request.url).pathname)).toEqual([
       API_PATH,
       '/auth/me',

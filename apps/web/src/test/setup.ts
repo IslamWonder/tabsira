@@ -56,7 +56,7 @@ afterEach(() => {
       document.cookie = `${name}=; Path=/; Max-Age=0`;
     }
   }
-  document.documentElement.removeAttribute('data-theme');
-  document.documentElement.removeAttribute('data-motion');
+  delete document.documentElement.dataset.theme;
+  delete document.documentElement.dataset.motion;
   document.documentElement.removeAttribute('style');
 });

@@ -28,16 +28,6 @@ vi.mock('next/navigation', () => ({
 }));
 
 describe('placeholder routes', () => {
-  it.each<[string, () => ReactElement, Metadata, string, string]>([])(
-    '%s says «قريبًا» honestly and has its canonical address',
-    (_route, Page, metadata, title, canonical) => {
-      render(<Page />);
-      expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument();
-      expect(screen.getByText('قريبًا')).toBeInTheDocument();
-      expect(metadata.alternates?.canonical).toBe(canonical);
-    }
-  );
-
   it('opens «تبصرة تواصل» on its feeds, outside the sitemap', () => {
     render(<CommunityPage />);
     expect(screen.getByRole('heading', { level: 1, name: 'تبصرة تواصل' })).toBeInTheDocument();

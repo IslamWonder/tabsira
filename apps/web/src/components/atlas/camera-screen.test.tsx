@@ -101,7 +101,7 @@ describe('CameraScreen', () => {
     );
     // The labels over the view repeat the list for the eye only; no coordinate is written anywhere.
     const overlay = document.querySelectorAll('[aria-hidden="true"] a');
-    expect(overlay.length).toBe(2);
+    expect(overlay).toHaveLength(2);
     for (const label of overlay) {
       expect(label).toHaveAttribute('tabindex', '-1');
     }

@@ -41,8 +41,8 @@ export function withLongScripture(
   if (quran === null || hadith === null) {
     throw new Error('the fixture needs both a verse and a hadith');
   }
-  const verseText = Array(verseTimes).fill(quran.verse.text).join('');
-  const hadithText = Array(hadithTimes).fill(hadith.hadith.text).join(' ');
+  const verseText = new Array(verseTimes).fill(quran.verse.text).join('');
+  const hadithText = new Array(hadithTimes).fill(hadith.hadith.text).join(' ');
   // The hash follows the lengthened text, so it still says what the stored text hashes to.
   return {
     ...insight,
