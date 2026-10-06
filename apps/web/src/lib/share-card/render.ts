@@ -249,9 +249,7 @@ type Shared = Parameters<typeof partsFor>[3];
  * drawing, and a very long hadith is not drawn again and again to find out.
  */
 async function hadithCanFit(insight: PublicInsight, faces: Ctx, shared: Shared) {
-  const smallest = candidates(true)
-    .filter((candidate) => candidate.hadith)
-    .at(-1) as Candidate;
+  const smallest = candidates(true).findLast((candidate) => candidate.hadith) as Candidate;
   const parts = await partsFor(smallest, insight, faces, shared);
   return placeFixed(smallest.shape, { ...parts, verse: null }) !== null;
 }

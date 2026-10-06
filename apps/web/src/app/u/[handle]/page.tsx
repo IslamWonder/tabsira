@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const handle = decode((await params).handle);
   // Only a handle of the right shape is asked for: anything else is nobody's page.
   const result = handleProblem(handle) === null ? await profileOnServer(handle) : null;
-  if (result === null || !result.ok) {
+  if (!result?.ok) {
     return pageMetadata({
       path: profilePath(handle),
       title: messages.community.title,

@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useState } from 'react';
-import { signInHref } from '@/account/links';
 import { useSession } from '@/account/session';
 import { StatusScreen } from '@/components/app/status-screen';
 import { CommunityIcon, MoreIcon } from '@/components/icons';
@@ -14,9 +13,8 @@ import { Sheet } from '@/components/ui/sheet';
 import { failureMessage } from '@/lib/api/failure-message';
 import type { Failure } from '@/lib/api/result';
 import { messages, siteLanguage } from '@/messages';
-import { useAccess } from '@/social/access';
-import { getProfile, memberPosts, setFollow } from '@/social/api';
-import { memberLabel, profilePath } from '@/social/identity';
+import { getProfile, memberPosts } from '@/social/api';
+import { memberLabel } from '@/social/identity';
 import type { MemberProfile, Post } from '@/social/types';
 import { usePages } from '@/social/use-pages';
 import { FeedList } from './feed-list';

@@ -26,7 +26,7 @@ function path(id: string): string {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
   const result = PUBLIC_ID.test(id) ? await entryOnServer(id) : null;
-  if (result === null || !result.ok) {
+  if (!result?.ok) {
     return pageMetadata({
       path: path(id),
       title: messages.atlas.title,

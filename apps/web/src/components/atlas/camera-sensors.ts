@@ -259,7 +259,7 @@ export function useDeviceHeading(): DeviceHeading {
   useEffect(() => () => cleanup.current?.(), []);
 
   const enable = useCallback(async () => {
-    if (typeof window === 'undefined' || typeof window.DeviceOrientationEvent === 'undefined') {
+    if (typeof window === 'undefined' || window.DeviceOrientationEvent === undefined) {
       setState('unavailable');
       return;
     }
@@ -314,9 +314,9 @@ export function useDeviceHeading(): DeviceHeading {
       const elapsed = Date.now() - renderedAt.current;
       if (elapsed >= HEADING_RENDER_MS) {
         flush();
-      } else if (flushTimer === null) {
+      } else {
         // Readings between two renders are smoothed in; the last one is shown when the pace allows.
-        flushTimer = setTimeout(flush, HEADING_RENDER_MS - elapsed);
+        flushTimer ??= setTimeout(flush, HEADING_RENDER_MS - elapsed);
       }
     };
     const type: OrientationEventType =

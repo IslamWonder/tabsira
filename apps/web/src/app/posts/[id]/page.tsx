@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
   const path = postPath(id);
   const result = PUBLIC_ID.test(id) ? await postOnServer(id) : null;
-  if (result === null || !result.ok) {
+  if (!result?.ok) {
     return pageMetadata({
       path,
       title: messages.community.title,

@@ -96,7 +96,7 @@ export function InsightPhoto({
           aria-hidden="true"
           className="photo-scrim pointer-events-none absolute inset-0 desktop:hidden"
         />
-        {shown === undefined || placement === undefined || !placement.visible ? null : (
+        {shown === undefined || !placement?.visible ? null : (
           <span
             aria-hidden="true"
             className="pointer-events-none absolute flex items-center gap-2.5"

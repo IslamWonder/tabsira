@@ -84,7 +84,7 @@ export function ProfileGate() {
     session.status !== 'signed-in' ||
     session.user.profile_completed ||
     session.user.legal_acceptance_required === true ||
-    READABLE.includes(pathname) ||
+    READABLE.has(pathname) ||
     consent.status === 'asking' ||
     settingsOpen
   ) {

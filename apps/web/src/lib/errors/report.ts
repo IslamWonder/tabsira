@@ -98,8 +98,8 @@ export function reportError(error: unknown, { handled = true }: { handled?: bool
   queue.push(report);
   if (queue.length >= MAX_BATCH) {
     flushErrors();
-  } else if (timer === null) {
-    timer = setTimeout(flushErrors, FLUSH_DELAY_MS);
+  } else {
+    timer ??= setTimeout(flushErrors, FLUSH_DELAY_MS);
   }
 }
 

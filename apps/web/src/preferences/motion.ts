@@ -27,9 +27,9 @@ export function readAmbientMotion(): boolean {
 
 export function applyAmbientMotion(on: boolean): void {
   if (on) {
-    document.documentElement.removeAttribute('data-motion');
+    delete document.documentElement.dataset.motion;
   } else {
-    document.documentElement.setAttribute('data-motion', 'reduce');
+    document.documentElement.dataset.motion = 'reduce';
   }
 }
 

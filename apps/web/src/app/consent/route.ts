@@ -21,7 +21,9 @@ import { siteOrigin } from '@/lib/site';
  */
 
 function cookieOf(request: Request, name: string): string | null {
-  const match = new RegExp(`(?:^|;\\s*)${name}=([^;]*)`).exec(request.headers.get('cookie') ?? '');
+  const match = new RegExp(String.raw`(?:^|;\s*)${name}=([^;]*)`).exec(
+    request.headers.get('cookie') ?? ''
+  );
   return match === null ? null : decodeURIComponent(match[1] as string);
 }
 

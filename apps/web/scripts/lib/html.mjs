@@ -6,7 +6,7 @@ const INLINE = 'span|a|b|i|em|strong|code|label|time|small|abbr|sup|sub';
 // Two adjacent inline elements with no space between them weld two words in
 // every text extractor (docs/SEO.md §1, text extraction).
 export const GLUE = new RegExp(
-  `([\\p{L}\\p{N},.;:!?)\\]"])</(${INLINE})><(${INLINE})\\b[^>]*>([\\p{L}\\p{N}("])`,
+  String.raw`([\p{L}\p{N},.;:!?)\]"])</(${INLINE})><(${INLINE})\b[^>]*>([\p{L}\p{N}("])`,
   'gu'
 );
 
@@ -16,14 +16,14 @@ export function decodeEntities(value) {
     return value;
   }
   return value
-    .replace(/&quot;/g, '"')
+    .replaceAll(/&quot;/g, '"')
     .replace(/&#0?39;|&apos;|&#x27;/gi, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&nbsp;/g, ' ')
+    .replaceAll(/&lt;/g, '<')
+    .replaceAll(/&gt;/g, '>')
+    .replaceAll(/&nbsp;/g, ' ')
     .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
     .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(Number.parseInt(code, 16)))
-    .replace(/&amp;/g, '&');
+    .replaceAll(/&amp;/g, '&');
 }
 
 export function baseUrl() {

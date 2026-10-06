@@ -21,7 +21,7 @@ import { LegalConsent } from './legal-consent';
 
 const L = messages.auth.legal;
 /** The texts themselves stay readable while the gate is up: its links open them in place. */
-const READABLE = ['/terms', '/privacy'];
+const READABLE = new Set(['/terms', '/privacy']);
 const X = messages.pages.me.delete;
 
 /** Deleting the account from the gate: the existing route, confirmed in place, never by a browser dialog. */
@@ -195,7 +195,7 @@ export function LegalGate() {
   if (
     session.status !== 'signed-in' ||
     session.user.legal_acceptance_required !== true ||
-    READABLE.includes(pathname) ||
+    READABLE.has(pathname) ||
     consent.status === 'asking' ||
     settingsOpen
   ) {

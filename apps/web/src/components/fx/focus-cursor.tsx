@@ -32,7 +32,7 @@ export function FocusCursor() {
     let touch = false;
 
     const place = () => {
-      if (target === null || !target.isConnected) {
+      if (!target?.isConnected) {
         cursor.dataset.visible = 'false';
         return;
       }

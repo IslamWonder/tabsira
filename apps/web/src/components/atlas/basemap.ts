@@ -127,9 +127,9 @@ function symbolChanges(id: string, colours: BasemapColours): LayerChange[] {
   if (NAMED.test(id)) {
     changes.push({ kind: 'layout', property: 'text-field', value: ARABIC_FIRST_NAME });
   }
-  if (/^poi_/.test(id)) {
+  if (id.startsWith('poi_')) {
     changes.push({ kind: 'zoom', min: POI_MIN_ZOOM, max: 24 });
-  } else if (/^airport/.test(id)) {
+  } else if (id.startsWith('airport')) {
     changes.push({ kind: 'zoom', min: AIRPORT_MIN_ZOOM, max: 24 });
   }
   return changes;

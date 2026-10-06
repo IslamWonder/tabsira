@@ -23,19 +23,17 @@ export function loadTurnstile(): Promise<void> {
   if (window.turnstile !== undefined) {
     return Promise.resolve();
   }
-  if (pending === null) {
-    pending = new Promise<void>((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = TURNSTILE_SCRIPT;
-      script.async = true;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('turnstile script failed to load'));
-      document.head.appendChild(script);
-    }).catch((error: unknown) => {
-      pending = null;
-      throw error;
-    });
-  }
+  pending ??= new Promise<void>((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = TURNSTILE_SCRIPT;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('turnstile script failed to load'));
+    document.head.appendChild(script);
+  }).catch((error: unknown) => {
+    pending = null;
+    throw error;
+  });
   return pending;
 }
 

@@ -142,7 +142,7 @@ async function checkRobots() {
     note('/robots.txt', 'has a Host: line');
   }
   for (const agent of AI_AGENTS) {
-    if (!new RegExp(`^User-Agent:\\s*${agent}\\s*$`, 'im').test(text)) {
+    if (!new RegExp(String.raw`^User-Agent:\s*${agent}\s*$`, 'im').test(text)) {
       note('/robots.txt', `${agent} not named`);
     }
   }

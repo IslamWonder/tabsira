@@ -35,9 +35,9 @@ function syncThemeColor(preference: ThemePreference): void {
 export function applyThemePreference(preference: ThemePreference): void {
   const root = document.documentElement;
   if (isExplicit(preference)) {
-    root.setAttribute('data-theme', preference);
+    root.dataset.theme = preference;
   } else {
-    root.removeAttribute('data-theme');
+    delete root.dataset.theme;
   }
   syncThemeColor(preference);
 }

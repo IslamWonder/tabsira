@@ -18,7 +18,7 @@ function path(id: string): string {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
   const result = GEONAME_ID.test(id) ? await placeOnServer(Number(id)) : null;
-  if (result === null || !result.ok) {
+  if (!result?.ok) {
     return pageMetadata({
       path: path(id),
       title: messages.atlas.title,

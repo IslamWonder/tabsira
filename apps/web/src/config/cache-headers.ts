@@ -7,7 +7,7 @@ export interface HeaderRule {
 /** The folders of public/ that hold the decorative pictures, and nothing else. */
 export const PICTURE_FOLDERS = ['world', 'landing', 'scene'] as const;
 
-const PICTURE = '[^/]+\\.(?:webp|avif|png|jpe?g)';
+const PICTURE = String.raw`[^/]+\.(?:webp|avif|png|jpe?g)`;
 
 /**
  * The decorative pictures are the heaviest files in the app (the world
