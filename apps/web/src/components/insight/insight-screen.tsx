@@ -32,6 +32,7 @@ import { PhotoPlaceholder } from './photo-placeholder';
 import { NO_TARGETS, type PublishTargets, ShareSheet } from './share-sheet';
 import { StepCard } from './step-card';
 import { type PhotoView, useInsight } from './use-insight';
+import { useQuickShare } from './use-quick-share';
 import { WhySheet } from './why-sheet';
 
 const T = messages.insightPage;
@@ -92,6 +93,11 @@ export function InsightScreen({
   const [whyOpen, setWhyOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const quick = useQuickShare(
+    insightId,
+    load.phase === 'ready' ? load.insight.title : '',
+    load.phase === 'ready' && load.insight.published_at !== null
+  );
   const feedback = useFeedback(
     insightId,
     load.phase === 'ready' ? (load.insight.feedback ?? null) : null
@@ -141,7 +147,13 @@ export function InsightScreen({
   // The API publishes only a signed-in owner's insight from the real analysis; offer sharing only then.
   const canShare = session.status === 'signed-in' && insight.engine === 'pipeline';
   const share: ShareOption = canShare
-    ? { kind: 'open', onOpen: () => setShareOpen(true) }
+    ? {
+        kind: 'open',
+        onShare: quick.run,
+        onOptions: () => setShareOpen(true),
+        working: quick.working,
+        said: quick.said,
+      }
     : {
         kind: 'blocked',
         reason:
@@ -161,12 +173,17 @@ export function InsightScreen({
                 <Notice tone="error">{finish.error}</Notice>
               </div>
             )}
+            {quick.said === null || finish.completion !== null ? null : (
+              <div role={quick.said.tone === 'error' ? 'alert' : 'status'}>
+                <Notice tone={quick.said.tone}>{quick.said.text}</Notice>
+              </div>
+            )}
             <InsightActions
               status={finish.status}
               onDone={() => {
                 void controls.complete();
               }}
-              onShare={canShare ? () => setShareOpen(true) : undefined}
+              onShare={canShare ? quick.run : undefined}
             />
           </div>
         }
@@ -241,7 +258,8 @@ export function InsightScreen({
           onClose={() => setShareOpen(false)}
           insightId={insight.id}
           insightTitle={insight.title}
-          published={insight.published_at !== null}
+          published={quick.published}
+          onPublishedChange={quick.setPublished}
           publishTo={publishTo}
         />
       ) : null}

@@ -29,6 +29,8 @@ export interface ShareSheetProps {
   published: boolean;
   /** The other publishing surfaces whose feature is on (read by the server): the atlas and the network. */
   publishTo?: PublishTargets;
+  /** Told when publishing or withdrawing here changes whether the insight is public. */
+  onPublishedChange?: (published: boolean) => void;
 }
 
 export interface PublishTargets {
@@ -39,11 +41,11 @@ export interface PublishTargets {
 export const NO_TARGETS: PublishTargets = { atlas: false, community: false };
 
 /** The page's address on this site, from the path the API names or, for an insight already public, the known one. */
-function addressOf(path: string): string {
+export function addressOf(path: string): string {
   return new URL(path, siteOrigin()).toString();
 }
 
-function refusal(failure: Failure): string {
+export function refusal(failure: Failure): string {
   if (failure.status !== 409) {
     return journeyFailureMessage(failure);
   }
@@ -71,6 +73,7 @@ export function ShareSheet({
   insightTitle,
   published,
   publishTo = NO_TARGETS,
+  onPublishedChange,
 }: Readonly<ShareSheetProps>) {
   const [isPublic, setIsPublic] = useState(published);
   const [link, setLink] = useState<string | null>(
@@ -102,6 +105,7 @@ export function ShareSheet({
     }
     const address = addressOf(result.data.path);
     setIsPublic(true);
+    onPublishedChange?.(true);
     setLink(address);
     setSaid(await shareLink(insightTitle, address));
     setWorking(false);
@@ -117,6 +121,7 @@ export function ShareSheet({
       return;
     }
     setIsPublic(false);
+    onPublishedChange?.(false);
     setLink(null);
     setSaid({ tone: 'success', text: T.withdrawn });
   };

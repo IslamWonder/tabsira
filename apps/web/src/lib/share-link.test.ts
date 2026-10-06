@@ -26,6 +26,13 @@ describe('shareLink', () => {
     expect(share).toHaveBeenCalledWith({ title: 't', url: URL_ });
   });
 
+  it('adds a short text when given one', async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+    await shareLink('t', URL_, 'x');
+    expect(share).toHaveBeenCalledWith({ title: 't', text: 'x', url: URL_ });
+  });
+
   it('takes a closed dialog as a choice, and a failed one as a reason to copy', async () => {
     const write = clipboard(async () => undefined);
     const share = vi.fn().mockRejectedValueOnce(new DOMException('closed', 'AbortError'));
