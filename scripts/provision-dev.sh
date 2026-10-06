@@ -3,7 +3,7 @@
 # Mint) for TABSIRA: the database server with its extensions, the quality tools,
 # and http://tabsira.test. Everything runs natively; Docker is not needed.
 #
-#   1. base packages
+#   1. base packages and Redis (the scan queue)
 #   2. PostgreSQL 18 + postgis, pgvector, TimescaleDB, preloaded libraries
 #                                                       (scripts/install-postgres.sh)
 #   3. shfmt, shellcheck, gitleaks, typos               (scripts/install-quality-tools.sh)
@@ -28,6 +28,9 @@ banner "1/5 Base packages"
 # A repository of someone else's that fails to update must not stop us.
 as_root apt-get update -y || warn "apt-get update reported errors; continuing"
 apt_install ca-certificates curl gnupg git make jq openssl
+# Scans queue their jobs in Redis on 127.0.0.1:6379 (docs/SETUP.md); Ubuntu's package is enough here.
+apt_install redis-server
+as_root systemctl enable --now redis-server >/dev/null 2>&1 || warn "could not start redis-server; start it before make dev"
 
 banner "2/5 PostgreSQL and its extensions"
 bash "$SCRIPT_DIR/install-postgres.sh"

@@ -21,10 +21,10 @@ Artifacts you make while working (exports, reports) go beside the checkout in `.
 
 Done when `psql "$(grep ^SYNC_DATABASE_URL= .env | cut -d= -f2- | sed 's/+psycopg//')" -c 'select 1'` answers and `http://tabsira.test` resolves.
 
-- Install Node 24, pnpm and uv yourself (nvm, fnm, brew: your choice).
-- Ubuntu or Mint: `sudo bash scripts/provision-dev.sh` installs PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, the quality tools, creates the role, the databases and `.env` (`scripts/setup-db.sh`), and sets up nginx for `tabsira.test` on port 80, plain HTTP (decision 49). Idempotent.
+- Install Node 24, pnpm and uv yourself (nvm, fnm, brew: your choice). On a fresh Ubuntu, the README's «Install on a fresh Ubuntu» section gives the commands.
+- Ubuntu or Mint: `sudo bash scripts/provision-dev.sh` installs and starts Redis, installs PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, the quality tools, creates the role, the databases and `.env` (`scripts/setup-db.sh`), and sets up nginx for `tabsira.test` on port 80, plain HTTP (decision 49). Idempotent.
 - macOS (Homebrew): `bash scripts/install-postgres.sh` (hands over to `install-postgres-macos.sh`: PostgreSQL 18, PostGIS, pgvector, TimescaleDB from `timescale/tap`, and Redis, all as login services), then `bash scripts/setup-db.sh` and `bash scripts/setup-nginx-local.sh` (nginx on port 80 under your account; it asks for your password once, to add the three hosts to `/etc/hosts`). The Homebrew PostgreSQL superuser is your own macOS account, so no `sudo -u postgres`. Put `$(brew --prefix postgresql@18)/bin` on your `PATH` for `psql`. `provision-dev.sh` is for Ubuntu only.
-- Redis must run on 127.0.0.1:6379 (scans use it).
+- Redis must run on 127.0.0.1:6379 (scans use it); `provision-dev.sh` sets it up on Ubuntu.
 
 ### 2. Dependencies and git hooks
 

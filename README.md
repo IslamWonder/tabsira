@@ -28,12 +28,61 @@
 
 ## 🛠️ Two ways to run it
 
-| Where                  | How                                                                                                                                                                                                                                                                 | Read                                     |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| 💻 A laptop            | `make install`, `make migrate`, `make data` (once; it skips what is already imported), then `make dev` and open `http://tabsira.test` (plain HTTP on port 80, decision 49). Linux, macOS, or Linux in a virtual machine on Windows.                                 | [docs/SETUP.md](docs/SETUP.md)           |
-| 🖥️ A production server | Directly on Ubuntu with systemd, gunicorn, pm2 and nginx, two hosts (application and data) joined by a VPN, deployed by `deploy/deploy.sh` with a pre-flight boot, rolling restarts and rollback. No Docker in production (decision 20); `make up` is not the path. | [docs/OPERATIONS.md](docs/OPERATIONS.md) |
+| Where                  | How                                                                                                                                                                                                                                                                                                             | Read                                     |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| 💻 A laptop            | `make install`, `make migrate`, `make data` (once; it skips what is already imported), then `make dev` and open `http://tabsira.test` (plain HTTP on port 80, decision 49). Linux, macOS, or Linux in a virtual machine on Windows. From a fresh Ubuntu: [the steps below](#-install-on-a-fresh-ubuntu-judges). | [docs/SETUP.md](docs/SETUP.md)           |
+| 🖥️ A production server | Directly on Ubuntu with systemd, gunicorn, pm2 and nginx, two hosts (application and data) joined by a VPN, deployed by `deploy/deploy.sh` with a pre-flight boot, rolling restarts and rollback. No Docker in production (decision 20); `make up` is not the path.                                             | [docs/OPERATIONS.md](docs/OPERATIONS.md) |
 
 🧱 The stack: `apps/web` (Next.js, React, TypeScript, Tailwind), `apps/api` (Python 3.12, FastAPI, SQLAlchemy, Alembic, managed with uv), `services/vision` (the object detector), PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, Redis, and an S3-compatible bucket for consented photos.
+
+## 🐧 Install on a fresh Ubuntu (judges)
+
+A clean **Ubuntu 24.04 LTS** machine or virtual machine with `sudo`, internet access, at least **4 CPU cores, 8 GB of memory and 25 GB of free disk** (the database holds about 8 GB once filled; the downloaded archives, about 4 GB, may be deleted afterwards). Count about 30 to 45 minutes, most of it downloads. Every step is safe to run again.
+
+1. 🧰 **The code and its tools.** `install-toolchain.sh` installs, in your own home and at the versions the repository pins, nvm with Node 24, pnpm, uv and Python 3.12, plus the few system packages it needs (it asks for `sudo` once).
+
+   ```bash
+   sudo apt-get update && sudo apt-get install -y git
+   git clone https://github.com/IslamWonder/tabsira.git
+   cd tabsira
+   bash deploy/install-toolchain.sh
+   source ~/.bashrc                          # puts node, pnpm and uv on this shell's PATH
+   ```
+
+2. 🏗️ **The machine set up.** `provision-dev.sh` installs PostgreSQL 18 with PostGIS, pgvector and TimescaleDB, Redis and nginx, creates the database and the `.env` file at the repository's root, and serves `http://tabsira.test`, `http://api.tabsira.test` and `http://admin.tabsira.test` on port 80 (it adds them to `/etc/hosts`).
+
+   ```bash
+   sudo bash scripts/provision-dev.sh
+   make install                              # web, API and vision dependencies
+   make migrate                              # the database schemas
+   make data                                 # the scripture store and its search vectors: about 1 GB, downloaded and checked once
+   ```
+
+3. 🔑 **The keys, in `.env` at the repository's root** (created by step 2; nothing else needs editing on a development machine):
+
+   | To                               | Set                                                                      |
+   | -------------------------------- | ------------------------------------------------------------------------ |
+   | Scan your own photos with OpenAI | `AI_OPENAI__API_KEY=sk-...` (the default provider, `AI_PROVIDER=openai`) |
+   | Or with OVHcloud AI Endpoints    | `AI_PROVIDER=ovh` and `AI_OVH__API_KEY=...`                              |
+   | Try without any key              | `SCAN_ENGINE=demo`: a declared simulation, every insight labelled as one |
+
+   The rain scene on the home page needs no key at all. Restart `make dev` after changing `.env`.
+
+4. ▶️ **Run it**, then open [http://tabsira.test](http://tabsira.test):
+
+   ```bash
+   make dev                                  # API, scan worker, web app and vision service; Ctrl+C stops them
+   make smoke                                # in a second terminal: checks the pages, the API and one trial scan
+   ```
+
+5. ➕ **Optional.**
+
+   - 🗺️ Place search in the atlas needs GeoNames, about 340 MB to download and 4 GB in the database: `bash scripts/data.sh --geonames`.
+   - 👁️ The object detector draws the boxes on a photo; a scan works without it. Its weights, about 3 GB with the optional reranker: `bash services/vision/scripts/fetch-weights.sh`.
+   - 🛡️ An admin account for `http://admin.tabsira.test`: sign up on the site, then `cd apps/api && uv run python -m src.cli.make_admin you@example.com`.
+   - 💻 Browsing from another computer than the virtual machine: add `<the machine's IP> tabsira.test api.tabsira.test` to that computer's hosts file (the admin area answers on the machine itself only).
+
+More detail, macOS and Windows: [docs/SETUP.md](docs/SETUP.md) and [docs/SETUP-WINDOWS.md](docs/SETUP-WINDOWS.md).
 
 ## 🧑‍⚖️ A reviewer's path
 
