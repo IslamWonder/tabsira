@@ -16,7 +16,7 @@ SIGNUP = {
     "password": PASSPHRASE,
     "display_name": "ليلى",
     "accepted_terms_version": "2026-10-05T18:00Z",
-    "accepted_privacy_version": "2026-10-06T00:00Z",
+    "accepted_privacy_version": "2026-10-06T17:00Z",
 }
 LOGIN = {"email": "reader@example.com", "password": PASSPHRASE}
 
@@ -276,9 +276,9 @@ async def test_signing_up_records_the_acceptance_of_both_texts(web, db_session):
     rows = await consents_of(db_session)
     assert {(row.kind, row.version, row.granted) for row in rows} == {
         (ConsentKind.TERMS, "2026-10-05T18:00Z", True),
-        (ConsentKind.PRIVACY, "2026-10-06T00:00Z", True),
+        (ConsentKind.PRIVACY, "2026-10-06T17:00Z", True),
         # The unticked full-name box is a recorded refusal.
-        (ConsentKind.PUBLIC_FULL_NAME, "2026-10-06T00:00Z", False),
+        (ConsentKind.PUBLIC_FULL_NAME, "2026-10-06T17:00Z", False),
     }
 
 

@@ -213,6 +213,18 @@ class PostOut(BaseModel):
     why: WhyOut | None = Field(description="Only in the «لك» feed")
 
 
+class InsightPostIn(BaseModel):
+    """Publish an insight in «تبصرة تواصل»: its post, made once (decision 68)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    photo: bool = Field(
+        default=False,
+        description="Show the insight's kept photo with a new post; nothing without a kept photo "
+        "and the owner's photo consent (v2 §19). An existing post keeps its own choice",
+    )
+
+
 class PostCreateIn(BaseModel):
     """Start a draft from a verified insight."""
 

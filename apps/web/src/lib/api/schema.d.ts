@@ -828,8 +828,38 @@ export interface paths {
      *     caller's own words go in `reflection`, apart from the insight. 409 `INSIGHT_NOT_PUBLISHABLE`
      *     says why an insight cannot be published; 409 `PUBLIC_IDENTITY_REQUIRED` that the caller
      *     has no handle yet. Nothing is visible to anyone else until the draft is submitted.
+     *
+     *     An insight has one post (decision 68): when it has a draft or a refused post, that one is
+     *     answered with these words and audience, a draft again; when it has one published, held or
+     *     removed, 409 `INSIGHT_ALREADY_POSTED`.
      */
     post: operations['create_post_posts_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/insights/{insight_id}/post': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Publish an insight in «تبصرة تواصل», once
+     * @description Return the post of one of the caller's insights, publishing one when it has none (decision 68).
+     *
+     *     Safe to repeat: sharing, placing on the atlas and publishing all call it, and an insight gets
+     *     one post. A new post is public, has no reflection, and goes through the guard like any
+     *     other; a draft of it is submitted; a post held, refused or removed is returned as it is,
+     *     never replaced. 409 `INSIGHT_NOT_PUBLISHABLE` says why the insight cannot be published,
+     *     409 `PUBLIC_IDENTITY_REQUIRED` that the caller has no handle yet.
+     */
+    put: operations['publish_insight_post_insights__insight_id__post_put'];
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -3072,6 +3102,7 @@ export interface components {
       | 'HANDLE_TAKEN'
       | 'PUBLIC_IDENTITY_REQUIRED'
       | 'INSIGHT_NOT_PUBLISHABLE'
+      | 'INSIGHT_ALREADY_POSTED'
       | 'UNDER_13_CANNOT_PUBLISH'
       | 'INVALID_CURSOR'
       | 'GONE'
@@ -3636,6 +3667,18 @@ export interface components {
       quran: components['schemas']['QuranEvidenceOut'][];
       /** Hadith */
       hadith: components['schemas']['HadithEvidenceOut'][];
+    };
+    /**
+     * InsightPostIn
+     * @description Publish an insight in «تبصرة تواصل»: its post, made once (decision 68).
+     */
+    InsightPostIn: {
+      /**
+       * Photo
+       * @description Show the insight's kept photo with a new post; nothing without a kept photo and the owner's photo consent (v2 §19). An existing post keeps its own choice
+       * @default false
+       */
+      photo: boolean;
     };
     /** InsightQuran */
     InsightQuran: {
@@ -6931,6 +6974,41 @@ export interface operations {
     responses: {
       /** @description Successful Response */
       201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PostOut'];
+        };
+      };
+      /** @description An error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  publish_insight_post_insights__insight_id__post_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        insight_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['InsightPostIn'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
         headers: {
           [name: string]: unknown;
         };

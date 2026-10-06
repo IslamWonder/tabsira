@@ -1533,7 +1533,7 @@
       "post": {
         "tags": ["posts"],
         "summary": "Start a draft from a verified insight",
-        "description": "Copy one of the caller's verified insights into a publication and open a draft on it.\n\nThe copy is what is previewed and what is published; it is never edited afterwards. The\ncaller's own words go in `reflection`, apart from the insight. 409 `INSIGHT_NOT_PUBLISHABLE`\nsays why an insight cannot be published; 409 `PUBLIC_IDENTITY_REQUIRED` that the caller\nhas no handle yet. Nothing is visible to anyone else until the draft is submitted.",
+        "description": "Copy one of the caller's verified insights into a publication and open a draft on it.\n\nThe copy is what is previewed and what is published; it is never edited afterwards. The\ncaller's own words go in `reflection`, apart from the insight. 409 `INSIGHT_NOT_PUBLISHABLE`\nsays why an insight cannot be published; 409 `PUBLIC_IDENTITY_REQUIRED` that the caller\nhas no handle yet. Nothing is visible to anyone else until the draft is submitted.\n\nAn insight has one post (decision 68): when it has a draft or a refused post, that one is\nanswered with these words and audience, a draft again; when it has one published, held or\nremoved, 409 `INSIGHT_ALREADY_POSTED`.",
         "operationId": "create_post_posts_post",
         "requestBody": {
           "content": {
@@ -1547,6 +1547,58 @@
         },
         "responses": {
           "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/{insight_id}/post": {
+      "put": {
+        "tags": ["posts"],
+        "summary": "Publish an insight in «تبصرة تواصل», once",
+        "description": "Return the post of one of the caller's insights, publishing one when it has none (decision 68).\n\nSafe to repeat: sharing, placing on the atlas and publishing all call it, and an insight gets\none post. A new post is public, has no reflection, and goes through the guard like any\nother; a draft of it is submitted; a post held, refused or removed is returned as it is,\nnever replaced. 409 `INSIGHT_NOT_PUBLISHABLE` says why the insight cannot be published,\n409 `PUBLIC_IDENTITY_REQUIRED` that the caller has no handle yet.",
+        "operationId": "publish_insight_post_insights__insight_id__post_put",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InsightPostIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -6999,6 +7051,7 @@
           "HANDLE_TAKEN",
           "PUBLIC_IDENTITY_REQUIRED",
           "INSIGHT_NOT_PUBLISHABLE",
+          "INSIGHT_ALREADY_POSTED",
           "UNDER_13_CANNOT_PUBLISH",
           "INVALID_CURSOR",
           "GONE",
@@ -8361,6 +8414,20 @@
         ],
         "title": "InsightOut",
         "description": "What a post publishes: the platform's insight, never the author's words."
+      },
+      "InsightPostIn": {
+        "properties": {
+          "photo": {
+            "type": "boolean",
+            "title": "Photo",
+            "description": "Show the insight's kept photo with a new post; nothing without a kept photo and the owner's photo consent (v2 §19). An existing post keeps its own choice",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "InsightPostIn",
+        "description": "Publish an insight in «تبصرة تواصل»: its post, made once (decision 68)."
       },
       "InsightQuran": {
         "properties": {

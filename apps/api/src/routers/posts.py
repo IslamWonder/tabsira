@@ -28,11 +28,26 @@ from src.deps import (
     limited,
     require_social,
 )
-from src.models.social import InsightPublication, Post
+from src.errors import AppError, ErrorCode
+from src.models.social import InsightPublication, Post, PostStatus
 from src.models.user import User
-from src.scans.deps import RedisDep
-from src.schemas.social import MyPostsPage, PostCreateIn, PostIdPath, PostOut, PostPatch
-from src.services import auth_service, post_service, post_view, publication_service, view_service
+from src.scans.deps import PublicIdPath, RedisDep
+from src.schemas.social import (
+    InsightPostIn,
+    MyPostsPage,
+    PostCreateIn,
+    PostIdPath,
+    PostOut,
+    PostPatch,
+)
+from src.services import (
+    auth_service,
+    insight_post_service,
+    post_service,
+    post_view,
+    publication_service,
+    view_service,
+)
 from src.services import cursor as cursors
 from src.services.post_service import PostRow
 from src.services.social_limits import WriteKind
@@ -99,7 +114,13 @@ async def create_post(
     caller's own words go in `reflection`, apart from the insight. 409 `INSIGHT_NOT_PUBLISHABLE`
     says why an insight cannot be published; 409 `PUBLIC_IDENTITY_REQUIRED` that the caller
     has no handle yet. Nothing is visible to anyone else until the draft is submitted.
+
+    An insight has one post (decision 68): a draft or a refused post of it is taken back and
+    replaced by this one; when it has one published, held or removed, 409 `INSIGHT_ALREADY_POSTED`.
     """
+    found = await insight_post_service.live_post(db, user, body.insight_id)
+    if found is not None:
+        await _replace_unsent(db, found, photos)
     publication = await publication_service.create_publication(
         db, source, user, body.insight_id, settings, publish_photo=body.photo
     )
@@ -107,6 +128,49 @@ async def create_post(
     await db.flush()
     await db.commit()
     return await _one(db, PostRow(post, publication, user), user, photos)
+
+
+async def _replace_unsent(db: DbDep, found: PostRow, photos: PhotoStore) -> None:
+    """Take back the insight's own draft or refused post, or refuse a second post."""
+    if found.post.status not in {PostStatus.DRAFT, PostStatus.REJECTED}:
+        raise AppError(
+            ErrorCode.INSIGHT_ALREADY_POSTED,
+            "This insight is already published as a post.",
+            status_code=409,
+        )
+    # Nobody else ever saw it; the new draft carries the words, audience and photo asked now.
+    await post_service.withdraw(db, found, photos=photos)
+
+
+@router.put(
+    "/insights/{insight_id}/post",
+    summary="Publish an insight in «تبصرة تواصل», once",
+    dependencies=[limited(WriteKind.POST)],
+)
+async def publish_insight_post(
+    insight_id: PublicIdPath,
+    body: InsightPostIn,
+    user: PublicMember,
+    db: DbDep,
+    source: InsightSourceDep,
+    settings: SettingsDep,
+    guard: TextGuardDep,
+    photos: PhotoStoreDep,
+) -> PostOut:
+    """
+    Return the post of one of the caller's insights, publishing one when it has none (decision 68).
+
+    Safe to repeat: sharing, placing on the atlas and publishing all call it, and an insight gets
+    one post. A new post is public, has no reflection, and goes through the guard like any
+    other; a draft of it is submitted; a post held, refused or removed is returned as it is,
+    never replaced. 409 `INSIGHT_NOT_PUBLISHABLE` says why the insight cannot be published,
+    409 `PUBLIC_IDENTITY_REQUIRED` that the caller has no handle yet.
+    """
+    row = await insight_post_service.ensure_post(
+        db, source, user, insight_id, settings, guard, photos, publish_photo=body.photo
+    )
+    await db.commit()
+    return await _one(db, row, user, photos)
 
 
 @router.get("/posts/{post_id}", summary="One post")

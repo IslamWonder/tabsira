@@ -13,7 +13,7 @@ async def test_legal_needs_no_session_and_is_revalidated_every_time(client):
     assert response.headers["cache-control"] == "no-cache"
     assert response.json() == {
         "terms_version": "2026-10-05T18:00Z",
-        "privacy_version": "2026-10-06T00:00Z",
+        "privacy_version": "2026-10-06T17:00Z",
         "privacy_email": "privacy@tabsira.me",
     }
     # The support address is never shown: the support form is the way in.
