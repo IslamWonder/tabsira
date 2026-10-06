@@ -236,7 +236,13 @@ export function PostCard({
 
       {variant === 'full' ? (
         <PublicPhoto url={post.insight.photo_url} alt={M.photoAlt(post.insight.title)} />
-      ) : null}
+      ) : post.insight.photo_url === null ? null : (
+        // The title already links to the post; the thumbnail is a larger target for the same link,
+        // so it stays out of the tab order and out of the accessibility tree.
+        <Link href={postPath(post.id)} tabIndex={-1} aria-hidden="true" className="block">
+          <PublicPhoto url={post.insight.photo_url} alt="" size="thumb" />
+        </Link>
+      )}
 
       <section aria-label={M.explanation} className="flex flex-col items-start gap-2">
         <Chip tone="primary">{M.explanation}</Chip>
