@@ -12,11 +12,21 @@ import CommunityPublishPage from './community/publish/page';
 import ErrorPage from './error';
 import manifest from './manifest';
 import MePage, { metadata as meMetadata } from './me/page';
-import NotFound, { metadata as notFoundMetadata } from './not-found';
+import NotFound, {
+  NOT_FOUND_VARIANTS,
+  NotFoundScreen,
+  metadata as notFoundMetadata,
+} from './not-found';
 import OfflinePage, { metadata as offlineMetadata } from './offline/page';
 import HomePage, { metadata as homeMetadata } from './page';
 import PracticePage, { metadata as practiceMetadata } from './sky/page';
 import WorldPage, { metadata as worldMetadata } from './world/page';
+
+// The 404 page asks to be rendered per request; outside one, there is nothing to wait for.
+vi.mock('next/server', async (original) => ({
+  ...(await original<typeof import('next/server')>()),
+  connection: async () => undefined,
+}));
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/',
@@ -121,16 +131,38 @@ describe('placeholder routes', () => {
 });
 
 describe('error, not found and offline', () => {
-  it('not found leads back to the start', () => {
-    const { container } = render(<NotFound />);
-    // Inline styles only: the page must read when the stylesheet fails (docs/SEO.md).
-    expect(container.querySelector('[class]')).toBeNull();
-    expect(container.querySelector('a')).toHaveStyle({ minHeight: '48px' });
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'لم نجد هذه الصفحة' })
-    ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'عد إلى البداية' })).toHaveAttribute('href', '/');
-    expect(notFoundMetadata.robots).toEqual({ index: false, follow: false });
+  it.each([
+    ['lantern', 'ضلّ الرابط طريقه، ولم تضلّ أنت'],
+    ['star', 'في الليل يرفع المسافر عينيه'],
+    ['qibla', 'لكل تائه وجهة'],
+  ] as const)(
+    'not found (%s) reminds of the guidance and leads back to the start',
+    (variant, title) => {
+      const { container } = render(<NotFoundScreen variant={variant} />);
+      // Inline styles only: the page must read when the stylesheet fails (docs/SEO.md).
+      expect(container.querySelector('[class]')).toBeNull();
+      expect(container.querySelector('a')).toHaveStyle({ minHeight: '48px' });
+      expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument();
+      expect(screen.getByText('الصفحة ٤٠٤')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'عد إلى البداية' })).toHaveAttribute('href', '/');
+      // The drawing is decorative, and its motion stops under reduced motion.
+      expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+      expect(container.querySelector('style')?.textContent).toContain('prefers-reduced-motion');
+      expect(notFoundMetadata.robots).toEqual({ index: false, follow: false });
+    }
+  );
+
+  it('not found picks one of the three at random, at each request', async () => {
+    const random = vi.spyOn(Math, 'random');
+    const shown = [];
+    for (const value of [0, 0.5, 0.99]) {
+      random.mockReturnValueOnce(value);
+      const { container, unmount } = render(await NotFound());
+      shown.push(container.querySelector('section')?.getAttribute('data-variant'));
+      unmount();
+    }
+    expect(shown).toEqual([...NOT_FOUND_VARIANTS]);
+    random.mockRestore();
   });
 
   it('an error offers to try again and never shows the error itself', async () => {
