@@ -28,7 +28,7 @@ from src import clock
 from src.config import Settings
 
 AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
-TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"  # noqa: S105 - a URL, not a password  # nosec B105
+TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"  # noqa: S105  # nosec B105 - a URL, not a password
 JWKS_URI = "https://www.googleapis.com/oauth2/v3/certs"
 ISSUERS = ("https://accounts.google.com", "accounts.google.com")
 SCOPE = "openid email profile"

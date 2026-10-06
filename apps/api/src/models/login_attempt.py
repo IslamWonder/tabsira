@@ -16,9 +16,9 @@ class AttemptKind(StrEnum):
     SIGNUP = "signup"
     GOOGLE_START = "google_start"
     RESEND_VERIFICATION = "resend_verification"
-    PASSWORD_FORGOT = "forgot_password"  # noqa: S105 - an attempt kind, not a password  # nosec B105
+    PASSWORD_FORGOT = "forgot_password"  # noqa: S105  # nosec B105 - an attempt kind, not a password
     SUPPORT = "support"
-    EMAIL_TOKEN = "email_token"  # noqa: S105 - redeeming a verification or reset link  # nosec B105
+    EMAIL_TOKEN = "email_token"  # noqa: S105  # nosec B105 - redeeming a verification or reset link
 
 
 class LoginAttempt(Base):

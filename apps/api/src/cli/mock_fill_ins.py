@@ -54,7 +54,7 @@ def _mock_authors() -> Select[uuid.UUID]:
 
 def plausible_views(post_id: int, engaged: int, *, public: bool) -> int:
     """Return the views a mock post shows: everyone who engaged, and many more who only read."""
-    rng = random.Random(f"views:{post_id}")  # noqa: S311 - mock numbers, not a secret
+    rng = random.Random(f"views:{post_id}")  # noqa: S311  # mock numbers, not a secret
     reach = VIEWS_PER_ENGAGED * engaged + rng.lognormvariate(VIEWS_LOG_MEAN, VIEWS_LOG_SIGMA)
     if not public:
         reach *= FOLLOWERS_ONLY_REACH

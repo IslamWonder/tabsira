@@ -34,7 +34,7 @@ class PlacesProvider:
               AND u.is_active AND u.deleted_at IS NULL AND u.handle IS NOT NULL
             GROUP BY e.place_geoname_id
         ) places
-    """  # noqa: S608 - constants only, no input
+    """  # noqa: S608  # constants only, no input
 
     async def pages(self, db: AsyncSession, page_size: int) -> list[PageStamp]:
         rows = await db.execute(
@@ -46,7 +46,7 @@ class PlacesProvider:
                     {self._PLACES}
                 ) AS numbered
                 GROUP BY 1 ORDER BY 1
-                """  # noqa: S608 - constants only, no input
+                """  # noqa: S608  # constants only, no input
             ),
             {"size": page_size},
         )

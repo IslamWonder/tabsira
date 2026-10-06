@@ -15,7 +15,7 @@ from src.models.session import TOKEN_HASH_BYTES
 
 class TokenPurpose(StrEnum):
     VERIFY_EMAIL = "verify_email"
-    PASSWORD_RESET = "reset_password"  # noqa: S105 - a purpose name, not a password  # nosec B105
+    PASSWORD_RESET = "reset_password"  # noqa: S105  # nosec B105 - a purpose name, not a password
 
 
 class EmailToken(Base):

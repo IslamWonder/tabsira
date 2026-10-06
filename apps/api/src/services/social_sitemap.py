@@ -54,7 +54,7 @@ class PostsProvider:
                     WHERE {_PUBLIC_POSTS}
                 ) AS numbered
                 GROUP BY 1 ORDER BY 1
-                """  # noqa: S608 - a constant condition, no input
+                """  # noqa: S608  # a constant condition, no input
             ),
             {"size": page_size},
         )
@@ -68,7 +68,7 @@ class PostsProvider:
                 FROM app.posts p JOIN app.users u ON u.id = p.author_id
                 WHERE {_PUBLIC_POSTS}
                 ORDER BY p.id OFFSET :skip LIMIT :size
-                """  # noqa: S608 - a constant condition, no input
+                """  # noqa: S608  # a constant condition, no input
             ),
             {"skip": page * page_size, "size": page_size},
         )
@@ -92,7 +92,7 @@ class ProfilesProvider:
             GROUP BY p.author_id
         ) latest ON latest.author_id = u.id
         WHERE u.handle IS NOT NULL AND u.is_active AND u.deleted_at IS NULL
-    """  # noqa: S608 - constants only, no input
+    """  # noqa: S608  # constants only, no input
 
     async def pages(self, db: AsyncSession, page_size: int) -> list[PageStamp]:
         rows = await db.execute(
@@ -105,7 +105,7 @@ class ProfilesProvider:
                     {self._MEMBERS}
                 ) AS numbered
                 GROUP BY 1 ORDER BY 1
-                """  # noqa: S608 - constants only, no input
+                """  # noqa: S608  # constants only, no input
             ),
             {"size": page_size},
         )

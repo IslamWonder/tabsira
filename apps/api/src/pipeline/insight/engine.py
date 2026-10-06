@@ -190,7 +190,7 @@ class ResourceCache:
             return self._resources
 
 
-class _Stopped(Exception):  # noqa: N818 - an early answer with a status, not a fault
+class _Stopped(Exception):  # noqa: N818  # an early answer with a status, not a fault
     """An early answer: the scan stops here with this status."""
 
     def __init__(self, status: EngineStatus, question: str | None = None) -> None:
