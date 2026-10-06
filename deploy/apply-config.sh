@@ -78,8 +78,13 @@ fill() {
 # ─── Build every file aside ─────────────────────────────────────────
 fill "$NGINX_SRC/tabsira.me.conf" "$STAGE/site"
 add "$STAGE/site" /etc/nginx/sites-available/tabsira
+# The origin published photos are served from (S3_PUBLIC_BASE_URL), for the web CSP's img-src;
+# without it the browser refuses every published photo. Empty: photos come through the API host.
+PHOTO_ORIGIN="$(env_get "$ENV_FILE" S3_PUBLIC_BASE_URL | sed -E 's#^(https://[^/]+).*#\1#')"
+[[ -z "$PHOTO_ORIGIN" || "$PHOTO_ORIGIN" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?$ ]] ||
+	die "S3_PUBLIC_BASE_URL in $ENV_FILE must be an https address."
 for snippet in "$NGINX_SRC"/snippets/*.conf; do
-	cp "$snippet" "$STAGE/$(basename "$snippet")"
+	sed -e "s# @PHOTO_ORIGIN@# ${PHOTO_ORIGIN}#g" -e "s#@PHOTO_ORIGIN@##g" "$snippet" >"$STAGE/$(basename "$snippet")"
 	add "$STAGE/$(basename "$snippet")" "/etc/nginx/snippets/$(basename "$snippet")"
 done
 cat >"$STAGE/tabsira-tls.conf" <<EOF
