@@ -922,3 +922,33 @@
 :root[data-motion="reduce"]::view-transition-new(*) {
   animation: none !important;
 }
+
+/* ─── Loading placeholders (components/ui/loading-rows.tsx) ─────────── */
+
+.fx-placeholder {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+}
+
+/* A slow gold shine crosses each shape in reading order, right to left. */
+.fx-placeholder::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in srgb, var(--glow-gold) 18%, transparent) 50%,
+    transparent 70%
+  );
+  transform: translateX(100%);
+  animation: fx-placeholder-shine 1.8s ease-in-out infinite;
+}
+
+@keyframes fx-placeholder-shine {
+  to {
+    transform: translateX(-100%);
+  }
+}

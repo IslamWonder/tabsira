@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
+import { LoadingRows } from '@/components/ui/loading-rows';
 import { Notice } from '@/components/ui/notice';
 import { messages } from '@/messages';
 import type { Post } from '@/social/types';
@@ -44,9 +45,7 @@ export function FeedList({
   return (
     <div className="flex flex-col gap-5">
       {items.length === 0 && status.kind === 'loading' ? (
-        <p role="status" className="m-0 py-8 text-center text-fg-muted">
-          {C.loading}
-        </p>
+        <LoadingRows label={C.loading} rowClassName="h-56" />
       ) : null}
       {items.length === 0 && status.kind === 'ready' ? (
         <p role="status" className="m-0 py-8 text-center text-fg-soft leading-[1.85]">
