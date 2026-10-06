@@ -24,3 +24,7 @@ Every raster (favicon, PWA icons, Apple touch icon, tiles, share cards) is gener
 ## How these files were made
 
 The original paths are kept exactly as drawn: no point moved, no curve simplified (a raster comparison at 1024 px shows zero differing pixels). Only the document was rewritten: no XML prolog, no editor comment, no layer ids, no class or stylesheet, separators normalised, one fill on the root element and a `<title>` for assistive technology.
+
+## Licence
+
+The name «TABSIRA / تبصرة» and the logos and marks in this folder are not covered by the AGPL-3.0 of the code: they are reserved by the authors and may be used only under a commercial licence from them.
