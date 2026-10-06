@@ -4,7 +4,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useId, useState } from 'react';
 import { signInHref } from '@/account/links';
-import { BookmarkIcon, CommentIcon, MoreIcon, SparkIcon, ThanksIcon } from '@/components/icons';
+import {
+  BookmarkIcon,
+  CommentIcon,
+  EyeIcon,
+  MoreIcon,
+  SparkIcon,
+  ThanksIcon,
+} from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { GlassPanel } from '@/components/ui/glass-panel';
@@ -105,7 +112,8 @@ const REACTIONS = [
  * author, the insight's title and glimpse, the platform's explanation, the
  * verified pair (behind a reveal in a feed), the author's reflection labelled
  * as theirs, and the reactions
- * with their public counts, the comments, a save and the «more» sheet. Hover changes colour only.
+ * with their public counts, the comments, the views, a save and the «more» sheet. Hover changes
+ * colour only.
  */
 export function PostCard({
   post,
@@ -310,6 +318,12 @@ export function PostCard({
               <CommentIcon width="20" height="20" />
               {M.commentCount(post.comment_count)}
             </Link>
+          ) : null}
+          {post.status === 'published' ? (
+            <span className="inline-flex min-h-12 items-center gap-2 px-3 text-[0.9375rem] text-fg-muted tabular-nums">
+              <EyeIcon width="20" height="20" />
+              {M.viewCount(post.views_count)}
+            </span>
           ) : null}
           <button
             type="button"

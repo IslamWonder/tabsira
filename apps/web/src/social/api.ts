@@ -56,6 +56,14 @@ export function getPost(postId: string): Promise<Result<Post>> {
   return attempt(api.GET('/posts/{post_id}', { params: { path: { post_id: postId } } }));
 }
 
+/**
+ * Tell the API the post was opened. It decides whether this is a view (once per viewer a day,
+ * never the author's, never a bot's); the answer is not needed, so a failure is ignored.
+ */
+export function viewPost(postId: string): Promise<Result<unknown>> {
+  return attempt(api.POST('/posts/{post_id}/view', { params: { path: { post_id: postId } } }));
+}
+
 export interface DraftInput {
   insightId: string;
   reflection: string | null;

@@ -42,6 +42,11 @@ describe('the Arabic counted nouns', () => {
     expect(ar.community.post.commentCount(0)).toBe('لا تعليقات');
     expect(ar.community.post.commentCount(1)).toBe('تعليق واحد');
     expect(ar.community.post.commentCount(2)).toBe('تعليقان');
+    expect(ar.community.post.viewCount(0)).toBe('لا مشاهدات بعد');
+    expect(ar.community.post.viewCount(1)).toBe('مشاهدة واحدة');
+    expect(ar.community.post.viewCount(2)).toBe('مشاهدتان');
+    expect(ar.community.post.viewCount(7)).toBe('7 مشاهدات');
+    expect(ar.community.post.viewCount(1240)).toBe('1240 مشاهدة');
     expect(ar.community.post.commentCount(10)).toBe('10 تعليقات');
     expect(ar.community.post.commentCount(11)).toBe('11 تعليقًا');
   });

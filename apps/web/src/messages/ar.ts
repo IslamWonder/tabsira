@@ -1452,6 +1452,15 @@ export const ar = {
         }
         return count === 2 ? 'تعليقان' : count <= 10 ? `${count} تعليقات` : `${count} تعليقًا`;
       },
+      viewCount: (count: number) => {
+        if (count === 0) {
+          return 'لا مشاهدات بعد';
+        }
+        if (count === 1) {
+          return 'مشاهدة واحدة';
+        }
+        return count === 2 ? 'مشاهدتان' : count <= 10 ? `${count} مشاهدات` : `${count} مشاهدة`;
+      },
       save: 'احفظ',
       saved: 'محفوظ',
       unsave: 'ألغِ الحفظ',

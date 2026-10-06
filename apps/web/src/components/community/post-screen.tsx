@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession } from '@/account/session';
 import { StatusScreen } from '@/components/app/status-screen';
 import { CommunityIcon } from '@/components/icons';
@@ -11,7 +11,7 @@ import { Notice } from '@/components/ui/notice';
 import { failureMessage } from '@/lib/api/failure-message';
 import type { Failure } from '@/lib/api/result';
 import { messages } from '@/messages';
-import { getPost } from '@/social/api';
+import { getPost, viewPost } from '@/social/api';
 import type { Post } from '@/social/types';
 import { Comments } from './comments';
 import { PostCard } from './post-card';
@@ -57,6 +57,20 @@ export function PostScreen({
   const sessionStatus = session.status;
   // Counts the retries: each one asks the API again.
   const [attempt, setAttempt] = useState(0);
+  // The post this page already told the API it opened: one view per opening, however often the
+  // post is asked for again.
+  const viewed = useRef<string | null>(null);
+  const opened = load.kind === 'ready' && load.post.status === 'published';
+
+  // Sent from the browser once the post is on screen, so the web server's render, a link
+  // preview or a crawler is never a view. The API decides whether it counts.
+  useEffect(() => {
+    if (!opened || viewed.current === postId) {
+      return;
+    }
+    viewed.current = postId;
+    void viewPost(postId);
+  }, [opened, postId]);
 
   // Asked again when the session changes (what the viewer may see depends on who they are)
   // and on every retry.

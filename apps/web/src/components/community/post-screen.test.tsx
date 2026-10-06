@@ -40,6 +40,34 @@ describe('PostScreen', () => {
     );
   });
 
+  it('tells the API once that the post was opened, and shows how often it was viewed', async () => {
+    const api = guest({
+      [`GET /posts/${POST.id}`]: { body: POST },
+      [`POST /posts/${POST.id}/view`]: { status: 204 },
+    });
+    render(<PostScreen postId={POST.id} />);
+    expect(await screen.findByText('12 مشاهدة')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(api.requests.filter((request) => request.method === 'POST').map((r) => r.url)).toEqual(
+        [expect.stringContaining(`/posts/${POST.id}/view`)]
+      )
+    );
+  });
+
+  it('sends no view for a post it cannot show, nor for a draft', async () => {
+    const missing = guest({ [`GET /posts/${POST.id}`]: apiError(404, 'NOT_FOUND') });
+    const { unmount } = render(<PostScreen postId={POST.id} />);
+    await screen.findByRole('heading', { level: 1, name: 'لم نجد هذا المنشور' });
+    unmount();
+    expect(missing.requests.some((request) => request.method === 'POST')).toBe(false);
+
+    const draft = guest({ [`GET /posts/${POST.id}`]: { body: { ...POST, status: 'draft' } } });
+    render(<PostScreen postId={POST.id} />);
+    await screen.findByRole('heading', { level: 1, name: '[عنوان البصيرة]' });
+    expect(screen.queryByText(/مشاهد/)).toBeNull();
+    expect(draft.requests.some((request) => request.method === 'POST')).toBe(false);
+  });
+
   it('tells a withdrawn post from one the viewer may not see', async () => {
     guest({ [`GET /posts/${POST.id}`]: apiError(410, 'GONE') });
     const { unmount } = render(<PostScreen postId={POST.id} comments />);
