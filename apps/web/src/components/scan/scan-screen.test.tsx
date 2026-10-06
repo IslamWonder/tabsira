@@ -1,8 +1,10 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readSession, setGuest, setSignedIn } from '@/account/session';
 import type { Failure } from '@/lib/api/result';
 import type { RunStage, ScanControls, ScanView } from '@/lib/scan/use-scan';
+import { USER } from '@/test/fixtures';
 import { scanOut } from '@/test/scan';
 import { ScanScreen } from './scan-screen';
 
@@ -404,5 +406,30 @@ describe('ScanScreen: choosing a focus', () => {
     await startFocus({}, { sensitive: true });
     expect(screen.queryByRole('group', { name: 'الأشياء في الصورة' })).toBeNull();
     expect(screen.getByRole('list', { name: 'ما وجدناه في الصورة' })).toBeInTheDocument();
+  });
+});
+
+describe('ScanScreen: the first insight of an account', () => {
+  it('marks a signed-in account as holding an insight of its own, so the landing gives the capture', () => {
+    setSignedIn({ ...USER, has_own_insight: false });
+    setControls(ready());
+    render(<ScanScreen scanId="1" />);
+    const session = readSession();
+    expect(session.status === 'signed-in' && session.user.has_own_insight).toBe(true);
+  });
+
+  it('waits for the insights: a running scan changes nothing', () => {
+    setSignedIn({ ...USER, has_own_insight: false });
+    setControls(running());
+    render(<ScanScreen scanId="1" />);
+    const session = readSession();
+    expect(session.status === 'signed-in' && session.user.has_own_insight).toBe(false);
+  });
+
+  it('leaves a guest a guest', () => {
+    setGuest();
+    setControls(ready());
+    render(<ScanScreen scanId="1" />);
+    expect(readSession().status).toBe('guest');
   });
 });
