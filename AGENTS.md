@@ -69,6 +69,7 @@ Before you say a task is done: `make lint && make coverage` pass, and `make smok
 - Add every new configuration key, in the same commit, to the typed settings, to `.env.example` and to `deploy/env.production.example` (the two mirror each other key for key), to the production checklist in `apps/api/src/cli/production_checks.py` (what a good production value looks like; `deploy/deploy.sh` runs it and stops on a `fix` line, and it refuses a file missing any key of the example), and to the task's plan file under a «Production `.env`» note: the key, who provides its value, and what the checklist refuses. A key nobody told the owners about is the deploy that fails at night.
 - Update the terms and privacy text in the same commit as any new data flow.
 - Update the step's status in `docs/plans/` in the same commit as the change.
+- A feature the mock data should show comes with its mock data in the same commit: the generator writes it, `import_mock` reads it, and a fill-in (`apps/api/src/cli/mock_fill_ins.py`, run with `--fill-in <name>`) writes it onto mock rows imported before, with its section in `tools/mockdata/README.md`.
 - Say plainly what you did not do, what failed, and what you could not verify.
 
 **Ask first**

@@ -34,6 +34,36 @@ make mock-texts      # the posts' reflections and comments -> texts-library.json
   `--map-entries`. The number of insights is capped by the photos (seven uses each).
 - Tests: `cd tools/mockdata && uv run pytest --cov`. No network, no database.
 
+## Fill-ins: a new feature on mock data already imported
+
+The file is imported once. A feature added later that the mock data should show would stay empty
+on every mock row until a `--clean` and a new import, which gives every mock post a new id and
+link and drops what real members left on them. A **fill-in** writes just that feature onto the
+mock rows already in the database:
+
+```bash
+scripts/mock-data.sh fill-in views                    # backs up the app schema first
+scripts/mock-data.sh fill-in views --allow-production # on production
+make mock-fill-in MOCK_FILL_IN=views                  # the importer directly, no backup
+```
+
+A fill-in touches mock accounts' rows only, gives the same rows the same values, never lowers
+what real use has added, and is safe to run again. Several names may be given; they land in one
+transaction.
+
+**Every feature the mock data should show comes with three things, in the same commit:** the
+generator writes it into the file (from a random stream of its own, so the rest of the file stays
+the same), `import_mock` reads it, and a fill-in in `apps/api/src/cli/mock_fill_ins.py`
+(`FILL_INS`) writes it onto rows imported before, with a section below.
+
+### `views` (task 16.3)
+
+Gives every published mock post a view count: at least every member who reacted, saved or
+commented, eight readers for each of them plus a long tail (median about 20), and three tenths of
+that for a followers-only post. The same numbers as the generator's `add_views`; the value is
+seeded by the post's id. Run once after deploying task 16.3 on a database whose mock posts were
+imported before it.
+
 ## Members and features (task 23.5)
 
 - Names come from the reviewed lists of `names.py`, by the gender the member declares (a few
