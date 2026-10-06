@@ -157,7 +157,13 @@ def document() -> dict[str, Any]:
             insight("i9", "m1", 16),
         ],
         "posts": [
-            {"ref": "p1", "insight": "i1", "published_at": PUBLISH, "reflection": "تأمل قصير"},
+            {
+                "ref": "p1",
+                "insight": "i1",
+                "published_at": PUBLISH,
+                "reflection": "تأمل قصير",
+                "views": 137,
+            },
             {"ref": "p2", "insight": "i5", "published_at": PUBLISH, "reflection": None},
             {"ref": "p3", "insight": "i4", "published_at": PUBLISH, "reflection": None},
             {
@@ -328,8 +334,11 @@ async def test_the_file_is_written_through_the_services(db_session, settings, wo
 
     assert post.published_at.isoformat() == "2026-08-03T09:00:00+00:00"
     assert post.visibility is PostVisibility.PUBLIC
+    assert post.views_count == 137
     quiet = await db_session.scalar(select(Post).where(Post.reflection == "بلا صورة"))
     assert quiet.visibility is PostVisibility.FOLLOWERS
+    # A file written before views were generated: none.
+    assert quiet.views_count == 0
     assert (await db_session.get(InsightPublication, quiet.publication_id)).photo_ref is None
 
     entry = await db_session.scalar(

@@ -160,3 +160,12 @@ Two programs, two libraries and one file:
 - **Tests:** `tests/test_profile_country.py` (the country is absent from every public answer while the switch is off, and only in the profile and the post author while on), `tests/test_import_mock.py` (100 % of `import_mock.py`), Vitest for the settings, the post card, the profile screen and the country list.
 - **Production `.env`:** no new key. `PRIVACY_VERSION` moves to `2026-10-05T23:30Z` in `.env.example` and `deploy/env.production.example`; the owners set the same value in production, and every account accepts the privacy text again at its next visit.
 - **Reviews:** privacy review before merge (profile, consent, public identity); its findings on the under-13 guard and the tests are fixed.
+
+### 23.8 Views of the mock posts
+
+- **Status:** ✅ done 2026-10-06 00:45 (Tunis)
+- **Goal:** task 16.3 counts the views of a post; the mock posts get a plausible count instead of zero.
+- **Done:** every post of the file carries `views`, from its own seeded stream (`<seed>:views`), so the rest of the file stays byte for byte the same and the texts library is reused as is: at least every member who reacted, saved or commented, eight readers for each of them plus a long tail (median about 20), and a followers-only post keeps three tenths of that reach. `import_mock` writes it into `posts.views_count`; a file without it gives zero.
+- **Touches:** tools/mockdata/src/mockdata/{activity,output}.py and their tests, apps/api/src/cli/import_mock.py and `tests/test_import_mock.py`.
+- **Production `.env`:** no new key.
+- **To apply:** `make mock-data` (and `make mock-texts`, which reuses its library), then the import with `--clean` as task 23 describes; posts already imported keep zero until then.

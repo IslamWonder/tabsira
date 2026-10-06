@@ -84,6 +84,8 @@ class Post(_Row):
     # Whether the post shows the insight's photo; whether the author wrote a reflection.
     photo: bool = True
     reflect: bool = True
+    # Views by other members and guests, at least everyone who reacted, saved or commented.
+    views: int = 0
 
 
 class Sponsor(_Row):

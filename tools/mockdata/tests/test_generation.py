@@ -567,3 +567,41 @@ def test_the_family_name_belongs_to_the_members_country(gazetteer: Gazetteer) ->
     for m in members:
         families = {a for a, _ in FAMILY_BY_COUNTRY[m.country]}
         assert any(m.display_name.endswith(f" {family}") for family in families)
+
+
+def test_every_post_is_viewed_at_least_by_everyone_who_engaged_with_it(
+    gazetteer: Gazetteer, photos: list[Photo]
+) -> None:
+    file = big(gazetteer, photos)
+    engaged: dict[str, set[str]] = {}
+    pairs = [(r.post, r.member) for r in file.reactions]
+    pairs += [(b.post, b.member) for b in file.bookmarks]
+    pairs += [(c.post, c.member) for c in file.comments]
+    for post_ref, member in pairs:
+        engaged.setdefault(post_ref, set()).add(member)
+    for p in file.posts:
+        assert p.views >= len(engaged.get(p.ref, set()))
+        assert p.views >= 0
+    public = [p.views for p in file.posts if p.visibility == "public"]
+    private = [p.views for p in file.posts if p.visibility == "followers"]
+    assert sum(public) / len(public) > sum(private) / len(private)
+    assert len({p.views for p in file.posts}) > 1
+
+
+def test_views_come_from_their_own_stream_so_nothing_else_changes(
+    gazetteer: Gazetteer, photos: list[Photo]
+) -> None:
+    file = big(gazetteer, photos)
+    flat = activity.add_views(random.Random(0), file.posts, [], [], [])
+    assert [p.model_copy(update={"views": 0}) for p in flat] == [
+        p.model_copy(update={"views": 0}) for p in file.posts
+    ]
+    followers_only = output.Post(ref="p1", insight="i1", published_at="2026-01-01T00:00:00Z")
+    quiet = activity.add_views(
+        random.Random(1),
+        [followers_only.model_copy(update={"visibility": "followers"})],
+        [],
+        [],
+        [],
+    )
+    assert quiet[0].views >= 0

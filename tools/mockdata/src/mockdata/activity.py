@@ -47,6 +47,11 @@ FEEDBACK_REASONS = ("wrong_text", "misread_scene", "wrong_explanation", "other")
 FOLLOWERS_ONLY_SHARE = 0.5
 NO_PHOTO_SHARE = 0.6
 NO_REFLECTION_SHARE = 0.15
+# Readers per member who reacted, saved or commented, the median of the tail every post gets
+# (e^3, about 20), and the share of that reach a followers-only post keeps.
+VIEWS_PER_ENGAGED = 8
+VIEWS_LOG_MEAN = 3.0
+FOLLOWERS_ONLY_REACH = 0.3
 # «كفالة»: an entry quiet for 30 days is orphaned, so only an entry older than that can be.
 ORPHAN_AFTER = timedelta(days=35)
 ORPHAN_SHARE = 0.10
@@ -462,6 +467,36 @@ def make_reactions(
     return out
 
 
+def add_views(
+    rng: random.Random,
+    posts: list[Post],
+    reactions: list[Reaction],
+    bookmarks: list[Bookmark],
+    comments: list[Comment],
+) -> list[Post]:
+    """
+    A view count for every post: everyone who engaged with it, and the many more who only read.
+
+    Those who react, save or comment are a small share of readers, so the count is a multiple of
+    them plus a long tail that guests and quiet members add; a followers-only post reaches fewer.
+    Its own random stream, so nothing else of the file changes.
+    """
+    engaged: dict[str, set[str]] = {}
+    pairs = [(r.post, r.member) for r in reactions]
+    pairs += [(b.post, b.member) for b in bookmarks]
+    pairs += [(c.post, c.member) for c in comments]
+    for post_ref, member in pairs:
+        engaged.setdefault(post_ref, set()).add(member)
+    out = []
+    for post in posts:
+        people = len(engaged.get(post.ref, set()))
+        reach = VIEWS_PER_ENGAGED * people + rng.lognormvariate(VIEWS_LOG_MEAN, _LOGNORMAL_SIGMA)
+        if post.visibility != "public":
+            reach *= FOLLOWERS_ONLY_REACH
+        out.append(post.model_copy(update={"views": max(people, round(reach))}))
+    return out
+
+
 def _ref_of(refs: dict[int, str], index: int | None) -> str | None:
     return None if index is None else refs[index]
 
@@ -539,6 +574,7 @@ def make_activity(
         random.Random(f"{seed}:comments"), members, public, knobs.comments, now
     )
     taken = interacting_pairs(follows, reactions, bookmarks, comments, entries, author_of, owner)
+    posts = add_views(random.Random(f"{seed}:views"), posts, reactions, bookmarks, comments)
     return Activity(
         insights=insights,
         posts=posts,

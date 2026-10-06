@@ -266,6 +266,7 @@ class PostIn(_Model):
     visibility: PostVisibility = PostVisibility.PUBLIC
     # Whether the post shows the insight's photo (the owner's choice, v2 §19).
     photo: bool = True
+    views: int = Field(default=0, ge=0)
 
 
 class SponsorIn(_Model):
@@ -789,6 +790,7 @@ async def _add_post(
     post.status = PostStatus.PUBLISHED
     post.reviewed_at = post.submitted_at = post.published_at = item.published_at
     post.created_at = item.published_at
+    post.views_count = item.views
     await db.flush()
     await photo_service.sync_public_copy(db, store, insight.id)
     return post
