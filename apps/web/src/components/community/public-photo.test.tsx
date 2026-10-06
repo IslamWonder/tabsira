@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { PublicPhoto } from './public-photo';
 
@@ -17,6 +17,20 @@ describe('PublicPhoto', () => {
       'referrerpolicy',
       'no-referrer'
     );
+  });
+
+  it('shows the whole photo by default and crops a medium strip as a thumbnail', () => {
+    const { unmount } = render(<PublicPhoto url="https://media.tabsira.test/a.jpg" alt="" />);
+    expect(screen.getByTestId('public-photo')).toHaveClass('object-contain');
+    unmount();
+    render(<PublicPhoto url="https://media.tabsira.test/a.jpg" alt="" size="thumb" />);
+    expect(screen.getByTestId('public-photo')).toHaveClass('object-cover');
+  });
+
+  it('leaves no broken frame behind when the photo fails to load', () => {
+    const { container } = render(<PublicPhoto url="https://media.tabsira.test/gone.jpg" alt="" />);
+    fireEvent.error(screen.getByTestId('public-photo'));
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('renders nothing without an address, and nothing for one that is not http(s)', () => {

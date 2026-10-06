@@ -393,7 +393,7 @@ describe('what a card leaves out', () => {
     expect(screen.queryByText(/خطوة/)).toBeNull();
   });
 
-  it('shows the public photo on the full card only, from the address the API gave', () => {
+  it('shows the whole public photo on the full card, from the address the API gave', () => {
     guest();
     const url = 'https://media.tabsira.test/public/0123456789abcdef0123456789abcdef.jpg';
     const withPhoto = { ...POST, insight: { ...POST.insight, has_photo: true, photo_url: url } };
@@ -406,6 +406,19 @@ describe('what a card leaves out', () => {
     unmount();
 
     render(<PostCard post={withPhoto} onChange={vi.fn()} />);
+    const thumb = screen.getByTestId('public-photo');
+    expect(thumb).toHaveAttribute('src', url);
+    expect(thumb).toHaveClass('object-cover');
+    // A second way to the post's page, kept out of the tab order and the accessibility tree.
+    const link = thumb.closest('a');
+    expect(link).toHaveAttribute('href', '/posts/7345678901234567890');
+    expect(link).toHaveAttribute('tabindex', '-1');
+    expect(link).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('shows no thumbnail in a feed for a post without a photo', () => {
+    guest();
+    render(<PostCard post={POST} onChange={vi.fn()} />);
     expect(screen.queryByTestId('public-photo')).toBeNull();
   });
 
