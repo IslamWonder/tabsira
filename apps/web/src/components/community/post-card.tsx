@@ -2,19 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useId, useState } from 'react';
+import { type SVGProps, useId, useState } from 'react';
 import { signInHref } from '@/account/links';
 import { burstFrom } from '@/components/fx/burst';
-import {
-  BookmarkIcon,
-  CommentIcon,
-  EyeIcon,
-  MoreIcon,
-  SparkIcon,
-  ThanksIcon,
-} from '@/components/icons';
+import { BookmarkIcon, CommentIcon, EyeIcon, MoreIcon, SparkIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
+import { Emblem } from '@/components/ui/emblem';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { Notice } from '@/components/ui/notice';
 import { Sheet } from '@/components/ui/sheet';
@@ -102,10 +96,29 @@ function ReflectionBlock({ post }: Readonly<{ post: Post }>) {
   );
 }
 
+/**
+ * The du'a reaction's icon: two open hands raised, never a heart. A Magnific outline on a
+ * 128 grid, a touch larger and traced with a thin stroke so its lines weigh what the
+ * spark's do beside it.
+ */
+function DuaIcon(props: Readonly<Omit<SVGProps<SVGSVGElement>, 'children' | 'name'>>) {
+  return (
+    <Emblem
+      {...props}
+      name="dua"
+      width="22"
+      height="22"
+      stroke="currentColor"
+      strokeWidth={3}
+      strokeLinejoin="round"
+    />
+  );
+}
+
 /** The two reactions of decision 61, in the order they are shown. */
 const REACTIONS = [
   { kind: 'benefited', Icon: SparkIcon },
-  { kind: 'jazak', Icon: ThanksIcon },
+  { kind: 'jazak', Icon: DuaIcon },
 ] as const;
 
 /**
