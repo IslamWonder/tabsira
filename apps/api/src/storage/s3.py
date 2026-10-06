@@ -27,6 +27,7 @@ from src.storage.base import (
     CONTENT_TYPE,
     InvalidKeyError,
     ObjectNotFoundError,
+    StorageError,
     StorageUnavailableError,
     check_key,
     check_object,
@@ -51,7 +52,7 @@ def _cache_control(key: str) -> str:
     return PUBLIC_CACHE_CONTROL if is_public_key(key) else PRIVATE_CACHE_CONTROL
 
 
-def _translate(error: Exception) -> Exception:
+def _translate(error: Exception) -> StorageError:
     """Return the storage error for a boto failure, and log what failed without any detail."""
     if isinstance(error, ClientError):
         code = str(error.response.get("Error", {}).get("Code", ""))
