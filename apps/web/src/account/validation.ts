@@ -23,7 +23,7 @@ const FORBIDDEN_IN_NAME = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}]/u;
  */
 export function hasEmailShape(value: string): boolean {
   const at = value.indexOf('@');
-  if (at < 1 || value.indexOf('@', at + 1) !== -1 || /\s/.test(value)) {
+  if (at < 1 || value.includes('@', at + 1) || /\s/.test(value)) {
     return false;
   }
   const domain = value.slice(at + 1);

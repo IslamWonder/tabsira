@@ -221,7 +221,8 @@ export function CameraScreen({ sponsorship = false }: Readonly<{ sponsorship?: b
     centre.accuracyM !== null &&
     centre.accuracyM > DIRECTION_MAX_ACCURACY_M;
   const hasDirection = heading.state === 'ready' && heading.heading !== null && !lowAccuracy;
-  const mode: Mode = centre?.kind === 'chosen' ? 'chosen' : hasDirection ? 'direction' : 'area';
+  const unchosenMode: Mode = hasDirection ? 'direction' : 'area';
+  const mode: Mode = centre?.kind === 'chosen' ? 'chosen' : unchosenMode;
 
   const items: Shown[] = useMemo(() => {
     if (centre === null) {
