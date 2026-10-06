@@ -296,6 +296,11 @@ export const ar = {
     close: 'أغلق',
   },
 
+  /** A published photo opened full screen from its page. */
+  photoView: {
+    open: (alt: string) => `اعرض بملء الشاشة: ${alt}`,
+  },
+
   scene: {
     prepared: 'مثال موثّق مُعدّ',
     hint: 'المس البصيرة التي لفتتك',

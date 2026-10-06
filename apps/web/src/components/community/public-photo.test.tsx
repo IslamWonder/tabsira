@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { PublicPhoto } from './public-photo';
 
@@ -44,5 +45,30 @@ describe('PublicPhoto', () => {
       expect(container).toBeEmptyDOMElement();
       unmount();
     }
+  });
+
+  it('opens the whole photo full screen on a tap, and closes on the button, Escape or a tap', async () => {
+    render(<PublicPhoto url="https://media.tabsira.test/a.jpg" alt="[وصف]" />);
+    const open = screen.getByRole('button', { name: 'اعرض بملء الشاشة: [وصف]' });
+    expect(open).toHaveAttribute('aria-haspopup', 'dialog');
+    await userEvent.click(open);
+    const viewer = screen.getByRole('dialog', { name: '[وصف]' });
+    expect(viewer.querySelector('img')).toHaveAttribute('src', 'https://media.tabsira.test/a.jpg');
+    await userEvent.click(screen.getByRole('button', { name: 'أغلق' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    await userEvent.click(open);
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    await userEvent.click(open);
+    const backdrop = screen.getByRole('dialog').previousElementSibling as HTMLElement;
+    await userEvent.click(backdrop);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('keeps a thumbnail a plain picture: its card links to the post instead', () => {
+    render(<PublicPhoto url="https://media.tabsira.test/a.jpg" alt="" size="thumb" />);
+    expect(screen.queryByRole('button')).toBeNull();
   });
 });
