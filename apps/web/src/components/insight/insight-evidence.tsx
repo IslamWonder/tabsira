@@ -1,8 +1,11 @@
+'use client';
+
 import type { Insight } from '@/lib/scan/api';
 import { hadithGradeLine } from '@/lib/scan/hadith-grade';
 import { spansInUtf16 } from '@/lib/scan/spans';
 import { messages } from '@/messages';
 import { EvidenceCard } from './evidence-card';
+import { useEvidenceDisplay } from './evidence-display';
 import { EvidencePair } from './evidence-pair';
 
 /** Below this many characters each, the two texts may sit side by side on a wide screen (tajriba §6). */
@@ -19,7 +22,8 @@ export interface EvidenceSource {
  * The verse and the hadith of an insight, exactly as the API returns them:
  * the stored text is passed through untouched (never trimmed, joined,
  * shortened or normalised), with its reference and, for the hadith, the first
- * grader's ruling its dataset carries (decision 69, amending decision 65).
+ * grader's ruling its dataset carries (decision 69, amending decision 65); the
+ * ruling and the verse's source link follow their switches (decision 70).
  */
 export function InsightEvidence({
   insight,
@@ -29,6 +33,7 @@ export function InsightEvidence({
   /** Level of each card's heading; 3 when the texts sit under a heading of their own, as in the chat sheet. */
   headingLevel?: 2 | 3;
 }>) {
+  const display = useEvidenceDisplay();
   const { quran, hadith } = insight;
   const verse = quran?.verse;
   const narration = hadith?.hadith;
@@ -40,6 +45,7 @@ export function InsightEvidence({
         headingLevel={headingLevel}
         text={verse.text}
         reference={messages.insightPage.verseReference(verse.surah_name, verse.ayah)}
+        sourceHref={display.quranSourceLink ? verse.links.quranpedia : undefined}
       />
     );
   const sunnahCard =
@@ -49,7 +55,7 @@ export function InsightEvidence({
         headingLevel={headingLevel}
         text={narration.text}
         spans={spansInUtf16(narration.text, narration.spans)}
-        grade={hadithGradeLine(narration.informational_grades)}
+        grade={display.hadithRuling ? hadithGradeLine(narration.informational_grades) : null}
         reference={messages.insightPage.hadithReference(
           narration.collection.name_ar,
           narration.number

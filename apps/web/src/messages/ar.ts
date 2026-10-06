@@ -340,6 +340,7 @@ export const ar = {
   evidence: {
     quran: 'القرآن الكريم',
     sunnah: 'السنة النبوية',
+    openQuranpedia: 'افتح في قرآنبيديا',
     /** The first grader's ruling the hadith's dataset carries (decision 69), in Arabic. */
     gradeLine: (grader: string, grade: string) => `حكم ${grader}: ${grade}`,
     /** The graders the hadith datasets name, as the data spells them; in the genitive, after «حكم». */

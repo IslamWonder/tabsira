@@ -829,9 +829,8 @@ export interface paths {
      *     says why an insight cannot be published; 409 `PUBLIC_IDENTITY_REQUIRED` that the caller
      *     has no handle yet. Nothing is visible to anyone else until the draft is submitted.
      *
-     *     An insight has one post (decision 68): when it has a draft or a refused post, that one is
-     *     answered with these words and audience, a draft again; when it has one published, held or
-     *     removed, 409 `INSIGHT_ALREADY_POSTED`.
+     *     An insight has one post (decision 68): a draft or a refused post of it is taken back and
+     *     replaced by this one; when it has one published, held or removed, 409 `INSIGHT_ALREADY_POSTED`.
      */
     post: operations['create_post_posts_post'];
     delete?: never;
@@ -3223,6 +3222,8 @@ export interface components {
       | 'chat'
       | 'world'
       | 'treasure'
+      | 'hadith_ruling'
+      | 'quran_source_link'
       | 'social'
       | 'social_comments'
       | 'atlas'

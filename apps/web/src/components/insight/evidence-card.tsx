@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { OrnateCorners } from '@/components/fx/ornate-corners';
-import { CheckIcon } from '@/components/icons';
+import { CheckIcon, ExternalIcon } from '@/components/icons';
 import { Chip } from '@/components/ui/chip';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
@@ -20,6 +20,8 @@ interface EvidenceBase {
 
 export interface QuranEvidenceProps extends EvidenceBase {
   variant: 'quran';
+  /** The verse's quranpedia page, linked from the card only when `quran_source_link` is on (decision 70). */
+  sourceHref?: string;
 }
 
 export interface SunnahEvidenceProps extends EvidenceBase {
@@ -42,6 +44,21 @@ const ROLE_CLASSES: Record<HadithRole, string> = {
     'bg-[linear-gradient(transparent_62%,var(--hadith-highlight)_62%)] box-decoration-clone',
   tail: 'text-[0.9375rem] text-fg-muted',
 };
+
+function ExternalLink({ href, children }: Readonly<{ href: string; children: string }>) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex min-h-12 shrink-0 items-center gap-1.5 font-medium text-[0.875rem] text-link underline-offset-4 hover:underline"
+    >
+      {children}
+      <span className="sr-only"> {messages.a11y.opensInNewTab}</span>
+      <ExternalIcon />
+    </a>
+  );
+}
 
 /**
  * One piece of evidence: the Quran (ivory script on a gold wash at night, mint
@@ -85,6 +102,9 @@ export function EvidenceCard(props: EvidenceCardProps) {
             </Chip>
           ) : null}
         </div>
+        {props.variant === 'quran' && props.sourceHref !== undefined ? (
+          <ExternalLink href={props.sourceHref}>{messages.evidence.openQuranpedia}</ExternalLink>
+        ) : null}
       </header>
 
       {props.variant === 'quran' ? (

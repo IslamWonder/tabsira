@@ -22,7 +22,8 @@ import { ConsentScreen } from '@/components/consent/consent-screen';
 import { BurstLayer } from '@/components/fx/burst-layer';
 import { FocusCursor } from '@/components/fx/focus-cursor';
 import { VictoryLayer } from '@/components/fx/victory-layer';
-import { clarityProjectId, gaMeasurementId } from '@/config/server-env';
+import { EvidenceDisplayProvider } from '@/components/insight/evidence-display';
+import { clarityProjectId, featureEnabled, gaMeasurementId } from '@/config/server-env';
 import { serverConsent } from '@/consent/server';
 import { fontVariables } from '@/fonts';
 import { SHARE_IMAGE } from '@/lib/seo';
@@ -114,14 +115,21 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <PageShell consent={consent}>
           {/* Every capture button (nav.captureScene), in the bars or on a page, opens the same camera and send. */}
           <CaptureProvider>
-            <SkipLink />
-            <StageBackdrop />
-            <TopBar />
-            <main id="main" tabIndex={-1} className="outline-none">
-              {children}
-            </main>
-            <SiteFooter />
-            <AppNav />
+            <EvidenceDisplayProvider
+              value={{
+                hadithRuling: featureEnabled('hadith_ruling'),
+                quranSourceLink: featureEnabled('quran_source_link'),
+              }}
+            >
+              <SkipLink />
+              <StageBackdrop />
+              <TopBar />
+              <main id="main" tabIndex={-1} className="outline-none">
+                {children}
+              </main>
+              <SiteFooter />
+              <AppNav />
+            </EvidenceDisplayProvider>
           </CaptureProvider>
         </PageShell>
         {/* In the first paint when a choice is needed: no flash of the page before it. */}

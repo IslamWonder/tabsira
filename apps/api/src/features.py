@@ -20,6 +20,10 @@ class FeatureFlag(StrEnum):
     WORLD = "world"  # the personal world, completion, public insight pages
     TREASURE = "treasure"  # the treasure found on completion
 
+    # What the evidence cards show beside the stored text (decision 70).
+    HADITH_RULING = "hadith_ruling"  # the first grader's ruling of the hadith's dataset
+    QURAN_SOURCE_LINK = "quran_source_link"  # «افتح في قرآنبيديا» on the verse card; off by default
+
     # The network «تبصرة تواصل».
     SOCIAL = "social"  # posts, feeds, follows, reactions, public profiles
     SOCIAL_COMMENTS = "social_comments"  # comments under posts; off until the owners enable them
@@ -41,7 +45,7 @@ class FeatureFlag(StrEnum):
 
 # On only when named in ENABLED_FEATURES.
 OFF_BY_DEFAULT: frozenset[FeatureFlag] = frozenset(
-    {FeatureFlag.SOCIAL_COMMENTS, FeatureFlag.CAMERA_ANCHOR}
+    {FeatureFlag.SOCIAL_COMMENTS, FeatureFlag.CAMERA_ANCHOR, FeatureFlag.QURAN_SOURCE_LINK}
 )
 
 # child -> parent: a child counts as off whenever its parent is off.

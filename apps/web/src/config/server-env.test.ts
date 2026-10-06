@@ -30,9 +30,15 @@ describe('the feature switches the web server reads', () => {
     expect(featureEnabled('chat', { DISABLED_FEATURES: 'atlas' })).toBe(true);
   });
 
-  it('keep the two off-by-default features off until ENABLED_FEATURES names them', () => {
+  it('keep the three off-by-default features off until ENABLED_FEATURES names them', () => {
     expect(featureEnabled('social_comments', {})).toBe(false);
     expect(featureEnabled('camera_anchor', {})).toBe(false);
+    expect(featureEnabled('quran_source_link', {})).toBe(false);
+    expect(featureEnabled('quran_source_link', { ENABLED_FEATURES: 'quran_source_link' })).toBe(
+      true
+    );
+    expect(featureEnabled('hadith_ruling', {})).toBe(true);
+    expect(featureEnabled('hadith_ruling', { DISABLED_FEATURES: 'hadith_ruling' })).toBe(false);
     expect(featureEnabled('social_comments', { ENABLED_FEATURES: 'social_comments' })).toBe(true);
     expect(featureEnabled('camera_anchor', { ENABLED_FEATURES: ' camera_anchor ' })).toBe(true);
   });

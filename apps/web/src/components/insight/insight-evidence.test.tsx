@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { Insight } from '@/lib/scan/api';
 import { HADITH_TEXT, insightOut, sha256, VERSE_TEXT } from '@/test/scan';
+import { EvidenceDisplayProvider } from './evidence-display';
 import { InsightEvidence } from './insight-evidence';
 
 function bytes(text: string) {
@@ -43,6 +44,30 @@ describe('InsightEvidence', () => {
     expect(within(sunnah).queryByRole('link')).toBeNull();
     expect(within(sunnah).queryByText(/الدرر|حكم/)).toBeNull();
     expect(within(sunnah).queryByText('نص موثّق من مصدره')).toBeNull();
+  });
+
+  it('follows the switches: the verse links to quranpedia, the hadith shows no ruling', () => {
+    const base = insightOut();
+    const hadith = base.hadith as NonNullable<Insight['hadith']>;
+    const graded = {
+      ...base,
+      hadith: {
+        ...hadith,
+        hadith: { ...hadith.hadith, informational_grades: [{ name: 'Al-Albani', grade: 'Sahih' }] },
+      },
+    };
+    render(
+      <EvidenceDisplayProvider value={{ hadithRuling: false, quranSourceLink: true }}>
+        <InsightEvidence insight={graded} />
+      </EvidenceDisplayProvider>
+    );
+    const quran = screen.getByRole('article', { name: 'القرآن الكريم' });
+    expect(within(quran).getByRole('link', { name: /افتح في قرآنبيديا/ })).toHaveAttribute(
+      'href',
+      base.quran?.verse.links.quranpedia
+    );
+    const sunnah = screen.getByRole('article', { name: 'السنة النبوية' });
+    expect(within(sunnah).queryByText(/حكم/)).toBeNull();
   });
 
   it("shows the first grader's ruling the dataset carries, with no dorar mention", () => {

@@ -1533,7 +1533,7 @@
       "post": {
         "tags": ["posts"],
         "summary": "Start a draft from a verified insight",
-        "description": "Copy one of the caller's verified insights into a publication and open a draft on it.\n\nThe copy is what is previewed and what is published; it is never edited afterwards. The\ncaller's own words go in `reflection`, apart from the insight. 409 `INSIGHT_NOT_PUBLISHABLE`\nsays why an insight cannot be published; 409 `PUBLIC_IDENTITY_REQUIRED` that the caller\nhas no handle yet. Nothing is visible to anyone else until the draft is submitted.\n\nAn insight has one post (decision 68): when it has a draft or a refused post, that one is\nanswered with these words and audience, a draft again; when it has one published, held or\nremoved, 409 `INSIGHT_ALREADY_POSTED`.",
+        "description": "Copy one of the caller's verified insights into a publication and open a draft on it.\n\nThe copy is what is previewed and what is published; it is never edited afterwards. The\ncaller's own words go in `reflection`, apart from the insight. 409 `INSIGHT_NOT_PUBLISHABLE`\nsays why an insight cannot be published; 409 `PUBLIC_IDENTITY_REQUIRED` that the caller\nhas no handle yet. Nothing is visible to anyone else until the draft is submitted.\n\nAn insight has one post (decision 68): a draft or a refused post of it is taken back and\nreplaced by this one; when it has one published, held or removed, 409 `INSIGHT_ALREADY_POSTED`.",
         "operationId": "create_post_posts_post",
         "requestBody": {
           "content": {
@@ -7312,6 +7312,8 @@
           "chat",
           "world",
           "treasure",
+          "hadith_ruling",
+          "quran_source_link",
           "social",
           "social_comments",
           "atlas",

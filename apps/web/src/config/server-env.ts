@@ -72,6 +72,7 @@ export type FeatureFlag = components['schemas']['FeatureFlag'];
 const OFF_BY_DEFAULT: ReadonlySet<FeatureFlag> = new Set<FeatureFlag>([
   'social_comments',
   'camera_anchor',
+  'quran_source_link',
 ]);
 
 // child -> parent: a child counts as off whenever its parent is off.
