@@ -64,7 +64,7 @@ from src.services.insight_view import (
     step_out,
 )
 
-SYSTEM_PROMPT = "insight_chat_system.v7"
+SYSTEM_PROMPT = "insight_chat_system.v8"
 USER_PROMPT = "insight_chat_user.v2"
 MAX_OUTPUT_TOKENS = 1200
 # What the system prompt says of a learner who declared nothing, or keeps personalization off.
