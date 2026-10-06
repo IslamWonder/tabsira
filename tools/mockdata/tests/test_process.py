@@ -20,9 +20,11 @@ from src.config import AiProvider, AiStage, Settings
 from src.services.moderation_guard import GuardVerdict, OpenAiTextGuard, Outcome
 
 from mockdata import catalogue, library, process
+from mockdata import patch as patch_module
 from mockdata.catalogue import Photo
 from mockdata.process import (
     AdaptiveGate,
+    PatchOptions,
     PhotoOptions,
     Services,
     Switch,
@@ -42,6 +44,7 @@ from mockdata.voices import Brief, Slot, Voices
 
 from .fakes import FakeClient, failure, insight, record, settings
 
+SCENE = {"labels": ["cat"], "ar": "قطة"}
 PHOTOS = [Photo(n, f"cat-{n}.jpg", "cat", 800, 600) for n in (1, 2, 3, 4)]
 
 
@@ -499,9 +502,9 @@ def mock_file() -> dict[str, Any]:
         "seed": 1,
         "generated_at": "2026-10-05T10:00:00Z",
         "images": [
-            {"placepix_id": 1, "insight": body_of(insight())},
-            {"placepix_id": 2, "insight": body_of(insight(step=False))},
-            {"placepix_id": 3, "insight": None},
+            {"placepix_id": 1, "scene": SCENE, "insight": body_of(insight())},
+            {"placepix_id": 2, "scene": SCENE, "insight": body_of(insight(step=False))},
+            {"placepix_id": 3, "scene": SCENE, "insight": None},
         ],
         "members": [{"ref": "m1", "country": "TN"}, {"ref": "m2", "country": "EG"}],
         "insights": [
@@ -878,6 +881,14 @@ def test_options_from_the_command_line(tmp_path: Path) -> None:
         fallback=None,
         add_hadith=True,
     )
+    only = process.options_of(process.parser().parse_args(["photos", "--only", "3,1"]))
+    assert only == PhotoOptions(only=frozenset({1, 3}))
+    patched = process.options_of(
+        process.parser().parse_args(["patch", "--photos", "2", "--file", str(tmp_path / "f.json")])
+    )
+    assert patched == PatchOptions(file=tmp_path / "f.json", photos=frozenset({2}))
+    with pytest.raises(SystemExit):
+        process.parser().parse_args(["photos", "--only", "1", "--add-hadith"])
     default = process.options_of(process.parser().parse_args(["photos"]))
     assert default == PhotoOptions()
     texts = process.options_of(
@@ -901,14 +912,18 @@ async def test_run_builds_the_services_for_each_stage(folder: Path) -> None:
     assert await process.run(texts, settings(), services) == 0
     hadith = PhotoOptions(folder=folder, parallel=5, add_hadith=True)
     assert await process.run(hadith, settings(), services) == 0
-    assert given == [3, 4, 5]
+    patch = PatchOptions(write_file(folder), photos=frozenset({1}))
+    await library.photos(folder / library.PHOTOS_NAME).put("1", library_entry(body_of(insight())))
+    assert await process.run(patch, settings(), services) == 0
+    assert given == [3, 4, 5, 1]
 
 
-def test_main_needs_the_file_for_the_texts(
+def test_main_needs_the_file_for_the_texts_and_the_patch(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     assert process.main(["texts", "--file", str(tmp_path / "none.json")]) == 2
     assert "make mock-data" in capsys.readouterr().out
+    assert process.main(["patch", "--photos", "1", "--file", str(tmp_path / "none.json")]) == 2
 
 
 def test_main_runs_with_the_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -942,3 +957,206 @@ async def test_the_detector_takes_a_few_calls_at_once(monkeypatch: pytest.Monkey
 
     assert list(results) == ["done"] * 6  # type: ignore[comparison-overlap]
     assert peak == 2
+
+
+# ─── Photos run again, one by one (--only) ───
+
+
+async def test_only_runs_exactly_those_photos_again_and_keeps_their_cost(folder: Path) -> None:
+    photos = library.photos(folder / library.PHOTOS_NAME)
+    await photos.put("1", kept_entry(hadith=False, cost=0.5))
+    await photos.put("2", kept_entry(hadith=True, cost=0.5))
+    fakes = Fakes()
+    fakes.outcomes["mock-1"] = [new_result(hadith=True)]
+    fakes.outcomes["mock-3"] = [ScanResult("people", calls=[record()])]
+    # `stop_at` would be met by the kept photo 2: it does not apply to `only`.
+    options = PhotoOptions(folder=folder, stop_at=1, parallel=2, only=frozenset({1, 3}))
+    assert await process.photo_stage(options, settings(), fakes.services()) == 0
+    assert sorted(scan_id for scan_id, _ in fakes.scanned) == ["mock-1", "mock-3"]
+    data = read(folder / library.PHOTOS_NAME)
+    assert data["photos"]["1"]["insight"]["title"] == "عنوان جديد"
+    assert data["photos"]["1"]["insight"]["hadith"]["number"] == "1"
+    assert data["photos"]["1"]["cost_usd"] == 0.501
+    assert data["photos"]["1"]["usage"]["ovh/fake-model"]["calls"] == 3
+    assert data["photos"]["3"]["outcome"] == "people"
+    assert data["photos"]["3"]["insight"] is None
+    assert data["photos"]["2"] == kept_entry(hadith=True, cost=0.5)
+    assert "4" not in data["photos"]
+    assert data["runs"][-1]["only"] == [1, 3]
+
+
+async def test_a_photo_that_leaves_the_insights_says_so_in_the_library(folder: Path) -> None:
+    photos = library.photos(folder / library.PHOTOS_NAME)
+    await photos.put("1", kept_entry(hadith=True))
+    fakes = Fakes()
+    fakes.outcomes["mock-1"] = [ScanResult("sensitive", calls=[record()])]
+    options = PhotoOptions(folder=folder, only=frozenset({1}))
+    await process.photo_stage(options, settings(), fakes.services())
+    entry = read(folder / library.PHOTOS_NAME)["photos"]["1"]
+    assert (entry["outcome"], entry["insight"]) == ("sensitive", None)
+
+
+async def test_a_photo_that_may_pass_later_keeps_its_entry_under_only(folder: Path) -> None:
+    photos = library.photos(folder / library.PHOTOS_NAME)
+    await photos.put("1", kept_entry(hadith=True))
+    fakes = Fakes()
+    fakes.outcomes["mock-1"] = [ScanResult("source_unavailable", calls=[record()])]
+    await process.photo_stage(
+        PhotoOptions(folder=folder, only=frozenset({1})), settings(), fakes.services()
+    )
+    assert read(folder / library.PHOTOS_NAME)["photos"]["1"] == kept_entry(hadith=True)
+
+
+async def test_only_refuses_an_id_the_catalogue_does_not_hold(
+    folder: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    fakes = Fakes()
+    options = PhotoOptions(folder=folder, only=frozenset({1, 77, 12}))
+    assert await process.photo_stage(options, settings(), fakes.services()) == 2
+    assert "12, 77" in capsys.readouterr().out
+    assert fakes.scanned == []
+    assert not (folder / library.PHOTOS_NAME).exists()
+
+
+# ─── The patch stage ───
+
+
+def library_entry(
+    body: dict[str, Any] | None, outcome: str = "insights", scene: dict[str, Any] = SCENE
+) -> dict[str, Any]:
+    return {
+        "outcome": outcome,
+        "scene": scene,
+        "insight": body,
+        "processed_at": "2026-10-05T18:00:00Z",
+        "insight_at": "2026-10-05T18:00:00Z",
+        "pipeline_outcome": outcome,
+        "provider": "ovh",
+        "detector": True,
+        "usage": {},
+    }
+
+
+async def patch_library(folder: Path) -> None:
+    """The photo library after `photos --only 1,2,3,9`: 1 has a new insight, 2 left, 3 gained."""
+    photos = library.photos(folder / library.PHOTOS_NAME)
+    new = body_of(insight(hadith=False)) | {"title": "عنوان جديد"}
+    await photos.put("1", library_entry(new))
+    await photos.put("2", library_entry(None, "people"))
+    await photos.put("3", library_entry(body_of(insight(quran=False))))
+    await photos.put("9", library_entry(body_of(insight())))
+
+
+async def test_the_patch_changes_the_listed_photos_and_nothing_else(folder: Path) -> None:
+    path = folder / "tabsira-mock-v1.json"
+    before = mock_file()
+    path.write_text(library.dumps(before) + "\n", encoding="utf-8")
+    await patch_library(folder)
+    fakes = Fakes()
+    options = PatchOptions(path, frozenset({1, 2, 3, 9}))
+    assert await process.patch_stage(options, settings(), fakes.services()) == 0
+    after = read(path)
+    assert {k: v for k, v in after.items() if k != "images"} == {
+        k: v for k, v in before.items() if k != "images"
+    }
+    first, second, third = after["images"]
+    assert first["insight"]["title"] == "عنوان جديد"
+    assert first["insight"]["hadith"] is None
+    assert second["insight"] is None
+    assert third["insight"]["quran"] is None
+    assert third["insight"]["hadith"]["number"] == "1"
+    assert fakes.validated == [path.read_bytes()]
+    report = read(folder / patch_module.PATCH_REPORT_NAME)
+    assert report["checks"] == "passed"
+    assert report["result"] == {"emptied": 1, "filled": 1, "not_in_file": 1, "replaced": 1}
+    by_photo = {change["photo"]: change for change in report["photos"]}
+    assert by_photo[1]["from"] == {"quran": "2:164", "hadith": "bukhari:1"}
+    assert by_photo[1]["to"] == {"quran": "2:164", "hadith": None}
+    assert (by_photo[2]["to"], by_photo[2]["outcome"]) == (None, "people")
+    assert by_photo[9] == {"photo": 9, "result": "not_in_file", "outcome": "insights"}
+    # Only the changed photos' insights are marked new, for the texts stage.
+    stamped = read(folder / library.PHOTOS_NAME)["photos"]
+    assert stamped["1"]["insight_at"] > "2026-10-05T18:00:00Z"
+    assert stamped["9"]["insight_at"] == "2026-10-05T18:00:00Z"
+
+    # Again: nothing differs, the file keeps its bytes and the texts are not made stale.
+    written = path.read_bytes()
+    assert await process.patch_stage(options, settings(), fakes.services()) == 0
+    assert path.read_bytes() == written
+    assert read(folder / patch_module.PATCH_REPORT_NAME)["result"] == {
+        "not_in_file": 1,
+        "unchanged": 3,
+    }
+    assert read(folder / library.PHOTOS_NAME)["photos"] == stamped
+
+
+async def test_a_patch_that_changes_nothing_keeps_every_byte(folder: Path) -> None:
+    path = folder / "tabsira-mock-v1.json"
+    path.write_text(library.dumps(mock_file()) + "\n", encoding="utf-8")
+    photos = library.photos(folder / library.PHOTOS_NAME)
+    await photos.put("1", library_entry(body_of(insight())))
+    before = path.read_bytes()
+    await process.patch_stage(PatchOptions(path, frozenset({1})), settings(), Fakes().services())
+    assert path.read_bytes() == before
+
+
+async def test_a_new_scene_alone_is_a_change(folder: Path) -> None:
+    path = folder / "tabsira-mock-v1.json"
+    path.write_text(library.dumps(mock_file()) + "\n", encoding="utf-8")
+    photos = library.photos(folder / library.PHOTOS_NAME)
+    scene = {"labels": ["cat", "window"], "ar": "قطة ونافذة"}
+    await photos.put("1", library_entry(body_of(insight()), scene=scene))
+    await process.patch_stage(PatchOptions(path, frozenset({1})), settings(), Fakes().services())
+    assert read(path)["images"][0]["scene"] == scene
+    report = read(folder / patch_module.PATCH_REPORT_NAME)["photos"][0]
+    assert (report["result"], report["scene_changed"]) == ("replaced", True)
+
+
+async def test_a_photo_the_library_lacks_is_refused_and_nothing_is_written(
+    folder: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = write_file(folder)
+    before = path.read_bytes()
+    photos = library.photos(folder / library.PHOTOS_NAME)
+    await photos.put("1", library_entry(body_of(insight())))
+    options = PatchOptions(path, frozenset({1, 5}))
+    assert await process.patch_stage(options, settings(), Fakes().services()) == 2
+    assert "5" in capsys.readouterr().out
+    assert path.read_bytes() == before
+    assert not (folder / patch_module.PATCH_REPORT_NAME).exists()
+
+
+async def test_a_patched_file_that_fails_the_checks_is_not_written(
+    folder: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = write_file(folder)
+    before = path.read_bytes()
+    await patch_library(folder)
+    fakes = Fakes()
+    fakes.problems = ["evidence missing from the store for placepix 1"]
+    options = PatchOptions(path, frozenset({1}))
+    assert await process.patch_stage(options, settings(), fakes.services()) == 1
+    assert path.read_bytes() == before
+    assert read(folder / patch_module.PATCH_REPORT_NAME)["checks"] == fakes.problems
+    assert "was not patched" in capsys.readouterr().out
+    # The library's marks stay as they were: nothing was patched.
+    assert read(folder / library.PHOTOS_NAME)["photos"]["1"]["insight_at"] == "2026-10-05T18:00:00Z"
+
+
+async def test_the_texts_of_the_patched_photos_are_written_again_and_only_those(
+    folder: Path,
+) -> None:
+    fakes = Fakes()
+    path = write_file(folder)
+    await process.texts_stage(TextOptions(path), settings(), fakes.services())
+    # Written a minute ago, so the second the patch runs in does not matter.
+    texts = library.texts(folder / library.TEXTS_NAME)
+    for entry in texts.entries.values():
+        entry["written_at"] = "2026-10-05T18:00:00Z"
+    await texts.save()
+    await patch_library(folder)
+    await process.patch_stage(PatchOptions(path, frozenset({1})), settings(), fakes.services())
+    fakes.briefs.clear()
+    await process.texts_stage(TextOptions(path), settings(), fakes.services())
+    # The post and the sponsor's note of photo 1; photo 2 was not listed, so its post stays.
+    assert sorted(brief.post for brief in fakes.briefs) == ["p1", "sponsor:i1"]

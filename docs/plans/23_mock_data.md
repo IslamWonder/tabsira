@@ -178,3 +178,12 @@ Two programs, two libraries and one file:
 - **Touches:** apps/api/src/cli/{import_mock,mock_fill_ins}.py, apps/api/tests/test_mock_fill_ins.py, scripts/mock-data.sh, Makefile, tools/mockdata/README.md, tools/mockdata/src/mockdata/activity.py (a comment), docs/OPERATIONS.md, AGENTS.md.
 - **Production `.env`:** no new key.
 - **To apply:** after deploying, `scripts/mock-data.sh fill-in views --allow-production` on production and `scripts/mock-data.sh fill-in views` on a development machine.
+
+### 23.10 Patch some photos' insights in the mock file
+
+- **Status:** 🟡 generator side done 2026-10-06 (tests 100 % of `tools/mockdata`); the in-place rewrite of imported insights in `apps/api` is another change and not done here
+- **Goal:** a scripture audit found about 39 photos whose insight is wrong. They run through the pipeline again and the result goes into the file without regenerating it, so which members use which photo, the refs and the posts already imported stay as they are.
+- **Done:** `python -m mockdata.process photos --only <ids>` (exactly those photos, again, ids checked against the catalogue, usage added to the photo's); `python -m mockdata.process patch --photos <ids>` (`make mock-patch MOCK_PHOTOS=<ids>`) replaces `images[].insight` and the scene of those photos only from the library, `null` when the outcome is no longer `insights`, runs the importer's checks, writes atomically and records `patch-report.json` (from which verse and hadith to which, which became null). `make mock-texts` then writes again the posts' and sponsor notes' texts of the patched photos only (the library's `insight_at` mechanism of `--add-hadith`; the patch marks the changed photos again so a texts run before it does not defeat it).
+- **Touches:** tools/mockdata/src/mockdata/{patch,process}.py, tools/mockdata/tests/{test_patch,test_process}.py, tools/mockdata/README.md, Makefile (`mock-patch`).
+- **Production `.env`:** no new key.
+- **To apply:** on the machine holding `../tabsira-data/mock/` and the provider keys: `MOCK_ARGS="--only <ids>" make mock-photos`, `make mock-patch MOCK_PHOTOS=<ids>`, `make mock-texts`, upload the file to the bucket; then the importer's in-place rewrite on production (apps/api, not part of this task's code).

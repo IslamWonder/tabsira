@@ -4,7 +4,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev migrate data test coverage lint format eval smoke benchmark up security audit stats mock-photos mock-data mock-texts mock-import mock-fill-in mock-clean
+.PHONY: help install dev migrate data test coverage lint format eval smoke benchmark up security audit stats mock-photos mock-patch mock-data mock-texts mock-import mock-fill-in mock-clean
 
 help: ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{ printf "  make %-12s %s\n", $$1, $$2 }'
@@ -60,6 +60,10 @@ mock-data: ## Generate the mock members file (MOCK_SEED, MOCK_MEMBERS) into ../t
 
 mock-photos: ## Run the real pipeline over the placepix photos into ../tabsira-data/mock/photo-library.json (MOCK_ARGS)
 	@PYTHONPATH="$(CURDIR)/apps/api" uv run --project tools/mockdata python -m mockdata.process photos $(MOCK_ARGS)
+
+mock-patch: ## Put the photo library's insight of some photos into the mock file, nothing else: MOCK_PHOTOS=12,40
+	@test -n "$(MOCK_PHOTOS)" || { echo "usage: make mock-patch MOCK_PHOTOS=<placepix ids, 12,40>"; exit 2; }
+	@PYTHONPATH="$(CURDIR)/apps/api" uv run --project tools/mockdata python -m mockdata.process patch --photos "$(MOCK_PHOTOS)" $(MOCK_ARGS)
 
 mock-texts: ## Write the mock posts' reflections and comments into the mock file (MOCK_ARGS)
 	@PYTHONPATH="$(CURDIR)/apps/api" uv run --project tools/mockdata python -m mockdata.process texts $(MOCK_ARGS)

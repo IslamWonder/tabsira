@@ -21,6 +21,13 @@ the words written about them come from one run; otherwise it keeps its insight. 
 stays, its cost grows by the new calls, and the posts' texts written before the new insight
 are written again by the next texts stage.
 
+`photos --only 12,40` runs exactly those photos again (the ids must be in the catalogue), as
+`--reprocess` does for all: the new outcome replaces the old one, the cost of the new calls is
+added to the photo's, and `--stop-at` does not apply. `patch --photos 12,40` then puts the
+library's insight of those photos into the file already generated and nothing else
+(`mockdata.patch`), so the members' posts keep their refs; the next texts stage writes again the
+texts of those photos' posts only.
+
 The texts stage reads the generated file, writes one post at a time through the composer model
 (`mockdata.voices`), keeps what passes the guards in the texts library, and fills the file
 from it. Before the file is replaced, the importer's own checks run over it against the
@@ -80,7 +87,7 @@ from src.pipeline.schemas import DetectorRequest, DetectorResult
 from src.scans.accept import leaks
 from src.services.moderation_guard import GuardVerdict, OpenAiTextGuard
 
-from mockdata import catalogue, library
+from mockdata import catalogue, library, patch
 from mockdata.catalogue import Photo
 from mockdata.cli import DATA_DIR, OUT_NAME, fetch_photos
 from mockdata.library import KEPT, Library, dumps, kept_photos, outcome_of, text_key
@@ -319,6 +326,8 @@ class PhotoOptions:
     reprocess: bool = False
     fallback: AiProvider | None = AiProvider.OPENAI
     add_hadith: bool = False
+    # Exactly these placepix ids, run again whatever the library holds; `stop_at` does not apply.
+    only: frozenset[int] | None = None
 
 
 def is_retry(result: ScanResult) -> bool:
@@ -422,14 +431,33 @@ def adopt_state(
     return added
 
 
+def pending_photos(every: Sequence[Photo], photos: Library, options: PhotoOptions) -> list[Photo]:
+    """The photos this run scans: the `only` ones, all with `reprocess`, else those not held."""
+    if options.only is not None:
+        return [p for p in every if p.id in options.only]
+    return [p for p in every if options.reprocess or str(p.id) not in photos.entries]
+
+
+def again(old: dict[str, Any] | None, entry: dict[str, Any]) -> dict[str, Any]:
+    """A photo run again keeps what its earlier runs cost."""
+    if old is None:
+        return entry
+    usage = merge_usage([old["usage"], entry["usage"]])
+    return entry | {"usage": usage, "cost_usd": cost_of(usage)}
+
+
 async def photo_stage(options: PhotoOptions, settings: Settings, services: Services) -> int:
     """Run the photos the library lacks until it holds `stop_at` with an insight."""
     started, wall = now_text(), time.monotonic()
     photos = library.photos(options.folder / library.PHOTOS_NAME)
     every = candidates(options.folder)
+    unknown = sorted((options.only or frozenset()) - {p.id for p in every})
+    if unknown:
+        _say(f"not in the placepix catalogue, nothing run: {', '.join(map(str, unknown))}")
+        return 2
     adopted = adopt_state(options.folder / STATE_NAME, photos, {p.id: p for p in every}, settings)
     await photos.save()
-    pending = [p for p in every if options.reprocess or str(p.id) not in photos.entries]
+    pending = pending_photos(every, photos, options)
     if options.limit is not None:
         pending = pending[: options.limit]
     fallback = options.fallback if options.fallback is not settings.ai_provider else None
@@ -439,7 +467,9 @@ async def photo_stage(options: PhotoOptions, settings: Settings, services: Servi
     tasks: list[asyncio.Task[None]] = []
 
     def enough() -> bool:
-        return options.stop_at is not None and len(kept_photos(photos)) >= options.stop_at
+        if options.only is not None or options.stop_at is None:
+            return False
+        return len(kept_photos(photos)) >= options.stop_at
 
     async def one(photo: Photo) -> None:
         async with gate.slot():
@@ -454,6 +484,8 @@ async def photo_stage(options: PhotoOptions, settings: Settings, services: Servi
             _say(f"photo {photo.id}: {result.outcome}, left for the next run")
             return
         entry = photo_entry(photo, result, provider, attempts, calls, settings, now_text())
+        if options.only is not None:
+            entry = again(photos.entries.get(str(photo.id)), entry)
         await photos.put(str(photo.id), entry)
         _say(f"photo {photo.id}: {entry['outcome']} ({provider.value})")
         if enough():
@@ -481,6 +513,7 @@ async def photo_stage(options: PhotoOptions, settings: Settings, services: Servi
                 ),
                 "adopted_from_state": adopted,
                 "outcomes": dict(sorted(counts.items())),
+                **({"only": sorted(options.only)} if options.only is not None else {}),
             }
         )
         await photos.save()
@@ -555,6 +588,54 @@ async def hadith_stage(options: PhotoOptions, settings: Settings, services: Serv
     _say(
         f"{photos.path}: {len(kept_photos(photos)) - left} kept photos with a hadith, {left} without"
     )
+    return 0
+
+
+# ─── The patch stage ───
+
+
+@dataclass(frozen=True)
+class PatchOptions:
+    file: Path = DATA_DIR / OUT_NAME
+    photos: frozenset[int] = frozenset()
+    parallel: int = 1
+
+
+async def patch_stage(options: PatchOptions, settings: Settings, services: Services) -> int:
+    """Put the library's current insight of some photos into the file, check it, replace it."""
+    folder = options.file.parent
+    photos = library.photos(folder / library.PHOTOS_NAME)
+    unknown = sorted(pid for pid in options.photos if str(pid) not in photos.entries)
+    if unknown:
+        _say(f"not in the photo library, nothing patched: {', '.join(map(str, unknown))}")
+        return 2
+    document = json.loads(options.file.read_text(encoding="utf-8"))
+    changes = patch.patch_images(document, photos.entries, options.photos)
+    text = dumps(document) + "\n"
+    problems = await services.validate(text.encode("utf-8"))
+    results = dict(sorted(Counter(change["result"] for change in changes).items()))
+    summary = {
+        "file": options.file.name,
+        "patched_at": now_text(),
+        "photos": changes,
+        "result": results,
+        "checks": problems or "passed",
+    }
+    report_path = folder / patch.PATCH_REPORT_NAME
+    library.write_atomically(report_path, json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
+    if problems:
+        for line in problems:
+            _say(f"check failed: {line}")
+        _say(f"{options.file} was not patched")
+        return 1
+    # The insight is new as of now: the texts written for the old one are written again, even
+    # when a texts run came between the photo run and this patch.
+    stamp = now_text()
+    for pid in patch.changed(changes):
+        photos.entries[str(pid)]["insight_at"] = stamp
+    await photos.save()
+    library.write_atomically(options.file, text)
+    _say(f"{options.file}: patched {results}; report in {report_path}")
     return 0
 
 
@@ -955,16 +1036,27 @@ def parser() -> argparse.ArgumentParser:
     photos.add_argument("--parallel", type=int, default=PARALLEL)
     photos.add_argument("--limit", type=int, help="at most this many photos in this run")
     photos.add_argument("--reprocess", action="store_true", help="run the photos it holds again")
-    photos.add_argument(
+    which = photos.add_mutually_exclusive_group()
+    which.add_argument(
         "--add-hadith",
         action="store_true",
         help="run the kept photos without a hadith again; take a new insight that has one",
+    )
+    which.add_argument(
+        "--only",
+        type=patch.parse_ids,
+        help="run exactly these placepix ids again, 12,40,7 (the library's entry is replaced)",
     )
     photos.add_argument(
         "--fallback",
         choices=[*(provider.value for provider in AiProvider), "none"],
         default=AiProvider.OPENAI.value,
         help="the provider the rest goes to when the active one keeps failing",
+    )
+    patched = stages.add_parser("patch", help="the library's insight of some photos -> the file")
+    patched.add_argument("--file", type=Path, default=DATA_DIR / OUT_NAME)
+    patched.add_argument(
+        "--photos", type=patch.parse_ids, required=True, help="placepix ids, 1,2,3"
     )
     texts = stages.add_parser("texts", help="the posts' texts -> texts-library.json and the file")
     texts.add_argument("--file", type=Path, default=DATA_DIR / OUT_NAME)
@@ -973,7 +1065,9 @@ def parser() -> argparse.ArgumentParser:
     return p
 
 
-def options_of(args: argparse.Namespace) -> PhotoOptions | TextOptions:
+def options_of(args: argparse.Namespace) -> PhotoOptions | TextOptions | PatchOptions:
+    if args.stage == "patch":
+        return PatchOptions(file=args.file, photos=args.photos)
     if args.stage == "texts":
         return TextOptions(file=args.file, parallel=args.parallel, limit=args.limit)
     return PhotoOptions(
@@ -983,18 +1077,21 @@ def options_of(args: argparse.Namespace) -> PhotoOptions | TextOptions:
         limit=args.limit,
         reprocess=args.reprocess,
         add_hadith=args.add_hadith,
+        only=args.only,
         fallback=None if args.fallback == "none" else AiProvider(args.fallback),
     )
 
 
 async def run(
-    options: PhotoOptions | TextOptions,
+    options: PhotoOptions | TextOptions | PatchOptions,
     settings: Settings,
     services: Callable[
         [Settings, int], contextlib.AbstractAsyncContextManager[Services]
     ] = real_services,
 ) -> int:
     async with services(settings, options.parallel) as built:
+        if isinstance(options, PatchOptions):
+            return await patch_stage(options, settings, built)
         if isinstance(options, TextOptions):
             return await texts_stage(options, settings, built)
         if options.add_hadith:
@@ -1004,7 +1101,7 @@ async def run(
 
 def main(argv: Sequence[str] | None = None) -> int:
     options = options_of(parser().parse_args(argv))
-    if isinstance(options, TextOptions) and not options.file.exists():
+    if isinstance(options, TextOptions | PatchOptions) and not options.file.exists():
         _say(f"{options.file} does not exist: run make mock-data first")
         return 2
     return asyncio.run(run(options, load_settings()))

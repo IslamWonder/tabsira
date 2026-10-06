@@ -110,6 +110,12 @@ pipeline of `apps/api` and the members' words:
   since the insight's words are written for the pair the gate chose; otherwise it keeps its
   insight. The cost of the new calls is added to the photo's, and the next `make mock-texts`
   writes again the posts' texts written before the new insight.
+- `MOCK_ARGS="--only 12,40,7" make mock-photos` runs exactly those placepix photos again, as
+  `--reprocess` does for all of them (an id the catalogue does not hold is refused and nothing
+  runs). Same stage and rules; `--stop-at` does not apply. The new outcome replaces the old one in
+  the library (a photo that now shows someone or is sensitive gets that outcome and no insight),
+  and the cost of the new calls is added to the photo's. A photo that failed in a way another
+  run may fix keeps its old entry. It excludes `--add-hadith`.
 - It stops as soon as the library holds `--stop-at` photos with an insight (150; `0` for all);
   the photos not reached stay unprocessed. `--parallel` photos run at once (20) and as many
   model calls; a 429 or a 5xx halves that for the rest of the run, and eight photos failed in a
@@ -122,3 +128,33 @@ pipeline of `apps/api` and the members' words:
 - Before the file is replaced, the importer's checks run over it (shape, scripture guard, every
   evidence id in the store); `process-report.json` says what was kept and dropped and why, the
   models, the time, the tokens and the cost of both stages.
+
+## Correcting some photos' insights without regenerating the file
+
+A scripture audit may find photos whose insight is wrong. Regenerating the file would reshuffle
+which members use which photo, renumber refs and break the posts already imported, so the file is
+**patched** instead: for the listed photos only, `images[].insight` (and the scene, when the
+library changed it) takes the library's current entry, or `null` when the library's outcome is no
+longer `insights`. Members, insights, posts, refs, times, places, views and the seed keep their
+bytes (a patch that changes nothing rewrites the same bytes). Run, in this order:
+
+```bash
+MOCK_ARGS="--only 12,40,7" make mock-photos   # 1. the pipeline again, those photos only
+make mock-patch MOCK_PHOTOS=12,40,7           # 2. put their insights into the file
+make mock-texts                               # 3. write again the texts of their posts
+```
+
+- Step 2 refuses an id the photo library does not hold. It runs the importer's checks (shape,
+  scripture guard, every evidence id in the store) over the patched file before replacing it
+  atomically, and writes `patch-report.json` beside the file: for each photo the result
+  (`replaced`, `filled`, `emptied`, `unchanged`, or `not_in_file` when the file does not use the
+  photo), the library's outcome, and the verse and hadith (`2:164`, `bukhari:1`) before and after.
+  It is safe to run again: a photo already patched is `unchanged`.
+- A photo that became `null` keeps its insights and posts in the file; its posts lose their
+  reflection and its comments their text at step 3, as for any photo without an insight.
+- Step 3 reuses a text only if it was written after the photo's insight (`insight_at` in the
+  library, set by step 1 and again by step 2 for the photos that changed), so only the posts and
+  sponsor notes of the patched photos are written again; every other text is reused. Do not skip
+  step 2 before step 3: the texts would be written from the old insight.
+- Production then rewrites the imported insights in place from the patched file (task 23.10,
+  `apps/api`).
