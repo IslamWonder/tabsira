@@ -41,7 +41,7 @@ export function InstallLink({ className }: Readonly<{ className: string }>) {
         aria-haspopup={install.way === 'ios' ? 'dialog' : undefined}
         className={className}
       >
-        <DownloadIcon aria-hidden="true" className="me-1.5 size-4" />
+        <DownloadIcon aria-hidden="true" className="me-2 size-5" />
         {T.meInstall}
       </button>
       <IosSteps open={iosOpen} onClose={() => setIosOpen(false)} />

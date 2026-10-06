@@ -13,6 +13,9 @@ import { InstallLink } from './install-link';
 
 const QUIET =
   'inline-flex min-h-12 items-center text-fg-soft text-sm underline-offset-4 transition-colors duration-200 hover:text-fg hover:underline';
+/** The one action among the footer's links: the brand's gold, so it reads as something to do. */
+const INSTALL =
+  'inline-flex min-h-12 items-center font-medium text-brand text-sm underline-offset-4 transition-[filter] duration-200 hover:underline hover:brightness-110';
 const EXAMPLE = '/#example';
 const EXPLORE = [
   ['/#how', messages.landing.nav.how],
@@ -80,7 +83,7 @@ export function SiteFooter() {
               </li>
             )
           )}
-          <InstallLink className={QUIET} />
+          <InstallLink className={INSTALL} />
         </Column>
         <Column title={messages.footer.help}>
           {PAGES.map(([href, label]) => (

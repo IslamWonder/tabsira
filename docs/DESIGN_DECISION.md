@@ -167,11 +167,15 @@ When the installed app opens on a phone, the top bar's logo entrance plays full 
 
 ### Not found (added 6 October 2026)
 
-A missing page is one of three scenes, chosen at random at each request, each a reminder of the guidance Islam gives, in the platform's own words (never a quoted or paraphrased verse or hadith): a swaying lantern whose flame flickers («ضلّ الرابط طريقه، ولم تضلّ أنت»), a dotted road drawn up to a guiding star among twinkling ones («في الليل يرفع المسافر عينيه»), and a compass on the brand's eight-pointed star whose needle swings and settles («لكل تائه وجهة»). Then «الصفحة ٤٠٤», the words, and one way back. Still a real 404, inline styles and system fonts only (docs/SEO.md §1); the drawings are inline SVG, their motion in the page's own style block, stopped under reduced motion.
+A missing page is one of three scenes, chosen at random at each request, each a reminder of the guidance Islam gives, in the platform's own words (never a quoted or paraphrased verse or hadith): a swaying lantern whose flame flickers («ضلّ الرابط طريقه، ولم تضلّ أنت»), a dotted road drawn up to a guiding star among twinkling ones («في الليل يرفع المسافر عينيه»), and a compass on the brand's eight-pointed star whose needle swings and settles («لكل تائه وجهة»). Then «الصفحة ٤٠٤», the words, and one way back. Still a real 404, inline styles and system fonts only (docs/SEO.md §1); the drawings are inline SVG, their motion in the page's own style block, stopped under reduced motion. The same scenes stand above the app's empty and failed states (`components/ui/guide-scene.tsx`, the `scene` of StatusScreen): the star over an empty feed and a missing map entry, the lantern over a missing post and a page that could not load, the qibla's compass over a missing profile.
 
 ### Installing the app (added 6 October 2026)
 
 The owners saw that a new visitor had no way to install the app: the offer waited for a finished insight, which now needs an account, and the browser's own bar is held back so the offer can choose its moment. As well-behaved web apps do, the offer card now comes once the reader shows interest: a finished insight, a third page in one visit, 40 s on the site, or a return visit an hour or more after the first, never over the analysis, and resting 30 days after «ليس الآن». A quiet «ثبّت التطبيق» with the download icon sits in every page's footer from the first visit, wherever the browser can install (the browser's dialog, or the share-sheet steps on an iPhone), beside the same button in «ملفي». Nothing is shown in the installed app.
+
+### Small delights (added 6 October 2026)
+
+A reaction («انتفعتُ بها», «جزاك الله خيرًا») or a save, once the API kept it, bursts gold from its button with the app's burst; taking one back is quiet. A published photo on its own page (a post, a map entry, a public insight) opens full screen on a dark ground on a tap, and closes on a tap, Escape or its close button; a feed's thumbnail opens the post instead. The footer's «ثبّت التطبيق» is the brand's gold with a larger icon, the one action among its links.
 
 ### Logo (added 4 October 2026)
 
