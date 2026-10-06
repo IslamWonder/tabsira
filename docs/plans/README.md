@@ -2,7 +2,7 @@
 
 One short file per feature: what it is, where it stands, what is waiting on the owners, and how it is checked. Phase 1 is this release (decision 40); phase 2 follows.
 
-**Updated:** 2026-10-05 10:55 (Tunis) · ✅ done · 🔄 in progress · ⬜ not started · ⏸ phase 2
+**Updated:** 2026-10-06 07:10 (Tunis) · ✅ done · 🔄 in progress · ⬜ not started · ⏸ phase 2
 
 | #   | Feature                                                                  | Phase | Priority | Status |
 | --- | ------------------------------------------------------------------------ | ----- | -------- | ------ |
@@ -21,13 +21,13 @@ One short file per feature: what it is, where it stands, what is waiting on the 
 | 13  | [Scripture, privacy and security reviews](13_reviews.md)                 | 1     | Critical | 🔄     |
 | 14  | [Deployment and operations](14_deployment.md)                            | 1     | High     | 🔄     |
 | 15  | [Quality gates](15_quality.md)                                           | 1     | High     | 🔄     |
-| 16  | [Social network «تبصرة تواصل»](16_social_network.md)                     | 2     | Medium   | 🔄     |
+| 16  | [Social network «تبصرة تواصل»](16_social_network.md)                     | 2     | Medium   | ✅     |
 | 17  | [World atlas «أطلس بصائر العالم»](17_atlas.md)                           | 2     | Medium   | 🔄     |
 | 18  | [Camera discovery «اكتشف البصائر حولك»](18_camera_discovery.md)          | 2     | Low      | 🔄     |
-| 19  | [Consented photos](19_photos.md)                                         | 2     | High     | ✅     |
+| 19  | [Consented photos](19_photos.md)                                         | 2     | High     | 🔄     |
 | 20  | [Prompts and search: where they live](20_prompts.md)                     | 1     | High     | 🔄     |
-| 21  | [An Islamic spirit for «تبصرة تواصل»](21_social_spirit.md)               | 2     | Medium   | ⬜     |
-| 22  | [Account after the first scan, full profile](22_account_profile_gate.md) | 1     | High     | 🔄     |
+| 21  | [An Islamic spirit for «تبصرة تواصل»](21_social_spirit.md)               | 2     | Medium   | 🔄     |
+| 22  | [Account after the first scan, full profile](22_account_profile_gate.md) | 1     | High     | ✅     |
 | 23  | [Mock members to start the platform](23_mock_data.md)                    | 2     | High     | ✅     |
 
 ## Taking a task

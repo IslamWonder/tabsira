@@ -13,8 +13,8 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 | Rain tutorial, labelled as prepared                                              | ✅     |                                    |
 | Production requires S3, checked at start; disk only in development (decision 44) | ✅     | Probe at boot and in check_config. |
 | Scan worker unit, graceful restart, Redis persistence off                        | ✅     | Dry-run only; no server touched.   |
-| Scripture review fixes, then merge                                               | 🔄     | In progress.                       |
-| Screens: capture, progress, focus, question                                      | 🔄     | In progress.                       |
+| Scripture review fixes, then merge                                               | ✅     | Task 04.1, 2026-10-04.             |
+| Screens: capture, progress, focus, question                                      | ✅     | Task 04.2, 2026-10-04.             |
 | Chat answers tied to the texts shown when written                                | ✅     | Hidden once a text is not shown.   |
 | Optional questions after the first insight, share option after saving, §8 labels | ✅     | Core audit wave 3, task 04.11.     |
 | Chat request for another text re-runs retrieval and verification                 | ✅     | Found text read from the store.    |

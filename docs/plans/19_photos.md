@@ -1,6 +1,6 @@
 # 19 · Consented photos
 
-**Phase:** 2 · **Priority:** High · **Status:** ✅ · **Updated:** 2026-10-04 22:06 (Tunis)
+**Phase:** 2 · **Priority:** High · **Status:** 🔄 · **Updated:** 2026-10-06 07:10 (Tunis)
 
 The photo of a scan, kept with its owner's consent, shown to the public only by the owner's choice (v2 §15 and §19, decisions 8 and 44).
 
