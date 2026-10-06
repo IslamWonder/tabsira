@@ -98,7 +98,7 @@ def test_a_star_sits_where_its_name_puts_it_and_grows_with_repeats():
 def test_the_daily_quest_is_a_look_and_a_completion_on_the_same_day():
     log = PracticeLog(
         looks=[at(4, 9), at(5, 9)],
-        completions=[Completion(at(4, 10), "أ"), Completion(at(6, 10), "ب")],
+        completions=[Completion(at(4, 10), "أ", 1, "ت"), Completion(at(6, 10), "ب", 2, "ت")],
     )
 
     assert practice.quest_days(log, UTC_ZONE) == {date(2026, 10, 4): at(4, 10)}
@@ -113,7 +113,7 @@ def test_each_badge_records_when_its_rule_first_held():
     looks = [at(1), at(2), at(3), at(3, 18), *[at(10 + n % 9) for n in range(30)]]
     log = PracticeLog(
         looks=looks,
-        completions=[Completion(at(1, 13 + n), f"معنى {n}") for n in range(10)],
+        completions=[Completion(at(1, 13 + n), f"معنى {n}", n + 1, "ت") for n in range(10)],
         tutorial={"drop": at(2), "planting": at(5)},
         actions=[at(6)],
         places=[at(1, 13)],

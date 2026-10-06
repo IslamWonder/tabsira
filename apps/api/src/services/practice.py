@@ -40,8 +40,8 @@ class Completion(NamedTuple):
 
     moment: datetime
     concept: str
-    insight_id: int = 0
-    title: str = ""
+    insight_id: int
+    title: str
 
 
 @dataclass(frozen=True)
