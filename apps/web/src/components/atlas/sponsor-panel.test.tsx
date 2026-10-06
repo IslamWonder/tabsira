@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AtlasEntry } from '@/atlas/types';
@@ -280,6 +280,23 @@ describe('the sponsoring part of an entry page', () => {
       await userEvent.click(box);
       await userEvent.paste('ك'.repeat(501));
       expect(screen.getByRole('button', { name: S.reflection.save })).toBeDisabled();
+    });
+
+    it('starts empty when none of the sponsor’s sponsorships is this entry’s', async () => {
+      let answered = false;
+      member({
+        [ENTRY_PATH]: { body: mine },
+        'GET /me/sponsorships': (): Reply => {
+          answered = true;
+          return { body: [{ ...SPONSORSHIP, entry_id: `${ID}-other`, reflection: '[غيرها]' }] };
+        },
+      });
+      await open();
+      const box = await screen.findByRole('textbox', { name: S.reflection.label });
+      await waitFor(() => expect(answered).toBe(true));
+      await act(async () => {});
+      expect(box).toHaveValue('');
+      expect(screen.queryByText('[غيرها]')).toBeNull();
     });
 
     it('saves it, shows the status and the message of the server, and reads the entry again', async () => {
