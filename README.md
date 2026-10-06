@@ -162,4 +162,4 @@ make stats       # a few lines about the code: size, tests, coverage, today
 
 ## 📄 Licence
 
-🛡️ The object detector in `services/vision` depends on Ultralytics, which is AGPL-3.0, so the whole repository is AGPL-3.0 ([LICENSE](LICENSE), [AGENTS.md](AGENTS.md)). The scripture sources and their own terms are listed in [docs/SOURCES-AND-LICENSES.md](docs/SOURCES-AND-LICENSES.md). 💚 TABSIRA is free: no payment, plan or advertising anywhere (decision 43).
+🛡️ The object detector in `services/vision` depends on Ultralytics, which is AGPL-3.0, so the whole repository is AGPL-3.0 ([LICENSE](LICENSE), [AGENTS.md](AGENTS.md)). ™️ The name «TABSIRA / تبصرة» and its logo ([brand/](brand/)) are not covered by the AGPL: they are reserved by the authors and may be used only under a commercial licence from them. The scripture sources and their own terms are listed in [docs/SOURCES-AND-LICENSES.md](docs/SOURCES-AND-LICENSES.md). 💚 TABSIRA is free: no payment, plan or advertising anywhere (decision 43).
