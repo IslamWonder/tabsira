@@ -97,6 +97,51 @@
   pointer-events: none;
 }
 
+/*
+ * On a menu window (never a scripture panel) a glint of gold runs once round
+ * the outer rule when the window appears, then fades and leaves the rule still.
+ * The angle and its strength are registered so they interpolate; a browser
+ * without @property simply shows the still rule.
+ */
+@property --fx-glint-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@property --fx-glint-strength {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+.fx-ornate-glow::before {
+  background:
+    conic-gradient(
+      from var(--fx-glint-angle),
+      transparent 0deg 300deg,
+      color-mix(in srgb, var(--glow-gold) var(--fx-glint-strength), transparent) 340deg,
+      transparent 360deg
+    ),
+    var(--rule-gradient);
+  animation: fx-glint-round 1.8s cubic-bezier(0.45, 0.02, 0.55, 0.98) 0.35s both;
+}
+
+@keyframes fx-glint-round {
+  0% {
+    --fx-glint-angle: 0deg;
+    --fx-glint-strength: 0%;
+  }
+  20%,
+  75% {
+    --fx-glint-strength: 95%;
+  }
+  100% {
+    --fx-glint-angle: 360deg;
+    --fx-glint-strength: 0%;
+  }
+}
+
 /* The inner rule, 5 px in: the double line of an illuminated frame. */
 .fx-ornate::after {
   content: "";
