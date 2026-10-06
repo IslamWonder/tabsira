@@ -37,6 +37,7 @@ from src.storage.base import (
     InvalidKeyError,
     ObjectNotFoundError,
     Storage,
+    StorageError,
     StorageUnavailableError,
     check_key,
     is_mock_photo_address,
@@ -538,7 +539,7 @@ async def test_a_moderator_s_removal_of_a_map_entry_deletes_the_copy(
 # ─── The local media route ───
 
 
-async def test_the_media_route_serves_the_public_prefix_alone_and_only_from_the_local_disk(
+async def test_the_media_route_serves_the_public_prefix_alone_from_any_store(
     db_session, make_member, photos, media, world, account_app
 ):
     reader = await make_member(signed_in=False)
@@ -552,9 +553,18 @@ async def test_the_media_route_serves_the_public_prefix_alone_and_only_from_the_
     assert (await reader.http.get(f"/media/{new_public_key()}")).status_code == 404
     assert (await reader.http.get(f"/media/{new_private_key()}")).status_code == 404
 
-    # With S3 the copies are read from `S3_PUBLIC_BASE_URL`, never through the API.
-    account_app.state.photo_store = PhotoStore(cast("Storage", object()), photos.settings)
-    assert (await reader.http.get(f"/media/{public}")).status_code == 404
+    # Any store serves the same way, a bucket too: the bucket stays private, the API reads it.
+    class Bucket:
+        async def get(self, key: str) -> bytes:
+            if key != public:
+                raise StorageError(key)
+            return b"jpeg"
+
+    account_app.state.photo_store = PhotoStore(cast("Storage", Bucket()), photos.settings)
+    served = await reader.http.get(f"/media/{public}")
+    assert (served.status_code, served.content) == (200, b"jpeg")
+    assert served.headers["cache-control"] == "public, max-age=300"
+    assert (await reader.http.get(f"/media/{new_public_key()}")).status_code == 404
 
 
 async def report(member: Member, target_type: str, target_id: Any) -> None:

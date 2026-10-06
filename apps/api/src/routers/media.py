@@ -1,10 +1,11 @@
 """
-The public copies of photos, served from the local disk (decision 44, v2 §19).
+The public copies of photos, served by the API from the photo store (decision 44, v2 §19).
 
-On a development machine with no bucket, `LocalStorage.public_url` points at this route. It
-serves `public/` keys and nothing else: a private copy has a signed address of its own, which
-no route serves yet, and the key's shape is checked before the disk is touched. With S3 the
-public copies are read from `S3_PUBLIC_BASE_URL`, so this route answers 404 there.
+On a development machine `LocalStorage.public_url` points at this route; in production
+`S3_PUBLIC_BASE_URL=https://api.tabsira.me/media` does, so the bucket stays private (no bucket
+policy, no address of the storage provider in the visitor's browser) and the API reads the copy
+with its own keys. It serves `public/` keys and nothing else: a private copy has a signed address
+of its own, and the key's shape is checked before the store is asked.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from fastapi import APIRouter, Path, Response
 from src.deps import PhotoStoreDep
 from src.errors import AppError, ErrorCode
 from src.storage.base import CONTENT_TYPE, PUBLIC_PREFIX, StorageError
-from src.storage.local import MEDIA_ROUTE, LocalStorage
+from src.storage.local import MEDIA_ROUTE
 
 router = APIRouter(tags=["media"])
 
@@ -32,17 +33,14 @@ def _not_found() -> AppError:
 
 @router.get(
     f"{MEDIA_ROUTE}/{PUBLIC_PREFIX}/{{name}}",
-    summary="A photo's public copy (local disk only)",
+    summary="A photo's public copy",
     response_class=Response,
     responses={200: {"content": {CONTENT_TYPE: {}}}},
 )
 async def public_photo(name: Name, photos: PhotoStoreDep) -> Response:
-    """Return the published copy under `public/<name>`; 404 when the store is S3 or there is none."""
-    storage = photos.storage
-    if not isinstance(storage, LocalStorage):
-        raise _not_found()
+    """Return the published copy under `public/<name>`; 404 when there is none."""
     try:
-        data = await storage.get(f"{PUBLIC_PREFIX}/{name}")
+        data = await photos.storage.get(f"{PUBLIC_PREFIX}/{name}")
     except StorageError:
         raise _not_found() from None
     return Response(content=data, media_type=CONTENT_TYPE, headers={"Cache-Control": CACHE_CONTROL})
