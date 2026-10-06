@@ -77,10 +77,11 @@ async def test_the_ip_hash_dependency_copes_with_a_request_that_has_no_client(ac
 
     request = Request({"type": "http", "method": "GET", "path": "/", "headers": [], "client": None})
 
-    assert deps.get_ip_hash(request, account_settings) == deps.get_ip_hash(
-        request, account_settings
-    )
-    assert len(deps.get_ip_hash(request, account_settings)) == 64
+    first = deps.get_ip_hash(request, account_settings)
+    second = deps.get_ip_hash(request, account_settings)
+
+    assert first == second
+    assert len(first) == 64
 
 
 async def test_the_google_client_is_built_once_per_process(account_app, account_settings):

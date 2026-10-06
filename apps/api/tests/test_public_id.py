@@ -62,8 +62,9 @@ def test_the_schema_tells_the_web_client_it_is_a_string():
 
 
 def test_the_salt_is_random_hex_and_a_bad_one_is_refused():
-    assert new_salt() != new_salt()
-    assert len(new_salt()) == 32
+    first, second = new_salt(), new_salt()
+    assert first != second
+    assert len(first) == 32
     assert "app.timestamp_id(table_name text)" in timestamp_id_function_sql(new_salt())
     with pytest.raises(ValueError, match="32 lower-case hex"):
         timestamp_id_function_sql("'; DROP TABLE app.users; --")
