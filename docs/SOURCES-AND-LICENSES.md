@@ -55,7 +55,23 @@ Two different uses carry different duties:
 
 ## Hadith rulings: dorar.net
 
-dorar.net («الدرر السنية») is never called from the server: it blocks automated access (decision 18). An editor opens it in a browser and records the ruling exactly as dorar gives it, with the scholar, the book and page and the address of the dorar page; the app shows that address with the ruling. Every hadith also carries a dorar.net search link for the reader («تحقق في الدرر»). A ruling is a short quotation with its source and a link; dorar's own terms for quoting have still not been reviewed.
+dorar.net («الدرر السنية») is never called from the server: it blocks automated access (decision 18). An editor may open it in a browser and record a ruling exactly as dorar gives it, with the scholar, the book and page and the address of the dorar page (`app.hadith_rulings`, which accepts only a dorar.net address); none is recorded yet. Since decision 65 the app shows no dorar link; since decision 69 it shows the first grader's ruling of the hadith's dataset where there is one, behind the `hadith_ruling` switch. dorar's own terms for quoting have still not been reviewed.
+
+### The dorar API and the committee's recommendation
+
+On 6 October 2026, the last day of the challenge, the organisers pointed the teams to dorar's API, `https://dorar.net/dorar_api.json?skey=<words>`. We tested it the same evening:
+
+- Every request from our servers is answered 403 by Cloudflare («Attention Required»), which blocks automated requests, those of AI applications included; the API answers only in a real browser.
+- In the browser, a search returns 15 results as HTML inside JSON; each carries the narrator, the scholar, the source book, the page or number in it and the scholar's ruling, with no hadith identifier and no link to the hadith's page. Tying one stored hadith to its ruling would need approximate matching. Only one query was tested; other parameters, if any, are not documented to us.
+
+We wrote to the organisers. Their answer, verbatim:
+
+> للاسف لانملك وصول لادارة درر
+>
+> وعليه يمكنكم الاستعانة بمصادر اخرى
+> ولكن يرجى توثيقها
+
+So, as the committee recommends, TABSIRA uses other sources for its hadith texts and grades and documents each one in this file: the texts from `hadith-api` and `Open-Hadith-Data`, the grades from the graders named in `hadith-api`'s data (above). The dorar recording path stays ready for a server access dorar may grant later.
 
 ## Places: GeoNames
 
@@ -101,5 +117,5 @@ HadeethEnc (decision 19). Tanzil and alquran.cloud were read for the audit only 
 
 ## Still open
 
-- dorar.net's terms for quoting rulings: not reviewed.
+- dorar.net's terms for quoting rulings: not reviewed. Its API is out of reach from a server (above).
 - The provenance of the Arabic text of `hadith-api` is not documented by the project.
