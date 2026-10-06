@@ -53,7 +53,7 @@ from src.pipeline.schemas import (
     SensitiveCategory,
 )
 
-SYSTEM_PROMPT = "scene_analyzer_system.v3"
+SYSTEM_PROMPT = "scene_analyzer_system.v4"
 USER_PROMPT = "scene_analyzer_user.v1"
 # Room for a thinking model's reasoning plus the answer; a truncated answer is a failure.
 MAX_OUTPUT_TOKENS = 8192
@@ -132,7 +132,13 @@ class SceneModelOutput(BaseModel):
     clarification_question: Annotated[
         str | None, _says("One short Arabic question, only when it changes the meaning; else null.")
     ]
-    sensitive: Annotated[list[SensitiveName], _says("Categories visibly present; usually empty.")]
+    sensitive: Annotated[
+        list[SensitiveName],
+        _says(
+            "Categories visibly present; usually empty. violence only when a person or an "
+            "animal is hurt or threatened: fire, a campfire or a tool is not violence."
+        ),
+    ]
 
 
 async def analyze_scene(
