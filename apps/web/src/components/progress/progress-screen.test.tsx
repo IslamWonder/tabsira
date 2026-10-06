@@ -259,6 +259,33 @@ describe('the sky of meanings on the page', () => {
   });
 });
 
+describe('reloads that overlap', () => {
+  it('keeps the newest answer when an older one arrives after it', async () => {
+    const answers: Array<(value: { body: typeof PROGRESS }) => void> = [];
+    mockApi({
+      'GET /me/progress': () =>
+        new Promise((resolve) => {
+          answers.push(resolve);
+        }),
+    });
+    screenInShell();
+    await waitFor(() => expect(answers).toHaveLength(1));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await waitFor(() => expect(answers).toHaveLength(2));
+    const newer = { ...PROGRESS, sky: { count: 1, stars: PROGRESS.sky.stars.slice(0, 1) } };
+    act(() => answers[1]?.({ body: newer }));
+    expect(await screen.findByText('معنى أضاء لك')).toBeInTheDocument();
+    act(() => answers[0]?.({ body: PROGRESS }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText('معنى أضاء لك')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^\[معنى ثان\]/ })).toBeNull();
+  });
+});
+
 describe('the badges', () => {
   it('shows earned badges with their day and locked ones with their rule', async () => {
     await open();
