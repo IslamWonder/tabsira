@@ -184,6 +184,10 @@ The owners' cinematic reference replaces the sky drawn in a glass card beside th
 - **Field edges.** Text fields, selects, switch tracks and answer chips draw their edge in `field-border` (`#788c84` by day, white at 40 % by night), 3:1 on every ground they sit on (WCAG 1.4.11); the hairline `border` stays for separators and cards.
 - **The speaker while the sound is heard.** The switch shows three bars rising and falling in place of the waves and a gold ring breathing around it, only while the sound is actually heard (not while the browser holds it), and its title says «يُسمع الآن». Under reduced motion the bars and the ring stand still.
 
+### One-tap sharing (added 6 October 2026)
+
+After «تمّ» the share action is a button with the share icon and «شارك», third after the world and a new scan. One tap makes the system share dialog open at once with the public link (the page address is known before publishing, so the call stays inside the tap); the publication runs beside it when the insight is not public yet, and its refusal is said in the panel. Without a system dialog the link is copied. Under it one muted line says what sharing publishes, with «خيارات النشر», which opens the sheet (withdraw, atlas, community). The insight footer's share button does the same.
+
 ### Finish (added 6 October 2026)
 
 Small polish within the direction above, chosen by the implementer.

@@ -9,6 +9,14 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
 });
 
+const OPEN = {
+  kind: 'open',
+  onShare: vi.fn(),
+  onOptions: vi.fn(),
+  working: false,
+  said: null,
+} as const;
+
 function renderPanel(overrides: Partial<CompletionPanelProps> = {}) {
   render(
     <CompletionPanel
@@ -16,7 +24,7 @@ function renderPanel(overrides: Partial<CompletionPanelProps> = {}) {
       progress={progressOut()}
       progressFailed={false}
       returnTo={'/insight/1' as Route}
-      share={{ kind: 'open', onOpen: vi.fn() }}
+      share={OPEN}
       {...overrides}
     />
   );
@@ -55,21 +63,41 @@ describe('CompletionPanel', () => {
     );
   });
 
-  it('offers the share option third, under the API label, when the API lists it and the owner may publish', async () => {
-    const onOpen = vi.fn();
-    const { region } = renderPanel({ share: { kind: 'open', onOpen } });
+  it('offers the share button third, with its icon, one tap to share, and the hint with the options link', async () => {
+    const onShare = vi.fn();
+    const onOptions = vi.fn();
+    const { region } = renderPanel({ share: { ...OPEN, onShare, onOptions } });
     const buttons = within(region).getAllByRole('button');
-    expect(buttons.map((button) => button.textContent)).toEqual(['شارك البصيرة']);
+    expect(buttons.map((button) => button.textContent)).toEqual(['شارك', 'خيارات النشر']);
+    expect(buttons[0]?.querySelector('svg')).not.toBeNull();
+    expect(within(region).getByText(/المشاركة تنشر للبصيرة صفحة عامة، دون صورتك وموقعك ومحادثتك/));
     await userEvent.click(buttons[0] as HTMLElement);
-    expect(onOpen).toHaveBeenCalledOnce();
-    expect(within(region).queryByText(/المشاركة|سجّل الدخول/)).toBeNull();
+    expect(onShare).toHaveBeenCalledOnce();
+    await userEvent.click(buttons[1] as HTMLElement);
+    expect(onOptions).toHaveBeenCalledOnce();
+    expect(within(region).queryByText(/سجّل الدخول/)).toBeNull();
+  });
+
+  it('disables the share button while it works, and says what happened', () => {
+    const { region } = renderPanel({
+      share: { ...OPEN, working: true, said: { tone: 'success', text: 'نُسخ الرابط.' } },
+    });
+    expect(within(region).getByRole('button', { name: 'شارك' })).toBeDisabled();
+    expect(within(region).getByRole('status')).toHaveTextContent('نُسخ الرابط.');
+  });
+
+  it('says a refusal as an alert', () => {
+    const { region } = renderPanel({
+      share: { ...OPEN, said: { tone: 'error', text: 'لا يمكن نشر هذه البصيرة.' } },
+    });
+    expect(within(region).getByRole('alert')).toHaveTextContent('لا يمكن نشر هذه البصيرة.');
   });
 
   it('says in one line why sharing is not offered, instead of hiding the option', () => {
     const { region } = renderPanel({
       share: { kind: 'blocked', reason: 'سجّل الدخول لتشارك البصيرة؛ المشاركة متاحة لصاحب الحساب.' },
     });
-    expect(within(region).queryByRole('button', { name: 'شارك البصيرة' })).toBeNull();
+    expect(within(region).queryByRole('button', { name: 'شارك' })).toBeNull();
     expect(within(region).getByText(/سجّل الدخول لتشارك البصيرة/)).toBeInTheDocument();
   });
 
@@ -82,7 +110,7 @@ describe('CompletionPanel', () => {
         ],
       }),
     });
-    expect(within(region).queryByRole('button', { name: 'شارك البصيرة' })).toBeNull();
+    expect(within(region).queryByRole('button', { name: 'شارك' })).toBeNull();
     expect(within(region).getByText('المشاركة غير متاحة لهذه البصيرة الآن.')).toBeInTheDocument();
   });
 

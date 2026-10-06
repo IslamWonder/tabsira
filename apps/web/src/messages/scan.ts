@@ -204,6 +204,10 @@ export const scanMessages = {
     /** Why the third option (v2 §4.8) is not a button now; said in one line, never hidden. */
     shareSignIn: 'سجّل الدخول لتشارك البصيرة؛ المشاركة متاحة لصاحب الحساب.',
     shareExample: 'المثال المُعدّ لا يُشارك؛ شارك بصيرة من مشهدك أنت.',
+    /** The completion panel's share button: one tap publishes if needed and opens the system's share sheet. */
+    share: 'شارك',
+    shareHint: 'المشاركة تنشر للبصيرة صفحة عامة، دون صورتك وموقعك ومحادثتك.',
+    shareOptions: 'خيارات النشر',
     shareUnavailable: 'المشاركة غير متاحة لهذه البصيرة الآن.',
     progressFailed: 'تعذّر عرض مهمة اليوم وعلاماتك الآن، وبصيرتك محفوظة.',
   },

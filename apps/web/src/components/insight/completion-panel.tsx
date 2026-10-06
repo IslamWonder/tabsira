@@ -3,7 +3,7 @@
 import type { Route } from 'next';
 import { useEffect, useId, useRef } from 'react';
 import { SaveInvitation } from '@/components/account/save-invitation';
-import { CheckIcon } from '@/components/icons';
+import { CheckIcon, ShareIcon } from '@/components/icons';
 import { Button, LinkButton } from '@/components/ui/button';
 import { GlassPanel } from '@/components/ui/glass-panel';
 import { Notice } from '@/components/ui/notice';
@@ -12,6 +12,7 @@ import { messages } from '@/messages';
 import { markEngaged } from '@/pwa/install';
 import { ENGAGED_EVENT } from '@/pwa/use-install';
 import { PlaceReveal } from './place-reveal';
+import type { QuickShareSaid } from './use-quick-share';
 
 const T = messages.completion;
 
@@ -23,12 +24,20 @@ export interface CompletionPanelProps {
   progressFailed: boolean;
   /** Where the reader comes back to after creating an account: this insight. */
   returnTo: Route;
-  /** The third option: open the share sheet, or the one-line reason it cannot be opened. */
+  /** The third option: share in one tap, or the one-line reason it cannot be opened. */
   share: ShareOption;
 }
 
 export type ShareOption =
-  | { kind: 'open'; onOpen: () => void }
+  | {
+      kind: 'open';
+      /** One tap: publish if needed and open the system's share sheet. */
+      onShare: () => void;
+      /** The share sheet with the withdraw, card, atlas and community options. */
+      onOptions: () => void;
+      working: boolean;
+      said: QuickShareSaid | null;
+    }
   | { kind: 'blocked'; reason: string };
 
 /**
@@ -142,11 +151,43 @@ export function CompletionPanel({
               {label('new_scan', T.newScan)}
             </LinkButton>
             {shareOption !== undefined && share.kind === 'open' ? (
-              <Button variant="secondary" size="lg" className="flex-1" onClick={share.onOpen}>
-                {shareOption.label}
+              <Button
+                variant="secondary"
+                size="lg"
+                className="flex-1 gap-2"
+                onClick={share.onShare}
+                disabled={share.working}
+                aria-busy={share.working}
+              >
+                <ShareIcon width="20" height="20" aria-hidden="true" />
+                {T.share}
               </Button>
             ) : null}
           </div>
+          {shareOption !== undefined && share.kind === 'open' ? (
+            <>
+              <div role="status">
+                {share.said === null || share.said.tone === 'error' ? null : (
+                  <Notice tone={share.said.tone}>{share.said.text}</Notice>
+                )}
+              </div>
+              <div role="alert">
+                {share.said?.tone === 'error' ? (
+                  <Notice tone="error">{share.said.text}</Notice>
+                ) : null}
+              </div>
+              <p className="m-0 text-[0.8125rem] text-fg-muted leading-[1.7]">
+                {T.shareHint}{' '}
+                <button
+                  type="button"
+                  onClick={share.onOptions}
+                  className="min-h-11 text-link underline underline-offset-2"
+                >
+                  {T.shareOptions}
+                </button>
+              </p>
+            </>
+          ) : null}
           {shareReason === null ? null : (
             <p className="m-0 text-[0.9375rem] text-fg-muted leading-[1.7]">{shareReason}</p>
           )}
