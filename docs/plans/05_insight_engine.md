@@ -102,8 +102,8 @@ Finds the verse and hadith that truly fit the scene, checks them, and writes the
 
 ### 05.10 «وجه الصلة» says what the text says, or nothing
 
-- **Status:** ⬜ waiting on the owners (they kept the line on 2026-10-06, before the contest's reference pack was read)
-- **Goal:** the contest's reference pack (`docs/spec/contest-reference.md`, rule 1) forbids attributing to a reference a saying it does not contain. The «وجه الصلة» line of «لماذا ظهر هذا؟» shows `matched_on`, the search query that ranked the text (`pipeline/insight/search.py` `_matched_on`), and the audit of 2026-10-06 found lines that describe the photo or a hoped-for topic instead of the text (a cat in a hadith about a dog). Either the sheet shows only the verifier's checked «وجه الارتباط», or `matched_on` is labelled as what was searched for, never as what the text says.
+- **Status:** ⏸ optional; the owners kept the line on 2026-10-06
+- **Goal:** a quality improvement, not a contest requirement: the line is part of the generated explanation, which is labelled as AI-assisted (`docs/spec/contest-reference.md`). The «وجه الصلة» line of «لماذا ظهر هذا؟» shows `matched_on`, the search query that ranked the text (`pipeline/insight/search.py` `_matched_on`), and the audit of 2026-10-06 found lines that describe the photo or a hoped-for topic instead of the text (a cat in a hadith about a dog). Either the sheet shows only the verifier's checked «وجه الارتباط», or `matched_on` is labelled as what was searched for, never as what the text says.
 - **Touches:** apps/web components/insight/why-sheet.tsx and messages/scan.ts; nothing in the API (the field stays for the trace).
 - **Reviews:** scripture review (what is shown about a text).
 
