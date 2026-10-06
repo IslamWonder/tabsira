@@ -35,7 +35,8 @@ describe('ProgressScreen states', () => {
     screenInShell();
     expect(screen.getByRole('status')).toHaveTextContent('نحمّل معانيك…');
     expect(screen.getByRole('heading', { level: 1, name: 'تمرينك' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'ملفي' })).toHaveAttribute('href', '/me');
+    // Back to the practice section of «ملفي», where the reader came from.
+    expect(screen.getByRole('link', { name: 'ملفي' })).toHaveAttribute('href', '/me#practice');
   });
 
   it('offers to try again when the practice could not be loaded', async () => {
