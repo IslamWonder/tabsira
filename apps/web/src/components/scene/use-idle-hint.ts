@@ -9,15 +9,25 @@ export const HINT_MS = 6000;
 /** A hint is a reminder, not a nag: it comes back once at most. */
 export const MAX_HINTS = 2;
 
+/** Another wait, length or count than the scan hint's, for another reminder. */
+export interface IdleTiming {
+  idleMs?: number;
+  hintMs?: number;
+  max?: number;
+}
+
 const ACTIVITY = ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'] as const;
 
 /**
  * True while a short hint should show: after IDLE_MS with no sign of the
- * reader, for HINT_MS, at most MAX_HINTS times. Any tap, key or scroll hides it
+ * reader, for HINT_MS, at most MAX_HINTS times (or the timing given). Any tap, key or scroll hides it
  * and starts the wait again; the reader who is reading or choosing is never
  * interrupted.
  */
-export function useIdleHint(enabled: boolean): boolean {
+export function useIdleHint(
+  enabled: boolean,
+  { idleMs = IDLE_MS, hintMs = HINT_MS, max = MAX_HINTS }: IdleTiming = {}
+): boolean {
   const [shown, setShown] = useState(false);
 
   useEffect(() => {
@@ -30,7 +40,7 @@ export function useIdleHint(enabled: boolean): boolean {
     let hide: ReturnType<typeof setTimeout> | undefined;
     const arm = () => {
       clearTimeout(idle);
-      if (count >= MAX_HINTS) {
+      if (count >= max) {
         return;
       }
       idle = setTimeout(() => {
@@ -39,8 +49,8 @@ export function useIdleHint(enabled: boolean): boolean {
         hide = setTimeout(() => {
           setShown(false);
           arm();
-        }, HINT_MS);
-      }, IDLE_MS);
+        }, hintMs);
+      }, idleMs);
     };
     const active = () => {
       clearTimeout(hide);
@@ -58,7 +68,7 @@ export function useIdleHint(enabled: boolean): boolean {
         window.removeEventListener(name, active, { capture: true });
       }
     };
-  }, [enabled]);
+  }, [enabled, idleMs, hintMs, max]);
 
   return shown;
 }

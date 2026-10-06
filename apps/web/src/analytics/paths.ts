@@ -1,7 +1,7 @@
 /**
  * Where no analytics tool runs (owner decision 28): the admin and developer
  * areas, sign-in and sign-up, the mailed-link pages, and everything of the
- * account (the profile page). A page is excluded by its path only, never by who looks.
+ * account (the profile page and the practice page, `/sky`). A page is excluded by its path only, never by who looks.
  */
 const EXCLUDED_PREFIXES = [
   '/admin',
@@ -13,6 +13,7 @@ const EXCLUDED_PREFIXES = [
   '/reset-password',
   '/verify-email',
   '/me',
+  '/sky',
 ] as const;
 
 export function isExcludedPath(pathname: string): boolean {

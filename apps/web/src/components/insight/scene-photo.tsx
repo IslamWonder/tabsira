@@ -1,7 +1,8 @@
 'use client';
 
 import Image, { type StaticImageData } from 'next/image';
-import { type ReactNode, useId, useState, ViewTransition } from 'react';
+import { type ReactNode, useEffect, useId, useState, ViewTransition } from 'react';
+import { useIdleHint } from '@/components/scene/use-idle-hint';
 import { cx } from '@/lib/cx';
 import { useBoxSize } from '@/lib/use-box-size';
 import { messages } from '@/messages';
@@ -42,6 +43,8 @@ export interface ScenePhotoProps {
   framed?: boolean;
   /** The scan's photo: it turns into the insight's photo when one of its insights opens. */
   morph?: boolean;
+  /** The scan asks the reader to choose an insight: the points call, and call again when idle. */
+  invite?: boolean;
   className?: string;
   /** Overlays drawn above the photo (a header, a hint). */
   children?: ReactNode;
@@ -66,9 +69,18 @@ export function ScenePhoto({
   listInPanel = false,
   framed = false,
   morph = false,
+  invite = false,
   className,
   children,
 }: Readonly<ScenePhotoProps>) {
+  // The same wait as the list's hint, so the points and the rows call together.
+  const hint = useIdleHint(invite && points.length > 0);
+  const [calls, setCalls] = useState(0);
+  useEffect(() => {
+    if (hint) {
+      setCalls((count) => count + 1);
+    }
+  }, [hint]);
   const [box, setBox] = useState<HTMLDivElement | null>(null);
   const size = useBoxSize(box);
   const listHeadingId = useId();
@@ -129,6 +141,8 @@ export function ScenePhoto({
             positionLabel={spoken(point)}
             selected={point.id === selectedId}
             delay={index * 1.2}
+            invite={invite}
+            calls={calls}
             onSelect={onSelect}
           />
         );

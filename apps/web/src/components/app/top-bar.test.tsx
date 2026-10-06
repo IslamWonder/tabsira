@@ -2,10 +2,13 @@ import { render as renderBare, screen, waitFor, within } from '@testing-library/
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { forgetSession, setSignedIn } from '@/account/session';
 import { CaptureProvider } from '@/components/capture/capture-provider';
+import { forgetIdentity, setIdentity } from '@/social/identity-store';
 import { mockApi } from '@/test/api';
 import { forgetDevice, stubCamera } from '@/test/camera';
 import { USER } from '@/test/fixtures';
+import { IDENTITY } from '@/test/social';
 import { THEME_STORAGE_KEY } from '@/theme/theme';
 import { TopBar } from './top-bar';
 
@@ -89,6 +92,24 @@ describe('TopBar', () => {
     render(<TopBar />);
     const nav = screen.getByRole('navigation', { name: 'التنقل الرئيسي' });
     await waitFor(() => expect(within(nav).getAllByRole('link')[0]).toHaveTextContent('عالمي'));
+  });
+
+  it('gives the fourth tab to «صفحتي» once the member has a handle, and «ملفي» the corner', () => {
+    mockApi({ 'GET /me/public-identity': { body: IDENTITY } });
+    setSignedIn(USER);
+    setIdentity(IDENTITY);
+    pathname.value = '/sky';
+    render(<TopBar />);
+    const nav = screen.getByRole('navigation', { name: 'التنقل الرئيسي' });
+    const tabs = within(nav).getAllByRole('link');
+    expect(tabs.map((link) => link.textContent)).toEqual(['عالمي', 'تواصل', 'الأطلس', 'صفحتي']);
+    expect(tabs[3]).toHaveAttribute('href', '/u/reader');
+    // The practice page belongs to «ملفي»: its corner link is the current one.
+    const hub = screen.getByRole('link', { name: 'ملفي' });
+    expect(hub).toHaveAttribute('href', '/me');
+    expect(hub).toHaveAttribute('aria-current', 'page');
+    forgetIdentity();
+    forgetSession();
   });
 
   it('marks a tab current on its section', () => {

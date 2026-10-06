@@ -8,7 +8,7 @@ export interface DatasetGrade {
 
 /**
  * The line naming the first grader of the dataset whose name and grade we can
- * write in Arabic, e.g. «حكم الألباني: صحيح» (decision 69), or null when there
+ * write in Arabic, e.g. "al-Albani's ruling: sahih" (decision 69), or null when there
  * is none: Bukhari, Muslim, Ahmad and al-Darimi carry no grades.
  */
 export function hadithGradeLine(grades: readonly DatasetGrade[] | null | undefined): string | null {

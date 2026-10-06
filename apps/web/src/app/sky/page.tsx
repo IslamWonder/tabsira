@@ -4,11 +4,14 @@ import { messages } from '@/messages';
 
 export const metadata: Metadata = {
   title: messages.practiceView.title,
-  alternates: { canonical: '/me/practice' },
+  alternates: { canonical: '/sky' },
   robots: { index: false, follow: false },
 };
 
-/** Private to its owner, under the profile tab so that tab stays the active one. */
+/**
+ * The sky of meanings: the owner's practice, named after the night sky that heads it.
+ * Private to its owner: never indexed, no analytics (`/sky` is listed with `/me`).
+ */
 export default function PracticePage() {
   return <ProgressScreen />;
 }

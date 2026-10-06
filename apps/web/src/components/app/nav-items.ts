@@ -19,9 +19,17 @@ export const SECTIONS: readonly NavItem[] = [
 /** Capture is an action, not a page: it opens the capture sheet wherever the reader is. */
 export const CAPTURE: Omit<NavItem, 'href'> = { label: messages.nav.capture, Icon: CameraIcon };
 
+/** Pages that belong to a section without living under its path: the practice page is the profile hub's. */
+const ALSO: Readonly<Record<string, string>> = { '/me': '/sky' };
+
+function under(href: string, pathname: string): boolean {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function isActive(href: string, pathname: string): boolean {
   if (href === '/') {
     return pathname === '/';
   }
-  return pathname === href || pathname.startsWith(`${href}/`);
+  const also = ALSO[href];
+  return under(href, pathname) || (also !== undefined && under(also, pathname));
 }

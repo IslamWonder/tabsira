@@ -1,6 +1,7 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { IDLE_MS } from '@/components/scene/use-idle-hint';
 import { ScenePhoto, type ScenePoint } from './scene-photo';
 
 const POINTS: ScenePoint[] = [
@@ -92,5 +93,37 @@ describe('ScenePhoto', () => {
     vi.stubGlobal('ResizeObserver', undefined);
     renderScene();
     expect(document.querySelectorAll('[data-point-id]')).toHaveLength(2);
+  });
+});
+
+describe('ScenePhoto: the call to choose', () => {
+  const sheens = () => Array.from(document.querySelectorAll('[data-point-id] .fx-sheen'));
+
+  it('runs a light over each label when asked, again after a stillness, and not for the chosen one', () => {
+    vi.useFakeTimers();
+    render(
+      <ScenePhoto
+        src="/scene.jpg"
+        alt="[وصف الصورة]"
+        width={1200}
+        height={1600}
+        points={POINTS}
+        selectedId="b"
+        onSelect={vi.fn()}
+        invite
+      />
+    );
+    const first = sheens();
+    expect(first).toHaveLength(1);
+    expect(first[0]?.closest('[data-point-id]')).toHaveAttribute('data-point-id', 'a');
+    act(() => vi.advanceTimersByTime(IDLE_MS));
+    // A new element: the animation plays again rather than being skipped.
+    expect(sheens()[0]).not.toBe(first[0]);
+    vi.useRealTimers();
+  });
+
+  it('stays quiet when not asked', () => {
+    renderScene();
+    expect(sheens()).toHaveLength(0);
   });
 });

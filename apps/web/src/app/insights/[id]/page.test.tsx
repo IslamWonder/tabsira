@@ -69,6 +69,16 @@ describe('the public page of an insight', () => {
     expect(container.querySelector('script[type="application/ld+json"]')).not.toBeNull();
   });
 
+  it('shows the photo framed when its public copy exists, from the address the API gave', async () => {
+    const url = 'https://api.tabsira.test/media/public/0123456789abcdef0123456789abcdef.jpg';
+    await open({ photo_url: url });
+    const photo = screen.getByRole('img', {
+      name: 'صورة المشهد الذي وُلدت منه البصيرة «عنوان البصيرة الأولى»',
+    });
+    expect(photo).toHaveAttribute('src', url);
+    expect(photo).toHaveAttribute('referrerpolicy', 'no-referrer');
+  });
+
   it('prints structured data of an article and a trail, with no scripture in it', async () => {
     const container = await open();
     const blocks = [...container.querySelectorAll('script[type="application/ld+json"]')].map(

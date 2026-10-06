@@ -30,7 +30,7 @@ describe('ProgressPill', () => {
     render(<ProgressPill />);
 
     const link = await screen.findByRole('link', { name: P.label(12, 3) });
-    expect(link).toHaveAttribute('href', '/me/practice');
+    expect(link).toHaveAttribute('href', '/sky');
     expect(link).toHaveTextContent('12 بصيرة');
     expect(link).toHaveTextContent('3 أيام متتالية');
     const asked = api.requests.find((request) => request.url.includes('/me/progress'));

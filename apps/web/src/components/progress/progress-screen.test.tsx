@@ -10,7 +10,7 @@ import { questEntries } from './quest-card';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
-  usePathname: () => '/me/practice',
+  usePathname: () => '/sky',
 }));
 
 /** The page renders inside the app's shell, whose capture sheet the empty sky opens. */

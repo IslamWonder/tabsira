@@ -93,7 +93,7 @@ describe('MeScreen for a guest', () => {
     expect(screen.getByText(/هذه علامات على التمرين والمواظبة لا على الإيمان/)).toBeInTheDocument();
     expect(within(section('تمرينك')).getByRole('link', { name: 'افتح تمرينك' })).toHaveAttribute(
       'href',
-      '/me/practice'
+      '/sky'
     );
     go('cookies');
     expect(within(section('ملفات تعريف الارتباط')).getByText('لم تختر بعد.')).toBeInTheDocument();

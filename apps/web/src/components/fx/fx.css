@@ -967,3 +967,188 @@
     0 0 0 3px color-mix(in srgb, var(--glow-gold) 60%, transparent),
     0 0 22px -2px color-mix(in srgb, var(--glow-gold) 70%, transparent);
 }
+
+/*
+ * Logo entrance (DESIGN_DECISION.md «Logo entrance»): once a page load, the
+ * top bar's mark is written in stroke by stroke from right to left (`--fx-x`,
+ * from where each outline starts), a ring of light opens behind it as the last
+ * stroke lands, four sparks rise, and a gold shine runs over the strokes in the
+ * same order. About 2.6 s in all, then still. Opacity, transform and colour only.
+ */
+.fx-logo-stroke {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation:
+    fx-logo-write 0.75s cubic-bezier(0.22, 1, 0.36, 1) calc(150ms + var(--fx-x, 0) * 850ms) both,
+    fx-logo-shine 1.1s ease-in-out calc(1350ms + var(--fx-x, 0) * 600ms) both;
+}
+
+.fx-logo-glow {
+  animation: fx-logo-glow 1.6s ease-in-out 1250ms both;
+}
+
+.fx-logo-flare {
+  background: radial-gradient(closest-side, var(--glow-gold), transparent);
+  opacity: 0;
+  animation: fx-logo-flare 1.6s ease-out 950ms both;
+}
+
+.fx-logo-ring {
+  opacity: 0;
+  animation: fx-logo-ring 1.3s cubic-bezier(0.22, 1, 0.36, 1) 1050ms both;
+}
+
+.fx-logo-spark {
+  opacity: 0;
+  box-shadow: 0 0 6px var(--glow-gold);
+  animation: fx-logo-spark 1.4s ease-out both;
+}
+
+/* The shine again, after a long stillness (`data-shine`, two names in turn so each one restarts). */
+.fx-logo-glow[data-shine="a"] {
+  animation: fx-logo-glow-again 1.6s ease-in-out 100ms both;
+}
+
+.fx-logo-glow[data-shine="b"] {
+  animation: fx-logo-glow-more 1.6s ease-in-out 100ms both;
+}
+
+.fx-logo-glow[data-shine="a"] .fx-logo-stroke {
+  animation: fx-logo-shine-again 1.1s ease-in-out calc(var(--fx-x, 0) * 600ms) both;
+}
+
+.fx-logo-glow[data-shine="b"] .fx-logo-stroke {
+  animation: fx-logo-shine-more 1.1s ease-in-out calc(var(--fx-x, 0) * 600ms) both;
+}
+
+@keyframes fx-logo-write {
+  0% {
+    opacity: 0;
+    transform: scale(0.35) rotate(-12deg);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fx-logo-shine {
+  0%,
+  100% {
+    fill: currentColor;
+  }
+  40% {
+    fill: var(--glow-gold);
+  }
+}
+
+@keyframes fx-logo-shine-more {
+  0%,
+  100% {
+    fill: currentColor;
+  }
+  40% {
+    fill: var(--glow-gold);
+  }
+}
+
+@keyframes fx-logo-glow-more {
+  0%,
+  100% {
+    filter: none;
+  }
+  45% {
+    filter: drop-shadow(0 0 7px var(--glow-gold));
+  }
+}
+
+@keyframes fx-logo-shine-again {
+  0%,
+  100% {
+    fill: currentColor;
+  }
+  40% {
+    fill: var(--glow-gold);
+  }
+}
+
+@keyframes fx-logo-glow-again {
+  0%,
+  100% {
+    filter: none;
+  }
+  45% {
+    filter: drop-shadow(0 0 7px var(--glow-gold));
+  }
+}
+
+@keyframes fx-logo-glow {
+  0%,
+  100% {
+    filter: none;
+  }
+  45% {
+    filter: drop-shadow(0 0 7px var(--glow-gold));
+  }
+}
+
+@keyframes fx-logo-flare {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  25% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes fx-logo-ring {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes fx-logo-spark {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-22px) scale(0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-logo-stroke,
+  .fx-logo-glow,
+  .fx-logo-glow[data-shine],
+  .fx-logo-glow[data-shine] .fx-logo-stroke,
+  .fx-logo-flare,
+  .fx-logo-ring,
+  .fx-logo-spark {
+    animation: none;
+  }
+}
+
+:root[data-motion="reduce"] :is(.fx-logo-stroke, .fx-logo-glow, .fx-logo-flare, .fx-logo-ring, .fx-logo-spark),
+:root[data-motion="reduce"] .fx-logo-glow[data-shine],
+:root[data-motion="reduce"] .fx-logo-glow[data-shine] .fx-logo-stroke {
+  animation: none;
+}

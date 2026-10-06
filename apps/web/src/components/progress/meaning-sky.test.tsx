@@ -10,7 +10,7 @@ import { MeaningSkyScene, SKY_TALL_SRC, SKY_WIDE_SRC, type SkyState } from './me
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
-  usePathname: () => '/me/practice',
+  usePathname: () => '/sky',
 }));
 
 const M = messages.practiceView.sky;

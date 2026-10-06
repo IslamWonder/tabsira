@@ -37,6 +37,8 @@ export default function nextConfig(phase: string): NextConfig {
     outputFileTracingIncludes: {
       '/insights/[id]/card': [QURAN_SOURCE, ...TEXT_SOURCES].map((file) => `./${file}`),
       '/insights/[id]/preview': TEXT_SOURCES.map((file) => `./${file}`),
+      '/posts/[id]/preview': TEXT_SOURCES.map((file) => `./${file}`),
+      '/atlas/entries/[id]/preview': TEXT_SOURCES.map((file) => `./${file}`),
     },
     // sharp is already a dependency; AVIF trims the landing cards further.
     images: { formats: ['image/avif', 'image/webp'] },
@@ -65,6 +67,8 @@ export default function nextConfig(phase: string): NextConfig {
         // (docs/AUTH.md); the sign-in page lives at /signin. Temporary, so the
         // API can point at /signin directly later. The query string follows.
         { source: '/login', destination: '/signin', permanent: false },
+        // The practice page's first address, kept for old links and bookmarks.
+        { source: '/me/practice', destination: '/sky', permanent: true },
       ];
     },
     async headers() {

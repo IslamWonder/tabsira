@@ -82,9 +82,8 @@ export const ar = {
     atlas: 'الأطلس',
     me: 'ملفي',
     captureScene: 'صوّر مشهدًا',
-    /** The top bar's way to one's own public page, the one others follow. */
+    /** One's own public page, the one others follow: the top bar's fourth tab once there is a handle. */
     myPage: 'صفحتي',
-    myPageLabel: (handle: string) => `صفحتك العامة @${handle}`,
     /** The small summary of the top bar: insights learned and the days in a row. */
     progress: {
       insights: insightCount,
@@ -433,6 +432,7 @@ export const ar = {
   publicInsight: {
     unavailableTitle: 'تعذّر عرض البصيرة الآن',
     publishedOn: (day: string) => `نُشرت في ${day}`,
+    photoAlt: (title: string) => `صورة المشهد الذي وُلدت منه البصيرة «${title}»`,
     authorLabel: 'صاحب البصيرة',
     stepTitle: 'خطوة صغيرة',
     callTitle: 'ابدأ بصيرتك أنت',

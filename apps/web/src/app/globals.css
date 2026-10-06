@@ -3,6 +3,7 @@
 @import "../components/fx/fx.css";
 @import "../components/world/world.css";
 @import "../components/landing/landing.css";
+@import "../components/app/launch.css";
 @import "../components/progress/meaning-sky.css";
 
 /*
@@ -192,6 +193,11 @@
 /* ─── Base ──────────────────────────────────────────────────────────── */
 
 @layer base {
+  /* Tailwind 4 gives buttons the arrow; a tap target shows the hand, as links do, unless it is off. */
+  :where(button, [role="button"], summary, label:has(input)):not(:disabled, [aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
   html {
     /* Room for the floating navigation: focused elements are never hidden under it (WCAG 2.4.11). */
     --nav-height: 68px;

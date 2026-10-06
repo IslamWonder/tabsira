@@ -28,7 +28,7 @@ export interface SunnahEvidenceProps extends EvidenceBase {
   variant: 'sunnah';
   /** Presentation spans over `text`; see hadith-segments.ts. */
   spans?: readonly HadithSpan[];
-  /** The first grader's ruling from the dataset, e.g. «حكم الألباني: صحيح» (decision 69). */
+  /** The first grader's ruling from the dataset, e.g. "al-Albani's ruling: sahih" (decision 69). */
   grade?: string | null;
 }
 

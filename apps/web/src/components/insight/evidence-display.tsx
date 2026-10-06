@@ -6,7 +6,7 @@ import { createContext, type ReactNode, useContext } from 'react';
 export interface EvidenceDisplay {
   /** `hadith_ruling`: the first grader's ruling of the hadith's dataset; on by default. */
   hadithRuling: boolean;
-  /** `quran_source_link`: «افتح في قرآنبيديا» on the verse card; off by default. */
+  /** `quran_source_link`: the "open in Quranpedia" link on the verse card; off by default. */
   quranSourceLink: boolean;
 }
 

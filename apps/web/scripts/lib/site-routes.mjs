@@ -20,7 +20,7 @@ export const UNLISTED_ROUTES = [
   '/verify-email',
 ];
 
-export const PRIVATE_PATHS = ['/me', '/admin', '/dev', '/api', '/consent'];
+export const PRIVATE_PATHS = ['/me', '/sky', '/admin', '/dev', '/api', '/consent'];
 
 export const AI_AGENTS = [
   'GPTBot',

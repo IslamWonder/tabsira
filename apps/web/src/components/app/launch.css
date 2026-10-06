@@ -1,0 +1,60 @@
+/*
+ * The installed app's launch splash (components/app/launch-splash.tsx). The
+ * ground is the manifest's background colour, so the system splash hands over
+ * without a seam; the gold is the hero's, the same in both themes.
+ */
+:root {
+  --launch-ground: #0b1210;
+  --launch-glow: rgb(31 158 110 / 0.22);
+  --launch-gold: #dfbd77;
+  --launch-ink-soft: rgb(255 255 255 / 0.8);
+}
+
+.launch-splash {
+  display: none;
+}
+
+:root[data-launch] .launch-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 1.5rem;
+  background:
+    radial-gradient(70% 45% at 50% 42%, var(--launch-glow), transparent),
+    var(--launch-ground);
+  animation: launch-out 0.5s ease-in 2.9s forwards;
+}
+
+.launch-splash .launch-mark {
+  color: var(--launch-gold);
+}
+
+.launch-tagline {
+  color: var(--launch-ink-soft);
+  text-align: center;
+  opacity: 0;
+  animation: launch-tagline 0.9s ease-out 1.5s forwards;
+}
+
+@keyframes launch-tagline {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes launch-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}

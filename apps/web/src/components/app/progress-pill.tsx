@@ -55,7 +55,7 @@ export function ProgressPill() {
   }
   return (
     <Link
-      href="/me/practice"
+      href="/sky"
       aria-label={P.label(summary.insights, summary.streak)}
       className="inline-flex min-h-10 items-center gap-2 whitespace-nowrap rounded-full border border-line px-3 text-glass-fg-soft text-sm transition-colors duration-200 hover:text-glass-fg"
     >

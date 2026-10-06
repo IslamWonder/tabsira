@@ -193,29 +193,31 @@ export function PostCard({
     >
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-          <Link
-            href={profilePath(post.author.handle)}
-            aria-label={M.authorLink(memberLabel(post.author))}
-            className="flex min-h-10 flex-wrap items-center gap-x-2 text-fg underline-offset-4 hover:underline"
-          >
-            {post.author.public_name === null ? null : (
-              <span className="font-semibold">{post.author.public_name}</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Link
+              href={profilePath(post.author.handle)}
+              aria-label={M.authorLink(memberLabel(post.author))}
+              className="flex min-h-10 flex-wrap items-center gap-x-2 text-fg underline-offset-4 hover:underline"
+            >
+              {post.author.public_name === null ? null : (
+                <span className="font-semibold">{post.author.public_name}</span>
+              )}
+              <bdi className="text-[0.875rem] text-fg-muted">@{post.author.handle}</bdi>
+              {post.author.country ? (
+                <span className="text-[0.875rem] text-fg-muted">
+                  {M.authorCountry(post.author.country.name)}
+                </span>
+              ) : null}
+            </Link>
+            {post.viewer === null || isAuthor ? null : (
+              <FollowToggle
+                handle={post.author.handle}
+                follows={followsAuthor}
+                onChange={setFollowsAuthor}
+                compact
+              />
             )}
-            <bdi className="text-[0.875rem] text-fg-muted">@{post.author.handle}</bdi>
-            {post.author.country ? (
-              <span className="text-[0.875rem] text-fg-muted">
-                {M.authorCountry(post.author.country.name)}
-              </span>
-            ) : null}
-          </Link>
-          {post.viewer === null || isAuthor ? null : (
-            <FollowToggle
-              handle={post.author.handle}
-              follows={followsAuthor}
-              onChange={setFollowsAuthor}
-              compact
-            />
-          )}
+          </div>
           <div className="flex flex-wrap items-center gap-2 text-[0.8125rem] text-fg-muted">
             {post.visibility === 'followers' ? <Chip>{M.visibility.followers}</Chip> : null}
             <time dateTime={when}>{formatWhen(when)}</time>

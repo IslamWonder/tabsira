@@ -141,6 +141,14 @@ How the sponsoring screens (decision 60, task 21.2) apply the direction above; n
 
 The owners found the profile page a long, messy list. It is now organised the way a phone's own settings are (Jakob's law): a menu of three short groups (Hick's and Miller's laws), «أنت» (the account, «عنك», the public identity), «تجربتك» (appearance and sound, personalisation and privacy, practice, the app) and «خصوصيتك» (the data, the cookies), each entry with its emblem from the app's Good Ware set, its name and, on a phone, one line on what it holds. On a phone the menu is the page and each entry opens its section alone, with a way back; from tablet up the same menu stays beside the section shown, the account first by default. The former «الإعدادات» is split in two: «المظهر والصوت» (what this device shows) and «التخصيص والخصوصية» (what the account keeps). The open section is in the address (`/me#data`), so links, the back button and a shared address work, and the section takes the focus when it opens.
 
+### «صفحتي» and «ملفي» (added 6 October 2026)
+
+The owners found the two confusing: one icon for both, and the public page in the corner while the private hub held a tab. From tablet up, once a member has chosen a handle, the fourth tab is «صفحتي», their public page (its own Magnific icon, a page with a portrait), and «ملفي», the private hub of account, settings and privacy, sits in the top bar's corner with the person icon, where web apps keep the account. Before a handle exists there is no public page, so «ملفي» keeps the tab, where the handle is chosen. The phone bar keeps «ملفي». The practice page, `/sky` since the same day, belongs to «ملفي»: that link is marked current there.
+
+### Choosing an insight on the scan (added 6 October 2026)
+
+When the analysed photo asks the reader to choose, its points call with the list: two rings leave each orb and a gold light runs over each label, point after point; after 7 s with no tap, key or scroll both call again, with the list's hint, twice at most. The chosen point stays quiet. Under the pointer the label's title turns gold and the hand shows; nothing moves. Every enabled button shows the hand, as links do (Tailwind 4 gives buttons the arrow).
+
 ### Atlas pin (added 5 October 2026)
 
 The owners chose pin «A» of three drawn for TABSIRA: the familiar pin shape, an emerald drop in a gold rim with the eight-point khatam inside and a small shadow on the ground. Every published insight on the map stands on its tip as this pin; the chosen one is the same pin a third larger with a gold glow at its foot; the point a reader places when publishing uses it too. Clusters stay emerald discs in a gold ring. The pin keeps its own emerald and gold in both themes. It is drawn in code on a canvas (`apps/web/src/components/atlas/map-pin.ts`) at twice its size and handed to MapLibre as an image, so no file or third-party asset is fetched; where no canvas can draw, the map keeps its circles.
@@ -148,6 +156,14 @@ The owners chose pin «A» of three drawn for TABSIRA: the familiar pin shape, a
 ### Photos of posts and insights (added 6 October 2026)
 
 One frame for every public photo: a thin gilded mat (a 1 px border at 30 % of the primary colour, 6 px of surface inside), no glow, so the picture stays the subject. A post or atlas entry on its own page shows the whole photo; a feed card (community and profile) shows a medium thumbnail cropped to a strip (176 px on a phone, 224 px from tablet up) under the title and glimpse, which opens the post. A post without a photo shows nothing in its place, and a photo that fails to load leaves no empty frame.
+
+### Logo entrance (added 6 October 2026)
+
+On a page load the top bar's mark and the consent window's logo write themselves in, the owners' Final Fantasy reference: the calligraphic strokes appear one after another from right to left, in the order the hand writes Arabic (each from where its outline starts), a ring of light opens behind the mark and four sparks rise as the last stroke lands, then a gold shine and a brief glow run over the strokes in the same order. About 2.6 s, once; the top bar stays mounted across navigation, so moving between pages does not replay it. Afterwards the top bar's mark only breathes, as a game's title logo does: after 45 s with no tap, key or scroll, the gold shine and glow alone run again (never the writing), three times at most a page load, and never while the reader is acting. Opacity, transform, colour and a drop shadow only (fx.css «logo entrance»); with reduced motion the logo is simply there.
+
+### Launch splash (added 6 October 2026)
+
+When the installed app opens on a phone, the top bar's logo entrance plays full screen, the owners' request: the system splash (the icon on the manifest's night ground) hands over to the same ground, where the mark is written in large with its ring and sparks, the tagline «انظر إلى العالم بعين الوحي» rises under it, and the whole fades to the page after about 3 s. Once a window (a reload does not replay it), never in a browser tab or from tablet up, never with reduced motion; a tap ends it at once. Decided by an inline script before the first paint (`src/pwa/launch.ts`), so the page never flashes under it; decorative, so screen readers read the page beneath.
 
 ### Logo (added 4 October 2026)
 
@@ -170,7 +186,7 @@ The owners' landing prompt replaces the full-screen rain scene at `/` with a lan
 
 ### Sky of meanings (added 5 October 2026)
 
-The owners' cinematic reference replaces the sky drawn in a glass card beside the practice cards on `/me/practice`. The sky is the head of the page: one full-width night scene under the top bar, then the rank, the streak, the daily quest, the badges, the counts and the disclaimer in the page's own column below it, unchanged in what they say.
+The owners' cinematic reference replaces the sky drawn in a glass card beside the practice cards on `/sky`. The sky is the head of the page: one full-width night scene under the top bar, then the rank, the streak, the daily quest, the badges, the counts and the disclaimer in the page's own column below it, unchanged in what they say.
 
 - **The picture is decoration only.** An emerald nebula over clouds (`apps/web/public/practice/`, ASSET_MANIFEST.md §14): the whole landscape from tablet up, a portrait cut on a phone, both cover-fitted, hidden from assistive technology and never a target. A soft shade sits behind the heading, the dock row and any centred message, never over the whole picture. Until it arrives, or if it never does, the scene is plain night green (`#041915` to `#103d2d`).
 - **Everything on it is a real element.** «سماء المعاني» in Reem Kufi (30 px on a phone, 44, 56 and 64 px up to wide screens) with «كل بصيرة تترك ضوءًا» under it at the start; the count of meanings at the end; «كل نجمة معنى، لا درجة» at the foot. The page name «تمرينك» stays the page's `h1`, in a small trail «ملفي ‹ تمرينك» above the scene's heading, so there is no second header.

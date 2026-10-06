@@ -12,7 +12,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 import { Brand } from './brand';
-import { MyPageLink } from './my-page-link';
+import { MyPageIcon, ProfileCornerLink, useMyPage } from './my-page-link';
 import { isActive, SECTIONS } from './nav-items';
 import { ProgressPill } from './progress-pill';
 
@@ -29,10 +29,16 @@ export function TopBar() {
   const pathname = usePathname();
   const session = useSession();
   const capture = useCapture();
+  const myPage = useMyPage();
   const landing = pathname === '/' && session.status !== 'signed-in';
+  // Once the member has a public page, the "my page" link is the fourth tab and the profile hub moves to the corner.
   const links = landing
     ? LANDING_LINKS.map((item) => ({ ...item, Icon: null }))
-    : SECTIONS.map((item) => ({ href: item.href, label: item.label, Icon: item.Icon }));
+    : SECTIONS.map((item) =>
+        item.href === '/me' && myPage !== null
+          ? { href: myPage.href, label: messages.nav.myPage, Icon: MyPageIcon }
+          : { href: item.href, label: item.label, Icon: item.Icon }
+      );
   return (
     <header className="topbar-glass sticky top-0 z-40 hidden tablet:block">
       {/* A gold rule under the bar, brightest at its middle: the edge of an RPG window. */}
@@ -73,7 +79,7 @@ export function TopBar() {
           </ul>
         </nav>
         <div className="flex shrink-0 items-center gap-2">
-          <MyPageLink />
+          <ProfileCornerLink />
           <ProgressPill />
           <SoundToggle />
           <ThemeToggle />

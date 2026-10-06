@@ -13,7 +13,7 @@ export function PracticeSection() {
     <MeSection id="practice" title={messages.pages.me.sections.practice}>
       <div className="flex flex-col items-start gap-3">
         <p className="m-0 text-fg-soft leading-[1.85]">{messages.practiceView.teaser.body}</p>
-        <LinkButton href="/me/practice" variant="secondary">
+        <LinkButton href="/sky" variant="secondary">
           {messages.practiceView.teaser.open}
         </LinkButton>
         <p className="m-0 flex items-start gap-2 text-fg-muted text-sm leading-[1.8]">

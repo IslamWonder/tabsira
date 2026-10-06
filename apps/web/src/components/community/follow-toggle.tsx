@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { signInHref } from '@/account/links';
 import { Button, LinkButton } from '@/components/ui/button';
+import { Emblem } from '@/components/ui/emblem';
 import { Notice } from '@/components/ui/notice';
 import { failureMessage } from '@/lib/api/failure-message';
 import { messages } from '@/messages';
@@ -58,16 +59,23 @@ export function FollowToggle({
       setFailure(failureMessage(result));
     }
   };
-  const idleVariant = compact ? 'ghost' : 'primary';
+  // Not yet followed, the button invites; once followed it steps back.
+  const idleVariant = compact ? 'secondary' : 'primary';
+  const doneVariant = compact ? 'ghost' : 'secondary';
   return (
     <div className="flex flex-col items-start gap-2">
       <Button
-        variant={follows ? 'secondary' : idleVariant}
+        variant={follows ? doneVariant : idleVariant}
         aria-pressed={follows}
         onClick={toggle}
         disabled={busy || access === 'unknown'}
-        className={compact ? 'min-h-9 px-3 text-sm' : undefined}
+        className={compact ? '!min-h-10 !px-3.5 !gap-1.5 text-sm' : undefined}
       >
+        <Emblem
+          name={follows ? 'following' : 'follow'}
+          width={compact ? 20 : 22}
+          height={compact ? 20 : 22}
+        />
         {follows ? P.following : P.follow}
       </Button>
       {failure === null ? null : (
