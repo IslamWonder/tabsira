@@ -43,7 +43,7 @@ _QURAN_MARKS = re.compile(r"[\u06D6-\u06ED]")
 _QURAN_SIGNS = re.compile(r"[\u08F0-\u08F3\uFDFD]")
 _ORNATE_BRACKETS = re.compile(r"[\uFD3E\uFD3F]")
 _HARAKA = re.compile(r"[\u064B-\u0652]")
-_ARABIC_WORD = re.compile(r"[\u0621-\u064A\u0671-\u06D3\u064B-\u0652\u0670\u0640]+")
+_ARABIC_WORD = re.compile(r"[\u0621-\u064A\u0671-\u06D3\u064B-\u0652\u0670]+")
 
 _OPEN_QUOTES = "«\"“'"
 _CLOSE_QUOTES = "»\"”'"
