@@ -55,14 +55,14 @@ SECTION_7_VOCABULARY = {
     "T12_02": ("إنبات", "غرس الإنسان", "الانتفاع بالغرس"),
 }
 
-# The title is stripped in `_sections`: `\s+(.*?)\s*$` backtracks in quadratic time on spaces.
-_HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
+# Only the marker is matched; `_sections` strips the title, since a pattern for it backtracks on spaces.
+_HEADING = re.compile(r"^(#{1,6})\s")
 _LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
 _UNIT_ID = re.compile(r"T[0-9]{2}_[0-9]{2}")
 _ID_OR_RANGE = re.compile(r"`(T[0-9]{2}(?:_[0-9]{2})?)`(?:\s*إلى\s*`(T[0-9]{2}(?:_[0-9]{2})?)`)?")
 _QURAN = re.compile(r"^https?://quran\.com/(?P<surah>[^/]+)(?:/(?P<verses>[0-9]+(?:-[0-9]+)?))?/?$")
 _SUNNAH = re.compile(r"^https?://sunnah\.com/(?P<collection>[a-z]+):(?P<number>[0-9]+[a-z]?)$")
-_STATED_COUNTS = re.compile(r"(?<![0-9])([0-9]+) مجالًا و([0-9]+) وحدة")
+_STATED_COUNTS = re.compile(r"(?<!\d)(\d++) مجالًا و(\d++) وحدة", re.ASCII)
 
 
 class MasarParseError(Exception):
@@ -85,7 +85,7 @@ class _Section:
 def _sections(lines: list[str]) -> list[_Section]:
     """Split the document at its headings; a section's body runs to the next heading."""
     heads = [
-        (index, len(match.group(1)), match.group(2).rstrip())
+        (index, len(match.group(1)), line[match.end(1) :].strip())
         for index, line in enumerate(lines)
         if (match := _HEADING.match(line))
     ]
