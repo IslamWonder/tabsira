@@ -60,7 +60,7 @@ export function InsightPoint({
   selected = false,
   delay = 0,
   onSelect,
-}: InsightPointProps) {
+}: Readonly<InsightPointProps>) {
   const colours = TONES[tone];
   const titleId = useId();
   const glimpseId = useId();

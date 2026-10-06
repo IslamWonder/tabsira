@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
  * A still emblem for status screens: the icon inside two thin rings with the
  * glow of an insight point. Decorative; the heading next to it says it all.
  */
-export function Beacon({ children }: { children: ReactNode }) {
+export function Beacon({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div aria-hidden="true" className="relative flex size-36 items-center justify-center">
       <span className="absolute inset-0 rounded-full border border-[var(--quran-border)]" />

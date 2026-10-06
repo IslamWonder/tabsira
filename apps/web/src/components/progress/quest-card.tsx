@@ -20,7 +20,7 @@ export function questEntries(steps: Progress['daily_quest']['steps']): QuestEntr
  * The daily quest: the day's quest, with the API's own title and step labels.
  * Not done is stated plainly; nothing is lost and nothing is promised.
  */
-export function QuestCard({ quest }: { quest: Progress['daily_quest'] }) {
+export function QuestCard({ quest }: Readonly<{ quest: Progress['daily_quest'] }>) {
   return (
     <GlassPanel as="section" aria-labelledby="practice-quest" className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">

@@ -44,7 +44,7 @@ export interface ProfileFormProps {
  * (goals: an empty list), so the button waits only for an explicit answer to each. There is no
  * birth date and nothing is inferred. The sentence of v2 §5 stays in view above the questions.
  */
-export function ProfileForm({ onSubmit }: ProfileFormProps) {
+export function ProfileForm({ onSubmit }: Readonly<ProfileFormProps>) {
   const statementId = useId();
   const helpId = useId();
   const [goals, setGoals] = useState<GoalAnswer[]>([]);

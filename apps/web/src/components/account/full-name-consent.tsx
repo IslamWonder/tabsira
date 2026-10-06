@@ -17,7 +17,11 @@ export interface FullNameConsentProps {
  * ticked for the person, never required, and separate from the terms. A native checkbox
  * under a 24 px mark inside a 48 px row, like the terms box.
  */
-export function FullNameConsent({ checked, onChange, disabled = false }: FullNameConsentProps) {
+export function FullNameConsent({
+  checked,
+  onChange,
+  disabled = false,
+}: Readonly<FullNameConsentProps>) {
   const id = useId();
   const hintId = useId();
   return (

@@ -13,7 +13,7 @@ const T = messages.install;
 export const OFFER_DELAY_MS = 2500;
 
 /** The two taps of Safari's share sheet, the only way to install on an iPhone or iPad. */
-export function IosSteps({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function IosSteps({ open, onClose }: Readonly<{ open: boolean; onClose: () => void }>) {
   return (
     <Sheet open={open} onClose={onClose} title={T.iosTitle}>
       <ol className="m-0 flex list-decimal flex-col gap-3 ps-6 pb-2 text-fg leading-[1.9]">

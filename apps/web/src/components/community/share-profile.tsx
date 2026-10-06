@@ -25,7 +25,12 @@ export interface ShareProfileProps {
  * (WhatsApp, Telegram, mail...) where there is one, else the link copied, and
  * one quiet line saying so. The address is the profile's public page only.
  */
-export function ShareProfile({ handle, label, own, variant = 'secondary' }: ShareProfileProps) {
+export function ShareProfile({
+  handle,
+  label,
+  own,
+  variant = 'secondary',
+}: Readonly<ShareProfileProps>) {
   const [said, setSaid] = useState<Said | null>(null);
   const share = async () => {
     const url = new URL(profilePath(handle), siteOrigin()).toString();

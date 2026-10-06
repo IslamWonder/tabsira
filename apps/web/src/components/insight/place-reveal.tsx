@@ -8,7 +8,10 @@ import { cx } from '@/lib/cx';
  * completion, and only on display; the star is there either way, and the
  * place's name beside it says the same in words.
  */
-export function PlaceReveal({ created, className }: { created: boolean; className?: string }) {
+export function PlaceReveal({
+  created,
+  className,
+}: Readonly<{ created: boolean; className?: string }>) {
   return (
     <span
       aria-hidden="true"

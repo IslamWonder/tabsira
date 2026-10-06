@@ -7,7 +7,7 @@ import { messages } from '@/messages';
  * (a bordered notice that cannot be missed). Nothing prepared or simulated is
  * ever presented as live analysis (AGENTS.md; tajriba LUX-15, LUX-25).
  */
-export function EngineLabel({ engine, label }: { engine: string; label: string | null }) {
+export function EngineLabel({ engine, label }: Readonly<{ engine: string; label: string | null }>) {
   if (label === null) {
     return null;
   }

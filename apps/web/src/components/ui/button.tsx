@@ -114,7 +114,14 @@ interface LinkButtonProps {
 }
 
 /** A link that looks like a button: for actions that navigate. */
-export function LinkButton({ href, variant, size, current, className, children }: LinkButtonProps) {
+export function LinkButton({
+  href,
+  variant,
+  size,
+  current,
+  className,
+  children,
+}: Readonly<LinkButtonProps>) {
   return (
     <Link
       href={href}

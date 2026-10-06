@@ -44,13 +44,13 @@ export function EntryScreen({
   entryId,
   sponsorship = false,
   social = true,
-}: {
+}: Readonly<{
   entryId: string;
   /** The atlas_sponsorship feature, read by the server: shows the sponsoring parts of the page. */
   sponsorship?: boolean;
   /** The social feature: a sponsor's name links to their profile only while it is on. */
   social?: boolean;
-}) {
+}>) {
   const session = useSession();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);

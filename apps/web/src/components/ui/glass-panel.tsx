@@ -34,7 +34,7 @@ export function GlassPanel({
   className,
   children,
   ...rest
-}: GlassPanelProps) {
+}: Readonly<GlassPanelProps>) {
   return (
     <Element
       className={cx(

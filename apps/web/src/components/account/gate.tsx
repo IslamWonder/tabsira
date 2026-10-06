@@ -69,7 +69,7 @@ export interface GateProps {
  * what this step needs, and the ways out sit just below it (Occam's razor,
  * Law of Common Region). The panel's title is the page's one heading.
  */
-export function Gate({ title, lead, footer, children }: GateProps) {
+export function Gate({ title, lead, footer, children }: Readonly<GateProps>) {
   const titleId = useId();
   return (
     <div className="relative isolate flex w-full justify-center overflow-hidden px-4 pt-[max(24px,env(safe-area-inset-top))] pb-10 tablet:min-h-[calc(var(--app-height)-var(--topbar-height))] tablet:items-center tablet:py-10">

@@ -139,7 +139,7 @@ export function WorldStage({
   home,
   label,
   onOpen,
-}: WorldStageProps) {
+}: Readonly<WorldStageProps>) {
   const helpId = useId();
   const viewportRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);

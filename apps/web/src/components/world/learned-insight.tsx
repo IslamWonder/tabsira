@@ -18,7 +18,7 @@ type Load = { status: 'loading' } | { status: 'failed' } | { status: 'ready'; in
  * The verse and the hadith by reference, numbered as the insight's own screen numbers
  * them; their text is there.
  */
-function Sources({ insight }: { insight: Insight }) {
+function Sources({ insight }: Readonly<{ insight: Insight }>) {
   const { quran, hadith } = insight;
   if (quran === null && hadith === null) {
     return null;
@@ -50,7 +50,7 @@ function Sources({ insight }: { insight: Insight }) {
  * learned, read from the API when the panel opens. Its open link leads to its
  * own screen, where the texts and the conversation are.
  */
-export function LearnedInsight({ id, onGoTo }: { id: string; onGoTo: () => void }) {
+export function LearnedInsight({ id, onGoTo }: Readonly<{ id: string; onGoTo: () => void }>) {
   const [load, setLoad] = useState<Load>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
 

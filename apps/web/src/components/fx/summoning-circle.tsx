@@ -16,10 +16,10 @@ const RUNES = Array.from({ length: 8 }, (_, index) => {
 export function SummoningCircle({
   active = false,
   size = 112,
-}: {
+}: Readonly<{
   active?: boolean;
   size?: number;
-}) {
+}>) {
   return (
     <span
       aria-hidden="true"

@@ -23,7 +23,7 @@ export interface DoneButtonProps {
  * high point is a true one (Peak-End rule). While saving, a second tap cannot
  * record twice.
  */
-export function DoneButton({ status = 'idle', onDone, className }: DoneButtonProps) {
+export function DoneButton({ status = 'idle', onDone, className }: Readonly<DoneButtonProps>) {
   const ref = useRef<HTMLButtonElement>(null);
   const previous = useRef(status);
 

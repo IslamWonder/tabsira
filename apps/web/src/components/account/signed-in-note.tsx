@@ -6,7 +6,7 @@ import { messages } from '@/messages';
 import { SignOutButton } from './sign-out-button';
 
 /** On a sign-in or sign-up page while already signed in: say so, and offer the two ways on. */
-export function SignedInNote({ user }: { user: User }) {
+export function SignedInNote({ user }: Readonly<{ user: User }>) {
   return (
     <div className="flex flex-col items-center gap-4 text-center">
       <p className="m-0 text-fg">{messages.auth.signIn.signedInAs(user.display_name)}</p>

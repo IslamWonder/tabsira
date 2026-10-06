@@ -35,7 +35,7 @@ type Load =
  * newest first, each with what it adds. The map shows the place and its
  * entries at their approximate points.
  */
-export function PlaceScreen({ geonameId }: { geonameId: number }) {
+export function PlaceScreen({ geonameId }: Readonly<{ geonameId: number }>) {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);

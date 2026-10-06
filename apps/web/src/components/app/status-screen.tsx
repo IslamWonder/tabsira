@@ -41,7 +41,7 @@ export function StatusScreen({
   emblem = 'beacon',
   className,
   children,
-}: StatusScreenProps) {
+}: Readonly<StatusScreenProps>) {
   const titleId = useId();
   const Heading = headingLevel === 1 ? 'h1' : 'h2';
   return (

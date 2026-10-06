@@ -34,7 +34,7 @@ function themeOf(): 'light' | 'dark' | 'auto' {
  * controls only where it sits, the language, the theme and the room kept for
  * it. Nothing here moves on hover or animates.
  */
-function Widget({ siteKey, handle, onToken, onClear, onGiveUp }: WidgetProps) {
+function Widget({ siteKey, handle, onToken, onClear, onGiveUp }: Readonly<WidgetProps>) {
   const container = useRef<HTMLDivElement>(null);
   // The check cannot run (an ad blocker, a network that blocks Cloudflare): the API will refuse the form, so say why.
   const [blocked, setBlocked] = useState(false);

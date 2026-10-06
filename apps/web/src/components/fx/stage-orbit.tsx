@@ -38,10 +38,10 @@ const ARC_STYLE: Record<QuestState, { stroke: string; opacity: number; width: nu
 export function StageOrbit({
   states,
   className,
-}: {
+}: Readonly<{
   states: readonly QuestState[];
   className?: string;
-}) {
+}>) {
   const done = states.every((state) => state === 'done');
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   return (

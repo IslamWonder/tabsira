@@ -7,7 +7,7 @@ import { PROGRESS_EMPTY, PROGRESS_REFERENCE } from '@/test/world';
 const noop = () => undefined;
 
 /** The practice page on preview data, in one of its states: `?state=empty|loading|failed`, the reference otherwise. */
-export function SkyPreview({ state }: { state?: string | undefined }) {
+export function SkyPreview({ state }: Readonly<{ state?: string }>) {
   if (state === 'loading' || state === 'failed') {
     return (
       <ProgressFrame>

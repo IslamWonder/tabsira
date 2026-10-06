@@ -30,7 +30,7 @@ const CHIP =
 const ON = 'fill-primary border-transparent font-semibold';
 const OFF = 'border-field bg-surface text-fg-soft hover:text-fg';
 
-function Mark({ on }: { on: boolean }) {
+function Mark({ on }: Readonly<{ on: boolean }>) {
   return (
     <span className="inline-flex w-4 justify-center">
       {on ? <CheckIcon width="16" height="16" /> : null}

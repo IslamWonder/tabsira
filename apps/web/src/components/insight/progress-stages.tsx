@@ -47,7 +47,7 @@ export function ProgressStages({
   slow = false,
   onCancel,
   className,
-}: ProgressStagesProps) {
+}: Readonly<ProgressStagesProps>) {
   const done = current === 'done';
   const label = done
     ? messages.progress.complete

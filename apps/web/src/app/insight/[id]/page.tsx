@@ -15,7 +15,9 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 /** One insight of the visitor (an account or a guest); the API answers only its owner. */
-export default async function InsightPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function InsightPage({
+  params,
+}: Readonly<{ params: Promise<{ id: string }> }>) {
   const { id } = await params;
   if (!isPublicId(id)) {
     notFound();

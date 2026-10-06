@@ -84,7 +84,7 @@ const POINTS: readonly ScenePoint[] = [
   { id: 'second', x: 0.66, y: 0.74, tone: 'emerald', ...messages.dev.points[1] },
 ];
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
   const id = useId();
   return (
     <section aria-labelledby={id} className="flex flex-col gap-4">
@@ -96,7 +96,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Placeholder({ label, className = '' }: { label: string; className?: string }) {
+function Placeholder({ label, className = '' }: Readonly<{ label: string; className?: string }>) {
   return (
     <div
       className={`flex min-h-40 items-center justify-center rounded-[var(--radius-card)] border-[1.5px] border-[var(--dropzone-border)] border-dashed text-fg-muted ${className}`}
@@ -307,7 +307,7 @@ function SettingsFrame() {
   );
 }
 
-function Showcase({ theme }: { theme: Theme }) {
+function Showcase({ theme }: Readonly<{ theme: Theme }>) {
   const [selected, setSelected] = useState<string | undefined>(undefined);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [stage, setStage] = useState<StageId | 'done'>('scene');
@@ -514,7 +514,7 @@ function Showcase({ theme }: { theme: Theme }) {
   );
 }
 
-function FrameSection({ title, children }: { title: string; children: ReactNode }) {
+function FrameSection({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
   const id = useId();
   return (
     <PageContainer>

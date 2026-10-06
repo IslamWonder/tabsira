@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
  * along the top edge, a scene change. Opacity only on the page wrapper, so
  * fixed layers (the bars, sheets) keep their place (AGENTS.md lessons).
  */
-export default function Template({ children }: { children: ReactNode }) {
+export default function Template({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <>
       <span

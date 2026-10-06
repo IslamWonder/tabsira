@@ -29,7 +29,7 @@ export function ViewportPreview({
   label,
   height,
   children,
-}: ViewportPreviewProps) {
+}: Readonly<ViewportPreviewProps>) {
   const [outer, setOuter] = useState<HTMLDivElement | null>(null);
   const size = useBoxSize(outer);
   const width = WIDTH[viewport];

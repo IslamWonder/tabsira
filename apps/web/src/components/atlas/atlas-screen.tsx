@@ -50,7 +50,10 @@ type View = AtlasView;
 export { entryPath, placePath };
 
 /** The card of one entry: title, glimpse, place, who published it, and the way to the insight. */
-export function EntryCard({ feature, onClose }: { feature: AtlasFeature; onClose?: () => void }) {
+export function EntryCard({
+  feature,
+  onClose,
+}: Readonly<{ feature: AtlasFeature; onClose?: () => void }>) {
   const { properties } = feature;
   return (
     <GlassPanel as="article" ornate className="flex flex-col gap-3" aria-label={properties.title}>
@@ -139,7 +142,7 @@ const EntryRow = memo(function EntryRow({
 });
 
 /** Finds a city or place by name; the atlas and the camera screen both pick a region with it. */
-export function PlaceSearch({ onPick }: { onPick: (hit: PlaceHit) => void }) {
+export function PlaceSearch({ onPick }: Readonly<{ onPick: (hit: PlaceHit) => void }>) {
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<PlaceHit[] | null>(null);
   const [state, setState] = useState<'idle' | 'searching' | 'failed'>('idle');
@@ -224,7 +227,7 @@ function Filters({
   scope,
   onScope,
   sponsorship,
-}: {
+}: Readonly<{
   filters: AtlasFilters;
   countries: readonly { iso2: string; label: string }[];
   onChange: (filters: AtlasFilters) => void;
@@ -232,7 +235,7 @@ function Filters({
   scope: Scope | null;
   onScope: (scope: Scope) => void;
   sponsorship: boolean;
-}) {
+}>) {
   const countryId = useId();
   return (
     <div className="flex flex-col gap-4">
@@ -309,7 +312,7 @@ type MineLoad =
  * what is public opens on the atlas; the rest leads back to the placing screen.
  * The private capture point is never shown here; the public point only moves the map.
  */
-function MyEntries({ onShow }: { onShow: (point: [number, number]) => void }) {
+function MyEntries({ onShow }: Readonly<{ onShow: (point: [number, number]) => void }>) {
   const [load, setLoad] = useState<MineLoad>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
@@ -450,13 +453,13 @@ export function AtlasScreen({
   initialView = null,
   cameraDiscovery = false,
   sponsorship = false,
-}: {
+}: Readonly<{
   initialView?: View | null;
   /** The camera_discovery feature, read by the server: shows the way to the camera discovery. */
   cameraDiscovery?: boolean;
   /** The atlas_sponsorship feature, read by the server: shows the orphaned entries and the member's sponsorships. */
   sponsorship?: boolean;
-}) {
+}>) {
   const session = useSession();
   const [filters, setFilters] = useState<AtlasFilters>(EMPTY_FILTERS);
   const [scope, setScope] = useState<Scope>('public');

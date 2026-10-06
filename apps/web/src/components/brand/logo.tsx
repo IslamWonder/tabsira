@@ -41,11 +41,11 @@ function Outlines({ shape, title, className }: LogoProps & { shape: typeof MARK 
  * `brand` token (4.53:1 or more on every surface). Its size comes from the
  * caller's height; the width follows.
  */
-export function LogoMark(props: LogoProps) {
+export function LogoMark(props: Readonly<LogoProps>) {
   return <Outlines shape={MARK} {...props} />;
 }
 
 /** The mark above the Latin name «TABSIRA»: for large brand moments (the gate, the consent window). */
-export function Logo(props: LogoProps) {
+export function Logo(props: Readonly<LogoProps>) {
   return <Outlines shape={LOGO} {...props} />;
 }

@@ -2,7 +2,7 @@
  * The white flash of a shutter over its `relative` parent. Each new `trigger`
  * value plays it once (a new key remounts the span); zero shows nothing.
  */
-export function Flash({ trigger }: { trigger: number }) {
+export function Flash({ trigger }: Readonly<{ trigger: number }>) {
   if (trigger === 0) {
     return null;
   }

@@ -25,7 +25,7 @@ const PAGES = [
   ['/sources', messages.footer.sources],
 ] as const;
 
-function Column({ title, children }: { title: string; children: ReactNode }) {
+function Column({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <h2 className="m-0 font-semibold text-[0.9375rem] text-fg">{title}</h2>

@@ -22,11 +22,11 @@ export interface EvidenceSource {
 export function InsightEvidence({
   insight,
   headingLevel,
-}: {
+}: Readonly<{
   insight: EvidenceSource;
   /** Level of each card's heading; 3 when the texts sit under a heading of their own, as in the chat sheet. */
   headingLevel?: 2 | 3;
-}) {
+}>) {
   const { quran, hadith } = insight;
   const verse = quran?.verse;
   const narration = hadith?.hadith;

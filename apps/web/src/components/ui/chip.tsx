@@ -21,7 +21,7 @@ export interface ChipProps {
 }
 
 /** A short static label: a source, a relation, a state. Not interactive. */
-export function Chip({ tone = 'neutral', icon, className, children }: ChipProps) {
+export function Chip({ tone = 'neutral', icon, className, children }: Readonly<ChipProps>) {
   return (
     <span
       className={cx(

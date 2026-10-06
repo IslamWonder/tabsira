@@ -57,7 +57,7 @@ function soundMoment(phase: ScanView['phase']): SoundMoment {
   return phase === 'failed' || phase === 'lost' ? 'failed' : 'running';
 }
 
-function Announce({ children }: { children: ReactNode }) {
+function Announce({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div role="status" aria-live="polite" className="sr-only">
       {children}
@@ -73,7 +73,7 @@ function Announce({ children }: { children: ReactNode }) {
  * what to do. Nothing here is invented: every state is the API's own, followed
  * on its stream and read again when a run ends.
  */
-export function ScanScreen({ scanId }: { scanId: string }) {
+export function ScanScreen({ scanId }: Readonly<{ scanId: string }>) {
   const router = useRouter();
   const { view, stage, sound, slow, acting, reload, focus, clarify } = useScan(scanId);
   useSceneSound(sound, soundMoment(view.phase));

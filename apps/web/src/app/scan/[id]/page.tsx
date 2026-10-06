@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 /** One scan of the visitor (an account or a guest); the API answers only its owner. */
-export default async function ScanPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ScanPage({ params }: Readonly<{ params: Promise<{ id: string }> }>) {
   const { id } = await params;
   if (!isPublicId(id)) {
     notFound();

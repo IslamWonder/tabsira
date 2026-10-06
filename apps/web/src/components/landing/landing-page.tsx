@@ -228,12 +228,12 @@ function SectionHeading({
   eyebrow,
   title,
   aside,
-}: {
+}: Readonly<{
   id: string;
   eyebrow?: string;
   title: string;
   aside?: string;
-}) {
+}>) {
   const reveal = useReveal<HTMLDivElement>();
   return (
     <div
@@ -315,7 +315,11 @@ function Journey() {
   );
 }
 
-function StoryCard({ story, index, tutorial }: { story: Story; index: number; tutorial: boolean }) {
+function StoryCard({
+  story,
+  index,
+  tutorial,
+}: Readonly<{ story: Story; index: number; tutorial: boolean }>) {
   const action = story.action?.kind === 'example' && !tutorial ? null : story.action;
   const actionClass =
     'inline-flex min-h-12 items-center gap-2 self-start font-semibold text-primary underline-offset-4 hover:underline';
@@ -373,7 +377,10 @@ function StoryCard({ story, index, tutorial }: { story: Story; index: number; tu
   );
 }
 
-function Stories({ features, tutorial }: { features: LandingFeatures; tutorial: boolean }) {
+function Stories({
+  features,
+  tutorial,
+}: Readonly<{ features: LandingFeatures; tutorial: boolean }>) {
   const stories = featureStories(features);
   const reveal = useReveal<HTMLDivElement>();
   return (
@@ -550,10 +557,10 @@ function Closing() {
 export function LandingPage({
   features,
   community = null,
-}: {
+}: Readonly<{
   features: LandingFeatures;
   community?: ReactNode;
-}) {
+}>) {
   const session = useSession();
   const tutorial = tutorialOffered(session);
   // The page is the same for everyone and the session is known only in the browser: until it

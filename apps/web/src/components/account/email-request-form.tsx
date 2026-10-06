@@ -35,7 +35,7 @@ export function EmailRequestForm({
   acceptedMessage,
   defaultEmail,
   turnstileSiteKey = '',
-}: EmailRequestFormProps) {
+}: Readonly<EmailRequestFormProps>) {
   const turnstile = useTurnstile(turnstileSiteKey);
   const emailRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);

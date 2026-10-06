@@ -57,10 +57,10 @@ function refusalMessage(failure: Failure, fresh: AtlasEntry | null): string {
 function SponsorLine({
   sponsor,
   social,
-}: {
+}: Readonly<{
   sponsor: NonNullable<AtlasEntry['sponsor']>;
   social: boolean;
-}) {
+}>) {
   const name = (
     <>
       {sponsor.public_name === null ? null : <>{sponsor.public_name} </>}
@@ -87,10 +87,10 @@ function SponsorLine({
 function ReflectionForm({
   entry,
   refresh,
-}: {
+}: Readonly<{
   entry: AtlasEntry;
   refresh: () => Promise<unknown>;
-}) {
+}>) {
   const [current, setCurrent] = useState<Sponsorship | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -177,13 +177,13 @@ export function SponsorPanel({
   entry,
   social,
   refresh,
-}: {
+}: Readonly<{
   entry: AtlasEntry;
   /** The social feature: the sponsor's name links to the profile only while it is on. */
   social: boolean;
   /** Reads the entry again and shows it; resolves to it, or null when it cannot be read. */
   refresh: () => Promise<AtlasEntry | null>;
-}) {
+}>) {
   const access = useAccess();
   const identity = useIdentity();
   const pathname = usePathname();

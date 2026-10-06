@@ -23,7 +23,7 @@ export interface NoticeProps {
  * puts it inside a live region (role="status" or "alert") that already exists
  * when the message arrives, so screen readers announce it.
  */
-export function Notice({ tone, className, children }: NoticeProps) {
+export function Notice({ tone, className, children }: Readonly<NoticeProps>) {
   return (
     <div
       className={cx(

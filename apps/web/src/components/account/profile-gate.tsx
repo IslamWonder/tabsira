@@ -16,9 +16,9 @@ import { ProfileForm } from './profile-form';
 
 const G = messages.profile.gate;
 /** The texts stay readable while the form is up, as under the acceptance of the terms. */
-const READABLE = ['/terms', '/privacy'];
+const READABLE = new Set(['/terms', '/privacy']);
 
-function Window({ user }: { user: User }) {
+function Window({ user }: Readonly<{ user: User }>) {
   const titleId = useId();
   const [leaving, setLeaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);

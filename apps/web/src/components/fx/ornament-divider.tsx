@@ -29,7 +29,10 @@ function Rosette() {
  * label, the words sit between two rosettes. Decorative: the label is the only
  * part read aloud.
  */
-export function OrnamentDivider({ label, className }: { label?: string; className?: string }) {
+export function OrnamentDivider({
+  label,
+  className,
+}: Readonly<{ label?: string; className?: string }>) {
   const line = (direction: 'right' | 'left') => (
     <span
       aria-hidden="true"

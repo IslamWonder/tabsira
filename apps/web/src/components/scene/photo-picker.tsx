@@ -18,7 +18,7 @@ export interface PhotoPickerProps {
  * file input, so the input keeps its native behaviour (and its name, the
  * label's text) and the ring shows when it has keyboard focus.
  */
-export function PhotoPicker({ onPick, capture, className, children }: PhotoPickerProps) {
+export function PhotoPicker({ onPick, capture, className, children }: Readonly<PhotoPickerProps>) {
   const id = useId();
   return (
     <label

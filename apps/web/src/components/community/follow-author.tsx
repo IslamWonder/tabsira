@@ -11,7 +11,7 @@ import { FollowToggle } from './follow-toggle';
  * once they are known to be signed in; nothing shows for a guest, for the
  * author, or while it is not known.
  */
-export function FollowAuthor({ handle }: { handle: string }) {
+export function FollowAuthor({ handle }: Readonly<{ handle: string }>) {
   const session = useSession();
   const [follows, setFollows] = useState<boolean | null>(null);
   const signedIn = session.status === 'signed-in';

@@ -55,7 +55,7 @@ export function SceneInsightList({
   selectedId,
   onSelect,
   invite = false,
-}: SceneInsightListProps) {
+}: Readonly<SceneInsightListProps>) {
   const headingId = useId();
   const hint = useIdleHint(invite);
   // Each showing of the hint replays the rows' call, so the words and the rows go together.

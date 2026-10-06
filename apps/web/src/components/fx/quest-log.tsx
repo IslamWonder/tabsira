@@ -20,10 +20,10 @@ export interface QuestEntry {
 export function QuestLog({
   entries,
   className,
-}: {
+}: Readonly<{
   entries: readonly QuestEntry[];
   className?: string;
-}) {
+}>) {
   return (
     <ol
       className={cx(

@@ -7,7 +7,10 @@ import { messages } from '@/messages';
  * the promise as the page's title, and one line on what the app does. Short on
  * purpose: the photo beside it is the subject (Selective attention).
  */
-export function SceneIntro({ chip, className }: { chip?: ReactNode; className?: string }) {
+export function SceneIntro({
+  chip,
+  className,
+}: Readonly<{ chip?: ReactNode; className?: string }>) {
   return (
     <div className={cx('flex flex-col items-start gap-3', className)}>
       {chip}

@@ -25,7 +25,7 @@ type Load =
  * sent; this section never asks the device for its position. It draws nothing while
  * there is nothing to offer, and nothing at all without a point.
  */
-export function OrphansSection({ point }: { point: readonly [number, number] | null }) {
+export function OrphansSection({ point }: Readonly<{ point: readonly [number, number] | null }>) {
   const [features, setFeatures] = useState<AtlasFeature[]>([]);
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);

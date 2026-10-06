@@ -14,11 +14,11 @@ const M = messages.community.post;
 export function PostEvidence({
   insight,
   headingLevel = 3,
-}: {
+}: Readonly<{
   /** What a post or an atlas entry cites: the verses and the hadiths, as the API returned them. */
   insight: Pick<PostInsight, 'quran' | 'hadith'>;
   headingLevel?: 2 | 3;
-}) {
+}>) {
   const verses = insight.quran.map((verse) => (
     <EvidenceCard
       key={`${verse.surah}-${verse.ayah}`}

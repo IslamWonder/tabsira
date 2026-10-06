@@ -64,7 +64,7 @@ export function ScenePhoto({
   framed = false,
   className,
   children,
-}: ScenePhotoProps) {
+}: Readonly<ScenePhotoProps>) {
   const [box, setBox] = useState<HTMLDivElement | null>(null);
   const size = useBoxSize(box);
   const listHeadingId = useId();

@@ -13,7 +13,7 @@ import { CAPTURE, isActive, type NavItem, SECTIONS } from './nav-items';
 const SIDE_START = SECTIONS.slice(0, 2);
 const SIDE_END = SECTIONS.slice(2);
 
-function Tab({ item, pathname }: { item: NavItem; pathname: string }) {
+function Tab({ item, pathname }: Readonly<{ item: NavItem; pathname: string }>) {
   const active = isActive(item.href, pathname);
   return (
     <li className="flex justify-center">

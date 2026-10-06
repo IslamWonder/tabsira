@@ -38,7 +38,7 @@ export function FocusStage({
   entities,
   selectedId,
   onSelect,
-}: FocusStageProps) {
+}: Readonly<FocusStageProps>) {
   const [box, setBox] = useState<HTMLDivElement | null>(null);
   const size = useBoxSize(box);
   const frame = containFrame({ width, height }, size);
@@ -98,7 +98,7 @@ export function FocusPanel({
   onCancel,
   acting,
   error,
-}: FocusPanelProps) {
+}: Readonly<FocusPanelProps>) {
   const headingId = useId();
   const chosen = entities.find((entity) => entity.id === selectedId);
   return (

@@ -17,7 +17,7 @@ export interface ErrorPageProps {
  * shown: in production its message is generic anyway, and the digest is for
  * server logs, not for people. The error itself goes to the API's error reports.
  */
-export default function ErrorPage({ error, retry }: ErrorPageProps) {
+export default function ErrorPage({ error, retry }: Readonly<ErrorPageProps>) {
   // The page caught it, so the browser's own handlers never see it: send it from here.
   useEffect(() => {
     reportError(error, { handled: false });

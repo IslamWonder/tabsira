@@ -84,7 +84,7 @@ function ConsentChangedEvent() {
  * The analytics tools, each behind its own category (owner decisions 28, 31
  * and 32). Without consent this renders nothing and no request is made.
  */
-export function AnalyticsTags({ gaId, clarityId }: AnalyticsTagsProps) {
+export function AnalyticsTags({ gaId, clarityId }: Readonly<AnalyticsTagsProps>) {
   return (
     <>
       {gaId === null ? null : (

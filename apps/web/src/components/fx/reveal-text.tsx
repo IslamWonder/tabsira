@@ -23,7 +23,7 @@ export function RevealText({
   delay = 0,
   stagger = 0.07,
   className,
-}: RevealTextProps) {
+}: Readonly<RevealTextProps>) {
   const words = Array.from(text.matchAll(/\S+/g), (match) => ({ word: match[0], at: match.index }));
   return (
     <Tag className={cx('m-0', className)}>

@@ -7,7 +7,7 @@
  * photo served by another host (decision 66, placepix.net) never learns which page asked for it.
  * Hover changes nothing.
  */
-export function PublicPhoto({ url, alt }: { url: string | null; alt: string }) {
+export function PublicPhoto({ url, alt }: Readonly<{ url: string | null; alt: string }>) {
   if (url === null || !/^https?:\/\//.test(url)) {
     return null;
   }

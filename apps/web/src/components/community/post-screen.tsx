@@ -47,11 +47,11 @@ function BackLink() {
 export function PostScreen({
   postId,
   comments = false,
-}: {
+}: Readonly<{
   postId: string;
   /** The social_comments feature, read by the server: without it the thread is not shown. */
   comments?: boolean;
-}) {
+}>) {
   const session = useSession();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const sessionStatus = session.status;

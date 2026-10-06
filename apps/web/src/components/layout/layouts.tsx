@@ -68,7 +68,7 @@ export function StageLayout({
   stageFirstOnPhone = false,
   framed = false,
   className,
-}: StageLayoutProps) {
+}: Readonly<StageLayoutProps>) {
   return (
     <div
       className={cx(
@@ -124,7 +124,12 @@ export interface ReadingLayoutProps extends Slot {
  * fades into the page. The photo comes first in the DOM: it is what the text
  * talks about, and it holds no control.
  */
-export function ReadingLayout({ media, children, footer, className }: ReadingLayoutProps) {
+export function ReadingLayout({
+  media,
+  children,
+  footer,
+  className,
+}: Readonly<ReadingLayoutProps>) {
   return (
     <div
       className={cx(
@@ -159,7 +164,13 @@ export interface MapLayoutProps extends Slot {
 }
 
 /** World and atlas: the map fills the main area, the list sits on the start side from tablet up. */
-export function MapLayout({ panel, map, mapLabel, mapClassName, className }: MapLayoutProps) {
+export function MapLayout({
+  panel,
+  map,
+  mapLabel,
+  mapClassName,
+  className,
+}: Readonly<MapLayoutProps>) {
   return (
     <div
       className={cx(
@@ -187,7 +198,7 @@ export interface FeedLayoutProps extends Slot {
 }
 
 /** Community: one centred column at most 640 px wide, so posts read like a feed, not a grid. */
-export function FeedLayout({ aside, feed, className }: FeedLayoutProps) {
+export function FeedLayout({ aside, feed, className }: Readonly<FeedLayoutProps>) {
   return (
     <div
       className={cx(
@@ -211,7 +222,7 @@ export interface SettingsLayoutProps extends Slot {
 }
 
 /** Me: a section list on the start side from tablet up, one list on a phone. */
-export function SettingsLayout({ nav, children, className }: SettingsLayoutProps) {
+export function SettingsLayout({ nav, children, className }: Readonly<SettingsLayoutProps>) {
   return (
     <div
       className={cx(

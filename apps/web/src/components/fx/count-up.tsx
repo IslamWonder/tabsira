@@ -19,11 +19,11 @@ export function CountUp({
   value,
   duration = 1.1,
   className,
-}: {
+}: Readonly<{
   value: number;
   duration?: number;
   className?: string;
-}) {
+}>) {
   const [shown, setShown] = useState(value);
 
   useEffect(() => {

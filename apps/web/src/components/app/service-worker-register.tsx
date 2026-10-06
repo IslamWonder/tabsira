@@ -15,9 +15,9 @@ import { messages } from '@/messages';
  */
 export function ServiceWorkerRegister({
   enabled = process.env.NODE_ENV === 'production',
-}: {
+}: Readonly<{
   enabled?: boolean;
-}) {
+}>) {
   const [updated, setUpdated] = useState(false);
 
   useEffect(() => {

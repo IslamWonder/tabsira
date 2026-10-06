@@ -18,10 +18,10 @@ const P = messages.profile;
 export function AboutSection({
   profile,
   save,
-}: {
+}: Readonly<{
   profile: Profile;
   save: (patch: ProfilePatch) => Promise<string | null>;
-}) {
+}>) {
   const { state, run } = useSaveState();
   const change = (patch: ProfilePatch) => run(() => save(patch));
   return (

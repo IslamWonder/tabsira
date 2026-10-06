@@ -7,7 +7,7 @@ export type PatternKind = 8 | 12 | 6;
 const TILE = 112;
 const HALF_SIDE = 50 * Math.SQRT1_2;
 
-function Tile({ kind }: { kind: PatternKind }) {
+function Tile({ kind }: Readonly<{ kind: PatternKind }>) {
   if (kind === 12) {
     return (
       <>
@@ -42,7 +42,7 @@ function Tile({ kind }: { kind: PatternKind }) {
  * edges. Visible in the light theme, barely there under the night aurora
  * (--pattern-opacity). Still and decorative, never in front of text.
  */
-export function GeometricPattern({ kind = 8 }: { kind?: PatternKind }) {
+export function GeometricPattern({ kind = 8 }: Readonly<{ kind?: PatternKind }>) {
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   return (
     <svg

@@ -24,7 +24,7 @@ function refusal(failure: Failure): string {
 }
 
 /** The verified texts of a treasure, rendered by the same cards as an insight, byte for byte. */
-function Evidence({ treasure }: { treasure: Treasure }) {
+function Evidence({ treasure }: Readonly<{ treasure: Treasure }>) {
   const { quran, hadith } = treasure;
   return (
     <div className="flex flex-col gap-3">
@@ -52,7 +52,7 @@ function Evidence({ treasure }: { treasure: Treasure }) {
   );
 }
 
-function Revealed({ treasure }: { treasure: Treasure }) {
+function Revealed({ treasure }: Readonly<{ treasure: Treasure }>) {
   const heading = useRef<HTMLHeadingElement>(null);
   // The moment is one: focus lands on what was found, so it is read once.
   useEffect(() => (heading.current as HTMLHeadingElement).focus(), []);
@@ -91,7 +91,7 @@ function Revealed({ treasure }: { treasure: Treasure }) {
  * a short moment (a burst of light and the panel rising) once the API has
  * returned the verified text. Nothing of the treasure is known before that.
  */
-export function TreasureCard({ id }: { id: string }) {
+export function TreasureCard({ id }: Readonly<{ id: string }>) {
   const [state, setState] = useState<State>({ status: 'ready' });
 
   async function reveal(event: MouseEvent<HTMLButtonElement>) {

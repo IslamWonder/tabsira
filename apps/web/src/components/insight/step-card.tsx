@@ -47,7 +47,7 @@ export function StepCard({
   statusText,
   error,
   className,
-}: StepCardProps) {
+}: Readonly<StepCardProps>) {
   const titleId = useId();
   const saving = status === 'saving';
   const shownStatus = status === 'idle' ? null : (statusText ?? STATUS_TEXT[status]);

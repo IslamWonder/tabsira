@@ -23,7 +23,7 @@ export interface SaveInvitationProps {
  * second scan or the chat of this one needs an account, and the insight moves into it. Shown
  * once the insight is done, after the done button.
  */
-export function SaveInvitation({ returnTo, className }: SaveInvitationProps) {
+export function SaveInvitation({ returnTo, className }: Readonly<SaveInvitationProps>) {
   const titleId = useId();
   return (
     <GlassPanel

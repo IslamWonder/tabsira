@@ -28,10 +28,10 @@ const X = messages.pages.me.delete;
 function DeleteFromGate({
   busy,
   onFailure,
-}: {
+}: Readonly<{
   busy: boolean;
   onFailure: (message: string) => void;
-}) {
+}>) {
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const remove = async () => {
@@ -85,11 +85,11 @@ function Window({
   user,
   legal,
   onRetry,
-}: {
+}: Readonly<{
   user: User;
   legal: LegalVersions | 'loading' | 'failed';
   onRetry: () => void;
-}) {
+}>) {
   const titleId = useId();
   const bodyId = useId();
   const [accepted, setAccepted] = useState(false);
@@ -238,7 +238,7 @@ function LegalGateWindow({ user }: { user: User }) {
   return tick === 'checking' ? null : <AskingWindow user={user} />;
 }
 
-function AskingWindow({ user }: { user: User }) {
+function AskingWindow({ user }: Readonly<{ user: User }>) {
   const legal = useLegal();
   const state = legal.state;
   return (

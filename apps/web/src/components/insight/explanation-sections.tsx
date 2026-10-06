@@ -10,10 +10,10 @@ import type { Insight } from '@/lib/scan/api';
 export function ExplanationSections({
   tag,
   parts,
-}: {
+}: Readonly<{
   tag: string;
   parts: Insight['explanation'];
-}) {
+}>) {
   const shown = parts.filter((part) => part.section !== 'seen');
   if (shown.length === 0) {
     return null;

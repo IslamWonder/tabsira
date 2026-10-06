@@ -24,7 +24,7 @@ const COUNTS = [
   ['questions', 'questions'],
 ] as const;
 
-function Counts({ counts }: { counts: Progress['counts'] }) {
+function Counts({ counts }: Readonly<{ counts: Progress['counts'] }>) {
   return (
     <GlassPanel as="section" aria-labelledby="practice-counts" className="flex flex-col gap-3">
       <h2 id="practice-counts" className="m-0 font-bold font-display text-heading text-fg">
@@ -45,7 +45,7 @@ function Counts({ counts }: { counts: Progress['counts'] }) {
   );
 }
 
-function Disclaimer({ text }: { text: string }) {
+function Disclaimer({ text }: Readonly<{ text: string }>) {
   return (
     <p className="m-0 flex items-start gap-2 text-fg-muted text-sm leading-[1.8]">
       <ShieldIcon width="18" height="18" className="mt-1 shrink-0 text-[var(--ornament)]" />
@@ -73,12 +73,12 @@ function Trail() {
 }
 
 /** The page frame: the scene at full width under the top bar, then the page's own column. Shared with the gallery. */
-export function ProgressFrame({ children }: { children: ReactNode }) {
+export function ProgressFrame({ children }: Readonly<{ children: ReactNode }>) {
   return <div className="flex w-full flex-col pb-6 tablet:pb-8">{children}</div>;
 }
 
 /** Everything under the scene: the lead, then the practice that is not the sky. */
-function ProgressBody({ children }: { children?: ReactNode }) {
+function ProgressBody({ children }: Readonly<{ children?: ReactNode }>) {
   return (
     <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 pt-6 tablet:px-6 tablet:pt-8 desktop:px-10">
       <p className="m-0 max-w-[40rem] text-fg-soft leading-[1.9]">{M.lead}</p>
@@ -90,10 +90,10 @@ function ProgressBody({ children }: { children?: ReactNode }) {
 export function ProgressView({
   progress,
   refreshing = false,
-}: {
+}: Readonly<{
   progress: Progress;
   refreshing?: boolean;
-}) {
+}>) {
   return (
     <>
       <MeaningSkyScene

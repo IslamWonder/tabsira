@@ -9,7 +9,7 @@ const M = messages.practiceView.rank;
  * many looks were completed, with the way to the next one in view
  * (goal-gradient). The bar fills once on display. Practice, never piety.
  */
-export function RankCard({ rank }: { rank: Progress['rank'] }) {
+export function RankCard({ rank }: Readonly<{ rank: Progress['rank'] }>) {
   const next = rank.next === null ? M.top : M.next(rank.next.title, rank.next.minimum);
   return (
     <GlassPanel as="section" ornate aria-labelledby="practice-rank" className="flex flex-col gap-3">

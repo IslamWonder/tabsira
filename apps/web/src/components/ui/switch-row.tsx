@@ -30,7 +30,7 @@ export function SwitchRow({
   disabled = false,
   busy = false,
   className,
-}: SwitchRowProps) {
+}: Readonly<SwitchRowProps>) {
   const labelId = useId();
   const hintId = useId();
   return (

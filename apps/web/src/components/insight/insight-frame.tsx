@@ -61,7 +61,7 @@ export function InsightPhoto({
   focus,
   backHref,
   unoptimized = false,
-}: InsightPhotoProps) {
+}: Readonly<InsightPhotoProps>) {
   const [box, setBox] = useState<HTMLDivElement | null>(null);
   const size = useBoxSize(box);
   const shown = focus !== undefined && isRatio(focus.x) && isRatio(focus.y) ? focus : undefined;
@@ -139,7 +139,7 @@ export interface InsightHeaderProps {
  * Title and glimpse first (tajriba §6.1). The way back is always visible: on
  * the desktop as a text link here, below it as the round button on the photo.
  */
-export function InsightHeader({ backHref, chips, title, glimpse }: InsightHeaderProps) {
+export function InsightHeader({ backHref, chips, title, glimpse }: Readonly<InsightHeaderProps>) {
   return (
     <header className="flex flex-col gap-2 desktop:gap-3">
       <Link
@@ -161,7 +161,7 @@ export function InsightHeader({ backHref, chips, title, glimpse }: InsightHeader
 }
 
 /** What the photo shows, kept apart from any interpretation (tajriba §3.8). */
-export function SeenNote({ text }: { text: string }) {
+export function SeenNote({ text }: Readonly<{ text: string }>) {
   return (
     <p className="m-0 rounded-[var(--radius-card)] border border-line bg-surface px-4 py-3 text-[0.9375rem] text-fg-soft leading-[1.75]">
       <strong className="font-medium text-fg">{messages.insight.seen}</strong> {text}
@@ -170,7 +170,7 @@ export function SeenNote({ text }: { text: string }) {
 }
 
 /** The platform's own explanation, labelled as such (the platform explanation label), never mixed with the sources. */
-export function ExplanationBlock({ text }: { text: string }) {
+export function ExplanationBlock({ text }: Readonly<{ text: string }>) {
   return (
     <section aria-label={messages.insight.explanation} className="flex flex-col items-start gap-2">
       <Chip tone="primary">{messages.insight.explanation}</Chip>
@@ -191,7 +191,7 @@ export function InsightTools({
   onWhy,
   onDiscuss,
   discussNote = messages.insight.discussLimit,
-}: InsightToolsProps) {
+}: Readonly<InsightToolsProps>) {
   return (
     <div className="flex flex-col gap-3 tablet:flex-row">
       <button
@@ -238,7 +238,7 @@ export interface InsightActionsProps {
 }
 
 /** the done button and sharing at the end of the reading column (Fitts: in the thumb zone on a phone). */
-export function InsightActions({ status, onDone, onShare }: InsightActionsProps) {
+export function InsightActions({ status, onDone, onShare }: Readonly<InsightActionsProps>) {
   return (
     <div className="flex items-center gap-2.5">
       <DoneButton status={status} onDone={onDone} className="flex-1" />

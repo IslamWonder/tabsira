@@ -62,7 +62,7 @@ export function ScanStage({
   points,
   onSelectPoint,
   backHref,
-}: ScanStageProps) {
+}: Readonly<ScanStageProps>) {
   const photo = shownPhoto(scan);
   if (photo === null) {
     return (
@@ -118,11 +118,11 @@ export function PhotoFrame({
   width,
   height,
   children,
-}: {
+}: Readonly<{
   width: number;
   height: number;
   children: ReactNode;
-}) {
+}>) {
   const ratio = { '--photo-ratio': `${width} / ${height}` } as CSSProperties;
   return (
     <div className="h-full w-full tablet:flex tablet:items-center tablet:justify-center tablet:p-8 tablet:[container-type:size]">

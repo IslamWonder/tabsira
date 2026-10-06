@@ -32,13 +32,13 @@ export function AccessNote({
   guest,
   unverified,
   identity,
-}: {
+}: Readonly<{
   access: Access;
   guest: string;
   unverified: string;
   /** When the action also needs a public identity (posting, commenting). */
   identity?: string;
-}) {
+}>) {
   const pathname = usePathname();
   if (access === 'guest') {
     return (
@@ -80,7 +80,7 @@ export interface ReportSheetProps {
 }
 
 /** Report a post or a comment with one of the API's reasons; the report reaches the moderators alone. */
-export function ReportSheet({ open, onClose, targetType, targetId }: ReportSheetProps) {
+export function ReportSheet({ open, onClose, targetType, targetId }: Readonly<ReportSheetProps>) {
   const access = useAccess();
   const [reason, setReason] = useState<ReportReason>('abuse');
   const [details, setDetails] = useState('');
@@ -160,7 +160,13 @@ export interface BlockSheetProps {
 }
 
 /** Confirm a block, which hides each of the two from the other everywhere and ends their follows. */
-export function BlockSheet({ open, onClose, handle, publicName, onBlocked }: BlockSheetProps) {
+export function BlockSheet({
+  open,
+  onClose,
+  handle,
+  publicName,
+  onBlocked,
+}: Readonly<BlockSheetProps>) {
   const access = useAccess();
   const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle');
   const [failure, setFailure] = useState<string | null>(null);
@@ -222,7 +228,12 @@ export interface WithdrawSheetProps {
 }
 
 /** The author takes a post down, draft or published; its content is erased at once. */
-export function WithdrawSheet({ open, onClose, postId, onWithdrawn }: WithdrawSheetProps) {
+export function WithdrawSheet({
+  open,
+  onClose,
+  postId,
+  onWithdrawn,
+}: Readonly<WithdrawSheetProps>) {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const withdraw = async () => {

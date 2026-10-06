@@ -28,7 +28,12 @@ export interface FollowToggleProps {
  * for them by a visit. On the profile page it is the main button; beside an
  * author's name it is a quiet one.
  */
-export function FollowToggle({ handle, follows, onChange, compact = false }: FollowToggleProps) {
+export function FollowToggle({
+  handle,
+  follows,
+  onChange,
+  compact = false,
+}: Readonly<FollowToggleProps>) {
   const access = useAccess();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);

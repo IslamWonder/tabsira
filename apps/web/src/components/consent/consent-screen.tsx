@@ -42,11 +42,11 @@ function Categories({
   policy,
   choices,
   onToggle,
-}: {
+}: Readonly<{
   policy: ConsentPolicy;
   choices: ConsentChoices;
   onToggle: (choices: ConsentChoices) => void;
-}) {
+}>) {
   return (
     <ul className="m-0 flex list-none flex-col gap-3 p-0">
       {policy.categories.map((category) => {
@@ -97,7 +97,7 @@ type Choice = 'accept' | 'reject' | 'customise' | 'save' | 'back';
  * in place. Shown on a first visit, when the policy version changed, after
  * its re-ask delay, and whenever the visitor reopens it.
  */
-export function ConsentScreen({ initial }: { initial: ServerConsent }) {
+export function ConsentScreen({ initial }: Readonly<{ initial: ServerConsent }>) {
   const { consent, policy, settingsOpen } = useSeededConsent(initial);
   const pathname = usePathname();
   const visible = consent.status === 'asking' || settingsOpen;

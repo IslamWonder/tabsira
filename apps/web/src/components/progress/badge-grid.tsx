@@ -8,7 +8,7 @@ import type { Badge } from '@/progress/api';
 
 const M = messages.practiceView.badges;
 
-function Medal({ earned }: { earned: boolean }) {
+function Medal({ earned }: Readonly<{ earned: boolean }>) {
   return (
     <span
       aria-hidden="true"
@@ -39,7 +39,7 @@ function Medal({ earned }: { earned: boolean }) {
  * a spoiler. Badges mark practice and steadiness, never faith or acceptance,
  * so the practice disclaimer stays beside them.
  */
-export function BadgeGrid({ badges }: { badges: readonly Badge[] }) {
+export function BadgeGrid({ badges }: Readonly<{ badges: readonly Badge[] }>) {
   const earned = badges.filter((badge) => badge.earned).length;
   return (
     <GlassPanel as="section" aria-labelledby="practice-badges" className="flex flex-col gap-3">

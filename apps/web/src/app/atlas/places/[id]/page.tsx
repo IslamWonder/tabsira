@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   });
 }
 
-export default async function AtlasPlacePage({ params }: Params) {
+export default async function AtlasPlacePage({ params }: Readonly<Params>) {
   const { id } = await params;
   return <PlaceScreen geonameId={GEONAME_ID.test(id) ? Number(id) : 0} />;
 }

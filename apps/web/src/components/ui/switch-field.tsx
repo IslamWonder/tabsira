@@ -18,7 +18,14 @@ export interface SwitchFieldProps {
  * switch of the app looks the same (Law of Similarity). It works before the
  * page's scripts arrive, posted with its form.
  */
-export function SwitchField({ name, label, hint, checked, onChange, disabled }: SwitchFieldProps) {
+export function SwitchField({
+  name,
+  label,
+  hint,
+  checked,
+  onChange,
+  disabled,
+}: Readonly<SwitchFieldProps>) {
   const id = useId();
   const hintId = useId();
   return (

@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   });
 }
 
-export default async function AtlasEntryPage({ params }: Params) {
+export default async function AtlasEntryPage({ params }: Readonly<Params>) {
   const { id } = await params;
   const result = PUBLIC_ID.test(id) ? await entryOnServer(id) : null;
   return (

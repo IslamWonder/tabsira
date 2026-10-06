@@ -91,7 +91,7 @@ export const viewport: Viewport = {
  * Rendered per request: the analytics configuration is read on the server at
  * request time (owner decision 28), so no build ever fixes it.
  */
-export default async function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   const [consentDefaults, consent] = await Promise.all([consentModeDefaults(), serverConsent()]);
   return (
     // The inline script may set data-theme and data-motion before React hydrates; those may differ.

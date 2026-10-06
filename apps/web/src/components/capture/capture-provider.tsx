@@ -41,7 +41,7 @@ const CaptureContext = createContext<Capture | null>(null);
  * says what is being sent without the file's name, and a refusal is said in
  * Arabic with a way to try again; nothing is shown back of the photo.
  */
-export function CaptureProvider({ children }: { children: ReactNode }) {
+export function CaptureProvider({ children }: Readonly<{ children: ReactNode }>) {
   const router = useRouter();
   const pathname = usePathname();
   const session = useSession();

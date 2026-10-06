@@ -6,7 +6,10 @@ import { cx } from '@/lib/cx';
  * lifts the picture instead of covering it. The parent must be `relative`;
  * under reduced motion the band stays put.
  */
-export function ScanSweep({ active, className }: { active: boolean; className?: string }) {
+export function ScanSweep({
+  active,
+  className,
+}: Readonly<{ active: boolean; className?: string }>) {
   if (!active) {
     return null;
   }

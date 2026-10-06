@@ -73,12 +73,12 @@ function SceneHeading({
   count,
   headingRef,
   countRef,
-}: {
+}: Readonly<{
   trail: ReactNode;
   count: number | null;
   headingRef: RefObject<HTMLDivElement | null>;
   countRef: RefObject<HTMLParagraphElement | null>;
-}) {
+}>) {
   return (
     <div className="flex items-start justify-between gap-4 px-4 pt-5 tablet:px-8 tablet:pt-8 desktop:px-12 desktop:pt-10">
       <div ref={headingRef} className="sky-text-shadow flex shrink-0 flex-col gap-1">
@@ -115,7 +115,7 @@ function StarButton({
   dockId,
   buttonRef,
   onSelect,
-}: {
+}: Readonly<{
   star: Star;
   at: { x: number; y: number } | undefined;
   measured: boolean;
@@ -124,7 +124,7 @@ function StarButton({
   dockId: string;
   buttonRef: (element: HTMLButtonElement | null) => void;
   onSelect: () => void;
-}) {
+}>) {
   // Until the field is measured every star waits unseen at its own place; a star with no room stays unseen.
   const shown = measured && at !== undefined;
   return (
@@ -161,7 +161,7 @@ function StarButton({
   );
 }
 
-function OpenInsights({ star, onList }: { star: Star; onList: () => void }) {
+function OpenInsights({ star, onList }: Readonly<{ star: Star; onList: () => void }>) {
   const classes =
     'sky-open inline-flex min-h-12 shrink-0 items-center justify-center gap-3 self-stretch rounded-full px-7 font-semibold text-[16px] tablet:self-center tablet:px-8';
   const [only] = star.insights;
@@ -190,12 +190,12 @@ function SelectedMeaningDock({
   dockId,
   dockRef,
   onList,
-}: {
+}: Readonly<{
   star: Star;
   dockId: string;
   dockRef: RefObject<HTMLDivElement | null>;
   onList: () => void;
-}) {
+}>) {
   return (
     <div
       ref={dockRef}
@@ -216,7 +216,7 @@ function SelectedMeaningDock({
   );
 }
 
-function InsightList({ star }: { star: Star }) {
+function InsightList({ star }: Readonly<{ star: Star }>) {
   return (
     <ul className="m-0 flex list-none flex-col gap-2 p-0">
       {star.insights.map((insight) => (
@@ -234,7 +234,10 @@ function InsightList({ star }: { star: Star }) {
   );
 }
 
-function MeaningList({ stars, onPick }: { stars: readonly Star[]; onPick: (star: Star) => void }) {
+function MeaningList({
+  stars,
+  onPick,
+}: Readonly<{ stars: readonly Star[]; onPick: (star: Star) => void }>) {
   return (
     <ul className="m-0 flex list-none flex-col gap-2 p-0">
       {stars.map((star) => (
@@ -376,11 +379,11 @@ function StarField({
   sky,
   headingRef,
   countRef,
-}: {
+}: Readonly<{
   sky: Progress['sky'];
   headingRef: RefObject<HTMLDivElement | null>;
   countRef: RefObject<HTMLParagraphElement | null>;
-}) {
+}>) {
   const stars = useMemo(() => [...sky.stars].sort(byFirstSeen), [sky.stars]);
   const [chosen, setChosen] = useState<string | null>(null);
   const [announced, setAnnounced] = useState('');
@@ -476,7 +479,7 @@ function StarField({
   );
 }
 
-function SkyNote({ noteRef }: { noteRef?: RefObject<HTMLParagraphElement | null> }) {
+function SkyNote({ noteRef }: Readonly<{ noteRef?: RefObject<HTMLParagraphElement | null> }>) {
   return (
     <p
       ref={noteRef}
@@ -515,7 +518,9 @@ function EmptySky() {
   );
 }
 
-function SkyMessage({ state }: { state: Extract<SkyState, { status: 'loading' | 'failed' }> }) {
+function SkyMessage({
+  state,
+}: Readonly<{ state: Extract<SkyState, { status: 'loading' | 'failed' }> }>) {
   return (
     <div className="sky-veil flex flex-col items-start gap-3 px-4 pt-10 pb-10 tablet:absolute tablet:inset-x-0 tablet:top-1/2 tablet:mx-auto tablet:w-fit tablet:-translate-y-1/2 tablet:items-center tablet:px-24 tablet:py-14">
       {state.status === 'loading' ? (
@@ -548,7 +553,10 @@ function SkyMessage({ state }: { state: Extract<SkyState, { status: 'loading' | 
  * record of learning, never a score: no lines join them, no star is larger
  * for being repeated, and choosing one records nothing.
  */
-export function MeaningSkyScene({ state, trail }: { state: SkyState; trail?: ReactNode }) {
+export function MeaningSkyScene({
+  state,
+  trail,
+}: Readonly<{ state: SkyState; trail?: ReactNode }>) {
   const headingRef = useRef<HTMLDivElement>(null);
   const countRef = useRef<HTMLParagraphElement>(null);
   const ready = state.status === 'ready';

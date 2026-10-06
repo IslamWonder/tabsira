@@ -178,7 +178,7 @@ const PROBLEM_TEXT: Record<CameraFailure, string> = {
   unsupported: messages.scene.starter.cameraUnavailable,
 };
 
-export function CameraCapture({ onFile, onPick, autoStart = false }: CameraCaptureProps) {
+export function CameraCapture({ onFile, onPick, autoStart = false }: Readonly<CameraCaptureProps>) {
   const camera = useCameraStream();
   const [taking, setTaking] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -367,7 +367,7 @@ interface LauncherProps {
 }
 
 /** Before the camera runs: the two ways in, full width, the camera first. */
-function Launcher({ status, camera, gallery }: LauncherProps) {
+function Launcher({ status, camera, gallery }: Readonly<LauncherProps>) {
   return (
     <div className="flex flex-col items-center gap-4 py-2 text-center">
       <SummoningCircle size={96} />

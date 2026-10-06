@@ -47,7 +47,7 @@ export function CompletionPanel({
   progressFailed,
   returnTo,
   share,
-}: CompletionPanelProps) {
+}: Readonly<CompletionPanelProps>) {
   const titleId = useId();
   const region = useRef<HTMLElement>(null);
   const { place } = completion;

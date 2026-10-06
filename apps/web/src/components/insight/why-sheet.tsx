@@ -6,7 +6,7 @@ import { messages } from '@/messages';
 
 const T = messages.insightPage.why;
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
   return (
     <section className="flex flex-col gap-1.5">
       <h3 className="m-0 font-semibold text-[0.9375rem] text-fg-soft">{title}</h3>
@@ -15,7 +15,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Items({ items }: { items: readonly string[] }) {
+function Items({ items }: Readonly<{ items: readonly string[] }>) {
   return (
     <ul className="m-0 flex list-disc flex-col gap-1 ps-5 text-[1rem] text-fg leading-[1.85]">
       {items.map((item) => (
@@ -40,7 +40,7 @@ export interface WhySheetProps {
  * insight stays in the sheet's description, so the reader knows which insight
  * it is about (Working memory).
  */
-export function WhySheet({ open, onClose, insight }: WhySheetProps) {
+export function WhySheet({ open, onClose, insight }: Readonly<WhySheetProps>) {
   const sources = [
     insight.quran === null
       ? null

@@ -13,7 +13,9 @@ const requestReset = (email: string, headers: Record<string, string>) =>
   attempt(api.POST('/auth/forgot-password', { body: { email }, headers }));
 
 /** Ask for a password reset link; the answer never says whether the address has an account. */
-export function ForgotPasswordScreen({ turnstileSiteKey = '' }: { turnstileSiteKey?: string }) {
+export function ForgotPasswordScreen({
+  turnstileSiteKey = '',
+}: Readonly<{ turnstileSiteKey?: string }>) {
   return (
     <Gate
       title={T.title}

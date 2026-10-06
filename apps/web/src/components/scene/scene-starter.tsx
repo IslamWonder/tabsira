@@ -18,7 +18,11 @@ export interface SceneStarterProps {
  * mouse a dropped photo too (Postel's law). Nothing is sent from here: the
  * page that owns the analysis decides what happens with the file.
  */
-export function SceneStarter({ onFile, startCamera = false, className }: SceneStarterProps) {
+export function SceneStarter({
+  onFile,
+  startCamera = false,
+  className,
+}: Readonly<SceneStarterProps>) {
   const intake = usePhotoIntake(onFile);
   return (
     <section

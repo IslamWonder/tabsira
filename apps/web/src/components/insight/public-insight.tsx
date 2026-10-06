@@ -12,7 +12,7 @@ import { InsightEvidence } from './insight-evidence';
 const T = messages.publicInsight;
 
 /** The owner's chosen public handle and name, exactly as given; nothing else identifies them. */
-function Author({ author }: { author: NonNullable<PublicInsight['author']> }) {
+function Author({ author }: Readonly<{ author: NonNullable<PublicInsight['author']> }>) {
   return (
     <div className="flex flex-wrap items-center gap-x-2 text-[0.9375rem] text-fg-soft">
       <span className="sr-only">{T.authorLabel}:</span>
@@ -27,7 +27,7 @@ function Author({ author }: { author: NonNullable<PublicInsight['author']> }) {
   );
 }
 
-function SmallStep({ step }: { step: NonNullable<PublicInsight['small_step']> }) {
+function SmallStep({ step }: Readonly<{ step: NonNullable<PublicInsight['small_step']> }>) {
   return (
     <section
       aria-label={T.stepTitle}
@@ -69,7 +69,7 @@ function Invitation() {
  * answer holds: no photo, place, chat or progress, and the author only when the
  * owner chose a public handle and name.
  */
-export function PublicInsightPage({ insight }: { insight: PublicInsight }) {
+export function PublicInsightPage({ insight }: Readonly<{ insight: PublicInsight }>) {
   return (
     <div className="mx-auto flex w-full max-w-[46rem] flex-col gap-6 px-4 pt-[max(28px,env(safe-area-inset-top))] pb-8 tablet:px-6 tablet:pb-10">
       <article className="motion-safe:animate-fade-in flex flex-col gap-6">

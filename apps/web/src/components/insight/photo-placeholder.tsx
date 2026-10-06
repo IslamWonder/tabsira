@@ -34,7 +34,7 @@ export function PhotoPlaceholder({
   fill = false,
   busy = false,
   className,
-}: PhotoPlaceholderProps) {
+}: Readonly<PhotoPlaceholderProps>) {
   return (
     <div
       className={cx(

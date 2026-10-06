@@ -23,7 +23,7 @@ export function useSaveState() {
  * «saving» while a change travels, «saved» once the API kept it, or what went
  * wrong and what to do (tajriba §3.5). Always present, so it is announced.
  */
-export function SaveStatus({ state }: { state: SaveState }) {
+export function SaveStatus({ state }: Readonly<{ state: SaveState }>) {
   return (
     <>
       <p role="status" className="m-0 flex min-h-6 items-center gap-1.5 text-fg-soft text-sm">

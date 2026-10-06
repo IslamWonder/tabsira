@@ -40,7 +40,7 @@ function mayRetry(failure: Failure): boolean {
  * same evidence cards as the insight: the store's text, byte for byte, with its
  * fixed tag, reference and links; the model's words never carry scripture.
  */
-export function ChatSheet({ open, onClose, insightTitle, chat, onAsk }: ChatSheetProps) {
+export function ChatSheet({ open, onClose, insightTitle, chat, onAsk }: Readonly<ChatSheetProps>) {
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);

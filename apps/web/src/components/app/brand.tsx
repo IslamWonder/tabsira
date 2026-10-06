@@ -4,7 +4,7 @@ import { cx } from '@/lib/cx';
 import { messages } from '@/messages';
 
 /** The designer's mark, leading home; its accessible name is the product's name. */
-export function Brand({ className }: { className?: string }) {
+export function Brand({ className }: Readonly<{ className?: string }>) {
   return (
     <Link
       href="/"

@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   });
 }
 
-export default async function PostPage({ params }: Params) {
+export default async function PostPage({ params }: Readonly<Params>) {
   const { id } = await params;
   const result = PUBLIC_ID.test(id) ? await postOnServer(id) : null;
   return (

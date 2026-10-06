@@ -34,7 +34,7 @@ export function TextField({
   ref,
   className,
   ...input
-}: TextFieldProps) {
+}: Readonly<TextFieldProps>) {
   const id = useId();
   const hintId = useId();
   const errorId = useId();

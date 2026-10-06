@@ -60,7 +60,7 @@ export function revealLabel(insight: Post['insight']): string {
 }
 
 /** The author's moderation state, shown to the author alone (the API returns it to nobody else). */
-export function StatusChip({ post }: { post: Post }) {
+export function StatusChip({ post }: Readonly<{ post: Post }>) {
   if (post.status === 'published') {
     return null;
   }
@@ -78,7 +78,7 @@ export function StatusChip({ post }: { post: Post }) {
 }
 
 /** The author's own words, apart from the insight and labelled as theirs, whatever they say. */
-function ReflectionBlock({ post }: { post: Post }) {
+function ReflectionBlock({ post }: Readonly<{ post: Post }>) {
   if (post.reflection === null) {
     return null;
   }
@@ -123,7 +123,7 @@ export function PostCard({
   headingLevel = 2,
   comments = false,
   className,
-}: PostCardProps) {
+}: Readonly<PostCardProps>) {
   const titleId = useId();
   const pathname = usePathname();
   const access = useAccess();

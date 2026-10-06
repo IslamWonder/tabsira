@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /** A published insight, server-rendered so crawlers and share previews read it. */
-export default async function PublicInsightRoute({ params }: Props) {
+export default async function PublicInsightRoute({ params }: Readonly<Props>) {
   const { result } = await load(params);
   if (!result.ok) {
     // The API did not answer: the error page, never a "not found" that would be untrue.

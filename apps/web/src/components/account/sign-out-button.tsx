@@ -17,11 +17,11 @@ import { messages } from '@/messages';
 export function SignOutButton({
   className,
   onSignedOut,
-}: {
+}: Readonly<{
   className?: string;
   /** After the session ended, before the page shows the signed-out state. */
   onSignedOut?: () => void;
-}) {
+}>) {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 

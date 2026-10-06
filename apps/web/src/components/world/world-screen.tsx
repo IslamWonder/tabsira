@@ -50,7 +50,7 @@ export type WorldPanelState =
   | { kind: 'help' };
 
 /** The whole screen under the top bar (and its 1 px rule): nothing scrolls below the world. */
-function Frame({ phase, children }: { phase: WorldPhase; children: ReactNode }) {
+function Frame({ phase, children }: Readonly<{ phase: WorldPhase; children: ReactNode }>) {
   return (
     <div
       data-phase={phase}
@@ -67,12 +67,12 @@ function RoundButton({
   onClick,
   children,
   wide = false,
-}: {
+}: Readonly<{
   label: string;
   onClick: () => void;
   children: ReactNode;
   wide?: boolean;
-}) {
+}>) {
   return (
     <button
       type="button"
@@ -99,7 +99,10 @@ function RoundButton({
  * the start; back, help and the learner's list (once something was learned) at the end.
  * They stay the size of the screen, whatever the zoom.
  */
-function Header({ onMine, onHelp }: { onMine: (() => void) | null; onHelp: (() => void) | null }) {
+function Header({
+  onMine,
+  onHelp,
+}: Readonly<{ onMine: (() => void) | null; onHelp: (() => void) | null }>) {
   const router = useRouter();
   const back = () => {
     if (window.history.length > 1) {
@@ -139,7 +142,7 @@ function Header({ onMine, onHelp }: { onMine: (() => void) | null; onHelp: (() =
 }
 
 /** The invitation and the one way on: capturing a scene, wherever the reader is. */
-function Discover({ empty }: { empty: boolean }) {
+function Discover({ empty }: Readonly<{ empty: boolean }>) {
   const capture = useCapture();
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--nav-clearance)-8px)] z-10 flex flex-col items-center gap-3 pr-3 pl-[76px] tablet:bottom-7 tablet:px-0">
@@ -200,7 +203,12 @@ export interface WorldViewProps {
  * once, wherever the learning happened, and is announced; the camera goes to
  * it once, and never moves by itself otherwise.
  */
-export function WorldView({ world, onVisited, onShown, initialPanel = null }: WorldViewProps) {
+export function WorldView({
+  world,
+  onVisited,
+  onShown,
+  initialPanel = null,
+}: Readonly<WorldViewProps>) {
   const landmarks = useMemo(() => landmarksOf(world), [world]);
   const items = useMemo(() => learnedOf(world), [world]);
   const pending = useMemo(() => pendingReveals(world), [world]);
@@ -350,7 +358,7 @@ export function WorldView({ world, onVisited, onShown, initialPanel = null }: Wo
 }
 
 /** Clouds only, the way the world looks before it is read: never an empty world that is not one. */
-function Waiting({ failed, onRetry }: { failed: boolean; onRetry: () => void }) {
+function Waiting({ failed, onRetry }: Readonly<{ failed: boolean; onRetry: () => void }>) {
   return (
     <Frame phase={failed ? 'unavailable' : 'loading'}>
       <div aria-hidden="true" className="world-clouds absolute inset-0" />

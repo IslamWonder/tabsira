@@ -42,7 +42,12 @@ export interface MeMenuProps {
  * emblem so it is found at a glance, its name, and on a phone one line on what
  * it holds; the entry shown beside the menu is marked as the current page.
  */
-export function MeMenu({ groups, current, withSummaries = false, signedIn }: MeMenuProps) {
+export function MeMenu({
+  groups,
+  current,
+  withSummaries = false,
+  signedIn,
+}: Readonly<MeMenuProps>) {
   return (
     <nav aria-label={M.sectionsLabel} className="flex flex-col gap-5">
       {groups.map((group) => (

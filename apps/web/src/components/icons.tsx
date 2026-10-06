@@ -28,7 +28,7 @@ function Icon({ children, strokeWidth = 1.7, ...props }: IconProps & { children:
   );
 }
 
-export function WorldIcon(props: IconProps) {
+export function WorldIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M12 3a9 9 0 1 0 9 9" />
@@ -38,7 +38,7 @@ export function WorldIcon(props: IconProps) {
   );
 }
 
-export function CommunityIcon(props: IconProps) {
+export function CommunityIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M17 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
@@ -49,7 +49,7 @@ export function CommunityIcon(props: IconProps) {
   );
 }
 
-export function CameraIcon(props: IconProps) {
+export function CameraIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
@@ -59,7 +59,7 @@ export function CameraIcon(props: IconProps) {
 }
 
 /** A framed picture, a hill and a sun: a photo already on the device. */
-export function GalleryIcon(props: IconProps) {
+export function GalleryIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <rect x="3" y="4" width="18" height="16" rx="2.5" />
@@ -70,7 +70,7 @@ export function GalleryIcon(props: IconProps) {
 }
 
 /** Two arrows turning around the lens: the other camera of the device. */
-export function SwitchCameraIcon(props: IconProps) {
+export function SwitchCameraIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.7" />
@@ -82,7 +82,7 @@ export function SwitchCameraIcon(props: IconProps) {
   );
 }
 
-export function AtlasIcon(props: IconProps) {
+export function AtlasIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z" />
@@ -92,7 +92,7 @@ export function AtlasIcon(props: IconProps) {
   );
 }
 
-export function ProfileIcon(props: IconProps) {
+export function ProfileIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <circle cx="12" cy="8" r="4" />
@@ -101,7 +101,7 @@ export function ProfileIcon(props: IconProps) {
   );
 }
 
-export function ExternalIcon(props: IconProps) {
+export function ExternalIcon(props: Readonly<IconProps>) {
   return (
     <Icon width="16" height="16" {...props}>
       <path d="M14 4h6v6" />
@@ -111,7 +111,7 @@ export function ExternalIcon(props: IconProps) {
   );
 }
 
-export function CloseIcon(props: IconProps) {
+export function CloseIcon(props: Readonly<IconProps>) {
   return (
     <Icon strokeWidth={2} {...props}>
       <path d="M18 6 6 18" />
@@ -120,7 +120,7 @@ export function CloseIcon(props: IconProps) {
   );
 }
 
-export function CheckIcon(props: IconProps) {
+export function CheckIcon(props: Readonly<IconProps>) {
   return (
     <Icon strokeWidth={2} {...props}>
       <path d="M20 6 9 17l-5-5" />
@@ -128,7 +128,7 @@ export function CheckIcon(props: IconProps) {
   );
 }
 
-export function SeedlingIcon(props: IconProps) {
+export function SeedlingIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M12 21v-9" />
@@ -138,7 +138,7 @@ export function SeedlingIcon(props: IconProps) {
   );
 }
 
-export function ShareIcon(props: IconProps) {
+export function ShareIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <circle cx="18" cy="5" r="3" />
@@ -150,7 +150,7 @@ export function ShareIcon(props: IconProps) {
   );
 }
 
-export function SunIcon(props: IconProps) {
+export function SunIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <circle cx="12" cy="12" r="4" />
@@ -159,7 +159,7 @@ export function SunIcon(props: IconProps) {
   );
 }
 
-export function MoonIcon(props: IconProps) {
+export function MoonIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />
@@ -168,7 +168,7 @@ export function MoonIcon(props: IconProps) {
 }
 
 /** Half light, half dark: «follow the device». */
-export function AutoThemeIcon(props: IconProps) {
+export function AutoThemeIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <circle cx="12" cy="12" r="8.5" />
@@ -178,7 +178,7 @@ export function AutoThemeIcon(props: IconProps) {
 }
 
 /** A speaker with sound waves: the sound effect is on. */
-export function SoundOnIcon(props: IconProps) {
+export function SoundOnIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M11 5 6 9H3v6h3l5 4V5Z" />
@@ -192,7 +192,7 @@ export function SoundOnIcon(props: IconProps) {
  * They rise and fall through `.fx-eq-bar` (fx.css), and stand still at
  * different heights when motion is reduced.
  */
-export function SoundPlayingIcon(props: IconProps) {
+export function SoundPlayingIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M11 5 6 9H3v6h3l5 4V5Z" />
@@ -204,7 +204,7 @@ export function SoundPlayingIcon(props: IconProps) {
 }
 
 /** The same speaker with a cross: the sound effect is off. */
-export function SoundOffIcon(props: IconProps) {
+export function SoundOffIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M11 5 6 9H3v6h3l5 4V5Z" />
@@ -213,7 +213,7 @@ export function SoundOffIcon(props: IconProps) {
   );
 }
 
-export function SparkIcon(props: IconProps) {
+export function SparkIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7Z" />
@@ -221,7 +221,7 @@ export function SparkIcon(props: IconProps) {
   );
 }
 
-export function OfflineIcon(props: IconProps) {
+export function OfflineIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M2 8.8a15 15 0 0 1 4.2-2.6" />
@@ -235,7 +235,7 @@ export function OfflineIcon(props: IconProps) {
   );
 }
 
-export function MailIcon(props: IconProps) {
+export function MailIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -244,7 +244,7 @@ export function MailIcon(props: IconProps) {
   );
 }
 
-export function EyeIcon(props: IconProps) {
+export function EyeIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
@@ -253,7 +253,7 @@ export function EyeIcon(props: IconProps) {
   );
 }
 
-export function EyeOffIcon(props: IconProps) {
+export function EyeOffIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M10.6 5.1A10.5 10.5 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-2.6 3.5" />
@@ -264,7 +264,7 @@ export function EyeOffIcon(props: IconProps) {
   );
 }
 
-export function DownloadIcon(props: IconProps) {
+export function DownloadIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M12 3v12" />
@@ -274,7 +274,7 @@ export function DownloadIcon(props: IconProps) {
   );
 }
 
-export function TrashIcon(props: IconProps) {
+export function TrashIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M4 7h16" />
@@ -286,7 +286,7 @@ export function TrashIcon(props: IconProps) {
 }
 
 /** The door and the arrow leaving through it. */
-export function SignOutIcon(props: IconProps) {
+export function SignOutIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" />
@@ -296,7 +296,7 @@ export function SignOutIcon(props: IconProps) {
   );
 }
 
-export function ShieldIcon(props: IconProps) {
+export function ShieldIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6L12 3Z" />
@@ -305,7 +305,7 @@ export function ShieldIcon(props: IconProps) {
   );
 }
 
-export function LockIcon(props: IconProps) {
+export function LockIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <rect x="5" y="11" width="14" height="9" rx="2" />
@@ -318,7 +318,7 @@ export function LockIcon(props: IconProps) {
  * Google's «G», in Google's own colours, as its sign-in branding asks. Drawn
  * inline: nothing is requested from Google to show it.
  */
-export function GoogleIcon(props: IconProps) {
+export function GoogleIcon(props: Readonly<IconProps>) {
   return (
     <svg
       width="20"
@@ -349,7 +349,7 @@ export function GoogleIcon(props: IconProps) {
   );
 }
 
-export function BookmarkIcon(props: IconProps) {
+export function BookmarkIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1Z" />
@@ -357,7 +357,7 @@ export function BookmarkIcon(props: IconProps) {
   );
 }
 
-export function ThanksIcon(props: IconProps) {
+export function ThanksIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M12 20.5s-7.5-4.4-7.5-10A4.3 4.3 0 0 1 12 7.8a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10-7.5 10Z" />
@@ -365,7 +365,7 @@ export function ThanksIcon(props: IconProps) {
   );
 }
 
-export function CommentIcon(props: IconProps) {
+export function CommentIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M21 12a8 8 0 0 1-8 8H8l-4 3v-6.5A8 8 0 1 1 21 12Z" />
@@ -373,7 +373,7 @@ export function CommentIcon(props: IconProps) {
   );
 }
 
-export function MoreIcon(props: IconProps) {
+export function MoreIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <circle cx="5" cy="12" r="1.2" />
@@ -383,7 +383,7 @@ export function MoreIcon(props: IconProps) {
   );
 }
 
-export function FlagIcon(props: IconProps) {
+export function FlagIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M5 21V4" />
@@ -392,7 +392,7 @@ export function FlagIcon(props: IconProps) {
   );
 }
 
-export function BlockIcon(props: IconProps) {
+export function BlockIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <circle cx="12" cy="12" r="9" />
@@ -401,7 +401,7 @@ export function BlockIcon(props: IconProps) {
   );
 }
 
-export function PlusIcon(props: IconProps) {
+export function PlusIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M12 5v14" />
@@ -410,7 +410,7 @@ export function PlusIcon(props: IconProps) {
   );
 }
 
-export function MinusIcon(props: IconProps) {
+export function MinusIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M5 12h14" />
@@ -419,7 +419,7 @@ export function MinusIcon(props: IconProps) {
 }
 
 /** Back, in a right-to-left page: the arrow points to where the reader came from, the right. */
-export function BackIcon(props: IconProps) {
+export function BackIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M5 12h14" />
@@ -429,7 +429,7 @@ export function BackIcon(props: IconProps) {
 }
 
 /** Onward, in a right-to-left page, as an arrow: it points to the left, where the reading goes. */
-export function OnwardArrowIcon(props: IconProps) {
+export function OnwardArrowIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M19 12H5" />
@@ -439,7 +439,7 @@ export function OnwardArrowIcon(props: IconProps) {
 }
 
 /** Onward, in a right-to-left page: a chevron pointing left. */
-export function OnwardIcon(props: IconProps) {
+export function OnwardIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="m14.5 6-6 6 6 6" />
@@ -447,7 +447,7 @@ export function OnwardIcon(props: IconProps) {
   );
 }
 
-export function CompassIcon(props: IconProps) {
+export function CompassIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <circle cx="12" cy="12" r="9" />
@@ -456,7 +456,7 @@ export function CompassIcon(props: IconProps) {
   );
 }
 
-export function RecenterIcon(props: IconProps) {
+export function RecenterIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
@@ -465,7 +465,7 @@ export function RecenterIcon(props: IconProps) {
   );
 }
 
-export function OpenBookIcon(props: IconProps) {
+export function OpenBookIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M4 5.5c2.5-1 5.5-1 8 .5 2.5-1.5 5.5-1.5 8-.5V19c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z" />
@@ -474,7 +474,7 @@ export function OpenBookIcon(props: IconProps) {
   );
 }
 
-export function GemIcon(props: IconProps) {
+export function GemIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M6.5 4h11l3.5 5-9 11L3 9z" />
@@ -483,7 +483,7 @@ export function GemIcon(props: IconProps) {
   );
 }
 
-export function PhotosIcon(props: IconProps) {
+export function PhotosIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <rect x="3.5" y="6.5" width="14" height="13" rx="2" />
@@ -493,7 +493,7 @@ export function PhotosIcon(props: IconProps) {
   );
 }
 
-export function MenuIcon(props: IconProps) {
+export function MenuIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <path d="M4 7h16M4 12h16M4 17h16" />
@@ -501,7 +501,7 @@ export function MenuIcon(props: IconProps) {
   );
 }
 
-export function VerifyIcon(props: IconProps) {
+export function VerifyIcon(props: Readonly<IconProps>) {
   return (
     <Icon {...props}>
       <circle cx="12" cy="12" r="9" />

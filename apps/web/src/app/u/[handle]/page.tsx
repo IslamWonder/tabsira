@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   });
 }
 
-export default async function ProfilePage({ params }: Params) {
+export default async function ProfilePage({ params }: Readonly<Params>) {
   return (
     <ProfileScreen
       handle={decode((await params).handle)}

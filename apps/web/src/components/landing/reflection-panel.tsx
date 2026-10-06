@@ -20,7 +20,7 @@ export interface ReflectionPanelProps {
  * the small step below it as the quest it is, on its own dashed scroll. It
  * stands apart from the verse and the hadith above it, which never move.
  */
-export function ReflectionPanel({ glimpse, smallStep }: ReflectionPanelProps) {
+export function ReflectionPanel({ glimpse, smallStep }: Readonly<ReflectionPanelProps>) {
   return (
     <GlassPanel
       as="section"

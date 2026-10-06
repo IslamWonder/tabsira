@@ -215,7 +215,7 @@ export function MapView({
   onPick,
   interactive = true,
   className,
-}: MapViewProps) {
+}: Readonly<MapViewProps>) {
   const container = useRef<HTMLDivElement>(null);
   const [unsupported, setUnsupported] = useState(false);
   const map = useRef<MapLibreMap | null>(null);

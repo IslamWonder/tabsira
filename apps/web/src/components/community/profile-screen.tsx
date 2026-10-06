@@ -43,7 +43,7 @@ export function formatMonth(joined: string): string {
   );
 }
 
-function Counts({ profile }: { profile: MemberProfile }) {
+function Counts({ profile }: Readonly<{ profile: MemberProfile }>) {
   const counts = [
     [P.counts.posts, profile.posts_count],
     [P.counts.followers, profile.followers_count],
@@ -64,10 +64,10 @@ function Counts({ profile }: { profile: MemberProfile }) {
 function FollowButton({
   profile,
   onChange,
-}: {
+}: Readonly<{
   profile: MemberProfile;
   onChange: (profile: MemberProfile) => void;
-}) {
+}>) {
   return (
     <FollowToggle
       handle={profile.handle}
@@ -92,10 +92,10 @@ function FollowButton({
 export function ProfileScreen({
   handle,
   comments = false,
-}: {
+}: Readonly<{
   handle: string;
   comments?: boolean;
-}) {
+}>) {
   const session = useSession();
   const headingId = useId();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });

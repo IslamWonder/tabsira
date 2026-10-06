@@ -24,13 +24,13 @@ export function PlaceContent({
   onChoose,
   onGoTo,
   onVisited,
-}: {
+}: Readonly<{
   place: Place;
   insightId: string | null;
   onChoose: (insightId: string) => void;
   onGoTo: (insightId: string) => void;
   onVisited: (place: Place) => void;
-}) {
+}>) {
   const chosen = insightId ?? place.insights.at(-1)?.id ?? null;
   const others = place.insights.filter((item) => item.id !== chosen).reverse();
   const placeId = place.id;
@@ -83,10 +83,10 @@ export function PlaceContent({
 export function MineContent({
   items,
   onPick,
-}: {
+}: Readonly<{
   items: readonly Learned[];
   onPick: (item: Learned) => void;
-}) {
+}>) {
   return (
     <ul className="m-0 flex list-none flex-col gap-2 p-0">
       {items.map((item) => (
@@ -117,7 +117,7 @@ const PAGES = [
  * How the world works, on request only (never opened by itself). The world
  * fills the screen, so the site's pages the footer links elsewhere are here.
  */
-export function HelpContent({ onLeave }: { onLeave: () => void }) {
+export function HelpContent({ onLeave }: Readonly<{ onLeave: () => void }>) {
   return (
     <div className="flex flex-col gap-5">
       <ul className="m-0 flex flex-col gap-2.5 ps-5 text-[0.9375rem] text-fg leading-[1.9]">

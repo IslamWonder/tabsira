@@ -109,7 +109,10 @@ function spanStatus(text: string, spans: readonly HadithSpan[] | undefined) {
   return spansAreValid(text, spans) ? 'applied' : 'ignored';
 }
 
-function HadithText({ text, spans }: { text: string; spans: readonly HadithSpan[] | undefined }) {
+function HadithText({
+  text,
+  spans,
+}: Readonly<{ text: string; spans: readonly HadithSpan[] | undefined }>) {
   return (
     <p
       lang="ar"

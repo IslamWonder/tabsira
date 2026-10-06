@@ -35,7 +35,7 @@ export function FocusMarker({
   dim = false,
   delay = 0,
   onSelect,
-}: FocusMarkerProps) {
+}: Readonly<FocusMarkerProps>) {
   const chipInside = box.y < 0.08;
   return (
     <button

@@ -18,7 +18,13 @@ export interface CheckboxFieldProps {
  * legal consent (Law of Similarity). Space toggles it, screen readers say its
  * state and its hint, and hover changes nothing.
  */
-export function CheckboxField({ label, hint, checked, onChange, disabled }: CheckboxFieldProps) {
+export function CheckboxField({
+  label,
+  hint,
+  checked,
+  onChange,
+  disabled,
+}: Readonly<CheckboxFieldProps>) {
   const id = useId();
   const hintId = useId();
   return (

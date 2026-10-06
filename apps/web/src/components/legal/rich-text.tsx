@@ -12,7 +12,7 @@ const TOKEN =
  * name is isolated with <bdi> so it cannot reorder the Arabic around it
  * (docs/SEO.md §4).
  */
-export function RichText({ text }: { text: string }) {
+export function RichText({ text }: Readonly<{ text: string }>) {
   const parts: ReactNode[] = [];
   let last = 0;
   for (const match of text.matchAll(TOKEN)) {

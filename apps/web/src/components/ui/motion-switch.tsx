@@ -6,7 +6,7 @@ import { setAmbientMotion, useAmbientMotion } from '@/preferences/motion';
 import { SwitchRow } from './switch-row';
 
 /** On or off for decorative motion, on this device and in the account when signed in (the light motes, the burst on the done button). */
-export function MotionSwitch({ className }: { className?: string }) {
+export function MotionSwitch({ className }: Readonly<{ className?: string }>) {
   const on = useAmbientMotion();
   return (
     <SwitchRow

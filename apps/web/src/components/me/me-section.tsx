@@ -13,7 +13,13 @@ export interface MeSectionProps {
 }
 
 /** One part of the profile page: a glass window with its own heading (Law of Common Region). */
-export function MeSection({ id, title, description, className, children }: MeSectionProps) {
+export function MeSection({
+  id,
+  title,
+  description,
+  className,
+  children,
+}: Readonly<MeSectionProps>) {
   const titleId = useId();
   return (
     <GlassPanel
@@ -38,7 +44,7 @@ export function MeSection({ id, title, description, className, children }: MeSec
 }
 
 /** A quiet sub-heading inside a section: on this device, in your account. */
-export function SubHeading({ children }: { children: ReactNode }) {
+export function SubHeading({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <h3 className="m-0 border-line border-b pb-2 font-medium text-fg-muted text-sm">{children}</h3>
   );

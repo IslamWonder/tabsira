@@ -51,7 +51,7 @@ function Banner() {
  * word, then it leaves on its own. The status region is always there, so the
  * title is announced once each time.
  */
-export function VictoryLayer({ duration = 2200 }: { duration?: number }) {
+export function VictoryLayer({ duration = 2200 }: Readonly<{ duration?: number }>) {
   const [shown, setShown] = useState(0);
 
   useEffect(() => {

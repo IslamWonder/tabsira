@@ -10,11 +10,11 @@ function TextLink({
   href,
   inPlace,
   children,
-}: {
+}: Readonly<{
   href: '/terms' | '/privacy';
   inPlace: boolean;
   children: string;
-}) {
+}>) {
   const classes = 'font-semibold text-link underline underline-offset-4';
   if (inPlace) {
     return (
@@ -50,7 +50,7 @@ export function LegalConsent({
   onChange,
   disabled = false,
   inPlace = false,
-}: LegalConsentProps) {
+}: Readonly<LegalConsentProps>) {
   const id = useId();
   return (
     <div className="flex min-h-12 items-start gap-3">

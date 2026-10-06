@@ -123,7 +123,7 @@ function ConsentHistory() {
  * consequences in words, the irreversible button apart from everything else
  * (Fitts: separate the destructive action), and the way back as the easy way out.
  */
-function DeleteAccount({ onDeleted }: { onDeleted: () => void }) {
+function DeleteAccount({ onDeleted }: Readonly<{ onDeleted: () => void }>) {
   const confirmId = useId();
   const confirmRef = useRef<HTMLHeadingElement>(null);
   const actionRef = useRef<HTMLButtonElement>(null);
@@ -205,7 +205,7 @@ function DeleteAccount({ onDeleted }: { onDeleted: () => void }) {
 }
 
 /** The data section: take everything away (the export), see what was agreed to, or delete it all. */
-export function DataSection({ onDeleted }: { onDeleted: () => void }) {
+export function DataSection({ onDeleted }: Readonly<{ onDeleted: () => void }>) {
   return (
     <MeSection id="data" title={messages.pages.me.sections.data}>
       <ExportData />

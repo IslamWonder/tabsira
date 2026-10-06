@@ -59,11 +59,11 @@ function Tabs({
   tabs,
   current,
   onChange,
-}: {
+}: Readonly<{
   tabs: readonly Tab[];
   current: Tab;
   onChange: (tab: Tab) => void;
-}) {
+}>) {
   return (
     <div role="tablist" aria-label={C.tabsLabel} className="flex flex-wrap gap-1 desktop:flex-col">
       {tabs.map((tab) => {
@@ -99,7 +99,7 @@ function Tabs({
  * (DESIGN_DECISION.md «Responsive web application»). The ranking of the for-you feed is
  * explained on every item by the why-this button.
  */
-export function CommunityScreen({ comments = false }: { comments?: boolean }) {
+export function CommunityScreen({ comments = false }: Readonly<{ comments?: boolean }>) {
   const session = useSession();
   const signedIn = session.status === 'signed-in';
   const [tab, setTab] = useState<Tab>('for-you');

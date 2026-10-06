@@ -15,9 +15,9 @@ export const metadata: Metadata = {
 
 export default async function DevSkyPage({
   searchParams,
-}: {
+}: Readonly<{
   searchParams: Promise<{ state?: string }>;
-}) {
+}>) {
   const { state } = await searchParams;
   return <SkyPreview state={state} />;
 }

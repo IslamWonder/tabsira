@@ -7,7 +7,10 @@ import { cx } from '@/lib/cx';
  * A large eight-point khatam drawn in thin gold lines, turning very slowly:
  * an ornament behind a scene, never in front of text.
  */
-export function KhatamStar({ className, style }: { className?: string; style?: CSSProperties }) {
+export function KhatamStar({
+  className,
+  style,
+}: Readonly<{ className?: string; style?: CSSProperties }>) {
   const half = 50 * Math.SQRT1_2;
   return (
     <svg

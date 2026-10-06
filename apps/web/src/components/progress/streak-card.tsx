@@ -16,7 +16,7 @@ function dayOfMonth(day: string): number {
  * today first. Quiet by design: no loss warning when it breaks, no pressure
  * (owner decision 27).
  */
-export function StreakCard({ streak }: { streak: Progress['streak'] }) {
+export function StreakCard({ streak }: Readonly<{ streak: Progress['streak'] }>) {
   return (
     <GlassPanel as="section" aria-labelledby="practice-streak" className="flex flex-col gap-3">
       <p className="m-0 text-[var(--step-title)] text-sm">{M.label}</p>

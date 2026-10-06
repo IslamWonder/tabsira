@@ -71,7 +71,7 @@ export function ShareSheet({
   insightTitle,
   published,
   publishTo = NO_TARGETS,
-}: ShareSheetProps) {
+}: Readonly<ShareSheetProps>) {
   const [isPublic, setIsPublic] = useState(published);
   const [link, setLink] = useState<string | null>(
     published ? addressOf(publicInsightPath(insightId)) : null

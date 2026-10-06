@@ -17,7 +17,7 @@ export interface ThemeSwitcherProps {
  * keys move between the three, and screen readers announce «one of three»
  * (Jakob's law: the segmented control everyone already knows).
  */
-export function ThemeSwitcher({ className }: ThemeSwitcherProps) {
+export function ThemeSwitcher({ className }: Readonly<ThemeSwitcherProps>) {
   const preference = useThemePreference();
   const name = useId();
   const hintId = useId();

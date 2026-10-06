@@ -13,7 +13,11 @@ const W = messages.community.why;
  * «How the for-you feed ranks»): no model, nothing from the profile, and a way to switch
  * personalisation off.
  */
-export function WhySheet({ why, open, onClose }: { why: Why; open: boolean; onClose: () => void }) {
+export function WhySheet({
+  why,
+  open,
+  onClose,
+}: Readonly<{ why: Why; open: boolean; onClose: () => void }>) {
   return (
     <Sheet open={open} onClose={onClose} title={W.title}>
       <div className="flex flex-col gap-5 pb-2">

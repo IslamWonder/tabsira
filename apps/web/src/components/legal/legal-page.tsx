@@ -13,7 +13,7 @@ const COMMON = legalMessages().common;
 const LINK =
   'flex min-h-12 items-center rounded-[var(--radius-card)] px-4 text-fg-soft transition-colors duration-200 hover:bg-surface hover:text-fg';
 
-function TableOfContents({ document }: { document: LegalDocument }) {
+function TableOfContents({ document }: Readonly<{ document: LegalDocument }>) {
   return (
     <nav aria-label={COMMON.toc}>
       <ul className="m-0 flex list-none flex-col gap-1 p-0">
@@ -40,7 +40,7 @@ interface LegalPageProps {
  * a table of contents that is sticky on tablet and desktop and folds into a
  * disclosure on a phone, and anchors on every section.
  */
-export function LegalPage({ document, seo }: LegalPageProps) {
+export function LegalPage({ document, seo }: Readonly<LegalPageProps>) {
   return (
     <SettingsLayout
       className="pt-[max(28px,env(safe-area-inset-top))] pb-8"

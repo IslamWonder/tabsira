@@ -45,7 +45,13 @@ export interface EmblemTileProps {
  * second hairline inside it, a soft light from above, and the emblem engraved
  * in the landing's gold (deep gold by day, light gold by night).
  */
-export function EmblemTile({ name, size = 'md', className, style, children }: EmblemTileProps) {
+export function EmblemTile({
+  name,
+  size = 'md',
+  className,
+  style,
+  children,
+}: Readonly<EmblemTileProps>) {
   const tile = TILE[size];
   return (
     <span

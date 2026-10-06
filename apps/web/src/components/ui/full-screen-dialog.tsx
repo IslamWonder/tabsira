@@ -32,7 +32,7 @@ export function FullScreenDialog({
   onEscape,
   layer = 'z-[70]',
   children,
-}: FullScreenDialogProps) {
+}: Readonly<FullScreenDialogProps>) {
   const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   useModal(open, rootRef, panelRef, { initialFocus: 'dialog', onEscape });

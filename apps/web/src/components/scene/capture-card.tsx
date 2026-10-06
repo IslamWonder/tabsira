@@ -25,7 +25,7 @@ export interface CaptureCardProps {
  * and on a screen with a mouse the card also takes a dropped photo. The
  * privacy line is said here, before anything leaves the device.
  */
-export function CaptureCard({ onCamera, onFile, className }: CaptureCardProps) {
+export function CaptureCard({ onCamera, onFile, className }: Readonly<CaptureCardProps>) {
   const headingId = useId();
   const intake = usePhotoIntake(onFile);
   return (

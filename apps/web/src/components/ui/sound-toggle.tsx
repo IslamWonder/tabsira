@@ -19,7 +19,7 @@ import { Button } from './button';
  * `className` places the switch (an absolute corner of a photo); without
  * one it sits in the flow.
  */
-export function SoundToggle({ className }: { className?: string }) {
+export function SoundToggle({ className }: Readonly<{ className?: string }>) {
   const on = useSoundEnabled();
   const playing = useSoundPlaying() && on;
   const Icon = playing ? SoundPlayingIcon : on ? SoundOnIcon : SoundOffIcon;

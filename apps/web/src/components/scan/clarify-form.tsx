@@ -22,7 +22,7 @@ export interface ClarifyFormProps {
  * as the API asked it, answered in a few words, with nothing else to decide.
  * A refused answer says why and keeps what was typed.
  */
-export function ClarifyForm({ question, onAnswer, acting }: ClarifyFormProps) {
+export function ClarifyForm({ question, onAnswer, acting }: Readonly<ClarifyFormProps>) {
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState<string | null>(null);
 

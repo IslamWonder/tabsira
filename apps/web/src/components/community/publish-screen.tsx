@@ -76,7 +76,7 @@ function DraftForm({
   failure,
   onSubmit,
   onCancel,
-}: DraftFormProps) {
+}: Readonly<DraftFormProps>) {
   const [reflection, setReflection] = useState(initial?.reflection?.text ?? '');
   const [visibility, setVisibility] = useState<PostVisibility>(initial?.visibility ?? 'public');
   const [photo, setPhoto] = useState(false);
@@ -141,7 +141,7 @@ function DraftForm({
  * A refused post becomes a draft again when edited. The insight is named by
  * `?insight=<id>`, which the insight screen's publish action passes.
  */
-export function PublishScreen({ comments = false }: { comments?: boolean }) {
+export function PublishScreen({ comments = false }: Readonly<{ comments?: boolean }>) {
   const params = useSearchParams();
   const insightId = params.get('insight');
   const access = useAccess();

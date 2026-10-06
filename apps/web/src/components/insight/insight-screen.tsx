@@ -44,11 +44,11 @@ function Photo({
   view,
   insight,
   backHref,
-}: {
+}: Readonly<{
   view: PhotoView | null;
   insight: Insight;
   backHref: Route;
-}) {
+}>) {
   if (view === null) {
     return <PhotoPlaceholder note={T.loading} backHref={backHref} />;
   }
@@ -82,11 +82,11 @@ function Photo({
 export function InsightScreen({
   insightId,
   publishTo = NO_TARGETS,
-}: {
+}: Readonly<{
   insightId: string;
   /** the atlas and social features, read by the server: the other ways to publish inside sharing. */
   publishTo?: PublishTargets;
-}) {
+}>) {
   const controls = useInsight(insightId);
   const { load, photo, step, finish } = controls;
   const [whyOpen, setWhyOpen] = useState(false);

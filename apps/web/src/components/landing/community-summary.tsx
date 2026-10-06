@@ -50,7 +50,7 @@ function onward(summary: Summary): { href: '/community' | '/atlas'; label: strin
  * (decision 62). Rendered on the server; each figure is text, its label read before it.
  * Nothing moves: no count-up, no hover motion.
  */
-export function CommunitySummary({ summary }: { summary: Summary }) {
+export function CommunitySummary({ summary }: Readonly<{ summary: Summary }>) {
   const link = onward(summary);
   return (
     <section

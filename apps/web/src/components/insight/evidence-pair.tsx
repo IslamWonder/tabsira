@@ -42,7 +42,7 @@ export function EvidencePair({
   quran,
   sunnah,
   sideBySide = false,
-}: {
+}: Readonly<{
   quran?: ReactNode;
   sunnah?: ReactNode;
   /**
@@ -50,7 +50,7 @@ export function EvidencePair({
    * sit side by side. Long texts always stack (tajriba §6).
    */
   sideBySide?: boolean;
-}) {
+}>) {
   return (
     <div
       className={

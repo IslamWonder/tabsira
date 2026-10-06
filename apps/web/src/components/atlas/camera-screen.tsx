@@ -79,7 +79,7 @@ function distanceText(roundedM: number | null): string {
 }
 
 /** A short arrow, turned toward the entry's area; the words beside it carry the meaning. */
-function Arrow({ relative, sector }: { relative: number; sector: Sector }) {
+function Arrow({ relative, sector }: Readonly<{ relative: number; sector: Sector }>) {
   return (
     <svg
       role="img"
@@ -101,7 +101,7 @@ function Arrow({ relative, sector }: { relative: number; sector: Sector }) {
 }
 
 /** One entry's line: its distance or area, and its direction when known. */
-function Whereabouts({ shown, mode }: { shown: Shown; mode: Mode }) {
+function Whereabouts({ shown, mode }: Readonly<{ shown: Shown; mode: Mode }>) {
   if (mode === 'chosen') {
     return <span className="text-[0.8125rem] text-fg-muted">{C.inArea}</span>;
   }
@@ -119,7 +119,7 @@ function Whereabouts({ shown, mode }: { shown: Shown; mode: Mode }) {
   );
 }
 
-function Label({ shown, mode }: { shown: Shown; mode: Mode }) {
+function Label({ shown, mode }: Readonly<{ shown: Shown; mode: Mode }>) {
   const { properties } = shown.feature;
   return (
     <Link
@@ -150,7 +150,7 @@ function Label({ shown, mode }: { shown: Shown; mode: Mode }) {
  * sponsoring feature on, the orphaned entries around the same centre are offered
  * below, asked of the API with the centre snapped to the atlas grid.
  */
-export function CameraScreen({ sponsorship = false }: { sponsorship?: boolean }) {
+export function CameraScreen({ sponsorship = false }: Readonly<{ sponsorship?: boolean }>) {
   const camera = useCameraStream();
   const position = useDevicePosition();
   const heading = useDeviceHeading();

@@ -33,7 +33,7 @@ export function TextArea({
   className,
   rows = 4,
   ...input
-}: TextAreaProps) {
+}: Readonly<TextAreaProps>) {
   const id = useId();
   const hintId = useId();
   const errorId = useId();

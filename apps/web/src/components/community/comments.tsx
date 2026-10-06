@@ -29,7 +29,7 @@ interface CommentFormProps {
 }
 
 /** Write a comment or a reply; the guard judges it before anyone else sees it. */
-function CommentForm({ postId, parent, onCreated, onCancel }: CommentFormProps) {
+function CommentForm({ postId, parent, onCreated, onCancel }: Readonly<CommentFormProps>) {
   const access = useAccess();
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
@@ -102,7 +102,7 @@ function CommentItem({
   onReply,
   onDeleted,
   onAuthorBlocked,
-}: CommentItemProps) {
+}: Readonly<CommentItemProps>) {
   const access = useAccess();
   const [open, setOpen] = useState<'none' | 'report' | 'block'>('none');
   const [deleting, setDeleting] = useState(false);
@@ -207,12 +207,12 @@ export function Comments({
   postId,
   authorHandle,
   onAuthorBlocked,
-}: {
+}: Readonly<{
   postId: string;
   /** The post's author: blocking them from a comment hides the post too. */
   authorHandle?: string;
   onAuthorBlocked?: () => void;
-}) {
+}>) {
   const headingId = useId();
   const fetchPage = useCallback((cursor: string | null) => commentsPage(postId, cursor), [postId]);
   const session = useSession();

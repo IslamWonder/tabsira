@@ -6,7 +6,7 @@ import { messages } from '@/messages';
  * The fixed AI disclosure (master prompt §12), shown on the result and in the
  * chat. Quiet, but never hidden behind a tap.
  */
-export function DisclosureLine({ className }: { className?: string }) {
+export function DisclosureLine({ className }: Readonly<{ className?: string }>) {
   return (
     <p
       className={cx(

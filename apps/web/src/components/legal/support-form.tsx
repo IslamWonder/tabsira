@@ -63,7 +63,7 @@ interface FieldShellProps {
   children: ReactNode;
 }
 
-function FieldShell({ id, label, hint, error, optional, children }: FieldShellProps) {
+function FieldShell({ id, label, hint, error, optional, children }: Readonly<FieldShellProps>) {
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className="font-medium text-fg">
@@ -93,7 +93,7 @@ function FieldShell({ id, label, hint, error, optional, children }: FieldShellPr
  * when the mail was not sent. The result sits in a live region that exists
  * before it speaks, so a screen reader announces it.
  */
-export function SupportForm({ turnstileSiteKey = '' }: { turnstileSiteKey?: string }) {
+export function SupportForm({ turnstileSiteKey = '' }: Readonly<{ turnstileSiteKey?: string }>) {
   const turnstile = useTurnstile(turnstileSiteKey);
   const base = useId();
   const ids = {

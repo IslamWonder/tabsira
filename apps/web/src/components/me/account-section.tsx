@@ -24,7 +24,7 @@ function ResendVerification() {
   );
 }
 
-function SignedIn({ user, onSignedOut }: { user: User; onSignedOut: () => void }) {
+function SignedIn({ user, onSignedOut }: Readonly<{ user: User; onSignedOut: () => void }>) {
   return (
     <div className="flex flex-col gap-5 tablet:flex-row tablet:items-start tablet:justify-between">
       <div className="flex min-w-0 flex-col gap-3">
@@ -73,12 +73,12 @@ export function AccountSection({
   session,
   notice,
   onSignedOut,
-}: {
+}: Readonly<{
   session: SessionState;
   /** What just happened to the account (signed out, deleted), said at the top. */
   notice: string | null;
   onSignedOut: () => void;
-}) {
+}>) {
   return (
     <MeSection id="account" title={M.sections.account}>
       <div role="status" className="empty:-mb-5">

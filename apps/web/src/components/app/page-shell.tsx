@@ -10,7 +10,10 @@ import { type ServerConsent, useSeededConsent } from '@/consent/store';
  * same HTML) until a choice is made. No wrapper transform: fixed bars keep
  * their place (AGENTS.md lessons).
  */
-export function PageShell({ consent, children }: { consent: ServerConsent; children: ReactNode }) {
+export function PageShell({
+  consent,
+  children,
+}: Readonly<{ consent: ServerConsent; children: ReactNode }>) {
   const { consent: state, settingsOpen } = useSeededConsent(consent);
   const covered = state.status === 'asking' || settingsOpen;
   return (

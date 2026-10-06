@@ -64,13 +64,13 @@ export function SignUpScreen({
   next,
   reason,
   turnstileSiteKey = '',
-}: {
+}: Readonly<{
   next: Route;
   /** Why a guest was sent here (a second scan, the chat of their scan), said above the form. */
   reason?: 'scan' | 'chat';
   /** Cloudflare Turnstile's site key from the web server; empty means no check (decision 56). */
   turnstileSiteKey?: string;
-}) {
+}>) {
   const session = useSession();
   const turnstile = useTurnstile(turnstileSiteKey);
   const refs = {

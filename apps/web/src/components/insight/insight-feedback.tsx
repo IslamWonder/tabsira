@@ -77,7 +77,7 @@ export function useFeedback(insightId: string, initial: Feedback | null) {
 export type FeedbackControls = ReturnType<typeof useFeedback>;
 
 /** The small button at the top of the insight: rate it, or say what went wrong, at any time. */
-export function FeedbackMenuButton({ onOpen }: { onOpen: () => void }) {
+export function FeedbackMenuButton({ onOpen }: Readonly<{ onOpen: () => void }>) {
   return (
     <Button variant="icon" label={T.menu} onClick={onOpen} className="size-10 text-fg-muted">
       <MoreIcon className="size-5" />
@@ -86,7 +86,7 @@ export function FeedbackMenuButton({ onOpen }: { onOpen: () => void }) {
 }
 
 /** One quiet line under the done step: was it useful, yes or no, then a thank-you. */
-export function FeedbackLine({ controls }: { controls: FeedbackControls }) {
+export function FeedbackLine({ controls }: Readonly<{ controls: FeedbackControls }>) {
   const { state, error, sending, send, open } = controls;
   const saved = state.saved;
   if (saved !== null) {
@@ -132,7 +132,7 @@ export function FeedbackLine({ controls }: { controls: FeedbackControls }) {
 }
 
 /** The sheet: useful or not, the reasons of a «not useful», and a short note. */
-export function FeedbackSheet({ controls }: { controls: FeedbackControls }) {
+export function FeedbackSheet({ controls }: Readonly<{ controls: FeedbackControls }>) {
   const { state, error, sending, send, close } = controls;
   return (
     <Sheet open={state.open} onClose={close} title={T.title}>
@@ -159,7 +159,7 @@ interface FeedbackFormProps {
   onSend: (helpful: boolean, reasons: FeedbackReason[], note: string) => Promise<boolean>;
 }
 
-function FeedbackForm({ saved, start, error, sending, onSend }: FeedbackFormProps) {
+function FeedbackForm({ saved, start, error, sending, onSend }: Readonly<FeedbackFormProps>) {
   const [helpful, setHelpful] = useState<boolean | null>(start ?? saved?.helpful ?? null);
   const [reasons, setReasons] = useState<FeedbackReason[]>(saved?.reasons ?? []);
   const [note, setNote] = useState(saved?.note ?? '');

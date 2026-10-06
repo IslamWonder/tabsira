@@ -36,7 +36,7 @@ export function FeedList({
   headingLevel = 2,
   comments = false,
   onAuthorBlocked,
-}: FeedListProps) {
+}: Readonly<FeedListProps>) {
   if (gate !== undefined) {
     return <div className="py-6">{gate}</div>;
   }

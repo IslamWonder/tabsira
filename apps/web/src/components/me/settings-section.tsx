@@ -54,12 +54,12 @@ function CountrySetting({
   onCountry,
   toggle,
   busy,
-}: {
+}: Readonly<{
   profile: Profile;
   onCountry: (country: string | null) => void;
   toggle: (kind: ConsentSwitch, on: boolean) => void;
   busy: boolean;
-}) {
+}>) {
   const selectId = useId();
   const hintId = useId();
   const { load, retry } = useCountries();
@@ -124,11 +124,11 @@ function AccountSettings({
   profile,
   save,
   setSwitch,
-}: {
+}: Readonly<{
   profile: Profile;
   save: ProfileEditor['save'];
   setSwitch: ProfileEditor['setSwitch'];
-}) {
+}>) {
   const { state, run, busy } = useSaveState();
   const toggle = (kind: ConsentSwitch, on: boolean) => run(() => setSwitch(kind, on));
   const under13 = profile.age_range === 'under_13';
@@ -211,10 +211,10 @@ export function AppearanceSection() {
 export function PersonalizationSection({
   editor,
   signedIn,
-}: {
+}: Readonly<{
   editor: ProfileEditor;
   signedIn: boolean;
-}) {
+}>) {
   const { load } = editor;
   return (
     <MeSection

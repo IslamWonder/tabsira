@@ -43,7 +43,7 @@ export function SignInScreen({
   next,
   googleError = null,
   turnstileSiteKey = '',
-}: SignInScreenProps) {
+}: Readonly<SignInScreenProps>) {
   const router = useRouter();
   const session = useSession();
   const emailRef = useRef<HTMLInputElement>(null);
