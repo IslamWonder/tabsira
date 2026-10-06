@@ -24,6 +24,10 @@ $$;
 
 ALTER ROLE tabsira WITH LOGIN CREATEDB PASSWORD :'app_password';
 ALTER ROLE tabsira SET search_path = app, corpus, geodata, vectors, public;
+-- CI only: each test worker ends with DROP DATABASE ... WITH (FORCE) on its copy,
+-- which must also end a session that is not the role's own (an autovacuum or
+-- extension worker that joined meanwhile); without this the drop fails at random.
+GRANT pg_signal_backend TO tabsira;
 
 CREATE DATABASE tabsira OWNER tabsira ENCODING 'UTF8' TEMPLATE template0;
 CREATE DATABASE tabsira_test OWNER tabsira ENCODING 'UTF8' TEMPLATE template0;
