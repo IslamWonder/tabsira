@@ -81,6 +81,19 @@ describe('MapView', () => {
     ).toHaveLength(1);
   });
 
+  it('flies only when the place asked for changes, not on every render that repeats it', async () => {
+    const at = () => ({ center: [10.1, 36.8] as [number, number], zoom: 11 });
+    const { rerender } = render(<MapView view={at()} />);
+    const map = await loadedMap();
+    // The map was built on that view: a render with an equal new object asks for nothing.
+    rerender(<MapView view={at()} />);
+    rerender(<MapView view={at()} />);
+    expect(map.flyTo).not.toHaveBeenCalled();
+    rerender(<MapView view={{ center: [10.2, 36.8], zoom: 11 }} />);
+    rerender(<MapView view={{ center: [10.2, 36.8], zoom: 11 }} />);
+    expect(map.flyTo).toHaveBeenCalledTimes(1);
+  });
+
   it('zooms to the box of a tapped group, with room around it', async () => {
     render(<MapView features={[GROUP, FEATURE]} />);
     const map = await loadedMap();

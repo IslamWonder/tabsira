@@ -204,6 +204,10 @@ function storeMode(mode: MapMode): void {
  * and a tap on a point selects the same item the list does. Motion only on
  * events, and none under reduced motion.
  */
+function viewKey(view: { center: unknown; zoom: number }): string {
+  return JSON.stringify([view.center, view.zoom]);
+}
+
 export function MapView({
   features = [],
   selectedId = null,
@@ -224,6 +228,8 @@ export function MapView({
   const modeRef = useRef<MapMode>('streets');
   const handlers = useRef({ onSelect, onMoved, onPick });
   handlers.current = { onSelect, onMoved, onPick };
+  // The view the map was last sent to, by value.
+  const shownView = useRef<string | null>(null);
   const latest = useRef({ features, marker, cell, selectedId });
   latest.current = { features, marker, cell, selectedId };
 
@@ -259,6 +265,7 @@ export function MapView({
           return;
         }
         map.current = instance;
+        shownView.current = viewKey(view ?? DEFAULT_VIEW);
         if (interactive) {
           // Zoom, and a compass that shows the bearing and puts the north back up (tilt too).
           instance.addControl(
@@ -510,6 +517,13 @@ export function MapView({
     if (instance === null || view === null) {
       return;
     }
+    // Screens pass a new object on every render: fly only when the place itself changes, or each
+    // render restarts the flight and cancels the tiles it was loading.
+    const key = viewKey(view);
+    if (key === shownView.current) {
+      return;
+    }
+    shownView.current = key;
     if (reducedMotion()) {
       instance.jumpTo({ center: view.center as LngLatLike, zoom: view.zoom });
     } else {
