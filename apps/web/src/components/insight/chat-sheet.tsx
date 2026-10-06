@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, useId, useRef, useState } from 'react';
+import { type SubmitEvent, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { Sheet } from '@/components/ui/sheet';
@@ -49,7 +49,7 @@ export function ChatSheet({ open, onClose, insightTitle, chat, onAsk }: Readonly
   const errorId = useId();
   const canAsk = chat.enabled && !chat.closed && chat.remaining > 0;
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (sending) {
       return;

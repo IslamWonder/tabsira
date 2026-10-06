@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { TextField } from '@/components/ui/text-field';
 import type { Failure } from '@/lib/api/result';
@@ -26,7 +26,7 @@ export function ClarifyForm({ question, onAnswer, acting }: Readonly<ClarifyForm
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (acting) {
       return;

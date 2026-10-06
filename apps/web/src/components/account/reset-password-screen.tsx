@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { type FormEvent, useRef, useState } from 'react';
+import { type SubmitEvent, useRef, useState } from 'react';
 import { useFragmentToken } from '@/account/use-fragment-token';
 import { newPasswordProblem } from '@/account/validation';
 import { Button, LinkButton } from '@/components/ui/button';
@@ -30,9 +30,10 @@ export function ResetPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome>({ kind: 'idle' });
 
-  const submit = async (event: FormEvent<HTMLFormElement>, token: string) => {
+  const submit = async (event: SubmitEvent<HTMLFormElement>, token: string) => {
     event.preventDefault();
-    const password = String(new FormData(event.currentTarget).get('password'));
+    const passwordValue = new FormData(event.currentTarget).get('password');
+    const password = typeof passwordValue === 'string' ? passwordValue : '';
     const problem = newPasswordProblem(password);
     setError(problem);
     if (problem !== null) {

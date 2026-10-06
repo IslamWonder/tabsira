@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type SubmitEvent, useEffect, useState } from 'react';
 import { recordFullNameConsent } from '@/account/profile';
 import { setSignedIn, useSession } from '@/account/session';
 import { MeSection, SubHeading } from '@/components/me/me-section';
@@ -38,7 +38,7 @@ export function IdentityForm() {
 
   const handleError = touched ? handleProblem(handle) : null;
 
-  const submit = async (event: FormEvent) => {
+  const submit = async (event: SubmitEvent) => {
     event.preventDefault();
     setTouched(true);
     setTaken(false);

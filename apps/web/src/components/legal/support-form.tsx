@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, type SubmitEvent, useEffect, useId, useRef, useState } from 'react';
 import { useTurnstile } from '@/components/turnstile/use-turnstile';
 import { Button } from '@/components/ui/button';
 import {
@@ -131,7 +131,7 @@ export function SupportForm({ turnstileSiteKey = '' }: Readonly<{ turnstileSiteK
     };
   }, []);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const found = validate(email, topic, message);
     setErrors(found);

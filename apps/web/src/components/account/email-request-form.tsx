@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, useRef, useState } from 'react';
+import { type SubmitEvent, useRef, useState } from 'react';
 import { emailProblem } from '@/account/validation';
 import { useTurnstile } from '@/components/turnstile/use-turnstile';
 import { Button } from '@/components/ui/button';
@@ -42,9 +42,10 @@ export function EmailRequestForm({
   const [failure, setFailure] = useState<string | null>(null);
   const [state, setState] = useState<'idle' | 'sending' | 'accepted'>('idle');
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const email = String(new FormData(event.currentTarget).get('email')).trim();
+    const emailValue = new FormData(event.currentTarget).get('email');
+    const email = (typeof emailValue === 'string' ? emailValue : '').trim();
     const problem = emailProblem(email);
     setError(problem);
     setFailure(null);

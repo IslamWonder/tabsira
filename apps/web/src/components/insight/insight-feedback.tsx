@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, useEffect, useState } from 'react';
+import { type SubmitEvent, useEffect, useState } from 'react';
 import { MoreIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { CheckboxField } from '@/components/ui/checkbox-field';
@@ -165,7 +165,7 @@ function FeedbackForm({ saved, start, error, sending, onSend }: Readonly<Feedbac
   const [note, setNote] = useState(saved?.note ?? '');
   const tooLong = Array.from(note).length > NOTE_MAX;
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (helpful === null || tooLong) {
       return;

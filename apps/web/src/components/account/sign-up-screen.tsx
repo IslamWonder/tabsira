@@ -2,7 +2,7 @@
 
 import type { Route } from 'next';
 import Link from 'next/link';
-import { type FormEvent, useRef, useState } from 'react';
+import { type SubmitEvent, useRef, useState } from 'react';
 import {
   acceptanceOf,
   LEGAL_REFUSAL,
@@ -86,12 +86,17 @@ export function SignUpScreen({
   const [fullName, setFullName] = useState(false);
   const legal = useLegal();
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const displayName = cleanDisplayName(String(form.get('displayName')));
-    const email = String(form.get('email')).trim();
-    const password = String(form.get('password'));
+    const displayNameValue = form.get('displayName');
+    const emailValue = form.get('email');
+    const passwordValue = form.get('password');
+    const displayName = cleanDisplayName(
+      typeof displayNameValue === 'string' ? displayNameValue : ''
+    );
+    const email = (typeof emailValue === 'string' ? emailValue : '').trim();
+    const password = typeof passwordValue === 'string' ? passwordValue : '';
     const found: FieldErrors = {
       displayName: displayNameProblem(displayName),
       email: emailProblem(email),

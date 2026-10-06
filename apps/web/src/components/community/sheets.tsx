@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 import { signInHref } from '@/account/links';
 import { Button } from '@/components/ui/button';
 import { ChoiceGroup } from '@/components/ui/choice-group';
@@ -88,7 +88,7 @@ export function ReportSheet({ open, onClose, targetType, targetId }: Readonly<Re
   const [failure, setFailure] = useState<string | null>(null);
   const canSend = access === 'member' || access === 'no-identity';
 
-  const send = async (event: FormEvent) => {
+  const send = async (event: SubmitEvent) => {
     event.preventDefault();
     setState('sending');
     setFailure(null);

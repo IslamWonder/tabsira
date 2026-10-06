@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 import { signInHref } from '@/account/links';
 import { StatusScreen } from '@/components/app/status-screen';
 import { CommunityIcon } from '@/components/icons';
@@ -82,7 +82,7 @@ function DraftForm({
   const [photo, setPhoto] = useState(false);
   const length = Array.from(reflection.trim()).length;
   const offersPhoto = photoOffered && initial === undefined && visibility === 'public';
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault();
     if (length > REFLECTION_MAX) {
       return;

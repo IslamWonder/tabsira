@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { type FormEvent, useCallback, useId, useState } from 'react';
+import { type SubmitEvent, useCallback, useId, useState } from 'react';
 import { useSession } from '@/account/session';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
@@ -37,7 +37,7 @@ function CommentForm({ postId, parent, onCreated, onCancel }: Readonly<CommentFo
   const canWrite = access === 'member';
   const length = Array.from(body.trim()).length;
 
-  const send = async (event: FormEvent) => {
+  const send = async (event: SubmitEvent) => {
     event.preventDefault();
     if (length === 0 || length > COMMENT_MAX) {
       return;

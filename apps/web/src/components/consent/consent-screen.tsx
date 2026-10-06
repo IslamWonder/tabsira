@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
+import { type SubmitEvent, useEffect, useId, useRef, useState } from 'react';
 import { Logo } from '@/components/brand/logo';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
@@ -134,9 +134,9 @@ export function ConsentScreen({ initial }: Readonly<{ initial: ServerConsent }>)
     setFailed(!recorded && picked !== REJECT_ALL);
   };
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    const submitter = event.nativeEvent.submitter;
     const choice = submitter?.getAttribute('value') as Choice;
     if (choice === 'customise') {
       setChoices(startingChoices(consent));

@@ -3,7 +3,7 @@
 import type { Route } from 'next';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { type FormEvent, useRef, useState } from 'react';
+import { type SubmitEvent, useRef, useState } from 'react';
 import { setSignedIn, useSession } from '@/account/session';
 import { emailProblem, passwordMissing } from '@/account/validation';
 import { useTurnstile } from '@/components/turnstile/use-turnstile';
@@ -55,11 +55,13 @@ export function SignInScreen({
   const [sending, setSending] = useState(false);
   const turnstile = useTurnstile(turnstileSiteKey);
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const email = String(form.get('email')).trim();
-    const password = String(form.get('password'));
+    const emailValue = form.get('email');
+    const passwordValue = form.get('password');
+    const email = (typeof emailValue === 'string' ? emailValue : '').trim();
+    const password = typeof passwordValue === 'string' ? passwordValue : '';
     const found = { email: emailProblem(email), password: passwordMissing(password) };
     setErrors(found);
     setFailure(null);

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type SubmitEvent, useEffect, useState } from 'react';
 import { signInHref } from '@/account/links';
 import { useSession } from '@/account/session';
 import { endSponsorship, mySponsorships, sponsorEntry, writeReflection } from '@/atlas/api';
@@ -113,7 +113,7 @@ function ReflectionForm({
   }, [entry.id]);
 
   const length = Array.from(text).length;
-  const save = async (event: FormEvent) => {
+  const save = async (event: SubmitEvent) => {
     event.preventDefault();
     setBusy(true);
     setProblem(null);

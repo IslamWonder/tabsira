@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, useId, useState } from 'react';
+import { type SubmitEvent, useId, useState } from 'react';
 import type {
   AgeRange,
   Gender,
@@ -64,7 +64,7 @@ export function ProfileForm({ onSubmit }: Readonly<ProfileFormProps>) {
     setGoals(choseNone ? [NONE] : next.filter((goal) => goal !== NONE));
   };
 
-  const submit = async (event: FormEvent) => {
+  const submit = async (event: SubmitEvent) => {
     event.preventDefault();
     if (!complete || busy) {
       return;
