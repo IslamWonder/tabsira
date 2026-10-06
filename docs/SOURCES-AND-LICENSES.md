@@ -83,6 +83,18 @@ Readex Pro, Reem Kufi and Noto Naskh Arabic, from the `@fontsource` packages, un
 - **World ontology and learning path.** Written by the TABSIRA team.
 - **Scripture vectors.** Computed by us with the AI provider's embedding model; the archive holds vectors, references and text hashes, no text (`vectors/NOTICE.txt`).
 
+## Tools used to build TABSIRA
+
+The contest asks for a register of the tools used, beside the sources. None of these tools wrote or chose a Quran or hadith text: scripture always comes from the sources above, by id.
+
+| Tool                             | Used for                                                                                                                           | Terms                                                                    |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| ChatGPT (OpenAI)                 | Generating images of the project                                                                                                   | OpenAI's terms of use: the output belongs to the user                    |
+| Magnific (Freepik, Flaticon)     | The interface icons (the Good Ware Lineal family) and the landing picture, `docs/ASSET_MANIFEST.md`                                | Magnific premium licence of the owners' account; no attribution required |
+| Freepik text-to-image            | The generated photos of the gold scenes of `make eval` (`apps/api/tests/evaluation/scenes/gold.json`, provenance of each)          | Freepik's terms for the owners' account                                  |
+| Claude Code (Anthropic)          | An assistant for writing the code, the tests and the documents, under the owners' direction and review                             | Anthropic's terms: the output belongs to the user                        |
+| OpenAI and OVHcloud AI Endpoints | The models the running app calls: scene analysis, search vectors, verification, the explanation and the chat (`docs/BENCHMARK.md`) | Each provider's terms; what is sent is in the privacy text (`/privacy`)  |
+
 ## Not used
 
 HadeethEnc (decision 19). Tanzil and alquran.cloud were read for the audit only (`docs/ASSET_MANIFEST.md` §2).
