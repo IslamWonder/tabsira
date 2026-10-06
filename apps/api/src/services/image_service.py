@@ -39,7 +39,7 @@ from datetime import UTC, datetime, timedelta, timezone
 from functools import lru_cache
 from typing import Any
 
-from PIL import ExifTags, Image, ImageCms, ImageOps, UnidentifiedImageError
+from PIL import ExifTags, Image, ImageCms, ImageOps
 
 from src import clock
 
@@ -318,7 +318,7 @@ def _open(raw: bytes) -> Image.Image:
         image = Image.open(io.BytesIO(raw))
     except Image.DecompressionBombError:
         raise ImageRejectedError(TOO_MANY_PIXELS) from None
-    except (UnidentifiedImageError, OSError, ValueError, SyntaxError):
+    except (OSError, ValueError, SyntaxError):
         raise ImageRejectedError(UNREADABLE) from None
     if image.format not in ACCEPTED_FORMATS:
         raise ImageRejectedError(UNSUPPORTED)

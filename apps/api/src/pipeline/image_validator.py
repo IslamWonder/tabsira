@@ -18,7 +18,7 @@ import warnings
 from enum import StrEnum
 from typing import Any
 
-from PIL import ExifTags, Image, ImageOps, UnidentifiedImageError
+from PIL import ExifTags, Image, ImageOps
 
 from src.pipeline.schemas import (
     CaptureLocation,
@@ -132,7 +132,7 @@ def _open(data: bytes, image_format: ImageFormat, max_pixels: int) -> Image.Imag
             image.load()
     except (Image.DecompressionBombError, Image.DecompressionBombWarning):
         raise ImageRejectedError(ImageRejectedCode.TOO_LARGE, "decompression bomb") from None
-    except (UnidentifiedImageError, OSError, ValueError, SyntaxError):
+    except (OSError, ValueError, SyntaxError):
         message = f"the {image_format.value} data does not decode"
         raise ImageRejectedError(ImageRejectedCode.INVALID, message) from None
     return image

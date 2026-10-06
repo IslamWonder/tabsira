@@ -10,7 +10,6 @@ Secrets are `SecretStr`, so printing or logging a `Settings` never shows them.
 from __future__ import annotations
 
 import base64
-import binascii
 import hashlib
 import os
 import re
@@ -445,7 +444,7 @@ def _is_fernet_key(key: str) -> bool:
     """Whether `key` is 32 bytes as url-safe base64: what a Fernet key is."""
     try:
         return len(base64.urlsafe_b64decode(key.encode())) == FERNET_KEY_BYTES
-    except (binascii.Error, ValueError):
+    except ValueError:
         return False
 
 

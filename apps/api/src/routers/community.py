@@ -32,7 +32,7 @@ async def community_summary(settings: SettingsDep, db: DbDep) -> CommunitySummar
     """
     try:
         return await community_service.summary(db, settings.features)
-    except (SQLAlchemyError, OSError, TimeoutError) as error:
+    except (SQLAlchemyError, OSError) as error:
         log.warning("community summary unavailable (%s)", type(error).__name__)
         raise AppError(
             ErrorCode.SERVICE_UNAVAILABLE,

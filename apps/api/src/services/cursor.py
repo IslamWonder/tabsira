@@ -12,7 +12,6 @@ can only move the reader around a list they may already read.
 from __future__ import annotations
 
 import base64
-import binascii
 import json
 import math
 from dataclasses import dataclass
@@ -58,7 +57,7 @@ def decode(raw: str | None) -> Cursor | None:
         cursor_id = body["i"]
         as_of = None if body["a"] is None else datetime.fromisoformat(body["a"])
         score = body["s"]
-    except (ValueError, KeyError, TypeError, binascii.Error):
+    except (ValueError, KeyError, TypeError):
         raise invalid() from None
     # A time with no zone cannot be compared with the database's times without a guess.
     zoned = at.tzinfo is not None and (as_of is None or as_of.tzinfo is not None)
