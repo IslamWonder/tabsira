@@ -28,7 +28,7 @@ const CHIP =
   'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-[var(--focus)] has-[:focus-visible]:outline-offset-2 ' +
   'has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60';
 const ON = 'fill-primary border-transparent font-semibold';
-const OFF = 'border-line bg-surface text-fg-soft hover:text-fg';
+const OFF = 'border-field bg-surface text-fg-soft hover:text-fg';
 
 function Mark({ on }: { on: boolean }) {
   return (

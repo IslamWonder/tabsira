@@ -68,7 +68,7 @@ export function TextField({
             'transition-[border-color] duration-200 placeholder:text-fg-muted',
             'focus-visible:border-[var(--focus)]',
             revealable && 'pe-14',
-            invalid ? 'border-danger' : 'border-line'
+            invalid ? 'border-danger' : 'border-field'
           )}
         />
         {revealable ? (

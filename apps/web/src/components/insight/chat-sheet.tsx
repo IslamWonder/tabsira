@@ -139,7 +139,7 @@ export function ChatSheet({ open, onClose, insightTitle, chat, onAsk }: ChatShee
               onChange={(event) => setDraft(event.target.value)}
               aria-invalid={error === T.empty}
               aria-describedby={error === null ? undefined : errorId}
-              className="min-h-24 rounded-[var(--radius-card)] border border-line bg-surface px-3 py-2 text-base text-fg leading-[1.8]"
+              className="min-h-24 rounded-[var(--radius-card)] border border-field bg-surface px-3 py-2 text-base text-fg leading-[1.8]"
             />
             <p id={errorId} role="alert" className="m-0 text-danger text-sm empty:hidden">
               {error}

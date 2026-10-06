@@ -48,7 +48,7 @@ export function SwitchField({ name, label, hint, checked, onChange, disabled }: 
         />
         <span
           aria-hidden="true"
-          className="flex h-8 w-14 items-center justify-start rounded-full border border-line bg-surface p-1 transition-colors duration-200 peer-checked:justify-end peer-checked:border-transparent peer-checked:bg-[var(--primary-fill-to)] peer-focus-visible:outline-3 peer-focus-visible:outline-[var(--focus)] peer-focus-visible:outline-offset-2 peer-disabled:opacity-60"
+          className="flex h-8 w-14 items-center justify-start rounded-full border border-field bg-surface p-1 transition-colors duration-200 peer-checked:justify-end peer-checked:border-transparent peer-checked:bg-[var(--primary-fill-to)] peer-focus-visible:outline-3 peer-focus-visible:outline-[var(--focus)] peer-focus-visible:outline-offset-2 peer-disabled:opacity-60"
         >
           <span className="size-6 rounded-full bg-[var(--text-muted)] shadow [.peer:checked~*_&]:bg-[var(--on-primary)]" />
         </span>

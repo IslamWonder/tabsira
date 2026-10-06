@@ -51,7 +51,7 @@ const RESULT_TEXT: Record<SupportOutcome, string> = {
 };
 
 const CONTROL =
-  'w-full rounded-[var(--radius-card)] border border-line bg-surface px-4 text-fg ' +
+  'w-full rounded-[var(--radius-card)] border border-field bg-surface px-4 text-fg ' +
   'aria-[invalid=true]:border-danger';
 
 interface FieldShellProps {

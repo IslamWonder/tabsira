@@ -87,6 +87,14 @@ const PAIRS: readonly Pair[] = [
 /** Non-text contrast (WCAG 1.4.11): the focus ring against what it is drawn on. */
 const FOCUS_GROUNDS: readonly (readonly string[])[] = [[], ['surface'], ['surface-glass']];
 
+/** Non-text contrast (WCAG 1.4.11): the edge of a field or a switch track, on the page and on a card. */
+const FIELD_GROUNDS: readonly (readonly string[])[] = [
+  ['surface'],
+  ['surface', 'surface'],
+  ['surface-glass', 'surface'],
+  ['quran-surface-from', 'surface'],
+];
+
 function color(tokens: TokenSet, name: string): Rgba {
   const value = tokens[name];
   if (value === undefined) {
@@ -174,6 +182,17 @@ describe.each(Object.entries(THEMES))('WCAG 2.2 AA contrast, %s theme', (theme, 
     'focus ring on %s reaches 3:1',
     (_name, layers) => {
       expect(worstRatio(tokens, 'focus', layers as readonly string[])).toBeGreaterThanOrEqual(3);
+    }
+  );
+});
+
+describe.each(Object.entries(THEMES))('field edges, %s theme', (_theme, tokens) => {
+  it.each(FIELD_GROUNDS.map((layers) => [layers.join(' + '), layers]))(
+    'field border on %s reaches 3:1',
+    (_name, layers) => {
+      expect(
+        worstRatio(tokens, 'field-border', layers as readonly string[])
+      ).toBeGreaterThanOrEqual(3);
     }
   );
 });

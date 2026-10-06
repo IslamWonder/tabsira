@@ -28,6 +28,6 @@ describe('TextArea', () => {
     expect(field).not.toHaveAttribute('aria-describedby');
     expect(field).not.toHaveAttribute('aria-invalid');
     expect(field).toHaveAttribute('rows', '4');
-    expect(field).toHaveClass('border-line');
+    expect(field).toHaveClass('border-field');
   });
 });

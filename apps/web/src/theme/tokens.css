@@ -22,6 +22,8 @@
   --surface: #ffffff;
   --surface-glass: rgba(255, 255, 255, 0.86);
   --border: #dce7e1;
+  /* the edge of a field or a switch, which must be seen to be used (WCAG 1.4.11, 3:1) */
+  --field-border: #788c84;
   --text: #16302a;
   --text-soft: #4a635c;
   --text-muted: #5f6f69;
@@ -154,6 +156,7 @@
     --surface: rgba(255, 255, 255, 0.05);
     --surface-glass: rgba(20, 32, 28, 0.72);
     --border: rgba(255, 255, 255, 0.14);
+    --field-border: rgba(255, 255, 255, 0.4);
     --text: #eef3ef;
     --text-soft: #c3d4cc;
     --text-muted: #93a79e;
@@ -286,6 +289,7 @@
   --surface: rgba(255, 255, 255, 0.05);
   --surface-glass: rgba(20, 32, 28, 0.72);
   --border: rgba(255, 255, 255, 0.14);
+  --field-border: rgba(255, 255, 255, 0.4);
   --text: #eef3ef;
   --text-soft: #c3d4cc;
   --text-muted: #93a79e;

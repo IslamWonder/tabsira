@@ -279,7 +279,7 @@ function Filters({
                 country: event.target.value === '' ? null : event.target.value,
               })
             }
-            className="min-h-12 rounded-[14px] border border-line bg-surface px-3 text-fg"
+            className="min-h-12 rounded-[14px] border border-field bg-surface px-3 text-fg"
           >
             <option value="">{A.filters.anyCountry}</option>
             {countries.map((country) => (

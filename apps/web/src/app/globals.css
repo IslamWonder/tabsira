@@ -66,6 +66,7 @@
   --color-surface: var(--surface);
   --color-glass: var(--surface-glass);
   --color-line: var(--border);
+  --color-field: var(--field-border);
   --color-fg: var(--text);
   --color-fg-soft: var(--text-soft);
   --color-fg-muted: var(--text-muted);

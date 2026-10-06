@@ -95,7 +95,7 @@ function CountrySetting({
             aria-describedby={hintId}
             value={profile.country ?? ''}
             onChange={(event) => onCountry(event.target.value || null)}
-            className="min-h-12 w-full rounded-[var(--radius-card)] border border-line bg-surface px-4 text-fg"
+            className="min-h-12 w-full rounded-[var(--radius-card)] border border-field bg-surface px-4 text-fg"
           >
             <option value="">{S.country.none}</option>
             {load.countries.map((country) => (
