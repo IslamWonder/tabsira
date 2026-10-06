@@ -1,0 +1,326 @@
+{
+  "description": "Rows copied by a script from a store installed from the corpus archive of 2026-10-04 (quranpedia dump 2026-10-03): the 20 verses of three to six skeleton words whose Uthmani text joins the vocative to the next word, with their surahs. Never typed by hand; the database checks every hash.",
+  "surahs": [
+    {
+      "number": 20,
+      "name_ar": "سورة طه",
+      "revelation_place": "مكية",
+      "revelation_order": 45,
+      "ayah_count": 135,
+      "words_count": 1351,
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "number": 21,
+      "name_ar": "سورة الأنبياء",
+      "revelation_place": "مكية",
+      "revelation_order": 73,
+      "ayah_count": 112,
+      "words_count": 1174,
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "number": 25,
+      "name_ar": "سورة الفرقان",
+      "revelation_place": "مكية",
+      "revelation_order": 42,
+      "ayah_count": 77,
+      "words_count": 897,
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "number": 27,
+      "name_ar": "سورة النمل",
+      "revelation_place": "مكية",
+      "revelation_order": 48,
+      "ayah_count": 93,
+      "words_count": 1160,
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "number": 37,
+      "name_ar": "سورة الصافات",
+      "revelation_place": "مكية",
+      "revelation_order": 56,
+      "ayah_count": 182,
+      "words_count": 865,
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "number": 68,
+      "name_ar": "سورة القلم",
+      "revelation_place": "مكية",
+      "revelation_order": 2,
+      "ayah_count": 52,
+      "words_count": 301,
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "number": 69,
+      "name_ar": "سورة الحاقة",
+      "revelation_place": "مكية",
+      "revelation_order": 87,
+      "ayah_count": 52,
+      "words_count": 261,
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "number": 71,
+      "name_ar": "سورة نوح",
+      "revelation_place": "مكية",
+      "revelation_order": 71,
+      "ayah_count": 28,
+      "words_count": 227,
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "number": 82,
+      "name_ar": "سورة الإنفطار",
+      "revelation_place": "مكية",
+      "revelation_order": 82,
+      "ayah_count": 19,
+      "words_count": 81,
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "number": 89,
+      "name_ar": "سورة الفجر",
+      "revelation_place": "مكية",
+      "revelation_order": 10,
+      "ayah_count": 30,
+      "words_count": 139,
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "number": 109,
+      "name_ar": "سورة الكافرون",
+      "revelation_place": "مكية",
+      "revelation_order": 18,
+      "ayah_count": 6,
+      "words_count": 27,
+      "source_version": "dump:2026-10-03"
+    }
+  ],
+  "verses": [
+    {
+      "surah": 20,
+      "ayah": 11,
+      "quranpedia_ayah_id": 64609,
+      "mushaf_id": 2,
+      "page": 312,
+      "juz": 16,
+      "text": "فَلَمَّآ أَتَىٰهَا نُودِيَ يَٰمُوسَىٰٓ",
+      "text_sha256": "83ec9ef3d018856b7cac13e754e29569693d6e4e515c4903685f04b138c10c90",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 20,
+      "ayah": 17,
+      "quranpedia_ayah_id": 64615,
+      "mushaf_id": 2,
+      "page": 313,
+      "juz": 16,
+      "text": "وَمَا تِلۡكَ بِيَمِينِكَ يَٰمُوسَىٰ",
+      "text_sha256": "eb59043b424b32d218fef3509ccb4bffb3a0b923f04beacd70bd209cd3a2fc2e",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 20,
+      "ayah": 19,
+      "quranpedia_ayah_id": 64617,
+      "mushaf_id": 2,
+      "page": 313,
+      "juz": 16,
+      "text": "قَالَ أَلۡقِهَا يَٰمُوسَىٰ",
+      "text_sha256": "1de6a20bb56d35722b225d8067ace4295b522cf2d27f6c000bc3d8c523957e44",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 20,
+      "ayah": 36,
+      "quranpedia_ayah_id": 64634,
+      "mushaf_id": 2,
+      "page": 313,
+      "juz": 16,
+      "text": "قَالَ قَدۡ أُوتِيتَ سُؤۡلَكَ يَٰمُوسَىٰ",
+      "text_sha256": "3edae3be7be9ae7835b3b8912b3185424b4cf03c2755bd86e18238475b934780",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 20,
+      "ayah": 49,
+      "quranpedia_ayah_id": 64647,
+      "mushaf_id": 2,
+      "page": 314,
+      "juz": 16,
+      "text": "قَالَ فَمَن رَّبُّكُمَا يَٰمُوسَىٰ",
+      "text_sha256": "233df7442e4c546cf9aefcb7cd26e7a54b04d6397926e710fe52276e3432891f",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 20,
+      "ayah": 83,
+      "quranpedia_ayah_id": 64681,
+      "mushaf_id": 2,
+      "page": 317,
+      "juz": 16,
+      "text": "۞ وَمَآ أَعۡجَلَكَ عَن قَوۡمِكَ يَٰمُوسَىٰ",
+      "text_sha256": "846f8a2186d23d5632ef5da997c83f42134368f5d8ef53b2d97b10c8b68d647b",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 20,
+      "ayah": 95,
+      "quranpedia_ayah_id": 64693,
+      "mushaf_id": 2,
+      "page": 318,
+      "juz": 16,
+      "text": "قَالَ فَمَا خَطۡبُكَ يَٰسَٰمِرِيُّ",
+      "text_sha256": "9b1881a1a351f25714e9edc0fef17e5b1e24f4b7a4106120aceff93479ec7fbe",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 21,
+      "ayah": 14,
+      "quranpedia_ayah_id": 64747,
+      "mushaf_id": 2,
+      "page": 323,
+      "juz": 17,
+      "text": "قَالُواْ يَٰوَيۡلَنَآ إِنَّا كُنَّا ظَٰلِمِينَ",
+      "text_sha256": "760e6fa50581ae625fd7db3fe1a835f4c26d96f4df6a6edd7ba5d3d1900ec17e",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 21,
+      "ayah": 62,
+      "quranpedia_ayah_id": 64795,
+      "mushaf_id": 2,
+      "page": 327,
+      "juz": 17,
+      "text": "قَالُوٓاْ ءَأَنتَ فَعَلۡتَ هَٰذَا بِــَٔالِهَتِنَا يَٰٓإِبۡرَٰهِيمُ",
+      "text_sha256": "259b97fcab4423fa5528428b1e483605df91e87c29995fa0f3d3fd89fdf57922",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 25,
+      "ayah": 28,
+      "quranpedia_ayah_id": 65133,
+      "mushaf_id": 2,
+      "page": 362,
+      "juz": 19,
+      "text": "يَٰوَيۡلَتَىٰ لَيۡتَنِي لَمۡ أَتَّخِذۡ فُلَانًا خَلِيلٗا",
+      "text_sha256": "fc514a319ec0710b736963c6692b106ac8ebe3dfe7f18bcddd129d3842fc4477",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 27,
+      "ayah": 9,
+      "quranpedia_ayah_id": 65418,
+      "mushaf_id": 2,
+      "page": 377,
+      "juz": 19,
+      "text": "يَٰمُوسَىٰٓ إِنَّهُۥٓ أَنَا ٱللَّهُ ٱلۡعَزِيزُ ٱلۡحَكِيمُ",
+      "text_sha256": "4652e3f37a8aacfa80a9c9284b873278caecd809dd112718ec28287a7c35409e",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 37,
+      "ayah": 20,
+      "quranpedia_ayah_id": 66058,
+      "mushaf_id": 2,
+      "page": 446,
+      "juz": 23,
+      "text": "وَقَالُواْ يَٰوَيۡلَنَا هَٰذَا يَوۡمُ ٱلدِّينِ",
+      "text_sha256": "60b4c987dd33fedb784fda82ddd0c1deedd92453b1498d6b5b9e4b9b85f10fe0",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 37,
+      "ayah": 104,
+      "quranpedia_ayah_id": 66142,
+      "mushaf_id": 2,
+      "page": 450,
+      "juz": 23,
+      "text": "وَنَٰدَيۡنَٰهُ أَن يَٰٓإِبۡرَٰهِيمُ",
+      "text_sha256": "b61c53abdbb498ac9f371e6d56947fd07d6f196c64d3af95099e0f9910238455",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 68,
+      "ayah": 31,
+      "quranpedia_ayah_id": 67552,
+      "mushaf_id": 2,
+      "page": 565,
+      "juz": 29,
+      "text": "قَالُواْ يَٰوَيۡلَنَآ إِنَّا كُنَّا طَٰغِينَ",
+      "text_sha256": "be862c4abf623137cec5a0c028abae77bf14a968b24f4ae4f4fba061c998d7af",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 69,
+      "ayah": 27,
+      "quranpedia_ayah_id": 67600,
+      "mushaf_id": 2,
+      "page": 567,
+      "juz": 29,
+      "text": "يَٰلَيۡتَهَا كَانَتِ ٱلۡقَاضِيَةَ",
+      "text_sha256": "02ddb61bf844918c77f85a3fcbf86839ecf7e489ddeb976c7ff9dee77d8d04a3",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 71,
+      "ayah": 2,
+      "quranpedia_ayah_id": 67671,
+      "mushaf_id": 2,
+      "page": 570,
+      "juz": 29,
+      "text": "قَالَ يَٰقَوۡمِ إِنِّي لَكُمۡ نَذِيرٞ مُّبِينٌ",
+      "text_sha256": "ef22f20a17e4627c73a5949b1c7d345196755d5442d7ca7ad214bd3c2e831ce5",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 82,
+      "ayah": 6,
+      "quranpedia_ayah_id": 68085,
+      "mushaf_id": 2,
+      "page": 587,
+      "juz": 30,
+      "text": "يَٰٓأَيُّهَا ٱلۡإِنسَٰنُ مَا غَرَّكَ بِرَبِّكَ ٱلۡكَرِيمِ",
+      "text_sha256": "064832a780ed2affbb78d3dc3af9ca622d0cdcaf28d7dbe57299bbbdc685bd4c",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 89,
+      "ayah": 24,
+      "quranpedia_ayah_id": 68267,
+      "mushaf_id": 2,
+      "page": 594,
+      "juz": 30,
+      "text": "يَقُولُ يَٰلَيۡتَنِي قَدَّمۡتُ لِحَيَاتِي",
+      "text_sha256": "0df6d6806650cdd5736eea467f641f7881bf4977f887db84b93e0337024f12ce",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 89,
+      "ayah": 27,
+      "quranpedia_ayah_id": 68270,
+      "mushaf_id": 2,
+      "page": 594,
+      "juz": 30,
+      "text": "يَٰٓأَيَّتُهَا ٱلنَّفۡسُ ٱلۡمُطۡمَئِنَّةُ",
+      "text_sha256": "86d342424a77cdc8713d49f9f03c75a7c6f9136a71606489ef262cc0f6c4202b",
+      "source_version": "dump:2026-10-03"
+    },
+    {
+      "surah": 109,
+      "ayah": 1,
+      "quranpedia_ayah_id": 68458,
+      "mushaf_id": 2,
+      "page": 603,
+      "juz": 30,
+      "text": "قُلۡ يَٰٓأَيُّهَا ٱلۡكَٰفِرُونَ",
+      "text_sha256": "5b53c57eba0cb4f2e3bde146b8ff9891ab970d0d80d7a9024a5cdb295eff8b2f",
+      "source_version": "dump:2026-10-03"
+    }
+  ]
+}

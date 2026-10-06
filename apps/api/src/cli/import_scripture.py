@@ -8,6 +8,9 @@ Steps run in the order given; with none, all of them in this order:
     download     fetch quranpedia's current dump, checked against its manifest,
                  and the nine hadith files from their pinned commits
     quran        import mushaf 2 from the newest verified dump in the cache
+    standard     bring every verse's guard skeleton in today's spelling in line with
+                 its stored text (derived, leak guard only; writes nothing when it is
+                 current, so make data and every deploy run it)
     annotations  import the annotations of data/corpus/quran-annotations.json
     hadith       import the nine books from their pinned, verified files
     signals      repair data/corpus/sunnah-enriched.json and link its records to hadiths
@@ -42,7 +45,13 @@ from src.scripture.errors import ScriptureError
 from src.scripture.files import require_verified
 from src.scripture.guard import WritePurpose, allow_scripture_writes
 from src.scripture.paths import DEFAULT_CACHE_DIR, DEFAULT_CORPUS_DIR
-from src.scripture.quran import QuranImportError, import_quran, load_json_file, parse_mushaf
+from src.scripture.quran import (
+    QuranImportError,
+    import_quran,
+    load_json_file,
+    parse_mushaf,
+    refresh_standard_guard,
+)
 from src.scripture.quran import parse_surahs as parse_surah_information
 from src.scripture.quranpedia import (
     MUSHAF_FILE,
@@ -114,6 +123,12 @@ async def step_quran(context: Context) -> None:
     )
 
 
+async def step_standard(context: Context) -> None:
+    async with context.sessionmaker() as session, session.begin():
+        changed = await refresh_standard_guard(session)
+    _say(f"standard: {changed} verse skeletons in today's spelling written, the others current")
+
+
 async def step_annotations(context: Context) -> None:
     path = require_verified(context.corpus_dir / ANNOTATIONS_FILE, ANNOTATIONS_SHA256)
     raw = load_json_file(path)
@@ -169,6 +184,7 @@ async def step_signals(context: Context) -> None:
 STEPS: dict[str, Callable[[Context], Awaitable[None]]] = {
     "download": step_download,
     "quran": step_quran,
+    "standard": step_standard,
     "annotations": step_annotations,
     "hadith": step_hadith,
     "signals": step_signals,

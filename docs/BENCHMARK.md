@@ -239,3 +239,27 @@ Written by hand from the retrieval section above (4 October 2026); the commands 
 - **Reranker.** The LLM baseline (`gpt-5.4-nano`) ranks best of all (MRR 0.770, recall@3 84 %) in about 3 s, so it is the default (decision 41, `RERANKER=llm`): the engine sends it the eight best fused candidates of each search, all the searches of a round at once, and reads back numbers and scores only. In the gold-scene evaluation it adds about 2.8 s and $0.002 to a scan (whole scan 21.7 s at p50, 30.5 s at p95, $0.0204; docs/EVALUATION.md). OVH has no small text model measured for this, so on OVH `RERANKER=llm` keeps the fused order. Of the two cross-encoders, `BAAI/bge-reranker-v2-m3` wins clearly over the reference `amberoad/bert-multilingual-passage-reranking-msmarco` (MRR 0.667 against 0.583, recall@3 80 % against 68 %), and the reference file's metadata blend makes both worse, so it is not used. `bge-reranker-v2-m3` is the model services/vision serves for `RERANKER=cross_encoder`, for a host with a GPU: on this CPU it reads 30 passages in 19 s at p50 (34 s at p95), and even eight per search made a scan 38.5 s at p50.
 
 <!-- /section:retrieval-notes -->
+
+## Leak guard in two spellings (task 05.9)
+
+Measured on 2026-10-06 on a database restored from the corpus archive of 2026-10-04 (the whole store), with the derived skeletons of each verse in today's spelling (`src/scripture/standard_spelling.py`). "Before" is the same check limited to the Uthmani skeletons, run in the same process on the same texts. Every text is built from the store, except the rows marked «Tanzil»: Tanzil's Simple text (version 1.1) was used on the measuring machine only, as an independent reference written in today's spelling, never committed and never imported (docs/ASSET_MANIFEST.md §2.6). The scripts were throw-away; the numbers are the record.
+
+| Check                                                                                      | Before (mushaf only) | After (both skeletons) |
+| ------------------------------------------------------------------------------------------ | -------------------- | ---------------------- |
+| The 21 verses of 3 to 6 words with a joined vocative, written joined                       | 21 / 21 refused      | 21 / 21 refused        |
+| The same 21, vocative apart as today writes it (from the stored text)                      | 2 / 21 refused       | 21 / 21 refused        |
+| The 18 of task 05.9                                                                        | 0 / 18 refused       | 18 / 18 refused        |
+| All 1,709 verses of 3 to 6 words, in the converter's spelling                              | 29 missed            | 0 missed               |
+| The same, each in a random writer's variant (`tests/scripture/spelling.py`)                | 25 missed            | 0 missed               |
+| The same, typed as Tanzil writes them, marks removed                                       | 32 missed            | 3 missed               |
+| All 6,236 verses typed as Tanzil writes them                                               | 263 passed           | 212 passed             |
+| Five-word Tanzil runs absent from the skeletons (within verses)                            | 1,231 in 473 verses  | 125 in 36 verses       |
+| Seven-word Tanzil runs absent from the skeletons (within verses)                           | 1,402 in 457 verses  | 141 in 35 verses       |
+| All verses typed as Tanzil writes them, missed by the five-word detector (5 words or more) | 27                   | 3                      |
+| Model-written prose (400 annotation sentences), flagged by the store check                 | 2                    | 2                      |
+| The same prose, flagged by the five-word detector of the insight stages                    | 3                    | 3                      |
+| Store check, one text, p50 / p95                                                           | 33 / 61 ms           | 40 / 70 ms             |
+| Store check, eight texts at once (an insight's fields), p50 / p95                          | 234 / 315 ms         | 261 / 349 ms           |
+| Building the five-word detector (once a worker)                                            | 0.10 s               | 0.19 s                 |
+
+Of the 212 verses typed as Tanzil writes them that still pass, 202 are verses of one or two words, which the guard leaves alone on purpose (stock phrases), and 10 differ by letters the mushaf adds («أفإين») or by a hamza Tanzil seats otherwise than the converter («مسئولون» and «مسؤولون», both in use). The 3 short ones are 23:108, 37:24 and 106:2. The converter's rules were chosen on these measurements: the vocative apart alone left 430 five-word runs in 145 verses; the vocative after a conjunction, the particle of attention and the hamza seats brought them to 125 in 36. Writing the derived skeletons of the whole store takes about 4 s (`import_scripture standard`); checking them when they are current writes nothing. No lexical search, vector or prompt changed.

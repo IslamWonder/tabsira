@@ -27,7 +27,13 @@ API_DIR = Path(__file__).resolve().parents[2]
 TRIGRAM_INDEXES = (
     "ix_quran_verse_search_guard_text_trgm",
     "ix_quran_verse_spans_guard_text_trgm",
+    "ix_quran_verse_standard_guard_guard_text_trgm",
+    "ix_quran_verse_standard_spans_guard_text_trgm",
     "ix_hadith_search_guard_text_trgm",
+)
+WORD_COUNT_INDEXES = (
+    "ix_quran_verse_search_guard_words",
+    "ix_quran_verse_standard_guard_guard_words",
 )
 
 
@@ -183,16 +189,20 @@ async def test_a_short_verse_is_held_whole_by_word_and_a_very_short_one_not_at_a
     assert overlap.padded(["", f"{ikhlas}.", search_copy(verse_text(112, 1))]) == [f" {folded} "]
 
 
-async def test_the_short_verse_check_is_served_by_the_word_count_index(store):
+async def test_the_short_verse_check_is_served_by_the_word_count_index_of_each_spelling(store):
     wanted = overlap.padded([f"نعم، {QUOTED_WHOLE['112:1']}."])
     async with store() as db:
         await db.execute(text("SET LOCAL enable_seqscan = off"))
-        compiled = overlap.short_verse_statement(wanted).compile(
-            dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
-        )
-        plan = "\n".join((await db.scalars(text(f"EXPLAIN {compiled}"))).all())
+        plans = []
+        for statement in overlap.short_verse_statements(wanted):
+            compiled = statement.compile(
+                dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
+            )
+            plans.append("\n".join((await db.scalars(text(f"EXPLAIN {compiled}"))).all()))
 
-    assert "ix_quran_verse_search_guard_words" in plan
+    assert [[index for index in WORD_COUNT_INDEXES if index in plan] for plan in plans] == [
+        [index] for index in WORD_COUNT_INDEXES
+    ]
 
 
 async def test_the_store_check_is_served_by_the_trigram_indexes(store):
@@ -254,6 +264,14 @@ def test_the_migration_writes_the_spans_the_models_write():
     assert corpus.PREVIOUS_SPAN_STATEMENTS == guard.VERSE_SPAN_STATEMENTS
     assert corpus.DROP_PREVIOUS_SPANS == guard.DROP_VERSE_SPANS
     assert guard.PREVIOUS_SPAN_STATEMENTS == first.VERSE_SPAN_STATEMENTS
+
+
+def test_the_migration_writes_the_standard_spans_the_models_write():
+    standard = _migration("20261006_100000_add_quran_verse_standard_guard.py")
+
+    assert standard.STANDARD_SPAN_STATEMENTS == scripture_models.STANDARD_SPAN_STATEMENTS
+    assert standard.DROP_STANDARD_SPANS == scripture_models.DROP_STANDARD_SPANS
+    assert standard.GUARD_WORDS_SQL == scripture_models.GUARD_WORDS_SQL
 
 
 async def test_a_chat_answer_that_copies_any_stored_text_is_refused(

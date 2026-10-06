@@ -40,7 +40,7 @@ from src.models import (
 from src.schemas.learning_path import LearningPathFile
 from src.scripture.guard import WritePurpose, allow_scripture_writes
 from src.scripture.guard_fold import guard_fold
-from src.scripture.quran import refresh_verse_spans
+from src.scripture.quran import refresh_standard_guard
 from src.scripture.rulings import RulingInput, find_hadith, record_ruling
 from src.scripture.text import search_copy
 from src.services.masar_import import import_path
@@ -60,9 +60,10 @@ def photo(width: int = 96, height: int = 64, fmt: str = "JPEG") -> bytes:
     return buffer.getvalue()
 
 
-async def store_extra(session: AsyncSession) -> None:
-    """Import the extra verses and hadith the tutorial and the treasures cite."""
-    extra = json.loads((DATA / "extra-scripture.json").read_text(encoding="utf-8"))
+async def store_extra(session: AsyncSession, name: str = "extra-scripture.json") -> None:
+    """Import the extra verses and hadith the tutorial and the treasures cite (or another file)."""
+    extra = json.loads((DATA / name).read_text(encoding="utf-8"))
+    extra.setdefault("hadiths", [])
     await allow_scripture_writes(session, WritePurpose.IMPORT)
     for surah in extra["surahs"]:
         session.add(QuranSurah(**surah))
@@ -89,7 +90,8 @@ async def store_extra(session: AsyncSession) -> None:
         for hadith in hadiths
     )
     await session.flush()
-    await refresh_verse_spans(session)
+    # Their skeletons in today's spelling, as the import derives them; it rebuilds the spans.
+    await refresh_standard_guard(session)
 
 
 async def store_path(session: AsyncSession) -> None:

@@ -9,7 +9,8 @@ spelling is caught as surely as one in the mushaf's:
 
 - the pattern rules of `src.pipeline.leak_guard`;
 - a comparison, five words at a time, with every verse (its stored guard
-  skeleton) and with the hadiths that stage was shown. The honorific «صلى الله
+  skeletons, in the mushaf's spelling and in today's) and with the hadiths that
+  stage was shown. The honorific «صلى الله
   عليه وسلم» is left out of the hadith runs: an explanation may name the
   Prophet with it without quoting anyone;
 - the whole store, seven words at a time (`src.scripture.overlap.repeats_store`):
@@ -24,7 +25,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import QuranVerseSearch
+from src.models import QuranVerseSearch, QuranVerseStandardGuard
 from src.pipeline.leak_guard import (
     LeakDetector,
     LeakFinding,
@@ -51,8 +52,19 @@ def without_honorific(text: str) -> str:
 
 
 async def quran_detector(session: AsyncSession) -> ShingleOverlapDetector:
-    """Build the detector of runs of words shared with any verse (about 80,000 runs)."""
-    texts = list(await session.scalars(select(QuranVerseSearch.guard_text)))
+    """
+    Build the detector of runs of words shared with any verse (about 80,000 runs a spelling).
+
+    Both skeletons of every verse, the mushaf's and today's (our conversion of the stored
+    text, task 05.9): a run of five words in either spelling is a quotation.
+    """
+    texts = list(
+        await session.scalars(
+            select(QuranVerseSearch.guard_text).union_all(
+                select(QuranVerseStandardGuard.guard_text)
+            )
+        )
+    )
     # Seconds of pure Python: in a thread, so the event loop keeps serving meanwhile.
     return await asyncio.to_thread(ShingleOverlapDetector, texts)
 

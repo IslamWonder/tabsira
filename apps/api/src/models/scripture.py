@@ -235,6 +235,90 @@ event.listen(
 )
 
 
+class QuranVerseStandardGuard(Base):
+    """
+    The guard skeleton of a verse converted into today's spelling, for the leak guard only.
+
+    Derived from the stored Uthmani text by `src.scripture.standard_spelling` and
+    folded at once (task 05.9): no readable text is stored, nothing here is
+    displayed, returned by an API, sent to a model or searched. The guard holds
+    model text against this skeleton as well as the Uthmani one
+    (`src.scripture.overlap`), since the fold alone cannot move a word boundary
+    (the mushaf joins the vocative to the next word). Written with the verse by
+    the importer and the correction sync, and checked again against the current
+    converter by `refresh_standard_guard` (make data and every deploy).
+    """
+
+    __tablename__ = "quran_verse_standard_guard"
+    __table_args__ = (
+        Index(
+            "ix_quran_verse_standard_guard_guard_text_trgm",
+            "guard_text",
+            postgresql_using="gin",
+            postgresql_ops={"guard_text": "gin_trgm_ops"},
+        ),
+        Index("ix_quran_verse_standard_guard_guard_words", "guard_words"),
+        {"schema": CORPUS_SCHEMA},
+    )
+
+    verse_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("corpus.quran_verses.id", ondelete="CASCADE"), primary_key=True
+    )
+    guard_text: Mapped[str] = mapped_column(Text)
+    guard_words: Mapped[int] = mapped_column(Integer, Computed(GUARD_WORDS_SQL, persisted=True))
+
+
+# The same spans over today's spelling: a quotation of short verses one after
+# another, written as today writes them. Rebuilt with the Uthmani spans
+# (`refresh_verse_spans`); the migration writes the same statements.
+STANDARD_SPAN_STATEMENTS = (
+    """
+    CREATE MATERIALIZED VIEW corpus.quran_verse_standard_spans AS
+    SELECT s.verse_id,
+           concat_ws(
+               ' ',
+               s.guard_text,
+               array_to_string(
+                   (string_to_array(string_agg(s.guard_text, ' ') OVER following, ' '))[1:6],
+                   ' '
+               )
+           ) AS guard_text
+    FROM corpus.quran_verse_standard_guard AS s
+    JOIN corpus.quran_verses AS v ON v.id = s.verse_id
+    WINDOW following AS (
+        PARTITION BY v.surah ORDER BY v.ayah ROWS BETWEEN 1 FOLLOWING AND 6 FOLLOWING
+    )
+    """,
+    """
+    CREATE UNIQUE INDEX ix_quran_verse_standard_spans_verse_id
+    ON corpus.quran_verse_standard_spans (verse_id)
+    """,
+    """
+    CREATE INDEX ix_quran_verse_standard_spans_guard_text_trgm
+    ON corpus.quran_verse_standard_spans USING gin (guard_text gin_trgm_ops)
+    """,
+)
+DROP_STANDARD_SPANS = "DROP MATERIALIZED VIEW IF EXISTS corpus.quran_verse_standard_spans"
+
+quran_verse_standard_spans = table(
+    "quran_verse_standard_spans",
+    column("verse_id", BigInteger),
+    column("guard_text", Text),
+    schema=CORPUS_SCHEMA,
+)
+
+for _statement in STANDARD_SPAN_STATEMENTS:
+    _ddl = DDL(_statement)  # type: ignore[no-untyped-call]
+    event.listen(
+        QuranVerseStandardGuard.__table__, "after_create", _ddl.execute_if(dialect="postgresql")
+    )
+event.listen(
+    QuranVerseStandardGuard.__table__,
+    "before_drop",
+    DDL(DROP_STANDARD_SPANS).execute_if(dialect="postgresql"),  # type: ignore[no-untyped-call]
+)
+
+
 class QuranAnnotation(Base):
     """
     The model-written annotation of a verse from the annotated corpus, for retrieval only.
@@ -501,7 +585,6 @@ GUARDED_TABLES = {
     "hadith_rulings": "UPDATE OR DELETE",
     "scripture_audit": "UPDATE OR DELETE",
 }
-
 
 # The guarded tables that are reference data (`corpus`); the others are written in production (`app`).
 CORPUS_GUARDED_TABLES = frozenset({"quran_verses", "quran_verse_history", "hadiths"})

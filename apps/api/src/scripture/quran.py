@@ -11,6 +11,13 @@ hashes and where the new text came from. Nothing here edits a text.
 The verse spans the leak guard reads across verses (`quran_verse_spans`) are
 rebuilt once at the end of a batch that added or replaced a search copy (an
 import, a sync run), in the same transaction, not once per verse.
+
+Each verse also has a guard skeleton in today's spelling
+(`quran_verse_standard_guard`, task 05.9), derived from its text by
+`src.scripture.standard_spelling`: written with a corrected text, and brought in
+line with the current converter for every verse by `refresh_standard_guard`, which
+an import runs at its end and `make data` and every deploy run on their own
+(`src.cli.import_scripture standard`). Nothing derived here is ever displayed.
 """
 
 from __future__ import annotations
@@ -33,13 +40,15 @@ from src.models import (
     QuranVerse,
     QuranVerseHistory,
     QuranVerseSearch,
+    QuranVerseStandardGuard,
     ScriptureAudit,
     ScriptureSyncState,
 )
-from src.models.scripture import quran_verse_spans
+from src.models.scripture import quran_verse_spans, quran_verse_standard_spans
 from src.scripture.errors import ScriptureError
 from src.scripture.guard_fold import guard_fold
 from src.scripture.quranpedia import MUSHAF_ID
+from src.scripture.standard_spelling import standard_skeleton
 from src.scripture.text import search_copy, sha256_hex
 
 SYNC_SOURCE = f"quranpedia:mushaf-{MUSHAF_ID}"
@@ -205,6 +214,7 @@ async def apply_correction(
         .where(QuranVerseSearch.verse_id == verse.id)
         .values(normalized_text=search_copy(text), guard_text=guard_fold(text))
     )
+    await _store_standard_guard(session, {verse.id: standard_skeleton(text)})
     session.add(
         ScriptureAudit(
             entity="quran_verse",
@@ -330,9 +340,46 @@ async def reconcile_verses(
 
 
 async def refresh_verse_spans(session: AsyncSession) -> None:
-    """Rebuild the folded verse spans from the search copies (a few thousand short rows), once a batch."""
-    spans = f"{quran_verse_spans.schema}.{quran_verse_spans.name}"
-    await session.execute(sa_text(f"REFRESH MATERIALIZED VIEW {spans}"))
+    """Rebuild the folded verse spans of both spellings (a few thousand short rows), once a batch."""
+    for view in (quran_verse_spans, quran_verse_standard_spans):
+        await session.execute(sa_text(f"REFRESH MATERIALIZED VIEW {view.schema}.{view.name}"))
+
+
+async def _store_standard_guard(session: AsyncSession, skeletons: dict[int, str]) -> None:
+    """Write the skeletons in today's spelling of these verses, replacing what was there."""
+    statement = pg_insert(QuranVerseStandardGuard).values(
+        [{"verse_id": verse_id, "guard_text": text} for verse_id, text in skeletons.items()]
+    )
+    await session.execute(
+        statement.on_conflict_do_update(
+            index_elements=[QuranVerseStandardGuard.verse_id],
+            set_={"guard_text": statement.excluded.guard_text},
+        )
+    )
+
+
+async def refresh_standard_guard(session: AsyncSession) -> int:
+    """
+    Bring every verse's skeleton in today's spelling in line with its text; return how many changed.
+
+    A missing skeleton (a corpus restored from an archive that predates them) or a
+    stale one (the converter or the fold changed since) is written again, and the
+    spans are rebuilt then; when everything is current nothing is written.
+    """
+    rows = await session.execute(
+        select(QuranVerse.id, QuranVerse.text, QuranVerseStandardGuard.guard_text).outerjoin(
+            QuranVerseStandardGuard, QuranVerseStandardGuard.verse_id == QuranVerse.id
+        )
+    )
+    stale = {
+        verse_id: wanted
+        for verse_id, text, held in rows
+        if (wanted := standard_skeleton(text)) != held
+    }
+    if stale:
+        await _store_standard_guard(session, stale)
+        await refresh_verse_spans(session)
+    return len(stale)
 
 
 async def import_quran(
@@ -351,6 +398,7 @@ async def import_quran(
     report = QuranImportReport(version=dump.version)
     report.surahs = await _upsert_surahs(session, dump, surahs)
     await reconcile_verses(session, dump, source, report)
+    await refresh_standard_guard(session)
     session.add(
         ScriptureAudit(
             entity="quran_import",

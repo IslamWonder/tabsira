@@ -33,6 +33,7 @@ from src.pipeline.leak_guard import LeakGuard, PatternLeakDetector, ShingleOverl
 from src.pipeline.schemas import SceneAnalysis
 from src.scripture.overlap import repeats_store
 from src.scripture.rulings import eligible_given, latest_ruling
+from src.scripture.standard_spelling import standard_skeleton
 
 MAX_INSIGHTS = 3
 UNIT_PREFIX = "masar:"
@@ -80,10 +81,14 @@ async def leaks(db: AsyncSession, texts: list[str], corpus: list[str]) -> bool:
 async def cited_texts(
     db: AsyncSession, quran: tuple[int, int] | None, hadith: tuple[str, str] | None
 ) -> list[str]:
-    """Return the stored text of the cited verse and hadith, whatever the hadith's ruling."""
+    """
+    Return the stored text of the cited verse and hadith, whatever the hadith's ruling.
+
+    The verse also in today's spelling (its converted skeleton, task 05.9), for the guard only.
+    """
     corpus: list[str] = []
     if quran is not None and (verse := await _verse_text(db, *quran)) is not None:
-        corpus.append(verse)
+        corpus.extend([verse, standard_skeleton(verse)])
     if hadith is not None:
         stored = await _hadith(db, HadithRef(collection=hadith[0], number=hadith[1]))
         if stored is not None:
@@ -151,7 +156,7 @@ async def _checked_quran(
     if text is None:
         refusals.append("quran_missing")
         return None
-    corpus.append(text)
+    corpus.extend([text, standard_skeleton(text)])
     return evidence
 
 

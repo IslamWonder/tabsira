@@ -1,0 +1,128 @@
+{
+  "description": "Verses copied by a script from a store installed from the corpus archive of 2026-10-04 (quranpedia dump 2026-10-03), one for each rule of src/scripture/standard_spelling.py, with the index of the word the rule applies to. Never typed by hand.",
+  "verses": [
+    {
+      "surah": 3,
+      "ayah": 66,
+      "text": "هَٰٓأَنتُمۡ هَٰٓؤُلَآءِ حَٰجَجۡتُمۡ فِيمَا لَكُم بِهِۦ عِلۡمٞ فَلِمَ تُحَآجُّونَ فِيمَا لَيۡسَ لَكُم بِهِۦ عِلۡمٞۚ وَٱللَّهُ يَعۡلَمُ وَأَنتُمۡ لَا تَعۡلَمُونَ",
+      "text_sha256": "31f5a96c11097ec233463a36878272030e7496fe5d02a8952f918aa29c4849c1"
+    },
+    {
+      "surah": 15,
+      "ayah": 95,
+      "text": "إِنَّا كَفَيۡنَٰكَ ٱلۡمُسۡتَهۡزِءِينَ",
+      "text_sha256": "cb155d6c67ae974fe88b7f7b93c1c6ce7a9556c8460bb12d9ccb9368fe7d17d6"
+    },
+    {
+      "surah": 16,
+      "ayah": 85,
+      "text": "وَإِذَا رَءَا ٱلَّذِينَ ظَلَمُواْ ٱلۡعَذَابَ فَلَا يُخَفَّفُ عَنۡهُمۡ وَلَا هُمۡ يُنظَرُونَ",
+      "text_sha256": "2d80dd2a95d6c9783e734cdcc97739f210e4bb21b72b830b7c836aa942ef4114"
+    },
+    {
+      "surah": 19,
+      "ayah": 89,
+      "text": "لَّقَدۡ جِئۡتُمۡ شَيۡــًٔا إِدّٗا",
+      "text_sha256": "106aa093a230161f7f4f1233254035ebb2ea0f990e9e486bc370022aae3b0cc1"
+    },
+    {
+      "surah": 20,
+      "ayah": 19,
+      "text": "قَالَ أَلۡقِهَا يَٰمُوسَىٰ",
+      "text_sha256": "1de6a20bb56d35722b225d8067ace4295b522cf2d27f6c000bc3d8c523957e44"
+    },
+    {
+      "surah": 37,
+      "ayah": 65,
+      "text": "طَلۡعُهَا كَأَنَّهُۥ رُءُوسُ ٱلشَّيَٰطِينِ",
+      "text_sha256": "b908bfd36458c8e3e18a17fd816e94afbf807cef529706f8e1a66509908aa2c8"
+    },
+    {
+      "surah": 38,
+      "ayah": 67,
+      "text": "قُلۡ هُوَ نَبَؤٌاْ عَظِيمٌ",
+      "text_sha256": "83bd71875b08fbc419071b2ab6bf38cc7f324d7b9247ada49090a52b5dbfcd9e"
+    },
+    {
+      "surah": 40,
+      "ayah": 32,
+      "text": "وَيَٰقَوۡمِ إِنِّيٓ أَخَافُ عَلَيۡكُمۡ يَوۡمَ ٱلتَّنَادِ",
+      "text_sha256": "07485f67fa6d44c5e49269a8c01514ad5337c3d92292862d44573b5f259cf4f7"
+    },
+    {
+      "surah": 56,
+      "ayah": 53,
+      "text": "فَمَالِــُٔونَ مِنۡهَا ٱلۡبُطُونَ",
+      "text_sha256": "6236d196e71e8119f9190d58cb8b61f4e6841309ee9bc6683afcfc53fde84141"
+    },
+    {
+      "surah": 70,
+      "ayah": 13,
+      "text": "وَفَصِيلَتِهِ ٱلَّتِي تُــٔۡوِيهِ",
+      "text_sha256": "2923d398dd6a989c49e913906980f190cfc83561272c2ac7d45ea7e35ea12214"
+    },
+    {
+      "surah": 78,
+      "ayah": 22,
+      "text": "لِّلطَّٰغِينَ مَــَٔابٗا",
+      "text_sha256": "a6457731206131f9061f2ddbd30bd15b813c120f362206e34ec62a91e0adb8e1"
+    }
+  ],
+  "cases": {
+    "line_hamza_kasra": {
+      "surah": 15,
+      "ayah": 95,
+      "word": 2
+    },
+    "line_hamza_damma": {
+      "surah": 37,
+      "ayah": 65,
+      "word": 2
+    },
+    "tooth_kasra": {
+      "surah": 56,
+      "ayah": 53,
+      "word": 0
+    },
+    "tooth_damma": {
+      "surah": 70,
+      "ayah": 13,
+      "word": 2
+    },
+    "tooth_unseated": {
+      "surah": 19,
+      "ayah": 89,
+      "word": 2
+    },
+    "tooth_before_alef": {
+      "surah": 78,
+      "ayah": 22,
+      "word": 1
+    },
+    "final_waw_hamza": {
+      "surah": 38,
+      "ayah": 67,
+      "word": 2
+    },
+    "final_hamza_alef": {
+      "surah": 16,
+      "ayah": 85,
+      "word": 1
+    },
+    "attention": {
+      "surah": 3,
+      "ayah": 66,
+      "word": 0
+    },
+    "vocative_after_waw": {
+      "surah": 40,
+      "ayah": 32,
+      "word": 0
+    },
+    "vocative": {
+      "surah": 20,
+      "ayah": 19,
+      "word": 2
+    }
+  }
+}

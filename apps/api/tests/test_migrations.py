@@ -79,6 +79,7 @@ CORPUS_TABLES = {
     "quran_verses",
     "quran_verse_history",
     "quran_verse_search",
+    "quran_verse_standard_guard",
     "quran_annotations",
     "hadith_collections",
     "hadiths",
@@ -233,12 +234,15 @@ async def test_the_three_chains_build_the_database_and_match_the_models(migrated
     } == tables
     assert set(EXTENSIONS) <= extensions
     assert versions == {
-        "app": "20261005_233000",
+        "app": "20261006_100000",
         "geodata": "20261004_130000",
         "vectors": "20261004_200000",
     }
     # alembic check cannot see a materialized view either.
-    assert views == {"corpus.quran_verse_spans true"}
+    assert views == {
+        "corpus.quran_verse_spans true",
+        "corpus.quran_verse_standard_spans true",
+    }
     # The models and the migrations describe the same database.
     assert {"ix_geonames_name_trgm", "ix_geonames_location_geom", "pk_geonames"} <= indexes
     # The scripture write guard exists after the migrations too, not only in a schema built

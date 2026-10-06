@@ -21,6 +21,15 @@ folded here to the same skeleton, so a quotation is found in either spelling:
 
 The skeleton is used on both sides of every guard comparison and for nothing
 else: it is never shown and never used for retrieval, which keeps `search_copy`.
+
+What the fold cannot undo: the mushaf joins the vocative «يا» to the word after
+it («يٰقوم», «يٰٓأيها»), and today's spelling writes it apart, which changes the
+word count and the word boundaries (one skeleton word «يه» against two, «ي يه»,
+so a short verse quoted whole no longer matches). A fold of one text cannot
+move a word boundary, so the guard also keeps the skeleton of each verse
+converted into today's spelling (`src.scripture.standard_spelling`,
+`quran_verse_standard_guard`, task 05.9), and compares model text with both
+(`src.scripture.overlap`).
 """
 
 from __future__ import annotations

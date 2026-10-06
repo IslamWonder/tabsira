@@ -81,7 +81,7 @@ A person takes or uploads a photo. They see honest stages (understanding, search
 
 ### 04.9 Fold the joined vocative the way today's spelling writes it
 
-- **Status:** ⬜ open
+- **Status:** ↪ superseded by 05.9 (2026-10-06) for the Quran: rather than fold the vocative, the guard also keeps each verse's skeleton converted into today's spelling, and the spelling helper writes the vocative apart. The hadith side needs nothing: the hadith texts are in today's spelling already.
 - **Goal:** The mushaf joins «يا» to the word after it; today's spelling writes it apart, which changes the word count and the word boundaries, so 17 of the 20 short verses with a joined vocative (20:11, 20:17, 20:19, 20:36, 20:49, 20:95, 21:14, 21:62, 25:28, 27:9, 37:20, 37:104, 68:31, 69:27, 71:2, 89:24, 109:1) escape the whole-verse check of 04.6 when written as today, and `tests/scripture/spelling.py` keeps the joined form, so the spelling sweep overstates what it covers (found by the scripture review of 04.6). Join a lone skeleton word «ي» (and «ه») to the next word in `guard_fold`, on both sides, and make the spelling helper split the vocative as today's spelling does.
 - **Depends on:** 04.6
 - **Touches:** apps/api/src/scripture/guard_fold.py, tests/scripture/spelling.py, tests/scans/test_spelling_guard.py.

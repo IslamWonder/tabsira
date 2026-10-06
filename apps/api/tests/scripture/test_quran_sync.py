@@ -13,14 +13,16 @@ from src.models import (
     QuranVerse,
     QuranVerseHistory,
     QuranVerseSearch,
+    QuranVerseStandardGuard,
     ScriptureAudit,
     ScriptureSyncState,
 )
-from src.models.scripture import quran_verse_spans
+from src.models.scripture import quran_verse_spans, quran_verse_standard_spans
 from src.scripture import quran, quran_sync
 from src.scripture.guard import WritePurpose, allow_scripture_writes
 from src.scripture.guard_fold import guard_fold
 from src.scripture.quran_sync import SyncError, collect_changes, sync_quran
+from src.scripture.standard_spelling import standard_skeleton
 from src.scripture.text import sha256_hex
 from tests.scripture.fake_http import FakeQuranpedia, dump_routes, json_response
 from tests.scripture.fixtures import fixture_path, load_json, store_quran, verse_text
@@ -246,7 +248,8 @@ async def test_several_corrections_rebuild_the_verse_spans_once(
         again = await sync_quran(db_session, FakeQuranpedia(routes).client(), cache_dir=tmp_path)
 
     assert (report.corrected, again.corrected) == (2, 0)
-    assert (rebuilt, refreshes.count) == (1, 1)
+    # One rebuild a batch, of the spans of each spelling.
+    assert (rebuilt, refreshes.count) == (2, 2)
     corrected = {
         verse.id: verse
         for verse in await db_session.scalars(
@@ -264,8 +267,21 @@ async def test_several_corrections_rebuild_the_verse_spans_once(
             )
         ).all()
     )
+    standard_spans = dict(
+        (
+            await db_session.execute(
+                select(
+                    quran_verse_standard_spans.c.verse_id, quran_verse_standard_spans.c.guard_text
+                )
+            )
+        ).all()
+    )
     for verse_id, verse in corrected.items():
         assert spans[verse_id].startswith(guard_fold(verse.text))
+        kept = await db_session.get(QuranVerseStandardGuard, verse_id)
+        assert kept is not None
+        assert kept.guard_text == standard_skeleton(verse.text)
+        assert standard_spans[verse_id].startswith(kept.guard_text)
     await _spans_follow_the_search_copies(db_session)
 
 

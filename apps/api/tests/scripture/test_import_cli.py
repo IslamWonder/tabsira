@@ -4,14 +4,19 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from src.cli import import_scripture
-from src.models import QuranVerse
+from src.models import QuranVerse, QuranVerseStandardGuard
 from src.scripture import quran
 from src.scripture.quranpedia import fetch_dump_files
 from tests.scripture.fake_http import FakeQuranpedia, dump_routes, hadith_routes
-from tests.scripture.fixtures import cache_hadith_fixtures, fixture_sources, load_json
+from tests.scripture.fixtures import (
+    cache_hadith_fixtures,
+    fixture_sources,
+    load_json,
+    store_quran,
+)
 
 
 def _whole(monkeypatch) -> None:
@@ -131,3 +136,19 @@ def test_main_runs_the_command_with_its_arguments(monkeypatch):
 
     assert import_scripture.main(["quran"]) == 7
     assert seen == [["quran"]]
+
+
+async def test_the_standard_step_writes_missing_skeletons_once(scripture_maker, capsys):
+    async with scripture_maker() as session, session.begin():
+        await store_quran(session)
+        verses = await session.scalar(select(func.count()).select_from(QuranVerse))
+        # As after a corpus restored from an archive that predates the derived skeletons.
+        await session.execute(delete(QuranVerseStandardGuard))
+
+    first = await import_scripture.run(["standard"], sessionmaker=scripture_maker)
+    second = await import_scripture.run(["standard"], sessionmaker=scripture_maker)
+
+    out = capsys.readouterr().out
+    assert (first, second) == (0, 0)
+    assert f"standard: {verses} verse skeletons in today's spelling written" in out
+    assert "standard: 0 verse skeletons in today's spelling written" in out

@@ -87,6 +87,7 @@ from src.models.scripture import (
     QuranVerse,
     QuranVerseHistory,
     QuranVerseSearch,
+    QuranVerseStandardGuard,
     ScriptureAudit,
     ScriptureSyncState,
 )
@@ -205,6 +206,7 @@ __all__ = [
     "QuranVerseEmbedding",
     "QuranVerseHistory",
     "QuranVerseSearch",
+    "QuranVerseStandardGuard",
     "ReactionKind",
     "ReducedMotion",
     "RelationReason",

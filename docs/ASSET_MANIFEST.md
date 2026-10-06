@@ -111,6 +111,13 @@ Settled by decision 16 (§2.0): the displayed text is quranpedia's mushaf 2, and
 2. 95:1 and 97:1: the corpus verse text includes the basmala, unlike the other 110 surahs.
 3. Tanzil's terms require verbatim copies and keeping its notice; the corpus is not a verbatim copy of any Tanzil version (basmala and BOM removed).
 
+### 2.6 Today's spelling for the leak guard (task 05.9)
+
+The leak guard compares model text with the folded Uthmani text, and the fold cannot move a word boundary: the mushaf joins the vocative «يا» to the next word, so a short verse written as today writes it escaped the whole-verse check (18 of the 20 verses of three to six words with a joined vocative).
+
+- **Derived, no new source.** `apps/api/src/scripture/standard_spelling.py` converts each stored quranpedia verse into today's spelling with our own deterministic rules, and only the guard skeleton of the result is stored (`corpus.quran_verse_standard_guard`, with its word count, and the span view `corpus.quran_verse_standard_spans`). No readable text is stored; nothing of it is displayed. It is our processing of the approved text, like the search copy.
+- **Considered and dropped: Tanzil's «Simple» text.** Storing Tanzil Quran Text (Simple, version 1.1) beside the mushaf was the first design. It was dropped on 6 October 2026 because Tanzil is not among the contest's approved Quran sources (the King Fahd Complex print or quranpedia.net, docs/spec/contest-reference.md). Nothing of it ships: no file, no download, no import. A copy was used on the measuring machine only, as an independent reference to choose and check the converter's rules (docs/BENCHMARK.md, «Leak guard in two spellings»).
+
 ## 3. Hadith books (fawazahmed0 `hadith-api`, Arabic editions)
 
 Each file: `{"metadata": {"name", "sections", "section_details"}, "hadiths": [...]}`. Each hadith: `hadithnumber`, `arabicnumber`, `text`, `grades` (list of `{name, grade}`), `reference` (`{book, hadith}`, section index and position). Section names in `metadata.sections` are English. Every book also has an `ara-<book>1` edition with diacritics removed "for easier searching" (not downloaded).
@@ -277,22 +284,24 @@ Downloaded on 4 October 2026. Tanzil served the file without accepting its downl
 
 `make migrate && make data` on an empty database (`tabsira_scripture`), 4 October 2026. Every step verifies its file's SHA-256 first and can run again without changing what is already right.
 
-| Table                           |       Rows | Notes                                                                                             |
-| ------------------------------- | ---------: | ------------------------------------------------------------------------------------------------- |
-| `corpus.quran_surahs`           |        114 |                                                                                                   |
-| `corpus.quran_verses`           |      6,236 | quranpedia dump 2026-10-03, every hash checked by the database                                    |
-| `corpus.quran_verse_search`     |      6,236 | folded copies for search; guard skeletons and their word counts for the leak guard                |
-| `corpus.quran_verse_spans`      |      6,236 | each verse's guard skeleton with the next six words of its surah, leak guard only (mat. view)     |
-| `corpus.quran_verse_history`    |          0 | no correction applied yet                                                                         |
-| `corpus.quran_annotations`      |      6,236 | seven annotation keys per verse; 514 strings repeating the verse left out; `text_ar` not stored   |
-| `corpus.hadith_collections`     |          9 |                                                                                                   |
-| `corpus.hadiths`                |     65,712 | §3.5                                                                                              |
-| `corpus.hadith_search`          |     65,712 | folded copies for search, and guard skeletons for the leak guard                                  |
-| `corpus.hadith_signals`         |      3,920 | 3,613 linked to a hadith (§4.4)                                                                   |
-| `app.hadith_rulings`            |          0 | recorded by editors (decision 18)                                                                 |
-| `app.hadith_verification_queue` |          0 | filled by the pipeline's demand                                                                   |
-| `app.scripture_audit`           | 10 per run | one import row per dump and per book                                                              |
-| `app.scripture_sync_state`      |          1 | `quranpedia:mushaf-2`; a sync right after the import found no change to mushaf 2 since 2026-10-03 |
+| Table                               |       Rows | Notes                                                                                                  |
+| ----------------------------------- | ---------: | ------------------------------------------------------------------------------------------------------ |
+| `corpus.quran_surahs`               |        114 |                                                                                                        |
+| `corpus.quran_verses`               |      6,236 | quranpedia dump 2026-10-03, every hash checked by the database                                         |
+| `corpus.quran_verse_search`         |      6,236 | folded copies for search; guard skeletons and their word counts for the leak guard                     |
+| `corpus.quran_verse_spans`          |      6,236 | each verse's guard skeleton with the next six words of its surah, leak guard only (mat. view)          |
+| `corpus.quran_verse_history`        |          0 | no correction applied yet                                                                              |
+| `corpus.quran_verse_standard_guard` |      6,236 | each verse converted into today's spelling, its guard skeleton only, leak guard only (§2.6, 6 October) |
+| `corpus.quran_verse_standard_spans` |      6,236 | the same spans over today's spelling, leak guard only (mat. view)                                      |
+| `corpus.quran_annotations`          |      6,236 | seven annotation keys per verse; 514 strings repeating the verse left out; `text_ar` not stored        |
+| `corpus.hadith_collections`         |          9 |                                                                                                        |
+| `corpus.hadiths`                    |     65,712 | §3.5                                                                                                   |
+| `corpus.hadith_search`              |     65,712 | folded copies for search, and guard skeletons for the leak guard                                       |
+| `corpus.hadith_signals`             |      3,920 | 3,613 linked to a hadith (§4.4)                                                                        |
+| `app.hadith_rulings`                |          0 | recorded by editors (decision 18)                                                                      |
+| `app.hadith_verification_queue`     |          0 | filled by the pipeline's demand                                                                        |
+| `app.scripture_audit`               | 10 per run | one import row per dump and per book                                                                   |
+| `app.scripture_sync_state`          |          1 | `quranpedia:mushaf-2`; a sync right after the import found no change to mushaf 2 since 2026-10-03      |
 
 Time: **72 s** for the first full run on an empty database, **38 s** for a second run, on a development machine under load (load average 12–14 on 8 cores, other test suites running). A second `make data` changes no verse and no hadith.
 

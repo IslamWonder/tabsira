@@ -394,6 +394,7 @@ def test_every_table_lives_in_the_app_schema():
         "corpus.quran_surahs",
         "corpus.quran_verses",
         "corpus.quran_verse_search",
+        "corpus.quran_verse_standard_guard",
         "corpus.quran_verse_history",
         "corpus.quran_annotations",
         "corpus.hadith_collections",

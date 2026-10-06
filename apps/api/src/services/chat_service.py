@@ -51,6 +51,7 @@ from src.routers.scripture import HadithOut, QuranVerseOut
 from src.scans.workflow import call_rows
 from src.schemas.insight import ChatReply
 from src.scripture.overlap import repeats_store
+from src.scripture.standard_spelling import standard_skeleton
 from src.services import chat_retrieval, learner_service
 from src.services.chat_retrieval import NewText, TextKind
 from src.services.insight_view import (
@@ -179,17 +180,17 @@ async def _cited_texts(db: AsyncSession, insight: Insight) -> list[str]:
     Return the stored texts the insight cites, shown or not, as the leak guard's corpus.
 
     A hadith that is not shown (an editor ruled it out, decision 65) is guarded against all
-    the same: the model must not quote it either.
+    the same: the model must not quote it either. The verse is guarded in today's spelling
+    too (its converted skeleton, task 05.9), which is never shown nor sent to the model.
     """
     texts: list[str | None] = []
     if insight.quran_surah is not None and insight.quran_ayah is not None:
-        texts.append(
-            await db.scalar(
-                select(QuranVerse.text).where(
-                    QuranVerse.surah == insight.quran_surah, QuranVerse.ayah == insight.quran_ayah
-                )
+        verse: str | None = await db.scalar(
+            select(QuranVerse.text).where(
+                QuranVerse.surah == insight.quran_surah, QuranVerse.ayah == insight.quran_ayah
             )
         )
+        texts.extend([verse, standard_skeleton(verse)] if verse is not None else [])
     if insight.hadith_collection is not None and insight.hadith_number is not None:
         texts.append(
             await db.scalar(
