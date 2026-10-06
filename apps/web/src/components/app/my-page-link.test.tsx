@@ -1,12 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { render, renderHook, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { forgetSession, setSignedIn } from '@/account/session';
-import { messages } from '@/messages';
 import { forgetIdentity, setIdentity } from '@/social/identity-store';
 import { mockApi } from '@/test/api';
 import { USER } from '@/test/fixtures';
 import { IDENTITY } from '@/test/social';
-import { MyPageLink } from './my-page-link';
+import { MyPageIcon, ProfileCornerLink, useMyPage } from './my-page-link';
 
 const pathname = vi.hoisted(() => ({ value: '/' }));
 vi.mock('next/navigation', () => ({ usePathname: () => pathname.value }));
@@ -17,27 +16,49 @@ afterEach(() => {
   pathname.value = '/';
 });
 
-describe('MyPageLink', () => {
-  it('leads a member with a handle to their public page, marked when it is the one shown', () => {
-    mockApi({ 'GET /me/public-identity': { body: IDENTITY } });
-    setSignedIn(USER);
-    setIdentity(IDENTITY);
-    const { rerender } = render(<MyPageLink />);
-    const link = screen.getByRole('link', { name: messages.nav.myPageLabel('reader') });
-    expect(link).toHaveAttribute('href', '/u/reader');
-    expect(link).not.toHaveAttribute('aria-current');
-    pathname.value = '/u/reader';
-    rerender(<MyPageLink />);
-    expect(screen.getByRole('link')).toHaveAttribute('aria-current', 'page');
+function member(handle: string | null) {
+  mockApi({ 'GET /me/public-identity': { body: { ...IDENTITY, handle } } });
+  setSignedIn(USER);
+  setIdentity({ ...IDENTITY, handle });
+}
+
+describe('one’s own public page', () => {
+  it('is known once the member has chosen a handle, and not before', () => {
+    expect(renderHook(() => useMyPage()).result.current).toBeNull();
+    member(null);
+    expect(renderHook(() => useMyPage()).result.current).toBeNull();
+    member('reader');
+    expect(renderHook(() => useMyPage()).result.current).toEqual({
+      href: '/u/reader',
+      handle: 'reader',
+    });
   });
 
-  it('is absent for a guest and for a member without a handle yet', () => {
-    const { container, unmount } = render(<MyPageLink />);
+  it('has an icon of its own, decorative', () => {
+    const { container } = render(<MyPageIcon width="18" height="18" />);
+    expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  });
+});
+
+describe('ProfileCornerLink', () => {
+  it('leads to «ملفي» from the corner once «صفحتي» has the tab, current on the hub and the sky', () => {
+    member('reader');
+    const { rerender } = render(<ProfileCornerLink />);
+    const link = screen.getByRole('link', { name: 'ملفي' });
+    expect(link).toHaveAttribute('href', '/me');
+    expect(link).not.toHaveAttribute('aria-current');
+    for (const page of ['/me', '/sky']) {
+      pathname.value = page;
+      rerender(<ProfileCornerLink />);
+      expect(screen.getByRole('link')).toHaveAttribute('aria-current', 'page');
+    }
+  });
+
+  it('is absent while «ملفي» is still the tab: a guest, or a member without a handle', () => {
+    const { container, unmount } = render(<ProfileCornerLink />);
     expect(container).toBeEmptyDOMElement();
     unmount();
-    mockApi({ 'GET /me/public-identity': { body: { ...IDENTITY, handle: null } } });
-    setSignedIn(USER);
-    setIdentity({ ...IDENTITY, handle: null });
-    expect(render(<MyPageLink />).container).toBeEmptyDOMElement();
+    member(null);
+    expect(render(<ProfileCornerLink />).container).toBeEmptyDOMElement();
   });
 });
