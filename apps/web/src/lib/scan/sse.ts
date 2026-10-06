@@ -37,7 +37,7 @@ function parseBlock(block: string): SseMessage | null {
 /** Cuts the complete messages off the front of `text`; what is left is unfinished. */
 export function splitMessages(text: string): { messages: SseMessage[]; rest: string } {
   // A lone \r at the very end may be the first half of \r\n: it waits for the next chunk.
-  const normalised = text.replaceAll(/\r\n/g, '\n').replaceAll(/\r(?!$)/g, '\n');
+  const normalised = text.replaceAll('\r\n', '\n').replaceAll(/\r(?!$)/g, '\n');
   const blocks = normalised.split('\n\n');
   const rest = blocks.pop() as string;
   const messages = blocks.flatMap((block) => parseBlock(block) ?? []);

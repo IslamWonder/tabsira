@@ -16,14 +16,14 @@ export function decodeEntities(value) {
     return value;
   }
   return value
-    .replaceAll(/&quot;/g, '"')
+    .replaceAll('&quot;', '"')
     .replace(/&#0?39;|&apos;|&#x27;/gi, "'")
-    .replaceAll(/&lt;/g, '<')
-    .replaceAll(/&gt;/g, '>')
-    .replaceAll(/&nbsp;/g, ' ')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&nbsp;', ' ')
     .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
     .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(Number.parseInt(code, 16)))
-    .replaceAll(/&amp;/g, '&');
+    .replaceAll('&amp;', '&');
 }
 
 export function baseUrl() {
