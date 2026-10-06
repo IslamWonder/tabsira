@@ -56,15 +56,15 @@ export function MeScreen() {
     opened.current = open;
   }, [open]);
 
-  const section: Record<SectionId, () => ReactNode> = {
-    account: () => (
+  const section: Record<SectionId, ReactNode> = {
+    account: (
       <AccountSection
         session={session}
         notice={notice}
         onSignedOut={() => setNotice(messages.auth.signOut.done)}
       />
     ),
-    about: () =>
+    about:
       editor.load.status === 'ready' ? (
         <AboutSection profile={editor.load.profile} save={editor.save} />
       ) : (
@@ -72,13 +72,13 @@ export function MeScreen() {
           {M.loading}
         </p>
       ),
-    identity: () => <IdentitySection />,
-    appearance: () => <AppearanceSection />,
-    personalization: () => <PersonalizationSection editor={editor} signedIn={signedIn} />,
-    practice: () => <PracticeSection />,
-    app: () => <AppSection />,
-    data: () => <DataSection onDeleted={() => setNotice(messages.pages.me.delete.deleted)} />,
-    cookies: () => <CookiesSection />,
+    identity: <IdentitySection />,
+    appearance: <AppearanceSection />,
+    personalization: <PersonalizationSection editor={editor} signedIn={signedIn} />,
+    practice: <PracticeSection />,
+    app: <AppSection />,
+    data: <DataSection onDeleted={() => setNotice(messages.pages.me.delete.deleted)} />,
+    cookies: <CookiesSection />,
   };
 
   return (
@@ -107,7 +107,7 @@ export function MeScreen() {
           <MeMenu groups={groups} current={null} withSummaries signedIn={signedIn} />
         </div>
       ) : null}
-      <div className={open === null ? 'hidden tablet:block' : undefined}>{section[shown]()}</div>
+      <div className={open === null ? 'hidden tablet:block' : undefined}>{section[shown]}</div>
     </SettingsLayout>
   );
 }
