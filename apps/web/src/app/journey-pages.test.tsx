@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { setSignedIn } from '@/account/session';
 import { mockApi } from '@/test/api';
-import { USER } from '@/test/fixtures';
-import { insightOut, scanOut } from '@/test/scan';
+import { PROFILE, USER } from '@/test/fixtures';
+import { completionOut, insightOut, progressOut, scanOut } from '@/test/scan';
 import InsightPage, { metadata as insightMetadata } from './insight/[id]/page';
 import ScanPage, { metadata as scanMetadata } from './scan/[id]/page';
 
@@ -39,14 +39,23 @@ describe('the pages of the journey', () => {
 
   it('offer inside sharing only the surfaces whose feature the server reads as on', async () => {
     vi.stubEnv('DISABLED_FEATURES', 'social');
+    // The finished panel scrolls itself into view, which jsdom does not implement.
+    Element.prototype.scrollIntoView = vi.fn();
     setSignedIn(USER);
     mockApi({
       [`GET /insights/${ID}`]: { body: insightOut() },
       [`GET /scans/${ID}`]: { body: scanOut() },
+      [`POST /insights/${ID}/complete`]: { body: completionOut() },
+      'GET /me/progress': { body: progressOut() },
+      'GET /profile': { body: { ...PROFILE, questions_asked: true } },
     });
     render(await InsightPage(params(ID)));
     await screen.findByRole('heading', { level: 1, name: 'عنوان البصيرة الأولى' });
-    await userEvent.click(screen.getByRole('button', { name: 'شارك' }));
+    // «شارك» shares in one tap; the surfaces are in the sheet that the finished
+    // insight's options link opens.
+    await userEvent.click(screen.getByRole('button', { name: 'تمّ' }));
+    const panel = await screen.findByRole('region', { name: 'اكتملت بصيرتك' });
+    await userEvent.click(within(panel).getByRole('button', { name: 'خيارات النشر' }));
     const sheet = screen.getByRole('dialog', { name: 'شارك البصيرة' });
     expect(within(sheet).getByRole('link', { name: 'انشر على الخريطة' })).toBeInTheDocument();
     expect(within(sheet).queryByRole('link', { name: 'انشر في تواصل' })).toBeNull();
