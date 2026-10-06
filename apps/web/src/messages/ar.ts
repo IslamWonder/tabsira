@@ -257,6 +257,7 @@ export const ar = {
     toggle: 'المؤثر الصوتي',
     on: 'مفعّل',
     off: 'مُوقَف',
+    playing: 'يُسمع الآن',
     state: (current: string) => `المؤثر الصوتي: ${current}`,
   },
 

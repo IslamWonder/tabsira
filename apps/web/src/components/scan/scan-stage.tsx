@@ -99,7 +99,7 @@ export function ScanStage({
         className="h-full"
       >
         <ScanSweep active={running} />
-        {sound ? <SceneSoundBadge live={running} /> : null}
+        {sound ? <SceneSoundBadge /> : null}
       </ScenePhoto>
     </PhotoFrame>
   );
@@ -135,16 +135,10 @@ export function PhotoFrame({
   );
 }
 
-/** The speaker of a scene with a sound; its ring breathes while the sound loops, never on hover. */
-function SceneSoundBadge({ live }: { live: boolean }) {
+/** The speaker of a scene with a sound; it shows when the sound is heard, never on hover. */
+function SceneSoundBadge() {
   return (
     <div className="fx-enter absolute top-3.5 end-3.5 z-10">
-      {live ? (
-        <span
-          aria-hidden="true"
-          className="fx-sound-ring pointer-events-none absolute inset-0 rounded-full"
-        />
-      ) : null}
       <SoundToggle />
     </div>
   );

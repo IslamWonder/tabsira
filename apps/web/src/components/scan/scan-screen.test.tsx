@@ -53,20 +53,18 @@ beforeEach(() => {
 });
 
 describe("ScanScreen: the scene's sound", () => {
-  it('puts a ringed speaker on the photo while the sound loops', () => {
+  it('puts the speaker on the photo while the sound loops', () => {
     setControls(running(), { stage: 'searching', sound: '/sounds/ontology/E006' });
     render(<ScanScreen scanId="1" />);
     expect(sceneSound).toHaveBeenLastCalledWith('/sounds/ontology/E006', 'running');
     expect(screen.getByRole('button', { name: 'المؤثر الصوتي' })).toBeInTheDocument();
-    expect(document.querySelector('.fx-sound-ring')).not.toBeNull();
   });
 
-  it('keeps the speaker without its ring once the insights are ready', () => {
+  it('keeps the speaker once the insights are ready', () => {
     setControls(ready(), { sound: '/sounds/ontology/E006' });
     render(<ScanScreen scanId="1" />);
     expect(sceneSound).toHaveBeenLastCalledWith('/sounds/ontology/E006', 'ended');
     expect(screen.getByRole('button', { name: 'المؤثر الصوتي' })).toBeInTheDocument();
-    expect(document.querySelector('.fx-sound-ring')).toBeNull();
   });
 
   it('has no speaker on the photo for a scene without a sound', () => {
