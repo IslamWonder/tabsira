@@ -171,7 +171,13 @@ export function ProfileScreen({
                   {load.profile.country ? ` ${P.country(load.profile.country.name)}` : null}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {isSelf ? null : (
+                  <FollowButton
+                    profile={load.profile}
+                    onChange={(profile) => setLoad({ kind: 'ready', profile })}
+                  />
+                )}
                 <ShareProfile
                   handle={load.profile.handle}
                   label={memberLabel(load.profile)}
@@ -184,10 +190,6 @@ export function ProfileScreen({
                   </LinkButton>
                 ) : (
                   <>
-                    <FollowButton
-                      profile={load.profile}
-                      onChange={(profile) => setLoad({ kind: 'ready', profile })}
-                    />
                     {session.status === 'signed-in' ? (
                       <Button variant="icon" label={C.post.more} onClick={() => setOpen('more')}>
                         <MoreIcon />

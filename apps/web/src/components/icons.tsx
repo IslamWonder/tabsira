@@ -101,6 +101,29 @@ export function ProfileIcon(props: Readonly<IconProps>) {
   );
 }
 
+/** A member to follow: a person and a plus. */
+export function FollowIcon(props: Readonly<IconProps>) {
+  return (
+    <Icon {...props}>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+      <path d="M19 8v6" />
+      <path d="M16 11h6" />
+    </Icon>
+  );
+}
+
+/** A member already followed: a person and a check. */
+export function FollowingIcon(props: Readonly<IconProps>) {
+  return (
+    <Icon {...props}>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+      <path d="m16 11 2 2 4-4" />
+    </Icon>
+  );
+}
+
 export function ExternalIcon(props: Readonly<IconProps>) {
   return (
     <Icon width="16" height="16" {...props}>
